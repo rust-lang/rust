@@ -20,7 +20,6 @@ use ide_db::{
 };
 use project_model::CargoConfig;
 use test_utils::project_root;
-use triomphe::Arc;
 use vfs::{AbsPathBuf, VfsPath};
 
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
@@ -57,8 +56,6 @@ fn integrated_highlighting_benchmark() {
         vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
     };
 
-    let _g = crate::tracing::hprof::init("*>150");
-
     {
         let _it = stdx::timeit("initial");
         let analysis = host.analysis();
@@ -68,13 +65,16 @@ fn integrated_highlighting_benchmark() {
     {
         let _it = stdx::timeit("change");
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
-        text.push_str("\npub fn _dummy() {}\n");
+        text = text.replace(
+            "self.data.cargo_buildScripts_rebuildOnSave",
+            "self. data. cargo_buildScripts_rebuildOnSave",
+        );
         let mut change = ChangeWithProcMacros::new();
-        change.change_file(file_id, Some(Arc::from(text)));
+        change.change_file(file_id, Some(text));
         host.apply_change(change);
     }
 
-    let _g = crate::tracing::hprof::init("*>50");
+    let _g = crate::tracing::hprof::init("*>20");
 
     {
         let _it = stdx::timeit("after change");
@@ -125,7 +125,7 @@ fn integrated_completion_benchmark() {
             patch(&mut text, "db.struct_data(self.id)", "sel;\ndb.struct_data(self.id)")
                 + "sel".len();
         let mut change = ChangeWithProcMacros::new();
-        change.change_file(file_id, Some(Arc::from(text)));
+        change.change_file(file_id, Some(text));
         host.apply_change(change);
         completion_offset
     };
@@ -168,7 +168,7 @@ fn integrated_completion_benchmark() {
             patch(&mut text, "sel;\ndb.struct_data(self.id)", ";sel;\ndb.struct_data(self.id)")
                 + ";sel".len();
         let mut change = ChangeWithProcMacros::new();
-        change.change_file(file_id, Some(Arc::from(text)));
+        change.change_file(file_id, Some(text));
         host.apply_change(change);
         completion_offset
     };
@@ -210,7 +210,7 @@ fn integrated_completion_benchmark() {
             patch(&mut text, "sel;\ndb.struct_data(self.id)", "self.;\ndb.struct_data(self.id)")
                 + "self.".len();
         let mut change = ChangeWithProcMacros::new();
-        change.change_file(file_id, Some(Arc::from(text)));
+        change.change_file(file_id, Some(text));
         host.apply_change(change);
         completion_offset
     };
@@ -307,7 +307,7 @@ fn integrated_diagnostics_benchmark() {
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
         patch(&mut text, "db.struct_data(self.id)", "();\ndb.struct_data(self.id)");
         let mut change = ChangeWithProcMacros::new();
-        change.change_file(file_id, Some(Arc::from(text)));
+        change.change_file(file_id, Some(text));
         host.apply_change(change);
     };
 

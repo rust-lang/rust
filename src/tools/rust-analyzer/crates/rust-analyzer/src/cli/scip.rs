@@ -32,8 +32,8 @@ impl flags::Scip {
         let mut config = crate::config::Config::new(
             root.clone(),
             lsp_types::ClientCapabilities::default(),
-            /* workspace_roots = */ vec![],
-            /* is_visual_studio_code = */ false,
+            vec![],
+            None,
         );
 
         if let Some(p) = self.config_path {

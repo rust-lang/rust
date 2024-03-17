@@ -7,6 +7,7 @@ mod input;
 
 use std::panic;
 
+use salsa::Durability;
 use syntax::{ast, Parse, SourceFile};
 use triomphe::Arc;
 
@@ -42,6 +43,7 @@ pub trait Upcast<T: ?Sized> {
     fn upcast(&self) -> &T;
 }
 
+pub const DEFAULT_FILE_TEXT_LRU_CAP: usize = 16;
 pub const DEFAULT_PARSE_LRU_CAP: usize = 128;
 pub const DEFAULT_BORROWCK_LRU_CAP: usize = 1024;
 
@@ -89,7 +91,10 @@ fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
 #[salsa::query_group(SourceDatabaseExtStorage)]
 pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
+    fn compressed_file_text(&self, file_id: FileId) -> Arc<[u8]>;
+
     fn file_text(&self, file_id: FileId) -> Arc<str>;
+
     /// Path to a file, relative to the root of its source root.
     /// Source root of the file.
     #[salsa::input]
@@ -99,6 +104,44 @@ pub trait SourceDatabaseExt: SourceDatabase {
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
 
     fn source_root_crates(&self, id: SourceRootId) -> Arc<[CrateId]>;
+}
+
+fn file_text(db: &dyn SourceDatabaseExt, file_id: FileId) -> Arc<str> {
+    let bytes = db.compressed_file_text(file_id);
+    let bytes =
+        lz4_flex::decompress_size_prepended(&bytes).expect("lz4 decompression should not fail");
+    let text = std::str::from_utf8(&bytes).expect("file contents should be valid UTF-8");
+    Arc::from(text)
+}
+
+pub trait SourceDatabaseExt2 {
+    fn set_file_text(&mut self, file_id: FileId, text: &str) {
+        self.set_file_text_with_durability(file_id, text, Durability::LOW);
+    }
+
+    fn set_file_text_with_durability(
+        &mut self,
+        file_id: FileId,
+        text: &str,
+        durability: Durability,
+    );
+}
+
+impl<Db: ?Sized + SourceDatabaseExt> SourceDatabaseExt2 for Db {
+    fn set_file_text_with_durability(
+        &mut self,
+        file_id: FileId,
+        text: &str,
+        durability: Durability,
+    ) {
+        let bytes = text.as_bytes();
+        let compressed = lz4_flex::compress_prepend_size(bytes);
+        self.set_compressed_file_text_with_durability(
+            file_id,
+            Arc::from(compressed.as_slice()),
+            durability,
+        )
+    }
 }
 
 fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<[CrateId]> {

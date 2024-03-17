@@ -142,6 +142,12 @@ export const prepareTestExplorer = (
     );
 
     ctx.pushClientCleanup(
+        client.onNotification(ra.appendOutputToRunTest, (output) => {
+            currentTestRun!.appendOutput(`${output}\r\n`);
+        }),
+    );
+
+    ctx.pushClientCleanup(
         client.onNotification(ra.changeTestState, (results) => {
             const test = idToTestMap.get(results.testId)!;
             if (results.state.tag === "failed") {

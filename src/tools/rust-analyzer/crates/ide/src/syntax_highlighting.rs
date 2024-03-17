@@ -248,6 +248,7 @@ fn traverse(
     // an attribute nested in a macro call will not emit `inside_attribute`
     let mut inside_attribute = false;
     let mut inside_macro_call = false;
+    let mut inside_proc_macro_call = false;
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
@@ -298,8 +299,9 @@ fn traverse(
                         ast::Item::Fn(_) | ast::Item::Const(_) | ast::Item::Static(_) => {
                             bindings_shadow_count.clear()
                         }
-                        ast::Item::MacroCall(_) => {
+                        ast::Item::MacroCall(ref macro_call) => {
                             inside_macro_call = true;
+                            inside_proc_macro_call = sema.is_proc_macro_call(macro_call);
                         }
                         _ => (),
                     }
@@ -344,6 +346,7 @@ fn traverse(
                     }
                     Some(ast::Item::MacroCall(_)) => {
                         inside_macro_call = false;
+                        inside_proc_macro_call = false;
                     }
                     _ => (),
                 }
@@ -519,6 +522,9 @@ fn traverse(
                 highlight |= HlMod::Attribute
             }
             if inside_macro_call && tt_level > 0 {
+                if inside_proc_macro_call {
+                    highlight |= HlMod::ProcMacro
+                }
                 highlight |= HlMod::Macro
             }
 

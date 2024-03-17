@@ -42,6 +42,7 @@ triomphe.workspace = true
 nohash-hasher.workspace = true
 always-assert = "0.2.0"
 walkdir = "2.3.2"
+semver.workspace = true
 
 cfg.workspace = true
 flycheck.workspace = true
