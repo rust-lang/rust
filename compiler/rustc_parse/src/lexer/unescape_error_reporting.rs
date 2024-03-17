@@ -95,7 +95,7 @@ pub(crate) fn emit_unescape_error(
                     }
                     escaped.push(c);
                 }
-                if escaped.len() != lit.len() {
+                if escaped.len() != lit.len() || full_lit_span.is_empty() {
                     let sugg = format!("{prefix}\"{escaped}\"");
                     MoreThanOneCharSugg::QuotesFull {
                         span: full_lit_span,
