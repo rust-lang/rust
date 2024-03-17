@@ -1053,7 +1053,8 @@ pub(crate) mod builtin {
     ///
     /// If the environment variable is not defined, then a compilation error
     /// will be emitted. To not emit a compile error, use the [`option_env!`]
-    /// macro instead.
+    /// macro instead. A compilation error will also be emitted if the
+    /// environment variable is not a vaild Unicode string.
     ///
     /// # Examples
     ///

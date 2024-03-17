@@ -1,4 +1,5 @@
 use std::env;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -16,7 +17,11 @@ fn setup_common_build_cmd() -> Command {
 }
 
 fn handle_failed_output(cmd: &str, output: Output, caller_line_number: u32) -> ! {
-    eprintln!("command failed at line {caller_line_number}");
+    if output.status.success() {
+        eprintln!("command incorrectly succeeded at line {caller_line_number}");
+    } else {
+        eprintln!("command failed at line {caller_line_number}");
+    }
     eprintln!("{cmd}");
     eprintln!("output status: `{}`", output.status);
     eprintln!("=== STDOUT ===\n{}\n\n", String::from_utf8(output.stdout).unwrap());
@@ -53,6 +58,15 @@ impl RustcInvocationBuilder {
         self
     }
 
+    pub fn env(
+        &mut self,
+        name: impl AsRef<OsStr>,
+        value: impl AsRef<OsStr>,
+    ) -> &mut RustcInvocationBuilder {
+        self.cmd.env(name, value);
+        self
+    }
+
     #[track_caller]
     pub fn run(&mut self) -> Output {
         let caller_location = std::panic::Location::caller();
@@ -60,6 +74,18 @@ impl RustcInvocationBuilder {
 
         let output = self.cmd.output().unwrap();
         if !output.status.success() {
+            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+        }
+        output
+    }
+
+    #[track_caller]
+    pub fn run_fail(&mut self) -> Output {
+        let caller_location = std::panic::Location::caller();
+        let caller_line_number = caller_location.line();
+
+        let output = self.cmd.output().unwrap();
+        if output.status.success() {
             handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
         }
         output
