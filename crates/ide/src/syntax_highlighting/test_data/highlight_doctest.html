@@ -71,7 +71,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment">//    KILLER WHALE</span>
     <span class="comment documentation">///</span><span class="comment documentation"> </span><span class="string_literal injected">    Ishmael."</span><span class="semicolon injected">;</span>
     <span class="comment documentation">/// ```</span>
-    <span class="keyword">pub</span> <span class="keyword const">const</span> <span class="constant associated const declaration public">bar</span><span class="colon">:</span> <span class="builtin_type">bool</span> <span class="operator">=</span> <span class="bool_literal">true</span><span class="semicolon">;</span>
+    <span class="keyword">pub</span> <span class="keyword const">const</span> <span class="constant associated const declaration public static">bar</span><span class="colon">:</span> <span class="builtin_type">bool</span> <span class="operator">=</span> <span class="bool_literal">true</span><span class="semicolon">;</span>
 
     <span class="comment documentation">/// Constructs a new `Foo`.</span>
     <span class="comment documentation">///</span>
@@ -109,12 +109,12 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">/// ```</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```rust,no_run</span>
-    <span class="comment documentation">///</span><span class="comment documentation"> </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">foobar</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="operator injected">.</span><span class="function injected">bar</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="semicolon injected">;</span>
+    <span class="comment documentation">///</span><span class="comment documentation"> </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">foobar</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="operator injected">.</span><span class="method injected">bar</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="semicolon injected">;</span>
     <span class="comment documentation">/// ```</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ~~~rust,no_run</span>
     <span class="comment documentation">///</span><span class="comment documentation"> </span><span class="comment injected">// code block with tilde.</span>
-    <span class="comment documentation">///</span><span class="comment documentation"> </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">foobar</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="operator injected">.</span><span class="function injected">bar</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="semicolon injected">;</span>
+    <span class="comment documentation">///</span><span class="comment documentation"> </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">foobar</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="operator injected">.</span><span class="method injected">bar</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="semicolon injected">;</span>
     <span class="comment documentation">/// ~~~</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```</span>
@@ -127,7 +127,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">/// ```sh</span>
     <span class="comment documentation">/// echo 1</span>
     <span class="comment documentation">/// ```</span>
-    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration public reference">foo</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
+    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="method associated declaration public reference">foo</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
         <span class="bool_literal">true</span>
     <span class="brace">}</span>
 <span class="brace">}</span>

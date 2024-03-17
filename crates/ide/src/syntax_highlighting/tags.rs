@@ -46,7 +46,7 @@ pub enum HlTag {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum HlMod {
-    /// Used for items in traits and impls.
+    /// Used for associated items.
     Associated = 0,
     /// Used with keywords like `async` and `await`.
     Async,
@@ -84,7 +84,7 @@ pub enum HlMod {
     Public,
     /// Immutable reference.
     Reference,
-    /// Used for associated functions.
+    /// Used for associated items, except Methods. (Some languages call these static members)
     Static,
     /// Used for items in traits and trait impls.
     Trait,
@@ -149,6 +149,7 @@ impl HlTag {
                 SymbolKind::LifetimeParam => "lifetime",
                 SymbolKind::Local => "variable",
                 SymbolKind::Macro => "macro",
+                SymbolKind::Method => "method",
                 SymbolKind::ProcMacro => "proc_macro",
                 SymbolKind::Module => "module",
                 SymbolKind::SelfParam => "self_keyword",

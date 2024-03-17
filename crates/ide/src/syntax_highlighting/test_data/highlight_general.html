@@ -63,25 +63,25 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="keyword">trait</span> <span class="trait declaration">Bar</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span><span class="semicolon">;</span>
+    <span class="keyword">fn</span> <span class="method associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
 <span class="keyword">impl</span> <span class="trait">Bar</span> <span class="keyword">for</span> <span class="struct">Foo</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="method associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
         <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field">x</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
 
 <span class="keyword">impl</span> <span class="struct">Foo</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function associated consuming declaration">baz</span><span class="parenthesis">(</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable">self</span><span class="comma">,</span> <span class="value_param declaration">f</span><span class="colon">:</span> <span class="struct">Foo</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
-        <span class="value_param">f</span><span class="operator">.</span><span class="function associated consuming">baz</span><span class="parenthesis">(</span><span class="self_keyword consuming mutable">self</span><span class="parenthesis">)</span>
+    <span class="keyword">fn</span> <span class="method associated consuming declaration">baz</span><span class="parenthesis">(</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable">self</span><span class="comma">,</span> <span class="value_param declaration">f</span><span class="colon">:</span> <span class="struct">Foo</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
+        <span class="value_param">f</span><span class="operator">.</span><span class="method consuming">baz</span><span class="parenthesis">(</span><span class="self_keyword consuming mutable">self</span><span class="parenthesis">)</span>
     <span class="brace">}</span>
 
-    <span class="keyword">fn</span> <span class="function associated declaration mutable reference">qux</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="method associated declaration mutable reference">qux</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span>
         <span class="self_keyword mutable reference">self</span><span class="operator">.</span><span class="field">x</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="semicolon">;</span>
     <span class="brace">}</span>
 
-    <span class="keyword">fn</span> <span class="function associated declaration reference">quop</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="method associated declaration reference">quop</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
         <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field">x</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
@@ -94,15 +94,15 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="keyword">impl</span> <span class="struct">FooCopy</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function associated consuming declaration">baz</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="comma">,</span> <span class="value_param declaration">f</span><span class="colon">:</span> <span class="struct">FooCopy</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="brace">{</span>
-        <span class="value_param">f</span><span class="operator">.</span><span class="function associated">baz</span><span class="parenthesis">(</span><span class="self_keyword">self</span><span class="parenthesis">)</span>
+    <span class="keyword">fn</span> <span class="method associated consuming declaration">baz</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="comma">,</span> <span class="value_param declaration">f</span><span class="colon">:</span> <span class="struct">FooCopy</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="brace">{</span>
+        <span class="value_param">f</span><span class="operator">.</span><span class="method">baz</span><span class="parenthesis">(</span><span class="self_keyword">self</span><span class="parenthesis">)</span>
     <span class="brace">}</span>
 
-    <span class="keyword">fn</span> <span class="function associated declaration mutable reference">qux</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="method associated declaration mutable reference">qux</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span>
         <span class="self_keyword mutable reference">self</span><span class="operator">.</span><span class="field">x</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="semicolon">;</span>
     <span class="brace">}</span>
 
-    <span class="keyword">fn</span> <span class="function associated declaration reference">quop</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="method associated declaration reference">quop</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="brace">{</span>
         <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field">x</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
@@ -148,17 +148,17 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">foo</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="comma">,</span> <span class="unresolved_reference">y</span><span class="colon">:</span> <span class="variable mutable">x</span> <span class="brace">}</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable declaration">foo2</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="comma">,</span> <span class="unresolved_reference">y</span><span class="colon">:</span> <span class="variable mutable">x</span> <span class="brace">}</span><span class="semicolon">;</span>
-    <span class="variable mutable">foo</span><span class="operator">.</span><span class="function associated reference">quop</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
-    <span class="variable mutable">foo</span><span class="operator">.</span><span class="function associated mutable reference">qux</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
-    <span class="variable mutable">foo</span><span class="operator">.</span><span class="function associated consuming">baz</span><span class="parenthesis">(</span><span class="variable consuming">foo2</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="variable mutable">foo</span><span class="operator">.</span><span class="method reference">quop</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="variable mutable">foo</span><span class="operator">.</span><span class="method mutable reference">qux</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="variable mutable">foo</span><span class="operator">.</span><span class="method consuming">baz</span><span class="parenthesis">(</span><span class="variable consuming">foo2</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">copy</span> <span class="operator">=</span> <span class="struct">FooCopy</span> <span class="brace">{</span> <span class="field">x</span> <span class="brace">}</span><span class="semicolon">;</span>
-    <span class="variable mutable">copy</span><span class="operator">.</span><span class="function associated reference">quop</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
-    <span class="variable mutable">copy</span><span class="operator">.</span><span class="function associated mutable reference">qux</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
-    <span class="variable mutable">copy</span><span class="operator">.</span><span class="function associated">baz</span><span class="parenthesis">(</span><span class="variable mutable">copy</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="variable mutable">copy</span><span class="operator">.</span><span class="method reference">quop</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="variable mutable">copy</span><span class="operator">.</span><span class="method mutable reference">qux</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="variable mutable">copy</span><span class="operator">.</span><span class="method">baz</span><span class="parenthesis">(</span><span class="variable mutable">copy</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 
     <span class="keyword">let</span> <span class="variable callable declaration">a</span> <span class="operator">=</span> <span class="punctuation">|</span><span class="value_param declaration">x</span><span class="punctuation">|</span> <span class="value_param">x</span><span class="semicolon">;</span>
-    <span class="keyword">let</span> <span class="variable callable declaration">bar</span> <span class="operator">=</span> <span class="struct">Foo</span><span class="operator">::</span><span class="function associated consuming">baz</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable callable declaration">bar</span> <span class="operator">=</span> <span class="struct">Foo</span><span class="operator">::</span><span class="method associated consuming">baz</span><span class="semicolon">;</span>
 
     <span class="keyword">let</span> <span class="variable declaration">baz</span> <span class="operator">=</span> <span class="parenthesis">(</span><span class="numeric_literal">-</span><span class="numeric_literal">42</span><span class="comma">,</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable declaration">baz</span> <span class="operator">=</span> <span class="operator">-</span><span class="variable">baz</span><span class="operator">.</span><span class="field">0</span><span class="semicolon">;</span>
@@ -178,7 +178,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">use</span> <span class="enum">Option</span><span class="operator">::</span><span class="punctuation">*</span><span class="semicolon">;</span>
 
 <span class="keyword">impl</span><span class="angle">&lt;</span><span class="type_param declaration">T</span><span class="angle">&gt;</span> <span class="enum">Option</span><span class="angle">&lt;</span><span class="type_param">T</span><span class="angle">&gt;</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function associated consuming declaration">and</span><span class="angle">&lt;</span><span class="type_param declaration">U</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="comma">,</span> <span class="value_param declaration">other</span><span class="colon">:</span> <span class="enum">Option</span><span class="angle">&lt;</span><span class="type_param">U</span><span class="angle">&gt;</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="enum">Option</span><span class="angle">&lt;</span><span class="parenthesis">(</span><span class="type_param">T</span><span class="comma">,</span> <span class="type_param">U</span><span class="parenthesis">)</span><span class="angle">&gt;</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="method associated consuming declaration">and</span><span class="angle">&lt;</span><span class="type_param declaration">U</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="comma">,</span> <span class="value_param declaration">other</span><span class="colon">:</span> <span class="enum">Option</span><span class="angle">&lt;</span><span class="type_param">U</span><span class="angle">&gt;</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="enum">Option</span><span class="angle">&lt;</span><span class="parenthesis">(</span><span class="type_param">T</span><span class="comma">,</span> <span class="type_param">U</span><span class="parenthesis">)</span><span class="angle">&gt;</span> <span class="brace">{</span>
         <span class="keyword control">match</span> <span class="value_param">other</span> <span class="brace">{</span>
             <span class="enum_variant">None</span> <span class="operator">=&gt;</span> <span class="unresolved_reference">unimplemented</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="parenthesis macro">)</span><span class="comma">,</span>
             <span class="variable declaration">Nope</span> <span class="operator">=&gt;</span> <span class="variable">Nope</span><span class="comma">,</span>
@@ -205,7 +205,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
     <span class="keyword">let</span> <span class="variable declaration">control_flow</span> <span class="operator">=</span> <span class="module crate_root library">foo</span><span class="operator">::</span><span class="function library">identity</span><span class="parenthesis">(</span><span class="module crate_root library">foo</span><span class="operator">::</span><span class="enum library">ControlFlow</span><span class="operator">::</span><span class="enum_variant library">Continue</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 
-    <span class="keyword control">if</span> <span class="variable">control_flow</span><span class="operator">.</span><span class="function associated consuming library">should_die</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword control">if</span> <span class="variable">control_flow</span><span class="operator">.</span><span class="method consuming library">should_die</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
         <span class="module crate_root library">foo</span><span class="operator">::</span><span class="unresolved_reference">die</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
@@ -213,23 +213,23 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">pub</span> <span class="keyword">enum</span> <span class="enum declaration public">Bool</span> <span class="brace">{</span> <span class="enum_variant declaration public">True</span><span class="comma">,</span> <span class="enum_variant declaration public">False</span> <span class="brace">}</span>
 
 <span class="keyword">impl</span> <span class="enum public">Bool</span> <span class="brace">{</span>
-    <span class="keyword">pub</span> <span class="keyword const">const</span> <span class="keyword">fn</span> <span class="function associated const consuming declaration public">to_primitive</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
+    <span class="keyword">pub</span> <span class="keyword const">const</span> <span class="keyword">fn</span> <span class="method associated const consuming declaration public">to_primitive</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
         <span class="bool_literal">true</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
-<span class="keyword const">const</span> <span class="constant const declaration">USAGE_OF_BOOL</span><span class="colon">:</span><span class="builtin_type">bool</span> <span class="operator">=</span> <span class="enum public">Bool</span><span class="operator">::</span><span class="enum_variant public">True</span><span class="operator">.</span><span class="function associated consuming public">to_primitive</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+<span class="keyword const">const</span> <span class="constant const declaration">USAGE_OF_BOOL</span><span class="colon">:</span><span class="builtin_type">bool</span> <span class="operator">=</span> <span class="enum public">Bool</span><span class="operator">::</span><span class="enum_variant public">True</span><span class="operator">.</span><span class="method consuming public">to_primitive</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 
 <span class="keyword">trait</span> <span class="trait declaration">Baz</span> <span class="brace">{</span>
-    <span class="keyword">type</span> <span class="type_alias associated declaration trait">Qux</span><span class="semicolon">;</span>
+    <span class="keyword">type</span> <span class="type_alias associated declaration static trait">Qux</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
 <span class="keyword">fn</span> <span class="function declaration">baz</span><span class="angle">&lt;</span><span class="type_param declaration">T</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="value_param declaration">t</span><span class="colon">:</span> <span class="type_param">T</span><span class="parenthesis">)</span>
 <span class="keyword">where</span>
     <span class="type_param">T</span><span class="colon">:</span> <span class="trait">Baz</span><span class="comma">,</span>
-    <span class="angle">&lt;</span><span class="type_param">T</span> <span class="keyword">as</span> <span class="trait">Baz</span><span class="angle">&gt;</span><span class="operator">::</span><span class="type_alias associated trait">Qux</span><span class="colon">:</span> <span class="trait">Bar</span> <span class="brace">{</span><span class="brace">}</span>
+    <span class="angle">&lt;</span><span class="type_param">T</span> <span class="keyword">as</span> <span class="trait">Baz</span><span class="angle">&gt;</span><span class="operator">::</span><span class="type_alias associated static trait">Qux</span><span class="colon">:</span> <span class="trait">Bar</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="keyword">fn</span> <span class="function declaration">gp_shadows_trait</span><span class="angle">&lt;</span><span class="type_param declaration">Baz</span><span class="colon">:</span> <span class="trait">Bar</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
-    <span class="type_param">Baz</span><span class="operator">::</span><span class="function associated reference trait">bar</span><span class="semicolon">;</span>
+    <span class="type_param">Baz</span><span class="operator">::</span><span class="method associated reference trait">bar</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
 </code></pre>

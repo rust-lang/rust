@@ -133,6 +133,7 @@ define_semantic_token_modifiers![
         DEFAULT_LIBRARY,
     }
     custom {
+        (ASSOCIATED, "associated"),
         (ASYNC, "async"),
         (ATTRIBUTE_MODIFIER, "attribute"),
         (CALLABLE, "callable"),
