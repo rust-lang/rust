@@ -1727,6 +1727,12 @@ fn visit_mentioned_item<'tcx>(
                 create_mono_items_for_vtable_methods(tcx, target_ty, source_ty, span, output);
             }
         }
+        MentionedItem::Closure(def_id, args) => {
+            let instance = Instance::resolve_closure(tcx, def_id, args, ty::ClosureKind::FnOnce);
+            if should_codegen_locally(tcx, &instance) {
+                output.push(create_fn_mono_item(tcx, instance, span));
+            }
+        }
     }
 }
 

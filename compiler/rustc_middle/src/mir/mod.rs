@@ -324,7 +324,8 @@ pub enum MentionedItem<'tcx> {
         source_ty: Ty<'tcx>,
         target_ty: Ty<'tcx>,
     },
-    // FIXME: do we have to add closures?
+    /// A closure that is coerced to a function pointer.
+    Closure(DefId, GenericArgsRef<'tcx>),
 }
 
 /// The lowered representation of a single function.

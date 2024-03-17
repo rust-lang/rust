@@ -74,6 +74,22 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
                     span,
                 });
             }
+            // Similarly, record closures that are turned into function pointers.
+            mir::Rvalue::Cast(
+                mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
+                ref operand,
+                _,
+            ) => {
+                let span = self.body.source_info(location).span;
+                let source_ty = operand.ty(self.body, self.tcx);
+                match *source_ty.kind() {
+                    ty::Closure(def_id, args) => {
+                        self.mentioned_items
+                            .push(Spanned { node: MentionedItem::Closure(def_id, args), span });
+                    }
+                    _ => bug!(),
+                }
+            }
             // Function pointer casts are already handled by `visit_constant` above.
             _ => {}
         }
