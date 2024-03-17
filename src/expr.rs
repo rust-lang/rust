@@ -404,8 +404,11 @@ pub(crate) fn format_expr(
         ast::ExprKind::FormatArgs(..)
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::OffsetOf(..) => {
-            // These do not occur in the AST because macros aren't expanded.
-            unreachable!()
+            // These don't normally occur in the AST because macros aren't expanded. However,
+            // rustfmt tries to parse macro arguments when formatting macros, so it's not totally
+            // impossible for rustfmt to come across one of these nodes when formatting a file.
+            // Also, rustfmt might get passed the output from `-Zunpretty=expanded`.
+            None
         }
         ast::ExprKind::Err => None,
     };
