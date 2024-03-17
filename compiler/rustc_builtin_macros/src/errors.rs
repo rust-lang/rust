@@ -459,6 +459,14 @@ pub(crate) enum EnvNotDefined<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_env_not_unicode)]
+pub(crate) struct EnvNotUnicode {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) var: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_format_requires_string)]
 pub(crate) struct FormatRequiresString {
     #[primary_span]
