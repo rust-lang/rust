@@ -24,6 +24,7 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
 use crate::html::format::Buffer;
+use crate::html::render::search_index::SerializedSearchIndex;
 use crate::html::render::{AssocItemLink, ImplRenderingParameters};
 use crate::html::{layout, static_files};
 use crate::visit::DocVisitor;
@@ -46,7 +47,7 @@ use crate::{try_err, try_none};
 pub(super) fn write_shared(
     cx: &mut Context<'_>,
     krate: &Crate,
-    search_index: String,
+    search_index: SerializedSearchIndex,
     options: &RenderOptions,
 ) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
@@ -312,7 +313,7 @@ pub(super) fn write_shared(
     let dst = cx.dst.join(&format!("search-index{}.js", cx.shared.resource_suffix));
     let (mut all_indexes, mut krates) =
         try_err!(collect_json(&dst, krate.name(cx.tcx()).as_str()), &dst);
-    all_indexes.push(search_index);
+    all_indexes.push(search_index.index);
     krates.push(krate.name(cx.tcx()).to_string());
     krates.sort();
 
@@ -334,6 +335,32 @@ else if (window.initSearch) window.initSearch(searchIndex);
         );
         Ok(v.into_bytes())
     })?;
+
+    let search_desc_dir = cx.dst.join(format!("search.desc/{krate}", krate = krate.name(cx.tcx())));
+    if Path::new(&search_desc_dir).exists() {
+        try_err!(std::fs::remove_dir_all(&search_desc_dir), &search_desc_dir);
+    }
+    try_err!(std::fs::create_dir_all(&search_desc_dir), &search_desc_dir);
+    let kratename = krate.name(cx.tcx()).to_string();
+    for (i, (_, data)) in search_index.desc.into_iter().enumerate() {
+        let output_filename = static_files::suffix_path(
+            &format!("{kratename}-desc-{i}-.js"),
+            &cx.shared.resource_suffix,
+        );
+        let path = search_desc_dir.join(output_filename);
+        try_err!(
+            std::fs::write(
+                &path,
+                &format!(
+                    r##"searchState.loadedDescShard({kratename}, {i}, {data})"##,
+                    kratename = serde_json::to_string(&kratename).unwrap(),
+                    data = serde_json::to_string(&data).unwrap(),
+                )
+                .into_bytes()
+            ),
+            &path
+        );
+    }
 
     write_invocation_specific("crates.js", &|| {
         let krates = krates.iter().map(|k| format!("\"{k}\"")).join(",");

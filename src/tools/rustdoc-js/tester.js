@@ -1,3 +1,4 @@
+/* global globalThis */
 const fs = require("fs");
 const path = require("path");
 
@@ -133,7 +134,7 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
                     expected_value,
                     result.get(key),
                     error_text,
-                    queryName
+                    queryName,
                 );
             } else {
                 error_text.push(`${queryName}==> EXPECTED has extra key in map from field ` +
@@ -212,11 +213,11 @@ function runParser(query, expected, parseQuery, queryName) {
     return error_text;
 }
 
-function runSearch(query, expected, doSearch, loadedFile, queryName) {
+async function runSearch(query, expected, doSearch, loadedFile, queryName) {
     const ignore_order = loadedFile.ignore_order;
     const exact_check = loadedFile.exact_check;
 
-    const results = doSearch(query, loadedFile.FILTER_CRATE);
+    const results = await doSearch(query, loadedFile.FILTER_CRATE);
     const error_text = [];
 
     for (const key in expected) {
@@ -238,7 +239,7 @@ function runSearch(query, expected, doSearch, loadedFile, queryName) {
         }
 
         let prev_pos = -1;
-        entry.forEach((elem, index) => {
+        for (const [index, elem] of entry.entries()) {
             const entry_pos = lookForEntry(elem, results[key]);
             if (entry_pos === -1) {
                 error_text.push(queryName + "==> Result not found in '" + key + "': '" +
@@ -260,13 +261,13 @@ function runSearch(query, expected, doSearch, loadedFile, queryName) {
             } else {
                 prev_pos = entry_pos;
             }
-        });
+        }
     }
     return error_text;
 }
 
-function runCorrections(query, corrections, getCorrections, loadedFile) {
-    const qc = getCorrections(query, loadedFile.FILTER_CRATE);
+async function runCorrections(query, corrections, getCorrections, loadedFile) {
+    const qc = await getCorrections(query, loadedFile.FILTER_CRATE);
     const error_text = [];
 
     if (corrections === null) {
@@ -299,18 +300,27 @@ function checkResult(error_text, loadedFile, displaySuccess) {
     return 1;
 }
 
-function runCheckInner(callback, loadedFile, entry, getCorrections, extra) {
+async function runCheckInner(callback, loadedFile, entry, getCorrections, extra) {
     if (typeof entry.query !== "string") {
         console.log("FAILED");
         console.log("==> Missing `query` field");
         return false;
     }
-    let error_text = callback(entry.query, entry, extra ? "[ query `" + entry.query + "`]" : "");
+    let error_text = await callback(
+        entry.query,
+        entry,
+        extra ? "[ query `" + entry.query + "`]" : "",
+    );
     if (checkResult(error_text, loadedFile, false) !== 0) {
         return false;
     }
     if (entry.correction !== undefined) {
-        error_text = runCorrections(entry.query, entry.correction, getCorrections, loadedFile);
+        error_text = await runCorrections(
+            entry.query,
+            entry.correction,
+            getCorrections,
+            loadedFile,
+        );
         if (checkResult(error_text, loadedFile, false) !== 0) {
             return false;
         }
@@ -318,16 +328,16 @@ function runCheckInner(callback, loadedFile, entry, getCorrections, extra) {
     return true;
 }
 
-function runCheck(loadedFile, key, getCorrections, callback) {
+async function runCheck(loadedFile, key, getCorrections, callback) {
     const expected = loadedFile[key];
 
     if (Array.isArray(expected)) {
         for (const entry of expected) {
-            if (!runCheckInner(callback, loadedFile, entry, getCorrections, true)) {
+            if (!await runCheckInner(callback, loadedFile, entry, getCorrections, true)) {
                 return 1;
             }
         }
-    } else if (!runCheckInner(callback, loadedFile, expected, getCorrections, false)) {
+    } else if (!await runCheckInner(callback, loadedFile, expected, getCorrections, false)) {
         return 1;
     }
     console.log("OK");
@@ -338,7 +348,7 @@ function hasCheck(content, checkName) {
     return content.startsWith(`const ${checkName}`) || content.includes(`\nconst ${checkName}`);
 }
 
-function runChecks(testFile, doSearch, parseQuery, getCorrections) {
+async function runChecks(testFile, doSearch, parseQuery, getCorrections) {
     let checkExpected = false;
     let checkParsed = false;
     let testFileContent = readFile(testFile);
@@ -367,12 +377,12 @@ function runChecks(testFile, doSearch, parseQuery, getCorrections) {
     let res = 0;
 
     if (checkExpected) {
-        res += runCheck(loadedFile, "EXPECTED", getCorrections, (query, expected, text) => {
+        res += await runCheck(loadedFile, "EXPECTED", getCorrections, (query, expected, text) => {
             return runSearch(query, expected, doSearch, loadedFile, text);
         });
     }
     if (checkParsed) {
-        res += runCheck(loadedFile, "PARSED", getCorrections, (query, expected, text) => {
+        res += await runCheck(loadedFile, "PARSED", getCorrections, (query, expected, text) => {
             return runParser(query, expected, parseQuery, text);
         });
     }
@@ -392,6 +402,35 @@ function runChecks(testFile, doSearch, parseQuery, getCorrections) {
 function loadSearchJS(doc_folder, resource_suffix) {
     const searchIndexJs = path.join(doc_folder, "search-index" + resource_suffix + ".js");
     const searchIndex = require(searchIndexJs);
+
+    globalThis.searchState = {
+        descShards: new Map(),
+        loadDesc: async function({descShard, descIndex}) {
+            if (descShard.promise === null) {
+                descShard.promise = new Promise((resolve, reject) => {
+                    descShard.resolve = resolve;
+                    const ds = descShard;
+                    const fname = `${ds.crate}-desc-${ds.shard}-${resource_suffix}.js`;
+                    fs.readFile(
+                        `${doc_folder}/search.desc/${descShard.crate}/${fname}`,
+                        (err, data) => {
+                            if (err) {
+                                reject(err);
+                            } else {
+                                eval(data.toString("utf8"));
+                            }
+                        },
+                    );
+                });
+            }
+            const list = await descShard.promise;
+            return list[descIndex];
+        },
+        loadedDescShard: function (crate, shard, data) {
+            //console.log(this.descShards);
+            this.descShards.get(crate)[shard].resolve(data.split("\n"));
+        },
+    };
 
     const staticFiles = path.join(doc_folder, "static.files");
     const searchJs = fs.readdirSync(staticFiles).find(f => f.match(/search.*\.js$/));
@@ -474,7 +513,7 @@ function parseOptions(args) {
     return null;
 }
 
-function main(argv) {
+async function main(argv) {
     const opts = parseOptions(argv.slice(2));
     if (opts === null) {
         return 1;
@@ -482,7 +521,7 @@ function main(argv) {
 
     const parseAndSearch = loadSearchJS(
         opts["doc_folder"],
-        opts["resource_suffix"]
+        opts["resource_suffix"],
     );
     let errors = 0;
 
@@ -494,21 +533,34 @@ function main(argv) {
     };
 
     if (opts["test_file"].length !== 0) {
-        opts["test_file"].forEach(file => {
+        for (const file of opts["test_file"]) {
             process.stdout.write(`Testing ${file} ... `);
-            errors += runChecks(file, doSearch, parseAndSearch.parseQuery, getCorrections);
-        });
+            errors += await runChecks(file, doSearch, parseAndSearch.parseQuery, getCorrections);
+        }
     } else if (opts["test_folder"].length !== 0) {
-        fs.readdirSync(opts["test_folder"]).forEach(file => {
+        for (const file of fs.readdirSync(opts["test_folder"])) {
             if (!file.endsWith(".js")) {
-                return;
+                continue;
             }
             process.stdout.write(`Testing ${file} ... `);
-            errors += runChecks(path.join(opts["test_folder"], file), doSearch,
+            errors += await runChecks(path.join(opts["test_folder"], file), doSearch,
                     parseAndSearch.parseQuery, getCorrections);
-        });
+        }
     }
     return errors > 0 ? 1 : 0;
 }
 
-process.exit(main(process.argv));
+main(process.argv).catch(e => {
+    console.log(e);
+    process.exit(1);
+}).then(x => process.exit(x));
+
+process.on("beforeExit", () => {
+    console.log("process did not complete");
+    process.exit(1);
+});
+
+/*process.on("uncaughtException", (err) => {
+    console.log(`Uncaught Exception: ${err.message}`);
+    process.exit(1);
+});*/

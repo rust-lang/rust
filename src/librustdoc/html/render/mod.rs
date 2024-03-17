@@ -184,40 +184,15 @@ pub(crate) enum RenderTypeId {
 
 impl RenderTypeId {
     pub fn write_to_string(&self, string: &mut String) {
-        // (sign, value)
-        let (sign, id): (bool, u32) = match &self {
+        let id: i32 = match &self {
             // 0 is a sentinel, everything else is one-indexed
             // concrete type
-            RenderTypeId::Index(idx) if *idx >= 0 => (false, (idx + 1isize).try_into().unwrap()),
+            RenderTypeId::Index(idx) if *idx >= 0 => (idx + 1isize).try_into().unwrap(),
             // generic type parameter
-            RenderTypeId::Index(idx) => (true, (-*idx).try_into().unwrap()),
+            RenderTypeId::Index(idx) => (*idx).try_into().unwrap(),
             _ => panic!("must convert render types to indexes before serializing"),
         };
-        // zig-zag encoding
-        let value: u32 = (id << 1) | (if sign { 1 } else { 0 });
-        // Self-terminating hex use capital letters for everything but the
-        // least significant digit, which is lowercase. For example, decimal 17
-        // would be `` Aa `` if zig-zag encoding weren't used.
-        //
-        // Zig-zag encoding, however, stores the sign bit as the last bit.
-        // This means, in the last hexit, 1 is actually `c`, -1 is `b`
-        // (`a` is the imaginary -0), and, because all the bits are shifted
-        // by one, `` A` `` is actually 8 and `` Aa `` is -8.
-        //
-        // https://rust-lang.github.io/rustc-dev-guide/rustdoc-internals/search.html
-        // describes the encoding in more detail.
-        let mut shift: u32 = 28;
-        let mut mask: u32 = 0xF0_00_00_00;
-        while shift < 32 {
-            let hexit = (value & mask) >> shift;
-            if hexit != 0 || shift == 0 {
-                let hex =
-                    char::try_from(if shift == 0 { '`' } else { '@' } as u32 + hexit).unwrap();
-                string.push(hex);
-            }
-            shift = shift.wrapping_sub(4);
-            mask = mask >> 4;
-        }
+        search_index::write_vlqhex_to_string(id, string);
     }
 }
 

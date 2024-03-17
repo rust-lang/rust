@@ -17,12 +17,25 @@ use crate::html::format::join_with_double_colon;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::{self, IndexItem, IndexItemFunctionType, RenderType, RenderTypeId};
 
+/// The serialized search description sharded version
+///
+/// The `index` is a JSON-encoded list of names and other information.
+///
+/// The desc has newlined descriptions, split up by size into 1MiB shards.
+/// For example, `(4, "foo\nbar\nbaz\nquux")`.
+pub(crate) struct SerializedSearchIndex {
+    pub(crate) index: String,
+    pub(crate) desc: Vec<(usize, String)>,
+}
+
+const DESC_INDEX_SHARD_LEN: usize = 1024 * 1024;
+
 /// Builds the search index from the collected metadata
 pub(crate) fn build_index<'tcx>(
     krate: &clean::Crate,
     cache: &mut Cache,
     tcx: TyCtxt<'tcx>,
-) -> String {
+) -> SerializedSearchIndex {
     let mut itemid_to_pathid = FxHashMap::default();
     let mut primitives = FxHashMap::default();
     let mut associated_types = FxHashMap::default();
@@ -318,7 +331,6 @@ pub(crate) fn build_index<'tcx>(
         .collect::<Vec<_>>();
 
     struct CrateData<'a> {
-        doc: String,
         items: Vec<&'a IndexItem>,
         paths: Vec<(ItemType, Vec<Symbol>)>,
         // The String is alias name and the vec is the list of the elements with this alias.
@@ -327,6 +339,9 @@ pub(crate) fn build_index<'tcx>(
         aliases: &'a BTreeMap<String, Vec<usize>>,
         // Used when a type has more than one impl with an associated item with the same name.
         associated_item_disambiguators: &'a Vec<(usize, String)>,
+        // A list of shard lengths encoded as vlqhex. See the comment in write_vlqhex_to_string
+        // for information on the format.
+        descindex: String,
     }
 
     struct Paths {
@@ -408,7 +423,6 @@ pub(crate) fn build_index<'tcx>(
             let mut names = Vec::with_capacity(self.items.len());
             let mut types = String::with_capacity(self.items.len());
             let mut full_paths = Vec::with_capacity(self.items.len());
-            let mut descriptions = Vec::with_capacity(self.items.len());
             let mut parents = Vec::with_capacity(self.items.len());
             let mut functions = String::with_capacity(self.items.len());
             let mut deprecated = Vec::with_capacity(self.items.len());
@@ -431,7 +445,6 @@ pub(crate) fn build_index<'tcx>(
                 parents.push(item.parent_idx.map(|x| x + 1).unwrap_or(0));
 
                 names.push(item.name.as_str());
-                descriptions.push(&item.desc);
 
                 if !item.path.is_empty() {
                     full_paths.push((index, &item.path));
@@ -454,14 +467,12 @@ pub(crate) fn build_index<'tcx>(
             let has_aliases = !self.aliases.is_empty();
             let mut crate_data =
                 serializer.serialize_struct("CrateData", if has_aliases { 9 } else { 8 })?;
-            crate_data.serialize_field("doc", &self.doc)?;
             crate_data.serialize_field("t", &types)?;
             crate_data.serialize_field("n", &names)?;
-            // Serialize as an array of item indices and full paths
             crate_data.serialize_field("q", &full_paths)?;
-            crate_data.serialize_field("d", &descriptions)?;
             crate_data.serialize_field("i", &parents)?;
             crate_data.serialize_field("f", &functions)?;
+            crate_data.serialize_field("D", &self.descindex)?;
             crate_data.serialize_field("c", &deprecated)?;
             crate_data.serialize_field("p", &paths)?;
             crate_data.serialize_field("b", &self.associated_item_disambiguators)?;
@@ -472,16 +483,46 @@ pub(crate) fn build_index<'tcx>(
         }
     }
 
-    // Collect the index into a string
-    format!(
+    let desc = {
+        let mut result = Vec::new();
+        let mut set = String::new();
+        let mut len: usize = 0;
+        for desc in std::iter::once(&crate_doc).chain(crate_items.iter().map(|item| &item.desc)) {
+            if set.len() >= DESC_INDEX_SHARD_LEN {
+                result.push((len, std::mem::replace(&mut set, String::new())));
+                len = 0;
+            } else if len != 0 {
+                set.push('\n');
+            }
+            set.push_str(&desc);
+            len += 1;
+        }
+        result.push((len, std::mem::replace(&mut set, String::new())));
+        result
+    };
+
+    let descindex = {
+        let mut descindex = String::with_capacity(desc.len() * 4);
+        for &(len, _) in desc.iter() {
+            write_vlqhex_to_string(len.try_into().unwrap(), &mut descindex);
+        }
+        descindex
+    };
+
+    assert_eq!(crate_items.len() + 1, desc.iter().map(|(len, _)| *len).sum::<usize>());
+
+    // The index, which is actually used to search, is JSON
+    // It uses `JSON.parse(..)` to actually load, since JSON
+    // parses faster than the full JavaScript syntax.
+    let index = format!(
         r#"["{}",{}]"#,
         krate.name(tcx),
         serde_json::to_string(&CrateData {
-            doc: crate_doc,
             items: crate_items,
             paths: crate_paths,
             aliases: &aliases,
             associated_item_disambiguators: &associated_item_disambiguators,
+            descindex,
         })
         .expect("failed serde conversion")
         // All these `replace` calls are because we have to go through JS string for JSON content.
@@ -489,7 +530,45 @@ pub(crate) fn build_index<'tcx>(
         .replace('\'', r"\'")
         // We need to escape double quotes for the JSON.
         .replace("\\\"", "\\\\\"")
-    )
+    );
+    SerializedSearchIndex { index, desc }
+}
+
+pub(crate) fn write_vlqhex_to_string(n: i32, string: &mut String) {
+    let (sign, magnitude): (bool, u32) =
+        if n >= 0 { (false, n.try_into().unwrap()) } else { (true, (-n).try_into().unwrap()) };
+    // zig-zag encoding
+    let value: u32 = (magnitude << 1) | (if sign { 1 } else { 0 });
+    // Self-terminating hex use capital letters for everything but the
+    // least significant digit, which is lowercase. For example, decimal 17
+    // would be `` Aa `` if zig-zag encoding weren't used.
+    //
+    // Zig-zag encoding, however, stores the sign bit as the last bit.
+    // This means, in the last hexit, 1 is actually `c`, -1 is `b`
+    // (`a` is the imaginary -0), and, because all the bits are shifted
+    // by one, `` A` `` is actually 8 and `` Aa `` is -8.
+    //
+    // https://rust-lang.github.io/rustc-dev-guide/rustdoc-internals/search.html
+    // describes the encoding in more detail.
+    let mut shift: u32 = 28;
+    let mut mask: u32 = 0xF0_00_00_00;
+    // first skip leading zeroes
+    while shift < 32 {
+        let hexit = (value & mask) >> shift;
+        if hexit != 0 || shift == 0 {
+            break;
+        }
+        shift = shift.wrapping_sub(4);
+        mask = mask >> 4;
+    }
+    // now write the rest
+    while shift < 32 {
+        let hexit = (value & mask) >> shift;
+        let hex = char::try_from(if shift == 0 { '`' } else { '@' } as u32 + hexit).unwrap();
+        string.push(hex);
+        shift = shift.wrapping_sub(4);
+        mask = mask >> 4;
+    }
 }
 
 pub(crate) fn get_function_type_for_search<'tcx>(
