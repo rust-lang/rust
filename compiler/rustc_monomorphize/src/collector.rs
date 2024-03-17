@@ -736,7 +736,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        debug!("monomorphize: self.instance={:?}", self.instance);
+        trace!("monomorphize: self.instance={:?}", self.instance);
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
             ty::ParamEnv::reveal_all(),
@@ -1342,35 +1342,37 @@ fn create_mono_items_for_vtable_methods<'tcx>(
 ) {
     assert!(!trait_ty.has_escaping_bound_vars() && !impl_ty.has_escaping_bound_vars());
 
-    if let ty::Dynamic(trait_ty, ..) = trait_ty.kind() {
-        if let Some(principal) = trait_ty.principal() {
-            let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
-            assert!(!poly_trait_ref.has_escaping_bound_vars());
+    let ty::Dynamic(trait_ty, ..) = trait_ty.kind() else {
+        bug!("create_mono_items_for_vtable_methods: {trait_ty:?} not a trait type");
+    };
+    if let Some(principal) = trait_ty.principal() {
+        let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
+        assert!(!poly_trait_ref.has_escaping_bound_vars());
 
-            // Walk all methods of the trait, including those of its supertraits
-            let entries = tcx.vtable_entries(poly_trait_ref);
-            let methods = entries
-                .iter()
-                .filter_map(|entry| match entry {
-                    VtblEntry::MetadataDropInPlace
-                    | VtblEntry::MetadataSize
-                    | VtblEntry::MetadataAlign
-                    | VtblEntry::Vacant => None,
-                    VtblEntry::TraitVPtr(_) => {
-                        // all super trait items already covered, so skip them.
-                        None
-                    }
-                    VtblEntry::Method(instance) => {
-                        Some(*instance).filter(|instance| should_codegen_locally(tcx, instance))
-                    }
-                })
-                .map(|item| create_fn_mono_item(tcx, item, source));
-            output.extend(methods);
-        }
-
-        // Also add the destructor.
-        visit_drop_use(tcx, impl_ty, false, source, output);
+        // Walk all methods of the trait, including those of its supertraits
+        let entries = tcx.vtable_entries(poly_trait_ref);
+        debug!(?entries);
+        let methods = entries
+            .iter()
+            .filter_map(|entry| match entry {
+                VtblEntry::MetadataDropInPlace
+                | VtblEntry::MetadataSize
+                | VtblEntry::MetadataAlign
+                | VtblEntry::Vacant => None,
+                VtblEntry::TraitVPtr(_) => {
+                    // all super trait items already covered, so skip them.
+                    None
+                }
+                VtblEntry::Method(instance) => {
+                    Some(*instance).filter(|instance| should_codegen_locally(tcx, instance))
+                }
+            })
+            .map(|item| create_fn_mono_item(tcx, item, source));
+        output.extend(methods);
     }
+
+    // Also add the destructor.
+    visit_drop_use(tcx, impl_ty, false, source, output);
 }
 
 //=-----------------------------------------------------------------------------
@@ -1693,7 +1695,8 @@ fn collect_items_of_instance<'tcx>(
     }
 }
 
-/// `item` must be already monomorphized
+/// `item` must be already monomorphized.
+#[instrument(skip(tcx, span, output), level = "debug")]
 fn visit_mentioned_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &MentionedItem<'tcx>,
@@ -1711,6 +1714,18 @@ fn visit_mentioned_item<'tcx>(
         }
         MentionedItem::Drop(ty) => {
             visit_drop_use(tcx, ty, /*is_direct_call*/ true, span, output);
+        }
+        MentionedItem::UnsizeCast { source_ty, target_ty } => {
+            let (source_ty, target_ty) =
+                find_vtable_types_for_unsizing(tcx.at(span), source_ty, target_ty);
+            // This could also be a different Unsize instruction, like
+            // from a fixed sized array to a slice. But we are only
+            // interested in things that produce a vtable.
+            if (target_ty.is_trait() && !source_ty.is_trait())
+                || (target_ty.is_dyn_star() && !source_ty.is_dyn_star())
+            {
+                create_mono_items_for_vtable_methods(tcx, target_ty, source_ty, span, output);
+            }
         }
     }
 }

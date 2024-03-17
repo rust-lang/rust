@@ -319,7 +319,11 @@ impl<'tcx> CoroutineInfo<'tcx> {
 pub enum MentionedItem<'tcx> {
     Fn(DefId, GenericArgsRef<'tcx>),
     Drop(Ty<'tcx>),
-    // FIXME: add Vtable { source_ty: Ty<'tcx>, target_ty: Ty<'tcx> },
+    /// Unsizing casts might require vtables, so we have to record them.
+    UnsizeCast {
+        source_ty: Ty<'tcx>,
+        target_ty: Ty<'tcx>,
+    },
     // FIXME: do we have to add closures?
 }
 

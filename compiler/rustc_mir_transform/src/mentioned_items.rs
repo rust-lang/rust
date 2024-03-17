@@ -1,6 +1,6 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, ConstOperand, Location, MentionedItem, MirPass};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, adjustment::PointerCoercion, TyCtxt};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 
@@ -51,6 +51,30 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
                 let span = self.body.source_info(location).span;
                 self.mentioned_items.push(Spanned { node: MentionedItem::Drop(ty), span });
             }
+            _ => {}
+        }
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
+        self.super_rvalue(rvalue, location);
+        match *rvalue {
+            // We need to detect unsizing casts that required vtables.
+            mir::Rvalue::Cast(
+                mir::CastKind::PointerCoercion(PointerCoercion::Unsize),
+                ref operand,
+                target_ty,
+            )
+            | mir::Rvalue::Cast(mir::CastKind::DynStar, ref operand, target_ty) => {
+                let span = self.body.source_info(location).span;
+                self.mentioned_items.push(Spanned {
+                    node: MentionedItem::UnsizeCast {
+                        source_ty: operand.ty(self.body, self.tcx),
+                        target_ty,
+                    },
+                    span,
+                });
+            }
+            // Function pointer casts are already handled by `visit_constant` above.
             _ => {}
         }
     }
