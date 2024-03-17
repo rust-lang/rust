@@ -1134,12 +1134,110 @@ impl char {
     /// // convert into themselves.
     /// assert_eq!('山'.to_lowercase().to_string(), "山");
     /// ```
-    #[must_use = "this returns the lowercase character as a new iterator, \
+    #[must_use = "this returns the lowercased character as a new iterator, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_lowercase(self) -> ToLowercase {
         ToLowercase(CaseMappingIter::new(conversions::to_lower(self)))
+    }
+
+    /// Returns an iterator that yields the titlecase mapping of this `char` as one or more
+    /// `char`s.
+    ///
+    /// If this `char` does not have an titlecase mapping, the iterator yields the same `char`.
+    ///
+    /// If this `char` has a one-to-one titlecase mapping given by the [Unicode Character
+    /// Database][ucd] [`UnicodeData.txt`], the iterator yields that `char`.
+    ///
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    ///
+    /// If this `char` requires special considerations (e.g. multiple `char`s) the iterator yields
+    /// the `char`(s) given by [`SpecialCasing.txt`].
+    ///
+    /// [`SpecialCasing.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
+    ///
+    /// This operation performs an unconditional mapping without tailoring. That is, the conversion
+    /// is independent of context and language.
+    ///
+    /// In the [Unicode Standard], Chapter 4 (Character Properties) discusses case mapping in
+    /// general and Chapter 3 (Conformance) discusses the default algorithm for case conversion.
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    ///
+    /// # Examples
+    ///
+    /// As an iterator:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// for c in 'ß'.to_titlecase() {
+    ///     print!("{c}");
+    /// }
+    /// println!();
+    /// ```
+    ///
+    /// Using `println!` directly:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// println!("{}", 'ß'.to_titlecase());
+    /// ```
+    ///
+    /// Both are equivalent to:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// println!("Ss");
+    /// ```
+    ///
+    /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// assert_eq!('c'.to_titlecase().to_string(), "C");
+    ///
+    /// // Sometimes the result is more than one character:
+    /// assert_eq!('ß'.to_titlecase().to_string(), "Ss");
+    ///
+    /// // Characters that do not have separate cased forms
+    /// // convert into themselves.
+    /// assert_eq!('山'.to_titlecase().to_string(), "山");
+    /// ```
+    ///
+    /// # Note on locale
+    ///
+    /// In Turkish and Azeri, the equivalent of 'i' in Latin has five forms instead of two:
+    ///
+    /// * 'Dotless': I / ı, sometimes written ï
+    /// * 'Dotted': İ / i
+    ///
+    /// Note that the lowercase dotted 'i' is the same as the Latin. Therefore:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let upper_i = 'i'.to_titlecase().to_string();
+    /// ```
+    ///
+    /// The value of `upper_i` here relies on the language of the text: if we're
+    /// in `en-US`, it should be `"I"`, but if we're in `tr-TR` or `az-AZ`, it should
+    /// be `"İ"`. `to_titlecase()` does not take this into account, and so:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let upper_i = 'i'.to_titlecase().to_string();
+    ///
+    /// assert_eq!(upper_i, "I");
+    /// ```
+    ///
+    /// holds across languages.
+    #[must_use = "this returns the titlecased character as a new iterator, \
+                  without modifying the original"]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[inline]
+    pub fn to_titlecase(self) -> ToTitlecase {
+        ToTitlecase(CaseMappingIter::new(conversions::to_title(self)))
     }
 
     /// Returns an iterator that yields the uppercase mapping of this `char` as one or more
@@ -1204,7 +1302,7 @@ impl char {
     ///
     /// # Note on locale
     ///
-    /// In Turkish, the equivalent of 'i' in Latin has five forms instead of two:
+    /// In Turkish and Azeri, the equivalent of 'i' in Latin has five forms instead of two:
     ///
     /// * 'Dotless': I / ı, sometimes written ï
     /// * 'Dotted': İ / i
@@ -1216,7 +1314,7 @@ impl char {
     /// ```
     ///
     /// The value of `upper_i` here relies on the language of the text: if we're
-    /// in `en-US`, it should be `"I"`, but if we're in `tr_TR`, it should
+    /// in `en-US`, it should be `"I"`, but if we're in `tr-TR` or `az-AZ`, it should
     /// be `"İ"`. `to_uppercase()` does not take this into account, and so:
     ///
     /// ```
@@ -1226,7 +1324,7 @@ impl char {
     /// ```
     ///
     /// holds across languages.
-    #[must_use = "this returns the uppercase character as a new iterator, \
+    #[must_use = "this returns the uppercased character as a new iterator, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]

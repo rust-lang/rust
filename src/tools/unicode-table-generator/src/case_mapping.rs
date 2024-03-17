@@ -17,6 +17,8 @@ pub(crate) fn generate_case_mapping(data: &UnicodeData) -> String {
     file.push_str(&generate_tables("LOWER", &data.to_lower));
     file.push_str("\n\n");
     file.push_str(&generate_tables("UPPER", &data.to_upper));
+    file.push_str("\n\n");
+    file.push_str(&generate_tables("TITLE", &data.to_title));
     file
 }
 
@@ -48,13 +50,25 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, (u32, u32, u32)>) -> String 
 
     let mut tables = String::new();
 
-    write!(tables, "static {}CASE_TABLE: &[(char, u32)] = &[{}];", case, fmt_list(mappings))
-        .unwrap();
+    write!(
+        tables,
+        "static {}CASE_TABLE: [(char, u32); {}] = [{}];",
+        case,
+        mappings.len(),
+        fmt_list(mappings)
+    )
+    .unwrap();
 
     tables.push_str("\n\n");
 
-    write!(tables, "static {}CASE_TABLE_MULTI: &[[char; 3]] = &[{}];", case, fmt_list(multis))
-        .unwrap();
+    write!(
+        tables,
+        "static {}CASE_TABLE_MULTI: [[char; 3]; {}] = [{}];",
+        case,
+        multis.len(),
+        fmt_list(multis)
+    )
+    .unwrap();
 
     tables
 }
@@ -99,6 +113,23 @@ pub fn to_upper(c: char) -> [char; 3] {
                 })
             })
             .unwrap_or([c, '\0', '\0'])
+    }
+}
+
+pub fn to_title(c: char) -> [char; 3] {
+    if c.is_ascii() {
+        [(c as u8).to_ascii_uppercase() as char, '\0', '\0']
+    } else {
+        TITLECASE_TABLE
+            .binary_search_by(|&(key, _)| key.cmp(&c))
+            .map(|i| {
+                let u = TITLECASE_TABLE[i].1;
+                char::from_u32(u).map(|c| [c, '\0', '\0']).unwrap_or_else(|| {
+                    // SAFETY: Index comes from statically generated table
+                    unsafe { *TITLECASE_TABLE_MULTI.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
+                })
+            })
+            .unwrap_or(to_upper(c))
     }
 }
 ";

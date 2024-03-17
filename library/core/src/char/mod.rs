@@ -407,6 +407,54 @@ impl FusedIterator for ToLowercase {}
 #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
 impl ExactSizeIterator for ToLowercase {}
 
+#[stable(feature = "char_struct_display", since = "1.16.0")]
+impl fmt::Display for ToLowercase {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
+/// Returns an iterator that yields the titlecase equivalent of a `char`.
+///
+/// This `struct` is created by the [`to_titlecase`] method on [`char`]. See
+/// its documentation for more.
+///
+/// [`to_titlecase`]: char::to_titlecase
+#[unstable(feature = "titlecase", issue = "none")]
+#[derive(Debug, Clone)]
+pub struct ToTitlecase(CaseMappingIter);
+
+#[unstable(feature = "titlecase", issue = "none")]
+impl Iterator for ToTitlecase {
+    type Item = char;
+    fn next(&mut self) -> Option<char> {
+        self.0.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+#[unstable(feature = "titlecase", issue = "none")]
+impl DoubleEndedIterator for ToTitlecase {
+    fn next_back(&mut self) -> Option<char> {
+        self.0.next_back()
+    }
+}
+
+#[unstable(feature = "titlecase", issue = "none")]
+impl FusedIterator for ToTitlecase {}
+
+#[unstable(feature = "titlecase", issue = "none")]
+impl ExactSizeIterator for ToTitlecase {}
+
+#[unstable(feature = "titlecase", issue = "none")]
+impl fmt::Display for ToTitlecase {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
 /// Returns an iterator that yields the uppercase equivalent of a `char`.
 ///
 /// This `struct` is created by the [`to_uppercase`] method on [`char`]. See
@@ -440,6 +488,13 @@ impl FusedIterator for ToUppercase {}
 
 #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
 impl ExactSizeIterator for ToUppercase {}
+
+#[stable(feature = "char_struct_display", since = "1.16.0")]
+impl fmt::Display for ToUppercase {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
 
 #[derive(Debug, Clone)]
 enum CaseMappingIter {
@@ -529,20 +584,6 @@ impl fmt::Display for CaseMappingIter {
             CaseMappingIter::One(c) => f.write_char(c),
             CaseMappingIter::Zero => Ok(()),
         }
-    }
-}
-
-#[stable(feature = "char_struct_display", since = "1.16.0")]
-impl fmt::Display for ToLowercase {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
-
-#[stable(feature = "char_struct_display", since = "1.16.0")]
-impl fmt::Display for ToUppercase {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
     }
 }
 

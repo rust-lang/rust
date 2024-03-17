@@ -97,20 +97,20 @@ static PROPERTIES: &[&str] = &[
 
 struct UnicodeData {
     ranges: Vec<(&'static str, Vec<Range<u32>>)>,
+    /// Only stores mappings that are not to self
     to_upper: BTreeMap<u32, (u32, u32, u32)>,
+    /// Only stores mappings that differ from `to_upper`
+    to_title: BTreeMap<u32, (u32, u32, u32)>,
+    /// Only stores mappings that are not to self
     to_lower: BTreeMap<u32, (u32, u32, u32)>,
 }
 
-fn to_mapping(origin: u32, codepoints: Vec<ucd_parse::Codepoint>) -> Option<(u32, u32, u32)> {
+fn to_mapping(codepoints: Vec<ucd_parse::Codepoint>) -> Option<(u32, u32, u32)> {
     let mut a = None;
     let mut b = None;
     let mut c = None;
 
     for codepoint in codepoints {
-        if origin == codepoint.value() {
-            return None;
-        }
-
         if a.is_none() {
             a = Some(codepoint.value());
         } else if b.is_none() {
@@ -144,6 +144,7 @@ fn load_data() -> UnicodeData {
 
     let mut to_lower = BTreeMap::new();
     let mut to_upper = BTreeMap::new();
+    let mut to_title = BTreeMap::new();
     for row in ucd_parse::UnicodeDataExpander::new(
         ucd_parse::parse::<_, ucd_parse::UnicodeData>(&UNICODE_DIRECTORY).unwrap(),
     ) {
@@ -169,6 +170,11 @@ fn load_data() -> UnicodeData {
                 to_upper.insert(row.codepoint.value(), (mapped.value(), 0, 0));
             }
         }
+        if let Some(mapped) = row.simple_titlecase_mapping {
+            if Some(mapped) != row.simple_uppercase_mapping {
+                to_title.insert(row.codepoint.value(), (mapped.value(), 0, 0));
+            }
+        }
     }
 
     for row in ucd_parse::parse::<_, ucd_parse::SpecialCaseMapping>(&UNICODE_DIRECTORY).unwrap() {
@@ -178,11 +184,21 @@ fn load_data() -> UnicodeData {
         }
 
         let key = row.codepoint.value();
-        if let Some(lower) = to_mapping(key, row.lowercase) {
-            to_lower.insert(key, lower);
+        if let Some(lower) = to_mapping(row.lowercase) {
+            if lower != (key, 0, 0) {
+                to_lower.insert(key, lower);
+            }
         }
-        if let Some(upper) = to_mapping(key, row.uppercase) {
-            to_upper.insert(key, upper);
+        let upper_mapping = to_mapping(row.uppercase);
+        if let Some(upper) = upper_mapping {
+            if upper != (key, 0, 0) {
+                to_upper.insert(key, upper);
+            }
+        }
+        if let Some(title) = to_mapping(row.titlecase) {
+            if Some(title) != upper_mapping {
+                to_title.insert(key, title);
+            }
         }
     }
 
@@ -214,7 +230,7 @@ fn load_data() -> UnicodeData {
 
     let mut properties = properties.into_iter().collect::<Vec<_>>();
     properties.sort_by_key(|p| p.0);
-    UnicodeData { ranges: properties, to_lower, to_upper }
+    UnicodeData { ranges: properties, to_lower, to_title, to_upper }
 }
 
 fn main() {
