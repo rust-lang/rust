@@ -465,7 +465,8 @@ pub(super) fn highlight_def(
         }
         Definition::BuiltinType(_) => Highlight::new(HlTag::BuiltinType),
         Definition::Static(s) => {
-            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Static));
+            let mut h =
+                Highlight::new(HlTag::Symbol(SymbolKind::Static)) | HlMod::Static | HlMod::Const;
 
             if s.is_mut(db) {
                 h |= HlMod::Mutable;
@@ -478,7 +479,7 @@ pub(super) fn highlight_def(
         Definition::GenericParam(it) => match it {
             hir::GenericParam::TypeParam(_) => Highlight::new(HlTag::Symbol(SymbolKind::TypeParam)),
             hir::GenericParam::ConstParam(_) => {
-                Highlight::new(HlTag::Symbol(SymbolKind::ConstParam))
+                Highlight::new(HlTag::Symbol(SymbolKind::ConstParam)) | HlMod::Const
             }
             hir::GenericParam::LifetimeParam(_) => {
                 Highlight::new(HlTag::Symbol(SymbolKind::LifetimeParam))

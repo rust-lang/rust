@@ -636,7 +636,6 @@ pub(crate) fn semantic_token_delta(
 fn semantic_token_type_and_modifiers(
     highlight: Highlight,
 ) -> (lsp_types::SemanticTokenType, semantic_tokens::ModifierSet) {
-    let mut mods = semantic_tokens::ModifierSet::default();
     let type_ = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
             SymbolKind::Attribute => semantic_tokens::DECORATOR,
@@ -646,10 +645,7 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::Impl => semantic_tokens::TYPE_ALIAS,
             SymbolKind::Field => semantic_tokens::PROPERTY,
             SymbolKind::TypeParam => semantic_tokens::TYPE_PARAMETER,
-            SymbolKind::ConstParam => {
-                mods |= semantic_tokens::CONSTANT;
-                semantic_tokens::CONST_PARAMETER
-            }
+            SymbolKind::ConstParam => semantic_tokens::CONST_PARAMETER,
             SymbolKind::LifetimeParam => semantic_tokens::LIFETIME,
             SymbolKind::Label => semantic_tokens::LABEL,
             SymbolKind::ValueParam => semantic_tokens::PARAMETER,
@@ -663,15 +659,8 @@ fn semantic_token_type_and_modifiers(
                     semantic_tokens::FUNCTION
                 }
             }
-            SymbolKind::Const => {
-                mods |= semantic_tokens::CONSTANT;
-                mods |= semantic_tokens::STATIC;
-                semantic_tokens::VARIABLE
-            }
-            SymbolKind::Static => {
-                mods |= semantic_tokens::STATIC;
-                semantic_tokens::VARIABLE
-            }
+            SymbolKind::Const => semantic_tokens::VARIABLE,
+            SymbolKind::Static => semantic_tokens::VARIABLE,
             SymbolKind::Struct => semantic_tokens::STRUCT,
             SymbolKind::Enum => semantic_tokens::ENUM,
             SymbolKind::Variant => semantic_tokens::ENUM_MEMBER,
@@ -718,6 +707,7 @@ fn semantic_token_type_and_modifiers(
         },
     };
 
+    let mut mods = semantic_tokens::ModifierSet::default();
     for modifier in highlight.mods.iter() {
         let modifier = match modifier {
             HlMod::Associated => continue,

@@ -54,8 +54,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="punctuation">*</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="keyword">as</span> <span class="punctuation">*</span><span class="keyword const">const</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="parenthesis">)</span>
     <span class="brace">}</span><span class="semicolon">;</span>
 <span class="brace">}</span>
-<span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable unsafe">MUT_GLOBAL</span><span class="colon">:</span> <span class="struct">Struct</span> <span class="operator">=</span> <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
-<span class="keyword">static</span> <span class="static declaration">GLOBAL</span><span class="colon">:</span> <span class="struct">Struct</span> <span class="operator">=</span> <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
+<span class="keyword">static</span> <span class="keyword">mut</span> <span class="static const declaration mutable static unsafe">MUT_GLOBAL</span><span class="colon">:</span> <span class="struct">Struct</span> <span class="operator">=</span> <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
+<span class="keyword">static</span> <span class="static const declaration static">GLOBAL</span><span class="colon">:</span> <span class="struct">Struct</span> <span class="operator">=</span> <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
 <span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span> <span class="function declaration unsafe">unsafe_fn</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="keyword">union</span> <span class="union declaration">Union</span> <span class="brace">{</span>
@@ -112,8 +112,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="operator unsafe">*</span><span class="variable">x</span><span class="semicolon">;</span>
 
         <span class="comment">// unsafe access to a static mut</span>
-        <span class="static mutable unsafe">MUT_GLOBAL</span><span class="operator">.</span><span class="field">field</span><span class="semicolon">;</span>
-        <span class="static">GLOBAL</span><span class="operator">.</span><span class="field">field</span><span class="semicolon">;</span>
+        <span class="static const mutable static unsafe">MUT_GLOBAL</span><span class="operator">.</span><span class="field">field</span><span class="semicolon">;</span>
+        <span class="static const static">GLOBAL</span><span class="operator">.</span><span class="field">field</span><span class="semicolon">;</span>
 
         <span class="comment">// unsafe ref of packed fields</span>
         <span class="keyword">let</span> <span class="variable declaration">packed</span> <span class="operator">=</span> <span class="struct">Packed</span> <span class="brace">{</span> <span class="field">a</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
