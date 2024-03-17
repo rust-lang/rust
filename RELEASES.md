@@ -12,14 +12,10 @@ Language
 - [Add lint `static_mut_refs` to warn on references to mutable statics.](https://github.com/rust-lang/rust/pull/117556/)
 - [Support async recursive calls (as long as they have indirection).](https://github.com/rust-lang/rust/pull/117703/)
 - [Undeprecate lint `unstable_features` and make use of it in the compiler.](https://github.com/rust-lang/rust/pull/118639/)
+- [Make inductive cycles in coherence ambiguous always.](https://github.com/rust-lang/rust/pull/118649/)
 - [Get rid of type-driven traversal in const-eval interning](https://github.com/rust-lang/rust/pull/119044/),
   only as a [future compatiblity lint](https://github.com/rust-lang/rust/pull/122204) for now.
 - [Deny braced macro invocations in let-else.](https://github.com/rust-lang/rust/pull/119062/)
-
-<!-- TODO: remaining T-types changes => lang or compiler? -->
-- [error on incorrect implied bounds in wfcheck except for Bevy dependents](https://github.com/rust-lang/rust/pull/118553/)
-- [Make inductive cycles in coherence ambiguous always](https://github.com/rust-lang/rust/pull/118649/)
-- [fix fn/const items implied bounds and wf check (rebase)](https://github.com/rust-lang/rust/pull/120019/)
 
 <a id="1.77.0-Compiler"></a>
 
@@ -31,7 +27,10 @@ Compiler
 - [Use `--verbose` in diagnostic output.](https://github.com/rust-lang/rust/pull/119129/)
 - [Improve spacing between printed tokens.](https://github.com/rust-lang/rust/pull/120227/)
 - [Merge the `unused_tuple_struct_fields` lint into `dead_code`.](https://github.com/rust-lang/rust/pull/118297/)
+- [Error on incorrect implied bounds in well-formedness check](https://github.com/rust-lang/rust/pull/118553/),
+  with a temporary exception for Bevy.
 - [Fix coverage instrumentation/reports for non-ASCII source code.](https://github.com/rust-lang/rust/pull/119033/)
+- [Fix `fn`/`const` items implied bounds and well-formedness check.](https://github.com/rust-lang/rust/pull/120019/)
 - [Promote `riscv32{im|imafc}-unknown-none-elf` targets to tier 2.](https://github.com/rust-lang/rust/pull/118704/)
 - Add several new tier 3 targets:
   - [`aarch64-unknown-illumos`](https://github.com/rust-lang/rust/pull/112936/)
