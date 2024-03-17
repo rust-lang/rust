@@ -67,7 +67,9 @@ impl<'p> MatchCheckCtx<'p> {
     ) -> Result<UsefulnessReport<'p, Self>, ()> {
         // FIXME: Determine place validity correctly. For now, err on the safe side.
         let place_validity = PlaceValidity::MaybeInvalid;
-        compute_match_usefulness(self, arms, scrut_ty, place_validity, None)
+        // Measured to take ~100ms on modern hardware.
+        let complexity_limit = Some(500000);
+        compute_match_usefulness(self, arms, scrut_ty, place_validity, complexity_limit)
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
@@ -476,7 +478,6 @@ impl<'p> PatCx for MatchCheckCtx<'p> {
     }
 
     fn complexity_exceeded(&self) -> Result<(), Self::Error> {
-        // FIXME(Nadrieril): make use of the complexity counter.
         Err(())
     }
 }

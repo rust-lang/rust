@@ -1004,6 +1004,29 @@ fn f() {
         );
     }
 
+    #[test]
+    fn exponential_match() {
+        // Constructs a match where match checking takes exponential time. Ensures we bail early.
+        use std::fmt::Write;
+        let struct_arity = 30;
+        let mut code = String::new();
+        write!(code, "struct BigStruct {{").unwrap();
+        for i in 0..struct_arity {
+            write!(code, "  field{i}: bool,").unwrap();
+        }
+        write!(code, "}}").unwrap();
+        write!(code, "fn big_match(s: BigStruct) {{").unwrap();
+        write!(code, "  match s {{").unwrap();
+        for i in 0..struct_arity {
+            write!(code, "    BigStruct {{ field{i}: true, ..}} => {{}},").unwrap();
+            write!(code, "    BigStruct {{ field{i}: false, ..}} => {{}},").unwrap();
+        }
+        write!(code, "    _ => {{}},").unwrap();
+        write!(code, "  }}").unwrap();
+        write!(code, "}}").unwrap();
+        check_diagnostics_no_bails(&code);
+    }
+
     mod rust_unstable {
         use super::*;
 
