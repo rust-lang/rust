@@ -11,6 +11,12 @@ LL |     drop(alloc);
 LL |
 LL |     use_value(*theref)
    |               ------- borrow later used here
+   |
+note: if `Alloc` implemented `Clone`, you could clone the value
+  --> $DIR/leak-alloc.rs:8:1
+   |
+LL | struct Alloc {}
+   | ^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

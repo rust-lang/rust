@@ -3,6 +3,10 @@
 // 'value moved in previous iteration of loop' message
 
 struct NonCopy;
+//~^ NOTE if `NonCopy` implemented `Clone`
+//~| NOTE if `NonCopy` implemented `Clone`
+//~| NOTE if `NonCopy` implemented `Clone`
+//~| NOTE if `NonCopy` implemented `Clone`
 
 fn good() {
     loop {
