@@ -1,11 +1,14 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target};
+use crate::spec::{base, Cc, LinkerFlavor, Lld, MaybeLazy};
+use crate::spec::{SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::linux_gnu::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.supported_sanitizers = SanitizerSet::ADDRESS;
-    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);
+    base.pre_link_args = MaybeLazy::lazy(|| {
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"])
+    });
     base.stack_probes = StackProbeType::Inline;
 
     Target {

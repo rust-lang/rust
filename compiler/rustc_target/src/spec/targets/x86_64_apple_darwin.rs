@@ -10,7 +10,9 @@ pub fn target() -> Target {
     let mut base = opts(OS, ARCH, ABI, MaybeLazy::lazy(|| pre_link_args(OS, ARCH, ABI)));
     base.max_atomic_width = Some(128); // penryn+ supports cmpxchg16b
     base.frame_pointer = FramePointer::Always;
-    base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m64"]);
+    base.pre_link_args = MaybeLazy::lazy(|| {
+        TargetOptions::link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m64"])
+    });
     base.supported_sanitizers =
         SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK | SanitizerSet::THREAD;
 

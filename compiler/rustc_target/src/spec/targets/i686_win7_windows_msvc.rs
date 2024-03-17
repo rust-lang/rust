@@ -1,4 +1,4 @@
-use crate::spec::{base, LinkerFlavor, Lld, Target};
+use crate::spec::{base, LinkerFlavor, Lld, MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::windows_msvc::opts();

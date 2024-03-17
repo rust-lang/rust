@@ -1,4 +1,4 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, Target};
+use crate::spec::{add_link_args, base, Cc, LinkerFlavor, Lld, MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::windows_uwp_gnu::opts();
@@ -6,11 +6,18 @@ pub fn target() -> Target {
     base.features = "+cx16,+sse3,+sahf".into();
     base.plt_by_default = false;
     // Use high-entropy 64 bit address space for ASLR
-    base.add_pre_link_args(
-        LinkerFlavor::Gnu(Cc::No, Lld::No),
-        &["-m", "i386pep", "--high-entropy-va"],
-    );
-    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64", "-Wl,--high-entropy-va"]);
+    base.pre_link_args = MaybeLazy::lazy(|| {
+        let mut pre_link_args = TargetOptions::link_args(
+            LinkerFlavor::Gnu(Cc::No, Lld::No),
+            &["-m", "i386pep", "--high-entropy-va"],
+        );
+        add_link_args(
+            &mut pre_link_args,
+            LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+            &["-m64", "-Wl,--high-entropy-va"],
+        );
+        pre_link_args
+    });
     base.max_atomic_width = Some(128);
 
     Target {
