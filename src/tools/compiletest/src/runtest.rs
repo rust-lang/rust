@@ -3734,36 +3734,42 @@ impl<'test> TestCx<'test> {
         debug!(?support_lib_deps);
         debug!(?support_lib_deps_deps);
 
-        let res = self.cmd2procres(
-            Command::new(&self.config.rustc_path)
-                .arg("-o")
-                .arg(&recipe_bin)
-                .arg(format!(
-                    "-Ldependency={}",
-                    &support_lib_path.parent().unwrap().to_string_lossy()
-                ))
-                .arg(format!("-Ldependency={}", &support_lib_deps.to_string_lossy()))
-                .arg(format!("-Ldependency={}", &support_lib_deps_deps.to_string_lossy()))
-                .arg("--extern")
-                .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
-                .arg(&self.testpaths.file.join("rmake.rs"))
-                .env("TARGET", &self.config.target)
-                .env("PYTHON", &self.config.python)
-                .env("S", &src_root)
-                .env("RUST_BUILD_STAGE", &self.config.stage_id)
-                .env("RUSTC", cwd.join(&self.config.rustc_path))
-                .env("TMPDIR", &tmpdir)
-                .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
-                .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
-                .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
-                .env("LLVM_COMPONENTS", &self.config.llvm_components)
-                // We for sure don't want these tests to run in parallel, so make
-                // sure they don't have access to these vars if we run via `make`
-                // at the top level
-                .env_remove("MAKEFLAGS")
-                .env_remove("MFLAGS")
-                .env_remove("CARGO_MAKEFLAGS"),
-        );
+        let mut cmd = Command::new(&self.config.rustc_path);
+        cmd.arg("-o")
+            .arg(&recipe_bin)
+            .arg(format!("-Ldependency={}", &support_lib_path.parent().unwrap().to_string_lossy()))
+            .arg(format!("-Ldependency={}", &support_lib_deps.to_string_lossy()))
+            .arg(format!("-Ldependency={}", &support_lib_deps_deps.to_string_lossy()))
+            .arg("--extern")
+            .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
+            .arg(&self.testpaths.file.join("rmake.rs"))
+            .env("TARGET", &self.config.target)
+            .env("PYTHON", &self.config.python)
+            .env("S", &src_root)
+            .env("RUST_BUILD_STAGE", &self.config.stage_id)
+            .env("RUSTC", cwd.join(&self.config.rustc_path))
+            .env("TMPDIR", &tmpdir)
+            .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
+            .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
+            .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
+            .env("LLVM_COMPONENTS", &self.config.llvm_components)
+            // We for sure don't want these tests to run in parallel, so make
+            // sure they don't have access to these vars if we run via `make`
+            // at the top level
+            .env_remove("MAKEFLAGS")
+            .env_remove("MFLAGS")
+            .env_remove("CARGO_MAKEFLAGS");
+
+        if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
+            let mut stage0_sysroot = build_root.clone();
+            stage0_sysroot.push("stage0-sysroot");
+            debug!(?stage0_sysroot);
+            debug!(exists = stage0_sysroot.exists());
+
+            cmd.arg("--sysroot").arg(&stage0_sysroot);
+        }
+
+        let res = self.cmd2procres(&mut cmd);
         if !res.status.success() {
             self.fatal_proc_rec("run-make test failed: could not build `rmake.rs` recipe", &res);
         }
