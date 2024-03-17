@@ -460,7 +460,7 @@ jobs:
             os: windows-2019-8core-32gb
           - name: dist-i686-mingw
             env:
-              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --enable-full-tools --enable-profiler"
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --enable-full-tools"
               NO_DOWNLOAD_CI_LLVM: 1
               SCRIPT: python x.py dist bootstrap --include-default-paths
               CUSTOM_MINGW: 1
@@ -469,7 +469,7 @@ jobs:
           - name: dist-x86_64-mingw
             env:
               SCRIPT: python x.py dist bootstrap --include-default-paths
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-full-tools"
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
