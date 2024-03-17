@@ -65,7 +65,9 @@ impl<'p> MatchCheckCtx<'p> {
         arms: &[MatchArm<'p>],
         scrut_ty: Ty,
     ) -> Result<UsefulnessReport<'p, Self>, ()> {
-        compute_match_usefulness(self, arms, scrut_ty, PlaceValidity::ValidOnly, None)
+        // FIXME: Determine place validity correctly. For now, err on the safe side.
+        let place_validity = PlaceValidity::MaybeInvalid;
+        compute_match_usefulness(self, arms, scrut_ty, place_validity, None)
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
