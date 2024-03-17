@@ -171,15 +171,15 @@ fn expand_cond(cx: &ExtCtxt<'_>, parser: Parser<'_>, cond_expr: P<Expr>) -> P<Ex
     // entire macro call. If a non-`bool` is passed that doesn't implement `trait Not`, we won't
     // talk about traits, we'll just state the appropriate type error.
     // `let assert_macro: bool = $expr;`
-    let ident = Ident::new(sym::assert_macro, span);
+    let ident = Ident::new(sym::assert_macro, DUMMY_SP);
     let local = P(ast::Local {
         ty: Some(P(ast::Ty {
-            kind: ast::TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::bool, span))),
+            kind: ast::TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::bool, DUMMY_SP))),
             id: ast::DUMMY_NODE_ID,
-            span,
+            span: DUMMY_SP,
             tokens: None,
         })),
-        pat: parser.mk_pat_ident(span, ast::BindingAnnotation::NONE, ident),
+        pat: parser.mk_pat_ident(DUMMY_SP, ast::BindingAnnotation::NONE, ident),
         kind: ast::LocalKind::Init(cond_expr),
         id: ast::DUMMY_NODE_ID,
         span,
