@@ -281,6 +281,8 @@ metadata_unsupported_abi =
 metadata_unsupported_abi_i686 =
     ABI not supported by `#[link(kind = "raw-dylib")]` on i686
 
+metadata_wasm_c_abi =
+    older versions of the `wasm-bindgen` crate will be incompatible with future versions of Rust; please update to `wasm-bindgen` v0.2.88
 metadata_wasm_import_form =
     wasm import module must be of the form `wasm_import_module = "string"`
 

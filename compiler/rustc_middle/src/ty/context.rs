@@ -1265,11 +1265,9 @@ impl<'tcx> TyCtxt<'tcx> {
             break (scope, ty::BrNamed(def_id.into(), self.item_name(def_id.into())));
         };
 
-        let is_impl_item = match self.opt_hir_node_by_def_id(suitable_region_binding_scope) {
-            Some(Node::Item(..) | Node::TraitItem(..)) => false,
-            Some(Node::ImplItem(..)) => {
-                self.is_bound_region_in_impl_item(suitable_region_binding_scope)
-            }
+        let is_impl_item = match self.hir_node_by_def_id(suitable_region_binding_scope) {
+            Node::Item(..) | Node::TraitItem(..) => false,
+            Node::ImplItem(..) => self.is_bound_region_in_impl_item(suitable_region_binding_scope),
             _ => false,
         };
 
@@ -2353,10 +2351,6 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => return None,
         }
         self.intrinsic_raw(def_id)
-    }
-
-    pub fn opt_local_def_id_to_hir_id(self, local_def_id: LocalDefId) -> Option<HirId> {
-        Some(self.local_def_id_to_hir_id(local_def_id))
     }
 
     pub fn next_trait_solver_globally(self) -> bool {

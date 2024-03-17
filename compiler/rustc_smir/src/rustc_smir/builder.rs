@@ -56,7 +56,7 @@ impl<'tcx> MutVisitor<'tcx> for BodyBuilder<'tcx> {
 
     fn visit_constant(&mut self, constant: &mut mir::ConstOperand<'tcx>, location: mir::Location) {
         let const_ = self.monomorphize(constant.const_);
-        let val = match const_.eval(self.tcx, ty::ParamEnv::reveal_all(), None) {
+        let val = match const_.eval(self.tcx, ty::ParamEnv::reveal_all(), Some(constant.span)) {
             Ok(v) => v,
             Err(mir::interpret::ErrorHandled::Reported(..)) => return,
             Err(mir::interpret::ErrorHandled::TooGeneric(..)) => {

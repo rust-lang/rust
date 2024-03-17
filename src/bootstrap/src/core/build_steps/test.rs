@@ -1367,7 +1367,7 @@ impl Step for RunMakeSupport {
 
         let cargo_out =
             builder.cargo_out(self.compiler, Mode::ToolStd, self.target).join(&lib_name);
-        builder.copy(&cargo_out, &lib);
+        builder.copy_link(&cargo_out, &lib);
         lib
     }
 }

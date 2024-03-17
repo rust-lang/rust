@@ -6,6 +6,8 @@ on:
   schedule:
     # Run weekly
     - cron: '0 0 * * Sun'
+    # Re-bump deps every 4 hours
+    - cron: '0 */4 * * *'
   workflow_dispatch:
     # Needed so we can run it manually
 permissions:
@@ -135,8 +137,8 @@ jobs:
           gh pr edit cargo_update --title "${PR_TITLE}" --body-file body.md --repo $GITHUB_REPOSITORY
 
       - name: open new pull request
-        # Only run if there wasn't an existing PR
-        if: steps.edit.outcome != 'success'
+        # Only run if there wasn't an existing PR and if this is the weekly run
+        if: steps.edit.outcome != 'success' && github.event.schedule == '0 0 * * Sun'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr create --title "${PR_TITLE}" --body-file body.md --repo $GITHUB_REPOSITORY

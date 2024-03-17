@@ -1072,6 +1072,7 @@ pub struct UnusedAssociatedTypeBounds {
 #[derive(LintDiagnostic)]
 #[diag(hir_analysis_rpitit_refined)]
 #[note]
+#[note(hir_analysis_feedback_note)]
 pub(crate) struct ReturnPositionImplTraitInTraitRefined<'tcx> {
     #[suggestion(applicability = "maybe-incorrect", code = "{pre}{return_ty}{post}")]
     pub impl_return_span: Span,

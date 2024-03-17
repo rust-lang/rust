@@ -53,7 +53,11 @@ pub(crate) fn codegen_tls_ref<'tcx>(
         let call = fx.bcx.ins().call(func_ref, &[]);
         fx.bcx.func.dfg.first_result(call)
     } else {
-        let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
+        let data_id = data_id_for_static(
+            fx.tcx, fx.module, def_id, false,
+            // For a declaration the stated mutability doesn't matter.
+            false,
+        );
         let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
         if fx.clif_comments.enabled() {
             fx.add_comment(local_data_id, format!("tls {:?}", def_id));
@@ -164,7 +168,11 @@ pub(crate) fn codegen_const_value<'tcx>(
                     }
                     GlobalAlloc::Static(def_id) => {
                         assert!(fx.tcx.is_static(def_id));
-                        let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
+                        let data_id = data_id_for_static(
+                            fx.tcx, fx.module, def_id, false,
+                            // For a declaration the stated mutability doesn't matter.
+                            false,
+                        );
                         let local_data_id =
                             fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                         if fx.clif_comments.enabled() {
@@ -232,21 +240,19 @@ fn data_id_for_static(
     module: &mut dyn Module,
     def_id: DefId,
     definition: bool,
+    definition_writable: bool,
 ) -> DataId {
     let attrs = tcx.codegen_fn_attrs(def_id);
 
     let instance = Instance::mono(tcx, def_id).polymorphize(tcx);
     let symbol_name = tcx.symbol_name(instance).name;
-    let ty = instance.ty(tcx, ParamEnv::reveal_all());
-    let is_mutable = if tcx.is_mutable_static(def_id) {
-        true
-    } else {
-        !ty.is_freeze(tcx, ParamEnv::reveal_all())
-    };
-    let align = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().align.pref.bytes();
 
     if let Some(import_linkage) = attrs.import_linkage {
         assert!(!definition);
+        assert!(!tcx.is_mutable_static(def_id));
+
+        let ty = instance.ty(tcx, ParamEnv::reveal_all());
+        let align = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().align.pref.bytes();
 
         let linkage = if import_linkage == rustc_middle::mir::mono::Linkage::ExternalWeak
             || import_linkage == rustc_middle::mir::mono::Linkage::WeakAny
@@ -259,7 +265,7 @@ fn data_id_for_static(
         let data_id = match module.declare_data(
             symbol_name,
             linkage,
-            is_mutable,
+            false,
             attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
         ) {
             Ok(data_id) => data_id,
@@ -307,7 +313,7 @@ fn data_id_for_static(
     let data_id = match module.declare_data(
         symbol_name,
         linkage,
-        is_mutable,
+        definition_writable,
         attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
     ) {
         Ok(data_id) => data_id,
@@ -341,7 +347,13 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
 
                 let alloc = tcx.eval_static_initializer(def_id).unwrap();
 
-                let data_id = data_id_for_static(tcx, module, def_id, true);
+                let data_id = data_id_for_static(
+                    tcx,
+                    module,
+                    def_id,
+                    true,
+                    alloc.inner().mutability == Mutability::Mut,
+                );
                 (data_id, alloc, section_name)
             }
         };
@@ -421,7 +433,11 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     // Don't push a `TodoItem::Static` here, as it will cause statics used by
                     // multiple crates to be duplicated between them. It isn't necessary anyway,
                     // as it will get pushed by `codegen_static` when necessary.
-                    data_id_for_static(tcx, module, def_id, false)
+                    data_id_for_static(
+                        tcx, module, def_id, false,
+                        // For a declaration the stated mutability doesn't matter.
+                        false,
+                    )
                 }
             };
 

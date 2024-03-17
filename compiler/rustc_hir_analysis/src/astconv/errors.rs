@@ -22,7 +22,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::traits::object_safety_violations_for_assoc_item;
 
-impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
+impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
     /// the type parameter's name as a placeholder.
     pub(crate) fn complain_about_missing_type_params(
@@ -347,6 +347,118 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             bound_on_assoc_const_label,
             wrap_in_braces_sugg,
         })
+    }
+
+    pub(super) fn report_ambiguous_associated_type(
+        &self,
+        span: Span,
+        types: &[String],
+        traits: &[String],
+        name: Symbol,
+    ) -> ErrorGuaranteed {
+        let mut err =
+            struct_span_code_err!(self.tcx().dcx(), span, E0223, "ambiguous associated type");
+        if self
+            .tcx()
+            .resolutions(())
+            .confused_type_with_std_module
+            .keys()
+            .any(|full_span| full_span.contains(span))
+        {
+            err.span_suggestion_verbose(
+                span.shrink_to_lo(),
+                "you are looking for the module in `std`, not the primitive type",
+                "std::",
+                Applicability::MachineApplicable,
+            );
+        } else {
+            let mut types = types.to_vec();
+            types.sort();
+            let mut traits = traits.to_vec();
+            traits.sort();
+            match (&types[..], &traits[..]) {
+                ([], []) => {
+                    err.span_suggestion_verbose(
+                        span,
+                        format!(
+                            "if there were a type named `Type` that implements a trait named \
+                             `Trait` with associated type `{name}`, you could use the \
+                             fully-qualified path",
+                        ),
+                        format!("<Type as Trait>::{name}"),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+                ([], [trait_str]) => {
+                    err.span_suggestion_verbose(
+                        span,
+                        format!(
+                            "if there were a type named `Example` that implemented `{trait_str}`, \
+                             you could use the fully-qualified path",
+                        ),
+                        format!("<Example as {trait_str}>::{name}"),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+                ([], traits) => {
+                    err.span_suggestions(
+                        span,
+                        format!(
+                            "if there were a type named `Example` that implemented one of the \
+                             traits with associated type `{name}`, you could use the \
+                             fully-qualified path",
+                        ),
+                        traits
+                            .iter()
+                            .map(|trait_str| format!("<Example as {trait_str}>::{name}"))
+                            .collect::<Vec<_>>(),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+                ([type_str], []) => {
+                    err.span_suggestion_verbose(
+                        span,
+                        format!(
+                            "if there were a trait named `Example` with associated type `{name}` \
+                             implemented for `{type_str}`, you could use the fully-qualified path",
+                        ),
+                        format!("<{type_str} as Example>::{name}"),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+                (types, []) => {
+                    err.span_suggestions(
+                        span,
+                        format!(
+                            "if there were a trait named `Example` with associated type `{name}` \
+                             implemented for one of the types, you could use the fully-qualified \
+                             path",
+                        ),
+                        types
+                            .into_iter()
+                            .map(|type_str| format!("<{type_str} as Example>::{name}")),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+                (types, traits) => {
+                    let mut suggestions = vec![];
+                    for type_str in types {
+                        for trait_str in traits {
+                            suggestions.push(format!("<{type_str} as {trait_str}>::{name}"));
+                        }
+                    }
+                    err.span_suggestions(
+                        span,
+                        "use fully-qualified syntax",
+                        suggestions,
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+        }
+        let reported = err.emit();
+        self.set_tainted_by_errors(reported);
+        reported
     }
 
     pub(crate) fn complain_about_ambiguous_inherent_assoc_type(

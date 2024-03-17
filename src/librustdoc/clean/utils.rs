@@ -625,6 +625,7 @@ pub(super) fn display_macro_source(
     def: &ast::MacroDef,
     def_id: DefId,
     vis: ty::Visibility<DefId>,
+    is_doc_hidden: bool,
 ) -> String {
     // Extract the spans of all matchers. They represent the "interface" of the macro.
     let matchers = def.body.tokens.chunks(4).map(|arm| &arm[0]);
@@ -635,7 +636,7 @@ pub(super) fn display_macro_source(
         if matchers.len() <= 1 {
             format!(
                 "{vis}macro {name}{matchers} {{\n    ...\n}}",
-                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
+                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id, is_doc_hidden),
                 matchers = matchers
                     .map(|matcher| render_macro_matcher(cx.tcx, matcher))
                     .collect::<String>(),
@@ -643,7 +644,7 @@ pub(super) fn display_macro_source(
         } else {
             format!(
                 "{vis}macro {name} {{\n{arms}}}",
-                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
+                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id, is_doc_hidden),
                 arms = render_macro_arms(cx.tcx, matchers, ","),
             )
         }
@@ -664,9 +665,10 @@ pub(crate) fn inherits_doc_hidden(
         def_id = id;
         if tcx.is_doc_hidden(def_id.to_def_id()) {
             return true;
-        } else if let Some(node) = tcx.opt_hir_node_by_def_id(def_id)
-            && matches!(node, hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),)
-        {
+        } else if matches!(
+            tcx.hir_node_by_def_id(def_id),
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. })
+        ) {
             // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
             // on them, they don't inherit it from the parent context.
             return false;

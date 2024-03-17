@@ -62,6 +62,9 @@ pub(crate) fn try_inline(
         attrs_without_docs.as_ref().map(|(attrs, def_id)| (&attrs[..], *def_id));
 
     let import_def_id = attrs.and_then(|(_, def_id)| def_id);
+
+    let (attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs);
+
     let kind = match res {
         Res::Def(DefKind::Trait, did) => {
             record_extern_fqn(cx, did, ItemType::Trait);
@@ -131,7 +134,7 @@ pub(crate) fn try_inline(
             cx.with_param_env(did, |cx| clean::ConstantItem(build_const(cx, did)))
         }
         Res::Def(DefKind::Macro(kind), did) => {
-            let mac = build_macro(cx, did, name, import_def_id, kind);
+            let mac = build_macro(cx, did, name, import_def_id, kind, attrs.is_doc_hidden());
 
             let type_kind = match kind {
                 MacroKind::Bang => ItemType::Macro,
@@ -144,7 +147,6 @@ pub(crate) fn try_inline(
         _ => return None,
     };
 
-    let (attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs);
     cx.inlined.insert(did.into());
     let mut item =
         clean::Item::from_def_id_and_attrs_and_parts(did, Some(name), kind, Box::new(attrs), cfg);
@@ -751,6 +753,7 @@ fn build_macro(
     name: Symbol,
     import_def_id: Option<DefId>,
     macro_kind: MacroKind,
+    is_doc_hidden: bool,
 ) -> clean::ItemKind {
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.tcx) {
         LoadedMacro::MacroDef(item_def, _) => match macro_kind {
@@ -758,7 +761,14 @@ fn build_macro(
                 if let ast::ItemKind::MacroDef(ref def) = item_def.kind {
                     let vis = cx.tcx.visibility(import_def_id.unwrap_or(def_id));
                     clean::MacroItem(clean::Macro {
-                        source: utils::display_macro_source(cx, name, def, def_id, vis),
+                        source: utils::display_macro_source(
+                            cx,
+                            name,
+                            def,
+                            def_id,
+                            vis,
+                            is_doc_hidden,
+                        ),
                     })
                 } else {
                     unreachable!()

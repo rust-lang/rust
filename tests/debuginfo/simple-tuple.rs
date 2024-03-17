@@ -99,28 +99,28 @@
 
 // lldb-command:run
 
-// lldb-command:print/d noPadding8
-// lldbg-check:[...]$0 = { 0 = -100 1 = 100 }
+// lldb-command:v/d noPadding8
+// lldbg-check:[...] { 0 = -100 1 = 100 }
 // lldbr-check:((i8, u8)) noPadding8 = { 0 = -100 1 = 100 }
-// lldb-command:print noPadding16
-// lldbg-check:[...]$1 = { 0 = 0 1 = 1 2 = 2 }
+// lldb-command:v noPadding16
+// lldbg-check:[...] { 0 = 0 1 = 1 2 = 2 }
 // lldbr-check:((i16, i16, u16)) noPadding16 = { 0 = 0 1 = 1 2 = 2 }
-// lldb-command:print noPadding32
-// lldbg-check:[...]$2 = { 0 = 3 1 = 4.5 2 = 5 }
+// lldb-command:v noPadding32
+// lldbg-check:[...] { 0 = 3 1 = 4.5 2 = 5 }
 // lldbr-check:((i32, f32, u32)) noPadding32 = { 0 = 3 1 = 4.5 2 = 5 }
-// lldb-command:print noPadding64
-// lldbg-check:[...]$3 = { 0 = 6 1 = 7.5 2 = 8 }
+// lldb-command:v noPadding64
+// lldbg-check:[...] { 0 = 6 1 = 7.5 2 = 8 }
 // lldbr-check:((i64, f64, u64)) noPadding64 = { 0 = 6 1 = 7.5 2 = 8 }
 
-// lldb-command:print internalPadding1
-// lldbg-check:[...]$4 = { 0 = 9 1 = 10 }
+// lldb-command:v internalPadding1
+// lldbg-check:[...] { 0 = 9 1 = 10 }
 // lldbr-check:((i16, i32)) internalPadding1 = { 0 = 9 1 = 10 }
-// lldb-command:print internalPadding2
-// lldbg-check:[...]$5 = { 0 = 11 1 = 12 2 = 13 3 = 14 }
+// lldb-command:v internalPadding2
+// lldbg-check:[...] { 0 = 11 1 = 12 2 = 13 3 = 14 }
 // lldbr-check:((i16, i32, u32, u64)) internalPadding2 = { 0 = 11 1 = 12 2 = 13 3 = 14 }
 
-// lldb-command:print paddingAtEnd
-// lldbg-check:[...]$6 = { 0 = 15 1 = 16 }
+// lldb-command:v paddingAtEnd
+// lldbg-check:[...] { 0 = 15 1 = 16 }
 // lldbr-check:((i32, i16)) paddingAtEnd = { 0 = 15 1 = 16 }
 
 

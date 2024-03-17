@@ -164,7 +164,7 @@ pub fn clause_obligations<'tcx>(
             wf.compute(ty.into());
         }
         ty::ClauseKind::Projection(t) => {
-            wf.compute_projection(t.projection_ty);
+            wf.compute_alias(t.projection_ty);
             wf.compute(match t.term.unpack() {
                 ty::TermKind::Ty(ty) => ty.into(),
                 ty::TermKind::Const(c) => c.into(),
@@ -436,9 +436,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         }
     }
 
-    /// Pushes the obligations required for `trait_ref::Item` to be WF
+    /// Pushes the obligations required for an alias (except inherent) to be WF
     /// into `self.out`.
-    fn compute_projection(&mut self, data: ty::AliasTy<'tcx>) {
+    fn compute_alias(&mut self, data: ty::AliasTy<'tcx>) {
         // A projection is well-formed if
         //
         // (a) its predicates hold (*)
@@ -466,6 +466,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         self.compute_projection_args(data.args);
     }
 
+    /// Pushes the obligations required for an inherent alias to be WF
+    /// into `self.out`.
+    // FIXME(inherent_associated_types): Merge this function with `fn compute_alias`.
     fn compute_inherent_projection(&mut self, data: ty::AliasTy<'tcx>) {
         // An inherent projection is well-formed if
         //
@@ -688,8 +691,8 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // Simple cases that are WF if their type args are WF.
             }
 
-            ty::Alias(ty::Projection, data) => {
-                self.compute_projection(data);
+            ty::Alias(ty::Projection | ty::Opaque | ty::Weak, data) => {
+                self.compute_alias(data);
                 return; // Subtree handled by compute_projection.
             }
             ty::Alias(ty::Inherent, data) => {
@@ -789,21 +792,6 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             ty::FnPtr(_) => {
                 // Let the visitor iterate into the argument/return
                 // types appearing in the fn signature.
-            }
-
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                // All of the requirements on type parameters
-                // have already been checked for `impl Trait` in
-                // return position. We do need to check type-alias-impl-trait though.
-                if self.tcx().is_type_alias_impl_trait(def_id) {
-                    let obligations = self.nominal_obligations(def_id, args);
-                    self.out.extend(obligations);
-                }
-            }
-
-            ty::Alias(ty::Weak, ty::AliasTy { def_id, args, .. }) => {
-                let obligations = self.nominal_obligations(def_id, args);
-                self.out.extend(obligations);
             }
 
             ty::Dynamic(data, r, _) => {

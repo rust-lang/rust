@@ -158,12 +158,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.hir_owner_nodes(owner_id).node()
     }
 
-    /// Retrieves the `hir::Node` corresponding to `id`, returning `None` if cannot be found.
-    #[inline]
-    pub fn opt_hir_node_by_def_id(self, id: LocalDefId) -> Option<Node<'tcx>> {
-        Some(self.hir_node_by_def_id(id))
-    }
-
     /// Retrieves the `hir::Node` corresponding to `id`.
     pub fn hir_node(self, id: HirId) -> Node<'tcx> {
         self.hir_owner_nodes(id.owner).nodes[id.local_id].node
@@ -239,8 +233,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_if_local(self, id: DefId) -> Option<Node<'hir>> {
-        id.as_local()
-            .and_then(|id| Some(self.tcx.hir_node(self.tcx.opt_local_def_id_to_hir_id(id)?)))
+        id.as_local().map(|id| self.tcx.hir_node_by_def_id(id))
     }
 
     pub fn get_generics(self, id: LocalDefId) -> Option<&'hir Generics<'hir>> {
@@ -304,7 +297,7 @@ impl<'hir> Map<'hir> {
     /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<BodyId> {
-        let node = self.tcx.opt_hir_node_by_def_id(id)?;
+        let node = self.tcx.hir_node_by_def_id(id);
         let (_, body_id) = associated_body(node)?;
         Some(body_id)
     }

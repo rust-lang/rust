@@ -39,23 +39,23 @@
 // === LLDB TESTS ==================================================================================
 // lldb-command:run
 
-// lldb-command:print eight_bytes1
-// lldb-check:[...]$0 = Variant1(100)
-// lldb-command:print four_bytes1
-// lldb-check:[...]$1 = Variant1(101)
-// lldb-command:print two_bytes1
-// lldb-check:[...]$2 = Variant1(102)
-// lldb-command:print one_byte1
-// lldb-check:[...]$3 = Variant1('A')
+// lldb-command:v eight_bytes1
+// lldb-check:[...] Variant1(100)
+// lldb-command:v four_bytes1
+// lldb-check:[...] Variant1(101)
+// lldb-command:v two_bytes1
+// lldb-check:[...] Variant1(102)
+// lldb-command:v one_byte1
+// lldb-check:[...] Variant1('A')
 
-// lldb-command:print eight_bytes2
-// lldb-check:[...]$4 = Variant2(100)
-// lldb-command:print four_bytes2
-// lldb-check:[...]$5 = Variant2(101)
-// lldb-command:print two_bytes2
-// lldb-check:[...]$6 = Variant2(102)
-// lldb-command:print one_byte2
-// lldb-check:[...]$7 = Variant2('A')
+// lldb-command:v eight_bytes2
+// lldb-check:[...] Variant2(100)
+// lldb-command:v four_bytes2
+// lldb-check:[...] Variant2(101)
+// lldb-command:v two_bytes2
+// lldb-check:[...] Variant2(102)
+// lldb-command:v one_byte2
+// lldb-check:[...] Variant2('A')
 
 // lldb-command:continue
 

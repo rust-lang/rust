@@ -463,6 +463,10 @@ declare_features! (
     (unstable, extended_varargs_abi_support, "1.65.0", Some(100189)),
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467)),
+    /// Allow using 128-bit (quad precision) floating point numbers.
+    (unstable, f128, "CURRENT_RUSTC_VERSION", Some(116909)),
+    /// Allow using 16-bit (half precision) floating point numbers.
+    (unstable, f16, "CURRENT_RUSTC_VERSION", Some(116909)),
     /// Allows the use of `#[ffi_const]` on foreign functions.
     (unstable, ffi_const, "1.45.0", Some(58328)),
     /// Allows the use of `#[ffi_pure]` on foreign functions.

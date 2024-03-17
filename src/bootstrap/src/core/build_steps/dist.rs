@@ -272,7 +272,7 @@ fn make_win_dist(
     let dist_bin_dir = rust_root.join("bin/");
     fs::create_dir_all(&dist_bin_dir).expect("creating dist_bin_dir failed");
     for src in rustc_dlls {
-        builder.copy_to_folder(&src, &dist_bin_dir);
+        builder.copy_link_to_folder(&src, &dist_bin_dir);
     }
 
     //Copy platform tools to platform-specific bin directory
@@ -284,7 +284,7 @@ fn make_win_dist(
         .join("self-contained");
     fs::create_dir_all(&target_bin_dir).expect("creating target_bin_dir failed");
     for src in target_tools {
-        builder.copy_to_folder(&src, &target_bin_dir);
+        builder.copy_link_to_folder(&src, &target_bin_dir);
     }
 
     // Warn windows-gnu users that the bundled GCC cannot compile C files
@@ -304,7 +304,7 @@ fn make_win_dist(
         .join("self-contained");
     fs::create_dir_all(&target_lib_dir).expect("creating target_lib_dir failed");
     for src in target_libs {
-        builder.copy_to_folder(&src, &target_lib_dir);
+        builder.copy_link_to_folder(&src, &target_lib_dir);
     }
 }
 
@@ -400,7 +400,7 @@ impl Step for Rustc {
 
             // Copy rustc binary
             t!(fs::create_dir_all(image.join("bin")));
-            builder.cp_r(&src.join("bin"), &image.join("bin"));
+            builder.cp_link_r(&src.join("bin"), &image.join("bin"));
 
             // If enabled, copy rustdoc binary
             if builder
@@ -458,13 +458,13 @@ impl Step for Rustc {
             if builder.config.lld_enabled {
                 let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
                 let rust_lld = exe("rust-lld", compiler.host);
-                builder.copy(&src_dir.join(&rust_lld), &dst_dir.join(&rust_lld));
+                builder.copy_link(&src_dir.join(&rust_lld), &dst_dir.join(&rust_lld));
                 let self_contained_lld_src_dir = src_dir.join("gcc-ld");
                 let self_contained_lld_dst_dir = dst_dir.join("gcc-ld");
                 t!(fs::create_dir(&self_contained_lld_dst_dir));
                 for name in crate::LLD_FILE_NAMES {
                     let exe_name = exe(name, compiler.host);
-                    builder.copy(
+                    builder.copy_link(
                         &self_contained_lld_src_dir.join(&exe_name),
                         &self_contained_lld_dst_dir.join(&exe_name),
                     );
@@ -609,9 +609,9 @@ fn copy_target_libs(builder: &Builder<'_>, target: TargetSelection, image: &Path
     t!(fs::create_dir_all(&self_contained_dst));
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
         if dependency_type == DependencyType::TargetSelfContained {
-            builder.copy(&path, &self_contained_dst.join(path.file_name().unwrap()));
+            builder.copy_link(&path, &self_contained_dst.join(path.file_name().unwrap()));
         } else if dependency_type == DependencyType::Target || builder.config.build == target {
-            builder.copy(&path, &dst.join(path.file_name().unwrap()));
+            builder.copy_link(&path, &dst.join(path.file_name().unwrap()));
         }
     }
 }
@@ -865,7 +865,8 @@ fn copy_src_dirs(
     for item in src_dirs {
         let dst = &dst_dir.join(item);
         t!(fs::create_dir_all(dst));
-        builder.cp_filtered(&base.join(item), dst, &|path| filter_fn(exclude_dirs, item, path));
+        builder
+            .cp_link_filtered(&base.join(item), dst, &|path| filter_fn(exclude_dirs, item, path));
     }
 }
 
@@ -923,7 +924,7 @@ impl Step for Src {
             &dst_src,
         );
         for file in src_files.iter() {
-            builder.copy(&builder.src.join(file), &dst_src.join(file));
+            builder.copy_link(&builder.src.join(file), &dst_src.join(file));
         }
 
         tarball.generate()
@@ -979,7 +980,7 @@ impl Step for PlainSourceTarball {
 
         // Copy the files normally
         for item in &src_files {
-            builder.copy(&builder.src.join(item), &plain_dst_src.join(item));
+            builder.copy_link(&builder.src.join(item), &plain_dst_src.join(item));
         }
 
         // Create the version file
@@ -1608,7 +1609,7 @@ impl Step for Extended {
 
             let prepare = |name: &str| {
                 builder.create_dir(&pkg.join(name));
-                builder.cp_r(
+                builder.cp_link_r(
                     &work.join(format!("{}-{}", pkgname(builder, name), target.triple)),
                     &pkg.join(name),
                 );
@@ -1672,7 +1673,7 @@ impl Step for Extended {
                 } else {
                     name.to_string()
                 };
-                builder.cp_r(
+                builder.cp_link_r(
                     &work.join(format!("{}-{}", pkgname(builder, name), target.triple)).join(dir),
                     &exe.join(name),
                 );
@@ -2040,7 +2041,7 @@ fn install_llvm_file(
         if install_symlink {
             // For download-ci-llvm, also install the symlink, to match what LLVM does. Using a
             // symlink is fine here, as this is not a rustup component.
-            builder.copy(&source, &full_dest);
+            builder.copy_link(&source, &full_dest);
         } else {
             // Otherwise, replace the symlink with an equivalent linker script. This is used when
             // projects like miri link against librustc_driver.so. We don't use a symlink, as

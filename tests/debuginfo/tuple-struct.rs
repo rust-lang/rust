@@ -35,28 +35,28 @@
 
 // lldb-command:run
 
-// lldb-command:print no_padding16
-// lldbg-check:[...]$0 = { 0 = 10000 1 = -10001 }
+// lldb-command:v no_padding16
+// lldbg-check:[...] { 0 = 10000 1 = -10001 }
 // lldbr-check:(tuple_struct::NoPadding16) no_padding16 = { 0 = 10000 1 = -10001 }
 
-// lldb-command:print no_padding32
-// lldbg-check:[...]$1 = { 0 = -10002 1 = -10003.5 2 = 10004 }
+// lldb-command:v no_padding32
+// lldbg-check:[...] { 0 = -10002 1 = -10003.5 2 = 10004 }
 // lldbr-check:(tuple_struct::NoPadding32) no_padding32 = { 0 = -10002 1 = -10003.5 2 = 10004 }
 
-// lldb-command:print no_padding64
-// lldbg-check:[...]$2 = { 0 = -10005.5 1 = 10006 2 = 10007 }
+// lldb-command:v no_padding64
+// lldbg-check:[...] { 0 = -10005.5 1 = 10006 2 = 10007 }
 // lldbr-check:(tuple_struct::NoPadding64) no_padding64 = { 0 = -10005.5 1 = 10006 2 = 10007 }
 
-// lldb-command:print no_padding163264
-// lldbg-check:[...]$3 = { 0 = -10008 1 = 10009 2 = 10010 3 = 10011 }
+// lldb-command:v no_padding163264
+// lldbg-check:[...] { 0 = -10008 1 = 10009 2 = 10010 3 = 10011 }
 // lldbr-check:(tuple_struct::NoPadding163264) no_padding163264 = { 0 = -10008 1 = 10009 2 = 10010 3 = 10011 }
 
-// lldb-command:print internal_padding
-// lldbg-check:[...]$4 = { 0 = 10012 1 = -10013 }
+// lldb-command:v internal_padding
+// lldbg-check:[...] { 0 = 10012 1 = -10013 }
 // lldbr-check:(tuple_struct::InternalPadding) internal_padding = { 0 = 10012 1 = -10013 }
 
-// lldb-command:print padding_at_end
-// lldbg-check:[...]$5 = { 0 = -10014 1 = 10015 }
+// lldb-command:v padding_at_end
+// lldbg-check:[...] { 0 = -10014 1 = 10015 }
 // lldbr-check:(tuple_struct::PaddingAtEnd) padding_at_end = { 0 = -10014 1 = 10015 }
 
 // This test case mainly makes sure that no field names are generated for tuple structs (as opposed

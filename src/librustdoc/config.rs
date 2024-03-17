@@ -130,6 +130,9 @@ pub(crate) struct Options {
     /// default to loading from `$sysroot/bin/rustc`.
     pub(crate) test_builder: Option<PathBuf>,
 
+    /// Run these wrapper instead of rustc directly
+    pub(crate) test_builder_wrappers: Vec<PathBuf>,
+
     // Options that affect the documentation process
     /// Whether to run the `calculate-doc-coverage` pass, which counts the number of public items
     /// with and without documentation.
@@ -204,6 +207,7 @@ impl fmt::Debug for Options {
             .field("enable-per-target-ignores", &self.enable_per_target_ignores)
             .field("run_check", &self.run_check)
             .field("no_run", &self.no_run)
+            .field("test_builder_wrappers", &self.test_builder_wrappers)
             .field("nocapture", &self.nocapture)
             .field("scrape_examples_options", &self.scrape_examples_options)
             .field("unstable_features", &self.unstable_features)
@@ -521,6 +525,8 @@ impl Options {
             dcx.fatal("the `--test` flag must be passed to enable `--no-run`");
         }
 
+        let test_builder_wrappers =
+            matches.opt_strs("test-builder-wrapper").iter().map(PathBuf::from).collect();
         let out_dir = matches.opt_str("out-dir").map(|s| PathBuf::from(&s));
         let output = matches.opt_str("output").map(|s| PathBuf::from(&s));
         let output = match (out_dir, output) {
@@ -727,6 +733,7 @@ impl Options {
             test_builder,
             run_check,
             no_run,
+            test_builder_wrappers,
             nocapture,
             crate_name,
             output_format,

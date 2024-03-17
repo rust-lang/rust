@@ -35,28 +35,28 @@
 
 // lldb-command:run
 
-// lldb-command:print no_padding1
-// lldbg-check:[...]$0 = { 0 = { 0 = 0 1 = 1 } 1 = 2 2 = 3 }
+// lldb-command:v no_padding1
+// lldbg-check:[...] { 0 = { 0 = 0 1 = 1 } 1 = 2 2 = 3 }
 // lldbr-check:(((u32, u32), u32, u32)) no_padding1 = { 0 = { 0 = 0 1 = 1 } 1 = 2 2 = 3 }
-// lldb-command:print no_padding2
-// lldbg-check:[...]$1 = { 0 = 4 1 = { 0 = 5 1 = 6 } 2 = 7 }
+// lldb-command:v no_padding2
+// lldbg-check:[...] { 0 = 4 1 = { 0 = 5 1 = 6 } 2 = 7 }
 // lldbr-check:((u32, (u32, u32), u32)) no_padding2 = { 0 = 4 1 = { 0 = 5 1 = 6 } 2 = 7 }
-// lldb-command:print no_padding3
-// lldbg-check:[...]$2 = { 0 = 8 1 = 9 2 = { 0 = 10 1 = 11 } }
+// lldb-command:v no_padding3
+// lldbg-check:[...] { 0 = 8 1 = 9 2 = { 0 = 10 1 = 11 } }
 // lldbr-check:((u32, u32, (u32, u32))) no_padding3 = { 0 = 8 1 = 9 2 = { 0 = 10 1 = 11 } }
 
-// lldb-command:print internal_padding1
-// lldbg-check:[...]$3 = { 0 = 12 1 = { 0 = 13 1 = 14 } }
+// lldb-command:v internal_padding1
+// lldbg-check:[...] { 0 = 12 1 = { 0 = 13 1 = 14 } }
 // lldbr-check:((i16, (i32, i32))) internal_padding1 = { 0 = 12 1 = { 0 = 13 1 = 14 } }
-// lldb-command:print internal_padding2
-// lldbg-check:[...]$4 = { 0 = 15 1 = { 0 = 16 1 = 17 } }
+// lldb-command:v internal_padding2
+// lldbg-check:[...] { 0 = 15 1 = { 0 = 16 1 = 17 } }
 // lldbr-check:((i16, (i16, i32))) internal_padding2 = { 0 = 15 1 = { 0 = 16 1 = 17 } }
 
-// lldb-command:print padding_at_end1
-// lldbg-check:[...]$5 = { 0 = 18 1 = { 0 = 19 1 = 20 } }
+// lldb-command:v padding_at_end1
+// lldbg-check:[...] { 0 = 18 1 = { 0 = 19 1 = 20 } }
 // lldbr-check:((i32, (i32, i16))) padding_at_end1 = { 0 = 18 1 = { 0 = 19 1 = 20 } }
-// lldb-command:print padding_at_end2
-// lldbg-check:[...]$6 = { 0 = { 0 = 21 1 = 22 } 1 = 23 }
+// lldb-command:v padding_at_end2
+// lldbg-check:[...] { 0 = { 0 = 21 1 = 22 } 1 = 23 }
 // lldbr-check:(((i32, i16), i32)) padding_at_end2 = { 0 = { 0 = 21 1 = 22 } 1 = 23 }
 
 

@@ -16,6 +16,10 @@ static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
     ("rust-2018-compatibility", "Lints used to transition code from the 2015 edition to 2018"),
     ("rust-2021-compatibility", "Lints used to transition code from the 2018 edition to 2021"),
     ("rust-2024-compatibility", "Lints used to transition code from the 2021 edition to 2024"),
+    (
+        "refining-impl-trait",
+        "Detects refinement of `impl Trait` return types by trait implementations",
+    ),
 ];
 
 type LintGroups = BTreeMap<String, BTreeSet<String>>;

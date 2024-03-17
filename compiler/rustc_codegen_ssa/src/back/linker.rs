@@ -929,6 +929,15 @@ impl<'a> Linker for MsvcLinker<'a> {
                 // from the CodeView line tables in the object files.
                 self.cmd.arg("/DEBUG");
 
+                // Default to emitting only the file name of the PDB file into
+                // the binary instead of the full path. Emitting the full path
+                // may leak private information (such as user names).
+                // See https://github.com/rust-lang/rust/issues/87825.
+                //
+                // This default behavior can be overridden by explicitly passing
+                // `-Clink-arg=/PDBALTPATH:...` to rustc.
+                self.cmd.arg("/PDBALTPATH:%_PDB%");
+
                 // This will cause the Microsoft linker to embed .natvis info into the PDB file
                 let natvis_dir_path = self.sess.sysroot.join("lib\\rustlib\\etc");
                 if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {

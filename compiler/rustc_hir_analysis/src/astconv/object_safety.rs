@@ -17,7 +17,7 @@ use smallvec::{smallvec, SmallVec};
 
 use super::AstConv;
 
-impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
+impl<'tcx> dyn AstConv<'tcx> + '_ {
     pub(super) fn conv_object_ty_poly_trait_ref(
         &self,
         span: Span,
@@ -44,7 +44,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ty::ImplPolarity::Positive,
                 dummy_self,
                 &mut bounds,
-                false,
                 // True so we don't populate `bounds` with associated type bounds, even
                 // though they're disallowed from object types.
                 OnlySelfBounds(true),

@@ -1216,20 +1216,29 @@ fn add_sanitizer_libraries(
     crate_type: CrateType,
     linker: &mut dyn Linker,
 ) {
+    if sess.target.is_like_android {
+        // Sanitizer runtime libraries are provided dynamically on Android
+        // targets.
+        return;
+    }
+
+    if sess.opts.unstable_opts.external_clangrt {
+        // Linking against in-tree sanitizer runtimes is disabled via
+        // `-Z external-clangrt`
+        return;
+    }
+
+    if matches!(crate_type, CrateType::Rlib | CrateType::Staticlib) {
+        return;
+    }
+
     // On macOS and Windows using MSVC the runtimes are distributed as dylibs
     // which should be linked to both executables and dynamic libraries.
     // Everywhere else the runtimes are currently distributed as static
     // libraries which should be linked to executables only.
-    let needs_runtime = !sess.target.is_like_android
-        && match crate_type {
-            CrateType::Executable => true,
-            CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => {
-                sess.target.is_like_osx || sess.target.is_like_msvc
-            }
-            CrateType::Rlib | CrateType::Staticlib => false,
-        };
-
-    if !needs_runtime {
+    if matches!(crate_type, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro)
+        && !(sess.target.is_like_osx || sess.target.is_like_msvc)
+    {
         return;
     }
 

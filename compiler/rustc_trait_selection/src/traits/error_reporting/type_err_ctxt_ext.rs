@@ -2497,11 +2497,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         err.code(E0790);
 
                         if let Some(local_def_id) = data.trait_ref.def_id.as_local()
-                            && let Some(hir::Node::Item(hir::Item {
+                            && let hir::Node::Item(hir::Item {
                                 ident: trait_name,
                                 kind: hir::ItemKind::Trait(_, _, _, _, trait_item_refs),
                                 ..
-                            })) = self.tcx.opt_hir_node_by_def_id(local_def_id)
+                            }) = self.tcx.hir_node_by_def_id(local_def_id)
                             && let Some(method_ref) = trait_item_refs
                                 .iter()
                                 .find(|item_ref| item_ref.ident == *assoc_item_name)
@@ -3073,29 +3073,29 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let src = trait_ref.args.type_at(1);
                 let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
                 let safe_transmute_explanation = match reason {
-                    rustc_transmute::Reason::SrcIsUnspecified => {
-                        format!("`{src}` does not have a well-specified layout")
+                    rustc_transmute::Reason::SrcIsNotYetSupported => {
+                        format!("analyzing the transmutability of `{src}` is not yet supported.")
                     }
 
-                    rustc_transmute::Reason::DstIsUnspecified => {
-                        format!("`{dst}` does not have a well-specified layout")
+                    rustc_transmute::Reason::DstIsNotYetSupported => {
+                        format!("analyzing the transmutability of `{dst}` is not yet supported.")
                     }
 
                     rustc_transmute::Reason::DstIsBitIncompatible => {
-                        format!("At least one value of `{src}` isn't a bit-valid value of `{dst}`")
+                        format!("at least one value of `{src}` isn't a bit-valid value of `{dst}`")
                     }
 
                     rustc_transmute::Reason::DstMayHaveSafetyInvariants => {
                         format!("`{dst}` may carry safety invariants")
                     }
                     rustc_transmute::Reason::DstIsTooBig => {
-                        format!("The size of `{src}` is smaller than the size of `{dst}`")
+                        format!("the size of `{src}` is smaller than the size of `{dst}`")
                     }
                     rustc_transmute::Reason::DstRefIsTooBig { src, dst } => {
                         let src_size = src.size;
                         let dst_size = dst.size;
                         format!(
-                            "The referent size of `{src}` ({src_size} bytes) is smaller than that of `{dst}` ({dst_size} bytes)"
+                            "the referent size of `{src}` ({src_size} bytes) is smaller than that of `{dst}` ({dst_size} bytes)"
                         )
                     }
                     rustc_transmute::Reason::SrcSizeOverflow => {
@@ -3113,7 +3113,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         dst_min_align,
                     } => {
                         format!(
-                            "The minimum alignment of `{src}` ({src_min_align}) should be greater than that of `{dst}` ({dst_min_align})"
+                            "the minimum alignment of `{src}` ({src_min_align}) should be greater than that of `{dst}` ({dst_min_align})"
                         )
                     }
                     rustc_transmute::Reason::DstIsMoreUnique => {

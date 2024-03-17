@@ -167,6 +167,14 @@ fn main() {
     transmute_fat_pointer();
 
     rust_call_abi();
+
+    const fn no_str() -> Option<Box<str>> {
+        None
+    }
+
+    static STATIC_WITH_MAYBE_NESTED_BOX: &Option<Box<str>> = &no_str();
+
+    println!("{:?}", STATIC_WITH_MAYBE_NESTED_BOX);
 }
 
 fn panic(_: u128) {

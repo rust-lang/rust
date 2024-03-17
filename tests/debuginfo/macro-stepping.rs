@@ -56,36 +56,36 @@ extern crate macro_stepping; // exports new_scope!()
 // lldb-command:run
 // lldb-command:next
 // lldb-command:frame select
-// lldb-check:[...]#loc1[...]
+// lldb-check:[...] #loc1 [...]
 // lldb-command:next
 // lldb-command:frame select
-// lldb-check:[...]#loc2[...]
+// lldb-check:[...] #loc2 [...]
 // lldb-command:next
 // lldb-command:frame select
-// lldb-check:[...]#loc3[...]
+// lldb-check:[...] #loc3 [...]
 // lldb-command:next
 // lldb-command:frame select
-// lldb-check:[...]#loc4[...]
+// lldb-check:[...] #loc4 [...]
 // lldb-command:next
 // lldb-command:frame select
-// lldb-check:[...]#loc5[...]
+// lldb-check:[...] #loc5 [...]
 
 // lldb-command:continue
 // lldb-command:step
 // lldb-command:frame select
-// lldb-check:[...]#inc-loc1[...]
+// lldb-check:[...] #inc-loc1 [...]
 // lldb-command:next
 // lldb-command:frame select
-// lldb-check:[...]#inc-loc2[...]
+// lldb-check:[...] #inc-loc2 [...]
 // lldb-command:next
 // lldb-command:frame select
-// lldb-check:[...]#inc-loc1[...]
+// lldb-check:[...] #inc-loc1 [...]
 // lldb-command:next
 // lldb-command:frame select
-// lldb-check:[...]#inc-loc2[...]
+// lldb-check:[...] #inc-loc2 [...]
 // lldb-command:next
 // lldb-command:frame select
-// lldb-check:[...]#inc-loc3[...]
+// lldb-check:[...] #inc-loc3 [...]
 
 macro_rules! foo {
     () => {

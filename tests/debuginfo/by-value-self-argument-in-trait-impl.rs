@@ -25,18 +25,18 @@
 
 // lldb-command:run
 
-// lldb-command:print self
-// lldbg-check:[...]$0 = 1111
+// lldb-command:v self
+// lldbg-check:[...] 1111
 // lldbr-check:(isize) self = 1111
 // lldb-command:continue
 
-// lldb-command:print self
-// lldbg-check:[...]$1 = { x = 2222 y = 3333 }
+// lldb-command:v self
+// lldbg-check:[...] { x = 2222 y = 3333 }
 // lldbr-check:(by_value_self_argument_in_trait_impl::Struct) self = { x = 2222 y = 3333 }
 // lldb-command:continue
 
-// lldb-command:print self
-// lldbg-check:[...] $2 = { 0 = 4444.5 1 = 5555 2 = 6666 3 = 7777.5 }
+// lldb-command:v self
+// lldbg-check:[...] { 0 = 4444.5 1 = 5555 2 = 6666 3 = 7777.5 }
 // lldbr-check:((f64, isize, isize, f64)) self = { 0 = 4444.5 1 = 5555 2 = 6666 3 = 7777.5 }
 // lldb-command:continue
 

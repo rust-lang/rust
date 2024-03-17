@@ -12,7 +12,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
 use rustc_hir::{CoroutineDesugaring, PatField};
 use rustc_hir::{CoroutineKind, CoroutineSource, LangItem};
-use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
@@ -21,16 +20,21 @@ use rustc_middle::mir::{
     PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
     VarBindingForm,
 };
-use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, suggest_constraining_type_params, PredicateKind, ToPredicate, Ty, TyCtxt,
+    TypeSuperVisitable, TypeVisitor,
+};
 use rustc_middle::util::CallKind;
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
+use rustc_span::def_id::DefId;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::FindExprBySpan;
-use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use std::iter;
 
 use crate::borrow_set::TwoPhaseActivation;
@@ -39,7 +43,7 @@ use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
 use crate::diagnostics::{find_all_local_uses, CapturedMessageOpt};
 use crate::{
     borrow_set::BorrowData, diagnostics::Instance, prefixes::IsPrefixOf,
-    InitializationRequiringAction, MirBorrowckCtxt, PrefixSet, WriteKind,
+    InitializationRequiringAction, MirBorrowckCtxt, WriteKind,
 };
 
 use super::{
@@ -114,7 +118,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             self.buffer_error(err);
         } else {
             if let Some((reported_place, _)) = self.has_move_error(&move_out_indices) {
-                if self.prefixes(*reported_place, PrefixSet::All).any(|p| p == used_place) {
+                if used_place.is_prefix_of(*reported_place) {
                     debug!(
                         "report_use_of_moved_or_uninitialized place: error suppressed mois={:?}",
                         move_out_indices
@@ -283,7 +287,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // something that already has `Fn`-like bounds (or is a closure), so we can't
                 // restrict anyways.
             } else {
-                self.suggest_adding_copy_bounds(&mut err, ty, span);
+                let copy_did = self.infcx.tcx.require_lang_item(LangItem::Copy, Some(span));
+                self.suggest_adding_bounds(&mut err, ty, copy_did, span);
             }
 
             if needs_note {
@@ -422,8 +427,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     (None, &[][..], 0)
                 };
                 if let Some(def_id) = def_id
-                    && let node =
-                        self.infcx.tcx.hir_node(self.infcx.tcx.local_def_id_to_hir_id(def_id))
+                    && let node = self.infcx.tcx.hir_node_by_def_id(def_id)
                     && let Some(fn_sig) = node.fn_sig()
                     && let Some(ident) = node.ident()
                     && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
@@ -775,7 +779,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    fn suggest_adding_copy_bounds(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, span: Span) {
+    fn suggest_adding_bounds(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, def_id: DefId, span: Span) {
         let tcx = self.infcx.tcx;
         let generics = tcx.generics_of(self.mir_def_id());
 
@@ -788,10 +792,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
         // Try to find predicates on *generic params* that would allow copying `ty`
         let ocx = ObligationCtxt::new(self.infcx);
-        let copy_did = tcx.require_lang_item(LangItem::Copy, Some(span));
         let cause = ObligationCause::misc(span, self.mir_def_id());
 
-        ocx.register_bound(cause, self.param_env, ty, copy_did);
+        ocx.register_bound(cause, self.param_env, ty, def_id);
         let errors = ocx.select_all_or_error();
 
         // Only emit suggestion if all required predicates are on generic
@@ -877,6 +880,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 Some(borrow_span),
                 None,
             );
+        self.suggest_copy_for_type_in_cloned_ref(&mut err, place);
         self.buffer_error(err);
     }
 
@@ -1215,8 +1219,102 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
 
         self.suggest_using_local_if_applicable(&mut err, location, issued_borrow, explanation);
+        self.suggest_copy_for_type_in_cloned_ref(&mut err, place);
 
         err
+    }
+
+    fn suggest_copy_for_type_in_cloned_ref(&self, err: &mut Diag<'tcx>, place: Place<'tcx>) {
+        let tcx = self.infcx.tcx;
+        let hir = tcx.hir();
+        let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
+        struct FindUselessClone<'hir> {
+            pub clones: Vec<&'hir hir::Expr<'hir>>,
+        }
+        impl<'hir> FindUselessClone<'hir> {
+            pub fn new() -> Self {
+                Self { clones: vec![] }
+            }
+        }
+
+        impl<'v> Visitor<'v> for FindUselessClone<'v> {
+            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+                // FIXME: use `lookup_method_for_diagnostic`?
+                if let hir::ExprKind::MethodCall(segment, _rcvr, args, _span) = ex.kind
+                    && segment.ident.name == sym::clone
+                    && args.len() == 0
+                {
+                    self.clones.push(ex);
+                }
+                hir::intravisit::walk_expr(self, ex);
+            }
+        }
+        let mut expr_finder = FindUselessClone::new();
+
+        let body = hir.body(body_id).value;
+        expr_finder.visit_expr(body);
+
+        pub struct Holds<'tcx> {
+            ty: Ty<'tcx>,
+            holds: bool,
+        }
+
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Holds<'tcx> {
+            type Result = std::ops::ControlFlow<()>;
+
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+                if t == self.ty {
+                    self.holds = true;
+                }
+                t.super_visit_with(self)
+            }
+        }
+
+        let mut types_to_constrain = FxIndexSet::default();
+
+        let local_ty = self.body.local_decls[place.local].ty;
+        let typeck_results = tcx.typeck(self.mir_def_id());
+        let clone = tcx.require_lang_item(LangItem::Clone, Some(body.span));
+        for expr in expr_finder.clones {
+            if let hir::ExprKind::MethodCall(_, rcvr, _, span) = expr.kind
+                && let Some(rcvr_ty) = typeck_results.node_type_opt(rcvr.hir_id)
+                && let Some(ty) = typeck_results.node_type_opt(expr.hir_id)
+                && rcvr_ty == ty
+                && let ty::Ref(_, inner, _) = rcvr_ty.kind()
+                && let inner = inner.peel_refs()
+                && let mut v = (Holds { ty: inner, holds: false })
+                && let _ = v.visit_ty(local_ty)
+                && v.holds
+                && let None = self.infcx.type_implements_trait_shallow(clone, inner, self.param_env)
+            {
+                err.span_label(
+                    span,
+                    format!(
+                        "this call doesn't do anything, the result is still `{rcvr_ty}` \
+                             because `{inner}` doesn't implement `Clone`",
+                    ),
+                );
+                types_to_constrain.insert(inner);
+            }
+        }
+        for ty in types_to_constrain {
+            self.suggest_adding_bounds(err, ty, clone, body.span);
+            if let ty::Adt(..) = ty.kind() {
+                // The type doesn't implement Clone.
+                let trait_ref = ty::Binder::dummy(ty::TraitRef::new(self.infcx.tcx, clone, [ty]));
+                let obligation = Obligation::new(
+                    self.infcx.tcx,
+                    ObligationCause::dummy(),
+                    self.param_env,
+                    trait_ref,
+                );
+                self.infcx.err_ctxt().suggest_derive(
+                    &obligation,
+                    err,
+                    trait_ref.to_predicate(self.infcx.tcx),
+                );
+            }
+        }
     }
 
     #[instrument(level = "debug", skip(self, err))]
@@ -1995,21 +2093,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         kind: Option<WriteKind>,
     ) {
         let drop_span = place_span.1;
-        let root_place =
-            self.prefixes(borrow.borrowed_place.as_ref(), PrefixSet::All).last().unwrap();
+        let borrowed_local = borrow.borrowed_place.local;
 
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.var_or_use_path_span();
 
-        assert!(root_place.projection.is_empty());
-        let proper_span = self.body.local_decls[root_place.local].source_info.span;
+        let proper_span = self.body.local_decls[borrowed_local].source_info.span;
 
-        let root_place_projection = self.infcx.tcx.mk_place_elems(root_place.projection);
-
-        if self.access_place_error_reported.contains(&(
-            Place { local: root_place.local, projection: root_place_projection },
-            borrow_span,
-        )) {
+        if self.access_place_error_reported.contains(&(Place::from(borrowed_local), borrow_span)) {
             debug!(
                 "suppressing access_place error when borrow doesn't live long enough for {:?}",
                 borrow_span
@@ -2017,12 +2108,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return;
         }
 
-        self.access_place_error_reported.insert((
-            Place { local: root_place.local, projection: root_place_projection },
-            borrow_span,
-        ));
+        self.access_place_error_reported.insert((Place::from(borrowed_local), borrow_span));
 
-        let borrowed_local = borrow.borrowed_place.local;
         if self.body.local_decls[borrowed_local].is_ref_to_thread_local() {
             let err =
                 self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span);
@@ -2544,9 +2631,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             };
             (format!("{local_kind}`{place_desc}`"), format!("`{place_desc}` is borrowed here"))
         } else {
-            let root_place =
-                self.prefixes(borrow.borrowed_place.as_ref(), PrefixSet::All).last().unwrap();
-            let local = root_place.local;
+            let local = borrow.borrowed_place.local;
             match self.body.local_kind(local) {
                 LocalKind::Arg => (
                     "function parameter".to_string(),

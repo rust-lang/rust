@@ -609,10 +609,8 @@ pub(super) fn implied_predicates_with_filter(
         return tcx.super_predicates_of(trait_def_id);
     };
 
-    let trait_hir_id = tcx.local_def_id_to_hir_id(trait_def_id);
-
-    let Node::Item(item) = tcx.hir_node(trait_hir_id) else {
-        bug!("trait_node_id {} is not an item", trait_hir_id);
+    let Node::Item(item) = tcx.hir_node_by_def_id(trait_def_id) else {
+        bug!("trait_def_id {trait_def_id:?} is not an item");
     };
 
     let (generics, bounds) = match item.kind {

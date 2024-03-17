@@ -743,7 +743,12 @@ class StdRefSyntheticProvider:
 
 def StdNonZeroNumberSummaryProvider(valobj, _dict):
     # type: (SBValue, dict) -> str
-    objtype = valobj.GetType()
-    field = objtype.GetFieldAtIndex(0)
-    element = valobj.GetChildMemberWithName(field.name)
-    return element.GetValue()
+    inner = valobj.GetChildAtIndex(0)
+    inner_inner = inner.GetChildAtIndex(0)
+
+    # FIXME: Avoid printing as character literal,
+    #        see https://github.com/llvm/llvm-project/issues/65076.
+    if inner_inner.GetTypeName() in ['char', 'unsigned char']:
+      return str(inner_inner.GetValueAsSigned())
+    else:
+      return inner_inner.GetValue()

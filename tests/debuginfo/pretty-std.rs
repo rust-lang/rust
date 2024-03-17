@@ -42,28 +42,28 @@
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command: run
+// lldb-command:run
 
-// lldb-command: print slice
-// lldb-check:[...]$0 = &[0, 1, 2, 3]
+// lldb-command:v slice
+// lldb-check:[...] slice = &[0, 1, 2, 3]
 
-// lldb-command: print vec
-// lldb-check:[...]$1 = vec![4, 5, 6, 7]
+// lldb-command:v vec
+// lldb-check:[...] vec = vec![4, 5, 6, 7]
 
-// lldb-command: print str_slice
-// lldb-check:[...]$2 = "IAMA string slice!"
+// lldb-command:v str_slice
+// lldb-check:[...] str_slice = "IAMA string slice!"
 
-// lldb-command: print string
-// lldb-check:[...]$3 = "IAMA string!"
+// lldb-command:v string
+// lldb-check:[...] string = "IAMA string!"
 
-// lldb-command: print some
-// lldb-check:[...]$4 = Some(8)
+// lldb-command:v some
+// lldb-check:[...] some = Some(8)
 
-// lldb-command: print none
-// lldb-check:[...]$5 = None
+// lldb-command:v none
+// lldb-check:[...] none = None
 
-// lldb-command: print os_string
-// lldb-check:[...]$6 = "IAMA OS string 😃"[...]
+// lldb-command:v os_string
+// lldb-check:[...] os_string = "IAMA OS string 😃"[...]
 
 // === CDB TESTS ==================================================================================
 

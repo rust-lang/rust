@@ -35,35 +35,35 @@
 
 // lldb-command:run
 
-// lldb-command:print x
-// lldbg-check:[...]$0 = -1
+// lldb-command:v x
+// lldbg-check:[...] -1
 // lldbr-check:(i32) x = -1
-// lldb-command:print y
-// lldbg-check:[...]$1 = 1
+// lldb-command:v y
+// lldbg-check:[...] 1
 // lldbr-check:(i32) y = 1
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$2 = -1
+// lldb-command:v x
+// lldbg-check:[...] -1
 // lldbr-check:(i32) x = -1
-// lldb-command:print y
-// lldbg-check:[...]$3 = 2.5
+// lldb-command:v y
+// lldbg-check:[...] 2.5
 // lldbr-check:(f64) y = 2.5
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$4 = -2.5
+// lldb-command:v x
+// lldbg-check:[...] -2.5
 // lldbr-check:(f64) x = -2.5
-// lldb-command:print y
-// lldbg-check:[...]$5 = 1
+// lldb-command:v y
+// lldbg-check:[...] 1
 // lldbr-check:(i32) y = 1
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$6 = -2.5
+// lldb-command:v x
+// lldbg-check:[...] -2.5
 // lldbr-check:(f64) x = -2.5
-// lldb-command:print y
-// lldbg-check:[...]$7 = 2.5
+// lldb-command:v y
+// lldbg-check:[...] 2.5
 // lldbr-check:(f64) y = 2.5
 // lldb-command:continue
 
