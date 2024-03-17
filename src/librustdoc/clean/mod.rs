@@ -1572,7 +1572,7 @@ fn first_non_private<'tcx>(
     path: &hir::Path<'tcx>,
 ) -> Option<Path> {
     let target_def_id = path.res.opt_def_id()?;
-    let (parent_def_id, ident) = match &path.segments[..] {
+    let (parent_def_id, ident) = match &path.segments {
         [] => return None,
         // Relative paths are available in the same scope as the owner.
         [leaf] => (cx.tcx.local_parent(hir_id.owner.def_id), leaf.ident),
