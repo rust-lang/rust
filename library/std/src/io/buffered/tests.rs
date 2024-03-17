@@ -318,6 +318,22 @@ fn test_buffered_reader_read_to_string_consumes_buffer() {
 }
 
 #[test]
+fn test_buffered_reader_set_reader() {
+    let data1: &[u8] = "dead\nbeef".as_bytes();
+    let data2: &[u8] = "foo\nbar".as_bytes();
+
+    let mut buf = String::new();
+    let mut reader = BufReader::new(data1);
+    reader.read_line(&mut buf).unwrap();
+    assert_eq!(buf.as_str(), "dead\n");
+
+    let mut buf = String::new();
+    reader.set(data2);
+    reader.read_line(&mut buf).unwrap();
+    assert_eq!(buf.as_str(), "foo\n");
+}
+
+#[test]
 fn test_buffered_writer() {
     let inner = Vec::new();
     let mut writer = BufWriter::with_capacity(2, inner);

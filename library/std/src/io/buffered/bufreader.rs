@@ -225,6 +225,79 @@ impl<R: ?Sized> BufReader<R> {
     pub(in crate::io) fn discard_buffer(&mut self) {
         self.buf.discard_buffer()
     }
+
+    /// Sets the the underlying reader.
+    ///
+    /// Note that any leftover data in the internal buffer is lost. However
+    /// The buffer remains allocated and no new allocation is performed.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(bufreader_set_reader)]
+    ///
+    /// use std::io::{BufRead, BufReader};
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f1 = File::open("log1.txt")?;
+    ///     let f2 = File::open("log2.txt")?;
+    ///     let mut buf = String::new();
+    ///
+    ///     let mut reader = BufReader::new(f1);
+    ///     reader.read_line(&mut buf)?;
+    ///
+    ///     reader.set(f2);
+    ///     reader.read_line(&mut buf)?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "bufreader_set_reader", issue = "none")]
+    pub fn set(&mut self, inner: R)
+    where
+        R: Sized,
+    {
+        self.discard_buffer();
+        self.inner = inner
+    }
+
+    /// Creates a new `BufReader<U>` from this `BufReader<R>`.
+    ///
+    /// Note that any leftover data in the internal buffer is lost. However
+    /// The buffer remains allocated and no new allocation is performed.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(bufreader_set_reader)]
+    ///
+    /// use std::io::{BufRead, BufReader};
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f1 = File::open("log1.txt")?;
+    ///     let f2 = File::open("log2.txt")?;
+    ///     let mut buf = String::new();
+    ///
+    ///     let mut reader = BufReader::new(f1);
+    ///     reader.read_line(&mut buf)?;
+    ///
+    ///     let mut reader = reader.map(f2);
+    ///     reader.read_line(&mut buf)?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "bufreader_set_reader", issue = "none")]
+    #[must_use]
+    pub fn map<U: Read>(mut self, inner: U) -> BufReader<U>
+    where
+        R: Sized,
+    {
+        self.discard_buffer();
+        BufReader { inner, buf: self.buf }
+    }
 }
 
 // This is only used by a test which asserts that the initialization-tracking is correct.
