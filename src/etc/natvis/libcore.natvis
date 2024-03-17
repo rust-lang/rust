@@ -42,7 +42,10 @@
   </Type>
 
   <Type Name="core::num::nonzero::NonZero&lt;*&gt;">
-    <DisplayString>{__0}</DisplayString>
+    <DisplayString>{__0.__0}</DisplayString>
+    <Expand>
+      <ExpandedItem>__0.__0</ExpandedItem>
+    </Expand>
   </Type>
 
   <Type Name="core::num::wrapping::Wrapping&lt;*&gt;">

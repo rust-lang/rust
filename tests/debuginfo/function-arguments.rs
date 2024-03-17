@@ -22,19 +22,19 @@
 
 // lldb-command:run
 
-// lldb-command:print x
-// lldbg-check:[...]$0 = 111102
+// lldb-command:v x
+// lldbg-check:[...] 111102
 // lldbr-check:(isize) x = 111102
-// lldb-command:print y
-// lldbg-check:[...]$1 = true
+// lldb-command:v y
+// lldbg-check:[...] true
 // lldbr-check:(bool) y = true
 // lldb-command:continue
 
-// lldb-command:print a
-// lldbg-check:[...]$2 = 2000
+// lldb-command:v a
+// lldbg-check:[...] 2000
 // lldbr-check:(i32) a = 2000
-// lldb-command:print b
-// lldbg-check:[...]$3 = 3000
+// lldb-command:v b
+// lldbg-check:[...] 3000
 // lldbr-check:(i64) b = 3000
 // lldb-command:continue
 

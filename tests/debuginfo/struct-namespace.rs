@@ -5,18 +5,18 @@
 // Check that structs get placed in the correct namespace
 
 // lldb-command:run
-// lldb-command:p struct1
-// lldbg-check:(struct_namespace::Struct1) $0 = [...]
+// lldb-command:v struct1
+// lldbg-check:(struct_namespace::Struct1)[...]
 // lldbr-check:(struct_namespace::Struct1) struct1 = Struct1 { a: 0, b: 1 }
-// lldb-command:p struct2
-// lldbg-check:(struct_namespace::Struct2) $1 = [...]
+// lldb-command:v struct2
+// lldbg-check:(struct_namespace::Struct2)[...]
 // lldbr-check:(struct_namespace::Struct2) struct2 = { = 2 }
 
-// lldb-command:p mod1_struct1
-// lldbg-check:(struct_namespace::mod1::Struct1) $2 = [...]
+// lldb-command:v mod1_struct1
+// lldbg-check:(struct_namespace::mod1::Struct1)[...]
 // lldbr-check:(struct_namespace::mod1::Struct1) mod1_struct1 = Struct1 { a: 3, b: 4 }
-// lldb-command:p mod1_struct2
-// lldbg-check:(struct_namespace::mod1::Struct2) $3 = [...]
+// lldb-command:v mod1_struct2
+// lldbg-check:(struct_namespace::mod1::Struct2)[...]
 // lldbr-check:(struct_namespace::mod1::Struct2) mod1_struct2 = { = 5 }
 
 #![allow(unused_variables)]

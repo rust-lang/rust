@@ -985,7 +985,14 @@ pub fn transparent_newtype_field<'a, 'tcx>(
 }
 
 /// Is type known to be non-null?
-fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
+fn ty_is_known_nonnull<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    mode: CItemKind,
+) -> bool {
+    let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
+
     match ty.kind() {
         ty::FnPtr(_) => true,
         ty::Ref(..) => true,
@@ -1005,7 +1012,7 @@ fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -
             def.variants()
                 .iter()
                 .filter_map(|variant| transparent_newtype_field(tcx, variant))
-                .any(|field| ty_is_known_nonnull(tcx, field.ty(tcx, args), mode))
+                .any(|field| ty_is_known_nonnull(tcx, param_env, field.ty(tcx, args), mode))
         }
         _ => false,
     }
@@ -1013,7 +1020,13 @@ fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -
 
 /// Given a non-null scalar (or transparent) type `ty`, return the nullable version of that type.
 /// If the type passed in was not scalar, returns None.
-fn get_nullable_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+fn get_nullable_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<Ty<'tcx>> {
+    let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
+
     Some(match *ty.kind() {
         ty::Adt(field_def, field_args) => {
             let inner_field_ty = {
@@ -1029,22 +1042,19 @@ fn get_nullable_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> 
                     .expect("No non-zst fields in transparent type.")
                     .ty(tcx, field_args)
             };
-            return get_nullable_type(tcx, inner_field_ty);
+            return get_nullable_type(tcx, param_env, inner_field_ty);
         }
         ty::Int(ty) => Ty::new_int(tcx, ty),
         ty::Uint(ty) => Ty::new_uint(tcx, ty),
         ty::RawPtr(ty_mut) => Ty::new_ptr(tcx, ty_mut),
         // As these types are always non-null, the nullable equivalent of
-        // Option<T> of these types are their raw pointer counterparts.
+        // `Option<T>` of these types are their raw pointer counterparts.
         ty::Ref(_region, ty, mutbl) => Ty::new_ptr(tcx, ty::TypeAndMut { ty, mutbl }),
-        ty::FnPtr(..) => {
-            // There is no nullable equivalent for Rust's function pointers -- you
-            // must use an Option<fn(..) -> _> to represent it.
-            ty
-        }
-
-        // We should only ever reach this case if ty_is_known_nonnull is extended
-        // to other types.
+        // There is no nullable equivalent for Rust's function pointers,
+        // you must use an `Option<fn(..) -> _>` to represent it.
+        ty::FnPtr(..) => ty,
+        // We should only ever reach this case if `ty_is_known_nonnull` is
+        // extended to other types.
         ref unhandled => {
             debug!(
                 "get_nullable_type: Unhandled scalar kind: {:?} while checking {:?}",
@@ -1057,7 +1067,7 @@ fn get_nullable_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> 
 
 /// Check if this enum can be safely exported based on the "nullable pointer optimization". If it
 /// can, return the type that `ty` can be safely converted to, otherwise return `None`.
-/// Currently restricted to function pointers, boxes, references, `core::num::NonZero*`,
+/// Currently restricted to function pointers, boxes, references, `core::num::NonZero`,
 /// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
 /// FIXME: This duplicates code in codegen.
 pub(crate) fn repr_nullable_ptr<'tcx>(
@@ -1076,7 +1086,7 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             _ => return None,
         };
 
-        if !ty_is_known_nonnull(tcx, field_ty, ckind) {
+        if !ty_is_known_nonnull(tcx, param_env, field_ty, ckind) {
             return None;
         }
 
@@ -1100,10 +1110,10 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
                 WrappingRange { start: 0, end }
                     if end == field_ty_scalar.size(&tcx).unsigned_int_max() - 1 =>
                 {
-                    return Some(get_nullable_type(tcx, field_ty).unwrap());
+                    return Some(get_nullable_type(tcx, param_env, field_ty).unwrap());
                 }
                 WrappingRange { start: 1, .. } => {
-                    return Some(get_nullable_type(tcx, field_ty).unwrap());
+                    return Some(get_nullable_type(tcx, param_env, field_ty).unwrap());
                 }
                 WrappingRange { start, end } => {
                     unreachable!("Unhandled start and end range: ({}, {})", start, end)

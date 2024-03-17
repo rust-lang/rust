@@ -202,41 +202,41 @@
 
 // lldb-command:run
 
-// lldb-command:print/d nz_i8
-// lldb-check:[...]$0 = 11 { __0 = 11 }
+// lldb-command:v/d nz_i8
+// lldb-check:[...] 11 { __0 = { 0 = 11 } }
 
-// lldb-command:print nz_i16
-// lldb-check:[...]$1 = 22 { __0 = 22 }
+// lldb-command:v nz_i16
+// lldb-check:[...] 22 { __0 = { 0 = 22 } }
 
-// lldb-command:print nz_i32
-// lldb-check:[...]$2 = 33 { __0 = 33 }
+// lldb-command:v nz_i32
+// lldb-check:[...] 33 { __0 = { 0 = 33 } }
 
-// lldb-command:print nz_i64
-// lldb-check:[...]$3 = 44 { __0 = 44 }
+// lldb-command:v nz_i64
+// lldb-check:[...] 44 { __0 = { 0 = 44 } }
 
-// lldb-command:print nz_i128
-// lldb-check:[...]$4 = 55 { __0 = 55 }
+// lldb-command:v nz_i128
+// lldb-check:[...] 55 { __0 = { 0 = 55 } }
 
-// lldb-command:print nz_isize
-// lldb-check:[...]$5 = 66 { __0 = 66 }
+// lldb-command:v nz_isize
+// lldb-check:[...] 66 { __0 = { 0 = 66 } }
 
-// lldb-command:print/d nz_u8
-// lldb-check:[...]$6 = 77 { __0 = 77 }
+// lldb-command:v/d nz_u8
+// lldb-check:[...] 77 { __0 = { 0 = 77 } }
 
-// lldb-command:print nz_u16
-// lldb-check:[...]$7 = 88 { __0 = 88 }
+// lldb-command:v nz_u16
+// lldb-check:[...] 88 { __0 = { 0 = 88 } }
 
-// lldb-command:print nz_u32
-// lldb-check:[...]$8 = 99 { __0 = 99 }
+// lldb-command:v nz_u32
+// lldb-check:[...] 99 { __0 = { 0 = 99 } }
 
-// lldb-command:print nz_u64
-// lldb-check:[...]$9 = 100 { __0 = 100 }
+// lldb-command:v nz_u64
+// lldb-check:[...] 100 { __0 = { 0 = 100 } }
 
-// lldb-command:print nz_u128
-// lldb-check:[...]$10 = 111 { __0 = 111 }
+// lldb-command:v nz_u128
+// lldb-check:[...] 111 { __0 = { 0 = 111 } }
 
-// lldb-command:print nz_usize
-// lldb-check:[...]$11 = 122 { __0 = 122 }
+// lldb-command:v nz_usize
+// lldb-check:[...] 122 { __0 = { 0 = 122 } }
 #![feature(generic_nonzero)]
 
 use std::num::*;
