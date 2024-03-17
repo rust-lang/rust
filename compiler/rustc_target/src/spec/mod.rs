@@ -55,12 +55,15 @@ use tracing::debug;
 
 pub mod abi;
 pub mod crt_objects;
+pub mod maybe_lazy;
 
 mod base;
 pub use base::apple::deployment_target as current_apple_deployment_target;
 pub use base::apple::platform as current_apple_platform;
 pub use base::apple::sdk_version as current_apple_sdk_version;
 pub use base::avr_gnu::ef_avr_arch;
+
+use maybe_lazy::MaybeLazy;
 
 /// Linker is called through a C/C++ compiler.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
