@@ -25,6 +25,13 @@
 
 #include <iostream>
 
+// for raw `write` in the bad-alloc handler
+#ifdef _MSC_VER
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
 //===----------------------------------------------------------------------===
 //
 // This file defines alternate interfaces to core functions that are more
@@ -88,8 +95,24 @@ static void FatalErrorHandler(void *UserData,
   exit(101);
 }
 
-extern "C" void LLVMRustInstallFatalErrorHandler() {
+// Custom error handler for bad-alloc LLVM errors.
+//
+// It aborts the process without any further allocations, similar to LLVM's
+// default except that may be configured to `throw std::bad_alloc()` instead.
+static void BadAllocErrorHandler(void *UserData,
+                                 const char* Reason,
+                                 bool GenCrashDiag) {
+  const char *OOM = "rustc-LLVM ERROR: out of memory\n";
+  (void)!::write(2, OOM, strlen(OOM));
+  (void)!::write(2, Reason, strlen(Reason));
+  (void)!::write(2, "\n", 1);
+  abort();
+}
+
+extern "C" void LLVMRustInstallErrorHandlers() {
+  install_bad_alloc_error_handler(BadAllocErrorHandler);
   install_fatal_error_handler(FatalErrorHandler);
+  install_out_of_memory_new_handler();
 }
 
 extern "C" void LLVMRustDisableSystemDialogsOnCrash() {
