@@ -154,11 +154,11 @@ toolchain.
    however this is not recommended as it's excrutiatingly slow, and not frequently
    tested for compatability.
 
-2. Start a MINGW64 or MINGW32 shell (depending on whether you want 32-bit
+3. Start a MINGW64 or MINGW32 shell (depending on whether you want 32-bit
    or 64-bit Rust) either from your start menu, or by running `mingw64.exe`
    or `mingw32.exe` from your MSYS2 installation directory (e.g. `C:\msys64`).
 
-3. From this terminal, install the required tools:
+4. From this terminal, install the required tools:
 
    ```sh
    # Update package mirrors (may be needed if you have a fresh install of MSYS2)
@@ -178,7 +178,7 @@ toolchain.
                mingw-w64-x86_64-ninja
    ```
 
-4. Navigate to Rust's source code (or clone it), then build it:
+5. Navigate to Rust's source code (or clone it), then build it:
 
    ```sh
    python x.py setup dist && python x.py build && python x.py install
