@@ -140,7 +140,7 @@ pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
     self::convert::from_digit(num, radix)
 }
 
-/// Returns an iterator that yields the hexadecimal Unicode escape of a
+/// An iterator that yields the hexadecimal Unicode escape of a
 /// character, as `char`s.
 ///
 /// This `struct` is created by the [`escape_unicode`] method on [`char`]. See
@@ -373,7 +373,9 @@ impl fmt::Display for EscapeDebug {
     }
 }
 
-/// Returns an iterator that yields the lowercase equivalent of a `char`.
+/// An iterator that yields the lowercase equivalent of a `char`.
+/// Also implements [`Display`][`core::fmt::Display`], as well as
+/// [`PartialEq`] with itself, the other case iterators, and [`char`].
 ///
 /// This `struct` is created by the [`to_lowercase`] method on [`char`]. See
 /// its documentation for more.
@@ -414,7 +416,46 @@ impl fmt::Display for ToLowercase {
     }
 }
 
-/// Returns an iterator that yields the titlecase equivalent of a `char`.
+// No reflexive impl because it would break type inference
+#[stable(feature = "case_iter_partialeq", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<char> for ToLowercase {
+    #[inline]
+    fn eq(&self, other: &char) -> bool {
+        self.0 == *other
+    }
+}
+
+// Not `derive`d so as not to commit to `StructuralPartialEq`
+#[stable(feature = "case_iter_partialeq", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq for ToLowercase {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[stable(feature = "case_iter_partialeq", since = "CURRENT_RUSTC_VERSION")]
+impl Eq for ToLowercase {}
+
+#[unstable(feature = "titlecase", issue = "none")]
+impl PartialEq<ToTitlecase> for ToLowercase {
+    #[inline]
+    fn eq(&self, other: &ToTitlecase) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[stable(feature = "case_iter_partialeq", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<ToUppercase> for ToLowercase {
+    #[inline]
+    fn eq(&self, other: &ToUppercase) -> bool {
+        self.0 == other.0
+    }
+}
+
+/// An iterator that yields the titlecase equivalent of a `char`.
+/// Also implements [`Display`][`core::fmt::Display`], as well as
+/// [`PartialEq`] with itself, the other case iterators, and [`char`].
 ///
 /// This `struct` is created by the [`to_titlecase`] method on [`char`]. See
 /// its documentation for more.
@@ -455,7 +496,46 @@ impl fmt::Display for ToTitlecase {
     }
 }
 
-/// Returns an iterator that yields the uppercase equivalent of a `char`.
+// No reflexive impl because it would break type inference
+#[unstable(feature = "titlecase", issue = "none")]
+impl PartialEq<char> for ToTitlecase {
+    #[inline]
+    fn eq(&self, other: &char) -> bool {
+        self.0 == *other
+    }
+}
+
+// Not `derive`d so as not to commit to `StructuralPartialEq`
+#[unstable(feature = "titlecase", issue = "none")]
+impl PartialEq for ToTitlecase {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[unstable(feature = "titlecase", issue = "none")]
+impl Eq for ToTitlecase {}
+
+#[unstable(feature = "titlecase", issue = "none")]
+impl PartialEq<ToLowercase> for ToTitlecase {
+    #[inline]
+    fn eq(&self, other: &ToLowercase) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[unstable(feature = "titlecase", issue = "none")]
+impl PartialEq<ToUppercase> for ToTitlecase {
+    #[inline]
+    fn eq(&self, other: &ToUppercase) -> bool {
+        self.0 == other.0
+    }
+}
+
+/// An iterator that yields the uppercase equivalent of a `char`.
+/// Also implements [`Display`][`core::fmt::Display`], as well as
+/// [`PartialEq`] with itself, the other case iterators, and [`char`].
 ///
 /// This `struct` is created by the [`to_uppercase`] method on [`char`]. See
 /// its documentation for more.
@@ -496,7 +576,44 @@ impl fmt::Display for ToUppercase {
     }
 }
 
-#[derive(Debug, Clone)]
+// No reflexive impl because it would break type inference
+#[stable(feature = "case_iter_partialeq", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<char> for ToUppercase {
+    #[inline]
+    fn eq(&self, other: &char) -> bool {
+        self.0 == *other
+    }
+}
+
+// Not `derive`d so as not to commit to `StructuralPartialEq`
+#[stable(feature = "case_iter_partialeq", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq for ToUppercase {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[stable(feature = "case_iter_partialeq", since = "CURRENT_RUSTC_VERSION")]
+impl Eq for ToUppercase {}
+
+#[stable(feature = "case_iter_partialeq", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<ToLowercase> for ToUppercase {
+    #[inline]
+    fn eq(&self, other: &ToLowercase) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[unstable(feature = "titlecase", issue = "none")]
+impl PartialEq<ToTitlecase> for ToUppercase {
+    #[inline]
+    fn eq(&self, other: &ToTitlecase) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum CaseMappingIter {
     Three(char, char, char),
     Two(char, char),
@@ -584,6 +701,13 @@ impl fmt::Display for CaseMappingIter {
             CaseMappingIter::One(c) => f.write_char(c),
             CaseMappingIter::Zero => Ok(()),
         }
+    }
+}
+
+impl PartialEq<char> for CaseMappingIter {
+    #[inline]
+    fn eq(&self, other: &char) -> bool {
+        if let CaseMappingIter::One(c) = self { *c == *other } else { false }
     }
 }
 

@@ -1076,7 +1076,8 @@ impl char {
     }
 
     /// Returns an iterator that yields the lowercase mapping of this `char` as one or more
-    /// `char`s.
+    /// `char`s. The iterator also has implementations of [`Display`][core::fmt::Display]
+    /// and [`PartialEq`].
     ///
     /// If this `char` does not have a lowercase mapping, the iterator yields the same `char`.
     ///
@@ -1134,6 +1135,13 @@ impl char {
     /// // convert into themselves.
     /// assert_eq!('山'.to_lowercase().to_string(), "山");
     /// ```
+    ///
+    /// Check if a string is in lowercase:
+    ///
+    /// ```
+    /// let s = "abcde\u{0301} 山";
+    /// assert!(s.chars().all(|c| c.to_lowercase() == c));
+    /// ```
     #[must_use = "this returns the lowercased character as a new iterator, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1143,7 +1151,8 @@ impl char {
     }
 
     /// Returns an iterator that yields the titlecase mapping of this `char` as one or more
-    /// `char`s.
+    /// `char`s. The iterator also has implementations of [`Display`][core::fmt::Display]
+    /// and [`PartialEq`].
     ///
     /// If this `char` does not have an titlecase mapping, the iterator yields the same `char`.
     ///
@@ -1206,6 +1215,21 @@ impl char {
     /// assert_eq!('山'.to_titlecase().to_string(), "山");
     /// ```
     ///
+    /// Check if a word is in titlecase:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let word = "Dross";
+    /// let mut chars = word.chars();
+    /// let first_cased_char = chars.find(|c| c.is_cased());
+    /// let word_is_in_titlecase = if let Some(f) = first_cased_char {
+    ///     f.to_titlecase() == f && chars.all(|c| c.to_lowercase() == c)
+    /// } else {
+    ///     true
+    /// };
+    /// assert!(word_is_in_titlecase);
+    /// ```
+    ///
     /// # Note on locale
     ///
     /// In Turkish and Azeri, the equivalent of 'i' in Latin has five forms instead of two:
@@ -1241,7 +1265,8 @@ impl char {
     }
 
     /// Returns an iterator that yields the uppercase mapping of this `char` as one or more
-    /// `char`s.
+    /// `char`s. The iterator also has implementations of [`Display`][core::fmt::Display]
+    /// and [`PartialEq`].
     ///
     /// If this `char` does not have an uppercase mapping, the iterator yields the same `char`.
     ///
@@ -1298,6 +1323,13 @@ impl char {
     /// // Characters that do not have both uppercase and lowercase
     /// // convert into themselves.
     /// assert_eq!('山'.to_uppercase().to_string(), "山");
+    /// ```
+    ///
+    /// Check if a string is in uppercase:
+    ///
+    /// ```
+    /// let s = "ABCDE\u{0301} 山";
+    /// assert!(s.chars().all(|c| c.to_uppercase() == c));
     /// ```
     ///
     /// # Note on locale
