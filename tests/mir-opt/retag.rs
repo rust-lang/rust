@@ -8,8 +8,8 @@
 
 struct Test(i32);
 
-// EMIT_MIR retag.{impl#0}-foo.SimplifyCfg-elaborate-drops.after.mir
-// EMIT_MIR retag.{impl#0}-foo_shr.SimplifyCfg-elaborate-drops.after.mir
+// EMIT_MIR retag.{impl#0}-foo.SimplifyCfg-pre-optimizations.after.mir
+// EMIT_MIR retag.{impl#0}-foo_shr.SimplifyCfg-pre-optimizations.after.mir
 impl Test {
     // Make sure we run the pass on a method, not just on bare functions.
     fn foo<'x>(&self, x: &'x mut i32) -> &'x mut i32 {
@@ -26,8 +26,8 @@ impl Drop for Test {
     fn drop(&mut self) {}
 }
 
-// EMIT_MIR retag.main.SimplifyCfg-elaborate-drops.after.mir
-// EMIT_MIR retag.main-{closure#0}.SimplifyCfg-elaborate-drops.after.mir
+// EMIT_MIR retag.main.SimplifyCfg-pre-optimizations.after.mir
+// EMIT_MIR retag.main-{closure#0}.SimplifyCfg-pre-optimizations.after.mir
 pub fn main() {
     let mut x = 0;
     {
@@ -55,7 +55,7 @@ pub fn main() {
 }
 
 /// Casting directly to an array should also go through `&raw` and thus add appropriate retags.
-// EMIT_MIR retag.array_casts.SimplifyCfg-elaborate-drops.after.mir
+// EMIT_MIR retag.array_casts.SimplifyCfg-pre-optimizations.after.mir
 fn array_casts() {
     let mut x: [usize; 2] = [0, 0];
     let p = &mut x as *mut usize;
