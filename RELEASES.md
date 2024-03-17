@@ -12,7 +12,8 @@ Language
 - [Add lint `static_mut_refs` to warn on references to mutable statics.](https://github.com/rust-lang/rust/pull/117556/)
 - [Support async recursive calls (as long as they have indirection).](https://github.com/rust-lang/rust/pull/117703/)
 - [Undeprecate lint `unstable_features` and make use of it in the compiler.](https://github.com/rust-lang/rust/pull/118639/)
-- [Get rid of type-driven traversal in const-eval interning.](https://github.com/rust-lang/rust/pull/119044/)
+- [Get rid of type-driven traversal in const-eval interning](https://github.com/rust-lang/rust/pull/119044/),
+  only as a [future compatiblity lint](https://github.com/rust-lang/rust/pull/122204) for now.
 - [Deny braced macro invocations in let-else.](https://github.com/rust-lang/rust/pull/119062/)
 
 <!-- TODO: remaining T-types changes => lang or compiler? -->
