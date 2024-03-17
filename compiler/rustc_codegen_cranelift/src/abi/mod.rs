@@ -593,6 +593,7 @@ pub(crate) fn codegen_drop<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     source_info: mir::SourceInfo,
     drop_place: CPlace<'tcx>,
+    target: BasicBlock,
 ) {
     let ty = drop_place.layout().ty;
     let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty).polymorphize(fx.tcx);
@@ -619,6 +620,12 @@ pub(crate) fn codegen_drop<'tcx>(
                 let (ptr, vtable) = drop_place.to_ptr_unsized();
                 let ptr = ptr.get_addr(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable);
+
+                let is_null = fx.bcx.ins().icmp_imm(IntCC::Equal, drop_fn, 0);
+                let target_block = fx.get_block(target);
+                let continued = fx.bcx.create_block();
+                fx.bcx.ins().brif(is_null, target_block, &[], continued, &[]);
+                fx.bcx.switch_to_block(continued);
 
                 // FIXME(eddyb) perhaps move some of this logic into
                 // `Instance::resolve_drop_in_place`?
@@ -659,6 +666,12 @@ pub(crate) fn codegen_drop<'tcx>(
                 let (data, vtable) = drop_place.to_cvalue(fx).dyn_star_force_data_on_stack(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable);
 
+                let is_null = fx.bcx.ins().icmp_imm(IntCC::Equal, drop_fn, 0);
+                let target_block = fx.get_block(target);
+                let continued = fx.bcx.create_block();
+                fx.bcx.ins().brif(is_null, target_block, &[], continued, &[]);
+                fx.bcx.switch_to_block(continued);
+
                 let virtual_drop = Instance {
                     def: ty::InstanceDef::Virtual(drop_instance.def_id(), 0),
                     args: drop_instance.args,
@@ -697,4 +710,7 @@ pub(crate) fn codegen_drop<'tcx>(
             }
         }
     }
+
+    let target_block = fx.get_block(target);
+    fx.bcx.ins().jump(target_block, &[]);
 }
