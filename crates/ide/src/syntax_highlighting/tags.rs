@@ -54,6 +54,8 @@ pub enum HlMod {
     Attribute,
     /// Callable item or value.
     Callable,
+    /// Constant operation.
+    Const,
     /// Value that is being consumed in a function call
     Consuming,
     /// Used with keywords like `if` and `break`.
@@ -211,6 +213,7 @@ impl HlMod {
         HlMod::Async,
         HlMod::Attribute,
         HlMod::Callable,
+        HlMod::Const,
         HlMod::Consuming,
         HlMod::ControlFlow,
         HlMod::CrateRoot,
@@ -237,6 +240,7 @@ impl HlMod {
             HlMod::Attribute => "attribute",
             HlMod::Callable => "callable",
             HlMod::Consuming => "consuming",
+            HlMod::Const => "const",
             HlMod::ControlFlow => "control",
             HlMod::CrateRoot => "crate_root",
             HlMod::DefaultLibrary => "default_library",

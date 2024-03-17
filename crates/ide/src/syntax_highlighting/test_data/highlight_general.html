@@ -119,7 +119,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword control">loop</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="brace">}</span>
 
-<span class="keyword">fn</span> <span class="function declaration">const_param</span><span class="angle">&lt;</span><span class="keyword">const</span> <span class="const_param declaration">FOO</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">usize</span> <span class="brace">{</span>
+<span class="keyword">fn</span> <span class="function declaration">const_param</span><span class="angle">&lt;</span><span class="keyword const">const</span> <span class="const_param declaration">FOO</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">usize</span> <span class="brace">{</span>
     <span class="function">const_param</span><span class="operator">::</span><span class="angle">&lt;</span><span class="brace">{</span> <span class="const_param">FOO</span> <span class="brace">}</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="const_param">FOO</span>
 <span class="brace">}</span>
@@ -200,7 +200,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">fn</span> <span class="function declaration">use_foo_items</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
     <span class="keyword">let</span> <span class="variable declaration">bob</span> <span class="operator">=</span> <span class="module crate_root library">foo</span><span class="operator">::</span><span class="struct library">Person</span> <span class="brace">{</span>
         <span class="field library">name</span><span class="colon">:</span> <span class="string_literal">"Bob"</span><span class="comma">,</span>
-        <span class="field library">age</span><span class="colon">:</span> <span class="module crate_root library">foo</span><span class="operator">::</span><span class="module library">consts</span><span class="operator">::</span><span class="constant library">NUMBER</span><span class="comma">,</span>
+        <span class="field library">age</span><span class="colon">:</span> <span class="module crate_root library">foo</span><span class="operator">::</span><span class="module library">consts</span><span class="operator">::</span><span class="constant const library">NUMBER</span><span class="comma">,</span>
     <span class="brace">}</span><span class="semicolon">;</span>
 
     <span class="keyword">let</span> <span class="variable declaration">control_flow</span> <span class="operator">=</span> <span class="module crate_root library">foo</span><span class="operator">::</span><span class="function library">identity</span><span class="parenthesis">(</span><span class="module crate_root library">foo</span><span class="operator">::</span><span class="enum library">ControlFlow</span><span class="operator">::</span><span class="enum_variant library">Continue</span><span class="parenthesis">)</span><span class="semicolon">;</span>
@@ -213,11 +213,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">pub</span> <span class="keyword">enum</span> <span class="enum declaration public">Bool</span> <span class="brace">{</span> <span class="enum_variant declaration public">True</span><span class="comma">,</span> <span class="enum_variant declaration public">False</span> <span class="brace">}</span>
 
 <span class="keyword">impl</span> <span class="enum public">Bool</span> <span class="brace">{</span>
-    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function associated consuming declaration public">to_primitive</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
+    <span class="keyword">pub</span> <span class="keyword const">const</span> <span class="keyword">fn</span> <span class="function associated const consuming declaration public">to_primitive</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
         <span class="bool_literal">true</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
-<span class="keyword">const</span> <span class="constant declaration">USAGE_OF_BOOL</span><span class="colon">:</span><span class="builtin_type">bool</span> <span class="operator">=</span> <span class="enum public">Bool</span><span class="operator">::</span><span class="enum_variant public">True</span><span class="operator">.</span><span class="function associated consuming public">to_primitive</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+<span class="keyword const">const</span> <span class="constant const declaration">USAGE_OF_BOOL</span><span class="colon">:</span><span class="builtin_type">bool</span> <span class="operator">=</span> <span class="enum public">Bool</span><span class="operator">::</span><span class="enum_variant public">True</span><span class="operator">.</span><span class="function associated consuming public">to_primitive</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 
 <span class="keyword">trait</span> <span class="trait declaration">Baz</span> <span class="brace">{</span>
     <span class="keyword">type</span> <span class="type_alias associated declaration trait">Qux</span><span class="semicolon">;</span>

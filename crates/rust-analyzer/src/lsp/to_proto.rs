@@ -646,7 +646,10 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::Impl => semantic_tokens::TYPE_ALIAS,
             SymbolKind::Field => semantic_tokens::PROPERTY,
             SymbolKind::TypeParam => semantic_tokens::TYPE_PARAMETER,
-            SymbolKind::ConstParam => semantic_tokens::CONST_PARAMETER,
+            SymbolKind::ConstParam => {
+                mods |= semantic_tokens::CONSTANT;
+                semantic_tokens::CONST_PARAMETER
+            }
             SymbolKind::LifetimeParam => semantic_tokens::LIFETIME,
             SymbolKind::Label => semantic_tokens::LABEL,
             SymbolKind::ValueParam => semantic_tokens::PARAMETER,
@@ -721,6 +724,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::Async => semantic_tokens::ASYNC,
             HlMod::Attribute => semantic_tokens::ATTRIBUTE_MODIFIER,
             HlMod::Callable => semantic_tokens::CALLABLE,
+            HlMod::Const => semantic_tokens::CONSTANT,
             HlMod::Consuming => semantic_tokens::CONSUMING,
             HlMod::ControlFlow => semantic_tokens::CONTROL_FLOW,
             HlMod::CrateRoot => semantic_tokens::CRATE_ROOT,

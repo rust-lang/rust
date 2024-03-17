@@ -178,6 +178,7 @@ fn keyword(
         T![do] | T![yeet] if parent_matches::<ast::YeetExpr>(&token) => h | HlMod::ControlFlow,
         T![for] if parent_matches::<ast::ForExpr>(&token) => h | HlMod::ControlFlow,
         T![unsafe] => h | HlMod::Unsafe,
+        T![const] if !parent_matches::<ast::PtrType>(&token) => h | HlMod::Const,
         T![true] | T![false] => HlTag::BoolLiteral.into(),
         // crate is handled just as a token if it's in an `extern crate`
         T![crate] if parent_matches::<ast::ExternCrate>(&token) => h,
@@ -406,6 +407,9 @@ pub(super) fn highlight_def(
             if func.is_async(db) {
                 h |= HlMod::Async;
             }
+            if func.is_const(db) {
+                h |= HlMod::Const;
+            }
 
             h
         }
@@ -420,7 +424,7 @@ pub(super) fn highlight_def(
         }
         Definition::Variant(_) => Highlight::new(HlTag::Symbol(SymbolKind::Variant)),
         Definition::Const(konst) => {
-            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Const));
+            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Const)) | HlMod::Const;
 
             if let Some(item) = konst.as_assoc_item(db) {
                 h |= HlMod::Associated;
