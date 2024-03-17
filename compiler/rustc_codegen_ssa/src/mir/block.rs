@@ -1471,9 +1471,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
-            if let PassMode::Cast { cast: ty, .. } = &arg.mode {
-                let llty = bx.cast_backend_type(ty);
-                llval = bx.load(llty, llval, align.min(arg.layout.align.abi));
+            if let PassMode::Cast { cast, pad_i32: _ } = &arg.mode {
+                // The ABI mandates that the value is passed as a different struct representation.
+                // Spill and reload it from the stack to convert from the Rust representation to
+                // the ABI representation.
+                let scratch_size = cast.size(bx);
+                let scratch_align = cast.align(bx);
+                // Note that the ABI type may be either larger or smaller than the Rust type,
+                // due to the presence or absence of trailing padding. For example:
+                // - On some ABIs, the Rust layout { f64, f32, <f32 padding> } may omit padding
+                //   when passed by value, making it smaller.
+                // - On some ABIs, the Rust layout { u16, u16, u16 } may be padded up to 8 bytes
+                //   when passed by value, making it larger.
+                let copy_bytes = cmp::min(scratch_size.bytes(), arg.layout.size.bytes());
+                // Allocate some scratch space...
+                let llscratch = bx.alloca(bx.cast_backend_type(cast), scratch_align);
+                bx.lifetime_start(llscratch, scratch_size);
+                // ...memcpy the value...
+                bx.memcpy(
+                    llscratch,
+                    scratch_align,
+                    llval,
+                    align,
+                    bx.const_usize(copy_bytes),
+                    MemFlags::empty(),
+                );
+                // ...and then load it with the ABI type.
+                let cast_ty = bx.cast_backend_type(cast);
+                llval = bx.load(cast_ty, llscratch, scratch_align);
+                bx.lifetime_end(llscratch, scratch_size);
             } else {
                 // We can't use `PlaceRef::load` here because the argument
                 // may have a type we don't treat as immediate, but the ABI
