@@ -1219,7 +1219,9 @@ fn benchmark_syntax_highlighting_parser() {
             .highlight(HL_CONFIG, file_id)
             .unwrap()
             .iter()
-            .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Function))
+            .filter(|it| {
+                matches!(it.highlight.tag, HlTag::Symbol(SymbolKind::Function | SymbolKind::Method))
+            })
             .count()
     };
     assert_eq!(hash, 1169);
