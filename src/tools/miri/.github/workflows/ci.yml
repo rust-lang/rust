@@ -206,7 +206,7 @@ jobs:
         run: |
           PR=$(gh pr create -B master --title 'Automatic Rustup' --body '')
           ~/.local/bin/zulip-send --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com \
-            --stream miri --subject "Cron Job Failure (miri, $(date -u +%Y-%m))" \
+            --stream miri --subject "Miri Build Failure ($(date -u +%Y-%m))" \
             --message "A PR doing a rustc-pull [has been automatically created]($PR) for your convenience."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
