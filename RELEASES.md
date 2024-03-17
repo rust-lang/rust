@@ -9,7 +9,9 @@ Language
 - [Reveal opaque types within the defining body for exhaustiveness checking.](https://github.com/rust-lang/rust/pull/116821/)
 - [Stabilize C-string literals.](https://github.com/rust-lang/rust/pull/117472/)
 - [Stabilize THIR unsafeck.](https://github.com/rust-lang/rust/pull/117673/)
+- [Add lint `static_mut_refs` to warn on references to mutable statics.](https://github.com/rust-lang/rust/pull/117556/)
 - [Support async recursive calls (as long as they have indirection).](https://github.com/rust-lang/rust/pull/117703/)
+- [Undeprecate lint `unstable_features` and make use of it in the compiler.](https://github.com/rust-lang/rust/pull/118639/)
 - [Get rid of type-driven traversal in const-eval interning.](https://github.com/rust-lang/rust/pull/119044/)
 - [Deny braced macro invocations in let-else.](https://github.com/rust-lang/rust/pull/119062/)
 
@@ -25,8 +27,6 @@ Compiler
 
 - [Include lint `soft_unstable` in future breakage reports.](https://github.com/rust-lang/rust/pull/116274/)
 - [Make `i128` and `u128` 16-byte aligned on x86-based targets.](https://github.com/rust-lang/rust/pull/116672/)
-- [Add lint `static_mut_refs` to warn on references to mutable statics.](https://github.com/rust-lang/rust/pull/117556/)
-- [Undeprecate lint `unstable_features` and make use of it in the compiler.](https://github.com/rust-lang/rust/pull/118639/)
 - [Use `--verbose` in diagnostic output.](https://github.com/rust-lang/rust/pull/119129/)
 - [Improve spacing between printed tokens.](https://github.com/rust-lang/rust/pull/120227/)
 - [Merge the `unused_tuple_struct_fields` lint into `dead_code`.](https://github.com/rust-lang/rust/pull/118297/)
