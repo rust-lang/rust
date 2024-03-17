@@ -1,4 +1,5 @@
 #![warn(clippy::incompatible_msrv)]
+#![allow(clippy::diverging_sub_expression)]
 #![feature(custom_inner_attributes)]
 #![allow(stable_features)]
 #![feature(strict_provenance)] // For use in test
