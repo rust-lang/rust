@@ -236,6 +236,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::instant_subtraction::MANUAL_INSTANT_ELAPSED_INFO,
     crate::instant_subtraction::UNCHECKED_DURATION_SUBTRACTION_INFO,
     crate::int_plus_one::INT_PLUS_ONE_INFO,
+    crate::integer_division_remainder_used::INTEGER_DIVISION_REMAINDER_USED_INFO,
     crate::invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS_INFO,
     crate::item_name_repetitions::ENUM_VARIANT_NAMES_INFO,
     crate::item_name_repetitions::MODULE_INCEPTION_INFO,
