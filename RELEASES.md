@@ -25,7 +25,7 @@ Compiler
 
 - [Include lint `soft_unstable` in future breakage reports.](https://github.com/rust-lang/rust/pull/116274/)
 - [Make `i128` and `u128` 16-byte aligned on x86-based targets.](https://github.com/rust-lang/rust/pull/116672/)
-- [Add lint `static_mut_ref` to warn on references to mutable statics.](https://github.com/rust-lang/rust/pull/117556/)
+- [Add lint `static_mut_refs` to warn on references to mutable statics.](https://github.com/rust-lang/rust/pull/117556/)
 - [Undeprecate lint `unstable_features` and make use of it in the compiler.](https://github.com/rust-lang/rust/pull/118639/)
 - [Use `--verbose` in diagnostic output.](https://github.com/rust-lang/rust/pull/119129/)
 - [Improve spacing between printed tokens.](https://github.com/rust-lang/rust/pull/120227/)
@@ -102,7 +102,7 @@ Rustdoc
 Misc
 ----
 
-- [Use version-sorting for all sorting.](https://github.com/rust-lang/rust/pull/115046/)
+- [Recommend version-sorting for all sorting in style guide.](https://github.com/rust-lang/rust/pull/115046/)
 
 <a id="1.77.0-Compatibility-Notes"></a>
 
