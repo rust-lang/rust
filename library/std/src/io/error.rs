@@ -83,7 +83,7 @@ impl From<alloc::ffi::NulError> for Error {
     }
 }
 
-#[stable(feature = "io_error_from_try_reserve", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "io_error_from_try_reserve", since = "1.78.0")]
 impl From<alloc::collections::TryReserveError> for Error {
     /// Converts `TryReserveError` to an error with [`ErrorKind::OutOfMemory`].
     ///

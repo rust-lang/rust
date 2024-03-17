@@ -81,7 +81,7 @@ impl Barrier {
     /// let barrier = Barrier::new(10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_barrier", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_barrier", since = "1.78.0")]
     #[must_use]
     #[inline]
     pub const fn new(n: usize) -> Barrier {
