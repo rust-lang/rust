@@ -859,28 +859,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             })
             .sum();
 
-        /// Look for `break` expressions within any arbitrary expressions. We'll do this to infer
-        /// whether this is a case where the moved value would affect the exit of a loop, making it
-        /// unsuitable for a `.clone()` suggestion.
-        struct BreakFinder {
-            found_breaks: Vec<(hir::Destination, Span)>,
-            found_continues: Vec<(hir::Destination, Span)>,
-        }
-        impl<'hir> Visitor<'hir> for BreakFinder {
-            fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
-                match ex.kind {
-                    hir::ExprKind::Break(destination, _) => {
-                        self.found_breaks.push((destination, ex.span));
-                    }
-                    hir::ExprKind::Continue(destination) => {
-                        self.found_continues.push((destination, ex.span));
-                    }
-                    _ => {}
-                }
-                hir::intravisit::walk_expr(self, ex);
-            }
-        }
-
         let sm = tcx.sess.source_map();
         if let Some(in_loop) = outer_most_loop {
             let mut finder = BreakFinder { found_breaks: vec![], found_continues: vec![] };
@@ -3940,6 +3918,28 @@ impl<'a, 'v> Visitor<'v> for ReferencedStatementsVisitor<'a> {
             }
             _ => {}
         }
+    }
+}
+
+/// Look for `break` expressions within any arbitrary expressions. We'll do this to infer
+/// whether this is a case where the moved value would affect the exit of a loop, making it
+/// unsuitable for a `.clone()` suggestion.
+struct BreakFinder {
+    found_breaks: Vec<(hir::Destination, Span)>,
+    found_continues: Vec<(hir::Destination, Span)>,
+}
+impl<'hir> Visitor<'hir> for BreakFinder {
+    fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
+        match ex.kind {
+            hir::ExprKind::Break(destination, _) => {
+                self.found_breaks.push((destination, ex.span));
+            }
+            hir::ExprKind::Continue(destination) => {
+                self.found_continues.push((destination, ex.span));
+            }
+            _ => {}
+        }
+        hir::intravisit::walk_expr(self, ex);
     }
 }
 
