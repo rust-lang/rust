@@ -105,13 +105,6 @@ Misc
 
 - [Recommend version-sorting for all sorting in style guide.](https://github.com/rust-lang/rust/pull/115046/)
 
-<a id="1.77.0-Compatibility-Notes"></a>
-
-Compatibility Notes
--------------------
-
-<!-- TODO -->
-
 <a id="1.77.0-Internal-Changes"></a>
 
 Internal Changes
