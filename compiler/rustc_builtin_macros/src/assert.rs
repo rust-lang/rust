@@ -3,9 +3,9 @@ mod context;
 use crate::edition_panic::use_panic_2021;
 use crate::errors;
 use rustc_ast::ptr::P;
-use rustc_ast::token;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
+use rustc_ast::{self as ast, token};
 use rustc_ast::{DelimArgs, Expr, ExprKind, MacCall, Path, PathSegment, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
@@ -20,7 +20,7 @@ pub fn expand_assert<'cx>(
     span: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
-    let Assert { cond_expr, custom_message } = match parse_assert(cx, span, tts) {
+    let Assert { cond_expr, inner_cond_expr, custom_message } = match parse_assert(cx, span, tts) {
         Ok(assert) => assert,
         Err(err) => {
             let guar = err.emit();
@@ -70,7 +70,9 @@ pub fn expand_assert<'cx>(
     //
     // FIXME(c410-f3r) See https://github.com/rust-lang/rust/issues/96949
     else if cx.ecfg.features.generic_assert {
-        context::Context::new(cx, call_site_span).build(cond_expr, panic_path())
+        // FIXME(estebank): we use the condition the user passed without coercing to `bool` when
+        // `generic_assert` is enabled, but we could use `cond_expr` instead.
+        context::Context::new(cx, call_site_span).build(inner_cond_expr, panic_path())
     }
     // If `generic_assert` is not enabled, only outputs a literal "assertion failed: ..."
     // string
@@ -85,7 +87,7 @@ pub fn expand_assert<'cx>(
                 DUMMY_SP,
                 Symbol::intern(&format!(
                     "assertion failed: {}",
-                    pprust::expr_to_string(&cond_expr)
+                    pprust::expr_to_string(&inner_cond_expr)
                 )),
             )],
         );
@@ -95,8 +97,12 @@ pub fn expand_assert<'cx>(
     ExpandResult::Ready(MacEager::expr(expr))
 }
 
+// `assert!($cond_expr, $custom_message)`
 struct Assert {
+    // `{ let assert_macro: bool = $cond_expr; assert_macro }`
     cond_expr: P<Expr>,
+    // We keep the condition without the `bool` coercion for the panic message.
+    inner_cond_expr: P<Expr>,
     custom_message: Option<TokenStream>,
 }
 
@@ -118,7 +124,7 @@ fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PRes
         return Err(cx.dcx().create_err(errors::AssertRequiresBoolean { span: sp }));
     }
 
-    let cond_expr = parser.parse_expr()?;
+    let inner_cond_expr = parser.parse_expr()?;
 
     // Some crates use the `assert!` macro in the following form (note extra semicolon):
     //
@@ -154,7 +160,54 @@ fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PRes
         return parser.unexpected();
     }
 
-    Ok(Assert { cond_expr, custom_message })
+    let cond_expr = expand_cond(cx, parser, inner_cond_expr.clone());
+    Ok(Assert { cond_expr, inner_cond_expr, custom_message })
+}
+
+fn expand_cond(cx: &ExtCtxt<'_>, parser: Parser<'_>, cond_expr: P<Expr>) -> P<Expr> {
+    let span = cx.with_call_site_ctxt(cond_expr.span);
+    // Coerce the expression to `bool` for more accurate errors. If `assert!` is passed an
+    // expression that isn't `bool`, the type error will point at only the expression and not the
+    // entire macro call. If a non-`bool` is passed that doesn't implement `trait Not`, we won't
+    // talk about traits, we'll just state the appropriate type error.
+    // `let assert_macro: bool = $expr;`
+    let ident = Ident::new(sym::assert_macro, span);
+    let local = P(ast::Local {
+        ty: Some(P(ast::Ty {
+            kind: ast::TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::bool, span))),
+            id: ast::DUMMY_NODE_ID,
+            span,
+            tokens: None,
+        })),
+        pat: parser.mk_pat_ident(span, ast::BindingAnnotation::NONE, ident),
+        kind: ast::LocalKind::Init(cond_expr),
+        id: ast::DUMMY_NODE_ID,
+        span,
+        colon_sp: None,
+        attrs: Default::default(),
+        tokens: None,
+    });
+    // `{ let assert_macro: bool = $expr; assert_macro }`
+    parser.mk_expr(
+        span,
+        ast::ExprKind::Block(
+            parser.mk_block(
+                thin_vec![
+                    parser.mk_stmt(span, ast::StmtKind::Let(local)),
+                    parser.mk_stmt(
+                        span,
+                        ast::StmtKind::Expr(parser.mk_expr(
+                            span,
+                            ast::ExprKind::Path(None, ast::Path::from_ident(ident))
+                        )),
+                    ),
+                ],
+                ast::BlockCheckMode::Default,
+                span,
+            ),
+            None,
+        ),
+    )
 }
 
 fn parse_custom_message(parser: &mut Parser<'_>) -> Option<TokenStream> {
