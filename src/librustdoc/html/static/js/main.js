@@ -346,7 +346,7 @@ function preLoadCss(cssUrl) {
             const list = await descShard.promise;
             return list[descIndex];
         },
-        loadedDescShard: function (crate, shard, data) {
+        loadedDescShard: function(crate, shard, data) {
             this.descShards.get(crate)[shard].resolve(data.split("\n"));
         },
     };

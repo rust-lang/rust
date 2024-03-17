@@ -426,7 +426,7 @@ function loadSearchJS(doc_folder, resource_suffix) {
             const list = await descShard.promise;
             return list[descIndex];
         },
-        loadedDescShard: function (crate, shard, data) {
+        loadedDescShard: function(crate, shard, data) {
             //console.log(this.descShards);
             this.descShards.get(crate)[shard].resolve(data.split("\n"));
         },
