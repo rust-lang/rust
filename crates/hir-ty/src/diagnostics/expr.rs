@@ -11,7 +11,6 @@ use hir_def::{ItemContainerId, Lookup};
 use hir_expand::name;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
-use rustc_pattern_analysis::usefulness::{compute_match_usefulness, PlaceValidity};
 use syntax::{ast, AstNode};
 use tracing::debug;
 use triomphe::Arc;
@@ -234,13 +233,7 @@ impl ExprValidator {
             return;
         }
 
-        let report = match compute_match_usefulness(
-            &cx,
-            m_arms.as_slice(),
-            scrut_ty.clone(),
-            PlaceValidity::ValidOnly,
-            None,
-        ) {
+        let report = match cx.compute_match_usefulness(m_arms.as_slice(), scrut_ty.clone()) {
             Ok(report) => report,
             Err(()) => return,
         };
@@ -282,13 +275,7 @@ impl ExprValidator {
                 continue;
             }
 
-            let report = match compute_match_usefulness(
-                &cx,
-                &[match_arm],
-                ty.clone(),
-                PlaceValidity::ValidOnly,
-                None,
-            ) {
+            let report = match cx.compute_match_usefulness(&[match_arm], ty.clone()) {
                 Ok(v) => v,
                 Err(e) => {
                     debug!(?e, "match usefulness error");

@@ -8,6 +8,7 @@ use rustc_hash::FxHashMap;
 use rustc_pattern_analysis::{
     constructor::{Constructor, ConstructorSet, VariantVisibility},
     index::IdxContainer,
+    usefulness::{compute_match_usefulness, PlaceValidity, UsefulnessReport},
     Captures, PatCx, PrivateUninhabitedField,
 };
 use smallvec::{smallvec, SmallVec};
@@ -57,6 +58,14 @@ impl<'p> MatchCheckCtx<'p> {
         let min_exhaustive_patterns =
             def_map.is_unstable_feature_enabled("min_exhaustive_patterns");
         Self { module, body, db, exhaustive_patterns, min_exhaustive_patterns }
+    }
+
+    pub(crate) fn compute_match_usefulness(
+        &self,
+        arms: &[MatchArm<'p>],
+        scrut_ty: Ty,
+    ) -> Result<UsefulnessReport<'p, Self>, ()> {
+        compute_match_usefulness(self, arms, scrut_ty, PlaceValidity::ValidOnly, None)
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
