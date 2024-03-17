@@ -9,7 +9,7 @@ use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
 use crate::common::{CompareMode, FailMode, PassMode};
 use crate::common::{Config, TestPaths};
 use crate::common::{CoverageMap, CoverageRun, Pretty, RunPassValgrind};
-use crate::common::{UI_COVERAGE, UI_COVERAGE_MAP, UI_RUN_STDERR, UI_RUN_STDOUT};
+use crate::common::{UI_COVERAGE, UI_COVERAGE_HTML, UI_COVERAGE_MAP, UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::compute_diff::{write_diff, write_filtered_diff};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
@@ -579,13 +579,18 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("llvm-cov show failed!", &proc_res);
         }
 
-        let kind = UI_COVERAGE;
+        let is_html = self.props.llvm_cov_flags.iter().any(|s| s.contains("-format=html"));
+        let kind = if is_html { UI_COVERAGE_HTML } else { UI_COVERAGE };
 
         let expected_coverage = self.load_expected_output(kind);
-        let normalized_actual_coverage =
-            self.normalize_coverage_output(&proc_res.stdout).unwrap_or_else(|err| {
+
+        let normalized_actual_coverage = if is_html {
+            self.normalize_coverage_html(&proc_res.stdout)
+        } else {
+            self.normalize_coverage_text(&proc_res.stdout).unwrap_or_else(|err| {
                 self.fatal_proc_rec(&err, &proc_res);
-            });
+            })
+        };
 
         let coverage_errors =
             self.compare_output(kind, &normalized_actual_coverage, &expected_coverage);
@@ -703,17 +708,52 @@ impl<'test> TestCx<'test> {
         proc_res
     }
 
-    fn normalize_coverage_output(&self, coverage: &str) -> Result<String, String> {
-        let normalized = self.normalize_output(coverage, &[]);
-        let normalized = Self::anonymize_coverage_line_numbers(&normalized);
+    fn normalize_coverage_text(&self, coverage: &str) -> Result<String, String> {
+        let coverage = self.normalize_output(coverage, &[]);
+        let coverage = Self::anonymize_coverage_line_numbers(&coverage);
 
-        let mut lines = normalized.lines().collect::<Vec<_>>();
+        let mut lines = coverage.lines().collect::<Vec<_>>();
 
         Self::sort_coverage_file_sections(&mut lines)?;
         Self::sort_coverage_subviews(&mut lines)?;
 
-        let joined_lines = lines.iter().flat_map(|line| [line, "\n"]).collect::<String>();
-        Ok(joined_lines)
+        let coverage = lines.iter().flat_map(|line| [line, "\n"]).collect::<String>();
+        Ok(coverage)
+    }
+
+    fn normalize_coverage_html(&self, coverage: &str) -> String {
+        let coverage = self.normalize_output(&coverage, &[]);
+
+        // HTML coverage reports are produced by a known tool from input we control,
+        // so we can get away with using simple regexes and string replacement.
+
+        // Replace line number hyperlinks with the placeholder `LL`,
+        // so that the tests are less sensitive to lines being added/removed.
+        // (We match a lot of context so that we don't scrub execution counts.)
+        static LINE_NUMBER: Lazy<Regex> = Lazy::new(|| {
+            let re = r"(<td class='line-number'><a) name='L\d+' href='#L\d+'(><pre>)\d+(</pre></a></td>)";
+            //          ^^^^^^^^^^^^^^^^^^^^^^^^^^                           ^^^^^^  LL ^^^^^^^^^^^^^^^
+            Regex::new(re).unwrap()
+        });
+        let coverage = LINE_NUMBER.replace_all(&coverage, "${1}${2}LL${3}");
+
+        // Also remove the line link from "jump to first uncovered line".
+        static JUMP_TO: Lazy<Regex> = Lazy::new(|| {
+            let re = r"(<a) href='#L\d+'(>jump to first)";
+            //          ^^               ^^^^^^^^^^^^^^
+            Regex::new(re).unwrap()
+        });
+        let coverage = JUMP_TO.replace_all(&coverage, "${1}${2}");
+
+        // FIXME(Zalathar): Figure out how to sort file sections, if we ever
+        // need an HTML coverage test with multiple files.
+
+        // Add a line break after `</tr>`, for ease of reading and nicer diffs.
+        let mut coverage = coverage.replace("</tr>", "</tr>\n");
+
+        // Add a final line break so that git doesn't bug us about it.
+        coverage.push('\n');
+        coverage
     }
 
     /// Replace line numbers in coverage reports with the placeholder `LL`,

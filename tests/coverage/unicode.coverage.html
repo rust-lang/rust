@@ -1,0 +1,193 @@
+<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta charset='UTF-8'><style>.red {
+  background-color: #ffd0d0;
+}
+.cyan {
+  background-color: cyan;
+}
+body {
+  font-family: -apple-system, sans-serif;
+}
+pre {
+  margin-top: 0px !important;
+  margin-bottom: 0px !important;
+}
+.source-name-title {
+  padding: 5px 10px;
+  border-bottom: 1px solid #dbdbdb;
+  background-color: #eee;
+  line-height: 35px;
+}
+.centered {
+  display: table;
+  margin-left: left;
+  margin-right: auto;
+  border: 1px solid #dbdbdb;
+  border-radius: 3px;
+}
+.expansion-view {
+  background-color: rgba(0, 0, 0, 0);
+  margin-left: 0px;
+  margin-top: 5px;
+  margin-right: 5px;
+  margin-bottom: 5px;
+  border: 1px solid #dbdbdb;
+  border-radius: 3px;
+}
+table {
+  border-collapse: collapse;
+}
+.light-row {
+  background: #ffffff;
+  border: 1px solid #dbdbdb;
+  border-left: none;
+  border-right: none;
+}
+.light-row-bold {
+  background: #ffffff;
+  border: 1px solid #dbdbdb;
+  border-left: none;
+  border-right: none;
+  font-weight: bold;
+}
+.column-entry {
+  text-align: left;
+}
+.column-entry-bold {
+  font-weight: bold;
+  text-align: left;
+}
+.column-entry-yellow {
+  text-align: left;
+  background-color: #ffffd0;
+}
+.column-entry-yellow:hover, tr:hover .column-entry-yellow {
+  background-color: #fffff0;
+}
+.column-entry-red {
+  text-align: left;
+  background-color: #ffd0d0;
+}
+.column-entry-red:hover, tr:hover .column-entry-red {
+  background-color: #fff0f0;
+}
+.column-entry-gray {
+  text-align: left;
+  background-color: #fbfbfb;
+}
+.column-entry-gray:hover, tr:hover .column-entry-gray {
+  background-color: #f0f0f0;
+}
+.column-entry-green {
+  text-align: left;
+  background-color: #d0ffd0;
+}
+.column-entry-green:hover, tr:hover .column-entry-green {
+  background-color: #f0fff0;
+}
+.line-number {
+  text-align: right;
+  color: #aaa;
+}
+.covered-line {
+  text-align: right;
+  color: #0080ff;
+}
+.uncovered-line {
+  text-align: right;
+  color: #ff3300;
+}
+.tooltip {
+  position: relative;
+  display: inline;
+  background-color: #b3e6ff;
+  text-decoration: none;
+}
+.tooltip span.tooltip-content {
+  position: absolute;
+  width: 100px;
+  margin-left: -50px;
+  color: #FFFFFF;
+  background: #000000;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  visibility: hidden;
+  border-radius: 6px;
+}
+.tooltip span.tooltip-content:after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -8px;
+  width: 0; height: 0;
+  border-top: 8px solid #000000;
+  border-right: 8px solid transparent;
+  border-left: 8px solid transparent;
+}
+:hover.tooltip span.tooltip-content {
+  visibility: visible;
+  opacity: 0.8;
+  bottom: 30px;
+  left: 50%;
+  z-index: 999;
+}
+th, td {
+  vertical-align: top;
+  padding: 2px 8px;
+  border-collapse: collapse;
+  border-right: solid 1px #eee;
+  border-left: solid 1px #eee;
+  text-align: left;
+}
+td pre {
+  display: inline-block;
+}
+td:first-child {
+  border-left: none;
+}
+td:last-child {
+  border-right: none;
+}
+tr:hover {
+  background-color: #f0f0f0;
+}
+tr:last-child {
+  border-bottom: none;
+}
+tr:has(> td >a:target) > td.code > pre {
+  background-color: #ffa;
+}
+</style></head><body><div class='centered'><table><div class='source-name-title'><pre>$DIR/unicode.rs</pre></div><tr><td><pre>Line</pre></td><td><pre>Count</pre></td><td><pre>Source (<a>jump to first uncovered line</a>)</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>//@ edition: 2021</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>//@ llvm-cov-flags: --format=html</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>// Check that column numbers are denoted in bytes, so that they don&apos;t cause</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>// `llvm-cov` to fail or emit malformed output.</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>//</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>// Regression test for &lt;https://github.com/rust-lang/rust/pull/119033&gt;.</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='covered-line'><pre>1</pre></td><td class='code'><pre>fn main() {</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='covered-line'><pre>33</pre></td><td class='code'><pre>    for <div class='tooltip'>_İ<span class='tooltip-content'>32</span></div> in &apos;А&apos;..=&apos;Я&apos; <div class='tooltip'>{ /* Я */ }<span class='tooltip-content'>32</span></div></pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='covered-line'><pre>1</pre></td><td class='code'><pre>    if 申し訳ございません() &amp;&amp; <div class='tooltip'><span class='red'>申し訳ございません()</span><span class='tooltip-content'>0</span></div> <span class='red'>{</span></pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>        println!(&quot;true&quot;);</span></pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='covered-line'><pre>1</pre></td><td class='code'><pre><span class='red'>    }</span></pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='covered-line'><pre>1</pre></td><td class='code'><pre>    サビ();</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='covered-line'><pre>1</pre></td><td class='code'><pre>}</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='covered-line'><pre>1</pre></td><td class='code'><pre>fn 申し訳ございません() -&gt; bool {</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='covered-line'><pre>1</pre></td><td class='code'><pre>    std::hint::black_box(false)</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='covered-line'><pre>1</pre></td><td class='code'><pre>}</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>macro_rules! macro_that_defines_a_function {</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>    (fn $名:ident () $体:tt) =&gt; {</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre>        fn $名 () $体 <span class='red'>fn 他 () {}</span></pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>    }</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>}</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>macro_that_defines_a_function! {</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>    fn サビ() {}</pre></td></tr>
+<tr><td class='line-number'><a><pre>LL</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>}</pre></td></tr>
+</table></div></body></html>
