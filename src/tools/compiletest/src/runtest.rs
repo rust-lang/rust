@@ -82,22 +82,21 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
 }
 
 /// The platform-specific library name
-fn get_lib_name(lib: &str, aux_type: AuxType) -> String {
+fn get_lib_name(lib: &str, aux_type: AuxType) -> Option<String> {
     match aux_type {
+        AuxType::Bin => None,
         // In some cases (e.g. MUSL), we build a static
         // library, rather than a dynamic library.
         // In this case, the only path we can pass
         // with '--extern-meta' is the '.rlib' file
-        AuxType::Lib => format!("lib{}.rlib", lib),
-        AuxType::Dylib => {
-            if cfg!(windows) {
-                format!("{}.dll", lib)
-            } else if cfg!(target_os = "macos") {
-                format!("lib{}.dylib", lib)
-            } else {
-                format!("lib{}.so", lib)
-            }
-        }
+        AuxType::Lib => Some(format!("lib{}.rlib", lib)),
+        AuxType::Dylib => Some(if cfg!(windows) {
+            format!("{}.dll", lib)
+        } else if cfg!(target_os = "macos") {
+            format!("lib{}.dylib", lib)
+        } else {
+            format!("lib{}.so", lib)
+        }),
     }
 }
 
@@ -2099,19 +2098,36 @@ impl<'test> TestCx<'test> {
             create_dir_all(&aux_dir).unwrap();
         }
 
+        if !self.props.aux_bins.is_empty() {
+            let aux_bin_dir = self.aux_bin_output_dir_name();
+            let _ = fs::remove_dir_all(&aux_bin_dir);
+            create_dir_all(&aux_bin_dir).unwrap();
+        }
+
         aux_dir
     }
 
     fn build_all_auxiliary(&self, of: &TestPaths, aux_dir: &Path, rustc: &mut Command) {
         for rel_ab in &self.props.aux_builds {
-            self.build_auxiliary(of, rel_ab, &aux_dir);
+            self.build_auxiliary(of, rel_ab, &aux_dir, false /* is_bin */);
+        }
+
+        for rel_ab in &self.props.aux_bins {
+            self.build_auxiliary(of, rel_ab, &aux_dir, true /* is_bin */);
         }
 
         for (aux_name, aux_path) in &self.props.aux_crates {
-            let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir);
+            let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir, false /* is_bin */);
             let lib_name =
                 get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), aux_type);
-            rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir.display(), lib_name));
+            if let Some(lib_name) = lib_name {
+                rustc.arg("--extern").arg(format!(
+                    "{}={}/{}",
+                    aux_name,
+                    aux_dir.display(),
+                    lib_name
+                ));
+            }
         }
     }
 
@@ -2130,12 +2146,23 @@ impl<'test> TestCx<'test> {
     }
 
     /// Builds an aux dependency.
-    ///
-    /// Returns whether or not it is a dylib.
-    fn build_auxiliary(&self, of: &TestPaths, source_path: &str, aux_dir: &Path) -> AuxType {
+    fn build_auxiliary(
+        &self,
+        of: &TestPaths,
+        source_path: &str,
+        aux_dir: &Path,
+        is_bin: bool,
+    ) -> AuxType {
         let aux_testpaths = self.compute_aux_test_paths(of, source_path);
         let aux_props = self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
-        let aux_output = TargetLocation::ThisDirectory(aux_dir.to_path_buf());
+        let mut aux_dir = aux_dir.to_path_buf();
+        if is_bin {
+            // On unix, the binary of `auxiliary/foo.rs` will be named
+            // `auxiliary/foo` which clashes with the _dir_ `auxiliary/foo`, so
+            // put bins in a `bin` subfolder.
+            aux_dir.push("bin");
+        }
+        let aux_output = TargetLocation::ThisDirectory(aux_dir.clone());
         let aux_cx = TestCx {
             config: self.config,
             props: &aux_props,
@@ -2153,14 +2180,16 @@ impl<'test> TestCx<'test> {
             LinkToAux::No,
             Vec::new(),
         );
-        aux_cx.build_all_auxiliary(of, aux_dir, &mut aux_rustc);
+        aux_cx.build_all_auxiliary(of, &aux_dir, &mut aux_rustc);
 
         for key in &aux_props.unset_rustc_env {
             aux_rustc.env_remove(key);
         }
         aux_rustc.envs(aux_props.rustc_env.clone());
 
-        let (aux_type, crate_type) = if aux_props.no_prefer_dynamic {
+        let (aux_type, crate_type) = if is_bin {
+            (AuxType::Bin, Some("bin"))
+        } else if aux_props.no_prefer_dynamic {
             (AuxType::Dylib, None)
         } else if self.config.target.contains("emscripten")
             || (self.config.target.contains("musl")
@@ -2676,6 +2705,12 @@ impl<'test> TestCx<'test> {
         self.output_base_dir()
             .join("auxiliary")
             .with_extra_extension(self.config.mode.aux_dir_disambiguator())
+    }
+
+    /// Gets the directory where auxiliary binaries are written.
+    /// E.g., `/.../testname.revision.mode/auxiliary/bin`.
+    fn aux_bin_output_dir_name(&self) -> PathBuf {
+        self.aux_output_dir_name().join("bin")
     }
 
     /// Generates a unique name for the test, such as `testname.revision.mode`.
@@ -4829,6 +4864,7 @@ enum LinkToAux {
 }
 
 enum AuxType {
+    Bin,
     Lib,
     Dylib,
 }
