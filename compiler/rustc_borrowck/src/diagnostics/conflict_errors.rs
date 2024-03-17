@@ -1195,8 +1195,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let ty = ty.peel_refs();
         if self.implements_clone(ty) {
             self.suggest_cloning_inner(err, ty, expr);
-            // } else {
-            //     err.note(format!("if `{ty}` implemented `Clone`, you could clone the value"));
+        } else if let ty::Adt(def, args) = ty.kind()
+            && def.did().as_local().is_some()
+            && def.variants().iter().all(|variant| {
+                variant
+                    .fields
+                    .iter()
+                    .all(|field| self.implements_clone(field.ty(self.infcx.tcx, args)))
+            })
+        {
+            err.span_note(
+                self.infcx.tcx.def_span(def.did()),
+                format!("if `{ty}` implemented `Clone`, you could clone the value"),
+            );
         }
     }
 
