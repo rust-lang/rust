@@ -606,7 +606,8 @@ impl Target {
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub(crate) struct TomlConfig {
     changelog_seen: Option<usize>, // FIXME: Deprecated field. Remove it at 2024.
-    change_id: Option<usize>,
+    #[serde(flatten)]
+    change_id: ChangeIdWrapper,
     build: Option<Build>,
     install: Option<Install>,
     llvm: Option<Llvm>,
@@ -614,6 +615,16 @@ pub(crate) struct TomlConfig {
     target: Option<HashMap<String, TomlTarget>>,
     dist: Option<Dist>,
     profile: Option<String>,
+}
+
+/// Since we use `#[serde(deny_unknown_fields)]` on `TomlConfig`, we need a wrapper type
+/// for the "change-id" field to parse it even if other fields are invalid. This ensures
+/// that if deserialization fails due to other fields, we can still provide the changelogs
+/// to allow developers to potentially find the reason for the failure in the logs..
+#[derive(Deserialize, Default)]
+pub(crate) struct ChangeIdWrapper {
+    #[serde(alias = "change-id")]
+    pub(crate) inner: Option<usize>,
 }
 
 /// Describes how to handle conflicts in merging two [`TomlConfig`]
@@ -657,7 +668,7 @@ impl Merge for TomlConfig {
             }
         }
         self.changelog_seen.merge(changelog_seen, replace);
-        self.change_id.merge(change_id, replace);
+        self.change_id.inner.merge(change_id.inner, replace);
         do_merge(&mut self.build, build, replace);
         do_merge(&mut self.install, install, replace);
         do_merge(&mut self.llvm, llvm, replace);
@@ -1210,6 +1221,20 @@ impl Config {
             toml::from_str(&contents)
                 .and_then(|table: toml::Value| TomlConfig::deserialize(table))
                 .unwrap_or_else(|err| {
+                    if let Ok(Some(changes)) = toml::from_str(&contents)
+                        .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table))
+                        .and_then(|change_id| {
+                            Ok(change_id.inner.map(|id| crate::find_recent_config_change_ids(id)))
+                        })
+                    {
+                        if !changes.is_empty() {
+                            println!(
+                                "WARNING: There have been changes to x.py since you last updated:\n{}",
+                                crate::human_readable_changes(&changes)
+                            );
+                        }
+                    }
+
                     eprintln!("failed to parse TOML configuration '{}': {err}", file.display());
                     exit!(2);
                 })
@@ -1376,7 +1401,7 @@ impl Config {
         toml.merge(override_toml, ReplaceOpt::Override);
 
         config.changelog_seen = toml.changelog_seen;
-        config.change_id = toml.change_id;
+        config.change_id = toml.change_id.inner;
 
         let Build {
             build,
