@@ -98,7 +98,7 @@ macro_rules! m1 { ($x:ident) => { ($x } }
 macro_rules! m2 { ($x:ident) => {} }
 
 /* error: macro definition has parse errors */
-/* error: mismatched delimiters */
+/* error: expected ident */
 "#]],
     )
 }

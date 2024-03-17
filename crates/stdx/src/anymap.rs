@@ -194,21 +194,6 @@ impl<'a, A: ?Sized + Downcast, V: IntoBox<A>> VacantEntry<'a, A, V> {
 mod tests {
     use super::*;
 
-    #[derive(Clone, Debug, PartialEq)]
-    struct A(i32);
-    #[derive(Clone, Debug, PartialEq)]
-    struct B(i32);
-    #[derive(Clone, Debug, PartialEq)]
-    struct C(i32);
-    #[derive(Clone, Debug, PartialEq)]
-    struct D(i32);
-    #[derive(Clone, Debug, PartialEq)]
-    struct E(i32);
-    #[derive(Clone, Debug, PartialEq)]
-    struct F(i32);
-    #[derive(Clone, Debug, PartialEq)]
-    struct J(i32);
-
     #[test]
     fn test_varieties() {
         fn assert_send<T: Send>() {}

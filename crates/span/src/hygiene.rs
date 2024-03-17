@@ -26,8 +26,18 @@ use salsa::{InternId, InternValue};
 use crate::MacroCallId;
 
 /// Interned [`SyntaxContextData`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SyntaxContextId(InternId);
+
+impl fmt::Debug for SyntaxContextId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(f, "{}", self.0.as_u32())
+        } else {
+            f.debug_tuple("SyntaxContextId").field(&self.0).finish()
+        }
+    }
+}
 
 impl salsa::InternKey for SyntaxContextId {
     fn from_intern_id(v: salsa::InternId) -> Self {

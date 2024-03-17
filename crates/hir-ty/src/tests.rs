@@ -12,7 +12,7 @@ mod traits;
 
 use std::env;
 
-use base_db::{FileRange, SourceDatabaseExt};
+use base_db::{FileRange, SourceDatabaseExt2 as _};
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
@@ -164,7 +164,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 Some(value) => value,
                 None => continue,
             };
-            let range = node.as_ref().original_file_range(&db);
+            let range = node.as_ref().original_file_range_rooted(&db);
             if let Some(expected) = types.remove(&range) {
                 let actual = if display_source {
                     ty.display_source_code(&db, def.module(&db), true).unwrap()
@@ -180,7 +180,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 Some(value) => value,
                 None => continue,
             };
-            let range = node.as_ref().original_file_range(&db);
+            let range = node.as_ref().original_file_range_rooted(&db);
             if let Some(expected) = types.remove(&range) {
                 let actual = if display_source {
                     ty.display_source_code(&db, def.module(&db), true).unwrap()
@@ -211,7 +211,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             }) else {
                 continue;
             };
-            let range = node.as_ref().original_file_range(&db);
+            let range = node.as_ref().original_file_range_rooted(&db);
             let actual = format!(
                 "expected {}, got {}",
                 mismatch.expected.display_test(&db),
@@ -293,20 +293,29 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         let mut types: Vec<(InFile<SyntaxNode>, &Ty)> = Vec::new();
         let mut mismatches: Vec<(InFile<SyntaxNode>, &TypeMismatch)> = Vec::new();
 
+        if let Some(self_param) = body.self_param {
+            let ty = &inference_result.type_of_binding[self_param];
+            if let Some(syntax_ptr) = body_source_map.self_param_syntax() {
+                let root = db.parse_or_expand(syntax_ptr.file_id);
+                let node = syntax_ptr.map(|ptr| ptr.to_node(&root).syntax().clone());
+                types.push((node.clone(), ty));
+            }
+        }
+
         for (pat, mut ty) in inference_result.type_of_pat.iter() {
             if let Pat::Bind { id, .. } = body.pats[pat] {
                 ty = &inference_result.type_of_binding[id];
             }
-            let syntax_ptr = match body_source_map.pat_syntax(pat) {
+            let node = match body_source_map.pat_syntax(pat) {
                 Ok(sp) => {
                     let root = db.parse_or_expand(sp.file_id);
                     sp.map(|ptr| ptr.to_node(&root).syntax().clone())
                 }
                 Err(SyntheticSyntax) => continue,
             };
-            types.push((syntax_ptr.clone(), ty));
+            types.push((node.clone(), ty));
             if let Some(mismatch) = inference_result.type_mismatch_for_pat(pat) {
-                mismatches.push((syntax_ptr, mismatch));
+                mismatches.push((node, mismatch));
             }
         }
 
@@ -575,7 +584,7 @@ fn salsa_bug() {
         }
     ";
 
-    db.set_file_text(pos.file_id, Arc::from(new_text));
+    db.set_file_text(pos.file_id, new_text);
 
     let module = db.module_for_file(pos.file_id);
     let crate_def_map = module.def_map(&db);

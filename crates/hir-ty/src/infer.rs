@@ -22,7 +22,7 @@ mod pat;
 mod path;
 pub(crate) mod unify;
 
-use std::{convert::identity, ops::Index};
+use std::{convert::identity, iter, ops::Index};
 
 use chalk_ir::{
     cast::Cast, fold::TypeFoldable, interner::HasInterner, DebruijnIndex, Mutability, Safety,
@@ -777,7 +777,15 @@ impl<'a> InferenceContext<'a> {
 
             param_tys.push(va_list_ty)
         }
-        for (ty, pat) in param_tys.into_iter().zip(self.body.params.iter()) {
+        let mut param_tys = param_tys.into_iter().chain(iter::repeat(self.table.new_type_var()));
+        if let Some(self_param) = self.body.self_param {
+            if let Some(ty) = param_tys.next() {
+                let ty = self.insert_type_vars(ty);
+                let ty = self.normalize_associated_types_in(ty);
+                self.write_binding_ty(self_param, ty);
+            }
+        }
+        for (ty, pat) in param_tys.zip(&*self.body.params) {
             let ty = self.insert_type_vars(ty);
             let ty = self.normalize_associated_types_in(ty);
 

@@ -61,15 +61,16 @@ use std::ops::Deref;
 
 use base_db::{CrateId, Edition, FileId};
 use hir_expand::{
-    name::Name, proc_macro::ProcMacroKind, HirFileId, InFile, MacroCallId, MacroDefId,
+    name::Name, proc_macro::ProcMacroKind, ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId,
 };
 use itertools::Itertools;
 use la_arena::Arena;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::FileAstId;
+use span::{FileAstId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{ast, SmolStr};
 use triomphe::Arc;
+use tt::TextRange;
 
 use crate::{
     db::DefDatabase,
@@ -677,12 +678,38 @@ impl ModuleData {
         }
     }
 
+    pub fn definition_source_range(&self, db: &dyn DefDatabase) -> InFile<TextRange> {
+        match &self.origin {
+            &ModuleOrigin::File { definition, .. } | &ModuleOrigin::CrateRoot { definition } => {
+                InFile::new(
+                    definition.into(),
+                    ErasedAstId::new(definition.into(), ROOT_ERASED_FILE_AST_ID)
+                        .to_range(db.upcast()),
+                )
+            }
+            &ModuleOrigin::Inline { definition, definition_tree_id } => InFile::new(
+                definition_tree_id.file_id(),
+                AstId::new(definition_tree_id.file_id(), definition).to_range(db.upcast()),
+            ),
+            ModuleOrigin::BlockExpr { block, .. } => {
+                InFile::new(block.file_id, block.to_range(db.upcast()))
+            }
+        }
+    }
+
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
     /// `None` for the crate root or block.
     pub fn declaration_source(&self, db: &dyn DefDatabase) -> Option<InFile<ast::Module>> {
         let decl = self.origin.declaration()?;
         let value = decl.to_node(db.upcast());
         Some(InFile { file_id: decl.file_id, value })
+    }
+
+    /// Returns the range which declares this module, either a `mod foo;` or a `mod foo {}`.
+    /// `None` for the crate root or block.
+    pub fn declaration_source_range(&self, db: &dyn DefDatabase) -> Option<InFile<TextRange>> {
+        let decl = self.origin.declaration()?;
+        Some(InFile { file_id: decl.file_id, value: decl.to_range(db.upcast()) })
     }
 }
 

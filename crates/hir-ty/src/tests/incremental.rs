@@ -1,6 +1,5 @@
-use base_db::SourceDatabaseExt;
+use base_db::SourceDatabaseExt2 as _;
 use test_fixture::WithFixture;
-use triomphe::Arc;
 
 use crate::{db::HirDatabase, test_db::TestDB};
 
@@ -33,7 +32,7 @@ fn foo() -> i32 {
     1
 }";
 
-    db.set_file_text(pos.file_id, Arc::from(new_text));
+    db.set_file_text(pos.file_id, new_text);
 
     {
         let events = db.log_executed(|| {
@@ -85,7 +84,7 @@ fn baz() -> i32 {
 }
 ";
 
-    db.set_file_text(pos.file_id, Arc::from(new_text));
+    db.set_file_text(pos.file_id, new_text);
 
     {
         let events = db.log_executed(|| {

@@ -11,7 +11,7 @@ use crate::{navigation_target::ToNav, runnables::runnable_fn, Runnable, TryToNav
 
 #[derive(Debug)]
 pub enum TestItemKind {
-    Crate,
+    Crate(CrateId),
     Module,
     Function,
 }
@@ -32,15 +32,17 @@ pub(crate) fn discover_test_roots(db: &RootDatabase) -> Vec<TestItem> {
     crate_graph
         .iter()
         .filter(|&id| crate_graph[id].origin.is_local())
-        .filter_map(|id| Some(crate_graph[id].display_name.as_ref()?.to_string()))
-        .map(|id| TestItem {
-            kind: TestItemKind::Crate,
-            label: id.clone(),
-            id,
-            parent: None,
-            file: None,
-            text_range: None,
-            runnable: None,
+        .filter_map(|id| {
+            let test_id = crate_graph[id].display_name.as_ref()?.to_string();
+            Some(TestItem {
+                kind: TestItemKind::Crate(id),
+                label: test_id.clone(),
+                id: test_id,
+                parent: None,
+                file: None,
+                text_range: None,
+                runnable: None,
+            })
         })
         .collect()
 }
@@ -118,12 +120,13 @@ pub(crate) fn discover_tests_in_crate(db: &RootDatabase, crate_id: CrateId) -> V
     let Some(crate_test_id) = &crate_graph[crate_id].display_name else {
         return vec![];
     };
+    let kind = TestItemKind::Crate(crate_id);
     let crate_test_id = crate_test_id.to_string();
     let crate_id: Crate = crate_id.into();
     let module = crate_id.root_module();
     let mut r = vec![TestItem {
         id: crate_test_id.clone(),
-        kind: TestItemKind::Crate,
+        kind,
         label: crate_test_id.clone(),
         parent: None,
         file: None,

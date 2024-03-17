@@ -190,12 +190,9 @@ impl MatchFinder<'_> {
                     // When matching within a macro expansion, we only want to allow matches of
                     // nodes that originated entirely from within the token tree of the macro call.
                     // i.e. we don't want to match something that came from the macro itself.
-                    self.slow_scan_node(
-                        &expanded,
-                        rule,
-                        &Some(self.sema.original_range(tt.syntax())),
-                        matches_out,
-                    );
+                    if let Some(range) = self.sema.original_range_opt(tt.syntax()) {
+                        self.slow_scan_node(&expanded, rule, &Some(range), matches_out);
+                    }
                 }
             }
         }
@@ -227,7 +224,7 @@ impl MatchFinder<'_> {
             // There is no range restriction.
             return true;
         }
-        let node_range = self.sema.original_range(code);
+        let Some(node_range) = self.sema.original_range_opt(code) else { return false };
         for range in &self.restrict_ranges {
             if range.file_id == node_range.file_id && range.range.contains_range(node_range.range) {
                 return true;

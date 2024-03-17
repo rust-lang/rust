@@ -230,13 +230,13 @@ enum MacroDirectiveKind {
     FnLike {
         ast_id: AstIdWithPath<ast::MacroCall>,
         expand_to: ExpandTo,
-        call_site: Span,
+        ctxt: SyntaxContextId,
     },
     Derive {
         ast_id: AstIdWithPath<ast::Adt>,
         derive_attr: AttrId,
         derive_pos: usize,
-        call_site: Span,
+        ctxt: SyntaxContextId,
     },
     Attr {
         ast_id: AstIdWithPath<ast::Item>,
@@ -1126,7 +1126,7 @@ impl DefCollector<'_> {
             let resolver_def_id = |path| resolver(path).map(|(_, it)| it);
 
             match &directive.kind {
-                MacroDirectiveKind::FnLike { ast_id, expand_to, call_site } => {
+                MacroDirectiveKind::FnLike { ast_id, expand_to, ctxt: call_site } => {
                     let call_id = macro_call_as_call_id(
                         self.db.upcast(),
                         ast_id,
@@ -1146,7 +1146,7 @@ impl DefCollector<'_> {
                         return Resolved::Yes;
                     }
                 }
-                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos, call_site } => {
+                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos, ctxt: call_site } => {
                     let id = derive_macro_as_call_id(
                         self.db,
                         ast_id,
@@ -1266,7 +1266,7 @@ impl DefCollector<'_> {
                                             ast_id,
                                             derive_attr: attr.id,
                                             derive_pos: idx,
-                                            call_site,
+                                            ctxt: call_site.ctx,
                                         },
                                         container: directive.container,
                                     });
@@ -1428,7 +1428,7 @@ impl DefCollector<'_> {
 
         for directive in &self.unresolved_macros {
             match &directive.kind {
-                MacroDirectiveKind::FnLike { ast_id, expand_to, call_site } => {
+                MacroDirectiveKind::FnLike { ast_id, expand_to, ctxt: call_site } => {
                     // FIXME: we shouldn't need to re-resolve the macro here just to get the unresolved error!
                     let macro_call_as_call_id = macro_call_as_call_id(
                         self.db.upcast(),
@@ -1451,12 +1451,16 @@ impl DefCollector<'_> {
                     if let Err(UnresolvedMacro { path }) = macro_call_as_call_id {
                         self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
                             directive.module_id,
-                            MacroCallKind::FnLike { ast_id: ast_id.ast_id, expand_to: *expand_to },
+                            MacroCallKind::FnLike {
+                                ast_id: ast_id.ast_id,
+                                expand_to: *expand_to,
+                                eager: None,
+                            },
                             path,
                         ));
                     }
                 }
-                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos, call_site: _ } => {
+                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos, ctxt: _ } => {
                     self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
                         directive.module_id,
                         MacroCallKind::Derive {
@@ -2285,7 +2289,7 @@ impl ModCollector<'_, '_> {
 
     fn collect_macro_call(
         &mut self,
-        &MacroCall { ref path, ast_id, expand_to, call_site }: &MacroCall,
+        &MacroCall { ref path, ast_id, expand_to, ctxt }: &MacroCall,
         container: ItemContainerId,
     ) {
         let ast_id = AstIdWithPath::new(self.file_id(), ast_id, ModPath::clone(path));
@@ -2299,7 +2303,7 @@ impl ModCollector<'_, '_> {
         if let Ok(res) = macro_call_as_call_id_with_eager(
             db.upcast(),
             &ast_id,
-            call_site,
+            ctxt,
             expand_to,
             self.def_collector.def_map.krate,
             |path| {
@@ -2357,7 +2361,7 @@ impl ModCollector<'_, '_> {
         self.def_collector.unresolved_macros.push(MacroDirective {
             module_id: self.module_id,
             depth: self.macro_depth + 1,
-            kind: MacroDirectiveKind::FnLike { ast_id, expand_to, call_site },
+            kind: MacroDirectiveKind::FnLike { ast_id, expand_to, ctxt },
             container,
         });
     }

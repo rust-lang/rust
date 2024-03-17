@@ -149,12 +149,12 @@ impl ChangeFixture {
         for entry in fixture {
             let text = if entry.text.contains(CURSOR_MARKER) {
                 if entry.text.contains(ESCAPED_CURSOR_MARKER) {
-                    entry.text.replace(ESCAPED_CURSOR_MARKER, CURSOR_MARKER).into()
+                    entry.text.replace(ESCAPED_CURSOR_MARKER, CURSOR_MARKER)
                 } else {
                     let (range_or_offset, text) = extract_range_or_offset(&entry.text);
                     assert!(file_position.is_none());
                     file_position = Some((file_id, range_or_offset));
-                    text.into()
+                    text
                 }
             } else {
                 entry.text.as_str().into()
@@ -251,7 +251,7 @@ impl ChangeFixture {
             fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_owned()));
             roots.push(SourceRoot::new_library(fs));
 
-            source_change.change_file(core_file, Some(mini_core.source_code().into()));
+            source_change.change_file(core_file, Some(mini_core.source_code()));
 
             let all_crates = crate_graph.crates_in_topological_order();
 
@@ -287,7 +287,7 @@ impl ChangeFixture {
             );
             roots.push(SourceRoot::new_library(fs));
 
-            source_change.change_file(proc_lib_file, Some(source.into()));
+            source_change.change_file(proc_lib_file, Some(source));
 
             let all_crates = crate_graph.crates_in_topological_order();
 

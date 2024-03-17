@@ -44,7 +44,10 @@ pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
 
 pub type Span = SpanData<SyntaxContextId>;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+/// Spans represent a region of code, used by the IDE to be able link macro inputs and outputs
+/// together. Positions in spans are relative to some [`SpanAnchor`] to make them more incremental
+/// friendly.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SpanData<Ctx> {
     /// The text range of this span, relative to the anchor.
     /// We need the anchor for incrementality, as storing absolute ranges will require
@@ -56,9 +59,35 @@ pub struct SpanData<Ctx> {
     pub ctx: Ctx,
 }
 
+impl<Ctx: fmt::Debug> fmt::Debug for SpanData<Ctx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            fmt::Debug::fmt(&self.anchor.file_id.index(), f)?;
+            f.write_char(':')?;
+            fmt::Debug::fmt(&self.anchor.ast_id.into_raw(), f)?;
+            f.write_char('@')?;
+            fmt::Debug::fmt(&self.range, f)?;
+            f.write_char('#')?;
+            self.ctx.fmt(f)
+        } else {
+            f.debug_struct("SpanData")
+                .field("range", &self.range)
+                .field("anchor", &self.anchor)
+                .field("ctx", &self.ctx)
+                .finish()
+        }
+    }
+}
+
+impl<Ctx: Copy> SpanData<Ctx> {
+    pub fn eq_ignoring_ctx(self, other: Self) -> bool {
+        self.anchor == other.anchor && self.range == other.range
+    }
+}
+
 impl Span {
     #[deprecated = "dummy spans will panic if surfaced incorrectly, as such they should be replaced appropriately"]
-    pub const DUMMY: Self = SpanData {
+    pub const DUMMY: Self = Self {
         range: TextRange::empty(TextSize::new(0)),
         anchor: SpanAnchor { file_id: FileId::BOGUS, ast_id: ROOT_ERASED_FILE_AST_ID },
         ctx: SyntaxContextId::ROOT,

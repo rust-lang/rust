@@ -176,14 +176,12 @@ impl NavigationTarget {
 
 impl TryToNav for FileSymbol {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
-        let root = db.parse_or_expand(self.loc.hir_file_id);
-        self.loc.ptr.to_node(&root);
         Some(
-            orig_range_with_focus(
+            orig_range_with_focus_r(
                 db,
                 self.loc.hir_file_id,
-                &self.loc.ptr.to_node(&root),
-                Some(self.loc.name_ptr.to_node(&root)),
+                self.loc.ptr.text_range(),
+                Some(self.loc.name_ptr.text_range()),
             )
             .map(|(FileRange { file_id, range: full_range }, focus_range)| {
                 NavigationTarget {
@@ -722,7 +720,21 @@ fn orig_range_with_focus(
     value: &SyntaxNode,
     name: Option<impl AstNode>,
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
-    let Some(name) = name else { return orig_range(db, hir_file, value) };
+    orig_range_with_focus_r(
+        db,
+        hir_file,
+        value.text_range(),
+        name.map(|it| it.syntax().text_range()),
+    )
+}
+
+fn orig_range_with_focus_r(
+    db: &RootDatabase,
+    hir_file: HirFileId,
+    value: TextRange,
+    name: Option<TextRange>,
+) -> UpmappingResult<(FileRange, Option<TextRange>)> {
+    let Some(name) = name else { return orig_range_r(db, hir_file, value) };
 
     let call_kind =
         || db.lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id).kind;
@@ -733,9 +745,9 @@ fn orig_range_with_focus(
             .definition_range(db)
     };
 
-    let value_range = InFile::new(hir_file, value).original_file_range_opt(db);
+    let value_range = InFile::new(hir_file, value).original_node_file_range_opt(db);
     let ((call_site_range, call_site_focus), def_site) =
-        match InFile::new(hir_file, name.syntax()).original_file_range_opt(db) {
+        match InFile::new(hir_file, name).original_node_file_range_opt(db) {
             // call site name
             Some((focus_range, ctxt)) if ctxt.is_root() => {
                 // Try to upmap the node as well, if it ends up in the def site, go back to the call site
@@ -802,7 +814,7 @@ fn orig_range_with_focus(
                 }
             }
             // lost name? can't happen for single tokens
-            None => return orig_range(db, hir_file, value),
+            None => return orig_range_r(db, hir_file, value),
         };
 
     UpmappingResult {
@@ -840,7 +852,18 @@ fn orig_range(
     value: &SyntaxNode,
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     UpmappingResult {
-        call_site: (InFile::new(hir_file, value).original_file_range(db), None),
+        call_site: (InFile::new(hir_file, value).original_file_range_rooted(db), None),
+        def_site: None,
+    }
+}
+
+fn orig_range_r(
+    db: &RootDatabase,
+    hir_file: HirFileId,
+    value: TextRange,
+) -> UpmappingResult<(FileRange, Option<TextRange>)> {
+    UpmappingResult {
+        call_site: (InFile::new(hir_file, value).original_node_file_range(db).0, None),
         def_site: None,
     }
 }

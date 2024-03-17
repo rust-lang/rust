@@ -510,7 +510,7 @@ fn render_notable_trait_comment(
     let mut needs_impl_header = true;
     for (trait_, assoc_types) in notable_traits {
         desc.push_str(if mem::take(&mut needs_impl_header) {
-            " // Implements notable traits: "
+            "// Implements notable traits: "
         } else {
             ", "
         });
@@ -661,7 +661,7 @@ fn closure_ty(
     if let Some(layout) =
         render_memory_layout(config.memory_layout, || original.layout(sema.db), |_| None, |_| None)
     {
-        format_to!(markup, "{layout}");
+        format_to!(markup, " {layout}");
     }
     if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db).into()) {
         push_new_def(hir::Trait::from(trait_).into())
@@ -730,7 +730,7 @@ fn render_memory_layout(
     let config = config?;
     let layout = layout().ok()?;
 
-    let mut label = String::from(" // ");
+    let mut label = String::from("// ");
 
     if let Some(render) = config.size {
         let size = match tag(&layout) {

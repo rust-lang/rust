@@ -171,7 +171,7 @@ impl Project<'_> {
                 ..Default::default()
             },
             roots,
-            false,
+            None,
         );
         config.update(self.config).expect("invalid config");
         config.rediscover_workspaces();
