@@ -40,6 +40,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .keyword            { color: #F0DFAF; font-weight: bold; }
 .control            { font-style: italic; }
 .reference          { font-style: italic; font-weight: bold; }
+.const              { font-weight: bolder; }
 
 .invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
 .unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
@@ -51,7 +52,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">unsafe_deref</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span>
-        <span class="punctuation">*</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="keyword">as</span> <span class="punctuation">*</span><span class="keyword const">const</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="parenthesis">)</span>
+        <span class="punctuation">*</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="keyword">as</span> <span class="punctuation">*</span><span class="keyword">const</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="parenthesis">)</span>
     <span class="brace">}</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 <span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable unsafe">MUT_GLOBAL</span><span class="colon">:</span> <span class="struct">Struct</span> <span class="operator">=</span> <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>

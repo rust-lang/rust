@@ -630,6 +630,52 @@ fn main() {
 }
 
 #[test]
+fn test_const_highlighting() {
+    check_highlighting(
+        r#"
+macro_rules! id {
+    ($($tt:tt)*) => {
+        $($tt)*
+    };
+}
+const CONST_ITEM: *const () = &raw const ();
+const fn const_fn<const CONST_PARAM: ()>(const {}: const fn()) where (): const ConstTrait {
+    CONST_ITEM;
+    CONST_PARAM;
+    const {
+        const || {}
+    }
+    id!(
+        CONST_ITEM;
+        CONST_PARAM;
+        const {
+            const || {}
+        };
+        &raw const ();
+        const
+    );
+}
+trait ConstTrait {
+    const ASSOC_CONST: () = ();
+    const fn assoc_const_fn() {}
+}
+impl const ConstTrait for () {
+    const ASSOC_CONST: () = ();
+    const fn assoc_const_fn() {}
+}
+
+macro_rules! unsafe_deref {
+    () => {
+        *(&() as *const ())
+    };
+}
+"#,
+        expect_file!["./test_data/highlight_const.html"],
+        false,
+    );
+}
+
+#[test]
 fn test_highlight_doc_comment() {
     check_highlighting(
         r#"

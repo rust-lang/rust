@@ -178,7 +178,23 @@ fn keyword(
         T![do] | T![yeet] if parent_matches::<ast::YeetExpr>(&token) => h | HlMod::ControlFlow,
         T![for] if parent_matches::<ast::ForExpr>(&token) => h | HlMod::ControlFlow,
         T![unsafe] => h | HlMod::Unsafe,
-        T![const] if !parent_matches::<ast::PtrType>(&token) => h | HlMod::Const,
+        T![const]
+            if token.parent().map_or(false, |it| {
+                matches!(
+                    it.kind(),
+                    SyntaxKind::CONST
+                        | SyntaxKind::FN
+                        | SyntaxKind::IMPL
+                        | SyntaxKind::BLOCK_EXPR
+                        | SyntaxKind::CLOSURE_EXPR
+                        | SyntaxKind::FN_PTR_TYPE
+                        | SyntaxKind::TYPE_BOUND
+                        | SyntaxKind::CONST_BLOCK_PAT
+                )
+            }) =>
+        {
+            h | HlMod::Const
+        }
         T![true] | T![false] => HlTag::BoolLiteral.into(),
         // crate is handled just as a token if it's in an `extern crate`
         T![crate] if parent_matches::<ast::ExternCrate>(&token) => h,

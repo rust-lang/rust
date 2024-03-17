@@ -414,7 +414,7 @@ StmtList =
   '}'
 
 RefExpr =
-  Attr* '&' ('raw' | 'mut' | 'const') Expr
+  Attr* '&' (('raw' 'const'?)| ('raw'? 'mut') ) Expr
 
 TryExpr =
   Attr* Expr '?'
