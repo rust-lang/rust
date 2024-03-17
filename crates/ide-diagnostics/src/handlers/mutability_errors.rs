@@ -7,7 +7,11 @@ use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 // Diagnostic: need-mut
 //
 // This diagnostic is triggered on mutating an immutable variable.
-pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Diagnostic {
+pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option<Diagnostic> {
+    if d.span.file_id.macro_file().is_some() {
+        // FIXME: Our infra can't handle allow from within macro expansions rn
+        return None;
+    }
     let fixes = (|| {
         if d.local.is_ref(ctx.sema.db) {
             // There is no simple way to add `mut` to `ref x` and `ref mut x`
@@ -29,17 +33,19 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Diagno
             use_range,
         )])
     })();
-    Diagnostic::new_with_syntax_node_ptr(
-        ctx,
-        // FIXME: `E0384` is not the only error that this diagnostic handles
-        DiagnosticCode::RustcHardError("E0384"),
-        format!(
-            "cannot mutate immutable variable `{}`",
-            d.local.name(ctx.sema.db).display(ctx.sema.db)
-        ),
-        d.span,
+    Some(
+        Diagnostic::new_with_syntax_node_ptr(
+            ctx,
+            // FIXME: `E0384` is not the only error that this diagnostic handles
+            DiagnosticCode::RustcHardError("E0384"),
+            format!(
+                "cannot mutate immutable variable `{}`",
+                d.local.name(ctx.sema.db).display(ctx.sema.db)
+            ),
+            d.span,
+        )
+        .with_fixes(fixes),
     )
-    .with_fixes(fixes)
 }
 
 // Diagnostic: unused-mut

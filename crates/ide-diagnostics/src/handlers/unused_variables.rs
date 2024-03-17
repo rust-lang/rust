@@ -14,18 +14,24 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 pub(crate) fn unused_variables(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnusedVariable,
-) -> Diagnostic {
+) -> Option<Diagnostic> {
     let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
+    if ast.file_id.macro_file().is_some() {
+        // FIXME: Our infra can't handle allow from within macro expansions rn
+        return None;
+    }
     let diagnostic_range = ctx.sema.diagnostics_display_range(ast);
     let var_name = d.local.primary_source(ctx.sema.db).syntax().to_string();
-    Diagnostic::new_with_syntax_node_ptr(
-        ctx,
-        DiagnosticCode::RustcLint("unused_variables"),
-        "unused variable",
-        ast,
+    Some(
+        Diagnostic::new_with_syntax_node_ptr(
+            ctx,
+            DiagnosticCode::RustcLint("unused_variables"),
+            "unused variable",
+            ast,
+        )
+        .with_fixes(fixes(&var_name, diagnostic_range, ast.file_id.is_macro()))
+        .experimental(),
     )
-    .with_fixes(fixes(&var_name, diagnostic_range, ast.file_id.is_macro()))
-    .experimental()
 }
 
 fn fixes(var_name: &String, diagnostic_range: FileRange, is_in_marco: bool) -> Option<Vec<Assist>> {
@@ -47,7 +53,7 @@ fn fixes(var_name: &String, diagnostic_range: FileRange, is_in_marco: bool) -> O
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix, check_no_fix};
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn unused_variables_simple() {
@@ -193,7 +199,7 @@ fn main() {
 
     #[test]
     fn no_fix_for_marco() {
-        check_no_fix(
+        check_diagnostics(
             r#"
 macro_rules! my_macro {
     () => {
@@ -202,7 +208,7 @@ macro_rules! my_macro {
 }
 
 fn main() {
-    $0my_macro!();
+    my_macro!();
 }
 "#,
         );
