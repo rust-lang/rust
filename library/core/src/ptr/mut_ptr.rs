@@ -2209,6 +2209,49 @@ impl<T> *mut [T] {
     }
 }
 
+impl<T, const N: usize> *mut [T; N] {
+    /// Returns a raw pointer to the array's buffer.
+    ///
+    /// This is equivalent to casting `self` to `*mut T`, but more type-safe.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(array_ptr_get)]
+    /// use std::ptr;
+    ///
+    /// let arr: *mut [i8; 3] = ptr::null_mut();
+    /// assert_eq!(arr.as_mut_ptr(), ptr::null_mut());
+    /// ```
+    #[inline]
+    #[unstable(feature = "array_ptr_get", issue = "119834")]
+    #[rustc_const_unstable(feature = "array_ptr_get", issue = "119834")]
+    pub const fn as_mut_ptr(self) -> *mut T {
+        self as *mut T
+    }
+
+    /// Returns a raw pointer to a mutable slice containing the entire array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_ptr_get)]
+    ///
+    /// let mut arr = [1, 2, 5];
+    /// let ptr: *mut [i32; 3] = &mut arr;
+    /// unsafe {
+    ///     (&mut *ptr.as_mut_slice())[..2].copy_from_slice(&[3, 4]);
+    /// }
+    /// assert_eq!(arr, [3, 4, 5]);
+    /// ```
+    #[inline]
+    #[unstable(feature = "array_ptr_get", issue = "119834")]
+    #[rustc_const_unstable(feature = "array_ptr_get", issue = "119834")]
+    pub const fn as_mut_slice(self) -> *mut [T] {
+        self
+    }
+}
+
 // Equality for pointers
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *mut T {
