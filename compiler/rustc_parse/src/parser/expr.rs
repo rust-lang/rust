@@ -3991,7 +3991,7 @@ impl<'a> Parser<'a> {
         P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
     }
 
-    pub(crate) fn mk_expr(&self, span: Span, kind: ExprKind) -> P<Expr> {
+    pub fn mk_expr(&self, span: Span, kind: ExprKind) -> P<Expr> {
         self.mk_expr_with_attrs(span, kind, AttrVec::new())
     }
 

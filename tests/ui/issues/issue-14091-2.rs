@@ -13,5 +13,5 @@ fn main() {
     let x = BytePos(1);
 
     assert!(x, x);
-    //~^ ERROR cannot apply unary operator `!` to type `BytePos`
+    //~^ ERROR mismatched types
 }
