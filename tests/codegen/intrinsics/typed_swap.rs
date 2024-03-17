@@ -3,6 +3,7 @@
 //@ [OPT3] compile-flags: -Copt-level=3
 //@ compile-flags: -C no-prepopulate-passes
 //@ only-64bit (so I don't need to worry about usize)
+// ignore-tidy-linelength (the memcpy calls get long)
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
