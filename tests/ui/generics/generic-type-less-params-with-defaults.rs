@@ -15,4 +15,13 @@ fn main() {
     let _x = (1..10).collect::<HashMap>();
     //~^ ERROR missing generics for struct `HashMap`
     //~| SUGGESTION <_, _>
+
+    ().extend::<[(); 0]>({
+        fn not_the_extend() {
+            let _: Vec;
+            //~^ ERROR missing generics for struct `Vec`
+            //~| SUGGESTION <T>
+        }
+        []
+    });
 }
