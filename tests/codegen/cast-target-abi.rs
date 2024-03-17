@@ -67,7 +67,10 @@ extern "C" {
     fn receives_doubledouble(x: DoubleDouble);
     fn returns_doubledouble() -> DoubleDouble;
 
+    // These functions cause an ICE in sparc64 ABI code (https://github.com/rust-lang/rust/issues/122620)
+    #[cfg(not(target_arch = "sparc64"))]
     fn receives_doublefloat(x: DoubleFloat);
+    #[cfg(not(target_arch = "sparc64"))]
     fn returns_doublefloat() -> DoubleFloat;
 }
 
@@ -214,28 +217,41 @@ pub unsafe fn return_doubledouble() -> DoubleDouble {
     returns_doubledouble()
 }
 
-// CHECK-LABEL: @call_doublefloat
+// This test causes an ICE in sparc64 ABI code (https://github.com/rust-lang/rust/issues/122620)
+#[cfg(not(target_arch = "sparc64"))]
+// aarch64-LABEL:     @call_doublefloat
+// loongarch64-LABEL: @call_doublefloat
+// powerpc64-LABEL:   @call_doublefloat
 #[no_mangle]
 pub unsafe fn call_doublefloat() {
     // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [[ABI_TYPE:\[2 x i64\]]], align [[ABI_ALIGN:8]]
     // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [[ABI_TYPE:{ double, float }]], align [[ABI_ALIGN:8]]
     // powerpc64:   [[ABI_ALLOCA:%.+]] = alloca [[ABI_TYPE:\[2 x i64\]]], align [[ABI_ALIGN:8]]
-    // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [[ABI_TYPE:{ double, float, i32, i64 }]], align [[ABI_ALIGN:8]]
 
-    // CHECK: [[RUST_ALLOCA:%.+]] = alloca %DoubleFloat, align [[RUST_ALIGN:8]]
+    // aarch64:     [[RUST_ALLOCA:%.+]] = alloca %DoubleFloat, align [[RUST_ALIGN:8]]
+    // loongarch64: [[RUST_ALLOCA:%.+]] = alloca %DoubleFloat, align [[RUST_ALIGN:8]]
+    // powerpc64:   [[RUST_ALLOCA:%.+]] = alloca %DoubleFloat, align [[RUST_ALIGN:8]]
 
     // aarch64:     call void @llvm.memcpy.{{.+}}(ptr align [[ABI_ALIGN]] [[ABI_ALLOCA]], ptr align [[RUST_ALIGN]] [[RUST_ALLOCA]], i64 16, i1 false)
     // loongarch64: call void @llvm.memcpy.{{.+}}(ptr align [[ABI_ALIGN]] [[ABI_ALLOCA]], ptr align [[RUST_ALIGN]] [[RUST_ALLOCA]], i64 12, i1 false)
     // powerpc64:   call void @llvm.memcpy.{{.+}}(ptr align [[ABI_ALIGN]] [[ABI_ALLOCA]], ptr align [[RUST_ALIGN]] [[RUST_ALLOCA]], i64 16, i1 false)
-    // sparc64:     call void @llvm.memcpy.{{.+}}(ptr align [[ABI_ALIGN]] [[ABI_ALLOCA]], ptr align [[RUST_ALIGN]] [[RUST_ALLOCA]], i64 16, i1 false)
 
-    // CHECK: [[ABI_VALUE:%.+]] = load [[ABI_TYPE]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
-    // CHECK: call void @receives_doublefloat([[ABI_TYPE]] {{(inreg )?}}[[ABI_VALUE]])
+    // aarch64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
+    // loongarch64: [[ABI_VALUE:%.+]] = load [[ABI_TYPE]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
+    // powerpc64:   [[ABI_VALUE:%.+]] = load [[ABI_TYPE]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
+
+    // aarch64:     call void @receives_doublefloat([[ABI_TYPE]] {{(inreg )?}}[[ABI_VALUE]])
+    // loongarch64: call void @receives_doublefloat([[ABI_TYPE]] {{(inreg )?}}[[ABI_VALUE]])
+    // powerpc64:   call void @receives_doublefloat([[ABI_TYPE]] {{(inreg )?}}[[ABI_VALUE]])
     let x = DoubleFloat { f: 1., g: 2. };
     receives_doublefloat(x);
 }
 
-// CHECK-LABEL: @return_doublefloat
+// This test causes an ICE in sparc64 ABI code (https://github.com/rust-lang/rust/issues/122620)
+#[cfg(not(target_arch = "sparc64"))]
+// aarch64-LABEL:     @return_doublefloat
+// loongarch64-LABEL: @return_doublefloat
+// powerpc64-LABEL:   @return_doublefloat
 #[no_mangle]
 pub unsafe fn return_doublefloat() -> DoubleFloat {
     // powerpc returns this struct via sret pointer, it doesn't use the cast ABI.
@@ -248,22 +264,17 @@ pub unsafe fn return_doublefloat() -> DoubleFloat {
 
     // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [[ABI_TYPE:\[2 x i64\]]], align [[ABI_ALIGN:8]]
     // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [[ABI_TYPE:{ double, float }]], align [[ABI_ALIGN:8]]
-    // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [[ABI_TYPE:{ double, float, i32, i64 }]], align [[ABI_ALIGN:8]]
 
     // aarch64:     [[RUST_ALLOCA:%.+]] = alloca %DoubleFloat, align [[RUST_ALIGN:8]]
     // loongarch64: [[RUST_ALLOCA:%.+]] = alloca %DoubleFloat, align [[RUST_ALIGN:8]]
-    // sparc64:     [[RUST_ALLOCA:%.+]] = alloca %DoubleFloat, align [[RUST_ALIGN:8]]
 
     // aarch64:     [[ABI_VALUE:%.+]] = call [[ABI_TYPE]] @returns_doublefloat()
     // loongarch64: [[ABI_VALUE:%.+]] = call [[ABI_TYPE]] @returns_doublefloat()
-    // sparc64:     [[ABI_VALUE:%.+]] = call inreg [[ABI_TYPE]] @returns_doublefloat()
 
     // aarch64:     store [[ABI_TYPE]] [[ABI_VALUE]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // loongarch64: store [[ABI_TYPE]] [[ABI_VALUE]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
-    // sparc64:     store [[ABI_TYPE]] [[ABI_VALUE]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
 
     // aarch64:     call void @llvm.memcpy.{{.+}}(ptr align [[RUST_ALIGN]] [[RUST_ALLOCA]], ptr align [[ABI_ALIGN]] [[ABI_ALLOCA]], i64 16, i1 false)
     // loongarch64: call void @llvm.memcpy.{{.+}}(ptr align [[RUST_ALIGN]] [[RUST_ALLOCA]], ptr align [[ABI_ALIGN]] [[ABI_ALLOCA]], i64 12, i1 false)
-    // sparc64:     call void @llvm.memcpy.{{.+}}(ptr align [[RUST_ALIGN]] [[RUST_ALLOCA]], ptr align [[ABI_ALIGN]] [[ABI_ALLOCA]], i64 16, i1 false)
     returns_doublefloat()
 }
