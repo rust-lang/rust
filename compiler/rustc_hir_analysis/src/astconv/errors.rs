@@ -408,10 +408,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                              traits with associated type `{name}`, you could use the \
                              fully-qualified path",
                         ),
-                        traits
-                            .iter()
-                            .map(|trait_str| format!("<Example as {trait_str}>::{name}"))
-                            .collect::<Vec<_>>(),
+                        traits.iter().map(|trait_str| format!("<Example as {trait_str}>::{name}")),
                         Applicability::HasPlaceholders,
                     );
                 }
