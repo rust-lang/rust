@@ -22,7 +22,8 @@ use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::Lto;
 use rustc_target::abi::{
-    Align, AlignFromBytesError, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
+    Align, AlignFromBytesError, HasDataLayout, LayoutS, Primitive, ReprOptions, Scalar, Size,
+    WrappingRange,
 };
 use std::ops::Range;
 
@@ -96,10 +97,14 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
 
         llvals.push(cx.scalar_to_backend(
             InterpScalar::from_pointer(Pointer::new(prov, Size::from_bytes(ptr_offset)), &cx.tcx),
-            Scalar::Initialized {
-                value: Primitive::Pointer(address_space),
-                valid_range: WrappingRange::full(dl.pointer_size),
-            },
+            cx.tcx.mk_layout(LayoutS::scalar(
+                cx,
+                Scalar::Initialized {
+                    value: Primitive::Pointer(address_space),
+                    valid_range: WrappingRange::full(dl.pointer_size),
+                },
+                ReprOptions::default(),
+            )),
             cx.type_ptr_ext(address_space),
         ));
         next_offset = offset + pointer_size;

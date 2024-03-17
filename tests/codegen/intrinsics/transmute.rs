@@ -192,6 +192,15 @@ pub unsafe fn check_byte_from_bool(x: bool) -> u8 {
 pub unsafe fn check_to_pair(x: u64) -> Option<i32> {
     // CHECK: %_0 = alloca %"core::option::Option<i32>", align 4
     // CHECK: store i64 %x, ptr %_0, align 4
+    // CHECK-NEXT: load i32, ptr %_0, align 4
+    // CHECK-SAME: !range
+    // CHECK-SAME: !noundef
+    // CHECK-NEXT: trunc i32 %0 to i1
+    // CHECK-NEXT: getelementptr inbounds i8, ptr %_0, i64 4
+    // CHECK-NEXT: load i32, ptr %2, align 4
+    // CHECK-NEXT: insertvalue { i1, i32 }
+    // CHECK-NEXT: insertvalue { i1, i32 }
+    // CHECK-NEXT: ret { i1, i32 }
     transmute(x)
 }
 
@@ -203,8 +212,10 @@ pub unsafe fn check_from_pair(x: Option<i32>) -> u64 {
     const { assert!(std::mem::align_of::<Option<i32>>() == 4) };
 
     // CHECK: %_0 = alloca i64, align 8
-    // CHECK: store i32 %x.0, ptr %_0, align 8
-    // CHECK: store i32 %x.1, ptr %0, align 4
+    // CHECK: %0 = zext i1 %x.0 to i32
+    // CHECK: store i32 %0, ptr %_0, align 8
+    // CHECK: %1 = getelementptr inbounds i8, ptr %_0, i64 4
+    // CHECK: store i32 %x.1, ptr %1, align 4
     // CHECK: %[[R:.+]] = load i64, ptr %_0, align 8
     // CHECK: ret i64 %[[R]]
     transmute(x)

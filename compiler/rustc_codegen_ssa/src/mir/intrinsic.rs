@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{sym, Span};
 use rustc_target::abi::{
     call::{FnAbi, PassMode},
-    WrappingRange,
+    LayoutS, Scalar, WrappingRange,
 };
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
@@ -359,10 +359,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 parse_ordering(bx, failure),
                                 weak,
                             );
-                            let val = bx.from_immediate(val);
-                            let success = bx.from_immediate(success);
+                            let val = bx.from_immediate(val, args[2].layout.layout);
 
                             let dest = result.project_field(bx, 0);
+
+                            let success = bx.from_immediate(
+                                success,
+                                bx.tcx().mk_layout(LayoutS::scalar(
+                                    bx.cx(),
+                                    Scalar::mk_bool(),
+                                    dest.layout.repr_ctxt,
+                                )),
+                            );
+
                             bx.store(val, dest.llval, dest.align);
                             let dest = result.project_field(bx, 1);
                             bx.store(success, dest.llval, dest.align);

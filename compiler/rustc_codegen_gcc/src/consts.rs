@@ -11,7 +11,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::def_id::DefId;
-use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRange};
+use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRange, LayoutS, ReprOptions};
 
 use crate::base;
 use crate::context::CodegenCx;
@@ -326,10 +326,10 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(
                 interpret::Pointer::new(prov, Size::from_bytes(ptr_offset)),
                 &cx.tcx,
             ),
-            abi::Scalar::Initialized {
+            cx.tcx.mk_layout(LayoutS::scalar(cx, abi::Scalar::Initialized {
                 value: Primitive::Pointer(address_space),
                 valid_range: WrappingRange::full(dl.pointer_size),
-            },
+            }, ReprOptions::default())),
             cx.type_i8p_ext(address_space),
         ));
         next_offset = offset + pointer_size;

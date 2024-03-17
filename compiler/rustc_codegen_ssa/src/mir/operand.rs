@@ -10,7 +10,7 @@ use rustc_middle::mir::interpret::{alloc_range, Pointer, Scalar};
 use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_target::abi::{self, Abi, Align, Size};
+use rustc_target::abi::{self, Abi, Align, LayoutS, Size};
 
 use std::fmt;
 
@@ -96,7 +96,11 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let Abi::Scalar(scalar) = layout.abi else {
                     bug!("from_const: invalid ByVal layout: {:#?}", layout);
                 };
-                let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
+                let llval = bx.scalar_to_backend(
+                    x,
+                    bx.tcx().mk_layout(LayoutS::scalar(bx.cx(), scalar, layout.repr_ctxt)),
+                    bx.immediate_backend_type(layout),
+                );
                 OperandValue::Immediate(llval)
             }
             ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
@@ -110,7 +114,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 );
                 let a_llval = bx.scalar_to_backend(
                     a,
-                    a_scalar,
+                    bx.tcx().mk_layout(LayoutS::scalar(bx.cx(), a_scalar, layout.repr_ctxt)),
                     bx.scalar_pair_element_backend_type(layout, 0, true),
                 );
                 let b_llval = bx.const_usize(meta);
@@ -134,11 +138,15 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let alloc_align = alloc.inner().align;
         assert!(alloc_align >= layout.align.abi);
 
-        let read_scalar = |start, size, s: abi::Scalar, ty| {
+        let read_scalar = |start, size, s: abi::Layout<'_>, ty| {
+            let abi::Abi::Scalar(scalar) = s.abi else {
+                bug!("`read_scalar` only expects scalars");
+            };
+
             match alloc.0.read_scalar(
                 bx,
                 alloc_range(start, size),
-                /*read_provenance*/ matches!(s.primitive(), abi::Pointer(_)),
+                /*read_provenance*/ matches!(scalar.primitive(), abi::Pointer(_)),
             ) {
                 Ok(val) => bx.scalar_to_backend(val, s, ty),
                 Err(_) => bx.const_poison(ty),
@@ -155,7 +163,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             Abi::Scalar(s @ abi::Scalar::Initialized { .. }) => {
                 let size = s.size(bx);
                 assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
-                let val = read_scalar(offset, size, s, bx.immediate_backend_type(layout));
+                let val = read_scalar(
+                    offset,
+                    size,
+                    bx.tcx().mk_layout(LayoutS::scalar(bx.cx(), s, layout.repr_ctxt)),
+                    bx.immediate_backend_type(layout),
+                );
                 OperandRef { val: OperandValue::Immediate(val), layout }
             }
             Abi::ScalarPair(
@@ -168,13 +181,13 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let a_val = read_scalar(
                     offset,
                     a_size,
-                    a,
+                    bx.tcx().mk_layout(LayoutS::scalar(bx.cx(), a, layout.repr_ctxt)),
                     bx.scalar_pair_element_backend_type(layout, 0, true),
                 );
                 let b_val = read_scalar(
                     b_offset,
                     b_size,
-                    b,
+                    bx.tcx().mk_layout(LayoutS::scalar(bx.cx(), b, layout.repr_ctxt)),
                     bx.scalar_pair_element_backend_type(layout, 1, true),
                 );
                 OperandRef { val: OperandValue::Pair(a_val, b_val), layout }
@@ -227,13 +240,15 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
     /// If this operand is a `Pair`, we return an aggregate with the two values.
     /// For other cases, see `immediate`.
+    #[instrument(level = "debug", skip_all)]
     pub fn immediate_or_packed_pair<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
         bx: &mut Bx,
     ) -> V {
         if let OperandValue::Pair(a, b) = self.val {
             let llty = bx.cx().immediate_backend_type(self.layout);
-            debug!("Operand::immediate_or_packed_pair: packing {:?} into {:?}", self, llty);
+            debug!(?a, ?b);
+            debug!(from_layout=?self.layout, to=?llty);
             // Reconstruct the immediate aggregate.
             let mut llpair = bx.cx().const_poison(llty);
             llpair = bx.insert_value(llpair, a, 0);
@@ -245,13 +260,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     }
 
     /// If the type is a pair, we return a `Pair`, otherwise, an `Immediate`.
+    #[instrument(level = "debug", skip_all)]
     pub fn from_immediate_or_packed_pair<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         llval: V,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
         let val = if let Abi::ScalarPair(..) = layout.abi {
-            debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}", llval, layout);
+            debug!(from_imm=?llval, to=?layout);
 
             // Deconstruct the immediate aggregate.
             let a_llval = bx.extract_value(llval, 0);
@@ -263,6 +279,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         OperandRef { val, layout }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn extract_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
         bx: &mut Bx,
@@ -313,9 +330,19 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 *llval = bx.to_immediate(*llval, field);
             }
             (OperandValue::Pair(a, b), Abi::ScalarPair(a_abi, b_abi)) => {
+                debug!(?a, ?b, "pre-adjustment");
                 // Bools in union fields needs to be truncated.
-                *a = bx.to_immediate_scalar(*a, a_abi);
-                *b = bx.to_immediate_scalar(*b, b_abi);
+                *a = bx.to_immediate_scalar(
+                    *a,
+                    a_abi,
+                    bx.tcx().mk_layout(LayoutS::scalar(bx.cx(), a_abi, field.layout.repr_ctxt)),
+                );
+                *b = bx.to_immediate_scalar(
+                    *b,
+                    b_abi,
+                    bx.tcx().mk_layout(LayoutS::scalar(bx.cx(), b_abi, field.layout.repr_ctxt)),
+                );
+                debug!(?a, ?b, "post-adjustment");
             }
             // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
             (OperandValue::Immediate(llval), Abi::Aggregate { sized: true }) => {
@@ -425,7 +452,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 bug!("cannot directly store unsized values");
             }
             OperandValue::Immediate(s) => {
-                let val = bx.from_immediate(s);
+                let val = bx.from_immediate(s, dest.layout.layout);
                 bx.store_with_flags(val, dest.llval, dest.align, flags);
             }
             OperandValue::Pair(a, b) => {
@@ -434,12 +461,18 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 };
                 let b_offset = a_scalar.size(bx).align_to(b_scalar.align(bx).abi);
 
-                let val = bx.from_immediate(a);
+                let val = bx.from_immediate(
+                    a,
+                    bx.tcx().mk_layout(LayoutS::scalar(bx.cx(), a_scalar, dest.layout.repr_ctxt)),
+                );
                 let align = dest.align;
                 bx.store_with_flags(val, dest.llval, align, flags);
 
                 let llptr = bx.inbounds_ptradd(dest.llval, bx.const_usize(b_offset.bytes()));
-                let val = bx.from_immediate(b);
+                let val = bx.from_immediate(
+                    b,
+                    bx.tcx().mk_layout(LayoutS::scalar(bx.cx(), b_scalar, dest.layout.repr_ctxt)),
+                );
                 let align = dest.align.restrict_for_offset(b_offset);
                 bx.store_with_flags(val, llptr, align, flags);
             }

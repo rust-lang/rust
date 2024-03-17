@@ -5,7 +5,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::Abi;
+use rustc_target::abi::{Abi, LayoutS};
 
 use super::FunctionCx;
 
@@ -81,7 +81,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let Abi::Scalar(scalar) = layout.abi else {
                                 bug!("from_const: invalid ByVal layout: {:#?}", layout);
                             };
-                            bx.scalar_to_backend(prim, scalar, bx.immediate_backend_type(layout))
+                            bx.scalar_to_backend(
+                                prim,
+                                bx.tcx().mk_layout(LayoutS::scalar(
+                                    bx.cx(),
+                                    scalar,
+                                    layout.repr_ctxt,
+                                )),
+                                bx.immediate_backend_type(layout),
+                            )
                         } else {
                             bug!("simd shuffle field {:?}", field)
                         }

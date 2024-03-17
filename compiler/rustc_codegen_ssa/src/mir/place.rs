@@ -209,9 +209,10 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
                     // let LLVM interpret the `i1` as signed, because
                     // then `i1 1` (i.e., `E::B`) is effectively `i8 -1`.
-                    Int(_, signed) => !tag_scalar.is_bool() && signed,
+                    Int(_, signed) => !tag_scalar.fits_in_i1() && signed,
                     _ => false,
                 };
+                debug!(target: "PEEKABOOL", ?tag_imm, ?cast_to, ?signed);
                 bx.intcast(tag_imm, cast_to, signed)
             }
             TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {

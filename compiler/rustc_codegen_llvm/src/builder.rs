@@ -22,7 +22,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_symbol_mangling::typeid::{kcfi_typeid_for_fnabi, typeid_for_fnabi, TypeIdOptions};
-use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
+use rustc_target::abi::{self, call::FnAbi, Align, LayoutS, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
 use std::borrow::Cow;
@@ -452,20 +452,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         (self.extract_value(res, 0), self.extract_value(res, 1))
     }
 
-    fn from_immediate(&mut self, val: Self::Value) -> Self::Value {
-        if self.cx().val_ty(val) == self.cx().type_i1() {
-            self.zext(val, self.cx().type_i8())
-        } else {
-            val
-        }
-    }
-    fn to_immediate_scalar(&mut self, val: Self::Value, scalar: abi::Scalar) -> Self::Value {
-        if scalar.is_bool() {
-            return self.trunc(val, self.cx().type_i1());
-        }
-        val
-    }
-
     fn alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
         let mut bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
@@ -608,7 +594,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 let llty = place.layout.scalar_pair_element_llvm_type(self, i, false);
                 let load = self.load(llty, llptr, align);
                 scalar_load_metadata(self, load, scalar, layout, offset);
-                self.to_immediate_scalar(load, scalar)
+                self.to_immediate_scalar(
+                    load,
+                    scalar,
+                    self.tcx.mk_layout(LayoutS::scalar(self.cx(), scalar, place.layout.repr_ctxt)),
+                )
             };
 
             OperandValue::Pair(

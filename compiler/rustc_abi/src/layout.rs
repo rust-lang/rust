@@ -42,6 +42,7 @@ pub trait LayoutCalculator {
         &self,
         a: Scalar,
         b: Scalar,
+        repr_ctxt: ReprOptions,
     ) -> LayoutS<FieldIdx, VariantIdx> {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
@@ -69,6 +70,7 @@ pub trait LayoutCalculator {
             size,
             max_repr_align: None,
             unadjusted_abi_align: align.abi,
+            repr_ctxt,
         }
     }
 
@@ -160,6 +162,7 @@ pub trait LayoutCalculator {
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align.abi,
+            repr_ctxt: ReprOptions::default(),
         }
     }
 
@@ -334,6 +337,7 @@ pub trait LayoutCalculator {
             size: size.align_to(align.abi),
             max_repr_align,
             unadjusted_abi_align,
+            repr_ctxt: ReprOptions::default(),
         })
     }
 }
@@ -610,6 +614,7 @@ where
             align,
             max_repr_align,
             unadjusted_abi_align,
+            repr_ctxt: repr.clone(),
         };
 
         Some(TmpLayout { layout, variants: variant_layouts })
@@ -860,7 +865,8 @@ where
                 // Common prim might be uninit.
                 Scalar::Union { value: prim }
             };
-            let pair = layout_calc.scalar_pair::<FieldIdx, VariantIdx>(tag, prim_scalar);
+            let pair =
+                layout_calc.scalar_pair::<FieldIdx, VariantIdx>(tag, prim_scalar, repr.clone());
             let pair_offsets = match pair.fields {
                 FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                     assert_eq!(memory_index.raw, [0, 1]);
@@ -913,6 +919,7 @@ where
         size,
         max_repr_align,
         unadjusted_abi_align,
+        repr_ctxt: repr.clone(),
     };
 
     let tagged_layout = TmpLayout { layout: tagged_layout, variants: layout_variants };
@@ -1227,7 +1234,7 @@ fn univariant<
                         } else {
                             ((j, b), (i, a))
                         };
-                        let pair = this.scalar_pair::<FieldIdx, VariantIdx>(a, b);
+                        let pair = this.scalar_pair::<FieldIdx, VariantIdx>(a, b, repr.clone());
                         let pair_offsets = match pair.fields {
                             FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                                 assert_eq!(memory_index.raw, [0, 1]);
@@ -1281,6 +1288,7 @@ fn univariant<
         size,
         max_repr_align,
         unadjusted_abi_align,
+        repr_ctxt: repr.clone(),
     })
 }
 

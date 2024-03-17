@@ -29,7 +29,7 @@ pub use layout::LayoutCalculator;
 /// instead of implementing everything in `rustc_middle`.
 pub trait HashStableContext {}
 
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
 #[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
 pub struct ReprFlags(u8);
 
@@ -58,7 +58,7 @@ impl std::fmt::Debug for ReprFlags {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
 pub enum IntegerType {
     /// Pointer-sized integer type, i.e. `isize` and `usize`. The field shows signedness, e.g.
@@ -79,7 +79,7 @@ impl IntegerType {
 }
 
 /// Represents the repr options provided by the user.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default, Hash)]
 #[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
 pub struct ReprOptions {
     pub int: Option<IntegerType>,
@@ -97,6 +97,18 @@ pub struct ReprOptions {
 }
 
 impl ReprOptions {
+    #[inline]
+    pub fn rust(&self) -> bool {
+        !(self.simd()
+            || self.c()
+            || self.packed()
+            || self.transparent()
+            || self.linear()
+            || self.can_randomize_type_layout()
+            || self.int.is_some()
+            || self.align.is_some())
+    }
+
     #[inline]
     pub fn simd(&self) -> bool {
         self.flags.contains(ReprFlags::IS_SIMD)
@@ -1068,6 +1080,26 @@ impl Scalar {
         )
     }
 
+    #[inline]
+    pub fn fits_in_i1(&self) -> bool {
+        matches!(
+            self,
+            Scalar::Initialized {
+                value: Primitive::Int(_, false),
+                valid_range: WrappingRange { start: 0, end: 1 }
+            }
+        )
+    }
+
+    #[inline]
+    pub fn mk_bool() -> Self {
+        use Integer::*;
+        Scalar::Initialized {
+            value: Primitive::Int(I8, false),
+            valid_range: WrappingRange { start: 0, end: 1 },
+        }
+    }
+
     /// Get the primitive representation of this type, ignoring the valid range and whether the
     /// value is allowed to be undefined (due to being a union).
     pub fn primitive(&self) -> Primitive {
@@ -1554,10 +1586,13 @@ pub struct LayoutS<FieldIdx: Idx, VariantIdx: Idx> {
     /// Only used on aarch64-linux, where the argument passing ABI ignores the requested alignment
     /// in some cases.
     pub unadjusted_abi_align: Align,
+
+    /// Contextual `#[repr(..)]` options.
+    pub repr_ctxt: ReprOptions,
 }
 
 impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
-    pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
+    pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar, repr_ctxt: ReprOptions) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.size(cx);
         let align = scalar.align(cx);
@@ -1570,6 +1605,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
             align,
             max_repr_align: None,
             unadjusted_abi_align: align.abi,
+            repr_ctxt,
         }
     }
 }
@@ -1592,6 +1628,7 @@ where
             variants,
             max_repr_align,
             unadjusted_abi_align,
+            ..
         } = self;
         f.debug_struct("Layout")
             .field("size", size)

@@ -248,10 +248,16 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         llty
     }
 
+    #[instrument(level = "debug", skip_all, fields(repr_rust = self.layout.repr_ctxt.rust()))]
     fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
         match self.abi {
             Abi::Scalar(scalar) => {
                 if scalar.is_bool() {
+                    return cx.type_i1();
+                }
+
+                if self.layout.repr_ctxt.rust() && scalar.fits_in_i1() {
+                    debug!(?scalar, "using i1 discriminant");
                     return cx.type_i1();
                 }
             }
@@ -303,6 +309,10 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         // when immediate. We need to load/store `bool` as `i8` to avoid
         // crippling LLVM optimizations or triggering other LLVM bugs with `i1`.
         if immediate && scalar.is_bool() {
+            return cx.type_i1();
+        }
+
+        if immediate && self.layout.repr_ctxt.rust() && scalar.fits_in_i1() {
             return cx.type_i1();
         }
 

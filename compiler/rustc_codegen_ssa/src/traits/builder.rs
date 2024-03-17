@@ -4,7 +4,7 @@ use super::coverageinfo::CoverageInfoBuilderMethods;
 use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallMethods;
 use super::misc::MiscMethods;
-use super::type_::{ArgAbiMethods, BaseTypeMethods};
+use super::type_::{ArgAbiMethods, BaseTypeMethods, DerivedTypeMethods};
 use super::{HasCodegen, StaticBuilderMethods};
 
 use crate::common::{
@@ -19,7 +19,7 @@ use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{Abi, Align, Scalar, Size, WrappingRange};
+use rustc_target::abi::{Abi, Align, Layout, Primitive, Scalar, Size, WrappingRange};
 use rustc_target::spec::HasTargetSpec;
 
 #[derive(Copy, Clone)]
@@ -131,15 +131,51 @@ pub trait BuilderMethods<'a, 'tcx>:
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value);
 
-    fn from_immediate(&mut self, val: Self::Value) -> Self::Value;
-    fn to_immediate(&mut self, val: Self::Value, layout: TyAndLayout<'_>) -> Self::Value {
-        if let Abi::Scalar(scalar) = layout.abi {
-            self.to_immediate_scalar(val, scalar)
+    #[instrument(level = "debug", skip_all)]
+    fn from_immediate(&mut self, val: Self::Value, layout: Layout<'_>) -> Self::Value {
+        if let Abi::Scalar(scalar) = layout.abi
+            && scalar.is_bool()
+        {
+            self.zext(val, self.cx().type_i8())
+        } else if layout.repr_ctxt.rust()
+            && let Abi::Scalar(scalar) = layout.abi
+            && let Scalar::Initialized {
+                value: Primitive::Int(integer, false),
+                valid_range: WrappingRange { start: 0, end: 1 },
+            } = scalar
+        {
+            debug!("using i1 discriminant");
+            self.zext(val, self.cx().type_from_integer(integer))
         } else {
             val
         }
     }
-    fn to_immediate_scalar(&mut self, val: Self::Value, scalar: Scalar) -> Self::Value;
+
+    #[instrument(level = "debug", skip_all)]
+    fn to_immediate(&mut self, val: Self::Value, layout: TyAndLayout<'_>) -> Self::Value {
+        if let Abi::Scalar(scalar) = layout.abi {
+            self.to_immediate_scalar(val, scalar, layout.layout)
+        } else {
+            val
+        }
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn to_immediate_scalar(
+        &mut self,
+        val: Self::Value,
+        scalar: Scalar,
+        layout: Layout<'_>,
+    ) -> Self::Value {
+        if scalar.is_bool() {
+            self.trunc(val, self.cx().type_i1())
+        } else if layout.repr_ctxt.rust() && scalar.fits_in_i1() {
+            debug!("using i1 discriminant");
+            self.trunc(val, self.cx().type_i1())
+        } else {
+            val
+        }
+    }
 
     fn alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
     fn byte_array_alloca(&mut self, len: Self::Value, align: Align) -> Self::Value;

@@ -193,6 +193,7 @@ fn layout_of_simd_ty(
         align,
         max_repr_align: None,
         unadjusted_abi_align: align.abi,
+        repr_ctxt: ReprOptions::default()
     }))
 }
 
@@ -226,6 +227,7 @@ pub fn layout_of_ty_query(
                     value: Primitive::Int(Integer::I8, false),
                     valid_range: WrappingRange { start: 0, end: 1 },
                 },
+                ReprOptions::default()
             ),
             chalk_ir::Scalar::Char => Layout::scalar(
                 dl,
@@ -233,6 +235,7 @@ pub fn layout_of_ty_query(
                     value: Primitive::Int(Integer::I32, false),
                     valid_range: WrappingRange { start: 0, end: 0x10FFFF },
                 },
+                ReprOptions::default()
             ),
             chalk_ir::Scalar::Int(i) => scalar(
                 dl,
@@ -303,6 +306,7 @@ pub fn layout_of_ty_query(
                 size,
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
+                repr_ctxt: ReprOptions::default()
             }
         }
         TyKind::Slice(element) => {
@@ -316,6 +320,7 @@ pub fn layout_of_ty_query(
                 size: Size::ZERO,
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
+                repr_ctxt: ReprOptions::default()
             }
         }
         TyKind::Str => Layout {
@@ -327,6 +332,7 @@ pub fn layout_of_ty_query(
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align.abi,
+            repr_ctxt: ReprOptions::default()
         },
         // Potentially-wide pointers.
         TyKind::Ref(_, _, pointee) | TyKind::Raw(_, pointee) => {
@@ -360,12 +366,12 @@ pub fn layout_of_ty_query(
                 }
                 _ => {
                     // pointee is sized
-                    return Ok(Arc::new(Layout::scalar(dl, data_ptr)));
+                    return Ok(Arc::new(Layout::scalar(dl, data_ptr, ReprOptions::default())));
                 }
             };
 
             // Effectively a (ptr, meta) tuple.
-            cx.scalar_pair(data_ptr, metadata)
+            cx.scalar_pair(data_ptr, metadata, ReprOptions::default())
         }
         TyKind::FnDef(_, _) => layout_of_unit(&cx, dl)?,
         TyKind::Never => cx.layout_of_never_type(),
@@ -380,7 +386,7 @@ pub fn layout_of_ty_query(
         TyKind::Function(_) => {
             let mut ptr = scalar_unit(dl, Primitive::Pointer(dl.instruction_address_space));
             ptr.valid_range_mut().start = 1;
-            Layout::scalar(dl, ptr)
+            Layout::scalar(dl, ptr, ReprOptions::default())
         }
         TyKind::OpaqueType(opaque_ty_id, _) => {
             let impl_trait_id = db.lookup_intern_impl_trait_id((*opaque_ty_id).into());
@@ -483,7 +489,7 @@ fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {
 }
 
 fn scalar(dl: &TargetDataLayout, value: Primitive) -> Layout {
-    Layout::scalar(dl, scalar_unit(dl, value))
+    Layout::scalar(dl, scalar_unit(dl, value), ReprOptions::default())
 }
 
 #[cfg(test)]

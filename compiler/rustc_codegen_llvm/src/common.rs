@@ -14,7 +14,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::{DllCallingConvention, DllImport, PeImportNameType};
-use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer};
+use rustc_target::abi::{self, Abi, AddressSpace, HasDataLayout, Pointer};
 use rustc_target::spec::Target;
 
 use libc::{c_char, c_uint};
@@ -235,13 +235,27 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         })
     }
 
-    fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: &'ll Type) -> &'ll Value {
-        let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
+    fn scalar_to_backend(
+        &self,
+        cv: Scalar,
+        layout: abi::Layout<'_>,
+        llty: &'ll Type,
+    ) -> &'ll Value {
+        let Abi::Scalar(scalar) = layout.abi else {
+            bug!("`scalar_to_backend` only expects a scalar");
+        };
+        let bitsize = if scalar.is_bool() {
+            1
+        } else if scalar.fits_in_i1() && layout.repr_ctxt.rust() {
+            1
+        } else {
+            scalar.size(self).bits()
+        };
         match cv {
             Scalar::Int(int) => {
-                let data = int.assert_bits(layout.size(self));
+                let data = int.assert_bits(scalar.size(self));
                 let llval = self.const_uint_big(self.type_ix(bitsize), data);
-                if matches!(layout.primitive(), Pointer(_)) {
+                if matches!(scalar.primitive(), Pointer(_)) {
                     unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
                 } else {
                     self.const_bitcast(llval, llty)
@@ -294,7 +308,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         1,
                     )
                 };
-                if !matches!(layout.primitive(), Pointer(_)) {
+                if !matches!(scalar.primitive(), Pointer(_)) {
                     unsafe { llvm::LLVMConstPtrToInt(llval, llty) }
                 } else {
                     self.const_bitcast(llval, llty)

@@ -757,6 +757,7 @@ where
                     size: Size::ZERO,
                     max_repr_align: None,
                     unadjusted_abi_align: tcx.data_layout.i8_align.abi,
+                    repr_ctxt: this.layout.repr_ctxt
                 })
             }
 
@@ -782,7 +783,7 @@ where
             let tcx = cx.tcx();
             let tag_layout = |tag: Scalar| -> TyAndLayout<'tcx> {
                 TyAndLayout {
-                    layout: tcx.mk_layout(LayoutS::scalar(cx, tag)),
+                    layout: tcx.mk_layout(LayoutS::scalar(cx, tag, this.layout.repr_ctxt)),
                     ty: tag.primitive().to_ty(tcx),
                 }
             };

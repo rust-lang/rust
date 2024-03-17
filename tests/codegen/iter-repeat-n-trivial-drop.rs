@@ -20,8 +20,8 @@ pub fn iter_repeat_n_next(it: &mut std::iter::RepeatN<NotCopy>) -> Option<NotCop
     // CHECK-NEXT: start:
     // CHECK-NOT: br
     // CHECK: %[[COUNT:.+]] = load i64
-    // CHECK-NEXT: %[[COUNT_ZERO:.+]] = icmp eq i64 %[[COUNT]], 0
-    // CHECK-NEXT: br i1 %[[COUNT_ZERO]], label %[[EMPTY:.+]], label %[[NOT_EMPTY:.+]]
+    // CHECK-NEXT: %0 = icmp ne i64 %[[COUNT]], 0
+    // CHECK-NEXT: br i1 %0, label %[[NOT_EMPTY:.+]], label %[[EMPTY:.+]]
 
     // CHECK: [[NOT_EMPTY]]:
     // CHECK-NEXT: %[[DEC:.+]] = add i64 %[[COUNT]], -1

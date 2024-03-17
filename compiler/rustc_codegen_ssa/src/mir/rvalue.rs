@@ -14,7 +14,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{self, FIRST_VARIANT};
+use rustc_target::abi::{self, Layout, LayoutS, FIRST_VARIANT};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]
@@ -105,7 +105,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
-                    let v = bx.from_immediate(v);
+                    let v = bx.from_immediate(v, cg_elem.layout.layout);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
                         bx.memset(start, v, size, dest.align, MemFlags::empty());
                         return;
@@ -248,6 +248,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         operand_bty,
                         out_scalar,
                         cast_bty,
+                        operand.layout.layout,
                     )))
                 } else {
                     None
@@ -261,13 +262,31 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     && in_a.size(self.cx) == out_a.size(self.cx)
                     && in_b.size(self.cx) == out_b.size(self.cx)
                 {
+                    debug!(operand_layout = ?operand.layout);
+                    debug!(?cast);
                     let in_a_ibty = bx.scalar_pair_element_backend_type(operand.layout, 0, false);
                     let in_b_ibty = bx.scalar_pair_element_backend_type(operand.layout, 1, false);
                     let out_a_ibty = bx.scalar_pair_element_backend_type(cast, 0, false);
                     let out_b_ibty = bx.scalar_pair_element_backend_type(cast, 1, false);
                     Some(OperandValue::Pair(
-                        self.transmute_immediate(bx, imm_a, in_a, in_a_ibty, out_a, out_a_ibty),
-                        self.transmute_immediate(bx, imm_b, in_b, in_b_ibty, out_b, out_b_ibty),
+                        self.transmute_immediate(
+                            bx,
+                            imm_a,
+                            in_a,
+                            in_a_ibty,
+                            out_a,
+                            out_a_ibty,
+                            operand.layout.layout,
+                        ),
+                        self.transmute_immediate(
+                            bx,
+                            imm_b,
+                            in_b,
+                            in_b_ibty,
+                            out_b,
+                            out_b_ibty,
+                            operand.layout.layout,
+                        ),
                     ))
                 } else {
                     None
@@ -289,11 +308,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         from_backend_ty: Bx::Type,
         to_scalar: abi::Scalar,
         to_backend_ty: Bx::Type,
+        layout: Layout<'_>,
     ) -> Bx::Value {
         debug_assert_eq!(from_scalar.size(self.cx), to_scalar.size(self.cx));
 
         use abi::Primitive::*;
-        imm = bx.from_immediate(imm);
+        imm = bx.from_immediate(
+            imm,
+            bx.tcx().mk_layout(LayoutS::scalar(bx.cx(), from_scalar, layout.repr_ctxt)),
+        );
 
         // When scalars are passed by value, there's no metadata recording their
         // valid ranges. For example, `char`s are passed as just `i32`, with no
@@ -318,7 +341,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         };
         self.assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
-        imm = bx.to_immediate_scalar(imm, to_scalar);
+        imm = bx.to_immediate_scalar(
+            imm,
+            to_scalar,
+            bx.tcx().mk_layout(LayoutS::scalar(bx.cx(), to_scalar, layout.repr_ctxt)),
+        );
         imm
     }
 
@@ -400,7 +427,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, mir_cast_ty) => {
                 let operand = self.codegen_operand(bx, source);
-                debug!("cast operand is {:?}", operand);
+                debug!(?kind, "cast operand kind");
+                debug!(?operand, "cast operand");
                 let cast = bx.cx().layout_of(self.monomorphize(mir_cast_ty));
 
                 let val = match *kind {
@@ -509,6 +537,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // sign extension and all that), it is currently best handled in the same code
                     // path as the other integer-to-X casts.
                     | mir::CastKind::PointerFromExposedAddress => {
+                        debug!(operand_layout = ?operand.layout);
+                        debug!(?cast);
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);
                         if operand.layout.abi.is_uninhabited() {
@@ -518,11 +548,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let r_t_in =
                             CastTy::from_ty(operand.layout.ty).expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast.ty).expect("bad output type for cast");
+
+                        debug!(?r_t_in, ?r_t_out);
+
                         let ll_t_in = bx.cx().immediate_backend_type(operand.layout);
                         let llval = operand.immediate();
 
+                        debug!(?ll_t_in);
+                        debug!(?llval);
+
                         let newval = match (r_t_in, r_t_out) {
                             (CastTy::Int(i), CastTy::Int(_)) => {
+                                debug!(?llval, ?ll_t_out);
                                 bx.intcast(llval, ll_t_out, i.is_signed())
                             }
                             (CastTy::Float, CastTy::Float) => {

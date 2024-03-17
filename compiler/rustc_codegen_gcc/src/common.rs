@@ -1,6 +1,7 @@
 use gccjit::LValue;
 use gccjit::{RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, MiscMethods, StaticMethods};
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::layout::LayoutOf;
@@ -158,11 +159,20 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         None
     }
 
-    fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, ty: Type<'gcc>) -> RValue<'gcc> {
-        let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
+    fn scalar_to_backend(&self, cv: Scalar, layout: abi::Layout<'_>, ty: Type<'gcc>) -> RValue<'gcc> {
+        let abi::Abi::Scalar(scalar) = layout.abi else {
+            bug!("`scalar_to_backend` only expects a scalar");
+        };
+        let bitsize = if scalar.is_bool() {
+            1
+        } else if scalar.fits_in_i1() && layout.repr_ctxt.rust() {
+            1
+        } else {
+            scalar.size(self).bits()
+        };
         match cv {
             Scalar::Int(int) => {
-                let data = int.assert_bits(layout.size(self));
+                let data = int.assert_bits(scalar.size(self));
 
                 // FIXME(antoyo): there's some issues with using the u128 code that follows, so hard-code
                 // the paths for floating-point values.
@@ -175,7 +185,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
 
                 let value = self.const_uint_big(self.type_ix(bitsize), data);
-                let bytesize = layout.size(self).bytes();
+                let bytesize = scalar.size(self).bytes();
                 if bitsize > 1 && ty.is_integral() && bytesize as u32 == ty.get_size() {
                     // NOTE: since the intrinsic _xabort is called with a bitcast, which
                     // is non-const, but expects a constant, do a normal cast instead of a bitcast.
@@ -222,7 +232,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 let offset =
                     self.context.new_rvalue_from_long(self.usize_type, offset.bytes() as i64);
                 let ptr = self.const_bitcast(base_addr + offset, ptr_type);
-                if !matches!(layout.primitive(), Pointer(_)) {
+                if !matches!(scalar.primitive(), Pointer(_)) {
                     self.const_bitcast(ptr.dereference(None).to_rvalue(), ty)
                 } else {
                     self.const_bitcast(ptr, ty)

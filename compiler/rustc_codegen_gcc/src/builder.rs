@@ -1702,21 +1702,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn set_span(&mut self, _span: Span) {}
 
-    fn from_immediate(&mut self, val: Self::Value) -> Self::Value {
-        if self.cx().val_ty(val) == self.cx().type_i1() {
-            self.zext(val, self.cx().type_i8())
-        } else {
-            val
-        }
-    }
-
-    fn to_immediate_scalar(&mut self, val: Self::Value, scalar: abi::Scalar) -> Self::Value {
-        if scalar.is_bool() {
-            return self.trunc(val, self.cx().type_i1());
-        }
-        val
-    }
-
     fn fptoui_sat(&mut self, val: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         self.fptoint_sat(false, val, dest_ty)
     }

@@ -514,11 +514,14 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             _ => {}
         }
         if let abi::Abi::Scalar(scalar) = self.ret.layout.abi {
-            // If the value is a boolean, the range is 0..2 and that ultimately
-            // become 0..0 when the type becomes i1, which would be rejected
-            // by the LLVM verifier.
+            // If the value is a boolean (or something that fits in i1), the range is 0..2 and that
+            // ultimately become 0..0 when the type becomes i1, which would be rejected by the LLVM
+            // verifier.
             if let Int(..) = scalar.primitive() {
-                if !scalar.is_bool() && !scalar.is_always_valid(bx) {
+                if !scalar.is_bool()
+                    && !scalar.is_always_valid(bx)
+                    && !(scalar.fits_in_i1() && self.ret.layout.repr_ctxt.rust())
+                {
                     bx.range_metadata(callsite, scalar.valid_range(bx));
                 }
             }
