@@ -16,12 +16,14 @@ pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::Ty;
 use rustc_session::config;
 pub use rustc_target::abi::call::*;
-use rustc_target::abi::{self, HasDataLayout, Int};
+use rustc_target::abi::{self, HasDataLayout, Int, Size};
 pub use rustc_target::spec::abi::Abi;
 use rustc_target::spec::SanitizerSet;
 
 use libc::c_uint;
 use smallvec::SmallVec;
+
+use std::cmp;
 
 pub trait ArgAttributesExt {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);
@@ -130,42 +132,36 @@ impl LlvmType for Reg {
 impl LlvmType for CastTarget {
     fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
         let rest_ll_unit = self.rest.unit.llvm_type(cx);
-        let (rest_count, rem_bytes) = if self.rest.unit.size.bytes() == 0 {
-            (0, 0)
+        let rest_count = if self.rest.total == Size::ZERO {
+            0
         } else {
-            (
-                self.rest.total.bytes() / self.rest.unit.size.bytes(),
-                self.rest.total.bytes() % self.rest.unit.size.bytes(),
-            )
+            assert_ne!(
+                self.rest.unit.size,
+                Size::ZERO,
+                "total size {:?} cannot be divided into units of zero size",
+                self.rest.total
+            );
+            if self.rest.total.bytes() % self.rest.unit.size.bytes() != 0 {
+                assert_eq!(self.rest.unit.kind, RegKind::Integer, "only int regs can be split");
+            }
+            self.rest.total.bytes().div_ceil(self.rest.unit.size.bytes())
         };
 
+        // Simplify to a single unit or an array if there's no prefix.
+        // This produces the same layout, but using a simpler type.
         if self.prefix.iter().all(|x| x.is_none()) {
-            // Simplify to a single unit when there is no prefix and size <= unit size
-            if self.rest.total <= self.rest.unit.size {
+            if rest_count == 1 {
                 return rest_ll_unit;
             }
 
-            // Simplify to array when all chunks are the same size and type
-            if rem_bytes == 0 {
-                return cx.type_array(rest_ll_unit, rest_count);
-            }
+            return cx.type_array(rest_ll_unit, rest_count);
         }
 
-        // Create list of fields in the main structure
-        let mut args: Vec<_> = self
-            .prefix
-            .iter()
-            .flat_map(|option_reg| option_reg.map(|reg| reg.llvm_type(cx)))
-            .chain((0..rest_count).map(|_| rest_ll_unit))
-            .collect();
-
-        // Append final integer
-        if rem_bytes != 0 {
-            // Only integers can be really split further.
-            assert_eq!(self.rest.unit.kind, RegKind::Integer);
-            args.push(cx.type_ix(rem_bytes * 8));
-        }
-
+        // Generate a struct type with the prefix and the "rest" arguments.
+        let prefix_args =
+            self.prefix.iter().flat_map(|option_reg| option_reg.map(|reg| reg.llvm_type(cx)));
+        let rest_args = (0..rest_count).map(|_| rest_ll_unit);
+        let args: Vec<_> = prefix_args.chain(rest_args).collect();
         cx.type_struct(&args, false)
     }
 }
