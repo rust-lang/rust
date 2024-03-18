@@ -136,6 +136,28 @@ h1 a:link, h1 a:visited, h2 a:link, h2 a:visited,
 h3 a:link, h3 a:visited, h4 a:link, h4 a:visited,
 h5 a:link, h5 a:visited {color: black;}
 
+h1, h2, h3, h4, h5 {
+	/* This is needed to be able to position the doc-anchor. Ideally there
+	   would be a <div> around the whole document, but we don't have that. */
+	position: relative;
+}
+
+a.doc-anchor {
+	color: black;
+	display: none;
+	position: absolute;
+	left: -20px;
+	/* We add this padding so that when the cursor moves from the heading's text to the anchor,
+	   the anchor doesn't disappear. */
+	padding-right: 5px;
+	/* And this padding is used to make the anchor larger and easier to click on. */
+	padding-left: 3px;
+}
+*:hover > .doc-anchor {
+	display: block;
+}
+
+
 /* Code */
 
 pre, code {
