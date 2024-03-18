@@ -70,7 +70,19 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                     instantiated_goals.push(goal);
                 }
 
-                for &goal in &instantiated_goals {
+                for goal in instantiated_goals.iter().copied() {
+                    // We need to be careful with `NormalizesTo` goals as the
+                    // expected term has to be replaced with an unconstrained
+                    // inference variable.
+                    if let Some(kind) = goal.predicate.kind().no_bound_vars()
+                        && let ty::PredicateKind::NormalizesTo(predicate) = kind
+                        && !predicate.alias.is_opaque(infcx.tcx)
+                    {
+                        // FIXME: We currently skip these goals as
+                        // `fn evaluate_root_goal` ICEs if there are any
+                        // `NestedNormalizationGoals`.
+                        continue;
+                    };
                     let (_, proof_tree) = infcx.evaluate_root_goal(goal, GenerateProofTree::Yes);
                     let proof_tree = proof_tree.unwrap();
                     try_visit!(visitor.visit_goal(&InspectGoal::new(
