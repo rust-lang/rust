@@ -140,22 +140,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let args = opaque_type_key.args;
             debug!(?concrete_type, ?args);
 
-            let mut arg_regions = vec![self.universal_regions.fr_static];
+            let mut arg_regions =
+                vec![(self.universal_regions.fr_static, infcx.tcx.lifetimes.re_static)];
 
             let to_universal_region = |vid, arg_regions: &mut Vec<_>| match self.universal_name(vid)
             {
                 Some(region) => {
                     let vid = self.universal_regions.to_region_vid(region);
-                    arg_regions.push(vid);
+                    arg_regions.push((vid, region));
                     region
                 }
                 None => {
-                    arg_regions.push(vid);
-                    ty::Region::new_error_with_message(
+                    let region = ty::Region::new_error_with_message(
                         infcx.tcx,
                         concrete_type.span,
                         "opaque type with non-universal region args",
-                    )
+                    );
+                    arg_regions.push((vid, region));
+                    region
                 }
             };
 
@@ -189,8 +191,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 infcx.tcx.fold_regions(concrete_type, |region, _| match *region {
                     ty::ReVar(vid) => arg_regions
                         .iter()
-                        .find(|ur_vid| self.eval_equal(vid, **ur_vid))
-                        .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
+                        .find(|(ur_vid, _)| self.eval_equal(vid, *ur_vid))
+                        .map(|(_, region)| *region)
                         .unwrap_or(infcx.tcx.lifetimes.re_erased),
                     ty::RePlaceholder(_) => ty::Region::new_error_with_message(
                         infcx.tcx,
