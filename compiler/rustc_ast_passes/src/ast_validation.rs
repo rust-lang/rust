@@ -1266,14 +1266,28 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_param_bound(&mut self, bound: &'a GenericBound, ctxt: BoundKind) {
         if let GenericBound::Trait(poly, modifiers) = bound {
             match (ctxt, modifiers.constness, modifiers.polarity) {
-                (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_)) => {
-                    self.dcx().emit_err(errors::OptionalTraitSupertrait {
-                        span: poly.span,
-                        path_str: pprust::path_to_string(&poly.trait_ref.path),
-                    });
+                (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_))
+                    if !self.features.more_maybe_bounds =>
+                {
+                    self.session
+                        .create_feature_err(
+                            errors::OptionalTraitSupertrait {
+                                span: poly.span,
+                                path_str: pprust::path_to_string(&poly.trait_ref.path),
+                            },
+                            sym::more_maybe_bounds,
+                        )
+                        .emit();
                 }
-                (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_)) => {
-                    self.dcx().emit_err(errors::OptionalTraitObject { span: poly.span });
+                (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_))
+                    if !self.features.more_maybe_bounds =>
+                {
+                    self.session
+                        .create_feature_err(
+                            errors::OptionalTraitObject { span: poly.span },
+                            sym::more_maybe_bounds,
+                        )
+                        .emit();
                 }
                 (BoundKind::TraitObject, BoundConstness::Always(_), BoundPolarity::Positive) => {
                     self.dcx().emit_err(errors::ConstBoundTraitObject { span: poly.span });

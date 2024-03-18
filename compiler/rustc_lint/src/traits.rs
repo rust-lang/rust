@@ -112,9 +112,11 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
 
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx>) {
         let hir::TyKind::TraitObject(bounds, _lifetime, _syntax) = &ty.kind else { return };
-        for bound in &bounds[..] {
+        for (bound, modifier) in &bounds[..] {
             let def_id = bound.trait_ref.trait_def_id();
-            if cx.tcx.lang_items().drop_trait() == def_id {
+            if cx.tcx.lang_items().drop_trait() == def_id
+                && *modifier != hir::TraitBoundModifier::Maybe
+            {
                 let Some(def_id) = cx.tcx.get_diagnostic_item(sym::needs_drop) else { return };
                 cx.emit_span_lint(DYN_DROP, bound.span, DropGlue { tcx: cx.tcx, def_id });
             }

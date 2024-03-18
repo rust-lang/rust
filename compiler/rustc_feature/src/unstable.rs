@@ -207,6 +207,8 @@ declare_features! (
     (unstable, lifetime_capture_rules_2024, "1.76.0", None),
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
     (unstable, link_cfg, "1.14.0", None),
+    /// Allows using `?Trait` trait bounds in more contexts.
+    (internal, more_maybe_bounds, "CURRENT_RUSTC_VERSION", None),
     /// Allows the `multiple_supertrait_upcastable` lint.
     (unstable, multiple_supertrait_upcastable, "1.69.0", None),
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!

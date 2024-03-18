@@ -5,7 +5,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self as ty, Ty};
 use rustc_span::symbol::Ident;
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{sym, ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 use smallvec::SmallVec;
 
@@ -66,10 +66,16 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             }
         }
 
-        if unbounds.len() > 1 {
-            tcx.dcx().emit_err(errors::MultipleRelaxedDefaultBounds {
-                spans: unbounds.iter().map(|ptr| ptr.span).collect(),
-            });
+        if unbounds.len() > 1 && !tcx.features().more_maybe_bounds {
+            self.tcx()
+                .sess
+                .create_feature_err(
+                    errors::MultipleRelaxedDefaultBounds {
+                        spans: unbounds.iter().map(|ptr| ptr.span).collect(),
+                    },
+                    sym::more_maybe_bounds,
+                )
+                .emit();
         }
 
         let mut seen_sized_unbound = false;
