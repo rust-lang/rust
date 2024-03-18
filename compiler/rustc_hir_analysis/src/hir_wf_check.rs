@@ -163,6 +163,16 @@ fn diagnostic_hir_wf_check<'tcx>(
                 kind: hir::GenericParamKind::Type { default: Some(ty), .. },
                 ..
             }) => vec![*ty],
+            hir::Node::AnonConst(_)
+                if let Some(const_param_id) =
+                    tcx.hir().opt_const_param_default_param_def_id(hir_id)
+                    && let Some(hir::Node::GenericParam(hir::GenericParam {
+                        kind: hir::GenericParamKind::Const { ty, .. },
+                        ..
+                    })) = tcx.opt_hir_node_by_def_id(const_param_id) =>
+            {
+                vec![*ty]
+            }
             ref node => bug!("Unexpected node {:?}", node),
         },
         WellFormedLoc::Param { function: _, param_idx } => {
