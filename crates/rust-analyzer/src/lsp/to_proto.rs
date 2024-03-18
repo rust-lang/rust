@@ -1516,8 +1516,8 @@ pub(crate) fn test_item(
     snap: &GlobalStateSnapshot,
     test_item: ide::TestItem,
     line_index: Option<&LineIndex>,
-) -> lsp_ext::TestItem {
-    lsp_ext::TestItem {
+) -> Option<lsp_ext::TestItem> {
+    Some(lsp_ext::TestItem {
         id: test_item.id,
         label: test_item.label,
         kind: match test_item.kind {
@@ -1532,9 +1532,9 @@ pub(crate) fn test_item(
                     | project_model::TargetKind::Example
                     | project_model::TargetKind::BuildScript
                     | project_model::TargetKind::Other => lsp_ext::TestItemKind::Package,
-                    project_model::TargetKind::Test | project_model::TargetKind::Bench => {
-                        lsp_ext::TestItemKind::Test
-                    }
+                    project_model::TargetKind::Test => lsp_ext::TestItemKind::Test,
+                    // benches are not tests needed to be shown in the test explorer
+                    project_model::TargetKind::Bench => return None,
                 }
             }
             ide::TestItemKind::Module => lsp_ext::TestItemKind::Module,
@@ -1550,7 +1550,7 @@ pub(crate) fn test_item(
             .map(|f| lsp_types::TextDocumentIdentifier { uri: url(snap, f) }),
         range: line_index.and_then(|l| Some(range(l, test_item.text_range?))),
         runnable: test_item.runnable.and_then(|r| runnable(snap, r).ok()),
-    }
+    })
 }
 
 pub(crate) mod command {

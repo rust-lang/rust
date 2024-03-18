@@ -552,7 +552,7 @@ impl GlobalState {
                 Task::DiscoverTest(lsp_ext::DiscoverTestResults {
                     tests: tests
                         .into_iter()
-                        .map(|t| {
+                        .filter_map(|t| {
                             let line_index = t.file.and_then(|f| snapshot.file_line_index(f).ok());
                             to_proto::test_item(&snapshot, t, line_index.as_ref())
                         })
