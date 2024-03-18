@@ -1129,7 +1129,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if name == sym::simd_shuffle_generic {
         let idx = fn_args[2]
             .expect_const()
-            .eval(tcx, ty::ParamEnv::reveal_all(), Some(span))
+            .eval(tcx, ty::ParamEnv::reveal_all(), span)
             .unwrap()
             .unwrap_branch();
         let n = idx.len() as u64;

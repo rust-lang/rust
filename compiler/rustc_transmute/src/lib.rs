@@ -89,6 +89,7 @@ mod rustc {
     use rustc_middle::ty::Ty;
     use rustc_middle::ty::TyCtxt;
     use rustc_middle::ty::ValTree;
+    use rustc_span::DUMMY_SP;
 
     /// The source and destination types of a transmutation.
     #[derive(TypeVisitable, Debug, Clone, Copy)]
@@ -135,7 +136,7 @@ mod rustc {
             use rustc_middle::ty::ScalarInt;
             use rustc_span::symbol::sym;
 
-            let Ok(cv) = c.eval(tcx, param_env, None) else {
+            let Ok(cv) = c.eval(tcx, param_env, DUMMY_SP) else {
                 return Some(Self {
                     alignment: true,
                     lifetimes: true,

@@ -741,7 +741,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // * During ConstProp, with `TooGeneric` or since the `required_consts` were not all
                 //   checked yet.
                 // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
-                self.eval_mir_constant(&c, Some(constant.span), layout)?
+                self.eval_mir_constant(&c, constant.span, layout)?
             }
         };
         trace!("{:?}: {:?}", mir_op, op);

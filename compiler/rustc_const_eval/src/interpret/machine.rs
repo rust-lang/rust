@@ -525,7 +525,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     fn eval_mir_constant<F>(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         val: mir::Const<'tcx>,
-        span: Option<Span>,
+        span: Span,
         layout: Option<TyAndLayout<'tcx>>,
         eval: F,
     ) -> InterpResult<'tcx, OpTy<'tcx, Self::Provenance>>
@@ -533,7 +533,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         F: Fn(
             &InterpCx<'mir, 'tcx, Self>,
             mir::Const<'tcx>,
-            Option<Span>,
+            Span,
             Option<TyAndLayout<'tcx>>,
         ) -> InterpResult<'tcx, OpTy<'tcx, Self::Provenance>>,
     {

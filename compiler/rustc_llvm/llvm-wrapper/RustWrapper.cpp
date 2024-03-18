@@ -2152,19 +2152,3 @@ extern "C" LLVMValueRef LLVMConstStringInContext2(LLVMContextRef C,
   return wrap(ConstantDataArray::getString(*unwrap(C), StringRef(Str, Length), !DontNullTerminate));
 }
 #endif
-
-// FIXME: Remove when Rust's minimum supported LLVM version reaches 17.
-// https://github.com/llvm/llvm-project/commit/35276f16e5a2cae0dfb49c0fbf874d4d2f177acc
-#if LLVM_VERSION_LT(17, 0)
-extern "C" LLVMValueRef LLVMConstArray2(LLVMTypeRef ElementTy,
-                                        LLVMValueRef *ConstantVals,
-                                        uint64_t Length) {
-  ArrayRef<Constant *> V(unwrap<Constant>(ConstantVals, Length), Length);
-  return wrap(ConstantArray::get(ArrayType::get(unwrap(ElementTy), Length), V));
-}
-
-extern "C" LLVMTypeRef LLVMArrayType2(LLVMTypeRef ElementTy,
-                                      uint64_t ElementCount) {
-  return wrap(ArrayType::get(unwrap(ElementTy), ElementCount));
-}
-#endif

@@ -19,6 +19,7 @@ use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability}
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::Integer;
 use smallvec::SmallVec;
 
@@ -704,7 +705,7 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                 // avoiding collisions and will make the emitted type names shorter.
                 let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
                     let mut hasher = StableHasher::new();
-                    let ct = ct.eval(tcx, ty::ParamEnv::reveal_all(), None).unwrap();
+                    let ct = ct.eval(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP).unwrap();
                     hcx.while_hashing_spans(false, |hcx| ct.hash_stable(hcx, &mut hasher));
                     hasher.finish::<Hash64>()
                 });

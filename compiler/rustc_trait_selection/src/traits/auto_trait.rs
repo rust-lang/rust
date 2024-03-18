@@ -786,7 +786,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             match selcx.infcx.const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,
-                                Some(obligation.cause.span),
+                                obligation.cause.span,
                             ) {
                                 Ok(Some(valtree)) => Ok(ty::Const::new_value(selcx.tcx(),valtree, c.ty())),
                                 Ok(None) => {

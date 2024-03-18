@@ -24,7 +24,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // `MirUsedCollector` visited all required_consts before codegen began, so if we got here
         // there can be no more constants that fail to evaluate.
         self.monomorphize(constant.const_)
-            .eval(self.cx.tcx(), ty::ParamEnv::reveal_all(), Some(constant.span))
+            .eval(self.cx.tcx(), ty::ParamEnv::reveal_all(), constant.span)
             .expect("erroneous constant missed by mono item collection")
     }
 
@@ -56,11 +56,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             other => span_bug!(constant.span, "{other:#?}"),
         };
         let uv = self.monomorphize(uv);
-        self.cx.tcx().const_eval_resolve_for_typeck(
-            ty::ParamEnv::reveal_all(),
-            uv,
-            Some(constant.span),
-        )
+        self.cx.tcx().const_eval_resolve_for_typeck(ty::ParamEnv::reveal_all(), uv, constant.span)
     }
 
     /// process constant containing SIMD shuffle indices
