@@ -550,6 +550,10 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         cargo.rustflag("-Cforce-unwind-tables=yes");
     }
 
+    // Enable frame pointers by default for the library. Note that they are still controlled by a
+    // separate setting for the compiler.
+    cargo.rustflag("-Cforce-frame-pointers=yes");
+
     let html_root =
         format!("-Zcrate-attr=doc(html_root_url=\"{}/\")", builder.doc_rust_lang_org_channel(),);
     cargo.rustflag(&html_root);
