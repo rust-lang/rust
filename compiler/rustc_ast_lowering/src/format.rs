@@ -604,8 +604,7 @@ fn may_contain_yield_point(e: &ast::Expr) -> bool {
             if let ast::ExprKind::Await(_, _) | ast::ExprKind::Yield(_) = e.kind {
                 ControlFlow::Break(())
             } else {
-                visit::walk_expr(self, e);
-                ControlFlow::Continue(())
+                visit::walk_expr(self, e)
             }
         }
 
