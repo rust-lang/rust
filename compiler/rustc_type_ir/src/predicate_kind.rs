@@ -148,19 +148,20 @@ pub enum PredicateKind<I: Interner> {
     /// Used for coherence to mark opaque types as possibly equal to each other but ambiguous.
     Ambiguous,
 
-    /// The alias normalizes to `term`. Unlike `Projection`, this always fails if the alias
-    /// cannot be normalized in the current context.
+    /// This should only be used inside of the new solver for `AliasRelate` and expects
+    /// the `term` to be an unconstrained inference variable.
     ///
-    /// `Projection(<T as Trait>::Assoc, ?x)` results in `?x == <T as Trait>::Assoc` while
-    /// `NormalizesTo(<T as Trait>::Assoc, ?x)` results in `NoSolution`.
-    ///
-    /// Only used in the new solver.
+    /// The alias normalizes to `term`. Unlike `Projection`, this always fails if the
+    /// alias cannot be normalized in the current context. For the rigid alias
+    /// `T as Trait>::Assoc`, `Projection(<T as Trait>::Assoc, ?x)` constrains `?x`
+    /// to `<T as Trait>::Assoc` while `NormalizesTo(<T as Trait>::Assoc, ?x)`
+    /// results in `NoSolution`.
     NormalizesTo(I::NormalizesTo),
 
     /// Separate from `ClauseKind::Projection` which is used for normalization in new solver.
     /// This predicate requires two terms to be equal to eachother.
     ///
-    /// Only used for new solver
+    /// Only used for new solver.
     AliasRelate(I::Term, I::Term, AliasRelationDirection),
 }
 
