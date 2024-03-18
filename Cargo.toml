@@ -22,6 +22,7 @@ smol_str.opt-level = 3
 text-size.opt-level = 3
 # This speeds up `cargo xtask dist`.
 miniz_oxide.opt-level = 3
+salsa.opt-level = 3
 
 [profile.release]
 incremental = true

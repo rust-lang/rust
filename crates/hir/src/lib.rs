@@ -4711,10 +4711,12 @@ impl Type {
                 if let WhereClause::Implemented(trait_ref) = pred.skip_binders() {
                     cb(type_.clone());
                     // skip the self type. it's likely the type we just got the bounds from
-                    for ty in
-                        trait_ref.substitution.iter(Interner).skip(1).filter_map(|a| a.ty(Interner))
-                    {
-                        walk_type(db, &type_.derived(ty.clone()), cb);
+                    if let [self_ty, params @ ..] = trait_ref.substitution.as_slice(Interner) {
+                        for ty in
+                            params.iter().filter(|&ty| ty != self_ty).filter_map(|a| a.ty(Interner))
+                        {
+                            walk_type(db, &type_.derived(ty.clone()), cb);
+                        }
                     }
                 }
             }

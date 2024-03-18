@@ -3301,12 +3301,12 @@ fn foo(ar$0g: &impl Foo<S>) {}
 fn test_hover_dyn_return_has_goto_type_action() {
     check_actions(
         r#"
-trait Foo {}
+trait Foo<T> {}
 struct S;
-impl Foo for S {}
+impl Foo<S> for S {}
 
 struct B<T>{}
-fn foo() -> B<dyn Foo> {}
+fn foo() -> B<dyn Foo<S>> {}
 
 fn main() { let s$0t = foo(); }
 "#,
@@ -3320,8 +3320,8 @@ fn main() { let s$0t = foo(); }
                                 file_id: FileId(
                                     0,
                                 ),
-                                full_range: 42..55,
-                                focus_range: 49..50,
+                                full_range: 48..61,
+                                focus_range: 55..56,
                                 name: "B",
                                 kind: Struct,
                                 description: "struct B<T>",
@@ -3333,11 +3333,24 @@ fn main() { let s$0t = foo(); }
                                 file_id: FileId(
                                     0,
                                 ),
-                                full_range: 0..12,
+                                full_range: 0..15,
                                 focus_range: 6..9,
                                 name: "Foo",
                                 kind: Trait,
-                                description: "trait Foo",
+                                description: "trait Foo<T>",
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 16..25,
+                                focus_range: 23..24,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S",
                             },
                         },
                     ],
@@ -4260,6 +4273,10 @@ fn foo<T$0: ?Sized + Sized + Sized>() {}
                 ```
             "#]],
         );
+    }
+
+    #[test]
+    fn mixed2() {
         check(
             r#"
 //- minicore: sized
@@ -7923,4 +7940,39 @@ struct Pedro$0<'a> {
             ```
         "#]],
     )
+}
+
+#[test]
+fn hover_impl_trait_arg_self() {
+    check(
+        r#"
+trait T<Rhs = Self> {}
+fn main(a$0: impl T) {}
+"#,
+        expect![[r#"
+            *a*
+
+            ```rust
+            a: impl T + ?Sized
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_struct_default_arg_self() {
+    check(
+        r#"
+struct T<Rhs = Self> {}
+fn main(a$0: T) {}
+"#,
+        expect![[r#"
+            *a*
+
+            ```rust
+            // size = 0, align = 1
+            a: T
+            ```
+        "#]],
+    );
 }

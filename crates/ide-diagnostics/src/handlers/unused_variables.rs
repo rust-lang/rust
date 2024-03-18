@@ -1,8 +1,10 @@
+use hir::Name;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     base_db::FileRange,
     label::Label,
     source_change::SourceChange,
+    RootDatabase,
 };
 use text_edit::TextEdit;
 
@@ -21,7 +23,7 @@ pub(crate) fn unused_variables(
         return None;
     }
     let diagnostic_range = ctx.sema.diagnostics_display_range(ast);
-    let var_name = d.local.primary_source(ctx.sema.db).syntax().to_string();
+    let var_name = d.local.name(ctx.sema.db);
     Some(
         Diagnostic::new_with_syntax_node_ptr(
             ctx,
@@ -29,23 +31,32 @@ pub(crate) fn unused_variables(
             "unused variable",
             ast,
         )
-        .with_fixes(fixes(&var_name, diagnostic_range, ast.file_id.is_macro()))
+        .with_fixes(fixes(ctx.sema.db, var_name, diagnostic_range, ast.file_id.is_macro()))
         .experimental(),
     )
 }
 
-fn fixes(var_name: &String, diagnostic_range: FileRange, is_in_marco: bool) -> Option<Vec<Assist>> {
+fn fixes(
+    db: &RootDatabase,
+    var_name: Name,
+    diagnostic_range: FileRange,
+    is_in_marco: bool,
+) -> Option<Vec<Assist>> {
     if is_in_marco {
         return None;
     }
     Some(vec![Assist {
         id: AssistId("unscore_unused_variable_name", AssistKind::QuickFix),
-        label: Label::new(format!("Rename unused {} to _{}", var_name, var_name)),
+        label: Label::new(format!(
+            "Rename unused {} to _{}",
+            var_name.display(db),
+            var_name.display(db)
+        )),
         group: None,
         target: diagnostic_range.range,
         source_change: Some(SourceChange::from_text_edit(
             diagnostic_range.file_id,
-            TextEdit::replace(diagnostic_range.range, format!("_{}", var_name)),
+            TextEdit::replace(diagnostic_range.range, format!("_{}", var_name.display(db))),
         )),
         trigger_signature_help: false,
     }])
