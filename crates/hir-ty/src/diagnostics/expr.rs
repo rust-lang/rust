@@ -11,7 +11,7 @@ use hir_def::{ItemContainerId, Lookup};
 use hir_expand::name;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
-use rustc_pattern_analysis::usefulness::{compute_match_usefulness, ValidityConstraint};
+use rustc_pattern_analysis::usefulness::{compute_match_usefulness, PlaceValidity};
 use syntax::{ast, AstNode};
 use tracing::debug;
 use triomphe::Arc;
@@ -238,7 +238,7 @@ impl ExprValidator {
             &cx,
             m_arms.as_slice(),
             scrut_ty.clone(),
-            ValidityConstraint::ValidOnly,
+            PlaceValidity::ValidOnly,
             None,
         ) {
             Ok(report) => report,
@@ -286,7 +286,7 @@ impl ExprValidator {
                 &cx,
                 &[match_arm],
                 ty.clone(),
-                ValidityConstraint::ValidOnly,
+                PlaceValidity::ValidOnly,
                 None,
             ) {
                 Ok(v) => v,
