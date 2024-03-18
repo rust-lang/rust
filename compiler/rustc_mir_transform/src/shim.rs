@@ -1040,7 +1040,7 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
     span: Span,
     source_info: SourceInfo,
 
-    stack: Vec<(Local, Ty<'tcx>)>,
+    stack: Vec<Local>,
     last_bb: BasicBlock,
 
     locals: IndexVec<Local, LocalDecl<'tcx>>,
@@ -1149,8 +1149,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
     fn build_fused_surface(mut self) -> Body<'tcx> {
         self.put_self();
-        self.combine_surface();
-        self.combine_fuse();
+        let surface = self.combine_surface(self.self_ty);
+        self.combine_fuse(surface);
         self.return_()
     }
 
@@ -1158,9 +1158,9 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         if is_array {
             self.put_array_as_slice(elem_ty)
         } else {
-            self.put_slice(elem_ty)
+            self.put_self()
         }
-        self.combine_slice();
+        self.combine_slice(elem_ty);
         self.return_()
     }
 
@@ -1177,69 +1177,55 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         }
 
         let mut elems = elem_tys.enumerate().map(|(i, ty)| (FieldIdx::new(i), ty));
-        if has_surface_async_drop {
+        let first = if has_surface_async_drop {
             self.put_self();
-            self.combine_surface();
+            self.combine_surface(self.self_ty)
         } else {
             let (field, ty) = elems.next().unwrap();
             self.put_field(field, ty);
-            self.combine_deep();
-        }
+            self.combine_deep(ty)
+        };
 
-        elems.for_each(|(field, elem_ty)| {
+        elems.fold(first, |prev, (field, elem_ty)| {
             self.put_field(field, elem_ty);
-            self.combine_into_async_destructor();
-            self.combine_chain();
+            let second = self.combine_into_async_destructor(elem_ty);
+            self.combine_chain(prev, second)
         });
 
         self.return_()
     }
 
-    /// Puts pair (Self, to_drop: *mut Self) on top of the stack
+    /// Puts `to_drop: *mut Self` on top of the stack.
     fn put_self(&mut self) {
-        self.put_rvalue(Rvalue::Use(Operand::Copy(Self::SELF_PTR.into())), self.self_ty)
+        self.put_rvalue(Rvalue::Use(Operand::Copy(Self::SELF_PTR.into())))
     }
 
-    /// Given that Self is [T; N] puts pair (T, to_drop: *mut [T]) on
-    /// top of the stack.  We use pointee types so that they are used
-    /// for instantiation of combinators.
+    /// Given that `Self is [ElemTy; N]` puts `to_drop: *mut [ElemTy]`
+    /// on top of the stack.
     fn put_array_as_slice(&mut self, elem_ty: Ty<'tcx>) {
         let slice_ptr_ty = Ty::new_mut_ptr(self.tcx, Ty::new_slice(self.tcx, elem_ty));
-        self.put_rvalue(
-            Rvalue::Cast(
-                CastKind::PointerCoercion(PointerCoercion::Unsize),
-                Operand::Copy(Self::SELF_PTR.into()),
-                slice_ptr_ty,
-            ),
-            elem_ty,
-        )
+        self.put_rvalue(Rvalue::Cast(
+            CastKind::PointerCoercion(PointerCoercion::Unsize),
+            Operand::Copy(Self::SELF_PTR.into()),
+            slice_ptr_ty,
+        ))
     }
 
-    /// Given that Self is [T] puts pair (T, to_drop: *mut [T]) on top
-    /// of the stack. We use pointee types so that they are used for
-    /// instantiation of combinators.
-    fn put_slice(&mut self, elem_ty: Ty<'tcx>) {
-        self.put_rvalue(Rvalue::Use(Operand::Copy(Self::SELF_PTR.into())), elem_ty)
-    }
-
-    /// If given Self is a struct puts pair (Field, to_drop: *mut Field)
-    /// on top of the stack. We use pointee types so that they are used
-    /// for instantiation of combinators.
+    /// If given Self is a struct puts `to_drop: *mut FieldTy` on top
+    /// of the stack.
     fn put_field(&mut self, field: FieldIdx, field_ty: Ty<'tcx>) {
-        self.put_rvalue(
-            Rvalue::AddressOf(
-                Mutability::Mut,
-                self.tcx.mk_place_field(
-                    self.tcx.mk_place_deref(Self::SELF_PTR.into()),
-                    field,
-                    field_ty,
-                ),
+        self.put_rvalue(Rvalue::AddressOf(
+            Mutability::Mut,
+            self.tcx.mk_place_field(
+                self.tcx.mk_place_deref(Self::SELF_PTR.into()),
+                field,
+                field_ty,
             ),
-            field_ty,
-        )
+        ))
     }
 
-    fn put_rvalue(&mut self, rvalue: Rvalue<'tcx>, ty: Ty<'tcx>) {
+    /// Puts `x: RvalueType` on top of the stack.
+    fn put_rvalue(&mut self, rvalue: Rvalue<'tcx>) {
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
 
@@ -1255,44 +1241,46 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             },
         ]);
 
-        self.stack.push((local, ty));
+        self.stack.push(local);
     }
 
-    /// Puts pair (async_drop::Nop, nop: async_drop::Nop) on top of
-    /// the stack
-    fn put_nop(&mut self) {
-        self.apply_combinator::<0>(LangItem::AsyncDropNopCtor)
+    /// Puts `nop: async_drop::Nop` on top of the stack
+    fn put_nop(&mut self) -> Ty<'tcx> {
+        self.apply_combinator::<0, _>(
+            LangItem::AsyncDropNopCtor,
+            iter::empty::<ty::GenericArg<'tcx>>(),
+        )
     }
 
-    fn combine_surface(&mut self) {
-        self.apply_combinator::<1>(LangItem::SurfaceAsyncDropInPlace)
+    fn combine_surface(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator::<1, _>(LangItem::SurfaceAsyncDropInPlace, iter::once(to_drop_ty))
     }
 
-    fn combine_deep(&mut self) {
-        self.apply_combinator::<1>(LangItem::AsyncDropInPlace)
+    fn combine_deep(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator::<1, _>(LangItem::AsyncDropInPlace, iter::once(to_drop_ty))
     }
 
-    fn combine_fuse(&mut self) {
-        self.apply_combinator::<1>(LangItem::AsyncDropFuseCtor)
+    fn combine_fuse(&mut self, inner_future_ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator::<1, _>(LangItem::AsyncDropFuseCtor, iter::once(inner_future_ty))
     }
 
-    fn combine_slice(&mut self) {
-        self.apply_combinator::<1>(LangItem::AsyncDropSliceCtor)
+    fn combine_slice(&mut self, elem_ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator::<1, _>(LangItem::AsyncDropSliceCtor, iter::once(elem_ty))
     }
 
-    fn combine_into_async_destructor(&mut self) {
-        self.apply_combinator::<1>(LangItem::IntoAsyncDestructorCtor)
+    fn combine_into_async_destructor(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator::<1, _>(LangItem::IntoAsyncDestructorCtor, iter::once(to_drop_ty))
     }
 
-    fn combine_chain(&mut self) {
-        self.apply_combinator::<2>(LangItem::AsyncDropChainCtor)
+    fn combine_chain(&mut self, first: Ty<'tcx>, second: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator::<2, _>(LangItem::AsyncDropChainCtor, [first, second].iter().copied())
     }
 
     fn return_(mut self) -> Body<'tcx> {
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
 
-        let &[(output_local, _)] = self.stack.as_slice() else {
+        let &[output_local] = self.stack.as_slice() else {
             span_bug!(
                 self.span,
                 "async destructor ctor shim builder finished with invalid number of stack items: expected 1 found {}",
@@ -1324,7 +1312,11 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         new_body(source, self.bbs, self.locals, Self::INPUT_COUNT, self.span)
     }
 
-    fn apply_combinator<const ARITY: usize>(&mut self, function: LangItem) {
+    fn apply_combinator<const ARITY: usize, I>(&mut self, function: LangItem, args: I) -> Ty<'tcx>
+    where
+        I: IntoIterator,
+        I::Item: Into<ty::GenericArg<'tcx>>,
+    {
         let function = self.tcx.require_lang_item(function, Some(self.span));
         let operands = &self.stack[self
             .stack
@@ -1332,13 +1324,13 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             .checked_sub(ARITY)
             .expect("async destructor ctor shim combinator tried to consume too many items")..];
 
-        let func_ty = Ty::new_fn_def(self.tcx, function, operands.iter().map(|(_, t)| *t));
+        let func_ty = Ty::new_fn_def(self.tcx, function, args);
         let dest_ty = func_ty.fn_sig(self.tcx).output().no_bound_vars().unwrap();
 
         let target = self.bbs.push(BasicBlockData {
             statements: {
                 let mut stmts = Vec::with_capacity(ARITY + 1);
-                stmts.extend(operands.iter().map(|&(l, _)| Statement {
+                stmts.extend(operands.iter().rev().map(|&l| Statement {
                     source_info: self.source_info,
                     kind: StatementKind::StorageDead(l),
                 }));
@@ -1348,8 +1340,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             is_cleanup: false,
         });
 
-        let args =
-            operands.iter().map(|&(l, _)| respan(self.span, Operand::Move(l.into()))).collect();
+        let args = operands.iter().map(|&l| respan(self.span, Operand::Move(l.into()))).collect();
         let dest =
             self.locals.push(LocalDecl::with_source_info(dest_ty, self.source_info).immutable());
 
@@ -1380,8 +1371,9 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         });
 
         drop(self.stack.drain(self.stack.len() - ARITY..));
-        self.stack.push((dest, dest_ty));
+        self.stack.push(dest);
         self.last_bb = target;
+        dest_ty
     }
 }
 
