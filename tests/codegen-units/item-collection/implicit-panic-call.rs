@@ -16,10 +16,17 @@ struct Location<'a> {
     _col: u32,
 }
 
-#[lang = "panic"]
+#[lang = "panic_const_div_by_zero"]
 #[inline]
 #[track_caller]
-fn panic(_: &'static str) -> ! {
+fn panic_div_zero() -> ! {
+    loop {}
+}
+
+#[lang = "panic_const_div_overflow"]
+#[inline]
+#[track_caller]
+fn panic_div_overflow() -> ! {
     loop {}
 }
 
@@ -55,4 +62,5 @@ pub fn foo() {
 
 //~ MONO_ITEM fn foo
 //~ MONO_ITEM fn <i32 as Div>::div
-//~ MONO_ITEM fn panic
+//~ MONO_ITEM fn panic_div_zero
+//~ MONO_ITEM fn panic_div_overflow

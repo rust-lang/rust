@@ -971,16 +971,17 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     }
                 }
             }
-            mir::TerminatorKind::Assert { ref msg, .. } => {
-                let lang_item = match &**msg {
-                    mir::AssertKind::BoundsCheck { .. } => LangItem::PanicBoundsCheck,
-                    mir::AssertKind::MisalignedPointerDereference { .. } => {
-                        LangItem::PanicMisalignedPointerDereference
-                    }
-                    _ => LangItem::Panic,
-                };
-                push_mono_lang_item(self, lang_item);
-            }
+            mir::TerminatorKind::Assert { ref msg, .. } => match &**msg {
+                mir::AssertKind::BoundsCheck { .. } => {
+                    push_mono_lang_item(self, LangItem::PanicBoundsCheck);
+                }
+                mir::AssertKind::MisalignedPointerDereference { .. } => {
+                    push_mono_lang_item(self, LangItem::PanicMisalignedPointerDereference);
+                }
+                _ => {
+                    push_mono_lang_item(self, msg.panic_function());
+                }
+            },
             mir::TerminatorKind::UnwindTerminate(reason) => {
                 push_mono_lang_item(self, reason.lang_item());
             }

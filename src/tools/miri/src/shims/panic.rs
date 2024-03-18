@@ -256,8 +256,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
 
             _ => {
-                // Forward everything else to `panic` lang item.
-                this.start_panic(msg.description(), unwind)?;
+                // Call the lang item associated with this message.
+                let fn_item = this.tcx.require_lang_item(msg.panic_function(), None);
+                let instance = ty::Instance::mono(this.tcx.tcx, fn_item);
+                this.call_function(
+                    instance,
+                    Abi::Rust,
+                    &[],
+                    None,
+                    StackPopCleanup::Goto { ret: None, unwind },
+                )?;
             }
         }
         Ok(())

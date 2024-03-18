@@ -246,6 +246,25 @@ language_item_table! {
     PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn,             GenericRequirement::None;
     PanicCannotUnwind,       sym::panic_cannot_unwind, panic_cannot_unwind,        Target::Fn,             GenericRequirement::Exact(0);
     PanicInCleanup,          sym::panic_in_cleanup,    panic_in_cleanup,           Target::Fn,             GenericRequirement::Exact(0);
+    /// Constant panic messages, used for codegen of MIR asserts.
+    PanicAddOverflow,        sym::panic_const_add_overflow, panic_const_add_overflow, Target::Fn, GenericRequirement::None;
+    PanicSubOverflow,        sym::panic_const_sub_overflow, panic_const_sub_overflow, Target::Fn, GenericRequirement::None;
+    PanicMulOverflow,        sym::panic_const_mul_overflow, panic_const_mul_overflow, Target::Fn, GenericRequirement::None;
+    PanicDivOverflow,        sym::panic_const_div_overflow, panic_const_div_overflow, Target::Fn, GenericRequirement::None;
+    PanicRemOverflow,        sym::panic_const_rem_overflow, panic_const_rem_overflow, Target::Fn, GenericRequirement::None;
+    PanicNegOverflow,        sym::panic_const_neg_overflow, panic_const_neg_overflow, Target::Fn, GenericRequirement::None;
+    PanicShrOverflow,        sym::panic_const_shr_overflow, panic_const_shr_overflow, Target::Fn, GenericRequirement::None;
+    PanicShlOverflow,        sym::panic_const_shl_overflow, panic_const_shl_overflow, Target::Fn, GenericRequirement::None;
+    PanicDivZero,            sym::panic_const_div_by_zero, panic_const_div_by_zero, Target::Fn, GenericRequirement::None;
+    PanicRemZero,            sym::panic_const_rem_by_zero, panic_const_rem_by_zero, Target::Fn, GenericRequirement::None;
+    PanicCoroutineResumed, sym::panic_const_coroutine_resumed, panic_const_coroutine_resumed, Target::Fn, GenericRequirement::None;
+    PanicAsyncFnResumed, sym::panic_const_async_fn_resumed, panic_const_async_fn_resumed, Target::Fn, GenericRequirement::None;
+    PanicAsyncGenFnResumed, sym::panic_const_async_gen_fn_resumed, panic_const_async_gen_fn_resumed, Target::Fn, GenericRequirement::None;
+    PanicGenFnNone, sym::panic_const_gen_fn_none, panic_const_gen_fn_none, Target::Fn, GenericRequirement::None;
+    PanicCoroutineResumedPanic, sym::panic_const_coroutine_resumed_panic, panic_const_coroutine_resumed_panic, Target::Fn, GenericRequirement::None;
+    PanicAsyncFnResumedPanic, sym::panic_const_async_fn_resumed_panic, panic_const_async_fn_resumed_panic, Target::Fn, GenericRequirement::None;
+    PanicAsyncGenFnResumedPanic, sym::panic_const_async_gen_fn_resumed_panic, panic_const_async_gen_fn_resumed_panic, Target::Fn, GenericRequirement::None;
+    PanicGenFnNonePanic, sym::panic_const_gen_fn_none_panic, panic_const_gen_fn_none_panic, Target::Fn, GenericRequirement::None;
     /// libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
 

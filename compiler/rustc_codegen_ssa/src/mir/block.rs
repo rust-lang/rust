@@ -651,10 +651,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (LangItem::PanicMisalignedPointerDereference, vec![required, found, location])
             }
             _ => {
-                let msg = bx.const_str(msg.description());
-                // It's `pub fn panic(expr: &str)`, with the wide reference being passed
-                // as two arguments, and `#[track_caller]` adds an implicit third argument.
-                (LangItem::Panic, vec![msg.0, msg.1, location])
+                // It's `pub fn panic_...()` and `#[track_caller]` adds an implicit argument.
+                (msg.panic_function(), vec![location])
             }
         };
 
