@@ -899,7 +899,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
         GenericParamKind::Const { ref ty, ref default, is_host_effect: _ } => {
             try_visit!(visitor.visit_ty(ty));
             if let Some(ref default) = default {
-                visitor.visit_const_param_default(param.hir_id, default);
+                try_visit!(visitor.visit_const_param_default(param.hir_id, default));
             }
         }
     }
