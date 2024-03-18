@@ -17,6 +17,10 @@ impl Test<'_> for () {}
 
 fn constrain() -> Foo {
     ()
+    //~^ ERROR expected generic lifetime parameter, found `'static`
+    // FIXME(aliemjay): Undesirable error message appears because error regions
+    // are converterted internally into `'?0` which corresponds to `'static`
+    // This should be fixed in a later commit.
 }
 
 fn main() {}

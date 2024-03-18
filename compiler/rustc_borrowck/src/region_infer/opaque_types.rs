@@ -179,7 +179,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // Next, insert universal regions from args, so we can translate regions that appear
             // in them but are not subject to member constraints, for instance closure args.
-            let universal_args = infcx.tcx.fold_regions(args, |region, _| {
+            let universal_key = opaque_type_key.fold_captured_lifetime_args(infcx.tcx, |region| {
                 if let ty::RePlaceholder(..) = region.kind() {
                     // Higher kinded regions don't need remapping, they don't refer to anything outside of this the args.
                     return region;
@@ -187,6 +187,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let vid = self.to_region_vid(region);
                 to_universal_region(vid, &mut arg_regions)
             });
+            let universal_args = universal_key.args;
             debug!(?universal_args);
             debug!(?arg_regions);
 
@@ -431,23 +432,21 @@ fn check_opaque_type_well_formed<'tcx>(
     }
 }
 
-fn check_opaque_type_parameter_valid(
-    tcx: TyCtxt<'_>,
-    opaque_type_key: OpaqueTypeKey<'_>,
+fn check_opaque_type_parameter_valid<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    opaque_type_key: OpaqueTypeKey<'tcx>,
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
     let opaque_ty_hir = tcx.hir().expect_item(opaque_type_key.def_id);
-    let (parent, is_ty_alias) = match opaque_ty_hir.expect_opaque_ty().origin {
+    let (_parent, is_ty_alias) = match opaque_ty_hir.expect_opaque_ty().origin {
         OpaqueTyOrigin::TyAlias { parent, .. } => (parent, true),
         OpaqueTyOrigin::AsyncFn(parent) | OpaqueTyOrigin::FnReturn(parent) => (parent, false),
     };
 
-    let parent_generics = tcx.generics_of(parent);
+    let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
     let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
 
-    // Only check the parent generics, which will ignore any of the
-    // duplicated lifetime args that come from reifying late-bounds.
-    for (i, arg) in opaque_type_key.args.iter().take(parent_generics.count()).enumerate() {
+    for (i, arg) in opaque_type_key.iter_captured_args(tcx) {
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
             GenericArgKind::Lifetime(lt) if is_ty_alias => {
@@ -464,7 +463,7 @@ fn check_opaque_type_parameter_valid(
             seen_params.entry(arg).or_default().push(i);
         } else {
             // Prevent `fn foo() -> Foo<u32>` from being defining.
-            let opaque_param = parent_generics.param_at(i, tcx);
+            let opaque_param = opaque_generics.param_at(i, tcx);
             let kind = opaque_param.kind.descr();
 
             return Err(tcx.dcx().emit_err(NonGenericOpaqueTypeParam {
@@ -478,10 +477,10 @@ fn check_opaque_type_parameter_valid(
 
     for (_, indices) in seen_params {
         if indices.len() > 1 {
-            let descr = parent_generics.param_at(indices[0], tcx).kind.descr();
+            let descr = opaque_generics.param_at(indices[0], tcx).kind.descr();
             let spans: Vec<_> = indices
                 .into_iter()
-                .map(|i| tcx.def_span(parent_generics.param_at(i, tcx).def_id))
+                .map(|i| tcx.def_span(opaque_generics.param_at(i, tcx).def_id))
                 .collect();
             #[allow(rustc::diagnostic_outside_of_impl)]
             #[allow(rustc::untranslatable_diagnostic)]
