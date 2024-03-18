@@ -82,7 +82,7 @@ Cargo
 
 - [Extend the build directive syntax with `cargo::`.](https://github.com/rust-lang/cargo/pull/12201/)
 - [Stabilize metadata `id` format as `PackageIDSpec`.](https://github.com/rust-lang/cargo/pull/12914/)
-- [Pull out as `cargo-util-schemas` as a crate.](https://github.com/rust-lang/cargo/pull/13178/)
+- [Pull out `cargo-util-schemas` as a crate.](https://github.com/rust-lang/cargo/pull/13178/)
 - [Strip all debuginfo when debuginfo is not requested.](https://github.com/rust-lang/cargo/pull/13257/)
 - [Inherit jobserver from env for all kinds of runners.](https://github.com/rust-lang/cargo/pull/12776/)
 - [Deprecate rustc plugin support in cargo.](https://github.com/rust-lang/cargo/pull/13248/)
