@@ -85,7 +85,7 @@ declare_features! (
     /// Enables `#[cfg(panic = "...")]` config key.
     (accepted, cfg_panic, "1.60.0", Some(77443)),
     /// Allows `cfg(target_abi = "...")`.
-    (accepted, cfg_target_abi, "CURRENT_RUSTC_VERSION", Some(80970)),
+    (accepted, cfg_target_abi, "1.78.0", Some(80970)),
     /// Allows `cfg(target_feature = "...")`.
     (accepted, cfg_target_feature, "1.27.0", Some(29717)),
     /// Allows `cfg(target_vendor = "...")`.
@@ -147,7 +147,7 @@ declare_features! (
     /// Allows the use of destructuring assignments.
     (accepted, destructuring_assignment, "1.59.0", Some(71126)),
     /// Allows using the `#[diagnostic]` attribute tool namespace
-    (accepted, diagnostic_namespace, "CURRENT_RUSTC_VERSION", Some(111996)),
+    (accepted, diagnostic_namespace, "1.78.0", Some(111996)),
     /// Allows `#[doc(alias = "...")]`.
     (accepted, doc_alias, "1.48.0", Some(50146)),
     /// Allows `..` in tuple (struct) patterns.

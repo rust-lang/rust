@@ -1387,6 +1387,9 @@ impl Build {
         if let Some(path) = finder.maybe_have("wasmtime") {
             if let Ok(mut path) = path.into_os_string().into_string() {
                 path.push_str(" run -C cache=n --dir .");
+                // Make sure that tests have access to RUSTC_BOOTSTRAP. This (for example) is
+                // required for libtest to work on beta/stable channels.
+                path.push_str(" --env RUSTC_BOOTSTRAP");
                 return Some(path);
             }
         }
