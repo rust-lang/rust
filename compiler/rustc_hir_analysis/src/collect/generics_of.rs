@@ -508,29 +508,9 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
         visitor.has_late_bound_regions
     }
 
-    match node {
-        Node::TraitItem(item) => match &item.kind {
-            hir::TraitItemKind::Fn(sig, _) => has_late_bound_regions(tcx, item.generics, sig.decl),
-            _ => None,
-        },
-        Node::ImplItem(item) => match &item.kind {
-            hir::ImplItemKind::Fn(sig, _) => has_late_bound_regions(tcx, item.generics, sig.decl),
-            _ => None,
-        },
-        Node::ForeignItem(item) => match item.kind {
-            hir::ForeignItemKind::Fn(fn_decl, _, generics) => {
-                has_late_bound_regions(tcx, generics, fn_decl)
-            }
-            _ => None,
-        },
-        Node::Item(item) => match &item.kind {
-            hir::ItemKind::Fn(sig, .., generics, _) => {
-                has_late_bound_regions(tcx, generics, sig.decl)
-            }
-            _ => None,
-        },
-        _ => None,
-    }
+    let decl = node.fn_decl()?;
+    let generics = node.generics()?;
+    has_late_bound_regions(tcx, generics, decl)
 }
 
 struct AnonConstInParamTyDetector {
