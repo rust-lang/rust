@@ -261,7 +261,7 @@ use crate::vec::Vec;
 ///
 /// A `String` is made up of three components: a pointer to some bytes, a
 /// length, and a capacity. The pointer points to an internal buffer `String`
-/// uses to store its data. The length is the number of bytes currently stored
+/// used to store its data. The length is the number of bytes currently stored
 /// in the buffer, and the capacity is the size of the buffer in bytes. As such,
 /// the length will always be less than or equal to the capacity.
 ///
