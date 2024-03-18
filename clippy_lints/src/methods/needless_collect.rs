@@ -107,7 +107,7 @@ pub(super) fn check<'tcx>(
                 span.push_span_label(iter_call.span, "the iterator could be used here instead");
                 span_lint_hir_and_then(
                     cx,
-                    super::NEEDLESS_COLLECT,
+                    NEEDLESS_COLLECT,
                     collect_expr.hir_id,
                     span,
                     NEEDLESS_COLLECT_MSG,

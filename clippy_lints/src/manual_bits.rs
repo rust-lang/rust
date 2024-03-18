@@ -139,7 +139,7 @@ fn is_ty_conversion(expr: &Expr<'_>) -> bool {
     if let ExprKind::Cast(..) = expr.kind {
         true
     } else if let ExprKind::MethodCall(path, _, [], _) = expr.kind
-        && path.ident.name == rustc_span::sym::try_into
+        && path.ident.name == sym::try_into
     {
         // This is only called for `usize` which implements `TryInto`. Therefore,
         // we don't have to check here if `self` implements the `TryInto` trait.

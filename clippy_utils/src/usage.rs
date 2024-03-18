@@ -83,15 +83,15 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
         self.update(cmt);
     }
 
-    fn fake_read(&mut self, _: &rustc_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 pub struct ParamBindingIdCollector {
-    pub binding_hir_ids: Vec<hir::HirId>,
+    pub binding_hir_ids: Vec<HirId>,
 }
 impl<'tcx> ParamBindingIdCollector {
-    fn collect_binding_hir_ids(body: &'tcx hir::Body<'tcx>) -> Vec<hir::HirId> {
-        let mut hir_ids: Vec<hir::HirId> = Vec::new();
+    fn collect_binding_hir_ids(body: &'tcx hir::Body<'tcx>) -> Vec<HirId> {
+        let mut hir_ids: Vec<HirId> = Vec::new();
         for param in body.params {
             let mut finder = ParamBindingIdCollector {
                 binding_hir_ids: Vec::new(),
@@ -104,7 +104,7 @@ impl<'tcx> ParamBindingIdCollector {
         hir_ids
     }
 }
-impl<'tcx> intravisit::Visitor<'tcx> for ParamBindingIdCollector {
+impl<'tcx> Visitor<'tcx> for ParamBindingIdCollector {
     fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
         if let hir::PatKind::Binding(_, hir_id, ..) = pat.kind {
             self.binding_hir_ids.push(hir_id);
@@ -115,7 +115,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for ParamBindingIdCollector {
 
 pub struct BindingUsageFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    binding_ids: Vec<hir::HirId>,
+    binding_ids: Vec<HirId>,
     usage_found: bool,
 }
 impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
@@ -129,16 +129,16 @@ impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
         finder.usage_found
     }
 }
-impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if !self.usage_found {
             intravisit::walk_expr(self, expr);
         }
     }
 
-    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: HirId) {
         if let Res::Local(id) = path.res {
             if self.binding_ids.contains(&id) {
                 self.usage_found = true;

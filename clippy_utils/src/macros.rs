@@ -429,7 +429,7 @@ pub fn find_format_args(cx: &LateContext<'_>, start: &Expr<'_>, expn_id: ExpnId)
 pub fn find_format_arg_expr<'hir, 'ast>(
     start: &'hir Expr<'hir>,
     target: &'ast FormatArgument,
-) -> Result<&'hir rustc_hir::Expr<'hir>, &'ast rustc_ast::Expr> {
+) -> Result<&'hir Expr<'hir>, &'ast rustc_ast::Expr> {
     let SpanData {
         lo,
         hi,

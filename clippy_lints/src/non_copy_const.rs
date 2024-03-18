@@ -285,7 +285,7 @@ impl NonCopyConst {
         let def_id = body_id.hir_id.owner.to_def_id();
         let args = ty::GenericArgs::identity_for_item(cx.tcx, def_id);
         let instance = ty::Instance::new(def_id, args);
-        let cid = rustc_middle::mir::interpret::GlobalId {
+        let cid = GlobalId {
             instance,
             promoted: None,
         };
@@ -534,7 +534,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
     }
 }
 
-fn ignored_macro(cx: &LateContext<'_>, it: &rustc_hir::Item<'_>) -> bool {
+fn ignored_macro(cx: &LateContext<'_>, it: &Item<'_>) -> bool {
     macro_backtrace(it.span).any(|macro_call| {
         matches!(
             cx.tcx.get_diagnostic_name(macro_call.def_id),

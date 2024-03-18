@@ -56,7 +56,7 @@ fn emit_lint(
     index: usize,
     // The bindings that were implied, used for suggestion purposes since removing a bound with associated types
     // means we might need to then move it to a different bound
-    implied_bindings: &[rustc_hir::TypeBinding<'_>],
+    implied_bindings: &[TypeBinding<'_>],
     bound: &ImplTraitBound<'_>,
 ) {
     let implied_by = snippet(cx, bound.span, "..");

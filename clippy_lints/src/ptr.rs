@@ -628,7 +628,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                         }
                     },
                     ExprKind::MethodCall(name, self_arg, expr_args, _) => {
-                        let i = std::iter::once(self_arg)
+                        let i = iter::once(self_arg)
                             .chain(expr_args.iter())
                             .position(|arg| arg.hir_id == child_id)
                             .unwrap_or(0);

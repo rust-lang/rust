@@ -41,7 +41,7 @@ pub const ONE: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("1"));
 pub const EMPTY: Sugg<'static> = Sugg::NonParen(Cow::Borrowed(""));
 
 impl Display for Sugg<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match *self {
             Sugg::NonParen(ref s) | Sugg::MaybeParen(ref s) => s.fmt(f),
             Sugg::BinOp(op, ref lhs, ref rhs) => binop_to_string(op, lhs, rhs).fmt(f),
@@ -124,48 +124,48 @@ impl<'a> Sugg<'a> {
         }
 
         match expr.kind {
-            hir::ExprKind::AddrOf(..)
-            | hir::ExprKind::If(..)
-            | hir::ExprKind::Let(..)
-            | hir::ExprKind::Closure { .. }
-            | hir::ExprKind::Unary(..)
-            | hir::ExprKind::Match(..) => Sugg::MaybeParen(get_snippet(expr.span)),
-            hir::ExprKind::Continue(..)
-            | hir::ExprKind::Yield(..)
-            | hir::ExprKind::Array(..)
-            | hir::ExprKind::Block(..)
-            | hir::ExprKind::Break(..)
-            | hir::ExprKind::Call(..)
-            | hir::ExprKind::Field(..)
-            | hir::ExprKind::Index(..)
-            | hir::ExprKind::InlineAsm(..)
-            | hir::ExprKind::OffsetOf(..)
-            | hir::ExprKind::ConstBlock(..)
-            | hir::ExprKind::Lit(..)
-            | hir::ExprKind::Loop(..)
-            | hir::ExprKind::MethodCall(..)
-            | hir::ExprKind::Path(..)
-            | hir::ExprKind::Repeat(..)
-            | hir::ExprKind::Ret(..)
-            | hir::ExprKind::Become(..)
-            | hir::ExprKind::Struct(..)
-            | hir::ExprKind::Tup(..)
-            | hir::ExprKind::Err(_) => Sugg::NonParen(get_snippet(expr.span)),
-            hir::ExprKind::DropTemps(inner) => Self::hir_from_snippet(inner, get_snippet),
-            hir::ExprKind::Assign(lhs, rhs, _) => {
+            ExprKind::AddrOf(..)
+            | ExprKind::If(..)
+            | ExprKind::Let(..)
+            | ExprKind::Closure { .. }
+            | ExprKind::Unary(..)
+            | ExprKind::Match(..) => Sugg::MaybeParen(get_snippet(expr.span)),
+            ExprKind::Continue(..)
+            | ExprKind::Yield(..)
+            | ExprKind::Array(..)
+            | ExprKind::Block(..)
+            | ExprKind::Break(..)
+            | ExprKind::Call(..)
+            | ExprKind::Field(..)
+            | ExprKind::Index(..)
+            | ExprKind::InlineAsm(..)
+            | ExprKind::OffsetOf(..)
+            | ExprKind::ConstBlock(..)
+            | ExprKind::Lit(..)
+            | ExprKind::Loop(..)
+            | ExprKind::MethodCall(..)
+            | ExprKind::Path(..)
+            | ExprKind::Repeat(..)
+            | ExprKind::Ret(..)
+            | ExprKind::Become(..)
+            | ExprKind::Struct(..)
+            | ExprKind::Tup(..)
+            | ExprKind::Err(_) => Sugg::NonParen(get_snippet(expr.span)),
+            ExprKind::DropTemps(inner) => Self::hir_from_snippet(inner, get_snippet),
+            ExprKind::Assign(lhs, rhs, _) => {
                 Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))
             },
-            hir::ExprKind::AssignOp(op, lhs, rhs) => {
+            ExprKind::AssignOp(op, lhs, rhs) => {
                 Sugg::BinOp(hirbinop2assignop(op), get_snippet(lhs.span), get_snippet(rhs.span))
             },
-            hir::ExprKind::Binary(op, lhs, rhs) => Sugg::BinOp(
+            ExprKind::Binary(op, lhs, rhs) => Sugg::BinOp(
                 AssocOp::from_ast_binop(op.node),
                 get_snippet(lhs.span),
                 get_snippet(rhs.span),
             ),
-            hir::ExprKind::Cast(lhs, ty) |
+            ExprKind::Cast(lhs, ty) |
             //FIXME(chenyukang), remove this after type ascription is removed from AST
-            hir::ExprKind::Type(lhs, ty) => Sugg::BinOp(AssocOp::As, get_snippet(lhs.span), get_snippet(ty.span)),
+            ExprKind::Type(lhs, ty) => Sugg::BinOp(AssocOp::As, get_snippet(lhs.span), get_snippet(ty.span)),
         }
     }
 
@@ -508,7 +508,7 @@ impl<T> ParenHelper<T> {
 }
 
 impl<T: Display> Display for ParenHelper<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         if self.paren {
             write!(f, "({})", self.wrapped)
         } else {
@@ -801,7 +801,7 @@ pub struct DerefClosure {
 ///
 /// note: this only works on single line immutable closures with exactly one input parameter.
 pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Option<DerefClosure> {
-    if let hir::ExprKind::Closure(&Closure {
+    if let ExprKind::Closure(&Closure {
         fn_decl, def_id, body, ..
     }) = closure.kind
     {

@@ -24,7 +24,7 @@ use std::iter;
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
 pub enum Constant<'tcx> {
-    Adt(rustc_middle::mir::Const<'tcx>),
+    Adt(mir::Const<'tcx>),
     /// A `String` (e.g., "abc").
     Str(String),
     /// A binary string (e.g., `b"abc"`).
@@ -207,7 +207,7 @@ impl<'tcx> Constant<'tcx> {
                     .zip(r)
                     .zip(tys)
                     .map(|((li, ri), cmp_type)| Self::partial_cmp(tcx, cmp_type, li, ri))
-                    .find(|r| r.map_or(true, |o| o != Ordering::Equal))
+                    .find(|r| r.map_or(true, |o| o != Equal))
                     .unwrap_or_else(|| Some(l.len().cmp(&r.len()))),
                 _ => None,
             },
@@ -217,7 +217,7 @@ impl<'tcx> Constant<'tcx> {
                 };
                 iter::zip(l, r)
                     .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
-                    .find(|r| r.map_or(true, |o| o != Ordering::Equal))
+                    .find(|r| r.map_or(true, |o| o != Equal))
                     .unwrap_or_else(|| Some(l.len().cmp(&r.len())))
             },
             (Self::Repeat(lv, ls), Self::Repeat(rv, rs)) => {
@@ -361,7 +361,7 @@ pub enum FullInt {
 impl PartialEq for FullInt {
     #[must_use]
     fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Ordering::Equal
+        self.cmp(other) == Equal
     }
 }
 
@@ -579,7 +579,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     /// Lookup a possibly constant expression from an `ExprKind::Path` and apply a function on it.
     fn fetch_path_and_apply<T, F>(&mut self, qpath: &QPath<'_>, id: HirId, ty: Ty<'tcx>, f: F) -> Option<T>
     where
-        F: FnOnce(&mut Self, rustc_middle::mir::Const<'tcx>) -> Option<T>,
+        F: FnOnce(&mut Self, mir::Const<'tcx>) -> Option<T>,
     {
         let res = self.typeck_results.qpath_res(qpath, id);
         match res {
@@ -612,7 +612,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     .tcx
                     .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, args), qpath.span())
                     .ok()
-                    .map(|val| rustc_middle::mir::Const::from_value(val, ty))?;
+                    .map(|val| mir::Const::from_value(val, ty))?;
                 f(self, result)
             },
             _ => None,

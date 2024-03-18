@@ -60,7 +60,7 @@ pub(super) fn check<'tcx>(
         }
 
         if let Op::NeedlessMove(expr) = op {
-            let rustc_hir::ExprKind::Closure(closure) = expr.kind else {
+            let ExprKind::Closure(closure) = expr.kind else {
                 return;
             };
             let body @ Body { params: [p], .. } = cx.tcx.hir().body(closure.body) else {

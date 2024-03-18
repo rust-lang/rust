@@ -88,7 +88,7 @@ fn err_upcast_comparison(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, alwa
 fn upcast_comparison_bounds_err<'tcx>(
     cx: &LateContext<'tcx>,
     span: Span,
-    rel: comparisons::Rel,
+    rel: Rel,
     lhs_bounds: Option<(FullInt, FullInt)>,
     lhs: &'tcx Expr<'_>,
     rhs: &'tcx Expr<'_>,

@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                 let method_type = cx.tcx.type_of(def_id).instantiate(cx.tcx, args);
                 check_arguments(
                     cx,
-                    std::iter::once(receiver).chain(arguments.iter()).collect(),
+                    iter::once(receiver).chain(arguments.iter()).collect(),
                     method_type,
                     path.ident.as_str(),
                     "method",

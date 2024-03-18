@@ -3,7 +3,7 @@ use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::type_diagnostic_name;
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
-use clippy_utils::{get_path_from_caller_to_method_type, higher, is_adjusted, path_to_local, path_to_local_id};
+use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, path_to_local, path_to_local_id};
 use rustc_errors::Applicability;
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
 
         if body.value.span.from_expansion() {
             if body.params.is_empty() {
-                if let Some(VecArgs::Vec(&[])) = higher::VecArgs::hir(cx, body.value) {
+                if let Some(VecArgs::Vec(&[])) = VecArgs::hir(cx, body.value) {
                     // replace `|| vec![]` with `Vec::new`
                     span_lint_and_sugg(
                         cx,
