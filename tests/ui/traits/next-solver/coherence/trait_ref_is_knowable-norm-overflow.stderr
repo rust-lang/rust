@@ -4,7 +4,6 @@ error[E0275]: overflow evaluating the requirement `<T as Overflow>::Assoc: Sized
 LL |     type Assoc = <T as Overflow>::Assoc;
    |                  ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`trait_ref_is_knowable_norm_overflow`)
 note: required by a bound in `Overflow::Assoc`
   --> $DIR/trait_ref_is_knowable-norm-overflow.rs:7:5
    |
@@ -23,9 +22,6 @@ LL | impl<T: Copy> Trait for T {}
 LL | struct LocalTy;
 LL | impl Trait for <LocalTy as Overflow>::Assoc {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
-   |
-   = note: overflow evaluating the requirement `_ == <LocalTy as Overflow>::Assoc`
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`trait_ref_is_knowable_norm_overflow`)
 
 error: aborting due to 2 previous errors
 
