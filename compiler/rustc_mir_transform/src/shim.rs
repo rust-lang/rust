@@ -4,9 +4,11 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{self, CoroutineArgs, EarlyBinder, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgs, CAPTURE_STRUCT_LOCAL};
 use rustc_span::source_map::respan;
+use rustc_span::Symbol;
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 
 use rustc_index::{Idx, IndexVec};
@@ -1214,14 +1216,44 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     /// If given Self is a struct puts `to_drop: *mut FieldTy` on top
     /// of the stack.
     fn put_field(&mut self, field: FieldIdx, field_ty: Ty<'tcx>) {
-        self.put_rvalue(Rvalue::AddressOf(
-            Mutability::Mut,
-            self.tcx.mk_place_field(
-                self.tcx.mk_place_deref(Self::SELF_PTR.into()),
-                field,
-                field_ty,
-            ),
-        ))
+        let place = Place {
+            local: Self::SELF_PTR,
+            projection: self
+                .tcx
+                .mk_place_elems(&[PlaceElem::Deref, PlaceElem::Field(field, field_ty)]),
+        };
+        self.put_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
+    }
+
+    /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of
+    /// the stack.
+    fn put_variant_field(
+        &mut self,
+        variant_sym: Symbol,
+        variant: VariantIdx,
+        field: FieldIdx,
+        field_ty: Ty<'tcx>,
+    ) {
+        let place = Place {
+            local: Self::SELF_PTR,
+            projection: self.tcx.mk_place_elems(&[
+                PlaceElem::Deref,
+                PlaceElem::Downcast(Some(variant_sym), variant),
+                PlaceElem::Field(field, field_ty),
+            ]),
+        };
+        self.put_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
+    }
+
+    /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of
+    /// the stack.
+    fn put_discr(&mut self, discr: Discr<'tcx>) {
+        self.put_rvalue(Rvalue::Use(Operand::const_from_scalar(
+            self.tcx,
+            discr.ty,
+            interpret::Scalar::from_u128(discr.val),
+            self.span,
+        )));
     }
 
     /// Puts `x: RvalueType` on top of the stack.
@@ -1271,6 +1303,14 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
     fn combine_chain(&mut self, first: Ty<'tcx>, second: Ty<'tcx>) -> Ty<'tcx> {
         self.apply_combinator(2, LangItem::AsyncDropChainCtor, &[first.into(), second.into()])
+    }
+
+    fn combine_either(&mut self, matched: Ty<'tcx>, other: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator(
+            4,
+            LangItem::AsyncDropEitherCtor,
+            &[self.self_ty.into(), matched.into(), other.into()],
+        )
     }
 
     fn return_(mut self) -> Body<'tcx> {
