@@ -692,6 +692,79 @@ impl Step for RustAnalyzerProcMacroSrv {
     }
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct LlvmBitcodeLinker {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+    pub extra_features: Vec<String>,
+}
+
+impl Step for LlvmBitcodeLinker {
+    type Output = PathBuf;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
+        run.path("src/tools/llvm-bitcode-linker").default_condition(
+            builder.config.extended
+                && builder
+                    .config
+                    .tools
+                    .as_ref()
+                    .map_or(builder.build.unstable_features(), |tools| {
+                        tools.iter().any(|tool| tool == "llvm-bitcode-linker")
+                    }),
+        )
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(LlvmBitcodeLinker {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            extra_features: Vec::new(),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        let bin_name = "llvm-bitcode-linker";
+
+        builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
+        builder.ensure(compile::Rustc::new(self.compiler, self.target));
+
+        let mut cargo = prepare_tool_cargo(
+            builder,
+            self.compiler,
+            Mode::ToolRustc,
+            self.target,
+            "build",
+            "src/tools/llvm-bitcode-linker",
+            SourceType::InTree,
+            &self.extra_features,
+        );
+
+        if builder.config.rustc_parallel {
+            cargo.rustflag("--cfg=parallel_compiler");
+        }
+
+        builder.run(&mut cargo.into());
+
+        let tool_out = builder
+            .cargo_out(self.compiler, Mode::ToolRustc, self.target)
+            .join(exe(bin_name, self.compiler.host));
+
+        if self.compiler.stage > 0 {
+            let bindir = builder.sysroot(self.compiler).join("bin");
+            t!(fs::create_dir_all(&bindir));
+            let bin_destination = bindir.join(exe(bin_name, self.compiler.host));
+            builder.copy_link(&tool_out, &bin_destination);
+            bin_destination
+        } else {
+            tool_out
+        }
+    }
+}
+
 macro_rules! tool_extended {
     (($sel:ident, $builder:ident),
        $($name:ident,
@@ -795,7 +868,6 @@ tool_extended!((self, builder),
     Rls, "src/tools/rls", "rls", stable=true, tool_std=true;
     RustDemangler, "src/tools/rust-demangler", "rust-demangler", stable=false, tool_std=true;
     Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
-    LlvmBitcodeLinker, "src/tools/llvm-bitcode-linker", "llvm-bitcode-linker", stable=false, add_bins_to_sysroot = ["llvm-bitcode-linker"];
 );
 
 impl<'a> Builder<'a> {
