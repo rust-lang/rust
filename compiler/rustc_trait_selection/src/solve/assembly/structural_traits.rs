@@ -168,10 +168,11 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         //   "best effort" optimization and `sized_constraint` may return `Some`, even
         //   if the ADT is sized for all possible args.
         ty::Adt(def, args) => {
-            let sized_crit = def.sized_constraint(ecx.tcx());
-            Ok(sized_crit.map_or_else(Vec::new, |ty| {
-                vec![ty::Binder::dummy(ty.instantiate(ecx.tcx(), args))]
-            }))
+            if let Some(sized_crit) = def.sized_constraint(ecx.tcx()) {
+                Ok(vec![ty::Binder::dummy(sized_crit.instantiate(ecx.tcx(), args))])
+            } else {
+                Ok(vec![])
+            }
         }
     }
 }

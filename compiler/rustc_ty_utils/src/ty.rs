@@ -39,13 +39,10 @@ fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'
         Tuple(tys) => tys.last().and_then(|&ty| sized_constraint_for_ty(tcx, ty)),
 
         // recursive case
-        Adt(adt, args) => {
-            let intermediate = adt.sized_constraint(tcx);
-            intermediate.and_then(|intermediate| {
-                let ty = intermediate.instantiate(tcx, args);
-                sized_constraint_for_ty(tcx, ty)
-            })
-        }
+        Adt(adt, args) => adt.sized_constraint(tcx).and_then(|intermediate| {
+            let ty = intermediate.instantiate(tcx, args);
+            sized_constraint_for_ty(tcx, ty)
+        }),
 
         // these can be sized or unsized
         Param(..) | Alias(..) | Error(_) => Some(ty),
