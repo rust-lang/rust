@@ -14,7 +14,10 @@ LL |     [0; T::a()]
    |         ^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0015]: cannot call non-const fn `<T as Tr>::a` in constants
   --> $DIR/constifconst-call-in-const-position.rs:16:38
@@ -23,7 +26,10 @@ LL | const fn foo<T: ~const Tr>() -> [u8; T::a()] {
    |                                      ^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error: aborting due to 2 previous errors; 1 warning emitted
 
