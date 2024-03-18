@@ -71,6 +71,8 @@ use crate::ascii::Char as AsciiChar;
 ///
 /// You cannot use the `#[default]` attribute on non-unit or non-exhaustive variants.
 ///
+/// The `#[default]` attribute was stabilized in Rust 1.62.0.
+///
 /// ## How can I implement `Default`?
 ///
 /// Provide an implementation for the `default()` method that returns the value of
