@@ -357,9 +357,10 @@ jobs:
           - name: mingw-check-tidy
             <<: *job-linux-4c
 
-          - name: x86_64-gnu-llvm-16
+          - name: x86_64-gnu
             env:
               ENABLE_GCC_CODEGEN: "1"
+              DOWNLOAD_RUSTC: "1"
             <<: *job-linux-16c
 
           - name: x86_64-gnu-tools
@@ -476,6 +477,8 @@ jobs:
             <<: *job-linux-8c
 
           - name: x86_64-gnu
+            env:
+              DOWNLOAD_RUSTC: "1"
             <<: *job-linux-4c
 
           # This job ensures commits landing on nightly still pass the full
