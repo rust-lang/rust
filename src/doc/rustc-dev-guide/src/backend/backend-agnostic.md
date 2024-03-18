@@ -6,7 +6,7 @@
 provides an abstract interface for all backends to implement,
 namely LLVM, [Cranelift], and [GCC].
 
-[Cranelift]: https://github.com/bjorn3/rustc_codegen_cranelift
+[Cranelift]: https://github.com/rust-lang/rustc_codegen_cranelift
 [GCC]: https://github.com/rust-lang/rustc_codegen_gcc
 [`rustc_codegen_ssa`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/index.html
 
