@@ -275,12 +275,6 @@ pub enum GoalSource {
     ImplWhereBound,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
-pub enum IsNormalizesToHack {
-    Yes,
-    No,
-}
-
 /// Possible ways the given goal can be proven.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CandidateSource {

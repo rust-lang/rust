@@ -18,8 +18,7 @@ use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
-    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, IsNormalizesToHack,
-    QueryResult, Response,
+    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, QueryResult, Response,
 };
 use rustc_middle::ty::{self, AliasRelationDirection, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
@@ -69,7 +68,7 @@ enum SolverMode {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum GoalEvaluationKind {
     Root,
-    Nested { is_normalizes_to_hack: IsNormalizesToHack },
+    Nested,
 }
 
 #[extension(trait CanonicalResponseExt)]

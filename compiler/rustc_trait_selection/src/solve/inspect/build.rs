@@ -7,7 +7,7 @@ use std::mem;
 
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
-    CanonicalInput, Certainty, Goal, GoalSource, IsNormalizesToHack, QueryInput, QueryResult,
+    CanonicalInput, Certainty, Goal, GoalSource, QueryInput, QueryResult,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::DumpSolverProofTree;
@@ -97,9 +97,7 @@ impl<'tcx> WipGoalEvaluation<'tcx> {
                 WipGoalEvaluationKind::Root { orig_values } => {
                     inspect::GoalEvaluationKind::Root { orig_values }
                 }
-                WipGoalEvaluationKind::Nested { is_normalizes_to_hack } => {
-                    inspect::GoalEvaluationKind::Nested { is_normalizes_to_hack }
-                }
+                WipGoalEvaluationKind::Nested => inspect::GoalEvaluationKind::Nested,
             },
             evaluation: self.evaluation.unwrap().finalize(),
         }
@@ -109,7 +107,7 @@ impl<'tcx> WipGoalEvaluation<'tcx> {
 #[derive(Eq, PartialEq, Debug)]
 pub(in crate::solve) enum WipGoalEvaluationKind<'tcx> {
     Root { orig_values: Vec<ty::GenericArg<'tcx>> },
-    Nested { is_normalizes_to_hack: IsNormalizesToHack },
+    Nested,
 }
 
 #[derive(Eq, PartialEq)]
@@ -305,9 +303,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
                 solve::GoalEvaluationKind::Root => {
                     WipGoalEvaluationKind::Root { orig_values: orig_values.to_vec() }
                 }
-                solve::GoalEvaluationKind::Nested { is_normalizes_to_hack } => {
-                    WipGoalEvaluationKind::Nested { is_normalizes_to_hack }
-                }
+                solve::GoalEvaluationKind::Nested => WipGoalEvaluationKind::Nested,
             },
             evaluation: None,
         })

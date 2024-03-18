@@ -30,6 +30,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use rustc_next_trait_solver::canonicalizer::{CanonicalizeMode, Canonicalizer};
 use rustc_span::DUMMY_SP;
+use std::assert_matches::assert_matches;
 use std::iter;
 use std::ops::Deref;
 
@@ -104,7 +105,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // by `try_evaluate_added_goals()`.
         let (certainty, normalization_nested_goals) = if self.is_normalizes_to_goal {
             let NestedGoals { normalizes_to_goals, goals } = std::mem::take(&mut self.nested_goals);
-            assert!(normalizes_to_goals.is_empty());
+            if cfg!(debug_assertions) {
+                assert!(normalizes_to_goals.is_empty());
+                if goals.is_empty() {
+                    assert_matches!(goals_certainty, Certainty::Yes);
+                }
+            }
             (certainty, NestedNormalizationGoals(goals))
         } else {
             let certainty = certainty.unify_with(goals_certainty);

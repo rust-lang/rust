@@ -13,8 +13,8 @@ use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::solve::inspect;
 use rustc_middle::traits::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, IsNormalizesToHack, PredefinedOpaques,
-    PredefinedOpaquesData, QueryResult,
+    CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaques, PredefinedOpaquesData,
+    QueryResult,
 };
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::{
@@ -337,8 +337,15 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         Ok((has_changed, certainty))
     }
 
-    /// FIXME(-Znext-solver=coinduction): `_source` is currently unused but will
-    /// be necessary once we implement the new coinduction approach.
+    /// Recursively evaluates `goal`, returning the nested goals in case
+    /// the nested goal is a `NormalizesTo` goal.
+    ///
+    /// As all other goal kinds do not return any nested goals and
+    /// `NormalizesTo` is only used by `AliasRelate`, all other callsites
+    /// should use [`EvalCtxt::evaluate_goal`] which discards that empty
+    /// storage.
+    // FIXME(-Znext-solver=coinduction): `_source` is currently unused but will
+    // be necessary once we implement the new coinduction approach.
     fn evaluate_goal_raw(
         &mut self,
         goal_evaluation_kind: GoalEvaluationKind,
@@ -522,7 +529,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             );
 
             let (NestedNormalizationGoals(nested_goals), _, certainty) = self.evaluate_goal_raw(
-                GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::Yes },
+                GoalEvaluationKind::Nested,
                 GoalSource::Misc,
                 unconstrained_goal,
             )?;
@@ -557,11 +564,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         }
 
         for (source, goal) in goals.goals {
-            let (has_changed, certainty) = self.evaluate_goal(
-                GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::No },
-                source,
-                goal,
-            )?;
+            let (has_changed, certainty) =
+                self.evaluate_goal(GoalEvaluationKind::Nested, source, goal)?;
             if has_changed {
                 unchanged_certainty = None;
             }
