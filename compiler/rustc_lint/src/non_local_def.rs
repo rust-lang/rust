@@ -125,7 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     TyKind::Path(QPath::Resolved(_, ty_path)) => {
                         path_has_local_parent(ty_path, cx, parent, parent_parent)
                     }
-                    TyKind::TraitObject([principle_poly_trait_ref, ..], _, _) => {
+                    TyKind::TraitObject([(principle_poly_trait_ref, _), ..], _, _) => {
                         path_has_local_parent(
                             principle_poly_trait_ref.trait_ref.path,
                             cx,

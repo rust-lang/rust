@@ -23,7 +23,6 @@ use rustc_middle::ty::{
 use rustc_middle::ty::{GenericArg, GenericArgs};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use smallvec::SmallVec;
 
@@ -737,8 +736,7 @@ fn receiver_is_dispatchable<'tcx>(
     // use a bogus type parameter to mimic a forall(U) query using u32::MAX for now.
     // FIXME(mikeyhew) this is a total hack. Once object_safe_for_dispatch is stabilized, we can
     // replace this with `dyn Trait`
-    let unsized_self_ty: Ty<'tcx> =
-        Ty::new_param(tcx, u32::MAX, Symbol::intern("RustaceansAreAwesome"));
+    let unsized_self_ty: Ty<'tcx> = Ty::new(tcx, ty::Param(ty::ParamTy::dummy()));
 
     // `Receiver[Self => U]`
     let unsized_receiver_ty =

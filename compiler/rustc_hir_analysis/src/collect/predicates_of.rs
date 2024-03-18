@@ -124,7 +124,26 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     let mut predicates: FxIndexSet<(ty::Clause<'_>, Span)> = FxIndexSet::default();
 
     let ast_generics = match node {
-        Node::TraitItem(item) => item.generics,
+        Node::TraitItem(item) => {
+            // Implicitly add `Self: Trait` clauses on trait associated items.
+            // See `add_implicit_super_traits` doc for more details.
+            let parent = tcx.local_parent(item.hir_id().owner.def_id);
+            // FIXME(experimental_default_bounds): default bounds on `Pointee::Metadata` causes a normalization fail
+            if Some(parent.to_def_id()) != tcx.lang_items().pointee_trait() {
+                let mut bounds = Bounds::default();
+                let self_ty_where_predicates = (parent, item.generics.predicates);
+                icx.astconv().add_implicit_traits_with_filter(
+                    &mut bounds,
+                    tcx.types.self_param,
+                    &[],
+                    Some(self_ty_where_predicates),
+                    item.span,
+                    |tr| tr != hir::LangItem::Sized,
+                );
+                predicates.extend(bounds.clauses());
+            }
+            item.generics
+        }
 
         Node::ImplItem(item) => item.generics,
 
@@ -146,7 +165,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
             ItemKind::Trait(_, _, generics, self_bounds, ..)
             | ItemKind::TraitAlias(generics, self_bounds) => {
-                is_trait = Some(self_bounds);
+                is_trait = Some((self_bounds, item.span));
                 generics
             }
             ItemKind::OpaqueTy(OpaqueTy { generics, .. }) => generics,
@@ -169,11 +188,16 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // on a trait we must also consider the bounds that follow the trait's name,
     // like `trait Foo: A + B + C`.
     if let Some(self_bounds) = is_trait {
-        predicates.extend(
-            icx.astconv()
-                .compute_bounds(tcx.types.self_param, self_bounds, PredicateFilter::All)
-                .clauses(),
+        let mut bounds =
+            icx.astconv().compute_bounds(tcx.types.self_param, self_bounds.0, PredicateFilter::All);
+        icx.astconv().add_implicit_super_traits(
+            def_id,
+            &mut bounds,
+            self_bounds.0,
+            ast_generics,
+            self_bounds.1,
         );
+        predicates.extend(bounds.clauses());
     }
 
     // In default impls, we can assume that the self type implements
@@ -199,7 +223,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 let param_ty = icx.astconv().hir_id_to_bound_ty(param.hir_id);
                 let mut bounds = Bounds::default();
                 // Params are implicitly sized unless a `?Sized` bound is found
-                icx.astconv().add_implicitly_sized(
+                icx.astconv().add_implicit_traits(
                     &mut bounds,
                     param_ty,
                     &[],
@@ -622,7 +646,14 @@ pub(super) fn implied_predicates_with_filter(
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
     let self_param_ty = tcx.types.self_param;
-    let superbounds = icx.astconv().compute_bounds(self_param_ty, bounds, filter);
+    let mut superbounds = icx.astconv().compute_bounds(self_param_ty, bounds, filter);
+    icx.astconv().add_implicit_super_traits(
+        trait_def_id,
+        &mut superbounds,
+        bounds,
+        generics,
+        item.span,
+    );
 
     let where_bounds_that_match = icx.type_parameter_bounds_in_generics(
         generics,
