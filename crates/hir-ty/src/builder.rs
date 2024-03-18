@@ -15,9 +15,9 @@ use smallvec::SmallVec;
 
 use crate::{
     consteval::unknown_const_as_generic, db::HirDatabase, error_lifetime,
-    infer::unify::InferenceTable, primitive, static_lifetime, to_assoc_type_id, to_chalk_trait_id,
-    utils::generics, Binders, BoundVar, CallableSig, GenericArg, GenericArgData, Interner,
-    ProjectionTy, Substitution, TraitRef, Ty, TyDefId, TyExt, TyKind,
+    infer::unify::InferenceTable, primitive, to_assoc_type_id, to_chalk_trait_id, utils::generics,
+    Binders, BoundVar, CallableSig, GenericArg, GenericArgData, Interner, ProjectionTy,
+    Substitution, TraitRef, Ty, TyDefId, TyExt, TyKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -134,8 +134,7 @@ impl<D> TyBuilder<D> {
         self.fill(|x| match x {
             ParamKind::Type => table.new_type_var().cast(Interner),
             ParamKind::Const(ty) => table.new_const_var(ty.clone()).cast(Interner),
-            // FIXME: create new_lifetime_var in table
-            ParamKind::Lifetime => static_lifetime().cast(Interner),
+            ParamKind::Lifetime => table.new_lifetime_var().cast(Interner),
         })
     }
 

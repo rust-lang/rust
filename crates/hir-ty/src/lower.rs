@@ -18,6 +18,7 @@ use chalk_ir::{
     cast::Cast, fold::Shift, fold::TypeFoldable, interner::HasInterner, Mutability, Safety,
 };
 
+use either::Either;
 use hir_def::{
     builtin_type::BuiltinType,
     data::adt::StructKind,
@@ -279,6 +280,7 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeRef::Reference(inner, lifetime, mutability) => {
                 let inner_ty = self.lower_ty(inner);
+                // FIXME: It should infer the eldided lifetimes instead of stubbing with static
                 let lifetime =
                     lifetime.as_ref().map_or_else(static_lifetime, |lr| self.lower_lifetime(lr));
                 TyKind::Ref(lower_to_chalk_mutability(*mutability), lifetime, inner_ty)
@@ -863,9 +865,9 @@ impl<'a> TyLoweringContext<'a> {
                 fill_self_params();
             }
             let expected_num = if generic_args.has_self_type {
-                self_params + type_params + const_params + lifetime_params
+                self_params + type_params + const_params
             } else {
-                type_params + const_params + lifetime_params
+                type_params + const_params
             };
             let skip = if generic_args.has_self_type && self_params == 0 { 1 } else { 0 };
             // if args are provided, it should be all of them, but we can't rely on that
@@ -899,8 +901,7 @@ impl<'a> TyLoweringContext<'a> {
                 .args
                 .iter()
                 .filter(|arg| matches!(arg, GenericArg::Lifetime(_)))
-                .skip(skip)
-                .take(expected_num)
+                .take(lifetime_params)
             {
                 // Taking into the fact that def_generic_iter will always have lifetimes at the end
                 // Should have some test cases tho to test this behaviour more properly

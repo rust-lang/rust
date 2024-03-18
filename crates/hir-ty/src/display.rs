@@ -951,7 +951,7 @@ impl HirDisplay for Ty {
                         parent_params + self_param + type_params + const_params + lifetime_params;
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
                     if total_len > 0 {
-                        // `parameters` are in the order of fn's params (including impl traits),
+                        // `parameters` are in the order of fn's params (including impl traits), fn's lifetimes
                         // parent's params (those from enclosing impl or trait, if any).
                         let parameters = parameters.as_slice(Interner);
                         let fn_params_len = self_param + type_params + const_params;
@@ -1383,7 +1383,7 @@ fn hir_fmt_generics(
         } else {
             parameters.as_slice(Interner)
         };
-        //FIXME: Should handle when creating substitutions
+        //FIXME: Should handle the ordering of lifetimes when creating substitutions
         let mut parameters_to_write = parameters_to_write.to_vec();
         parameters_to_write.sort_by(param_compare);
         if !parameters_to_write.is_empty() {

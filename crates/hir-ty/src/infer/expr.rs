@@ -1873,8 +1873,9 @@ impl InferenceContext<'_> {
                 GenericParamId::ConstParamId(id) => {
                     substs.push(self.table.new_const_var(self.db.const_param_ty(id)).cast(Interner))
                 }
-                // FIXME: create `new_lifetime_var` in infer
-                GenericParamId::LifetimeParamId(_) => substs.push(static_lifetime().cast(Interner)),
+                GenericParamId::LifetimeParamId(_) => {
+                    substs.push(self.table.new_lifetime_var().cast(Interner))
+                }
             }
         }
         assert_eq!(substs.len(), total_len);

@@ -430,17 +430,12 @@ impl Resolver {
             return Some(LifetimeNs::Static);
         }
 
-        for scope in self.scopes() {
-            match scope {
-                Scope::GenericParams { def, params } => {
-                    if let Some(id) = params.find_lifetime_by_name(&lifetime.name, *def) {
-                        return Some(LifetimeNs::LifetimeParam(id));
-                    }
-                }
-                _ => continue,
+        self.scopes().find_map(|scope| match scope {
+            Scope::GenericParams { def, params } => {
+                params.find_lifetime_by_name(&lifetime.name, *def).map(LifetimeNs::LifetimeParam)
             }
-        }
-        None
+            _ => None,
+        })
     }
 
     /// Returns a set of names available in the current scope.
