@@ -678,7 +678,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let infcx = self.build();
-        let (value, args) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
+        let (value, args) = infcx.instantiate_canonical(span, canonical);
         (infcx, value, args)
     }
 
