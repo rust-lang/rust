@@ -58,7 +58,7 @@ jobs:
           - name: mingw-check-tidy
             os: ubuntu-20.04-4core-16gb
             env: {}
-          - name: x86_64-gnu-llvm-16
+          - name: x86_64-gnu-llvm-17
             env:
               ENABLE_GCC_CODEGEN: "1"
             os: ubuntu-20.04-16core-64gb
@@ -320,10 +320,6 @@ jobs:
               RUST_BACKTRACE: 1
             os: ubuntu-20.04-8core-32gb
           - name: x86_64-gnu-llvm-17
-            env:
-              RUST_BACKTRACE: 1
-            os: ubuntu-20.04-8core-32gb
-          - name: x86_64-gnu-llvm-16
             env:
               RUST_BACKTRACE: 1
             os: ubuntu-20.04-8core-32gb

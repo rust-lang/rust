@@ -357,7 +357,7 @@ jobs:
           - name: mingw-check-tidy
             <<: *job-linux-4c
 
-          - name: x86_64-gnu-llvm-16
+          - name: x86_64-gnu-llvm-17
             env:
               ENABLE_GCC_CODEGEN: "1"
             <<: *job-linux-16c
@@ -516,11 +516,6 @@ jobs:
             <<: *job-linux-8c
 
           - name: x86_64-gnu-llvm-17
-            env:
-              RUST_BACKTRACE: 1
-            <<: *job-linux-8c
-
-          - name: x86_64-gnu-llvm-16
             env:
               RUST_BACKTRACE: 1
             <<: *job-linux-8c
