@@ -1109,7 +1109,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.tcx();
         for user_annotation in self.user_type_annotations {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
-            let annotation = self.instantiate_canonical_with_fresh_inference_vars(span, user_ty);
+            let annotation = self.instantiate_canonical(span, user_ty);
             if let ty::UserType::TypeOf(def, args) = annotation
                 && let DefKind::InlineConst = tcx.def_kind(def)
             {
