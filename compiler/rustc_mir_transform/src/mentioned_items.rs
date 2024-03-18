@@ -1,6 +1,6 @@
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{self, ConstOperand, Location, MentionedItem, MirPass};
-use rustc_middle::ty::{self, adjustment::PointerCoercion, TyCtxt};
+use rustc_middle::mir::{self, Location, MentionedItem, MirPass};
+use rustc_middle::ty::{adjustment::PointerCoercion, TyCtxt};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 
@@ -29,27 +29,36 @@ impl<'tcx> MirPass<'tcx> for MentionedItems {
     }
 }
 
+// This visitor is carefully in sync with the one in `rustc_monomorphize::collector`. We are
+// visiting the exact same places but then instead of monomorphizing and creating `MonoItems`, we
+// have to remain generic and just recording the relevant information in `mentioned_items`, where it
+// will then be monomorphized later during "mentioned items" collection.
 impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
-    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, _: Location) {
-        let const_ = constant.const_;
-        // This is how function items get referenced: via constants of `FnDef` type. This handles
-        // both functions that are called and those that are just turned to function pointers.
-        if let ty::FnDef(def_id, args) = const_.ty().kind() {
-            debug!("adding to required_items: {def_id:?}");
-            self.mentioned_items
-                .push(Spanned { node: MentionedItem::Fn(*def_id, args), span: constant.span });
-        }
-    }
-
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         self.super_terminator(terminator, location);
-        match terminator.kind {
-            // We don't need to handle `Call` as we already handled all function type operands in
-            // `visit_constant`. But we do need to handle `Drop`.
+        let span = || self.body.source_info(location).span;
+        match &terminator.kind {
+            mir::TerminatorKind::Call { func, .. } => {
+                let callee_ty = func.ty(self.body, self.tcx);
+                self.mentioned_items
+                    .push(Spanned { node: MentionedItem::Fn(callee_ty), span: span() });
+            }
             mir::TerminatorKind::Drop { place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
-                let span = self.body.source_info(location).span;
-                self.mentioned_items.push(Spanned { node: MentionedItem::Drop(ty), span });
+                self.mentioned_items.push(Spanned { node: MentionedItem::Drop(ty), span: span() });
+            }
+            mir::TerminatorKind::InlineAsm { ref operands, .. } => {
+                for op in operands {
+                    match *op {
+                        mir::InlineAsmOperand::SymFn { ref value } => {
+                            self.mentioned_items.push(Spanned {
+                                node: MentionedItem::Fn(value.const_.ty()),
+                                span: span(),
+                            });
+                        }
+                        _ => {}
+                    }
+                }
             }
             _ => {}
         }
@@ -57,6 +66,7 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
+        let span = || self.body.source_info(location).span;
         match *rvalue {
             // We need to detect unsizing casts that required vtables.
             mir::Rvalue::Cast(
@@ -65,13 +75,14 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
                 target_ty,
             )
             | mir::Rvalue::Cast(mir::CastKind::DynStar, ref operand, target_ty) => {
-                let span = self.body.source_info(location).span;
+                // This isn't monomorphized yet so we can't tell what the actual types are -- just
+                // add everything.
                 self.mentioned_items.push(Spanned {
                     node: MentionedItem::UnsizeCast {
                         source_ty: operand.ty(self.body, self.tcx),
                         target_ty,
                     },
-                    span,
+                    span: span(),
                 });
             }
             // Similarly, record closures that are turned into function pointers.
@@ -80,17 +91,19 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
                 ref operand,
                 _,
             ) => {
-                let span = self.body.source_info(location).span;
                 let source_ty = operand.ty(self.body, self.tcx);
-                match *source_ty.kind() {
-                    ty::Closure(def_id, args) => {
-                        self.mentioned_items
-                            .push(Spanned { node: MentionedItem::Closure(def_id, args), span });
-                    }
-                    _ => bug!(),
-                }
+                self.mentioned_items
+                    .push(Spanned { node: MentionedItem::Closure(source_ty), span: span() });
             }
-            // Function pointer casts are already handled by `visit_constant` above.
+            // And finally, function pointer reification casts.
+            mir::Rvalue::Cast(
+                mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer),
+                ref operand,
+                _,
+            ) => {
+                let fn_ty = operand.ty(self.body, self.tcx);
+                self.mentioned_items.push(Spanned { node: MentionedItem::Fn(fn_ty), span: span() });
+            }
             _ => {}
         }
     }

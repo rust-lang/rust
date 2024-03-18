@@ -173,6 +173,26 @@
 //! do not use a failing constant. This is reflected via the [`CollectionMode`], which determines
 //! whether we are visiting a used item or merely a mentioned item.
 //!
+//! The collector and "mentioned items" gathering (which lives in `rustc_mir_transform::mentioned_items`)
+//! need to stay in sync in the following sense:
+//!
+//! - For every item that the collector gather that could eventually lead to build failure (most
+//!   likely due to containing a constant that fails to evaluate), a corresponding mentioned item
+//!   must be added. This should use the exact same strategy as the ecollector to make sure they are
+//!   in sync. However, while the collector works on monomorphized types, mentioned items are
+//!   collected on generic MIR -- so any time the collector checks for a particular type (such as
+//!   `ty::FnDef`), we have to just onconditionally add this as a mentioned item.
+//! - In `visit_mentioned_item`, we then do with that mentioned item exactly what the collector
+//!   would have done during regular MIR visiting. Basically you can think of the collector having
+//!   two stages, a pre-monomorphization stage and a post-monomorphization stage (usually quite
+//!   literally separated by a call to `self.monomorphize`); the pre-monomorphizationn stage is
+//!   duplicated in mentioned items gathering and the post-monomorphization stage is duplicated in
+//!   `visit_mentioned_item`.
+//! - Finally, as a performance optimization, the collector should fill `used_mentioned_item` during
+//!   its MIR traversal with exactly what mentioned item gathering would have added in the same
+//!   situation. This detects mentioned items that have *not* been optimized away and hence don't
+//!   need a dedicated traversal.
+//!
 //! Open Issues
 //! -----------
 //! Some things are not yet fully implemented in the current version of this
@@ -904,8 +924,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 target_ty,
             )
             | mir::Rvalue::Cast(mir::CastKind::DynStar, ref operand, target_ty) => {
-                let target_ty = self.monomorphize(target_ty);
                 let source_ty = operand.ty(self.body, self.tcx);
+                // *Before* monomorphizing, record that we already handled this mention.
+                self.used_mentioned_items
+                    .insert(MentionedItem::UnsizeCast { source_ty, target_ty });
+                let target_ty = self.monomorphize(target_ty);
                 let source_ty = self.monomorphize(source_ty);
                 let (source_ty, target_ty) =
                     find_vtable_types_for_unsizing(self.tcx.at(span), source_ty, target_ty);
@@ -930,6 +953,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 _,
             ) => {
                 let fn_ty = operand.ty(self.body, self.tcx);
+                // *Before* monomorphizing, record that we already handled this mention.
+                self.used_mentioned_items.insert(MentionedItem::Fn(fn_ty));
                 let fn_ty = self.monomorphize(fn_ty);
                 visit_fn_use(self.tcx, fn_ty, false, span, self.used_items);
             }
@@ -939,20 +964,17 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 _,
             ) => {
                 let source_ty = operand.ty(self.body, self.tcx);
+                // *Before* monomorphizing, record that we already handled this mention.
+                self.used_mentioned_items.insert(MentionedItem::Closure(source_ty));
                 let source_ty = self.monomorphize(source_ty);
-                match *source_ty.kind() {
-                    ty::Closure(def_id, args) => {
-                        let instance = Instance::resolve_closure(
-                            self.tcx,
-                            def_id,
-                            args,
-                            ty::ClosureKind::FnOnce,
-                        );
-                        if should_codegen_locally(self.tcx, &instance) {
-                            self.used_items.push(create_fn_mono_item(self.tcx, instance, span));
-                        }
+                if let ty::Closure(def_id, args) = *source_ty.kind() {
+                    let instance =
+                        Instance::resolve_closure(self.tcx, def_id, args, ty::ClosureKind::FnOnce);
+                    if should_codegen_locally(self.tcx, &instance) {
+                        self.used_items.push(create_fn_mono_item(self.tcx, instance, span));
                     }
-                    _ => bug!(),
+                } else {
+                    bug!()
                 }
             }
             mir::Rvalue::ThreadLocalRef(def_id) => {
@@ -994,9 +1016,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
-                if let ty::FnDef(def_id, args) = callee_ty.kind() {
-                    self.used_mentioned_items.insert(MentionedItem::Fn(*def_id, args));
-                }
+                self.used_mentioned_items.insert(MentionedItem::Fn(callee_ty));
                 let callee_ty = self.monomorphize(callee_ty);
                 self.check_fn_args_move_size(callee_ty, args, *fn_span, location);
                 visit_fn_use(self.tcx, callee_ty, true, source, &mut self.used_items)
@@ -1012,7 +1032,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 for op in operands {
                     match *op {
                         mir::InlineAsmOperand::SymFn { ref value } => {
-                            let fn_ty = self.monomorphize(value.const_.ty());
+                            let fn_ty = value.const_.ty();
+                            // *Before* monomorphizing, record that we already handled this mention.
+                            self.used_mentioned_items.insert(MentionedItem::Fn(fn_ty));
+                            let fn_ty = self.monomorphize(fn_ty);
                             visit_fn_use(self.tcx, fn_ty, false, source, self.used_items);
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } => {
@@ -1076,6 +1099,8 @@ fn visit_drop_use<'tcx>(
     visit_instance_use(tcx, instance, is_direct_call, source, output);
 }
 
+/// For every call of this function in the visitor, make sure there is a matching call in the
+/// `mentioned_items` pass!
 fn visit_fn_use<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
@@ -1653,13 +1678,13 @@ fn collect_items_of_instance<'tcx>(
     // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
     // `mentioned_items`. Mentioned items processing will then notice that they have already been
     // visited, but at that point each mentioned item has been monomorphized, added to the
-    // `mentioned_items` worklist, and checked in the global set of visited items. To removes that
+    // `mentioned_items` worklist, and checked in the global set of visited items. To remove that
     // overhead, we have a special optimization that avoids adding items to `mentioned_items` when
     // they are already added in `used_items`. We could just scan `used_items`, but that's a linear
     // scan and not very efficient. Furthermore we can only do that *after* monomorphizing the
     // mentioned item. So instead we collect all pre-monomorphized `MentionedItem` that were already
     // added to `used_items` in a hash set, which can efficiently query in the
-    // `body.mentioned_items` loop below.
+    // `body.mentioned_items` loop below without even having to monomorphize the item.
     let mut used_mentioned_items = FxHashSet::<MentionedItem<'tcx>>::default();
     let mut collector = MirUsedCollector {
         tcx,
@@ -1704,13 +1729,16 @@ fn visit_mentioned_item<'tcx>(
     output: &mut MonoItems<'tcx>,
 ) {
     match *item {
-        MentionedItem::Fn(def_id, args) => {
-            let instance = Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args);
-            // `visit_instance_use` was written for "used" item collection but works just as well
-            // for "mentioned" item collection.
-            // We can set `is_direct_call`; that just means we'll skip a bunch of shims that anyway
-            // can't have their own failing constants.
-            visit_instance_use(tcx, instance, /*is_direct_call*/ true, span, output);
+        MentionedItem::Fn(ty) => {
+            if let ty::FnDef(def_id, args) = *ty.kind() {
+                let instance =
+                    Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args);
+                // `visit_instance_use` was written for "used" item collection but works just as well
+                // for "mentioned" item collection.
+                // We can set `is_direct_call`; that just means we'll skip a bunch of shims that anyway
+                // can't have their own failing constants.
+                visit_instance_use(tcx, instance, /*is_direct_call*/ true, span, output);
+            }
         }
         MentionedItem::Drop(ty) => {
             visit_drop_use(tcx, ty, /*is_direct_call*/ true, span, output);
@@ -1727,10 +1755,15 @@ fn visit_mentioned_item<'tcx>(
                 create_mono_items_for_vtable_methods(tcx, target_ty, source_ty, span, output);
             }
         }
-        MentionedItem::Closure(def_id, args) => {
-            let instance = Instance::resolve_closure(tcx, def_id, args, ty::ClosureKind::FnOnce);
-            if should_codegen_locally(tcx, &instance) {
-                output.push(create_fn_mono_item(tcx, instance, span));
+        MentionedItem::Closure(source_ty) => {
+            if let ty::Closure(def_id, args) = *source_ty.kind() {
+                let instance =
+                    Instance::resolve_closure(tcx, def_id, args, ty::ClosureKind::FnOnce);
+                if should_codegen_locally(tcx, &instance) {
+                    output.push(create_fn_mono_item(tcx, instance, span));
+                }
+            } else {
+                bug!()
             }
         }
     }

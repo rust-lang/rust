@@ -45,6 +45,7 @@ use std::ops::{Index, IndexMut};
 use std::{iter, mem};
 
 pub use self::query::*;
+use self::visit::TyContext;
 pub use basic_blocks::BasicBlocks;
 
 mod basic_blocks;
@@ -317,15 +318,15 @@ impl<'tcx> CoroutineInfo<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum MentionedItem<'tcx> {
-    Fn(DefId, GenericArgsRef<'tcx>),
+    /// A function that gets called. We don't necessarily know its precise type yet, since it can be
+    /// hidden behind a generic.
+    Fn(Ty<'tcx>),
+    /// A type that has its drop shim called.
     Drop(Ty<'tcx>),
     /// Unsizing casts might require vtables, so we have to record them.
-    UnsizeCast {
-        source_ty: Ty<'tcx>,
-        target_ty: Ty<'tcx>,
-    },
+    UnsizeCast { source_ty: Ty<'tcx>, target_ty: Ty<'tcx> },
     /// A closure that is coerced to a function pointer.
-    Closure(DefId, GenericArgsRef<'tcx>),
+    Closure(Ty<'tcx>),
 }
 
 /// The lowered representation of a single function.
@@ -607,6 +608,17 @@ impl<'tcx> Body<'tcx> {
         } else {
             assert_eq!(idx, stmts.len());
             &block.terminator().source_info
+        }
+    }
+
+    pub fn span_for_ty_context(&self, ty_context: TyContext) -> Span {
+        match ty_context {
+            TyContext::UserTy(span) => span,
+            TyContext::ReturnTy(source_info)
+            | TyContext::LocalDecl { source_info, .. }
+            | TyContext::YieldTy(source_info)
+            | TyContext::ResumeTy(source_info) => source_info.span,
+            TyContext::Location(loc) => self.source_info(loc).span,
         }
     }
 

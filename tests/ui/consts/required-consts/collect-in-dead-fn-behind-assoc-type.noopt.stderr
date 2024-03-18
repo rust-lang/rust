@@ -1,22 +1,19 @@
 error[E0080]: evaluation of `Fail::<i32>::C` failed
-  --> $DIR/collect-in-dead-closure.rs:8:19
+  --> $DIR/collect-in-dead-fn-behind-assoc-type.rs:9:19
    |
 LL |     const C: () = panic!();
-   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-in-dead-closure.rs:8:19
+   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-in-dead-fn-behind-assoc-type.rs:9:19
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant encountered
-  --> $DIR/collect-in-dead-closure.rs:16:17
+  --> $DIR/collect-in-dead-fn-behind-assoc-type.rs:14:17
    |
 LL |         let _ = Fail::<T>::C;
    |                 ^^^^^^^^^^^^
 
 note: the above error was encountered while instantiating `fn not_called::<i32>`
-  --> $DIR/collect-in-dead-closure.rs:23:33
-   |
-LL |         let _closure: fn() = || not_called::<T>();
-   |                                 ^^^^^^^^^^^^^^^^^
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: aborting due to 1 previous error
 

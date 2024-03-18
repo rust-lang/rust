@@ -723,15 +723,9 @@ impl<'tcx> Inliner<'tcx> {
         // some extra work here to save the monomorphization collector work later. It helps a lot,
         // since monomorphization can avoid a lot of work when the "mentioned items" are similar to
         // the actually used items. By doing this we can entirely avoid visiting the callee!
-        let callee_item = {
-            // We need to reconstruct the `required_item` for the callee so that we can find and
-            // remove it.
-            let func_ty = func.ty(caller_body, self.tcx);
-            match func_ty.kind() {
-                ty::FnDef(def_id, args) => MentionedItem::Fn(*def_id, args),
-                _ => bug!(),
-            }
-        };
+        // We need to reconstruct the `required_item` for the callee so that we can find and
+        // remove it.
+        let callee_item = MentionedItem::Fn(func.ty(caller_body, self.tcx));
         if let Some(idx) =
             caller_body.mentioned_items.iter().position(|item| item.node == callee_item)
         {
