@@ -77,6 +77,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
     let (node_defs, node_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .nodes
         .iter()
+        .sorted_by_key(|it| it.name.clone())
         .map(|node| {
             let name = format_ident!("{}", node.name);
             let kind = format_ident!("{}", to_upper_snake_case(&node.name));
@@ -88,12 +89,13 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                     node.name != "ForExpr" && node.name != "WhileExpr"
                         || trait_name.as_str() != "HasLoopBody"
                 })
+                .sorted()
                 .map(|trait_name| {
                     let trait_name = format_ident!("{}", trait_name);
                     quote!(impl ast::#trait_name for #name {})
                 });
 
-            let methods = node.fields.iter().map(|field| {
+            let methods = node.fields.iter().sorted_by_key(|it| it.method_name()).map(|field| {
                 let method_name = field.method_name();
                 let ty = field.ty();
 
@@ -149,14 +151,16 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
     let (enum_defs, enum_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .enums
         .iter()
+        .sorted_by_key(|it| it.name.clone())
         .map(|en| {
-            let variants: Vec<_> = en.variants.iter().map(|var| format_ident!("{}", var)).collect();
+            let variants: Vec<_> =
+                en.variants.iter().map(|var| format_ident!("{}", var)).sorted().collect();
             let name = format_ident!("{}", en.name);
             let kinds: Vec<_> = variants
                 .iter()
                 .map(|name| format_ident!("{}", to_upper_snake_case(&name.to_string())))
                 .collect();
-            let traits = en.traits.iter().map(|trait_name| {
+            let traits = en.traits.iter().sorted().map(|trait_name| {
                 let trait_name = format_ident!("{}", trait_name);
                 quote!(impl ast::#trait_name for #name {})
             });
@@ -266,15 +270,17 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
     let node_names = grammar.nodes.iter().map(|it| &it.name);
 
     let display_impls =
-        enum_names.chain(node_names.clone()).map(|it| format_ident!("{}", it)).map(|name| {
-            quote! {
-                impl std::fmt::Display for #name {
-                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                        std::fmt::Display::fmt(self.syntax(), f)
+        enum_names.chain(node_names.clone()).map(|it| format_ident!("{}", it)).sorted().map(
+            |name| {
+                quote! {
+                    impl std::fmt::Display for #name {
+                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                            std::fmt::Display::fmt(self.syntax(), f)
+                        }
                     }
                 }
-            }
-        });
+            },
+        );
 
     let defined_nodes: FxHashSet<_> = node_names.collect();
 

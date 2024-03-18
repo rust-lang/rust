@@ -186,11 +186,11 @@ fn add_function_impl(
         if func.assoc_fn_params(ctx.db).is_empty() { "" } else { ".." }
     );
 
-    let completion_kind = if func.has_self_param(ctx.db) {
-        CompletionItemKind::Method
+    let completion_kind = CompletionItemKind::SymbolKind(if func.has_self_param(ctx.db) {
+        SymbolKind::Method
     } else {
-        CompletionItemKind::SymbolKind(SymbolKind::Function)
-    };
+        SymbolKind::Function
+    });
 
     let mut item = CompletionItem::new(completion_kind, replacement_range, label);
     item.lookup_by(format!("fn {}", fn_name.display(ctx.db)))

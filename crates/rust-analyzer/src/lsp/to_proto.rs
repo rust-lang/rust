@@ -52,6 +52,7 @@ pub(crate) fn range(line_index: &LineIndex, range: TextRange) -> lsp_types::Rang
 pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
         SymbolKind::Function => lsp_types::SymbolKind::FUNCTION,
+        SymbolKind::Method => lsp_types::SymbolKind::METHOD,
         SymbolKind::Struct => lsp_types::SymbolKind::STRUCT,
         SymbolKind::Enum => lsp_types::SymbolKind::ENUM,
         SymbolKind::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
@@ -122,12 +123,12 @@ pub(crate) fn completion_item_kind(
         CompletionItemKind::BuiltinType => lsp_types::CompletionItemKind::STRUCT,
         CompletionItemKind::InferredType => lsp_types::CompletionItemKind::SNIPPET,
         CompletionItemKind::Keyword => lsp_types::CompletionItemKind::KEYWORD,
-        CompletionItemKind::Method => lsp_types::CompletionItemKind::METHOD,
         CompletionItemKind::Snippet => lsp_types::CompletionItemKind::SNIPPET,
         CompletionItemKind::UnresolvedReference => lsp_types::CompletionItemKind::REFERENCE,
         CompletionItemKind::Expression => lsp_types::CompletionItemKind::SNIPPET,
         CompletionItemKind::SymbolKind(symbol) => match symbol {
             SymbolKind::Attribute => lsp_types::CompletionItemKind::FUNCTION,
+            SymbolKind::Method => lsp_types::CompletionItemKind::METHOD,
             SymbolKind::Const => lsp_types::CompletionItemKind::CONSTANT,
             SymbolKind::ConstParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
             SymbolKind::Derive => lsp_types::CompletionItemKind::FUNCTION,
@@ -648,8 +649,7 @@ pub(crate) fn semantic_token_delta(
 fn semantic_token_type_and_modifiers(
     highlight: Highlight,
 ) -> (lsp_types::SemanticTokenType, semantic_tokens::ModifierSet) {
-    let mut mods = semantic_tokens::ModifierSet::default();
-    let type_ = match highlight.tag {
+    let ty = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
             SymbolKind::Attribute => semantic_tokens::DECORATOR,
             SymbolKind::Derive => semantic_tokens::DERIVE,
@@ -665,22 +665,10 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::SelfParam => semantic_tokens::SELF_KEYWORD,
             SymbolKind::SelfType => semantic_tokens::SELF_TYPE_KEYWORD,
             SymbolKind::Local => semantic_tokens::VARIABLE,
-            SymbolKind::Function => {
-                if highlight.mods.contains(HlMod::Associated) {
-                    semantic_tokens::METHOD
-                } else {
-                    semantic_tokens::FUNCTION
-                }
-            }
-            SymbolKind::Const => {
-                mods |= semantic_tokens::CONSTANT;
-                mods |= semantic_tokens::STATIC;
-                semantic_tokens::VARIABLE
-            }
-            SymbolKind::Static => {
-                mods |= semantic_tokens::STATIC;
-                semantic_tokens::VARIABLE
-            }
+            SymbolKind::Method => semantic_tokens::METHOD,
+            SymbolKind::Function => semantic_tokens::FUNCTION,
+            SymbolKind::Const => semantic_tokens::VARIABLE,
+            SymbolKind::Static => semantic_tokens::VARIABLE,
             SymbolKind::Struct => semantic_tokens::STRUCT,
             SymbolKind::Enum => semantic_tokens::ENUM,
             SymbolKind::Variant => semantic_tokens::ENUM_MEMBER,
@@ -727,12 +715,14 @@ fn semantic_token_type_and_modifiers(
         },
     };
 
+    let mut mods = semantic_tokens::ModifierSet::default();
     for modifier in highlight.mods.iter() {
         let modifier = match modifier {
-            HlMod::Associated => continue,
+            HlMod::Associated => semantic_tokens::ASSOCIATED,
             HlMod::Async => semantic_tokens::ASYNC,
             HlMod::Attribute => semantic_tokens::ATTRIBUTE_MODIFIER,
             HlMod::Callable => semantic_tokens::CALLABLE,
+            HlMod::Const => semantic_tokens::CONSTANT,
             HlMod::Consuming => semantic_tokens::CONSUMING,
             HlMod::ControlFlow => semantic_tokens::CONTROL_FLOW,
             HlMod::CrateRoot => semantic_tokens::CRATE_ROOT,
@@ -754,7 +744,7 @@ fn semantic_token_type_and_modifiers(
         mods |= modifier;
     }
 
-    (type_, mods)
+    (ty, mods)
 }
 
 pub(crate) fn folding_range(

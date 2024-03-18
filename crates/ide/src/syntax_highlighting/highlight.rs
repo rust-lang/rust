@@ -178,6 +178,23 @@ fn keyword(
         T![do] | T![yeet] if parent_matches::<ast::YeetExpr>(&token) => h | HlMod::ControlFlow,
         T![for] if parent_matches::<ast::ForExpr>(&token) => h | HlMod::ControlFlow,
         T![unsafe] => h | HlMod::Unsafe,
+        T![const]
+            if token.parent().map_or(false, |it| {
+                matches!(
+                    it.kind(),
+                    SyntaxKind::CONST
+                        | SyntaxKind::FN
+                        | SyntaxKind::IMPL
+                        | SyntaxKind::BLOCK_EXPR
+                        | SyntaxKind::CLOSURE_EXPR
+                        | SyntaxKind::FN_PTR_TYPE
+                        | SyntaxKind::TYPE_BOUND
+                        | SyntaxKind::CONST_BLOCK_PAT
+                )
+            }) =>
+        {
+            h | HlMod::Const
+        }
         T![true] | T![false] => HlTag::BoolLiteral.into(),
         // crate is handled just as a token if it's in an `extern crate`
         T![crate] if parent_matches::<ast::ExternCrate>(&token) => h,
@@ -377,14 +394,17 @@ pub(super) fn highlight_def(
             if let Some(item) = func.as_assoc_item(db) {
                 h |= HlMod::Associated;
                 match func.self_param(db) {
-                    Some(sp) => match sp.access(db) {
-                        hir::Access::Exclusive => {
-                            h |= HlMod::Mutable;
-                            h |= HlMod::Reference;
+                    Some(sp) => {
+                        h.tag = HlTag::Symbol(SymbolKind::Method);
+                        match sp.access(db) {
+                            hir::Access::Exclusive => {
+                                h |= HlMod::Mutable;
+                                h |= HlMod::Reference;
+                            }
+                            hir::Access::Shared => h |= HlMod::Reference,
+                            hir::Access::Owned => h |= HlMod::Consuming,
                         }
-                        hir::Access::Shared => h |= HlMod::Reference,
-                        hir::Access::Owned => h |= HlMod::Consuming,
-                    },
+                    }
                     None => h |= HlMod::Static,
                 }
 
@@ -406,6 +426,9 @@ pub(super) fn highlight_def(
             if func.is_async(db) {
                 h |= HlMod::Async;
             }
+            if func.is_const(db) {
+                h |= HlMod::Const;
+            }
 
             h
         }
@@ -420,10 +443,11 @@ pub(super) fn highlight_def(
         }
         Definition::Variant(_) => Highlight::new(HlTag::Symbol(SymbolKind::Variant)),
         Definition::Const(konst) => {
-            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Const));
+            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Const)) | HlMod::Const;
 
             if let Some(item) = konst.as_assoc_item(db) {
                 h |= HlMod::Associated;
+                h |= HlMod::Static;
                 match item.container(db) {
                     hir::AssocItemContainer::Impl(i) => {
                         if i.trait_(db).is_some() {
@@ -445,6 +469,7 @@ pub(super) fn highlight_def(
 
             if let Some(item) = type_.as_assoc_item(db) {
                 h |= HlMod::Associated;
+                h |= HlMod::Static;
                 match item.container(db) {
                     hir::AssocItemContainer::Impl(i) => {
                         if i.trait_(db).is_some() {
@@ -474,7 +499,7 @@ pub(super) fn highlight_def(
         Definition::GenericParam(it) => match it {
             hir::GenericParam::TypeParam(_) => Highlight::new(HlTag::Symbol(SymbolKind::TypeParam)),
             hir::GenericParam::ConstParam(_) => {
-                Highlight::new(HlTag::Symbol(SymbolKind::ConstParam))
+                Highlight::new(HlTag::Symbol(SymbolKind::ConstParam)) | HlMod::Const
             }
             hir::GenericParam::LifetimeParam(_) => {
                 Highlight::new(HlTag::Symbol(SymbolKind::LifetimeParam))
@@ -550,8 +575,7 @@ fn highlight_method_call(
 ) -> Option<Highlight> {
     let func = sema.resolve_method_call(method_call)?;
 
-    let mut h = SymbolKind::Function.into();
-    h |= HlMod::Associated;
+    let mut h = SymbolKind::Method.into();
 
     if func.is_unsafe_to_call(sema.db) || sema.is_unsafe_method_call(method_call) {
         h |= HlMod::Unsafe;
@@ -647,7 +671,7 @@ fn highlight_name_ref_by_syntax(
     match parent.kind() {
         METHOD_CALL_EXPR => ast::MethodCallExpr::cast(parent)
             .and_then(|it| highlight_method_call(sema, krate, &it))
-            .unwrap_or_else(|| SymbolKind::Function.into()),
+            .unwrap_or_else(|| SymbolKind::Method.into()),
         FIELD_EXPR => {
             let h = HlTag::Symbol(SymbolKind::Field);
             let is_union = ast::FieldExpr::cast(parent)

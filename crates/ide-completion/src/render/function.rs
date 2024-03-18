@@ -68,11 +68,11 @@ fn render(
     };
     let has_self_param = func.self_param(db).is_some();
     let mut item = CompletionItem::new(
-        if has_self_param {
-            CompletionItemKind::Method
+        CompletionItemKind::SymbolKind(if has_self_param {
+            SymbolKind::Method
         } else {
-            CompletionItemKind::SymbolKind(SymbolKind::Function)
-        },
+            SymbolKind::Function
+        }),
         ctx.source_range(),
         call.clone(),
     );

@@ -127,6 +127,7 @@ impl Unit {
             en Enum         Enum
             fn function()   fn()
             fn local_func() fn()
+            me self.foo()   fn(self)
             lc self         Unit
             ma makro!(…)    macro_rules! makro
             md module
@@ -166,7 +167,6 @@ impl Unit {
             kw use
             kw while
             kw while let
-            me self.foo()   fn(self)
             sn macro_rules
             sn pd
             sn ppd

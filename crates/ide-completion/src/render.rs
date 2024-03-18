@@ -677,10 +677,11 @@ mod tests {
 
     #[track_caller]
     fn check_function_relevance(ra_fixture: &str, expect: Expect) {
-        let actual: Vec<_> = do_completion(ra_fixture, CompletionItemKind::Method)
-            .into_iter()
-            .map(|item| (item.detail.unwrap_or_default(), item.relevance.function))
-            .collect();
+        let actual: Vec<_> =
+            do_completion(ra_fixture, CompletionItemKind::SymbolKind(SymbolKind::Method))
+                .into_iter()
+                .map(|item| (item.detail.unwrap_or_default(), item.relevance.function))
+                .collect();
 
         expect.assert_debug_eq(&actual);
     }
@@ -1392,7 +1393,10 @@ impl S {
     /// Method docs
     fn bar(self) { self.$0 }
 }"#,
-            &[CompletionItemKind::Method, CompletionItemKind::SymbolKind(SymbolKind::Field)],
+            &[
+                CompletionItemKind::SymbolKind(SymbolKind::Method),
+                CompletionItemKind::SymbolKind(SymbolKind::Field),
+            ],
             expect![[r#"
                 [
                     CompletionItem {
@@ -1400,7 +1404,9 @@ impl S {
                         source_range: 94..94,
                         delete: 94..94,
                         insert: "bar()$0",
-                        kind: Method,
+                        kind: SymbolKind(
+                            Method,
+                        ),
                         lookup: "bar",
                         detail: "fn(self)",
                         documentation: Documentation(
@@ -1520,7 +1526,7 @@ impl S {
 }
 fn foo(s: S) { s.$0 }
 "#,
-            CompletionItemKind::Method,
+            CompletionItemKind::SymbolKind(SymbolKind::Method),
             expect![[r#"
                 [
                     CompletionItem {
@@ -1528,7 +1534,9 @@ fn foo(s: S) { s.$0 }
                         source_range: 81..81,
                         delete: 81..81,
                         insert: "the_method()$0",
-                        kind: Method,
+                        kind: SymbolKind(
+                            Method,
+                        ),
                         lookup: "the_method",
                         detail: "fn(&self)",
                         relevance: CompletionRelevance {
@@ -2408,7 +2416,10 @@ impl Foo { fn baz(&self) -> u32 { 0 } }
 
 fn foo(f: Foo) { let _: &u32 = f.b$0 }
 "#,
-            &[CompletionItemKind::Method, CompletionItemKind::SymbolKind(SymbolKind::Field)],
+            &[
+                CompletionItemKind::SymbolKind(SymbolKind::Method),
+                CompletionItemKind::SymbolKind(SymbolKind::Field),
+            ],
             expect![[r#"
                 [
                     CompletionItem {
@@ -2416,7 +2427,9 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                         source_range: 109..110,
                         delete: 109..110,
                         insert: "baz()$0",
-                        kind: Method,
+                        kind: SymbolKind(
+                            Method,
+                        ),
                         lookup: "baz",
                         detail: "fn(&self) -> u32",
                         relevance: CompletionRelevance {
@@ -2631,7 +2644,7 @@ fn main() {
     let _: bool = (9 > 2).not$0;
 }
     "#,
-            &[CompletionItemKind::Snippet, CompletionItemKind::Method],
+            &[CompletionItemKind::Snippet, CompletionItemKind::SymbolKind(SymbolKind::Method)],
             expect![[r#"
                 sn not [snippet]
                 me not() (use ops::Not) [type_could_unify+requires_import]
@@ -2664,7 +2677,7 @@ fn main() {
     S.$0
 }
     "#,
-            &[CompletionItemKind::Snippet, CompletionItemKind::Method],
+            &[CompletionItemKind::Snippet, CompletionItemKind::SymbolKind(SymbolKind::Method)],
             expect![[r#"
                 me f() []
                 sn ref []
@@ -2907,7 +2920,7 @@ fn main() {
 }
 "#,
             &[
-                CompletionItemKind::Method,
+                CompletionItemKind::SymbolKind(SymbolKind::Method),
                 CompletionItemKind::SymbolKind(SymbolKind::Field),
                 CompletionItemKind::SymbolKind(SymbolKind::Function),
             ],
@@ -2918,7 +2931,9 @@ fn main() {
                         source_range: 193..193,
                         delete: 193..193,
                         insert: "flush()$0",
-                        kind: Method,
+                        kind: SymbolKind(
+                            Method,
+                        ),
                         lookup: "flush",
                         detail: "fn(&self)",
                         relevance: CompletionRelevance {
@@ -2941,7 +2956,9 @@ fn main() {
                         source_range: 193..193,
                         delete: 193..193,
                         insert: "write()$0",
-                        kind: Method,
+                        kind: SymbolKind(
+                            Method,
+                        ),
                         lookup: "write",
                         detail: "fn(&self)",
                         relevance: CompletionRelevance {

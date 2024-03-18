@@ -75,8 +75,8 @@ impl Future for A {}
 fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
-                kw await                  expr.await
                 me into_future() (as IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
+                kw await                  expr.await
                 sn box                    Box::new(expr)
                 sn call                   function(expr)
                 sn dbg                    dbg!(expr)
@@ -102,8 +102,8 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                kw await                  expr.await
                 me into_future() (use core::future::IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
+                kw await                  expr.await
                 sn box                    Box::new(expr)
                 sn call                   function(expr)
                 sn dbg                    dbg!(expr)
@@ -131,8 +131,8 @@ impl IntoFuture for A {}
 fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
-                kw await                  expr.await
                 me into_future() (as IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
+                kw await                  expr.await
                 sn box                    Box::new(expr)
                 sn call                   function(expr)
                 sn dbg                    dbg!(expr)
