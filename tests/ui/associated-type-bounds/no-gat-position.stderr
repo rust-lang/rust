@@ -1,5 +1,5 @@
 error[E0229]: associated type bindings are not allowed here
-  --> $DIR/no-gat-position.rs:8:56
+  --> $DIR/no-gat-position.rs:6:56
    |
 LL |     fn next<'a>(&'a mut self) -> Option<Self::Item<'a, As1: Copy>>;
    |                                                        ^^^^^^^^^ associated type not allowed here

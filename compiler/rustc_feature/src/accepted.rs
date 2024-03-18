@@ -59,6 +59,8 @@ declare_features! (
     (accepted, asm_sym, "1.66.0", Some(93333)),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
     (accepted, associated_consts, "1.20.0", Some(29646)),
+    /// Allows the user of associated type bounds.
+    (accepted, associated_type_bounds, "CURRENT_RUSTC_VERSION", Some(52662)),
     /// Allows using associated `type`s in `trait`s.
     (accepted, associated_types, "1.0.0", None),
     /// Allows free and inherent `async fn`s, `async` blocks, and `<expr>.await` expressions.

@@ -1,5 +1,5 @@
 error: associated type bounds are not allowed in `dyn` types
-  --> $DIR/bad-universal-in-dyn-in-where-clause.rs:9:19
+  --> $DIR/bad-universal-in-dyn-in-where-clause.rs:7:19
    |
 LL |     dyn for<'j> B<AssocType: 'j>:,
    |                   ^^^^^^^^^^^^^

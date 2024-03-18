@@ -463,13 +463,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     constraint.span,
                     "return type notation is experimental"
                 );
-            } else {
-                gate!(
-                    &self,
-                    associated_type_bounds,
-                    constraint.span,
-                    "associated type bounds are unstable"
-                );
             }
         }
         visit::walk_assoc_constraint(self, constraint)
@@ -615,7 +608,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     }
 
     gate_all_legacy_dont_use!(trait_alias, "trait aliases are experimental");
-    gate_all_legacy_dont_use!(associated_type_bounds, "associated type bounds are unstable");
     // Despite being a new feature, `where T: Trait<Assoc(): Sized>`, which is RTN syntax now,
     // used to be gated under associated_type_bounds, which are right above, so RTN needs to
     // be too.

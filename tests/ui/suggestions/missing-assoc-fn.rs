@@ -6,7 +6,7 @@ trait TraitA<A> {
     fn foo<T: TraitB<Item = A>>(_: T) -> Self;
     fn bar<T>(_: T) -> Self;
     fn baz<T>(_: T) -> Self where T: TraitB, <T as TraitB>::Item: Copy;
-    fn bat<T: TraitB<Item: Copy>>(_: T) -> Self; //~ ERROR associated type bounds are unstable
+    fn bat<T: TraitB<Item: Copy>>(_: T) -> Self;
 }
 
 struct S;
