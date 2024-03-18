@@ -949,7 +949,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 obligation.param_env,
                                 unevaluated,
                                 c.ty(),
-                                Some(obligation.cause.span),
+                                obligation.cause.span,
                             ) {
                                 Ok(val) => Ok(val),
                                 Err(e) => Err(e),

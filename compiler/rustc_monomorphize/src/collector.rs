@@ -828,7 +828,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         // a codegen-time error). rustc stops after collection if there was an error, so this
         // ensures codegen never has to worry about failing consts.
         // (codegen relies on this and ICEs will happen if this is violated.)
-        let val = match const_.eval(self.tcx, param_env, Some(constant.span)) {
+        let val = match const_.eval(self.tcx, param_env, constant.span) {
             Ok(v) => v,
             Err(ErrorHandled::TooGeneric(..)) => span_bug!(
                 self.body.source_info(location).span,

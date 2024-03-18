@@ -417,7 +417,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
             Operand::Constant(constant) => {
                 let constant =
-                    self.ecx.eval_mir_constant(&constant.const_, Some(constant.span), None).ok()?;
+                    self.ecx.eval_mir_constant(&constant.const_, constant.span, None).ok()?;
                 self.process_constant(bb, lhs, constant, state);
             }
             // Transfer the conditions on the copied rhs.
