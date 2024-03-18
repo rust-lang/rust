@@ -10,6 +10,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::FiniteBitSet;
 use rustc_macros::HashStable;
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::Symbol;
 
 use std::assert_matches::assert_matches;
@@ -167,6 +168,11 @@ impl<'tcx> Instance<'tcx> {
 
         // If this a non-generic instance, it cannot be a shared monomorphization.
         self.args.non_erasable_generics(tcx, self.def_id()).next()?;
+
+        // compiler_builtins cannot use upstream monomorphizations.
+        if tcx.is_compiler_builtins(LOCAL_CRATE) {
+            return None;
+        }
 
         match self.def {
             InstanceDef::Item(def) => tcx
