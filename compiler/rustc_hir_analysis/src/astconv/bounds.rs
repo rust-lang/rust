@@ -1,12 +1,15 @@
-use rustc_data_structures::fx::FxIndexMap;
+use std::ops::ControlFlow;
+
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::ty::{self as ty, Ty};
+use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use rustc_trait_selection::traits;
+use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
 
 use crate::astconv::{AstConv, OnlySelfBounds, PredicateFilter};
@@ -433,14 +436,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 binding.kind
             {
                 let ty = alias_ty.map_bound(|ty| tcx.type_of(ty.def_id).instantiate(tcx, ty.args));
-                // Since the arguments passed to the alias type above may contain early-bound
-                // generic parameters, the instantiated type may contain some as well.
-                // Therefore wrap it in `EarlyBinder`.
-                // FIXME(fmease): Reject escaping late-bound vars.
-                tcx.feed_anon_const_type(
-                    anon_const.def_id,
-                    ty::EarlyBinder::bind(ty.skip_binder()),
-                );
+                let ty = check_assoc_const_binding_type(tcx, assoc_ident, ty, binding.hir_id);
+                tcx.feed_anon_const_type(anon_const.def_id, ty::EarlyBinder::bind(ty));
             }
 
             alias_ty
@@ -528,5 +525,169 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             }
         }
         Ok(())
+    }
+}
+
+/// Detect and reject early-bound & escaping late-bound generic params in the type of assoc const bindings.
+///
+/// FIXME(const_generics): This is a temporary and semi-artifical restriction until the
+/// arrival of *generic const generics*[^1].
+///
+/// It might actually be possible that we can already support early-bound generic params
+/// in such types if we just lifted some more checks in other places, too, for example
+/// inside [`ty::Const::from_anon_const`]. However, even if that were the case, we should
+/// probably gate this behind another feature flag.
+///
+/// [^1]: <https://github.com/rust-lang/project-const-generics/issues/28>.
+fn check_assoc_const_binding_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    assoc_const: Ident,
+    ty: ty::Binder<'tcx, Ty<'tcx>>,
+    hir_id: hir::HirId,
+) -> Ty<'tcx> {
+    // We can't perform the checks for early-bound params during name resolution unlike E0770
+    // because this information depends on *type* resolution.
+    // We can't perform these checks in `resolve_bound_vars` either for the same reason.
+    // Consider the trait ref `for<'a> Trait<'a, C = { &0 }>`. We need to know the fully
+    // resolved type of `Trait::C` in order to know if it references `'a` or not.
+
+    let ty = ty.skip_binder();
+    if !ty.has_param() && !ty.has_escaping_bound_vars() {
+        return ty;
+    }
+
+    let mut collector = GenericParamAndBoundVarCollector {
+        tcx,
+        params: Default::default(),
+        vars: Default::default(),
+        depth: ty::INNERMOST,
+    };
+    let mut guar = ty.visit_with(&mut collector).break_value();
+
+    let ty_note = ty
+        .make_suggestable(tcx, false)
+        .map(|ty| crate::errors::TyOfAssocConstBindingNote { assoc_const, ty });
+
+    let enclosing_item_owner_id = tcx
+        .hir()
+        .parent_owner_iter(hir_id)
+        .find_map(|(owner_id, parent)| parent.generics().map(|_| owner_id))
+        .unwrap();
+    let generics = tcx.generics_of(enclosing_item_owner_id);
+    for index in collector.params {
+        let param = generics.param_at(index as _, tcx);
+        let is_self_param = param.name == rustc_span::symbol::kw::SelfUpper;
+        guar.get_or_insert(tcx.dcx().emit_err(crate::errors::ParamInTyOfAssocConstBinding {
+            span: assoc_const.span,
+            assoc_const,
+            param_name: param.name,
+            param_def_kind: tcx.def_descr(param.def_id),
+            param_category: if is_self_param {
+                "self"
+            } else if param.kind.is_synthetic() {
+                "synthetic"
+            } else {
+                "normal"
+            },
+            param_defined_here_label:
+                (!is_self_param).then(|| tcx.def_ident_span(param.def_id).unwrap()),
+            ty_note,
+        }));
+    }
+    for (var_def_id, var_name) in collector.vars {
+        guar.get_or_insert(tcx.dcx().emit_err(
+            crate::errors::EscapingBoundVarInTyOfAssocConstBinding {
+                span: assoc_const.span,
+                assoc_const,
+                var_name,
+                var_def_kind: tcx.def_descr(var_def_id),
+                var_defined_here_label: tcx.def_ident_span(var_def_id).unwrap(),
+                ty_note,
+            },
+        ));
+    }
+
+    let guar = guar.unwrap_or_else(|| bug!("failed to find gen params or bound vars in ty"));
+    Ty::new_error(tcx, guar)
+}
+
+struct GenericParamAndBoundVarCollector<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    params: FxIndexSet<u32>,
+    vars: FxIndexSet<(DefId, Symbol)>,
+    depth: ty::DebruijnIndex,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'tcx> {
+    type Result = ControlFlow<ErrorGuaranteed>;
+
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
+        &mut self,
+        binder: &ty::Binder<'tcx, T>,
+    ) -> Self::Result {
+        self.depth.shift_in(1);
+        let result = binder.super_visit_with(self);
+        self.depth.shift_out(1);
+        result
+    }
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        match ty.kind() {
+            ty::Param(param) => {
+                self.params.insert(param.index);
+            }
+            ty::Bound(db, bt) if *db >= self.depth => {
+                self.vars.insert(match bt.kind {
+                    ty::BoundTyKind::Param(def_id, name) => (def_id, name),
+                    ty::BoundTyKind::Anon => {
+                        let reported = self
+                            .tcx
+                            .dcx()
+                            .delayed_bug(format!("unexpected anon bound ty: {:?}", bt.var));
+                        return ControlFlow::Break(reported);
+                    }
+                });
+            }
+            _ if ty.has_param() || ty.has_bound_vars() => return ty.super_visit_with(self),
+            _ => {}
+        }
+        ControlFlow::Continue(())
+    }
+
+    fn visit_region(&mut self, re: ty::Region<'tcx>) -> Self::Result {
+        match re.kind() {
+            ty::ReEarlyParam(param) => {
+                self.params.insert(param.index);
+            }
+            ty::ReBound(db, br) if db >= self.depth => {
+                self.vars.insert(match br.kind {
+                    ty::BrNamed(def_id, name) => (def_id, name),
+                    ty::BrAnon | ty::BrEnv => {
+                        let guar = self
+                            .tcx
+                            .dcx()
+                            .delayed_bug(format!("unexpected bound region kind: {:?}", br.kind));
+                        return ControlFlow::Break(guar);
+                    }
+                });
+            }
+            _ => {}
+        }
+        ControlFlow::Continue(())
+    }
+
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
+        match ct.kind() {
+            ty::ConstKind::Param(param) => {
+                self.params.insert(param.index);
+            }
+            ty::ConstKind::Bound(db, ty::BoundVar { .. }) if db >= self.depth => {
+                let guar = self.tcx.dcx().delayed_bug("unexpected escaping late-bound const var");
+                return ControlFlow::Break(guar);
+            }
+            _ if ct.has_param() || ct.has_bound_vars() => return ct.super_visit_with(self),
+            _ => {}
+        }
+        ControlFlow::Continue(())
     }
 }
