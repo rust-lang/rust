@@ -1,4 +1,4 @@
-// MIR for `<impl at $DIR/retag.rs:13:1: 13:10>::foo` after SimplifyCfg-elaborate-drops
+// MIR for `<impl at $DIR/retag.rs:13:1: 13:10>::foo` after SimplifyCfg-pre-optimizations
 
 fn <impl at $DIR/retag.rs:13:1: 13:10>::foo(_1: &Test, _2: &mut i32) -> &mut i32 {
     debug self => _1;

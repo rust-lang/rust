@@ -1,4 +1,4 @@
-// MIR for `main` after SimplifyCfg-elaborate-drops
+// MIR for `main` after SimplifyCfg-pre-optimizations
 
 fn main() -> () {
     let mut _0: ();

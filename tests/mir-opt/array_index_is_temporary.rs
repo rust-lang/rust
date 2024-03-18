@@ -1,4 +1,4 @@
-//@ unit-test: SimplifyCfg-elaborate-drops
+//@ unit-test: SimplifyCfg-pre-optimizations
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // Retagging (from Stacked Borrows) relies on the array index being a fresh
 // temporary, so that side-effects cannot change it.
@@ -10,7 +10,7 @@ unsafe fn foo(z: *mut usize) -> u32 {
 }
 
 
-// EMIT_MIR array_index_is_temporary.main.SimplifyCfg-elaborate-drops.after.mir
+// EMIT_MIR array_index_is_temporary.main.SimplifyCfg-pre-optimizations.after.mir
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: debug x => [[x:_.*]];
