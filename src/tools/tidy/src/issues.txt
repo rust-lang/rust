@@ -968,8 +968,6 @@
 "ui/errors/issue-89280-emitter-overflow-splice-lines.rs",
 "ui/errors/issue-99572-impl-trait-on-pointer.rs",
 "ui/expr/if/issue-4201.rs",
-"ui/extenv/issue-110547.rs",
-"ui/extenv/issue-55897.rs",
 "ui/extern/auxiliary/issue-80074-macro-2.rs",
 "ui/extern/auxiliary/issue-80074-macro.rs",
 "ui/extern/issue-10025.rs",

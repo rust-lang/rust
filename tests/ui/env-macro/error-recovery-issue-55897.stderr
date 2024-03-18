@@ -1,5 +1,5 @@
 error: environment variable `NON_EXISTENT` not defined at compile time
-  --> $DIR/issue-55897.rs:10:22
+  --> $DIR/error-recovery-issue-55897.rs:10:22
    |
 LL |     include!(concat!(env!("NON_EXISTENT"), "/data.rs"));
    |                      ^^^^^^^^^^^^^^^^^^^^
@@ -8,13 +8,13 @@ LL |     include!(concat!(env!("NON_EXISTENT"), "/data.rs"));
    = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: suffixes on string literals are invalid
-  --> $DIR/issue-55897.rs:15:22
+  --> $DIR/error-recovery-issue-55897.rs:15:22
    |
 LL |     include!(concat!("NON_EXISTENT"suffix, "/data.rs"));
    |                      ^^^^^^^^^^^^^^^^^^^^ invalid suffix `suffix`
 
 error[E0432]: unresolved import `prelude`
-  --> $DIR/issue-55897.rs:1:5
+  --> $DIR/error-recovery-issue-55897.rs:1:5
    |
 LL | use prelude::*;
    |     ^^^^^^^
@@ -23,7 +23,7 @@ LL | use prelude::*;
    |     help: a similar path exists: `std::prelude`
 
 error[E0432]: unresolved import `env`
-  --> $DIR/issue-55897.rs:4:9
+  --> $DIR/error-recovery-issue-55897.rs:4:9
    |
 LL |     use env;
    |         ^^^ no `env` in the root
