@@ -7,14 +7,16 @@ very flat hierarchy. The teams mainly have additional access rights to the repo.
 This document outlines the onboarding process, as well as duties, and access
 rights for members of a group.
 
+All regular events mentioned in this chapter are tracked in the [calendar repository].
+The calendar file is also available for download: [clippy.ics]
+
 ## Everyone
 
 Everyone, including you, is welcome to join discussions and contribute in other
 ways, like PRs.
 
 You also have some triage rights, using `@rustbot` to add labels and claim
-issues. See
-[labeling with @rustbot](https://forge.rust-lang.org/triagebot/labeling.html)
+issues. See [labeling with @rustbot].
 
 A rule for everyone should be to keep a healthy work-life balance. Take a break
 when you need one.
@@ -37,7 +39,7 @@ this group to help with triaging, which can include:
 
 2. **Closing duplicate or resolved issues**
 
-    When you manually close and issue, it's often a good idea, to add a short
+    When you manually close an issue, it's often a good idea, to add a short
     comment explaining the reason.
 
 3. **Ping people after two weeks of inactivity**
@@ -51,6 +53,9 @@ this group to help with triaging, which can include:
 
     Checkout: https://triage.rust-lang.org/triage/rust-lang/rust-clippy to
     monitor PRs.
+
+While not part of their duties, contributors are encouraged to review PRs
+and help on Zulip. The team always appreciates help!
 
 ### Membership
 
@@ -77,36 +82,49 @@ is responsible for maintaining Clippy.
     It's totally fine, if you don't have the time for reviews right now.
     You can reassign the PR to a random member by commenting `r? clippy`.
 
-2. **Take a break when you need one.**
+2. **Take a break when you need one**
 
     You are valuable! Clippy wouldn't be what it is without you. So take a break
     early and recharge some energy when you need to.
 
-3. **Sync Clippy with the rust-lang/rust repo**
+3. **Be responsive on Zulip**
 
-    This should be done roughly every two weeks. This is usually done by our
-    king @flip1995.
+    This means in a reasonable time frame, so responding within one or two days
+    is totally fine.
 
-4. **Update the changelog**
+    It's also good, if you answer threads on Zulip and take part in our Clippy
+    meetings, every two weeks. The meeting dates are tracked in the [calendar repository].
+    
+
+4. **Sync Clippy with the rust-lang/rust repo**
+
+    This is done every two weeks, usually by @flip1995.
+
+5. **Update the changelog**
 
     This needs to be done for every release, every six weeks. This is usually
     done by @xFrednet.
 
 ### Membership
 
-If you have been in the *Clippy-Contributors* team for some time, we'll probably
-reach out and ask if you want to help with reviews and eventually join the
-Clippy team.
+If you have been active for some time, we'll probably reach out and ask
+if you want to help with reviews and eventually join the Clippy team.
 
-During the onboarding process, you'll have an active Clippy team member as a
-mentor, who assigns PRs to you. They will shadow your reviews, meaning that
-they'll keep an eye on your PRs, help you with any questions, and once you're
-done, perform a full review. When everything looks good, they'll r+ the PR in
-the name of both of you.
+During the onboarding process, you'll be assigned pull requests to review.
+You'll also have an active team member as a mentor who'll stay in contact via
+Zulip DMs to provide advice and feedback. If you have questions, you're always
+welcome to ask, that is the best way to learn. Once you're done with the review,
+you can ping your mentor for a full review and to r+ the PR in both of your names.
 
-When you've done several reviews and seem confident in the role, you'll be
-invited to join the team officially, as long as you're still interested. This
+When your mentor is confident that you can handle reviews on your own, they'll
+start an informal vote among the active team members to officially add you to
+the team. This vote is usually accepted unanimously. Then you'll be added to
+the team once you've confirmed that you're still interested in joining. The
 onboarding phase typically takes a couple of weeks to a few months.
 
 If you have been inactive in Clippy for over three months, we'll probably move
 you to the alumni group. You're always welcome to come back.
+
+[calendar repository]: https://github.com/rust-lang/calendar/blob/main/clippy.toml
+[clippy.ics]: https://rust-lang.github.io/calendar/clippy.ics
+[labeling with @rustbot]: https://forge.rust-lang.org/triagebot/labeling.html
