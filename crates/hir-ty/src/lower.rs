@@ -301,13 +301,9 @@ impl<'a> TyLoweringContext<'a> {
             TypeRef::ImplTrait(bounds) => {
                 match &self.impl_trait_mode {
                     ImplTraitLoweringState::Opaque(opaque_type_data) => {
-                        let (origin, krate) = match self.resolver.generic_def() {
-                            Some(GenericDefId::FunctionId(f)) => {
-                                (Either::Left(f), f.krate(self.db.upcast()))
-                            }
-                            Some(GenericDefId::TypeAliasId(a)) => {
-                                (Either::Right(a), a.krate(self.db.upcast()))
-                            }
+                        let origin = match self.resolver.generic_def() {
+                            Some(GenericDefId::FunctionId(it)) => Either::Left(it),
+                            Some(GenericDefId::TypeAliasId(it)) => Either::Right(it),
                             _ => panic!(
                                 "opaque impl trait lowering must be in function or type alias"
                             ),
@@ -330,7 +326,7 @@ impl<'a> TyLoweringContext<'a> {
                         // away instead of two.
                         let actual_opaque_type_data = self
                             .with_debruijn(DebruijnIndex::INNERMOST, |ctx| {
-                                ctx.lower_impl_trait(bounds, krate)
+                                ctx.lower_impl_trait(bounds, self.resolver.krate())
                             });
                         opaque_type_data.borrow_mut()[idx] = actual_opaque_type_data;
 

@@ -278,7 +278,7 @@ impl InferenceTable<'_> {
 
         // If we are coercing into an ATPIT, coerce into its proxy inference var, instead.
         let mut to_ty = to_ty;
-        let mut _to = None;
+        let _to;
         if let Some(atpit_table) = &self.atpit_coercion_table {
             if let TyKind::OpaqueType(opaque_ty_id, _) = to_ty.kind(Interner) {
                 if !matches!(
@@ -286,8 +286,8 @@ impl InferenceTable<'_> {
                     TyKind::InferenceVar(..) | TyKind::OpaqueType(..)
                 ) {
                     if let Some(ty) = atpit_table.get(opaque_ty_id) {
-                        _to = Some(ty.clone());
-                        to_ty = _to.as_ref().unwrap();
+                        _to = ty.clone();
+                        to_ty = &_to;
                     }
                 }
             }
