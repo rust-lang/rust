@@ -2,7 +2,7 @@
 //!
 //! See `rustc_codegen_ssa/src/meth.rs` for reference.
 
-use crate::constant::data_id_for_alloc_id;
+use crate::constant::data_id_for_vtable;
 use crate::prelude::*;
 
 pub(crate) fn vtable_memflags() -> MemFlags {
@@ -92,12 +92,10 @@ pub(crate) fn get_vtable<'tcx>(
     ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
-    let alloc_id = fx.tcx.vtable_allocation((ty, trait_ref));
-    let data_id =
-        data_id_for_alloc_id(&mut fx.constants_cx, &mut *fx.module, alloc_id, Mutability::Not);
+    let data_id = data_id_for_vtable(fx.tcx, &mut fx.constants_cx, fx.module, ty, trait_ref);
     let local_data_id = fx.module.declare_data_in_func(data_id, fx.bcx.func);
     if fx.clif_comments.enabled() {
-        fx.add_comment(local_data_id, format!("vtable: {:?}", alloc_id));
+        fx.add_comment(local_data_id, "vtable");
     }
     fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
 }
