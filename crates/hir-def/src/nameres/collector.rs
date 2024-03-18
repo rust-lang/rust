@@ -14,6 +14,7 @@ use crate::item_tree::Mod;
 use crate::item_tree::ModKind;
 use crate::macro_call_as_call_id_with_eager;
 
+use crate::nameres::attr_resolution::derive_attr_macro_as_call_id;
 use crate::nameres::mod_resolution::ModDir;
 
 use crate::item_tree::ItemTree;
@@ -1258,9 +1259,7 @@ impl DefCollector<'_> {
                         Some(def) if def.is_attribute() => def,
                         _ => return Resolved::No,
                     };
-                    // We will treat derive macros as an attribute as a reference for the input to derives
-                    let call_id =
-                        attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def);
+
                     if let MacroDefId {
                         kind:
                             MacroDefKind::BuiltInAttr(
@@ -1289,8 +1288,16 @@ impl DefCollector<'_> {
                                 return recollect_without(self);
                             }
                         };
-                        let ast_id = ast_id.with_value(ast_adt_id);
 
+                        let ast_id = ast_id.with_value(ast_adt_id);
+                        // the call_id for the actual derive macro. This is used so all the derive proc macros can share a token tree
+                        let call_id = derive_attr_macro_as_call_id(
+                            self.db,
+                            &ast_id,
+                            attr,
+                            self.def_map.krate,
+                            def,
+                        );
                         match attr.parse_path_comma_token_tree(self.db.upcast()) {
                             Some(derive_macros) => {
                                 let mut len = 0;
@@ -1338,7 +1345,8 @@ impl DefCollector<'_> {
 
                         return recollect_without(self);
                     }
-
+                    let call_id =
+                        attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def);
                     // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
                     // due to duplicating functions into macro expansions
                     if matches!(

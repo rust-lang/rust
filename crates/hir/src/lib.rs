@@ -972,8 +972,7 @@ fn precise_macro_call_location(
                 MacroKind::ProcMacro,
             )
         }
-        // TODO: derive_macro_id
-        MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, derive_macro_id } => {
+        MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
             let node = ast_id.to_node(db.upcast());
             // Compute the precise location of the macro name's token in the derive
             // list.
@@ -1004,6 +1003,26 @@ fn precise_macro_call_location(
             )
         }
         MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
+            let node = ast_id.to_node(db.upcast());
+            let attr = collect_attrs(&node)
+                .nth(invoc_attr_index.ast_index())
+                .and_then(|x| Either::left(x.1))
+                .unwrap_or_else(|| {
+                    panic!("cannot find attribute #{}", invoc_attr_index.ast_index())
+                });
+
+            (
+                ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),
+                Some(attr.syntax().text_range()),
+                attr.path()
+                    .and_then(|path| path.segment())
+                    .and_then(|seg| seg.name_ref())
+                    .as_ref()
+                    .map(ToString::to_string),
+                MacroKind::Attr,
+            )
+        }
+        MacroCallKind::DeriveAttr { ast_id, invoc_attr_index } => {
             let node = ast_id.to_node(db.upcast());
             let attr = collect_attrs(&node)
                 .nth(invoc_attr_index.ast_index())
@@ -3710,8 +3729,7 @@ impl Impl {
         let macro_file = src.file_id.macro_file()?;
         let loc = macro_file.macro_call_id.lookup(db.upcast());
         let (derive_attr, derive_index) = match loc.kind {
-            // TODO: derive_macro_id
-            MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, derive_macro_id } => {
+            MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
                 let module_id = self.id.lookup(db.upcast()).container;
                 (
                     db.crate_def_map(module_id.krate())[module_id.local_id]

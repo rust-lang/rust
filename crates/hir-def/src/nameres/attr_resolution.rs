@@ -3,7 +3,7 @@
 use base_db::CrateId;
 use hir_expand::{
     attrs::{Attr, AttrId, AttrInput},
-    MacroCallId, MacroCallKind, MacroDefId,
+    AstId, MacroCallId, MacroCallKind, MacroDefId,
 };
 use span::SyntaxContextId;
 use syntax::{ast, SmolStr};
@@ -98,7 +98,20 @@ impl DefMap {
         false
     }
 }
-
+pub(super) fn derive_attr_macro_as_call_id(
+    db: &dyn DefDatabase,
+    item_attr: &AstId<ast::Adt>,
+    macro_attr: &Attr,
+    krate: CrateId,
+    def: MacroDefId,
+) -> MacroCallId {
+    def.make_call(
+        db.upcast(),
+        krate,
+        MacroCallKind::DeriveAttr { ast_id: *item_attr, invoc_attr_index: macro_attr.id },
+        macro_attr.ctxt,
+    )
+}
 pub(super) fn attr_macro_as_call_id(
     db: &dyn DefDatabase,
     item_attr: &AstIdWithPath<ast::Item>,

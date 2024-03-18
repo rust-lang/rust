@@ -180,7 +180,7 @@ pub(crate) fn process_cfg_attrs(
     db: &dyn ExpandDatabase,
 ) -> Option<FxHashSet<SyntaxElement>> {
     // FIXME: #[cfg_eval] is not implemented. But it is not stable yet
-    if !matches!(loc.kind, MacroCallKind::Derive { .. }) {
+    if !matches!(loc.kind, MacroCallKind::Derive { .. } | MacroCallKind::DeriveAttr { .. }) {
         return None;
     }
     let mut remove = FxHashSet::default();

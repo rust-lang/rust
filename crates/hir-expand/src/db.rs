@@ -7,7 +7,6 @@ use mbe::syntax_node_to_token_tree;
 use rustc_hash::FxHashSet;
 use span::{AstIdMap, Span, SyntaxContextData, SyntaxContextId};
 use syntax::{ast, AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T};
-use tracing::debug;
 use triomphe::Arc;
 
 use crate::{
@@ -158,7 +157,8 @@ pub fn expand_speculative(
             SyntaxFixupUndoInfo::NONE,
         ),
         MacroCallKind::Derive { derive_attr_index: index, .. }
-        | MacroCallKind::Attr { invoc_attr_index: index, .. } => {
+        | MacroCallKind::Attr { invoc_attr_index: index, .. }
+        | MacroCallKind::DeriveAttr { invoc_attr_index: index, .. } => {
             let censor = if let MacroCallKind::Derive { .. } = loc.kind {
                 censor_derive_input(index, &ast::Adt::cast(speculative_args.clone())?)
             } else {
@@ -347,31 +347,18 @@ type MacroArgResult = (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span);
 /// Other wise return the [macro_arg] for the macro_call_id.
 ///
 /// This is not connected to the database so it does not cached the result. However, the inner [macro_arg] query is
-///
-/// FIXME: Pick a better name
-fn smart_macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
-    let loc = db.lookup_intern_macro_call(id);
+fn macro_arg_considering_derives(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
+    let macro_call_kind = db.lookup_intern_macro_call(id).kind;
     // FIXME: We called lookup_intern_macro_call twice.
-    match loc.kind {
+    match macro_call_kind {
         // Get the macro arg for the derive macro
-        MacroCallKind::Derive { derive_macro_id, .. } => {
-            debug!(
-                ?loc,
-                "{id:?} is a derive macro. Using the derive macro, id: {derive_macro_id:?}, attribute as the macro arg."
-            );
-            db.macro_arg(derive_macro_id)
-        }
+        MacroCallKind::Derive { derive_macro_id, .. } => db.macro_arg(derive_macro_id),
         // Normal macro arg
         _ => db.macro_arg(id),
     }
 }
 
-fn macro_arg(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-    // FIXME: consider the following by putting fixup info into eager call info args
-    // ) -> ValueResult<Arc<(tt::Subtree, SyntaxFixupUndoInfo)>, Arc<Box<[SyntaxError]>>> {
-) -> MacroArgResult {
+fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
     let loc = db.lookup_intern_macro_call(id);
 
     if let MacroCallLoc {
@@ -441,7 +428,9 @@ fn macro_arg(
             }
             return (Arc::new(tt), SyntaxFixupUndoInfo::NONE, span);
         }
-        MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
+        // MacroCallKind::Derive should not be here. As we are getting the argument for the derive macro
+        MacroCallKind::Derive { ast_id, derive_attr_index, .. }
+        | MacroCallKind::DeriveAttr { ast_id, invoc_attr_index: derive_attr_index } => {
             let node = ast_id.to_ptr(db).to_node(&root);
             let censor_derive_input = censor_derive_input(derive_attr_index, &node);
             let item_node = node.into();
@@ -553,7 +542,7 @@ fn macro_expand(
     let (ExpandResult { value: tt, err }, span) = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id).map(CowArc::Arc),
         _ => {
-            let (macro_arg, undo_info, span) = smart_macro_arg(db, macro_call_id);
+            let (macro_arg, undo_info, span) = macro_arg_considering_derives(db, macro_call_id);
 
             let arg = &*macro_arg;
             let res =
@@ -630,7 +619,7 @@ fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
 
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt::Subtree>> {
     let loc = db.lookup_intern_macro_call(id);
-    let (macro_arg, undo_info, span) = smart_macro_arg(db, id);
+    let (macro_arg, undo_info, span) = macro_arg_considering_derives(db, id);
 
     let (expander, ast) = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, _, ast) => (expander, ast),
