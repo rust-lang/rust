@@ -93,7 +93,7 @@ pub struct EvalCtxt<'a, 'tcx> {
 
 #[derive(Debug, Clone)]
 pub(super) struct NestedGoals<'tcx> {
-    /// This normalizes-to goal that is treated specially during the evaluation
+    /// These normalizes-to goals are treated specially during the evaluation
     /// loop. In each iteration we take the RHS of the projection, replace it with
     /// a fresh inference variable, and only after evaluating that goal do we
     /// equate the fresh inference variable with the actual RHS of the predicate.
@@ -101,26 +101,24 @@ pub(super) struct NestedGoals<'tcx> {
     /// This is both to improve caching, and to avoid using the RHS of the
     /// projection predicate to influence the normalizes-to candidate we select.
     ///
-    /// This is not a 'real' nested goal. We must not forget to replace the RHS
-    /// with a fresh inference variable when we evaluate this goal. That can result
-    /// in a trait solver cycle. This would currently result in overflow but can be
-    /// can be unsound with more powerful coinduction in the future.
-    pub(super) normalizes_to_hack_goal: Option<Goal<'tcx, ty::NormalizesTo<'tcx>>>,
+    /// Forgetting to replace the RHS with a fresh inference variable when we evaluate
+    /// this goal results in an ICE..
+    pub(super) normalizes_to_goals: Vec<Goal<'tcx, ty::NormalizesTo<'tcx>>>,
     /// The rest of the goals which have not yet processed or remain ambiguous.
     pub(super) goals: Vec<(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>,
 }
 
 impl<'tcx> NestedGoals<'tcx> {
     pub(super) fn new() -> Self {
-        Self { normalizes_to_hack_goal: None, goals: Vec::new() }
+        Self { normalizes_to_goals: Vec::new(), goals: Vec::new() }
     }
 
     pub(super) fn is_empty(&self) -> bool {
-        self.normalizes_to_hack_goal.is_none() && self.goals.is_empty()
+        self.normalizes_to_goals.is_empty() && self.goals.is_empty()
     }
 
     pub(super) fn extend(&mut self, other: NestedGoals<'tcx>) {
-        assert_eq!(other.normalizes_to_hack_goal, None);
+        self.normalizes_to_goals.extend(other.normalizes_to_goals);
         self.goals.extend(other.goals)
     }
 }
@@ -508,7 +506,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
-        if let Some(goal) = goals.normalizes_to_hack_goal.take() {
+        for goal in goals.normalizes_to_goals {
             // Replace the goal with an unconstrained infer var, so the
             // RHS does not affect projection candidate assembly.
             let unconstrained_rhs = self.next_term_infer_of_kind(goal.predicate.term);
@@ -536,22 +534,21 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             // looking at the "has changed" return from evaluate_goal,
             // because we expect the `unconstrained_rhs` part of the predicate
             // to have changed -- that means we actually normalized successfully!
-            if goal.predicate.alias != self.resolve_vars_if_possible(goal.predicate.alias) {
+            let with_resolved_vars = self.resolve_vars_if_possible(goal);
+            if goal.predicate.alias != with_resolved_vars.predicate.alias {
                 unchanged_certainty = None;
             }
 
             match certainty {
                 Certainty::Yes => {}
                 Certainty::Maybe(_) => {
-                    // We need to resolve vars here so that we correctly
-                    // deal with `has_changed` in the next iteration.
-                    self.set_normalizes_to_hack_goal(self.resolve_vars_if_possible(goal));
+                    self.nested_goals.normalizes_to_goals.push(with_resolved_vars);
                     unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
                 }
             }
         }
 
-        for (source, goal) in goals.goals.drain(..) {
+        for (source, goal) in goals.goals {
             let (has_changed, certainty) = self.evaluate_goal(
                 GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::No },
                 source,

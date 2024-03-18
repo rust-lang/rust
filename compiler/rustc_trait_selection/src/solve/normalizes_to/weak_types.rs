@@ -15,10 +15,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> QueryResult<'tcx> {
         let tcx = self.tcx();
         let weak_ty = goal.predicate.alias;
-        let expected = goal.predicate.term.ty().expect("no such thing as a const alias");
-
-        let actual = tcx.type_of(weak_ty.def_id).instantiate(tcx, weak_ty.args);
-        self.eq(goal.param_env, expected, actual)?;
 
         // Check where clauses
         self.add_goals(
@@ -29,6 +25,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 .into_iter()
                 .map(|pred| goal.with(tcx, pred)),
         );
+
+        let actual = tcx.type_of(weak_ty.def_id).instantiate(tcx, weak_ty.args);
+        self.instantiate_normalizes_to_term(goal, actual.into());
 
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }

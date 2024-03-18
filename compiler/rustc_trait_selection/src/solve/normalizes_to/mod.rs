@@ -31,32 +31,17 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
         let def_id = goal.predicate.def_id();
+        let def_kind = self.tcx().def_kind(def_id);
+        if cfg!(debug_assertions) && !matches!(def_kind, DefKind::OpaqueTy) {
+            assert!(self.term_is_fully_unconstrained(goal));
+        }
+
         match self.tcx().def_kind(def_id) {
             DefKind::AssocTy | DefKind::AssocConst => {
                 match self.tcx().associated_item(def_id).container {
                     ty::AssocItemContainer::TraitContainer => {
-                        // To only compute normalization once for each projection we only
-                        // assemble normalization candidates if the expected term is an
-                        // unconstrained inference variable.
-                        //
-                        // Why: For better cache hits, since if we have an unconstrained RHS then
-                        // there are only as many cache keys as there are (canonicalized) alias
-                        // types in each normalizes-to goal. This also weakens inference in a
-                        // forwards-compatible way so we don't use the value of the RHS term to
-                        // affect candidate assembly for projections.
-                        //
-                        // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
-                        // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
-                        // `U` and equate it with `u32`. This means that we don't need a separate
-                        // projection cache in the solver, since we're piggybacking off of regular
-                        // goal caching.
-                        if self.term_is_fully_unconstrained(goal) {
-                            let candidates = self.assemble_and_evaluate_candidates(goal);
-                            self.merge_candidates(candidates)
-                        } else {
-                            self.set_normalizes_to_hack_goal(goal);
-                            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                        }
+                        let candidates = self.assemble_and_evaluate_candidates(goal);
+                        self.merge_candidates(candidates)
                     }
                     ty::AssocItemContainer::ImplContainer => {
                         self.normalize_inherent_associated_type(goal)

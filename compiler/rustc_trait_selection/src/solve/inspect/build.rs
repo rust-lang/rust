@@ -419,6 +419,17 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
+    pub fn add_normalizes_to_goal(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
+    ) {
+        if ecx.inspect.is_noop() {
+            return;
+        }
+
+        Self::add_goal(ecx, GoalSource::Misc, goal.with(ecx.tcx(), goal.predicate));
+    }
+
     pub fn add_goal(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         source: GoalSource,
