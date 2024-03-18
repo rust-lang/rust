@@ -10,14 +10,6 @@ pushd rust
 
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
-# FIXME(rust-lang/rust#122196) fix stage0 rmake.rs run-make tests and remove
-# this workaround
-for test in $(ls tests/run-make); do
-  if [[ -e "tests/run-make/$test/rmake.rs" ]]; then
-    rm -r "tests/run-make/$test"
-  fi
-done
-
 # FIXME remove this workaround once ICE tests no longer emit an outdated nightly message
 for test in $(rg -i --files-with-matches "//@(\[.*\])? failure-status: 101" tests/ui); do
   echo "rm $test"
