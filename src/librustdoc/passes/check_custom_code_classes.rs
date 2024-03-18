@@ -75,6 +75,7 @@ pub(crate) fn look_for_custom_classes<'tcx>(cx: &DocContext<'tcx>, item: &Item) 
             sym::custom_code_classes_in_docs,
             GateIssue::Language,
             false,
+            None,
         );
 
         err.note(

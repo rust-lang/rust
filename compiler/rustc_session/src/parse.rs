@@ -3,8 +3,8 @@
 
 use crate::config::{Cfg, CheckCfg};
 use crate::errors::{
-    CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp, FeatureGateError,
-    SuggestUpgradeCompiler,
+    CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp,
+    FeatureDiagnosticSuggestion, FeatureGateError, SuggestUpgradeCompiler,
 };
 use crate::lint::{
     builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiag, Lint, LintId,
@@ -112,7 +112,7 @@ pub fn feature_err_issue(
     }
 
     let mut err = sess.psess.dcx.create_err(FeatureGateError { span, explain: explain.into() });
-    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false);
+    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false, None);
     err
 }
 
@@ -141,7 +141,7 @@ pub fn feature_warn_issue(
     explain: &'static str,
 ) {
     let mut err = sess.psess.dcx.struct_span_warn(span, explain);
-    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false);
+    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false, None);
 
     // Decorate this as a future-incompatibility lint as in rustc_middle::lint::lint_level
     let lint = UNSTABLE_SYNTAX_PRE_EXPANSION;
@@ -160,7 +160,7 @@ pub fn add_feature_diagnostics<G: EmissionGuarantee>(
     sess: &Session,
     feature: Symbol,
 ) {
-    add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language, false);
+    add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language, false, None);
 }
 
 /// Adds the diagnostics for a feature to an existing error.
@@ -175,6 +175,7 @@ pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
     feature: Symbol,
     issue: GateIssue,
     feature_from_cli: bool,
+    inject_span: Option<Span>,
 ) {
     if let Some(n) = find_feature_issue(feature, issue) {
         err.subdiagnostic(sess.dcx(), FeatureDiagnosticForIssue { n });
@@ -184,6 +185,8 @@ pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
     if sess.psess.unstable_features.is_nightly_build() {
         if feature_from_cli {
             err.subdiagnostic(sess.dcx(), CliFeatureDiagnosticHelp { feature });
+        } else if let Some(span) = inject_span {
+            err.subdiagnostic(sess.dcx(), FeatureDiagnosticSuggestion { feature, span });
         } else {
             err.subdiagnostic(sess.dcx(), FeatureDiagnosticHelp { feature });
         }

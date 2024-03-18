@@ -10,7 +10,10 @@ note: impl defined here, but it is not `const`
 LL | impl const std::ops::Add for Int {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0015]: cannot call non-const fn `<i32 as Plus>::plus` in constant functions
   --> $DIR/call-const-trait-method-pass.rs:36:7
@@ -19,7 +22,10 @@ LL |     a.plus(b)
    |       ^^^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error: aborting due to 2 previous errors
 
