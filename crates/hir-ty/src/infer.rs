@@ -25,8 +25,11 @@ pub(crate) mod unify;
 use std::{convert::identity, iter, ops::Index};
 
 use chalk_ir::{
-    cast::Cast, fold::TypeFoldable, interner::HasInterner, DebruijnIndex, Mutability, Safety,
-    Scalar, TyKind, TypeFlags, Variance,
+    cast::Cast,
+    fold::TypeFoldable,
+    interner::HasInterner,
+    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
+    DebruijnIndex, Mutability, Safety, Scalar, TyKind, TypeFlags, Variance,
 };
 use either::Either;
 use hir_def::{
@@ -53,14 +56,14 @@ use triomphe::Arc;
 use crate::{
     db::HirDatabase,
     fold_tys,
-    infer::coerce::CoerceMany,
+    infer::{coerce::CoerceMany, unify::InferenceTable},
     lower::ImplTraitLoweringMode,
     static_lifetime, to_assoc_type_id,
     traits::FnTrait,
     utils::{InTypeConstIdMetadata, UnevaluatedConstEvaluatorFolder},
     AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, Goal, ImplTraitId,
-    InEnvironment, Interner, Lifetime, ProjectionTy, RpitId, Substitution, TraitEnvironment,
-    TraitRef, Ty, TyBuilder, TyExt,
+    ImplTraitIdx, InEnvironment, Interner, Lifetime, OpaqueTyId, ProjectionTy, Substitution,
+    TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -422,7 +425,7 @@ pub struct InferenceResult {
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
     pub type_of_pat: ArenaMap<PatId, Ty>,
     pub type_of_binding: ArenaMap<BindingId, Ty>,
-    pub type_of_rpit: ArenaMap<RpitId, Ty>,
+    pub type_of_rpit: ArenaMap<ImplTraitIdx, Ty>,
     /// Type of the result of `.into_iter()` on the for. `ExprId` is the one of the whole for loop.
     pub type_of_for_iterator: FxHashMap<ExprId, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
@@ -752,7 +755,12 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn collect_const(&mut self, data: &ConstData) {
-        self.return_ty = self.make_ty(&data.type_ref);
+        let return_ty = self.make_ty(&data.type_ref);
+
+        // Constants might be associated items that define ATPITs.
+        self.insert_atpit_coercion_table(iter::once(&return_ty));
+
+        self.return_ty = return_ty;
     }
 
     fn collect_static(&mut self, data: &StaticData) {
@@ -785,11 +793,13 @@ impl<'a> InferenceContext<'a> {
                 self.write_binding_ty(self_param, ty);
             }
         }
+        let mut params_and_ret_tys = Vec::new();
         for (ty, pat) in param_tys.zip(&*self.body.params) {
             let ty = self.insert_type_vars(ty);
             let ty = self.normalize_associated_types_in(ty);
 
             self.infer_top_pat(*pat, &ty);
+            params_and_ret_tys.push(ty);
         }
         let return_ty = &*data.ret_type;
 
@@ -801,8 +811,11 @@ impl<'a> InferenceContext<'a> {
         let return_ty = if let Some(rpits) = self.db.return_type_impl_traits(func) {
             // RPIT opaque types use substitution of their parent function.
             let fn_placeholders = TyBuilder::placeholder_subst(self.db, func);
-            let result =
-                self.insert_inference_vars_for_rpit(return_ty, rpits.clone(), fn_placeholders);
+            let result = self.insert_inference_vars_for_impl_trait(
+                return_ty,
+                rpits.clone(),
+                fn_placeholders,
+            );
             let rpits = rpits.skip_binders();
             for (id, _) in rpits.impl_traits.iter() {
                 if let Entry::Vacant(e) = self.result.type_of_rpit.entry(id) {
@@ -817,13 +830,19 @@ impl<'a> InferenceContext<'a> {
 
         self.return_ty = self.normalize_associated_types_in(return_ty);
         self.return_coercion = Some(CoerceMany::new(self.return_ty.clone()));
+
+        // Functions might be associated items that define ATPITs.
+        // To define an ATPITs, that ATPIT must appear in the function's signatures.
+        // So, it suffices to check for params and return types.
+        params_and_ret_tys.push(self.return_ty.clone());
+        self.insert_atpit_coercion_table(params_and_ret_tys.iter());
     }
 
-    fn insert_inference_vars_for_rpit<T>(
+    fn insert_inference_vars_for_impl_trait<T>(
         &mut self,
         t: T,
-        rpits: Arc<chalk_ir::Binders<crate::ReturnTypeImplTraits>>,
-        fn_placeholders: Substitution,
+        rpits: Arc<chalk_ir::Binders<crate::ImplTraits>>,
+        placeholders: Substitution,
     ) -> T
     where
         T: crate::HasInterner<Interner = Interner> + crate::TypeFoldable<Interner>,
@@ -837,6 +856,7 @@ impl<'a> InferenceContext<'a> {
                 };
                 let idx = match self.db.lookup_intern_impl_trait_id(opaque_ty_id.into()) {
                     ImplTraitId::ReturnTypeImplTrait(_, idx) => idx,
+                    ImplTraitId::AssociatedTypeImplTrait(_, idx) => idx,
                     _ => unreachable!(),
                 };
                 let bounds =
@@ -844,15 +864,14 @@ impl<'a> InferenceContext<'a> {
                 let var = self.table.new_type_var();
                 let var_subst = Substitution::from1(Interner, var.clone());
                 for bound in bounds {
-                    let predicate =
-                        bound.map(|it| it.cloned()).substitute(Interner, &fn_placeholders);
+                    let predicate = bound.map(|it| it.cloned()).substitute(Interner, &placeholders);
                     let (var_predicate, binders) =
                         predicate.substitute(Interner, &var_subst).into_value_and_skipped_binders();
                     always!(binders.is_empty(Interner)); // quantified where clauses not yet handled
-                    let var_predicate = self.insert_inference_vars_for_rpit(
+                    let var_predicate = self.insert_inference_vars_for_impl_trait(
                         var_predicate,
                         rpits.clone(),
-                        fn_placeholders.clone(),
+                        placeholders.clone(),
                     );
                     self.push_obligation(var_predicate.cast(Interner));
                 }
@@ -861,6 +880,106 @@ impl<'a> InferenceContext<'a> {
             },
             DebruijnIndex::INNERMOST,
         )
+    }
+
+    /// The coercion of a non-inference var into an opaque type should fail,
+    /// but not in the defining sites of the ATPITs.
+    /// In such cases, we insert an proxy inference var for each ATPIT,
+    /// and coerce into it instead of ATPIT itself.
+    ///
+    /// The inference var stretagy is effective because;
+    ///
+    /// - It can still unify types that coerced into ATPIT
+    /// - We are pushing `impl Trait` bounds into it
+    ///
+    /// This function inserts a map that maps the opaque type to that proxy inference var.
+    fn insert_atpit_coercion_table<'b>(&mut self, tys: impl Iterator<Item = &'b Ty>) {
+        struct OpaqueTyCollector<'a, 'b> {
+            table: &'b mut InferenceTable<'a>,
+            opaque_tys: FxHashMap<OpaqueTyId, Ty>,
+        }
+
+        impl<'a, 'b> TypeVisitor<Interner> for OpaqueTyCollector<'a, 'b> {
+            type BreakTy = ();
+
+            fn as_dyn(&mut self) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy> {
+                self
+            }
+
+            fn interner(&self) -> Interner {
+                Interner
+            }
+
+            fn visit_ty(
+                &mut self,
+                ty: &chalk_ir::Ty<Interner>,
+                outer_binder: DebruijnIndex,
+            ) -> std::ops::ControlFlow<Self::BreakTy> {
+                let ty = self.table.resolve_ty_shallow(ty);
+
+                if let TyKind::OpaqueType(id, _) = ty.kind(Interner) {
+                    self.opaque_tys.insert(*id, ty.clone());
+                }
+
+                ty.super_visit_with(self, outer_binder)
+            }
+        }
+
+        // Early return if this is not happening inside the impl block
+        let impl_id = if let Some(impl_id) = self.resolver.impl_def() {
+            impl_id
+        } else {
+            return;
+        };
+
+        let assoc_tys: FxHashSet<_> = self
+            .db
+            .impl_data(impl_id)
+            .items
+            .iter()
+            .filter_map(|item| match item {
+                AssocItemId::TypeAliasId(alias) => Some(*alias),
+                _ => None,
+            })
+            .collect();
+        if assoc_tys.is_empty() {
+            return;
+        }
+
+        let mut collector =
+            OpaqueTyCollector { table: &mut self.table, opaque_tys: FxHashMap::default() };
+        for ty in tys {
+            ty.visit_with(collector.as_dyn(), DebruijnIndex::INNERMOST);
+        }
+        let atpit_coercion_table: FxHashMap<_, _> = collector
+            .opaque_tys
+            .into_iter()
+            .filter_map(|(opaque_ty_id, ty)| {
+                if let ImplTraitId::AssociatedTypeImplTrait(alias_id, _) =
+                    self.db.lookup_intern_impl_trait_id(opaque_ty_id.into())
+                {
+                    if assoc_tys.contains(&alias_id) {
+                        let atpits = self
+                            .db
+                            .type_alias_impl_traits(alias_id)
+                            .expect("Marked as ATPIT but no impl traits!");
+                        let alias_placeholders = TyBuilder::placeholder_subst(self.db, alias_id);
+                        let ty = self.insert_inference_vars_for_impl_trait(
+                            ty,
+                            atpits,
+                            alias_placeholders,
+                        );
+                        return Some((opaque_ty_id, ty));
+                    }
+                }
+
+                None
+            })
+            .collect();
+
+        if !atpit_coercion_table.is_empty() {
+            self.table.atpit_coercion_table = Some(atpit_coercion_table);
+        }
     }
 
     fn infer_body(&mut self) {
