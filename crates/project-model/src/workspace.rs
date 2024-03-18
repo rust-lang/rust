@@ -1091,6 +1091,24 @@ fn cargo_to_crate_graph(
                     continue;
                 }
 
+                // If the dependency is a dev-dependency with both crates being member libraries of
+                // the workspace we discard the edge. The reason can be read up on in
+                // https://github.com/rust-lang/rust-analyzer/issues/14167
+                // but in short, such an edge usually causes some form of cycle in the crate graph
+                // wrt to unit tests. Something we cannot reasonable support.
+                if dep.kind == DepKind::Dev
+                    && matches!(kind, TargetKind::Lib { .. })
+                    && cargo[dep.pkg].is_member
+                    && cargo[pkg].is_member
+                {
+                    tracing::warn!(
+                        "Discarding dev-dependency edge from library target `{}` to library target `{}` to prevent potential cycles",
+                        cargo[dep.pkg].name,
+                        cargo[pkg].name
+                    );
+                    continue;
+                }
+
                 add_dep(crate_graph, from, name.clone(), to)
             }
         }
