@@ -1,3 +1,12 @@
+warning: the feature `never_patterns` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/empty-types.rs:14:33
+   |
+LL | #![cfg_attr(never_pats, feature(never_patterns))]
+   |                                 ^^^^^^^^^^^^^^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error: unreachable pattern
   --> $DIR/empty-types.rs:51:9
    |
@@ -65,11 +74,11 @@ error: unreachable pattern
 LL |         _ => {}
    |         ^
 
-error[E0004]: non-exhaustive patterns: `Ok(_)` and `Err(_)` not covered
+error[E0004]: non-exhaustive patterns: `Ok(_)` and `Err(!)` not covered
   --> $DIR/empty-types.rs:91:11
    |
 LL |     match res_u32_never {}
-   |           ^^^^^^^^^^^^^ patterns `Ok(_)` and `Err(_)` not covered
+   |           ^^^^^^^^^^^^^ patterns `Ok(_)` and `Err(!)` not covered
    |
 note: `Result<u32, !>` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -83,15 +92,15 @@ note: `Result<u32, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~     match res_u32_never {
-LL +         Ok(_) | Err(_) => todo!(),
+LL +         Ok(_) | Err(!) => todo!(),
 LL +     }
    |
 
-error[E0004]: non-exhaustive patterns: `Err(_)` not covered
+error[E0004]: non-exhaustive patterns: `Err(!)` not covered
   --> $DIR/empty-types.rs:93:11
    |
 LL |     match res_u32_never {
-   |           ^^^^^^^^^^^^^ pattern `Err(_)` not covered
+   |           ^^^^^^^^^^^^^ pattern `Err(!)` not covered
    |
 note: `Result<u32, !>` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -102,7 +111,7 @@ note: `Result<u32, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Ok(_) => {},
-LL +         Err(_) => todo!()
+LL +         Err(!)
    |
 
 error[E0004]: non-exhaustive patterns: `Ok(1_u32..=u32::MAX)` not covered
@@ -127,7 +136,7 @@ error[E0005]: refutable pattern in local binding
   --> $DIR/empty-types.rs:106:9
    |
 LL |     let Ok(_x) = res_u32_never;
-   |         ^^^^^^ pattern `Err(_)` not covered
+   |         ^^^^^^ pattern `Err(!)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
@@ -155,7 +164,7 @@ error[E0005]: refutable pattern in local binding
   --> $DIR/empty-types.rs:112:9
    |
 LL |     let Ok(_x) = &res_u32_never;
-   |         ^^^^^^ pattern `&Err(_)` not covered
+   |         ^^^^^^ pattern `&Err(!)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
@@ -165,11 +174,11 @@ help: you might want to use `let else` to handle the variant that isn't matched
 LL |     let Ok(_x) = &res_u32_never else { todo!() };
    |                                 ++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `Ok(_)` and `Err(_)` not covered
+error[E0004]: non-exhaustive patterns: `Ok(!)` and `Err(!)` not covered
   --> $DIR/empty-types.rs:116:11
    |
 LL |     match result_never {}
-   |           ^^^^^^^^^^^^ patterns `Ok(_)` and `Err(_)` not covered
+   |           ^^^^^^^^^^^^ patterns `Ok(!)` and `Err(!)` not covered
    |
 note: `Result<!, !>` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -183,15 +192,15 @@ note: `Result<!, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~     match result_never {
-LL +         Ok(_) | Err(_) => todo!(),
+LL +         Ok(!) | Err(!),
 LL +     }
    |
 
-error[E0004]: non-exhaustive patterns: `Err(_)` not covered
+error[E0004]: non-exhaustive patterns: `Err(!)` not covered
   --> $DIR/empty-types.rs:121:11
    |
 LL |     match result_never {
-   |           ^^^^^^^^^^^^ pattern `Err(_)` not covered
+   |           ^^^^^^^^^^^^ pattern `Err(!)` not covered
    |
 note: `Result<!, !>` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -201,8 +210,8 @@ note: `Result<!, !>` defined here
    = note: the matched value is of type `Result<!, !>`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL |         Ok(_) => {}, Err(_) => todo!()
-   |                    +++++++++++++++++++
+LL |         Ok(_) => {}, Err(!)
+   |                    ++++++++
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:140:13
@@ -216,11 +225,11 @@ error: unreachable pattern
 LL |             _ if false => {}
    |             ^
 
-error[E0004]: non-exhaustive patterns: `Some(_)` not covered
+error[E0004]: non-exhaustive patterns: `Some(!)` not covered
   --> $DIR/empty-types.rs:146:15
    |
 LL |         match opt_void {
-   |               ^^^^^^^^ pattern `Some(_)` not covered
+   |               ^^^^^^^^ pattern `Some(!)` not covered
    |
 note: `Option<Void>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
@@ -231,14 +240,14 @@ note: `Option<Void>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~             None => {},
-LL +             Some(_) => todo!()
+LL +             Some(!)
    |
 
-error[E0004]: non-exhaustive patterns: `Some(_)` not covered
+error[E0004]: non-exhaustive patterns: `Some(!)` not covered
   --> $DIR/empty-types.rs:165:15
    |
 LL |         match *ref_opt_void {
-   |               ^^^^^^^^^^^^^ pattern `Some(_)` not covered
+   |               ^^^^^^^^^^^^^ pattern `Some(!)` not covered
    |
 note: `Option<Void>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
@@ -249,7 +258,7 @@ note: `Option<Void>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~             None => {},
-LL +             Some(_) => todo!()
+LL +             Some(!)
    |
 
 error: unreachable pattern
@@ -316,11 +325,11 @@ LL +         _ => todo!(),
 LL ~     }
    |
 
-error[E0004]: non-exhaustive patterns: `Ok(_)` and `Err(_)` not covered
+error[E0004]: non-exhaustive patterns: `Ok(!)` and `Err(!)` not covered
   --> $DIR/empty-types.rs:320:11
    |
 LL |     match *x {}
-   |           ^^ patterns `Ok(_)` and `Err(_)` not covered
+   |           ^^ patterns `Ok(!)` and `Err(!)` not covered
    |
 note: `Result<!, !>` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -334,7 +343,7 @@ note: `Result<!, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~     match *x {
-LL +         Ok(_) | Err(_) => todo!(),
+LL +         Ok(!) | Err(!),
 LL ~     }
    |
 
@@ -366,44 +375,44 @@ LL +         _ => todo!(),
 LL +     }
    |
 
-error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
+error[E0004]: non-exhaustive patterns: `&[!, ..]` not covered
   --> $DIR/empty-types.rs:329:11
    |
 LL |     match slice_never {
-   |           ^^^^^^^^^^^ pattern `&[_, ..]` not covered
+   |           ^^^^^^^^^^^ pattern `&[!, ..]` not covered
    |
    = note: the matched value is of type `&[!]`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         [] => {},
-LL +         &[_, ..] => todo!()
+LL +         &[!, ..]
    |
 
-error[E0004]: non-exhaustive patterns: `&[]`, `&[_]` and `&[_, _]` not covered
+error[E0004]: non-exhaustive patterns: `&[]`, `&[!]` and `&[!, !]` not covered
   --> $DIR/empty-types.rs:338:11
    |
 LL |     match slice_never {
-   |           ^^^^^^^^^^^ patterns `&[]`, `&[_]` and `&[_, _]` not covered
+   |           ^^^^^^^^^^^ patterns `&[]`, `&[!]` and `&[!, !]` not covered
    |
    = note: the matched value is of type `&[!]`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         [_, _, _, ..] => {},
-LL +         &[] | &[_] | &[_, _] => todo!()
+LL +         &[] | &[!] | &[!, !] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[]` and `&[_, ..]` not covered
+error[E0004]: non-exhaustive patterns: `&[]` and `&[!, ..]` not covered
   --> $DIR/empty-types.rs:352:11
    |
 LL |     match slice_never {
-   |           ^^^^^^^^^^^ patterns `&[]` and `&[_, ..]` not covered
+   |           ^^^^^^^^^^^ patterns `&[]` and `&[!, ..]` not covered
    |
    = note: the matched value is of type `&[!]`
    = note: match arms with guards don't count towards exhaustivity
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         &[..] if false => {},
-LL +         &[] | &[_, ..] => todo!()
+LL +         &[] | &[!, ..] => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: type `[!]` is non-empty
@@ -468,11 +477,11 @@ LL ~         [..] if false => {},
 LL +         [] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&Some(_)` not covered
+error[E0004]: non-exhaustive patterns: `&Some(!)` not covered
   --> $DIR/empty-types.rs:452:11
    |
 LL |     match ref_opt_never {
-   |           ^^^^^^^^^^^^^ pattern `&Some(_)` not covered
+   |           ^^^^^^^^^^^^^ pattern `&Some(!)` not covered
    |
 note: `Option<!>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
@@ -483,14 +492,14 @@ note: `Option<!>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         &None => {},
-LL +         &Some(_) => todo!()
+LL +         &Some(!)
    |
 
-error[E0004]: non-exhaustive patterns: `Some(_)` not covered
+error[E0004]: non-exhaustive patterns: `Some(!)` not covered
   --> $DIR/empty-types.rs:493:11
    |
 LL |     match *ref_opt_never {
-   |           ^^^^^^^^^^^^^^ pattern `Some(_)` not covered
+   |           ^^^^^^^^^^^^^^ pattern `Some(!)` not covered
    |
 note: `Option<!>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
@@ -501,14 +510,14 @@ note: `Option<!>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         None => {},
-LL +         Some(_) => todo!()
+LL +         Some(!)
    |
 
-error[E0004]: non-exhaustive patterns: `Err(_)` not covered
+error[E0004]: non-exhaustive patterns: `Err(!)` not covered
   --> $DIR/empty-types.rs:541:11
    |
 LL |     match *ref_res_never {
-   |           ^^^^^^^^^^^^^^ pattern `Err(_)` not covered
+   |           ^^^^^^^^^^^^^^ pattern `Err(!)` not covered
    |
 note: `Result<!, !>` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -519,14 +528,14 @@ note: `Result<!, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Ok(_) => {},
-LL +         Err(_) => todo!()
+LL +         Err(!)
    |
 
-error[E0004]: non-exhaustive patterns: `Err(_)` not covered
+error[E0004]: non-exhaustive patterns: `Err(!)` not covered
   --> $DIR/empty-types.rs:552:11
    |
 LL |     match *ref_res_never {
-   |           ^^^^^^^^^^^^^^ pattern `Err(_)` not covered
+   |           ^^^^^^^^^^^^^^ pattern `Err(!)` not covered
    |
 note: `Result<!, !>` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -537,7 +546,7 @@ note: `Result<!, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Ok(_a) => {},
-LL +         Err(_) => todo!()
+LL +         Err(!)
    |
 
 error[E0004]: non-exhaustive patterns: type `(u32, !)` is non-empty
@@ -578,11 +587,11 @@ error: unreachable pattern
 LL |         _x if false => {}
    |         ^^
 
-error[E0004]: non-exhaustive patterns: `&_` not covered
+error[E0004]: non-exhaustive patterns: `&!` not covered
   --> $DIR/empty-types.rs:638:11
    |
 LL |     match ref_never {
-   |           ^^^^^^^^^ pattern `&_` not covered
+   |           ^^^^^^^^^ pattern `&!` not covered
    |
    = note: the matched value is of type `&!`
    = note: references are always considered inhabited
@@ -590,14 +599,14 @@ LL |     match ref_never {
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         &_a if false => {},
-LL +         &_ => todo!()
+LL +         &!
    |
 
-error[E0004]: non-exhaustive patterns: `Ok(_)` not covered
+error[E0004]: non-exhaustive patterns: `Ok(!)` not covered
   --> $DIR/empty-types.rs:654:11
    |
 LL |     match *ref_result_never {
-   |           ^^^^^^^^^^^^^^^^^ pattern `Ok(_)` not covered
+   |           ^^^^^^^^^^^^^^^^^ pattern `Ok(!)` not covered
    |
 note: `Result<!, !>` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -608,14 +617,14 @@ note: `Result<!, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Err(_) => {},
-LL +         Ok(_) => todo!()
+LL +         Ok(!)
    |
 
-error[E0004]: non-exhaustive patterns: `Some(_)` not covered
+error[E0004]: non-exhaustive patterns: `Some(!)` not covered
   --> $DIR/empty-types.rs:674:11
    |
 LL |     match *x {
-   |           ^^ pattern `Some(_)` not covered
+   |           ^^ pattern `Some(!)` not covered
    |
 note: `Option<Result<!, !>>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
@@ -626,10 +635,10 @@ note: `Option<Result<!, !>>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         None => {},
-LL +         Some(_) => todo!()
+LL +         Some(!)
    |
 
-error: aborting due to 49 previous errors
+error: aborting due to 49 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0004, E0005.
 For more information about an error, try `rustc --explain E0004`.
