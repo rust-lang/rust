@@ -2485,10 +2485,15 @@ function initSearch(rawSearchIndex) {
             innerRunQuery();
         }
 
+        const [sorted_in_args, sorted_returned, sorted_others] = await Promise.all([
+            sortResults(results_in_args, true, currentCrate),
+            sortResults(results_returned, true, currentCrate),
+            sortResults(results_others, false, currentCrate),
+        ]);
         const ret = createQueryResults(
-            await sortResults(results_in_args, true, currentCrate),
-            await sortResults(results_returned, true, currentCrate),
-            await sortResults(results_others, false, currentCrate),
+            sorted_in_args,
+            sorted_returned,
+            sorted_others,
             parsedQuery);
         handleAliases(ret, parsedQuery.original.replace(/"/g, ""), filterCrates, currentCrate);
         if (parsedQuery.error !== null && ret.others.length !== 0) {
