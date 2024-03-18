@@ -248,7 +248,7 @@ pub(crate) fn handle_discover_test(
     Ok(lsp_ext::DiscoverTestResults {
         tests: tests
             .into_iter()
-            .map(|t| {
+            .filter_map(|t| {
                 let line_index = t.file.and_then(|f| snap.file_line_index(f).ok());
                 to_proto::test_item(&snap, t, line_index.as_ref())
             })

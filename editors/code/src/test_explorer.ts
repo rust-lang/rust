@@ -105,8 +105,9 @@ export const prepareTestExplorer = (
             testSet.add(test.id);
         }
         // FIXME(hack_recover_crate_name): We eagerly resolve every test if we got a lazy top level response (detected
-        // by `!scope`). ctx is not a good thing and wastes cpu and memory unnecessarily, so we should remove it.
-        if (!scope) {
+        // by checking that `scope` is empty). This is not a good thing and wastes cpu and memory unnecessarily, so we
+        // should remove it.
+        if (scope.length === 0) {
             for (const test of tests) {
                 void testController.resolveHandler!(idToTestMap.get(test.id));
             }
