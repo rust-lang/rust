@@ -13,6 +13,7 @@ type FutNothing<'a> = impl 'a + Future<Output = ()>;
 async fn operation(_: &mut ()) -> () {
     //~^ ERROR: concrete type differs from previous
     call(operation).await
+    //~^ ERROR: expected generic lifetime parameter, found `'any`
 }
 
 async fn call<F>(_f: F)

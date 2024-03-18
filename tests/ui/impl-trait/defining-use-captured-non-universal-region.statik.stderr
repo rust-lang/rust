@@ -1,0 +1,33 @@
+error: opaque type used twice with different lifetimes
+  --> $DIR/defining-use-captured-non-universal-region.rs:10:18
+   |
+LL |     let i: i32 = foo::<'static>();
+   |                  ^^^^^^^^^^^^^^^^ lifetime `'static` used here
+...
+LL |     i
+   |     - lifetime `'a` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/defining-use-captured-non-universal-region.rs:10:18
+   |
+LL |     let i: i32 = foo::<'static>();
+   |                  ^^^^^^^^^^^^^^^^
+
+error: opaque type used twice with different lifetimes
+  --> $DIR/defining-use-captured-non-universal-region.rs:10:18
+   |
+LL |     let i: i32 = foo::<'static>();
+   |                  ^^^^^^^^^^^^^^^^ lifetime `'static` used here
+...
+LL |     i
+   |     - lifetime `'a` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/defining-use-captured-non-universal-region.rs:10:18
+   |
+LL |     let i: i32 = foo::<'static>();
+   |                  ^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

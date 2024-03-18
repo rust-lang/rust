@@ -441,12 +441,6 @@ fn check_opaque_type_parameter_valid<'tcx>(
     opaque_type_key: OpaqueTypeKey<'tcx>,
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
-    let opaque_ty_hir = tcx.hir().expect_item(opaque_type_key.def_id);
-    let (_parent, is_ty_alias) = match opaque_ty_hir.expect_opaque_ty().origin {
-        OpaqueTyOrigin::TyAlias { parent, .. } => (parent, true),
-        OpaqueTyOrigin::AsyncFn(parent) | OpaqueTyOrigin::FnReturn(parent) => (parent, false),
-    };
-
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
     let opaque_env = LazyOpaqueTyEnv::new(tcx, opaque_type_key.def_id);
     let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
@@ -454,14 +448,10 @@ fn check_opaque_type_parameter_valid<'tcx>(
     for (i, arg) in opaque_type_key.iter_captured_args(tcx) {
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
-            GenericArgKind::Lifetime(lt) if is_ty_alias => {
+            GenericArgKind::Lifetime(lt) => {
                 matches!(*lt, ty::ReEarlyParam(_) | ty::ReLateParam(_))
                     || (lt.is_static() && opaque_env.param_equal_static(i))
             }
-            // FIXME(#113916): we can't currently check for unique lifetime params,
-            // see that issue for more. We will also have to ignore unused lifetime
-            // params for RPIT, but that's comparatively trivial ✨
-            GenericArgKind::Lifetime(_) => continue,
             GenericArgKind::Const(ct) => matches!(ct.kind(), ty::ConstKind::Param(_)),
         };
 

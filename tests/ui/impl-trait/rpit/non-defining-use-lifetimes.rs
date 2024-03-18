@@ -1,6 +1,5 @@
 // issue: #111935
 // FIXME(aliemjay): outdated due to "once modulo regions" restriction.
-// FIXME(aliemjay): mod `infer` should fail.
 
 #![allow(unconditional_recursion)]
 
@@ -22,6 +21,7 @@ mod infer {
     // invalid defining use: Opaque<'_> := ()
     fn foo<'a>(_: Lt<'a>) -> impl Sized + 'a {
         let _: () = foo(Lt::<'_>::None);
+        //~^ ERROR expected generic lifetime parameter, found `'_`
     }
 }
 
