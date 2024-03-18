@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
@@ -143,23 +144,40 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let mut arg_regions =
                 vec![(self.universal_regions.fr_static, infcx.tcx.lifetimes.re_static)];
 
-            let to_universal_region = |vid, arg_regions: &mut Vec<_>| match self.universal_name(vid)
-            {
-                Some(region) => {
-                    let vid = self.universal_regions.to_region_vid(region);
-                    arg_regions.push((vid, region));
-                    region
-                }
-                None => {
-                    let region = ty::Region::new_error_with_message(
-                        infcx.tcx,
-                        concrete_type.span,
-                        "opaque type with non-universal region args",
-                    );
-                    arg_regions.push((vid, region));
-                    region
-                }
-            };
+            let mut seen_error = FxHashMap::default();
+
+            let mut to_universal_region =
+                |vid, arg_regions: &mut Vec<_>| match self.universal_name(vid) {
+                    Some(region) => {
+                        let vid = self.universal_regions.to_region_vid(region);
+                        arg_regions.push((vid, region));
+                        region
+                    }
+                    None => {
+                        let guar = *seen_error.entry(vid).or_insert_with(|| {
+                            match infcx.tcx.opaque_type_origin(opaque_type_key.def_id) {
+                                // FIXME(#113916)
+                                OpaqueTyOrigin::TyAlias { .. } => infcx.dcx().span_delayed_bug(
+                                    concrete_type.span,
+                                    "opaque type with non-universal region args",
+                                ),
+                                OpaqueTyOrigin::AsyncFn(_) | OpaqueTyOrigin::FnReturn(_) => {
+                                    let member_region = ty::Region::new_var(infcx.tcx, vid);
+                                    let named_region = self.name_regions(infcx.tcx, member_region);
+                                    infcx.dcx().emit_err(NonGenericOpaqueTypeParam {
+                                        ty: named_region.into(),
+                                        kind: "lifetime",
+                                        span: concrete_type.span,
+                                        param_span: concrete_type.span,
+                                    })
+                                }
+                            }
+                        });
+                        let region = ty::Region::new_error(infcx.tcx, guar);
+                        arg_regions.push((vid, region));
+                        region
+                    }
+                };
 
             // Start by inserting universal regions from the member_constraint choice regions.
             // This will ensure they get precedence when folding the regions in the concrete type.
@@ -275,11 +293,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     None => {
                         // Nothing exact found, so we pick the first one that we find.
                         let scc = self.constraint_sccs.scc(vid);
-                        for vid in self.rev_scc_graph.as_ref().unwrap().upper_bounds(scc) {
-                            match self.definitions[vid].external_name {
-                                None => {}
-                                Some(region) if region.is_static() => {}
-                                Some(region) => return region,
+                        if let Some(rev_scc_graph) = &self.rev_scc_graph {
+                            for vid in rev_scc_graph.upper_bounds(scc) {
+                                match self.definitions[vid].external_name {
+                                    None => {}
+                                    Some(region) if region.is_static() => {}
+                                    Some(region) => return region,
+                                }
                             }
                         }
                         region
