@@ -826,7 +826,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             for &const_ in &body.required_consts {
                 let c = self
                     .instantiate_from_current_frame_and_normalize_erasing_regions(const_.const_)?;
-                c.eval(*self.tcx, self.param_env, Some(const_.span)).map_err(|err| {
+                c.eval(*self.tcx, self.param_env, const_.span).map_err(|err| {
                     err.emit_note(*self.tcx);
                     err
                 })?;
@@ -1174,7 +1174,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn eval_mir_constant(
         &self,
         val: &mir::Const<'tcx>,
-        span: Option<Span>,
+        span: Span,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         M::eval_mir_constant(self, *val, span, layout, |ecx, val, span, layout| {
