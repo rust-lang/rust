@@ -1,4 +1,4 @@
-//@ build-fail 
+//@ build-fail
 #![feature(asm_const)]
 
 use std::arch::global_asm;
