@@ -392,15 +392,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn tb_retag_box_to_raw(
-        &mut self,
-        val: &ImmTy<'tcx, Provenance>,
-        _alloc_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
-        // Casts to raw pointers are NOPs in Tree Borrows.
-        Ok(val.clone())
-    }
-
     /// Retag all pointers that are stored in this place.
     fn tb_retag_place_contents(
         &mut self,

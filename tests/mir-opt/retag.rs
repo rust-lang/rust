@@ -65,3 +65,8 @@ fn array_casts() {
     let p = &x as *const usize;
     assert_eq!(unsafe { *p.add(1) }, 1);
 }
+
+// EMIT_MIR retag.box_to_raw_mut.SimplifyCfg-pre-optimizations.after.mir
+fn box_to_raw_mut(x: &mut Box<i32>) -> *mut i32 {
+    std::ptr::addr_of_mut!(**x)
+}

@@ -155,7 +155,6 @@ use core::error::Error;
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
-use core::intrinsics::retag_box_to_raw;
 use core::iter::FusedIterator;
 use core::marker::Tuple;
 use core::marker::Unsize;
@@ -165,7 +164,7 @@ use core::ops::{
     CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut, DispatchFromDyn, Receiver,
 };
 use core::pin::Pin;
-use core::ptr::{self, NonNull, Unique};
+use core::ptr::{self, addr_of_mut, NonNull, Unique};
 use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
@@ -1111,16 +1110,12 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
-        // This is the transition point from `Box` to raw pointers. For Stacked Borrows, these casts
-        // are relevant -- if this is a global allocator Box and we just get the pointer from `b.0`,
-        // it will have `Unique` permission, which is not what we want from a raw pointer. We could
-        // fix that by going through `&mut`, but then if this is *not* a global allocator Box, we'd
-        // be adding uniqueness assertions that we do not want. So for Miri's sake we pass this
-        // pointer through an intrinsic for box-to-raw casts, which can do the right thing wrt the
-        // aliasing model.
-        let b = mem::ManuallyDrop::new(b);
+        let mut b = mem::ManuallyDrop::new(b);
+        // We carefully get the raw pointer out in a way that Miri's aliasing model understands what
+        // is happening: using the primitive "deref" of `Box`.
+        let ptr = addr_of_mut!(**b);
         let alloc = unsafe { ptr::read(&b.1) };
-        (unsafe { retag_box_to_raw::<T, A>(b.0.as_ptr()) }, alloc)
+        (ptr, alloc)
     }
 
     #[unstable(
