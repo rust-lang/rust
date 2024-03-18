@@ -42,7 +42,7 @@ declare_clippy_lint! {
     /// Use instead:
     ///
     /// In such cases, either use `#[derive(PartialEq)]` or don't implement it.
-    #[clippy::version = "1.76.0"]
+    #[clippy::version = "1.77.0"]
     pub UNCONDITIONAL_RECURSION,
     suspicious,
     "detect unconditional recursion in some traits implementation"

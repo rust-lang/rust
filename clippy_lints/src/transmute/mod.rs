@@ -514,7 +514,7 @@ declare_clippy_lint! {
     ///              ^^^^ ^^ `bool::then` only executes the closure if the condition is true!
     /// }
     /// ```
-    #[clippy::version = "1.76.0"]
+    #[clippy::version = "1.77.0"]
     pub EAGER_TRANSMUTE,
     correctness,
     "eager evaluation of `transmute`"
