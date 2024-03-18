@@ -1752,9 +1752,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let filter_fn = move |a: &&ast::Attribute| a.has_name(attr);
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
-        } else if cfg!(debug_assertions) && rustc_feature::is_builtin_only_local(attr) {
-            bug!("tried to access the `only_local` attribute `{}` from an extern crate", attr);
         } else {
+            debug_assert!(rustc_feature::encode_cross_crate(attr));
             self.item_attrs(did).iter().filter(filter_fn)
         }
     }
@@ -1786,12 +1785,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Determines whether an item is annotated with an attribute.
     pub fn has_attr(self, did: impl Into<DefId>, attr: Symbol) -> bool {
-        let did: DefId = did.into();
-        if cfg!(debug_assertions) && !did.is_local() && rustc_feature::is_builtin_only_local(attr) {
-            bug!("tried to access the `only_local` attribute `{}` from an extern crate", attr);
-        } else {
-            self.get_attrs(did, attr).next().is_some()
-        }
+        self.get_attrs(did, attr).next().is_some()
     }
 
     /// Returns `true` if this is an `auto trait`.

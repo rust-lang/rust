@@ -817,8 +817,8 @@ struct AnalyzeAttrState {
 #[inline]
 fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState) -> bool {
     let mut should_encode = false;
-    if rustc_feature::is_builtin_only_local(attr.name_or_empty()) {
-        // Attributes marked local-only don't need to be encoded for downstream crates.
+    if !rustc_feature::encode_cross_crate(attr.name_or_empty()) {
+        // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
     } else if attr.doc_str().is_some() {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
         // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
