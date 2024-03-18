@@ -5,7 +5,7 @@ use std::num::NonZero;
 use smallvec::SmallVec;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_middle::{mir::RetagKind, ty::Ty};
+use rustc_middle::mir::RetagKind;
 use rustc_target::abi::Size;
 
 use crate::*;
@@ -288,19 +288,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         match method {
             BorrowTrackerMethod::StackedBorrows => this.sb_retag_ptr_value(kind, val),
             BorrowTrackerMethod::TreeBorrows => this.tb_retag_ptr_value(kind, val),
-        }
-    }
-
-    fn retag_box_to_raw(
-        &mut self,
-        val: &ImmTy<'tcx, Provenance>,
-        alloc_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
-        let this = self.eval_context_mut();
-        let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
-        match method {
-            BorrowTrackerMethod::StackedBorrows => this.sb_retag_box_to_raw(val, alloc_ty),
-            BorrowTrackerMethod::TreeBorrows => this.tb_retag_box_to_raw(val, alloc_ty),
         }
     }
 
