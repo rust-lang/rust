@@ -1047,15 +1047,6 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
 
     locals: IndexVec<Local, LocalDecl<'tcx>>,
     bbs: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-
-    // Cached stuff
-    nop: Option<(DefId, Ty<'tcx>)>,
-    fuse_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
-    surface_combinator: Option<(DefId, DefId)>,
-    deep_combinator: Option<(DefId, DefId)>,
-    slice_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
-    into_async_destructor_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
-    chain_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
 }
 
 impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
@@ -1083,14 +1074,6 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
             locals,
             bbs: IndexVec::from([BasicBlockData::new(None)]),
-
-            nop: None,
-            fuse_combinator: None,
-            surface_combinator: None,
-            deep_combinator: None,
-            slice_combinator: None,
-            into_async_destructor_combinator: None,
-            chain_combinator: None,
         }
     }
 
@@ -1342,92 +1325,31 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     /// Puts pair (async_drop::Nop, nop: async_drop::Nop) on top of
     /// the stack
     fn put_nop(&mut self) {
-        let tcx = self.tcx;
-        let (function, ty) = *self.nop.get_or_insert_with(|| {
-            (
-                tcx.require_lang_item(LangItem::AsyncDropNopCtor, Some(self.span)),
-                tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropNop, Some(self.span)))
-                    .instantiate_identity(),
-            )
-        });
-        self.apply_combinator::<0, _>(function, |_, _| ty)
+        self.apply_combinator::<0>(LangItem::AsyncDropNopCtor)
     }
 
     fn combine_surface(&mut self) {
-        let tcx = self.tcx;
-        let (function, ty) = *self.surface_combinator.get_or_insert_with(|| {
-            (
-                tcx.require_lang_item(LangItem::SurfaceAsyncDropInPlace, Some(self.span)),
-                tcx.associated_item_def_ids(
-                    tcx.require_lang_item(LangItem::AsyncDrop, Some(self.span)),
-                )[0],
-            )
-        });
-        self.apply_combinator_with_ty_trailing_args::<2, _>(
-            1,
-            function,
-            |tcx, args| Ty::new_projection(tcx, ty, args.iter().copied()),
-            &[tcx.lifetimes.re_static.into()],
-        )
+        self.apply_combinator::<1>(LangItem::SurfaceAsyncDropInPlace)
     }
 
     fn combine_deep(&mut self) {
-        let tcx = self.tcx;
-        let (function, ty) = *self.deep_combinator.get_or_insert_with(|| {
-            (
-                tcx.require_lang_item(LangItem::AsyncDropInPlace, Some(self.span)),
-                tcx.associated_item_def_ids(
-                    tcx.require_lang_item(LangItem::AsyncDestruct, Some(self.span)),
-                )[0],
-            )
-        });
-        self.apply_combinator::<1, _>(function, |tcx, args| {
-            Ty::new_projection(tcx, ty, args.iter().copied())
-        })
+        self.apply_combinator::<1>(LangItem::AsyncDropInPlace)
     }
 
     fn combine_fuse(&mut self) {
-        let tcx = self.tcx;
-        let (function, ty) = *self.fuse_combinator.get_or_insert_with(|| {
-            (
-                tcx.require_lang_item(LangItem::AsyncDropFuseCtor, Some(self.span)),
-                tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropFuse, Some(self.span))),
-            )
-        });
-        self.apply_combinator::<1, _>(function, |tcx, args| ty.instantiate(tcx, args))
+        self.apply_combinator::<1>(LangItem::AsyncDropFuseCtor)
     }
 
     fn combine_slice(&mut self) {
-        let tcx = self.tcx;
-        let (function, ty) = *self.slice_combinator.get_or_insert_with(|| {
-            (
-                tcx.require_lang_item(LangItem::AsyncDropSliceCtor, Some(self.span)),
-                tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropSlice, Some(self.span))),
-            )
-        });
-        self.apply_combinator::<1, _>(function, |tcx, args| ty.instantiate(tcx, args))
+        self.apply_combinator::<1>(LangItem::AsyncDropSliceCtor)
     }
 
     fn combine_into_async_destructor(&mut self) {
-        let tcx = self.tcx;
-        let (function, ty) = *self.into_async_destructor_combinator.get_or_insert_with(|| {
-            (
-                tcx.require_lang_item(LangItem::IntoAsyncDestructorCtor, Some(self.span)),
-                tcx.type_of(tcx.require_lang_item(LangItem::IntoAsyncDestructor, Some(self.span))),
-            )
-        });
-        self.apply_combinator::<1, _>(function, |tcx, args| ty.instantiate(tcx, args))
+        self.apply_combinator::<1>(LangItem::IntoAsyncDestructorCtor)
     }
 
     fn combine_chain(&mut self) {
-        let tcx = self.tcx;
-        let (function, ty) = *self.chain_combinator.get_or_insert_with(|| {
-            (
-                tcx.require_lang_item(LangItem::AsyncDropChainCtor, Some(self.span)),
-                tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropChain, Some(self.span))),
-            )
-        });
-        self.apply_combinator::<2, _>(function, |tcx, args| ty.instantiate(tcx, args))
+        self.apply_combinator::<2>(LangItem::AsyncDropChainCtor)
     }
 
     fn return_(mut self) -> Body<'tcx> {
@@ -1466,38 +1388,20 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         new_body(source, self.bbs, self.locals, ASYNC_DESTRUCTOR_CTOR_ARG_COUNT, self.span)
     }
 
-    fn apply_combinator<const ARITY: usize, F>(&mut self, function: DefId, ty_combinator: F)
-    where
-        F: FnMut(TyCtxt<'tcx>, &[ty::GenericArg<'tcx>]) -> Ty<'tcx>,
-    {
-        self.apply_combinator_with_ty_trailing_args::<ARITY, F>(ARITY, function, ty_combinator, &[])
-    }
-
-    fn apply_combinator_with_ty_trailing_args<const ARG_COUNT: usize, F>(
-        &mut self,
-        arity: usize,
-        function: DefId,
-        mut ty_combinator: F,
-        ty_trailing_args: &[ty::GenericArg<'tcx>],
-    ) where
-        F: FnMut(TyCtxt<'tcx>, &[ty::GenericArg<'tcx>]) -> Ty<'tcx>,
-    {
-        debug_assert_eq!(arity + ty_trailing_args.len(), ARG_COUNT);
-
+    fn apply_combinator<const ARITY: usize>(&mut self, function: LangItem) {
+        let function = self.tcx.require_lang_item(function, Some(self.span));
         let operands = &self.stack[self
             .stack
             .len()
-            .checked_sub(arity)
+            .checked_sub(ARITY)
             .expect("async destructor ctor shim combinator tried to consume too many items")..];
 
-        let fn_generic_args = || operands.iter().map(|&(_, t)| t.into());
-        let mut ty_generic_args = fn_generic_args().chain(ty_trailing_args.iter().copied());
-        let ty_generic_args = [(); ARG_COUNT].map(|()| ty_generic_args.next().unwrap());
-        let dest_ty = ty_combinator(self.tcx, &ty_generic_args);
+        let func_ty = Ty::new_fn_def(self.tcx, function, operands.iter().map(|(_, t)| *t));
+        let dest_ty = func_ty.fn_sig(self.tcx).output().no_bound_vars().unwrap();
 
         let target = self.bbs.push(BasicBlockData {
             statements: {
-                let mut stmts = Vec::with_capacity(arity + 1);
+                let mut stmts = Vec::with_capacity(ARITY + 1);
                 stmts.extend(operands.iter().map(|&(l, _)| Statement {
                     source_info: self.source_info,
                     kind: StatementKind::StorageDead(l),
@@ -1522,7 +1426,13 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         last_bb.terminator = Some(Terminator {
             source_info: self.source_info,
             kind: TerminatorKind::Call {
-                func: Operand::function_handle(self.tcx, function, fn_generic_args(), self.span),
+                func: {
+                    Operand::Constant(Box::new(ConstOperand {
+                        span: self.span,
+                        user_ty: None,
+                        const_: Const::Val(ConstValue::ZeroSized, func_ty),
+                    }))
+                },
                 args,
                 destination: dest.into(),
                 target: Some(target),
@@ -1533,7 +1443,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             },
         });
 
-        drop(self.stack.drain(self.stack.len() - arity..));
+        drop(self.stack.drain(self.stack.len() - ARITY..));
         self.stack.push((dest, dest_ty));
         self.last_bb = target;
     }
