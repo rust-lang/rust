@@ -5,7 +5,7 @@ use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::intrinsics;
 use crate::marker::{Freeze, StructuralPartialEq};
-use crate::ops::{BitOr, BitOrAssign, Div, Neg, Rem};
+use crate::ops::{BitOr, BitOrAssign, Div, DivAssign, Neg, Rem, RemAssign};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::ptr;
 use crate::str::FromStr;
@@ -849,6 +849,16 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             }
         }
 
+        #[stable(feature = "nonzero_div_assign", since = "CURRENT_RUSTC_VERSION")]
+        impl DivAssign<$Ty> for $Int {
+            /// This operation rounds towards zero,
+            /// truncating any fractional part of the exact result, and cannot panic.
+            #[inline]
+            fn div_assign(&mut self, other: $Ty) {
+                *self = *self / other;
+            }
+        }
+
         #[stable(feature = "nonzero_div", since = "1.51.0")]
         impl Rem<$Ty> for $Int {
             type Output = $Int;
@@ -859,6 +869,15 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
                 // SAFETY: rem by zero is checked because `other` is a nonzero,
                 // and MIN/-1 is checked because `self` is an unsigned int.
                 unsafe { intrinsics::unchecked_rem(self, other.get()) }
+            }
+        }
+
+        #[stable(feature = "nonzero_div_assign", since = "CURRENT_RUSTC_VERSION")]
+        impl RemAssign<$Ty> for $Int {
+            /// This operation satisfies `n % d == n - (n / d) * d`, and cannot panic.
+            #[inline]
+            fn rem_assign(&mut self, other: $Ty) {
+                *self = *self % other;
             }
         }
     };
