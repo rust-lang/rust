@@ -1107,8 +1107,12 @@ impl<'a> TyLoweringContext<'a> {
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
                 );
                 if let Some(type_ref) = &binding.type_ref {
-                    if let (TypeRef::ImplTrait(bounds), ImplTraitLoweringState::Disallowed) =
-                        (type_ref, &self.impl_trait_mode)
+                    if let (
+                        TypeRef::ImplTrait(bounds),
+                        ImplTraitLoweringState::Param(_)
+                        | ImplTraitLoweringState::Variable(_)
+                        | ImplTraitLoweringState::Disallowed,
+                    ) = (type_ref, &self.impl_trait_mode)
                     {
                         for bound in bounds {
                             predicates.extend(
