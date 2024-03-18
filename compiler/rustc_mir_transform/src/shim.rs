@@ -1193,133 +1193,69 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.return_()
     }
 
+    const SELF_PTR: Local = Local::from_u32(1);
+
     /// Puts pair (Self, to_drop: *mut Self) on top of the stack
     fn put_self(&mut self) {
+        self.put_rvalue(Rvalue::Use(Operand::Copy(Self::SELF_PTR.into())), self.self_ty)
+    }
+
+    /// Given that Self is [T; N] puts pair (T, to_drop: *mut [T]) on
+    /// top of the stack.  We use pointee types so that they are used
+    /// for instantiation of combinators.
+    fn put_array_as_slice(&mut self, elem_ty: Ty<'tcx>) {
+        let slice_ptr_ty = Ty::new_mut_ptr(self.tcx, Ty::new_slice(self.tcx, elem_ty));
+        self.put_rvalue(
+            Rvalue::Cast(
+                CastKind::PointerCoercion(PointerCoercion::Unsize),
+                Operand::Copy(Self::SELF_PTR.into()),
+                slice_ptr_ty,
+            ),
+            elem_ty,
+        )
+    }
+
+    /// Given that Self is [T] puts pair (T, to_drop: *mut [T]) on top
+    /// of the stack. We use pointee types so that they are used for
+    /// instantiation of combinators.
+    fn put_slice(&mut self, elem_ty: Ty<'tcx>) {
+        self.put_rvalue(Rvalue::Use(Operand::Copy(Self::SELF_PTR.into())), elem_ty)
+    }
+
+    /// If given Self is a struct puts pair (Field, to_drop: *mut Field)
+    /// on top of the stack. We use pointee types so that they are used
+    /// for instantiation of combinators.
+    fn put_field(&mut self, field: FieldIdx, field_ty: Ty<'tcx>) {
+        self.put_rvalue(
+            Rvalue::AddressOf(
+                Mutability::Mut,
+                self.tcx.mk_place_field(
+                    self.tcx.mk_place_deref(Self::SELF_PTR.into()),
+                    field,
+                    field_ty,
+                ),
+            ),
+            field_ty,
+        )
+    }
+
+    fn put_rvalue(&mut self, rvalue: Rvalue<'tcx>, ty: Ty<'tcx>) {
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
 
-        let self_ptr = Local::new(1);
+        let local_ty = rvalue.ty(&self.locals, self.tcx);
         // We need to create a new local to be able to "consume" it with
         // a combinator
-        let local = self.locals.push(self.locals[self_ptr].clone());
+        let local = self.locals.push(LocalDecl::with_source_info(local_ty, self.source_info));
         last_bb.statements.extend_from_slice(&[
             Statement { source_info: self.source_info, kind: StatementKind::StorageLive(local) },
             Statement {
                 source_info: self.source_info,
-                kind: StatementKind::Assign(Box::new((
-                    local.into(),
-                    Rvalue::Use(Operand::Copy(self_ptr.into())),
-                ))),
+                kind: StatementKind::Assign(Box::new((local.into(), rvalue))),
             },
         ]);
 
-        // We use pointee types so that they are used for instantiation
-        // of combinators
-        self.stack.push((local, self.self_ty));
-    }
-
-    /// Given that Self is [T; N] puts pair (T, to_drop: *mut [T])
-    /// on top of the stack
-    fn put_array_as_slice(&mut self, elem_ty: Ty<'tcx>) {
-        let last_bb = &mut self.bbs[self.last_bb];
-        debug_assert!(last_bb.terminator.is_none());
-
-        let slice_ptr = {
-            let slice_ptr_ty = Ty::new_mut_ptr(self.tcx, Ty::new_slice(self.tcx, elem_ty));
-            let slice_ptr =
-                self.locals.push(LocalDecl::with_source_info(slice_ptr_ty, self.source_info));
-            let self_ptr = Local::new(1);
-
-            last_bb.statements.extend_from_slice(&[
-                Statement {
-                    source_info: self.source_info,
-                    kind: StatementKind::StorageLive(slice_ptr),
-                },
-                Statement {
-                    source_info: self.source_info,
-                    kind: StatementKind::Assign(Box::new((
-                        slice_ptr.into(),
-                        Rvalue::Cast(
-                            CastKind::PointerCoercion(PointerCoercion::Unsize),
-                            Operand::Copy(self_ptr.into()),
-                            slice_ptr_ty,
-                        ),
-                    ))),
-                },
-            ]);
-            slice_ptr
-        };
-
-        // We use pointee types so that they are used for instantiation
-        // of combinators
-        self.stack.push((slice_ptr, elem_ty));
-    }
-
-    /// Given that Self is [T] puts pair (T, to_drop: *mut [T]) on top
-    /// of the stack
-    fn put_slice(&mut self, elem_ty: Ty<'tcx>) {
-        let last_bb = &mut self.bbs[self.last_bb];
-        debug_assert!(last_bb.terminator.is_none());
-
-        let self_ptr = Local::new(1);
-        // We need to create a new local to be able to "consume" it with
-        // a combinator
-        let slice_ptr = self.locals.push(self.locals[self_ptr].clone());
-        last_bb.statements.extend_from_slice(&[
-            Statement {
-                source_info: self.source_info,
-                kind: StatementKind::StorageLive(slice_ptr),
-            },
-            Statement {
-                source_info: self.source_info,
-                kind: StatementKind::Assign(Box::new((
-                    slice_ptr.into(),
-                    Rvalue::Use(Operand::Copy(self_ptr.into())),
-                ))),
-            },
-        ]);
-
-        // We use pointee types so that they are used for instantiation
-        // of combinators
-        self.stack.push((slice_ptr, elem_ty));
-    }
-
-    /// If given Self is a struct puts pair (Field, to_drop: *mut Field)
-    /// on top of the stack
-    fn put_field(&mut self, field: FieldIdx, ty: Ty<'tcx>) {
-        let last_bb = &mut self.bbs[self.last_bb];
-        debug_assert!(last_bb.terminator.is_none());
-
-        let field_ptr_ty = Ty::new_mut_ptr(self.tcx, ty);
-        // We need to create a new local to be able to "consume" it with
-        // a combinator
-        let field_ptr =
-            self.locals.push(LocalDecl::with_source_info(field_ptr_ty, self.source_info));
-        let self_ptr = Local::new(1);
-        last_bb.statements.extend_from_slice(&[
-            Statement {
-                source_info: self.source_info,
-                kind: StatementKind::StorageLive(field_ptr),
-            },
-            Statement {
-                source_info: self.source_info,
-                kind: StatementKind::Assign(Box::new((
-                    field_ptr.into(),
-                    Rvalue::AddressOf(
-                        Mutability::Mut,
-                        self.tcx.mk_place_field(
-                            self.tcx.mk_place_deref(self_ptr.into()),
-                            field,
-                            ty,
-                        ),
-                    ),
-                ))),
-            },
-        ]);
-
-        // We use pointee types so that they are used for instantiation
-        // of combinators
-        self.stack.push((field_ptr, ty));
+        self.stack.push((local, ty));
     }
 
     /// Puts pair (async_drop::Nop, nop: async_drop::Nop) on top of
