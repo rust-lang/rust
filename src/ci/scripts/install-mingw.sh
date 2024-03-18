@@ -9,8 +9,8 @@ IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
-MINGW_ARCHIVE_32="i686-12.2.0-release-posix-dwarf-rt_v10-rev0.7z"
-MINGW_ARCHIVE_64="x86_64-12.2.0-release-posix-seh-rt_v10-rev0.7z"
+MINGW_ARCHIVE_32="i686-w64-mingw32.tar.zst"
+MINGW_ARCHIVE_64="x86_64-w64-mingw32.tar.zst"
 
 if isWindows; then
     case "${CI_JOB_NAME}" in
@@ -44,10 +44,10 @@ if isWindows; then
         # want to do this instead:
         # pacboy -S --noconfirm clang:p ...
     else
-        mingw_dir="mingw${bits}"
-
-        curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
-        7z x -y mingw.7z > /dev/null
-        ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
+        url="https://github.com/mati865/mingw-build/releases/download/v0.0.11"
+        curl -L -o mingw.tar.zst "${url}/${mingw_archive}"
+        tar -xf mingw.tar.zst
+        ciCommandAddPath "$(pwd)/${arch}-w64-mingw32/bin"
+        ciCommandAddPath "$(pwd)/${arch}-w64-mingw32/${arch}-w64-mingw32/bin"
     fi
 fi

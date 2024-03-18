@@ -378,7 +378,10 @@ fn main() {
         if let Some(s) = llvm_static_stdcpp {
             assert!(!cxxflags.contains("stdlib=libc++"));
             let path = PathBuf::from(s);
-            println!("cargo:rustc-link-search=native={}", path.parent().unwrap().display());
+            let path = path.parent().unwrap().to_string_lossy();
+            if !path.is_empty() {
+                println!("cargo:rustc-link-search=native={}", path);
+            }
             if target.contains("windows") {
                 println!("cargo:rustc-link-lib=static:-bundle={stdcppname}");
             } else {
