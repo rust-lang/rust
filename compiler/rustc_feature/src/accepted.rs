@@ -205,6 +205,8 @@ declare_features! (
     (accepted, impl_header_lifetime_elision, "1.31.0", Some(15872)),
     /// Allows referencing `Self` and projections in impl-trait.
     (accepted, impl_trait_projections, "1.74.0", Some(103532)),
+    /// Allows using imported `main` function
+    (accepted, imported_main, "CURRENT_RUSTC_VERSION", Some(28937)),
     /// Allows using `a..=b` and `..=b` as inclusive range syntaxes.
     (accepted, inclusive_range_syntax, "1.26.0", Some(28237)),
     /// Allows inferring outlives requirements (RFC 2093).

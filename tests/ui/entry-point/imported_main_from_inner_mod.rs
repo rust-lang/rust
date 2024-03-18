@@ -1,5 +1,4 @@
 //@ run-pass
-#![feature(imported_main)]
 
 pub mod foo {
     pub fn bar() {
