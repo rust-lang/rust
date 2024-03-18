@@ -1433,7 +1433,7 @@ fn create_mono_items_for_default_impls<'tcx>(
     }
 }
 
-/// Scans the CTFE alloc in order to find function calls, closures, and drop-glue.
+/// Scans the CTFE alloc in order to find function pointers and statics that must be monomorphized.
 fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoItems<'tcx>) {
     match tcx.global_alloc(alloc_id) {
         GlobalAlloc::Static(def_id) => {
@@ -1446,9 +1446,13 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
         }
         GlobalAlloc::Memory(alloc) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
-            for &prov in alloc.inner().provenance().ptrs().values() {
-                rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                    collect_alloc(tcx, prov.alloc_id(), output);
+            let ptrs = alloc.inner().provenance().ptrs();
+            // avoid `ensure_sufficient_stack` in the common case of "no pointers"
+            if !ptrs.is_empty() {
+                rustc_data_structures::stack::ensure_sufficient_stack(move || {
+                    for &prov in ptrs.values() {
+                        collect_alloc(tcx, prov.alloc_id(), output);
+                    }
                 });
             }
         }
