@@ -1,5 +1,6 @@
 //@revisions: noopt opt
 //@ build-fail
+//@[noopt] compile-flags: -Copt-level=0
 //@[opt] compile-flags: -O
 //! Make sure we detect erroneous constants post-monomorphization even when they are unused. This is
 //! crucial, people rely on it for soundness. (https://github.com/rust-lang/rust/issues/112090)

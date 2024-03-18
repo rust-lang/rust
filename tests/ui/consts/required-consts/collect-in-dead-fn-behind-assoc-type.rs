@@ -1,6 +1,7 @@
 #![feature(impl_trait_in_assoc_type)]
 //@revisions: noopt opt
 //@ build-fail
+//@[noopt] compile-flags: -Copt-level=0
 //@[opt] compile-flags: -O
 //! This fails without optimizations, so it should also fail with optimizations.
 

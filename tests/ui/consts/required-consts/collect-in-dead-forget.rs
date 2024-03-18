@@ -1,5 +1,6 @@
 //@revisions: noopt opt
 //@build-pass
+//@[noopt] compile-flags: -Copt-level=0
 //@[opt] compile-flags: -O
 //! This passes without optimizations, so it can (and should) also pass with optimizations.
 

@@ -1,13 +1,13 @@
 error[E0080]: evaluation of `m::Fail::<i32>::C` failed
-  --> $DIR/collect-in-dead-fn-behind-opaque-type.rs:10:23
+  --> $DIR/collect-in-dead-fn-behind-opaque-type.rs:11:23
    |
 LL |         const C: () = panic!();
-   |                       ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-in-dead-fn-behind-opaque-type.rs:10:23
+   |                       ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-in-dead-fn-behind-opaque-type.rs:11:23
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant encountered
-  --> $DIR/collect-in-dead-fn-behind-opaque-type.rs:17:21
+  --> $DIR/collect-in-dead-fn-behind-opaque-type.rs:18:21
    |
 LL |             let _ = Fail::<T>::C;
    |                     ^^^^^^^^^^^^
