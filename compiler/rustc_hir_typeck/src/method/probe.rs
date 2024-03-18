@@ -1935,7 +1935,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
     }
 
-    /// Determine if the associated item withe the given DefId matches
+    /// Determine if the associated item with the given DefId matches
     /// the desired name via a doc alias.
     fn matches_by_doc_alias(&self, def_id: DefId) -> bool {
         let Some(name) = self.method_name else {
