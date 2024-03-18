@@ -369,8 +369,14 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                         );
                     }
                     _ => {
-                        let msg_str = msg.description();
-                        codegen_panic(fx, msg_str, source_info);
+                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+
+                        codegen_panic_inner(
+                            fx,
+                            msg.panic_function(),
+                            &[location],
+                            Some(source_info.span),
+                        );
                     }
                 }
             }
@@ -952,20 +958,6 @@ pub(crate) fn codegen_operand<'tcx>(
         }
         Operand::Constant(const_) => crate::constant::codegen_constant_operand(fx, const_),
     }
-}
-
-pub(crate) fn codegen_panic<'tcx>(
-    fx: &mut FunctionCx<'_, '_, 'tcx>,
-    msg_str: &str,
-    source_info: mir::SourceInfo,
-) {
-    let location = fx.get_caller_location(source_info).load_scalar(fx);
-
-    let msg_ptr = fx.anonymous_str(msg_str);
-    let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
-    let args = [msg_ptr, msg_len, location];
-
-    codegen_panic_inner(fx, rustc_hir::LangItem::Panic, &args, Some(source_info.span));
 }
 
 pub(crate) fn codegen_panic_nounwind<'tcx>(
