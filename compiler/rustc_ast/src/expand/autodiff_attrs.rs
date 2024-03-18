@@ -25,6 +25,10 @@ impl Display for DiffMode {
 }
 
 pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
+    if activity == DiffActivity::None {
+        // Only valid if primal returns (), but we can't check that here.
+        return true;
+    }
     match mode {
         DiffMode::Inactive => false,
         DiffMode::Source => false,

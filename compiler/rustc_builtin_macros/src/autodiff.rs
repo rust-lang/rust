@@ -110,6 +110,12 @@ pub fn expand(
         ts.push(TokenTree::Token(t, Spacing::Joint));
         ts.push(TokenTree::Token(comma.clone(), Spacing::Alone));
     }
+    if !sig.decl.output.has_ret() {
+        // We don't want users to provide a return activity if the function doesn't return anything.
+        // For simplicity, we just add a dummy token to the end of the list.
+        let t = Token::new(TokenKind::Ident(sym::None, false), Span::default());
+        ts.push(TokenTree::Token(t, Spacing::Joint));
+    }
     let ts: TokenStream = TokenStream::from_iter(ts);
 
     let x: AutoDiffAttrs = from_ast(ecx, &meta_item_vec, has_ret);
