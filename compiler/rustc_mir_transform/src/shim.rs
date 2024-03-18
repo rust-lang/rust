@@ -1026,8 +1026,6 @@ fn build_async_destructor_ctor_shim<'tcx>(
     AsyncDestructorCtorShimBuilder::new(tcx, def_id, self_ty).build()
 }
 
-const ASYNC_DESTRUCTOR_CTOR_ARG_COUNT: usize = 1;
-
 /// Builder for async_drop_in_place shim. Functions as a stack machine
 /// to build up an expression using combinators. Stack contains pairs
 /// of locals and types. Combinator is a not yet instantiated pair of a
@@ -1050,6 +1048,8 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
 }
 
 impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
+    const SELF_PTR: Local = Local::from_u32(1);
+    const INPUT_COUNT: usize = 1;
     const MAX_STACK_DEPTH: usize = 2;
 
     fn new(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Self {
@@ -1061,7 +1061,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
         let source_info = SourceInfo::outermost(span);
 
-        debug_assert_eq!(sig.inputs().len(), ASYNC_DESTRUCTOR_CTOR_ARG_COUNT);
+        debug_assert_eq!(sig.inputs().len(), Self::INPUT_COUNT);
         let locals = local_decls_for_sig(&sig, span);
 
         AsyncDestructorCtorShimBuilder {
@@ -1195,8 +1195,6 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.return_()
     }
 
-    const SELF_PTR: Local = Local::from_u32(1);
-
     /// Puts pair (Self, to_drop: *mut Self) on top of the stack
     fn put_self(&mut self) {
         self.put_rvalue(Rvalue::Use(Operand::Copy(Self::SELF_PTR.into())), self.self_ty)
@@ -1323,7 +1321,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             self.def_id,
             self.self_ty,
         ));
-        new_body(source, self.bbs, self.locals, ASYNC_DESTRUCTOR_CTOR_ARG_COUNT, self.span)
+        new_body(source, self.bbs, self.locals, Self::INPUT_COUNT, self.span)
     }
 
     fn apply_combinator<const ARITY: usize>(&mut self, function: LangItem) {
