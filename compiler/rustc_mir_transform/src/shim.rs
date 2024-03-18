@@ -1323,7 +1323,11 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             .expect("async destructor ctor shim combinator tried to consume too many items")..];
 
         let func_ty = Ty::new_fn_def(self.tcx, function, args.iter().copied());
-        let dest_ty = func_ty.fn_sig(self.tcx).output().no_bound_vars().unwrap();
+        let func_sig = func_ty.fn_sig(self.tcx).no_bound_vars().unwrap();
+        #[cfg(debug_assertions)]
+        operands.iter().zip(func_sig.inputs()).for_each(|(operand, expected_ty)| {
+            debug_assert_eq!(self.locals[*operand].ty, *expected_ty)
+        });
 
         let target = self.bbs.push(BasicBlockData {
             statements: operands
@@ -1339,6 +1343,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         });
 
         let args = operands.iter().map(|&l| respan(self.span, Operand::Move(l.into()))).collect();
+
+        let dest_ty = func_sig.output();
         let dest =
             self.locals.push(LocalDecl::with_source_info(dest_ty, self.source_info).immutable());
 
@@ -1371,6 +1377,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         drop(self.stack.drain(self.stack.len() - arity..));
         self.stack.push(dest);
         self.last_bb = target;
+
         dest_ty
     }
 }
