@@ -79,7 +79,6 @@ fn variant_hints(
         None,
     );
     acc.push(InlayHint {
-        needs_resolve: label.needs_resolve(),
         range: match eq_token {
             Some(t) => range.cover(t.text_range()),
             _ => range,

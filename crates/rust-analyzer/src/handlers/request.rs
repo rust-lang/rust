@@ -12,8 +12,8 @@ use anyhow::Context;
 
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, RangeLimit,
-    ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
+    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory,
+    Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -1465,7 +1465,7 @@ pub(crate) fn handle_inlay_hints(
     let inlay_hints_config = snap.config.inlay_hints();
     Ok(Some(
         snap.analysis
-            .inlay_hints(&inlay_hints_config, file_id, Some(RangeLimit::Fixed(range)))?
+            .inlay_hints(&inlay_hints_config, file_id, Some(range))?
             .into_iter()
             .map(|it| {
                 to_proto::inlay_hint(
@@ -1499,10 +1499,11 @@ pub(crate) fn handle_inlay_hints_resolve(
     let hint_position = from_proto::offset(&line_index, original_hint.position)?;
     let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
     forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
-    let resolve_hints = snap.analysis.inlay_hints(
+    let resolve_hints = snap.analysis.inlay_hints_resolve(
         &forced_resolve_inlay_hints_config,
         file_id,
-        Some(RangeLimit::NearestParent(hint_position)),
+        hint_position,
+        resolve_data.hash,
     )?;
 
     let mut resolved_hints = resolve_hints
