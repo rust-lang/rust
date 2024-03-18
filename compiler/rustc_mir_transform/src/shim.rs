@@ -1050,7 +1050,7 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
 impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     const SELF_PTR: Local = Local::from_u32(1);
     const INPUT_COUNT: usize = 1;
-    const MAX_STACK_DEPTH: usize = 2;
+    const MAX_STACK_LEN: usize = 2;
 
     fn new(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Self {
         let span = tcx.def_span(def_id);
@@ -1071,7 +1071,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             span,
             source_info,
 
-            stack: Vec::with_capacity(Self::MAX_STACK_DEPTH),
+            stack: Vec::with_capacity(Self::MAX_STACK_LEN),
             last_bb: BasicBlock::new(0),
 
             locals,
