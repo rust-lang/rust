@@ -24,7 +24,8 @@ use crate::{
     HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
     MacroFileId,
 };
-
+/// This is just to ensure the types of smart_macro_arg and macro_arg are the same
+type MacroArgResult = (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span);
 /// Total limit on the number of tokens produced by any macro invocation.
 ///
 /// If an invocation produces more tokens than this limit, it will not be stored in the database and
@@ -98,7 +99,13 @@ pub trait ExpandDatabase: SourceDatabase {
     /// Lowers syntactic macro call to a token tree representation. That's a firewall
     /// query, only typing in the macro call itself changes the returned
     /// subtree.
-    fn macro_arg(&self, id: MacroCallId) -> (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span);
+    fn macro_arg(&self, id: MacroCallId) -> MacroArgResult;
+    #[salsa::transparent]
+    fn macro_arg_considering_derives(
+        &self,
+        id: MacroCallId,
+        kind: &MacroCallKind,
+    ) -> MacroArgResult;
     /// Fetches the expander for this macro.
     #[salsa::transparent]
     #[salsa::invoke(TokenExpander::macro_expander)]
@@ -339,20 +346,21 @@ pub(crate) fn parse_with_map(
         }
     }
 }
-/// This is just to ensure the types of smart_macro_arg and macro_arg are the same
-type MacroArgResult = (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span);
+
 /// Imagine the word smart in quotes.
 ///
 /// This resolves the [MacroCallId] to check if it is a derive macro if so get the [macro_arg] for the derive.
 /// Other wise return the [macro_arg] for the macro_call_id.
 ///
 /// This is not connected to the database so it does not cached the result. However, the inner [macro_arg] query is
-fn macro_arg_considering_derives(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
-    let macro_call_kind = db.lookup_intern_macro_call(id).kind;
-    // FIXME: We called lookup_intern_macro_call twice.
-    match macro_call_kind {
+fn macro_arg_considering_derives(
+    db: &dyn ExpandDatabase,
+    id: MacroCallId,
+    kind: &MacroCallKind,
+) -> MacroArgResult {
+    match kind {
         // Get the macro arg for the derive macro
-        MacroCallKind::Derive { derive_macro_id, .. } => db.macro_arg(derive_macro_id),
+        MacroCallKind::Derive { derive_macro_id, .. } => db.macro_arg(*derive_macro_id),
         // Normal macro arg
         _ => db.macro_arg(id),
     }
@@ -542,7 +550,8 @@ fn macro_expand(
     let (ExpandResult { value: tt, err }, span) = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id).map(CowArc::Arc),
         _ => {
-            let (macro_arg, undo_info, span) = macro_arg_considering_derives(db, macro_call_id);
+            let (macro_arg, undo_info, span) =
+                db.macro_arg_considering_derives(macro_call_id, &loc.kind);
 
             let arg = &*macro_arg;
             let res =
@@ -619,7 +628,7 @@ fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
 
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt::Subtree>> {
     let loc = db.lookup_intern_macro_call(id);
-    let (macro_arg, undo_info, span) = macro_arg_considering_derives(db, id);
+    let (macro_arg, undo_info, span) = db.macro_arg_considering_derives(id, &loc.kind.clone());
 
     let (expander, ast) = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, _, ast) => (expander, ast),
