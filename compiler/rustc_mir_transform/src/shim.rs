@@ -1050,6 +1050,8 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
 }
 
 impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
+    const MAX_STACK_DEPTH: usize = 2;
+
     fn new(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Self {
         let span = tcx.def_span(def_id);
         let Some(sig) = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).no_bound_vars()
@@ -1069,7 +1071,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             span,
             source_info,
 
-            stack: Vec::new(),
+            stack: Vec::with_capacity(Self::MAX_STACK_DEPTH),
             last_bb: BasicBlock::new(0),
 
             locals,
