@@ -913,7 +913,8 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
 
     fn complexity_exceeded(&self) -> Result<(), Self::Error> {
         let span = self.whole_match_span.unwrap_or(self.scrut_span);
-        Err(self.tcx.dcx().span_err(span, "reached pattern complexity limit"))
+        self.tcx.dcx().emit_warn(errors::TooComplex { span });
+        Ok(())
     }
 
     fn lint_non_contiguous_range_endpoints(
