@@ -16,7 +16,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> QueryResult<'tcx> {
         let tcx = self.tcx();
         let inherent = goal.predicate.alias;
-        let expected = goal.predicate.term.ty().expect("inherent consts are treated separately");
 
         let impl_def_id = tcx.parent(inherent.def_id);
         let impl_args = self.fresh_args_for_item(impl_def_id);
@@ -30,12 +29,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         // Equate IAT with the RHS of the project goal
         let inherent_args = inherent.rebase_inherent_args_onto_impl(impl_args, tcx);
-        self.eq(
-            goal.param_env,
-            expected,
-            tcx.type_of(inherent.def_id).instantiate(tcx, inherent_args),
-        )
-        .expect("expected goal term to be fully unconstrained");
 
         // Check both where clauses on the impl and IAT
         //
@@ -51,6 +44,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 .map(|(pred, _)| goal.with(tcx, pred)),
         );
 
+        let normalized = tcx.type_of(inherent.def_id).instantiate(tcx, inherent_args);
+        self.instantiate_normalizes_to_term(goal, normalized.into());
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }

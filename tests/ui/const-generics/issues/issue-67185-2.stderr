@@ -8,7 +8,10 @@ LL |     <u8 as Baz>::Quaks: Bar,
              [u16; 4]
              [[u16; 3]; 3]
    = help: see issue #48214
-   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
 
 error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
   --> $DIR/issue-67185-2.rs:14:5
@@ -20,7 +23,10 @@ LL |     [<u8 as Baz>::Quaks; 2]: Bar,
              [u16; 4]
              [[u16; 3]; 3]
    = help: see issue #48214
-   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
 
 error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
   --> $DIR/issue-67185-2.rs:21:6

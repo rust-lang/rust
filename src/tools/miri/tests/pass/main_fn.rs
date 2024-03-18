@@ -1,5 +1,3 @@
-#![feature(imported_main)]
-
 mod foo {
     pub(crate) fn bar() {}
 }

@@ -1,4 +1,3 @@
-#![feature(imported_main)]
 pub mod foo {
     pub const BAR: usize = 42;
 }
