@@ -139,7 +139,7 @@ pub trait ObligationProcessor {
 #[derive(Debug)]
 pub enum ProcessResult<O, E> {
     Unchanged,
-    Changed(Vec<O>),
+    Changed(Box<[O]>),
     Error(E),
 }
 
@@ -463,7 +463,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                         has_changed = true;
                         node.state.set(NodeState::Success);
 
-                        for child in children {
+                        for child in children.into_vec() {
                             let st = self.register_obligation_at(child, Some(index));
                             if let Err(()) = st {
                                 // Error already reported - propagate it
