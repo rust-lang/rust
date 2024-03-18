@@ -126,17 +126,6 @@ pub unsafe fn create_module<'ll>(
 
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
-    if llvm_version < (17, 0, 0) {
-        if sess.target.arch.starts_with("powerpc") {
-            // LLVM 17 specifies function pointer alignment for ppc:
-            // https://reviews.llvm.org/D147016
-            target_data_layout = target_data_layout
-                .replace("-Fn32", "")
-                .replace("-Fi32", "")
-                .replace("-Fn64", "")
-                .replace("-Fi64", "");
-        }
-    }
     if llvm_version < (18, 0, 0) {
         if sess.target.arch == "x86" || sess.target.arch == "x86_64" {
             // LLVM 18 adjusts i128 to be 128-bit aligned on x86 variants.
