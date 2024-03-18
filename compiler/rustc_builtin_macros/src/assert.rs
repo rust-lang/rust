@@ -11,6 +11,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_parse::parser::Parser;
+use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use thin_vec::thin_vec;
@@ -172,45 +173,54 @@ fn expand_cond(cx: &ExtCtxt<'_>, parser: Parser<'_>, cond_expr: P<Expr>) -> P<Ex
     // talk about traits, we'll just state the appropriate type error.
     // `let assert_macro: bool = $expr;`
     let ident = Ident::new(sym::assert_macro, DUMMY_SP);
-    let local = P(ast::Local {
-        ty: Some(P(ast::Ty {
-            kind: ast::TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::bool, DUMMY_SP))),
-            id: ast::DUMMY_NODE_ID,
-            span: DUMMY_SP,
-            tokens: None,
-        })),
-        pat: parser.mk_pat_ident(DUMMY_SP, ast::BindingAnnotation::NONE, ident),
-        kind: ast::LocalKind::Init(cond_expr),
-        id: ast::DUMMY_NODE_ID,
-        span,
-        colon_sp: None,
-        attrs: Default::default(),
-        tokens: None,
-    });
-    // `{ let assert_macro: bool = $expr; assert_macro }`
+
+    let expr = if use_assert_2024(span) {
+        // `{ let assert_macro: bool = $expr; assert_macro }`
+        cond_expr
+    } else {
+        // In <=2021, we allow anything that can be negated to `bool`, not just `bool`s. We use the
+        // "double not" trick to coerce the expression to `bool`. We still assign it to a new `bool`
+        // binding so that in the case of a type that implements `Not` but doesn't return `bool`,
+        // like `i32`, we still point at the condition and not at the whole macro.
+        // `{ let assert_macro: bool = !!$expr; assert_macro }`
+        let not = |expr| parser.mk_expr(span, ast::ExprKind::Unary(ast::UnOp::Not, expr));
+        not(not(cond_expr))
+    };
+    let block = thin_vec![
+        cx.stmt_let_ty(
+            DUMMY_SP,
+            false,
+            ident,
+            Some(cx.ty_ident(span, Ident::new(sym::bool, DUMMY_SP))),
+            expr,
+        ),
+        parser.mk_stmt(
+            span,
+            ast::StmtKind::Expr(
+                parser.mk_expr(span, ast::ExprKind::Path(None, ast::Path::from_ident(ident)))
+            ),
+        ),
+    ];
     parser.mk_expr(
         span,
-        ast::ExprKind::Block(
-            parser.mk_block(
-                thin_vec![
-                    parser.mk_stmt(span, ast::StmtKind::Let(local)),
-                    parser.mk_stmt(
-                        span,
-                        ast::StmtKind::Expr(parser.mk_expr(
-                            span,
-                            ast::ExprKind::Path(None, ast::Path::from_ident(ident))
-                        )),
-                    ),
-                ],
-                ast::BlockCheckMode::Default,
-                span,
-            ),
-            None,
-        ),
+        ast::ExprKind::Block(parser.mk_block(block, ast::BlockCheckMode::Default, span), None),
     )
 }
 
 fn parse_custom_message(parser: &mut Parser<'_>) -> Option<TokenStream> {
     let ts = parser.parse_tokens();
     if !ts.is_empty() { Some(ts) } else { None }
+}
+
+pub fn use_assert_2024(mut span: Span) -> bool {
+    // To determine the edition, we check the first span up the expansion
+    // stack that isn't internal.
+    loop {
+        let expn = span.ctxt().outer_expn_data();
+        if let Some(_features) = expn.allow_internal_unstable {
+            span = expn.call_site;
+            continue;
+        }
+        break expn.edition >= Edition::Edition2024;
+    }
 }
