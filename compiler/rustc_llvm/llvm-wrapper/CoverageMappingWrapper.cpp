@@ -68,6 +68,30 @@ fromRust(LLVMRustCounterMappingRegionKind Kind) {
   report_fatal_error("Bad LLVMRustCounterMappingRegionKind!");
 }
 
+// FFI equivalent of struct `llvm::coverage::CounterMappingRegion::MCDCParameters`
+// https://github.com/rust-lang/llvm-project/blob/66a2881a/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L253-L263
+struct LLVMRustMCDCParameters {
+    /// Byte Index of Bitmap Coverage Object for a Decision Region.
+    uint32_t BitmapIdx = 0;
+
+    /// Number of Conditions used for a Decision Region.
+    uint32_t NumConditions = 0;
+
+    /// IDs used to represent a branch region and other branch regions
+    /// evaluated based on True and False branches.
+    uint32_t ID = 0;
+    uint32_t TrueID = 0;
+    uint32_t FalseID = 0;
+};
+
+static coverage::CounterMappingRegion::MCDCParameters
+fromRust(LLVMRustMCDCParameters MCDCParams) {
+  return coverage::CounterMappingRegion::MCDCParameters{
+    MCDCParams.BitmapIdx, MCDCParams.NumConditions,
+    MCDCParams.ID, MCDCParams.TrueID, MCDCParams.FalseID
+  };
+}
+
 // FFI equivalent of struct `llvm::coverage::CounterMappingRegion`
 // https://github.com/rust-lang/llvm-project/blob/ea6fa9c2/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L211-L304
 struct LLVMRustCounterMappingRegion {
@@ -80,6 +104,7 @@ struct LLVMRustCounterMappingRegion {
   uint32_t LineEnd;
   uint32_t ColumnEnd;
   LLVMRustCounterMappingRegionKind Kind;
+  LLVMRustMCDCParameters MCDCParams;
 };
 
 // FFI equivalent of enum `llvm::coverage::CounterExpression::ExprKind`
@@ -146,7 +171,7 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
     MappingRegions.emplace_back(
         fromRust(Region.Count), fromRust(Region.FalseCount),
 #if LLVM_VERSION_GE(18, 0) && LLVM_VERSION_LT(19, 0)
-        coverage::CounterMappingRegion::MCDCParameters{},
+        fromRust(Region.MCDCParams),
 #endif
         Region.FileID, Region.ExpandedFileID,
         Region.LineStart, Region.ColumnStart, Region.LineEnd, Region.ColumnEnd,

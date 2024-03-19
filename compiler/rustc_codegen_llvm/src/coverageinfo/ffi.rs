@@ -102,12 +102,35 @@ pub enum RegionKind {
 
     /// A DecisionRegion represents a top-level boolean expression and is
     /// associated with a variable length bitmap index and condition number.
+    /// FIXME(dprn): Remove unused variables.
     #[allow(dead_code)]
     MCDCDecisionRegion = 5,
 
     /// A Branch Region can be extended to include IDs to facilitate MC/DC.
     #[allow(dead_code)]
     MCDCBranchRegion = 6,
+}
+
+/// This struct provides LLVM's representation of "MCDCParameters" that may be defined for a
+/// Coverage Mapping Region.
+///
+/// Correspond to struct `llvm::coverage::CounterMappingRegion::MCDCParameters`
+///
+/// Must match The layout of `LLVMRustMCDCParameters`
+#[derive(Copy, Clone, Debug, Default)]
+#[repr(C)]
+pub struct MCDCParameters {
+    /// Byte Index of Bitmap Coverage Object for a Decision Region.
+    bitmap_idx: u32,
+
+    /// Number of Conditions used for a Decision Region.
+    num_conditions: u32,
+
+    /// IDs used to represent a branch region and other branch regions
+    /// evaluated based on True and False branches.
+    id: u32,
+    true_id: u32,
+    false_id: u32,
 }
 
 /// This struct provides LLVM's representation of a "CoverageMappingRegion", encoded into the
@@ -155,6 +178,8 @@ pub struct CounterMappingRegion {
     end_col: u32,
 
     kind: RegionKind,
+
+    mcdc_params: MCDCParameters,
 }
 
 impl CounterMappingRegion {
@@ -181,6 +206,7 @@ impl CounterMappingRegion {
                 start_col,
                 end_line,
                 end_col,
+                None,
             ),
         }
     }
@@ -203,9 +229,11 @@ impl CounterMappingRegion {
             end_line,
             end_col,
             kind: RegionKind::CodeRegion,
+            mcdc_params: Default::default(),
         }
     }
 
+    /// - `mcdc_params` should be None when MCDC is disabled.
     pub(crate) fn branch_region(
         counter: Counter,
         false_counter: Counter,
@@ -214,7 +242,13 @@ impl CounterMappingRegion {
         start_col: u32,
         end_line: u32,
         end_col: u32,
+        mcdc_params: Option<MCDCParameters>,
     ) -> Self {
+        let (kind, mcdc_params) = match mcdc_params {
+            None => (RegionKind::BranchRegion, Default::default()),
+            Some(params) => (RegionKind::MCDCBranchRegion, params),
+        };
+
         Self {
             counter,
             false_counter,
@@ -224,7 +258,36 @@ impl CounterMappingRegion {
             start_col,
             end_line,
             end_col,
-            kind: RegionKind::BranchRegion,
+            kind,
+            mcdc_params,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn decision_region(
+        bitmap_idx: u32,
+        num_conditions: u32,
+        file_id: u32,
+        start_line: u32,
+        start_col: u32,
+        end_line: u32,
+        end_col: u32,
+    ) -> Self {
+        Self {
+            counter: Counter::ZERO,
+            false_counter: Counter::ZERO,
+            file_id,
+            expanded_file_id: 0,
+            start_line,
+            start_col,
+            end_line,
+            end_col,
+            kind: RegionKind::MCDCDecisionRegion,
+            mcdc_params: MCDCParameters {
+                bitmap_idx,
+                num_conditions,
+                .. Default::default()
+            },
         }
     }
 
@@ -249,6 +312,7 @@ impl CounterMappingRegion {
             end_line,
             end_col,
             kind: RegionKind::ExpansionRegion,
+            mcdc_params: Default::default(),
         }
     }
 
@@ -272,6 +336,7 @@ impl CounterMappingRegion {
             end_line,
             end_col,
             kind: RegionKind::SkippedRegion,
+            mcdc_params: Default::default(),
         }
     }
 
@@ -296,6 +361,7 @@ impl CounterMappingRegion {
             end_line,
             end_col: (1_u32 << 31) | end_col,
             kind: RegionKind::GapRegion,
+            mcdc_params: Default::default(),
         }
     }
 }
