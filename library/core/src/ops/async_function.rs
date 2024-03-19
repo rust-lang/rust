@@ -140,7 +140,7 @@ mod internal_implementation_detail {
     /// and thus either `?0` or `i8`/`i16`/`i32` (see docs for `ClosureKind`
     /// for an explanation of that). The `GoalKind` is also the same type, but
     /// representing the kind of the trait that the closure is being called with.
-    #[cfg_attr(not(bootstrap), lang = "async_fn_kind_helper")]
+    #[lang = "async_fn_kind_helper"]
     trait AsyncFnKindHelper<GoalKind> {
         // Projects a set of closure inputs (arguments), a region, and a set of upvars
         // (by move and by ref) to the upvars that we expect the coroutine to have
