@@ -2,7 +2,7 @@ use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
-use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, True};
+use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, LLVMIsALoadInst, True};
 use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -662,12 +662,38 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             // optimization.
             return;
         }
+        let abi::WrappingRange { start, end } = range;
+        let llty = self.cx.val_ty(load);
+        if unsafe { LLVMIsALoadInst(load) }.is_some() {
+            if start <= end {
+                if start > 0 {
+                    let low = self.cx.const_uint_big(llty, start);
+                    let cmp = self.icmp(IntPredicate::IntUGE, load, low);
+                    self.assume(cmp);
+                }
+                let type_max = Size::from_bits(self.cx.int_width(llty)).unsigned_int_max();
+                if end < type_max {
+                    let high = self.cx.const_uint_big(llty, end);
+                    let cmp = self.icmp(IntPredicate::IntULE, load, high);
+                    self.assume(cmp);
+                }
+            } else {
+                let low = self.cx.const_uint_big(llty, start);
+                let cmp_low = self.icmp(IntPredicate::IntUGE, load, low);
+
+                let high = self.cx.const_uint_big(llty, end);
+                let cmp_high = self.icmp(IntPredicate::IntULE, load, high);
+
+                let or = self.or(cmp_low, cmp_high);
+                self.assume(or);
+            }
+            return;
+        }
 
         unsafe {
-            let llty = self.cx.val_ty(load);
             let v = [
-                self.cx.const_uint_big(llty, range.start),
-                self.cx.const_uint_big(llty, range.end.wrapping_add(1)),
+                self.cx.const_uint_big(llty, start),
+                self.cx.const_uint_big(llty, end.wrapping_add(1)),
             ];
 
             llvm::LLVMSetMetadata(

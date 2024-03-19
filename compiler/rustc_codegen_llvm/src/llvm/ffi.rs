@@ -1017,6 +1017,7 @@ extern "C" {
 
     // Operations on instructions
     pub fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
+    pub fn LLVMIsALoadInst(Val: &Value) -> Option<&Value>;
     pub fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
 
     // Operations on call sites
