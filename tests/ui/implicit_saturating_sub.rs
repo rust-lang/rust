@@ -260,4 +260,11 @@ fn main() {
     } else if u_32 > 0 {
         u_32 -= 1;
     }
+
+    let result = if a < b {
+        println!("we shouldn't remove this");
+        0
+    } else {
+        a - b
+    };
 }

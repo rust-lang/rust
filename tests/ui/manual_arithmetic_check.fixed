@@ -1,0 +1,16 @@
+#![warn(clippy::implicit_saturating_sub)]
+
+fn main() {
+    let a = 12u32;
+    let b = 13u32;
+
+    let result = a.saturating_sub(b);
+    //~^ ERROR: manual arithmetic check found
+    let result = a.saturating_sub(b);
+    //~^ ERROR: manual arithmetic check found
+
+    let result = a.saturating_sub(b);
+    //~^ ERROR: manual arithmetic check found
+    let result = a.saturating_sub(b);
+    //~^ ERROR: manual arithmetic check found
+}
