@@ -4040,7 +4040,7 @@ impl<'test> TestCx<'test> {
         };
 
         let stderr = if force_color_svg {
-            anstyle_svg::Term::new().render_svg(&proc_res.stderr)
+            anstyle_svg::Term::new().min_width_px(730).render_svg(&proc_res.stderr)
         } else if explicit_format {
             proc_res.stderr.clone()
         } else {

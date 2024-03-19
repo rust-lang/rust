@@ -4,8 +4,7 @@ error: format argument must be a string literal
 LL | /     {
 LL | |         #[derive(Clone)]
 LL | |         struct S;
-LL | |
-LL | |         ""
+...  |
 LL | |     }
    | |_____^
 ...

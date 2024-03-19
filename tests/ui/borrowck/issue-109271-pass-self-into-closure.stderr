@@ -42,8 +42,7 @@ LL |       v.call(|(), this: &mut S| {
    | |
 LL | |
 LL | |
-LL | |
-LL | |         _ = v;
+...  |
 LL | |         v.set();
    | |         - first borrow occurs due to use of `v` in closure
 ...  |
