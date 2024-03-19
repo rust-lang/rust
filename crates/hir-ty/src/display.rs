@@ -3,7 +3,6 @@
 //! purposes.
 
 use std::{
-    cmp::Ordering,
     fmt::{self, Debug},
     mem::size_of,
 };
@@ -1324,6 +1323,7 @@ fn hir_fmt_generics(
 ) -> Result<(), HirDisplayError> {
     let db = f.db;
     if parameters.len(Interner) > 0 {
+        use std::cmp::Ordering;
         let param_compare =
             |a: &GenericArg, b: &GenericArg| match (a.data(Interner), b.data(Interner)) {
                 (crate::GenericArgData::Lifetime(_), crate::GenericArgData::Lifetime(_)) => {

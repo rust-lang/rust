@@ -24,7 +24,7 @@ use hir_def::{
     data::adt::StructKind,
     expander::Expander,
     generics::{
-        GenericParamData, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
+        GenericParamDataRef, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
         WherePredicateTypeTarget,
     },
     lang_item::LangItem,
@@ -356,7 +356,7 @@ impl<'a> TyLoweringContext<'a> {
                                 .filter(|(_, data)| {
                                     matches!(
                                         data,
-                                        GenericParamData::TypeParamData(data)
+                                        GenericParamDataRef::TypeParamData(data)
                                         if data.provenance == TypeParamProvenance::ArgumentImplTrait
                                     )
                                 })
@@ -1770,7 +1770,7 @@ pub(crate) fn generic_defaults_query(
 
     let defaults = Arc::from_iter(generic_params.iter().enumerate().map(|(idx, (id, p))| {
         match p {
-            GenericParamData::TypeParamData(p) => {
+            GenericParamDataRef::TypeParamData(p) => {
                 let mut ty =
                     p.default.as_ref().map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
                 // Each default can only refer to previous parameters.
@@ -1779,7 +1779,7 @@ pub(crate) fn generic_defaults_query(
                 ty = fallback_bound_vars(ty, idx, parent_start_idx);
                 crate::make_binders(db, &generic_params, ty.cast(Interner))
             }
-            GenericParamData::ConstParamData(p) => {
+            GenericParamDataRef::ConstParamData(p) => {
                 let GenericParamId::ConstParamId(id) = id else {
                     unreachable!("Unexpected lifetime or type argument")
                 };
@@ -1795,7 +1795,7 @@ pub(crate) fn generic_defaults_query(
                 val = fallback_bound_vars(val, idx, parent_start_idx);
                 make_binders(db, &generic_params, val)
             }
-            GenericParamData::LifetimeParamData(_) => {
+            GenericParamDataRef::LifetimeParamData(_) => {
                 // using static because it requires defaults
                 make_binders(db, &generic_params, static_lifetime().cast(Interner))
             }

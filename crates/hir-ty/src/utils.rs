@@ -12,7 +12,7 @@ use chalk_ir::{
 use hir_def::{
     db::DefDatabase,
     generics::{
-        GenericParamData, GenericParams, LifetimeParamData, TypeOrConstParamData,
+        GenericParamDataRef, GenericParams, LifetimeParamData, TypeOrConstParamData,
         TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
     },
     lang_item::LangItem,
@@ -277,28 +277,28 @@ impl Generics {
     /// Iterator over types and const params of self, then parent.
     pub(crate) fn iter<'a>(
         &'a self,
-    ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamData)> + 'a {
+    ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamDataRef<'a>)> + 'a {
         let from_toc_id = |it: &'a Generics| {
-            move |(local_id, p): (_, &TypeOrConstParamData)| {
+            move |(local_id, p): (_, &'a TypeOrConstParamData)| {
                 let id = TypeOrConstParamId { parent: it.def, local_id };
                 match p {
                     TypeOrConstParamData::TypeParamData(p) => (
                         GenericParamId::TypeParamId(TypeParamId::from_unchecked(id)),
-                        GenericParamData::TypeParamData(p.clone()),
+                        GenericParamDataRef::TypeParamData(p),
                     ),
                     TypeOrConstParamData::ConstParamData(p) => (
                         GenericParamId::ConstParamId(ConstParamId::from_unchecked(id)),
-                        GenericParamData::ConstParamData(p.clone()),
+                        GenericParamDataRef::ConstParamData(p),
                     ),
                 }
             }
         };
 
         let from_lt_id = |it: &'a Generics| {
-            move |(local_id, p): (_, &LifetimeParamData)| {
+            move |(local_id, p): (_, &'a LifetimeParamData)| {
                 (
                     GenericParamId::LifetimeParamId(LifetimeParamId { parent: it.def, local_id }),
-                    GenericParamData::LifetimeParamData(p.clone()),
+                    GenericParamDataRef::LifetimeParamData(p),
                 )
             }
         };
@@ -310,28 +310,28 @@ impl Generics {
     /// Iterate over types and const params without parent params.
     pub(crate) fn iter_self<'a>(
         &'a self,
-    ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamData)> + 'a {
+    ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamDataRef<'a>)> + 'a {
         let from_toc_id = |it: &'a Generics| {
-            move |(local_id, p): (_, &TypeOrConstParamData)| {
+            move |(local_id, p): (_, &'a TypeOrConstParamData)| {
                 let id = TypeOrConstParamId { parent: it.def, local_id };
                 match p {
                     TypeOrConstParamData::TypeParamData(p) => (
                         GenericParamId::TypeParamId(TypeParamId::from_unchecked(id)),
-                        GenericParamData::TypeParamData(p.clone()),
+                        GenericParamDataRef::TypeParamData(p),
                     ),
                     TypeOrConstParamData::ConstParamData(p) => (
                         GenericParamId::ConstParamId(ConstParamId::from_unchecked(id)),
-                        GenericParamData::ConstParamData(p.clone()),
+                        GenericParamDataRef::ConstParamData(p),
                     ),
                 }
             }
         };
 
         let from_lt_id = |it: &'a Generics| {
-            move |(local_id, p): (_, &LifetimeParamData)| {
+            move |(local_id, p): (_, &'a LifetimeParamData)| {
                 (
                     GenericParamId::LifetimeParamId(LifetimeParamId { parent: it.def, local_id }),
-                    GenericParamData::LifetimeParamData(p.clone()),
+                    GenericParamDataRef::LifetimeParamData(p),
                 )
             }
         };
@@ -340,28 +340,29 @@ impl Generics {
     }
 
     /// Iterator over types and const params of parent.
-    pub(crate) fn iter_parent(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamData)> + '_ {
+    #[allow(clippy::needless_lifetimes)]
+    pub(crate) fn iter_parent<'a>(
+        &'a self,
+    ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamDataRef<'a>)> + 'a {
         self.parent_generics().into_iter().flat_map(|it| {
-            let from_toc_id = move |(local_id, p): (_, &TypeOrConstParamData)| {
+            let from_toc_id = move |(local_id, p): (_, &'a TypeOrConstParamData)| {
                 let id = TypeOrConstParamId { parent: it.def, local_id };
                 match p {
                     TypeOrConstParamData::TypeParamData(p) => (
                         GenericParamId::TypeParamId(TypeParamId::from_unchecked(id)),
-                        GenericParamData::TypeParamData(p.clone()),
+                        GenericParamDataRef::TypeParamData(p),
                     ),
                     TypeOrConstParamData::ConstParamData(p) => (
                         GenericParamId::ConstParamId(ConstParamId::from_unchecked(id)),
-                        GenericParamData::ConstParamData(p.clone()),
+                        GenericParamDataRef::ConstParamData(p),
                     ),
                 }
             };
 
-            let from_lt_id = move |(local_id, p): (_, &LifetimeParamData)| {
+            let from_lt_id = move |(local_id, p): (_, &'a LifetimeParamData)| {
                 (
                     GenericParamId::LifetimeParamId(LifetimeParamId { parent: it.def, local_id }),
-                    GenericParamData::LifetimeParamData(p.clone()),
+                    GenericParamDataRef::LifetimeParamData(p),
                 )
             };
             let lt_iter = it.params.iter_lt().map(from_lt_id);

@@ -142,6 +142,12 @@ impl GenericParamData {
 
 impl_from!(TypeParamData, ConstParamData, LifetimeParamData for GenericParamData);
 
+pub enum GenericParamDataRef<'a> {
+    TypeParamData(&'a TypeParamData),
+    ConstParamData(&'a ConstParamData),
+    LifetimeParamData(&'a LifetimeParamData),
+}
+
 /// Data about the generic parameters of a function, struct, impl, etc.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct GenericParams {
