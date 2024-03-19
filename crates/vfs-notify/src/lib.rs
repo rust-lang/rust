@@ -13,7 +13,7 @@ use std::fs;
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
-use paths::{AbsPath, AbsPathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8Path};
 use vfs::loader;
 use walkdir::WalkDir;
 
@@ -205,7 +205,7 @@ impl NotifyActor {
                             if !entry.file_type().is_dir() {
                                 return true;
                             }
-                            let path = AbsPath::assert(entry.path());
+                            let path = AbsPath::assert(Utf8Path::from_path(entry.path()).unwrap());
                             root == path
                                 || dirs.exclude.iter().chain(&dirs.include).all(|it| it != path)
                         });
@@ -214,7 +214,7 @@ impl NotifyActor {
                         let depth = entry.depth();
                         let is_dir = entry.file_type().is_dir();
                         let is_file = entry.file_type().is_file();
-                        let abs_path = AbsPathBuf::assert(entry.into_path());
+                        let abs_path = AbsPathBuf::try_from(entry.into_path()).unwrap();
                         if depth < 2 && is_dir {
                             self.send(make_message(abs_path.clone()));
                         }

@@ -714,10 +714,9 @@ impl GlobalState {
                     message += &format!(
                         ": {}",
                         match dir.strip_prefix(self.config.root_path()) {
-                            Some(relative_path) => relative_path.as_ref(),
+                            Some(relative_path) => relative_path.as_utf8_path(),
                             None => dir.as_ref(),
                         }
-                        .display()
                     );
                 }
 

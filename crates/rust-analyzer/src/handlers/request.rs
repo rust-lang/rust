@@ -4,7 +4,6 @@
 use std::{
     fs,
     io::Write as _,
-    path::PathBuf,
     process::{self, Stdio},
 };
 
@@ -27,6 +26,7 @@ use lsp_types::{
     SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
     SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
+use paths::Utf8PathBuf;
 use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
@@ -1737,8 +1737,8 @@ pub(crate) fn handle_open_docs(
         _ => (None, None),
     };
 
-    let sysroot = sysroot.map(|p| p.root().as_os_str());
-    let target_dir = cargo.map(|cargo| cargo.target_directory()).map(|p| p.as_os_str());
+    let sysroot = sysroot.map(|p| p.root().as_str());
+    let target_dir = cargo.map(|cargo| cargo.target_directory()).map(|p| p.as_str());
 
     let Ok(remote_urls) = snap.analysis.external_docs(position, target_dir, sysroot) else {
         return if snap.config.local_docs() {
@@ -2043,7 +2043,7 @@ fn run_rustfmt(
             cmd
         }
         RustfmtConfig::CustomCommand { command, args } => {
-            let cmd = PathBuf::from(&command);
+            let cmd = Utf8PathBuf::from(&command);
             let workspace = CargoTargetSpec::for_file(snap, file_id)?;
             let mut cmd = match workspace {
                 Some(spec) => {

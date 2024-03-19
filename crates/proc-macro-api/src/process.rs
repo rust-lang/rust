@@ -175,7 +175,7 @@ fn mk_child(
     env: &FxHashMap<String, String>,
     null_stderr: bool,
 ) -> io::Result<Child> {
-    let mut cmd = Command::new(path.as_os_str());
+    let mut cmd = Command::new(path);
     cmd.envs(env)
         .env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")
         .stdin(Stdio::piped())
@@ -183,7 +183,7 @@ fn mk_child(
         .stderr(if null_stderr { Stdio::null() } else { Stdio::inherit() });
     if cfg!(windows) {
         let mut path_var = std::ffi::OsString::new();
-        path_var.push(path.parent().unwrap().parent().unwrap().as_os_str());
+        path_var.push(path.parent().unwrap().parent().unwrap());
         path_var.push("\\bin;");
         path_var.push(std::env::var_os("PATH").unwrap_or_default());
         cmd.env("PATH", path_var);

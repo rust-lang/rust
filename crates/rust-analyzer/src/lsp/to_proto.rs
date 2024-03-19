@@ -1,7 +1,7 @@
 //! Conversion of rust-analyzer specific types to lsp_types equivalents.
 use std::{
     iter::once,
-    mem, path,
+    mem,
     sync::atomic::{AtomicU32, Ordering},
 };
 
@@ -15,6 +15,7 @@ use ide::{
 };
 use ide_db::{rust_doc::format_docs, FxHasher};
 use itertools::Itertools;
+use paths::{Utf8Component, Utf8Prefix};
 use semver::VersionReq;
 use serde_json::to_value;
 use vfs::AbsPath;
@@ -816,9 +817,9 @@ pub(crate) fn url(snap: &GlobalStateSnapshot, file_id: FileId) -> lsp_types::Url
 /// When processing non-windows path, this is essentially the same as `Url::from_file_path`.
 pub(crate) fn url_from_abs_path(path: &AbsPath) -> lsp_types::Url {
     let url = lsp_types::Url::from_file_path(path).unwrap();
-    match path.as_ref().components().next() {
-        Some(path::Component::Prefix(prefix))
-            if matches!(prefix.kind(), path::Prefix::Disk(_) | path::Prefix::VerbatimDisk(_)) =>
+    match path.components().next() {
+        Some(Utf8Component::Prefix(prefix))
+            if matches!(prefix.kind(), Utf8Prefix::Disk(_) | Utf8Prefix::VerbatimDisk(_)) =>
         {
             // Need to lowercase driver letter
         }
@@ -2730,12 +2731,12 @@ struct ProcMacro {
     #[test]
     #[cfg(target_os = "windows")]
     fn test_lowercase_drive_letter() {
-        use std::path::Path;
+        use paths::Utf8Path;
 
-        let url = url_from_abs_path(Path::new("C:\\Test").try_into().unwrap());
+        let url = url_from_abs_path(Utf8Path::new("C:\\Test").try_into().unwrap());
         assert_eq!(url.to_string(), "file:///c:/Test");
 
-        let url = url_from_abs_path(Path::new(r#"\\localhost\C$\my_dir"#).try_into().unwrap());
+        let url = url_from_abs_path(Utf8Path::new(r#"\\localhost\C$\my_dir"#).try_into().unwrap());
         assert_eq!(url.to_string(), "file://localhost/C$/my_dir");
     }
 }

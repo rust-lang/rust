@@ -70,7 +70,7 @@ impl flags::AnalysisStats {
 
         let mut db_load_sw = self.stop_watch();
 
-        let path = AbsPathBuf::assert(env::current_dir()?.join(&self.path));
+        let path = AbsPathBuf::assert_utf8(env::current_dir()?.join(&self.path));
         let manifest = ProjectManifest::discover_single(&path)?;
 
         let mut workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;

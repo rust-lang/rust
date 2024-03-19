@@ -283,7 +283,7 @@ impl flags::Lsif {
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
         };
-        let path = AbsPathBuf::assert(env::current_dir()?.join(self.path));
+        let path = AbsPathBuf::assert_utf8(env::current_dir()?.join(self.path));
         let manifest = ProjectManifest::discover_single(&path)?;
 
         let workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;

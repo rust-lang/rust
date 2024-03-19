@@ -12,10 +12,14 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
+camino.workspace = true
 # Adding this dep sadly puts a lot of rust-analyzer crates after the
 # serde-derive crate. Even though we don't activate the derive feature here,
 # someone else in the crate graph certainly does!
 # serde.workspace = true
+
+[features]
+serde1 = ["camino/serde1"]
 
 [lints]
 workspace = true

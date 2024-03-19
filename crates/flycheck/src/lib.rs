@@ -8,10 +8,10 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use std::{fmt, io, path::PathBuf, process::Command, time::Duration};
+use std::{fmt, io, process::Command, time::Duration};
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
-use paths::{AbsPath, AbsPathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
 
@@ -53,7 +53,7 @@ pub enum FlycheckConfig {
         extra_args: Vec<String>,
         extra_env: FxHashMap<String, String>,
         ansi_color_output: bool,
-        target_dir: Option<PathBuf>,
+        target_dir: Option<Utf8PathBuf>,
     },
     CustomCommand {
         command: String,
@@ -363,7 +363,7 @@ impl FlycheckActor {
                 });
 
                 cmd.arg("--manifest-path");
-                cmd.arg(self.root.join("Cargo.toml").as_os_str());
+                cmd.arg(self.root.join("Cargo.toml"));
 
                 for target in target_triples {
                     cmd.args(["--target", target.as_str()]);

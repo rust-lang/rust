@@ -519,14 +519,13 @@ fn clippy_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescript
 #[cfg(test)]
 #[cfg(not(windows))]
 mod tests {
-    use std::path::Path;
-
     use crate::{config::Config, global_state::GlobalState};
 
     use super::*;
 
     use expect_test::{expect_file, ExpectFile};
     use lsp_types::ClientCapabilities;
+    use paths::Utf8Path;
 
     fn check(diagnostics_json: &str, expect: ExpectFile) {
         check_with_config(DiagnosticsMapConfig::default(), diagnostics_json, expect)
@@ -534,7 +533,7 @@ mod tests {
 
     fn check_with_config(config: DiagnosticsMapConfig, diagnostics_json: &str, expect: ExpectFile) {
         let diagnostic: flycheck::Diagnostic = serde_json::from_str(diagnostics_json).unwrap();
-        let workspace_root: &AbsPath = Path::new("/test/").try_into().unwrap();
+        let workspace_root: &AbsPath = Utf8Path::new("/test/").try_into().unwrap();
         let (sender, _) = crossbeam_channel::unbounded();
         let state = GlobalState::new(
             sender,

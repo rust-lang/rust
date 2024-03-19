@@ -105,6 +105,7 @@ anyhow = "1.0.75"
 arrayvec = "0.7.4"
 bitflags = "2.4.1"
 cargo_metadata = "0.18.1"
+camino = "1.1.6"
 chalk-solve = { version = "0.96.0", default-features = false }
 chalk-ir = "0.96.0"
 chalk-recursive = { version = "0.96.0", default-features = false }

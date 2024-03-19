@@ -7,11 +7,7 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{
-    fmt, iter,
-    ops::Not,
-    path::{Path, PathBuf},
-};
+use std::{fmt, iter, ops::Not};
 
 use cfg::{CfgAtom, CfgDiff};
 use flycheck::FlycheckConfig;
@@ -27,6 +23,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
+use paths::{Utf8Path, Utf8PathBuf};
 use project_model::{
     CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustLibSource,
 };
@@ -327,7 +324,7 @@ config_data! {
         /// These directories will be ignored by rust-analyzer. They are
         /// relative to the workspace root, and globs are not supported. You may
         /// also need to add the folders to Code's `files.watcherExclude`.
-        files_excludeDirs: Vec<PathBuf> = "[]",
+        files_excludeDirs: Vec<Utf8PathBuf> = "[]",
         /// Controls file watching implementation.
         files_watcher: FilesWatcherDef = "\"client\"",
 
@@ -516,7 +513,7 @@ config_data! {
         /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
         procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = "{}",
         /// Internal config, path to proc-macro server executable.
-        procMacro_server: Option<PathBuf>          = "null",
+        procMacro_server: Option<Utf8PathBuf>          = "null",
 
         /// Exclude imports from find-all-references.
         references_excludeImports: bool = "false",
@@ -864,7 +861,7 @@ impl Config {
         }
         let mut errors = Vec::new();
         self.detached_files =
-            get_field::<Vec<PathBuf>>(&mut json, &mut errors, "detachedFiles", None, "[]")
+            get_field::<Vec<Utf8PathBuf>>(&mut json, &mut errors, "detachedFiles", None, "[]")
                 .into_iter()
                 .map(AbsPathBuf::assert)
                 .collect();
@@ -956,7 +953,7 @@ impl Config {
     pub fn has_linked_projects(&self) -> bool {
         !self.data.linkedProjects.is_empty()
     }
-    pub fn linked_manifests(&self) -> impl Iterator<Item = &Path> + '_ {
+    pub fn linked_manifests(&self) -> impl Iterator<Item = &Utf8Path> + '_ {
         self.data.linkedProjects.iter().filter_map(|it| match it {
             ManifestOrProjectJson::Manifest(p) => Some(&**p),
             ManifestOrProjectJson::ProjectJson(_) => None,
@@ -1410,9 +1407,11 @@ impl Config {
         }
     }
 
-    fn target_dir_from_config(&self) -> Option<PathBuf> {
+    fn target_dir_from_config(&self) -> Option<Utf8PathBuf> {
         self.data.cargo_targetDir.as_ref().and_then(|target_dir| match target_dir {
-            TargetDirectory::UseSubdirectory(true) => Some(PathBuf::from("target/rust-analyzer")),
+            TargetDirectory::UseSubdirectory(true) => {
+                Some(Utf8PathBuf::from("target/rust-analyzer"))
+            }
             TargetDirectory::UseSubdirectory(false) => None,
             TargetDirectory::Directory(dir) if dir.is_relative() => Some(dir.clone()),
             TargetDirectory::Directory(_) => None,
@@ -1951,7 +1950,7 @@ where
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 enum ManifestOrProjectJson {
-    Manifest(PathBuf),
+    Manifest(Utf8PathBuf),
     ProjectJson(ProjectJsonData),
 }
 
@@ -2134,7 +2133,7 @@ pub enum MemoryLayoutHoverRenderKindDef {
 #[serde(untagged)]
 pub enum TargetDirectory {
     UseSubdirectory(bool),
-    Directory(PathBuf),
+    Directory(Utf8PathBuf),
 }
 
 macro_rules! _config_data {
@@ -2263,7 +2262,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "array",
             "items": { "type": "string" },
         },
-        "Vec<PathBuf>" => set! {
+        "Vec<Utf8PathBuf>" => set! {
             "type": "array",
             "items": { "type": "string" },
         },
@@ -2291,7 +2290,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         "Option<String>" => set! {
             "type": ["null", "string"],
         },
-        "Option<PathBuf>" => set! {
+        "Option<Utf8PathBuf>" => set! {
             "type": ["null", "string"],
         },
         "Option<bool>" => set! {
@@ -2774,7 +2773,7 @@ mod tests {
             .unwrap();
         assert_eq!(config.data.cargo_targetDir, Some(TargetDirectory::UseSubdirectory(true)));
         assert!(
-            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == Some(PathBuf::from("target/rust-analyzer")))
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == Some(Utf8PathBuf::from("target/rust-analyzer")))
         );
     }
 
@@ -2793,10 +2792,10 @@ mod tests {
             .unwrap();
         assert_eq!(
             config.data.cargo_targetDir,
-            Some(TargetDirectory::Directory(PathBuf::from("other_folder")))
+            Some(TargetDirectory::Directory(Utf8PathBuf::from("other_folder")))
         );
         assert!(
-            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == Some(PathBuf::from("other_folder")))
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == Some(Utf8PathBuf::from("other_folder")))
         );
     }
 }
