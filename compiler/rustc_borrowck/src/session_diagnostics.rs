@@ -304,6 +304,19 @@ pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
     pub param_span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(borrowck_opaque_type_lifetime_mismatch)]
+pub(crate) struct LifetimeMismatchOpaqueParam<'tcx> {
+    pub arg: GenericArg<'tcx>,
+    pub prev: GenericArg<'tcx>,
+    #[primary_span]
+    #[label]
+    #[note]
+    pub span: Span,
+    #[label(borrowck_prev_lifetime_label)]
+    pub prev_span: Span,
+}
+
 #[derive(Subdiagnostic)]
 pub(crate) enum CaptureReasonLabel<'a> {
     #[label(borrowck_moved_due_to_call)]

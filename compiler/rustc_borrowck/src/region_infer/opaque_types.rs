@@ -9,17 +9,77 @@ use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_macros::extension;
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::visit::TypeVisitableExt;
+use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
 
+use crate::session_diagnostics::LifetimeMismatchOpaqueParam;
 use crate::session_diagnostics::NonGenericOpaqueTypeParam;
 
 use super::RegionInferenceContext;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
+    fn universal_name(&self, vid: ty::RegionVid) -> Option<ty::Region<'tcx>> {
+        let scc = self.constraint_sccs.scc(vid);
+        self.scc_values
+            .universal_regions_outlived_by(scc)
+            .find_map(|lb| self.eval_equal(vid, lb).then_some(self.definitions[lb].external_name?))
+    }
+
+    fn generic_arg_to_region(&self, arg: ty::GenericArg<'tcx>) -> Option<RegionVid> {
+        let region = arg.as_region()?;
+
+        if let ty::RePlaceholder(..) = region.kind() {
+            None
+        } else {
+            Some(self.to_region_vid(region))
+        }
+    }
+
+    /// Check that all opaque types have the same region parameters if they have the same
+    /// non-region parameters. This is necessary because within the new solver we perform various query operations
+    /// modulo regions, and thus could unsoundly select some impls that don't hold.
+    fn check_unique(
+        &self,
+        infcx: &InferCtxt<'tcx>,
+        opaque_ty_decls: &FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
+    ) {
+        for (i, (a, a_ty)) in opaque_ty_decls.iter().enumerate() {
+            for (b, b_ty) in opaque_ty_decls.iter().skip(i + 1) {
+                if a.def_id != b.def_id {
+                    continue;
+                }
+                // Non-lifetime params differ -> ok
+                if infcx.tcx.erase_regions(a.args) != infcx.tcx.erase_regions(b.args) {
+                    continue;
+                }
+                trace!(?a, ?b);
+                for (a, b) in a.args.iter().zip(b.args) {
+                    trace!(?a, ?b);
+                    let Some(r1) = self.generic_arg_to_region(a) else {
+                        continue;
+                    };
+                    let Some(r2) = self.generic_arg_to_region(b) else {
+                        continue;
+                    };
+                    if self.eval_equal(r1, r2) {
+                        continue;
+                    }
+
+                    infcx.dcx().emit_err(LifetimeMismatchOpaqueParam {
+                        arg: self.universal_name(r1).unwrap().into(),
+                        prev: self.universal_name(r2).unwrap().into(),
+                        span: a_ty.span,
+                        prev_span: b_ty.span,
+                    });
+                }
+            }
+        }
+    }
+
     /// Resolve any opaque types that were encountered while borrow checking
     /// this item. This is then used to get the type in the `type_of` query.
     ///
@@ -65,6 +125,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'tcx>,
         opaque_ty_decls: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
     ) -> FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> {
+        self.check_unique(infcx, &opaque_ty_decls);
+
         let mut result: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> = FxIndexMap::default();
 
         let member_constraints: FxIndexMap<_, _> = self
@@ -80,26 +142,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             let mut arg_regions = vec![self.universal_regions.fr_static];
 
-            let to_universal_region = |vid, arg_regions: &mut Vec<_>| {
-                trace!(?vid);
-                let scc = self.constraint_sccs.scc(vid);
-                trace!(?scc);
-                match self.scc_values.universal_regions_outlived_by(scc).find_map(|lb| {
-                    self.eval_equal(vid, lb).then_some(self.definitions[lb].external_name?)
-                }) {
-                    Some(region) => {
-                        let vid = self.universal_regions.to_region_vid(region);
-                        arg_regions.push(vid);
-                        region
-                    }
-                    None => {
-                        arg_regions.push(vid);
-                        ty::Region::new_error_with_message(
-                            infcx.tcx,
-                            concrete_type.span,
-                            "opaque type with non-universal region args",
-                        )
-                    }
+            let to_universal_region = |vid, arg_regions: &mut Vec<_>| match self.universal_name(vid)
+            {
+                Some(region) => {
+                    let vid = self.universal_regions.to_region_vid(region);
+                    arg_regions.push(vid);
+                    region
+                }
+                None => {
+                    arg_regions.push(vid);
+                    ty::Region::new_error_with_message(
+                        infcx.tcx,
+                        concrete_type.span,
+                        "opaque type with non-universal region args",
+                    )
                 }
             };
 
