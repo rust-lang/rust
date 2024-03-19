@@ -1,45 +1,45 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/cell.rs:6:1
+  --> $DIR/cell.rs:11:1
    |
 LL | static FOO: Wrap<*mut u32> = Wrap(Cell::new(42).as_ptr());
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered a dangling reference (use-after-free)
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC0╼                         │ ╾──────╼
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/cell.rs:8:1
+  --> $DIR/cell.rs:13:1
    |
 LL | const FOO_CONST: Wrap<*mut u32> = Wrap(Cell::new(42).as_ptr());
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered a dangling reference (use-after-free)
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC1╼                         │ ╾──────╼
-           }
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/cell.rs:22:1
-   |
-LL | const FOO4_CONST: Wrap<*mut u32> = Wrap(FOO3_CONST.0.as_ptr());
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered a dangling reference (use-after-free)
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC2╼                         │ ╾──────╼
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
            }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/cell.rs:27:1
    |
+LL | const FOO4_CONST: Wrap<*mut u32> = Wrap(FOO3_CONST.0.as_ptr());
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered a dangling reference (use-after-free)
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/cell.rs:32:1
+   |
 LL | const FOO2: *mut u32 = Cell::new(42).as_ptr();
    | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (use-after-free)
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC3╼                         │ ╾──────╼
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
            }
 
 error: aborting due to 4 previous errors
