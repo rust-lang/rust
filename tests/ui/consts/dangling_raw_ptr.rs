@@ -22,7 +22,9 @@ const BAZ: Union = { //~ ERROR it is undefined behavior
     Union { ptr: &(&x as *const u32) as *const *const u32 as _ }
 };
 
-fn main() {
-    let x = FOO;
-    let x = BAR;
-}
+const FOOMP: *const u32 = { //~ ERROR it is undefined behavior
+    let x = 42_u32;
+    &(&x as *const u32) as *const *const u32 as _
+};
+
+fn main() {}
