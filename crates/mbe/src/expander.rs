@@ -15,13 +15,12 @@ pub(crate) fn expand_rules(
     rules: &[crate::Rule],
     input: &tt::Subtree<Span>,
     marker: impl Fn(&mut Span) + Copy,
-    is_2021: bool,
     new_meta_vars: bool,
     call_site: Span,
 ) -> ExpandResult<tt::Subtree<Span>> {
     let mut match_: Option<(matcher::Match, &crate::Rule)> = None;
     for rule in rules {
-        let new_match = matcher::match_(&rule.lhs, input, is_2021);
+        let new_match = matcher::match_(&rule.lhs, input);
 
         if new_match.err.is_none() {
             // If we find a rule that applies without errors, we're done.

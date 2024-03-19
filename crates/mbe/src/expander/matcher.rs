@@ -108,8 +108,8 @@ impl Match {
 }
 
 /// Matching errors are added to the `Match`.
-pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree<Span>, is_2021: bool) -> Match {
-    let mut res = match_loop(pattern, input, is_2021);
+pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree<Span>) -> Match {
+    let mut res = match_loop(pattern, input);
     res.bound_count = count(res.bindings.bindings());
     return res;
 
@@ -362,7 +362,6 @@ fn match_loop_inner<'t>(
     next_items: &mut Vec<MatchState<'t>>,
     eof_items: &mut SmallVec<[MatchState<'t>; 1]>,
     error_items: &mut SmallVec<[MatchState<'t>; 1]>,
-    is_2021: bool,
     delim_span: tt::DelimSpan<Span>,
 ) {
     macro_rules! try_push {
@@ -474,7 +473,7 @@ fn match_loop_inner<'t>(
             OpDelimited::Op(Op::Var { kind, name, .. }) => {
                 if let &Some(kind) = kind {
                     let mut fork = src.clone();
-                    let match_res = match_meta_var(kind, &mut fork, is_2021, delim_span);
+                    let match_res = match_meta_var(kind, &mut fork, delim_span);
                     match match_res.err {
                         None => {
                             // Some meta variables are optional (e.g. vis)
@@ -587,7 +586,7 @@ fn match_loop_inner<'t>(
     }
 }
 
-fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree<Span>, is_2021: bool) -> Match {
+fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree<Span>) -> Match {
     let span = src.delimiter.delim_span();
     let mut src = TtIter::new(src);
     let mut stack: SmallVec<[TtIter<'_, Span>; 1]> = SmallVec::new();
@@ -627,7 +626,6 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree<Span>, is_2021: bool) ->
             &mut next_items,
             &mut eof_items,
             &mut error_items,
-            is_2021,
             span,
         );
         stdx::always!(cur_items.is_empty());
@@ -741,7 +739,6 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree<Span>, is_2021: bool) ->
 fn match_meta_var(
     kind: MetaVarKind,
     input: &mut TtIter<'_, Span>,
-    is_2021: bool,
     delim_span: DelimSpan<Span>,
 ) -> ExpandResult<Option<Fragment>> {
     let fragment = match kind {
@@ -751,8 +748,7 @@ fn match_meta_var(
             });
         }
         MetaVarKind::Ty => parser::PrefixEntryPoint::Ty,
-        MetaVarKind::Pat if is_2021 => parser::PrefixEntryPoint::PatTop,
-        MetaVarKind::Pat => parser::PrefixEntryPoint::Pat,
+        MetaVarKind::Pat => parser::PrefixEntryPoint::PatTop,
         MetaVarKind::PatParam => parser::PrefixEntryPoint::Pat,
         MetaVarKind::Stmt => parser::PrefixEntryPoint::Stmt,
         MetaVarKind::Block => parser::PrefixEntryPoint::Block,

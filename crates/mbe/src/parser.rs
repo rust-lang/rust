@@ -2,7 +2,7 @@
 //! trees.
 
 use smallvec::{smallvec, SmallVec};
-use span::Span;
+use span::{Edition, Span, SyntaxContextId};
 use syntax::SmolStr;
 
 use crate::{tt_iter::TtIter, ParseError};
@@ -24,27 +24,36 @@ use crate::{tt_iter::TtIter, ParseError};
 pub(crate) struct MetaTemplate(pub(crate) Box<[Op]>);
 
 impl MetaTemplate {
-    pub(crate) fn parse_pattern(pattern: &tt::Subtree<Span>) -> Result<Self, ParseError> {
-        MetaTemplate::parse(pattern, Mode::Pattern, false)
+    pub(crate) fn parse_pattern(
+        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
+        pattern: &tt::Subtree<Span>,
+    ) -> Result<Self, ParseError> {
+        MetaTemplate::parse(edition, pattern, Mode::Pattern, false)
     }
 
     pub(crate) fn parse_template(
+        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         template: &tt::Subtree<Span>,
         new_meta_vars: bool,
     ) -> Result<Self, ParseError> {
-        MetaTemplate::parse(template, Mode::Template, new_meta_vars)
+        MetaTemplate::parse(edition, template, Mode::Template, new_meta_vars)
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = &Op> {
         self.0.iter()
     }
 
-    fn parse(tt: &tt::Subtree<Span>, mode: Mode, new_meta_vars: bool) -> Result<Self, ParseError> {
+    fn parse(
+        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
+        tt: &tt::Subtree<Span>,
+        mode: Mode,
+        new_meta_vars: bool,
+    ) -> Result<Self, ParseError> {
         let mut src = TtIter::new(tt);
 
         let mut res = Vec::new();
         while let Some(first) = src.peek_n(0) {
-            let op = next_op(first, &mut src, mode, new_meta_vars)?;
+            let op = next_op(edition, first, &mut src, mode, new_meta_vars)?;
             res.push(op);
         }
 
@@ -145,6 +154,7 @@ enum Mode {
 }
 
 fn next_op(
+    edition: impl Copy + Fn(SyntaxContextId) -> Edition,
     first_peeked: &tt::TokenTree<Span>,
     src: &mut TtIter<'_, Span>,
     mode: Mode,
@@ -162,7 +172,7 @@ fn next_op(
                 tt::TokenTree::Subtree(subtree) => match subtree.delimiter.kind {
                     tt::DelimiterKind::Parenthesis => {
                         let (separator, kind) = parse_repeat(src)?;
-                        let tokens = MetaTemplate::parse(subtree, mode, new_meta_vars)?;
+                        let tokens = MetaTemplate::parse(edition, subtree, mode, new_meta_vars)?;
                         Op::Repeat { tokens, separator, kind }
                     }
                     tt::DelimiterKind::Brace => match mode {
@@ -189,13 +199,13 @@ fn next_op(
                         Op::Ident(tt::Ident { text: "$crate".into(), span: ident.span })
                     }
                     tt::Leaf::Ident(ident) => {
-                        let kind = eat_fragment_kind(src, mode)?;
+                        let kind = eat_fragment_kind(edition, src, mode)?;
                         let name = ident.text.clone();
                         let id = ident.span;
                         Op::Var { name, kind, id }
                     }
                     tt::Leaf::Literal(lit) if is_boolean_literal(lit) => {
-                        let kind = eat_fragment_kind(src, mode)?;
+                        let kind = eat_fragment_kind(edition, src, mode)?;
                         let name = lit.text.clone();
                         let id = lit.span;
                         Op::Var { name, kind, id }
@@ -233,7 +243,7 @@ fn next_op(
 
         tt::TokenTree::Subtree(subtree) => {
             src.next().expect("first token already peeked");
-            let tokens = MetaTemplate::parse(subtree, mode, new_meta_vars)?;
+            let tokens = MetaTemplate::parse(edition, subtree, mode, new_meta_vars)?;
             Op::Subtree { tokens, delimiter: subtree.delimiter }
         }
     };
@@ -241,6 +251,7 @@ fn next_op(
 }
 
 fn eat_fragment_kind(
+    edition: impl Copy + Fn(SyntaxContextId) -> Edition,
     src: &mut TtIter<'_, Span>,
     mode: Mode,
 ) -> Result<Option<MetaVarKind>, ParseError> {
@@ -252,7 +263,10 @@ fn eat_fragment_kind(
         let kind = match ident.text.as_str() {
             "path" => MetaVarKind::Path,
             "ty" => MetaVarKind::Ty,
-            "pat" => MetaVarKind::Pat,
+            "pat" => match edition(ident.span.ctx) {
+                Edition::Edition2015 | Edition::Edition2018 => MetaVarKind::PatParam,
+                Edition::Edition2021 | Edition::Edition2024 => MetaVarKind::Pat,
+            },
             "pat_param" => MetaVarKind::PatParam,
             "stmt" => MetaVarKind::Stmt,
             "block" => MetaVarKind::Block,

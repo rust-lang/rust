@@ -17,7 +17,7 @@ mod tt_iter;
 #[cfg(test)]
 mod benchmark;
 
-use span::Span;
+use span::{Edition, Span, SyntaxContextId};
 use stdx::impl_from;
 
 use std::fmt;
@@ -129,9 +129,6 @@ impl fmt::Display for CountError {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeclarativeMacro {
     rules: Box<[Rule]>,
-    // This is used for correctly determining the behavior of the pat fragment
-    // FIXME: This should be tracked by hygiene of the fragment identifier!
-    is_2021: bool,
     err: Option<Box<ParseError>>,
 }
 
@@ -142,14 +139,14 @@ struct Rule {
 }
 
 impl DeclarativeMacro {
-    pub fn from_err(err: ParseError, is_2021: bool) -> DeclarativeMacro {
-        DeclarativeMacro { rules: Box::default(), is_2021, err: Some(Box::new(err)) }
+    pub fn from_err(err: ParseError) -> DeclarativeMacro {
+        DeclarativeMacro { rules: Box::default(), err: Some(Box::new(err)) }
     }
 
     /// The old, `macro_rules! m {}` flavor.
     pub fn parse_macro_rules(
         tt: &tt::Subtree<Span>,
-        is_2021: bool,
+        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         // FIXME: Remove this once we drop support for rust 1.76 (defaults to true then)
         new_meta_vars: bool,
     ) -> DeclarativeMacro {
@@ -161,7 +158,7 @@ impl DeclarativeMacro {
         let mut err = None;
 
         while src.len() > 0 {
-            let rule = match Rule::parse(&mut src, true, new_meta_vars) {
+            let rule = match Rule::parse(edition, &mut src, true, new_meta_vars) {
                 Ok(it) => it,
                 Err(e) => {
                     err = Some(Box::new(e));
@@ -184,13 +181,13 @@ impl DeclarativeMacro {
             }
         }
 
-        DeclarativeMacro { rules: rules.into_boxed_slice(), is_2021, err }
+        DeclarativeMacro { rules: rules.into_boxed_slice(), err }
     }
 
     /// The new, unstable `macro m {}` flavor.
     pub fn parse_macro2(
         tt: &tt::Subtree<Span>,
-        is_2021: bool,
+        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         // FIXME: Remove this once we drop support for rust 1.76 (defaults to true then)
         new_meta_vars: bool,
     ) -> DeclarativeMacro {
@@ -201,7 +198,7 @@ impl DeclarativeMacro {
         if tt::DelimiterKind::Brace == tt.delimiter.kind {
             cov_mark::hit!(parse_macro_def_rules);
             while src.len() > 0 {
-                let rule = match Rule::parse(&mut src, true, new_meta_vars) {
+                let rule = match Rule::parse(edition, &mut src, true, new_meta_vars) {
                     Ok(it) => it,
                     Err(e) => {
                         err = Some(Box::new(e));
@@ -220,7 +217,7 @@ impl DeclarativeMacro {
             }
         } else {
             cov_mark::hit!(parse_macro_def_simple);
-            match Rule::parse(&mut src, false, new_meta_vars) {
+            match Rule::parse(edition, &mut src, false, new_meta_vars) {
                 Ok(rule) => {
                     if src.len() != 0 {
                         err = Some(Box::new(ParseError::expected("remaining tokens in macro def")));
@@ -240,7 +237,7 @@ impl DeclarativeMacro {
             }
         }
 
-        DeclarativeMacro { rules: rules.into_boxed_slice(), is_2021, err }
+        DeclarativeMacro { rules: rules.into_boxed_slice(), err }
     }
 
     pub fn err(&self) -> Option<&ParseError> {
@@ -254,12 +251,13 @@ impl DeclarativeMacro {
         new_meta_vars: bool,
         call_site: Span,
     ) -> ExpandResult<tt::Subtree<Span>> {
-        expander::expand_rules(&self.rules, tt, marker, self.is_2021, new_meta_vars, call_site)
+        expander::expand_rules(&self.rules, tt, marker, new_meta_vars, call_site)
     }
 }
 
 impl Rule {
     fn parse(
+        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         src: &mut TtIter<'_, Span>,
         expect_arrow: bool,
         new_meta_vars: bool,
@@ -271,8 +269,8 @@ impl Rule {
         }
         let rhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
 
-        let lhs = MetaTemplate::parse_pattern(lhs)?;
-        let rhs = MetaTemplate::parse_template(rhs, new_meta_vars)?;
+        let lhs = MetaTemplate::parse_pattern(edition, lhs)?;
+        let rhs = MetaTemplate::parse_template(edition, rhs, new_meta_vars)?;
 
         Ok(crate::Rule { lhs, rhs })
     }

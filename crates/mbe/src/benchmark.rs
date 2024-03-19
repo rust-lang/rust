@@ -23,7 +23,11 @@ fn benchmark_parse_macro_rules() {
         let _pt = bench("mbe parse macro rules");
         rules
             .values()
-            .map(|it| DeclarativeMacro::parse_macro_rules(it, true, true).rules.len())
+            .map(|it| {
+                DeclarativeMacro::parse_macro_rules(it, |_| span::Edition::CURRENT, true)
+                    .rules
+                    .len()
+            })
             .sum()
     };
     assert_eq!(hash, 1144);
@@ -54,7 +58,9 @@ fn benchmark_expand_macro_rules() {
 fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro> {
     macro_rules_fixtures_tt()
         .into_iter()
-        .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt, true, true)))
+        .map(|(id, tt)| {
+            (id, DeclarativeMacro::parse_macro_rules(&tt, |_| span::Edition::CURRENT, true))
+        })
         .collect()
 }
 
