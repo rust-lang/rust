@@ -1,11 +1,10 @@
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, HirId};
-use rustc_index::IndexVec;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt, TyCtxtFeed};
+use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_span::symbol::kw;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -238,26 +237,6 @@ fn associated_types_for_impl_traits_in_associated_fn(
     }
 }
 
-fn feed_hir(feed: &TyCtxtFeed<'_, LocalDefId>) {
-    feed.local_def_id_to_hir_id(HirId::make_owner(feed.def_id()));
-
-    let node = hir::OwnerNode::Synthetic;
-    let bodies = Default::default();
-    let attrs = hir::AttributeMap::EMPTY;
-
-    let (opt_hash_including_bodies, _) = feed.tcx.hash_owner_nodes(node, &bodies, &attrs.map);
-    let node = node.into();
-    feed.opt_hir_owner_nodes(Some(feed.tcx.arena.alloc(hir::OwnerNodes {
-        opt_hash_including_bodies,
-        nodes: IndexVec::from_elem_n(
-            hir::ParentedNode { parent: hir::ItemLocalId::INVALID, node },
-            1,
-        ),
-        bodies,
-    })));
-    feed.feed_owner_id().hir_attrs(attrs);
-}
-
 /// Given an `opaque_ty_def_id` corresponding to an `impl Trait` in an associated
 /// function from a trait, synthesize an associated type for that `impl Trait`
 /// that inherits properties that we infer from the method and the opaque type.
@@ -279,7 +258,7 @@ fn associated_type_for_impl_trait_in_trait(
     let local_def_id = trait_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
 
-    feed_hir(&trait_assoc_ty);
+    trait_assoc_ty.feed_hir();
 
     // Copy span of the opaque.
     trait_assoc_ty.def_ident_span(Some(span));
@@ -333,7 +312,7 @@ fn associated_type_for_impl_trait_in_impl(
     let local_def_id = impl_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
 
-    feed_hir(&impl_assoc_ty);
+    impl_assoc_ty.feed_hir();
 
     // Copy span of the opaque.
     impl_assoc_ty.def_ident_span(Some(span));
