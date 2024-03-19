@@ -63,6 +63,7 @@ pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
 ) -> bool {
     !instance.def_id().is_local()
         && tcx.is_compiler_builtins(LOCAL_CRATE)
+        && tcx.codegen_fn_attrs(instance.def_id()).link_name.is_none()
         && !should_codegen_locally(tcx, &instance)
 }
 
