@@ -23,6 +23,7 @@ mod tests {
         },
         DiagnosticsConfig,
     };
+    use test_utils::skip_slow_tests;
 
     #[track_caller]
     fn check_diagnostics_no_bails(ra_fixture: &str) {
@@ -1006,9 +1007,12 @@ fn f() {
 
     #[test]
     fn exponential_match() {
+        if skip_slow_tests() {
+            return;
+        }
         // Constructs a match where match checking takes exponential time. Ensures we bail early.
         use std::fmt::Write;
-        let struct_arity = 30;
+        let struct_arity = 50;
         let mut code = String::new();
         write!(code, "struct BigStruct {{").unwrap();
         for i in 0..struct_arity {
