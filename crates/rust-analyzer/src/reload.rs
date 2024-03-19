@@ -528,21 +528,11 @@ impl GlobalState {
         let (crate_graph, proc_macro_paths, layouts, toolchains) = {
             // Create crate graph from all the workspaces
             let vfs = &mut self.vfs.write().0;
-            let loader = &mut self.loader;
 
             let load = |path: &AbsPath| {
-                let _p = tracing::span!(tracing::Level::DEBUG, "switch_workspaces::load").entered();
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 crate_graph_file_dependencies.insert(vfs_path.clone());
-                match vfs.file_id(&vfs_path) {
-                    Some(file_id) => Some(file_id),
-                    None => {
-                        // FIXME: Consider not loading this here?
-                        let contents = loader.handle.load_sync(path);
-                        vfs.set_file_contents(vfs_path.clone(), contents);
-                        vfs.file_id(&vfs_path)
-                    }
-                }
+                vfs.file_id(&vfs_path)
             };
 
             ws_to_crate_graph(&self.workspaces, self.config.extra_env(), load)
