@@ -36,6 +36,7 @@ impl HeadersCache {
 #[derive(Default)]
 pub struct EarlyProps {
     pub aux: Vec<String>,
+    pub aux_bin: Vec<String>,
     pub aux_crate: Vec<(String, String)>,
     pub revisions: Vec<String>,
 }
@@ -59,6 +60,12 @@ impl EarlyProps {
                 config.push_name_value_directive(ln, directives::AUX_BUILD, &mut props.aux, |r| {
                     r.trim().to_string()
                 });
+                config.push_name_value_directive(
+                    ln,
+                    directives::AUX_BIN,
+                    &mut props.aux_bin,
+                    |r| r.trim().to_string(),
+                );
                 config.push_name_value_directive(
                     ln,
                     directives::AUX_CRATE,
@@ -95,6 +102,8 @@ pub struct TestProps {
     // directory as the test, but for backwards compatibility reasons
     // we also check the auxiliary directory)
     pub aux_builds: Vec<String>,
+    // Auxiliary crates that should be compiled as `#![crate_type = "bin"]`.
+    pub aux_bins: Vec<String>,
     // Similar to `aux_builds`, but a list of NAME=somelib.rs of dependencies
     // to build and pass with the `--extern` flag.
     pub aux_crates: Vec<(String, String)>,
@@ -217,6 +226,7 @@ mod directives {
     pub const PRETTY_EXPANDED: &'static str = "pretty-expanded";
     pub const PRETTY_MODE: &'static str = "pretty-mode";
     pub const PRETTY_COMPARE_ONLY: &'static str = "pretty-compare-only";
+    pub const AUX_BIN: &'static str = "aux-bin";
     pub const AUX_BUILD: &'static str = "aux-build";
     pub const AUX_CRATE: &'static str = "aux-crate";
     pub const EXEC_ENV: &'static str = "exec-env";
@@ -252,6 +262,7 @@ impl TestProps {
             run_flags: None,
             pp_exact: None,
             aux_builds: vec![],
+            aux_bins: vec![],
             aux_crates: vec![],
             revisions: vec![],
             rustc_env: vec![("RUSTC_ICE".to_string(), "0".to_string())],
@@ -415,6 +426,9 @@ impl TestProps {
                         &mut self.pretty_compare_only,
                     );
                     config.push_name_value_directive(ln, AUX_BUILD, &mut self.aux_builds, |r| {
+                        r.trim().to_string()
+                    });
+                    config.push_name_value_directive(ln, AUX_BIN, &mut self.aux_bins, |r| {
                         r.trim().to_string()
                     });
                     config.push_name_value_directive(
@@ -683,6 +697,7 @@ pub fn line_directive<'line>(
 const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     // tidy-alphabetical-start
     "assembly-output",
+    "aux-bin",
     "aux-build",
     "aux-crate",
     "build-aux-docs",
