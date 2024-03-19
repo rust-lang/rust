@@ -3,37 +3,45 @@
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
 //! wrappers around `SyntaxNode` which implement `syntax::AstNode`.
 
-use std::{collections::BTreeSet, fmt::Write};
+#![allow(clippy::disallowed_types)]
+
+use std::{
+    collections::{BTreeSet, HashSet},
+    fmt::Write,
+    fs,
+};
 
 use itertools::Itertools;
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
-use rustc_hash::FxHashSet;
 use ungrammar::{Grammar, Rule};
 
-use crate::tests::ast_src::{
-    AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC,
+use crate::{
+    codegen::{add_preamble, ensure_file_contents, reformat},
+    project_root,
 };
 
-#[test]
-fn sourcegen_ast() {
-    let syntax_kinds = generate_syntax_kinds(KINDS_SRC);
-    let syntax_kinds_file =
-        sourcegen::project_root().join("crates/parser/src/syntax_kind/generated.rs");
-    sourcegen::ensure_file_contents(syntax_kinds_file.as_path(), &syntax_kinds);
+mod ast_src;
+use self::ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC};
 
-    let grammar =
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/rust.ungram")).parse().unwrap();
+pub(crate) fn generate(check: bool) {
+    let syntax_kinds = generate_syntax_kinds(KINDS_SRC);
+    let syntax_kinds_file = project_root().join("crates/parser/src/syntax_kind/generated.rs");
+    ensure_file_contents(syntax_kinds_file.as_path(), &syntax_kinds, check);
+
+    let grammar = fs::read_to_string(project_root().join("crates/syntax/rust.ungram"))
+        .unwrap()
+        .parse()
+        .unwrap();
     let ast = lower(&grammar);
 
     let ast_tokens = generate_tokens(&ast);
-    let ast_tokens_file =
-        sourcegen::project_root().join("crates/syntax/src/ast/generated/tokens.rs");
-    sourcegen::ensure_file_contents(ast_tokens_file.as_path(), &ast_tokens);
+    let ast_tokens_file = project_root().join("crates/syntax/src/ast/generated/tokens.rs");
+    ensure_file_contents(ast_tokens_file.as_path(), &ast_tokens, check);
 
     let ast_nodes = generate_nodes(KINDS_SRC, &ast);
-    let ast_nodes_file = sourcegen::project_root().join("crates/syntax/src/ast/generated/nodes.rs");
-    sourcegen::ensure_file_contents(ast_nodes_file.as_path(), &ast_nodes);
+    let ast_nodes_file = project_root().join("crates/syntax/src/ast/generated/nodes.rs");
+    ensure_file_contents(ast_nodes_file.as_path(), &ast_nodes, check);
 }
 
 fn generate_tokens(grammar: &AstSrc) -> String {
@@ -60,9 +68,9 @@ fn generate_tokens(grammar: &AstSrc) -> String {
         }
     });
 
-    sourcegen::add_preamble(
+    add_preamble(
         "sourcegen_ast",
-        sourcegen::reformat(
+        reformat(
             quote! {
                 use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
                 #(#tokens)*
@@ -77,7 +85,6 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
     let (node_defs, node_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .nodes
         .iter()
-        .sorted_by_key(|it| it.name.clone())
         .map(|node| {
             let name = format_ident!("{}", node.name);
             let kind = format_ident!("{}", to_upper_snake_case(&node.name));
@@ -89,13 +96,12 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                     node.name != "ForExpr" && node.name != "WhileExpr"
                         || trait_name.as_str() != "HasLoopBody"
                 })
-                .sorted()
                 .map(|trait_name| {
                     let trait_name = format_ident!("{}", trait_name);
                     quote!(impl ast::#trait_name for #name {})
                 });
 
-            let methods = node.fields.iter().sorted_by_key(|it| it.method_name()).map(|field| {
+            let methods = node.fields.iter().map(|field| {
                 let method_name = field.method_name();
                 let ty = field.ty();
 
@@ -151,7 +157,6 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
     let (enum_defs, enum_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .enums
         .iter()
-        .sorted_by_key(|it| it.name.clone())
         .map(|en| {
             let variants: Vec<_> =
                 en.variants.iter().map(|var| format_ident!("{}", var)).sorted().collect();
@@ -216,14 +221,13 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
             )
         })
         .unzip();
-
     let (any_node_defs, any_node_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .nodes
         .iter()
         .flat_map(|node| node.traits.iter().map(move |t| (t, node)))
         .into_group_map()
         .into_iter()
-        .sorted_by_key(|(k, _)| *k)
+        .sorted_by_key(|(name, _)| *name)
         .map(|(trait_name, nodes)| {
             let name = format_ident!("Any{}", trait_name);
             let trait_name = format_ident!("{}", trait_name);
@@ -270,19 +274,17 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
     let node_names = grammar.nodes.iter().map(|it| &it.name);
 
     let display_impls =
-        enum_names.chain(node_names.clone()).map(|it| format_ident!("{}", it)).sorted().map(
-            |name| {
-                quote! {
-                    impl std::fmt::Display for #name {
-                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                            std::fmt::Display::fmt(self.syntax(), f)
-                        }
+        enum_names.chain(node_names.clone()).map(|it| format_ident!("{}", it)).map(|name| {
+            quote! {
+                impl std::fmt::Display for #name {
+                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                        std::fmt::Display::fmt(self.syntax(), f)
                     }
                 }
-            },
-        );
+            }
+        });
 
-    let defined_nodes: FxHashSet<_> = node_names.collect();
+    let defined_nodes: HashSet<_> = node_names.collect();
 
     for node in kinds
         .nodes
@@ -326,7 +328,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
         }
     }
 
-    let res = sourcegen::add_preamble("sourcegen_ast", sourcegen::reformat(res));
+    let res = add_preamble("sourcegen_ast", reformat(res));
     res.replace("#[derive", "\n#[derive")
 }
 
@@ -456,7 +458,7 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
         }
     };
 
-    sourcegen::add_preamble("sourcegen_ast", sourcegen::reformat(ast.to_string()))
+    add_preamble("sourcegen_ast", reformat(ast.to_string()))
 }
 
 fn to_upper_snake_case(s: &str) -> String {
@@ -606,6 +608,20 @@ fn lower(grammar: &Grammar) -> AstSrc {
     extract_enums(&mut res);
     extract_struct_traits(&mut res);
     extract_enum_traits(&mut res);
+    res.nodes.sort_by_key(|it| it.name.clone());
+    res.enums.sort_by_key(|it| it.name.clone());
+    res.tokens.sort();
+    res.nodes.iter_mut().for_each(|it| {
+        it.traits.sort();
+        it.fields.sort_by_key(|it| match it {
+            Field::Token(name) => (true, name.clone()),
+            Field::Node { name, .. } => (false, name.clone()),
+        });
+    });
+    res.enums.iter_mut().for_each(|it| {
+        it.traits.sort();
+        it.variants.sort();
+    });
     res
 }
 

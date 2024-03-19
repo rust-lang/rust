@@ -1869,20 +1869,16 @@ dependencies = [
  "itertools",
  "once_cell",
  "parser",
- "proc-macro2",
- "quote",
  "ra-ap-rustc_lexer",
  "rayon",
  "rowan",
  "rustc-hash",
  "smol_str",
- "sourcegen",
  "stdx",
  "test-utils",
  "text-edit",
  "tracing",
  "triomphe",
- "ungrammar",
 ]
 
 [[package]]
@@ -2438,8 +2434,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "flate2",
+ "itertools",
+ "proc-macro2",
+ "quote",
  "stdx",
  "time",
+ "ungrammar",
  "write-json",
  "xflags",
  "xshell",

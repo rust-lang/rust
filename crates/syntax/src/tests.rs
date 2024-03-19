@@ -1,8 +1,3 @@
-#[cfg(not(feature = "in-rust-tree"))]
-mod ast_src;
-#[cfg(not(feature = "in-rust-tree"))]
-mod sourcegen_ast;
-
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -82,7 +77,25 @@ fn reparse_fuzz_tests() {
 fn self_hosting_parsing() {
     let crates_dir = project_root().join("crates");
 
-    let mut files = ::sourcegen::list_rust_files(&crates_dir);
+    let mut files = Vec::new();
+    let mut work = vec![crates_dir.to_path_buf()];
+    while let Some(dir) = work.pop() {
+        for entry in dir.read_dir().unwrap() {
+            let entry = entry.unwrap();
+            let file_type = entry.file_type().unwrap();
+            let path = entry.path();
+            let file_name = &path.file_name().unwrap_or_default().to_str().unwrap_or_default();
+            let is_hidden = file_name.starts_with('.');
+            if !is_hidden {
+                if file_type.is_dir() {
+                    work.push(path);
+                } else if file_type.is_file() && file_name.ends_with(".rs") {
+                    files.push(path);
+                }
+            }
+        }
+    }
+
     files.retain(|path| {
         // Get all files which are not in the crates/syntax/test_data folder
         !path.components().any(|component| component.as_os_str() == "test_data")

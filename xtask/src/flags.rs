@@ -91,6 +91,7 @@ pub struct Codegen {
 pub enum CodegenType {
     #[default]
     All,
+    Grammar,
     AssistsDocTests,
     DiagnosticsDocs,
     LintDefinitions,
@@ -101,6 +102,7 @@ impl FromStr for CodegenType {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "all" => Ok(Self::All),
+            "grammar" => Ok(Self::Grammar),
             "assists-doc-tests" => Ok(Self::AssistsDocTests),
             "diagnostics-docs" => Ok(Self::DiagnosticsDocs),
             "lints-definitions" => Ok(Self::LintDefinitions),

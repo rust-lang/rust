@@ -32,4 +32,5 @@ jobs:
           git config --global user.name "GitHub Action"
           # Remove r-a crates from the workspaces so we don't auto-publish them as well
           sed -i 's/ "crates\/\*"//' ./Cargo.toml
+          sed -i 's/ "xtask\/"//' ./Cargo.toml
           cargo workspaces publish --yes --exact --from-git --no-git-commit --allow-dirty

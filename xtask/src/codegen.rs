@@ -9,6 +9,7 @@ use crate::{flags, project_root};
 
 pub(crate) mod assists_doc_tests;
 pub(crate) mod diagnostics_docs;
+mod grammar;
 mod lints;
 
 impl flags::Codegen {
@@ -20,6 +21,7 @@ impl flags::Codegen {
                 // lints::generate(self.check) Updating clones the rust repo, so don't run it unless
                 // explicitly asked for
             }
+            flags::CodegenType::Grammar => grammar::generate(self.check),
             flags::CodegenType::AssistsDocTests => assists_doc_tests::generate(self.check),
             flags::CodegenType::DiagnosticsDocs => diagnostics_docs::generate(self.check),
             flags::CodegenType::LintDefinitions => lints::generate(self.check),
