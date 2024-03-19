@@ -42,7 +42,7 @@ use crate::ascii;
 use crate::error::Error;
 use crate::escape;
 use crate::fmt::{self, Write};
-use crate::iter::FusedIterator;
+use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::num::NonZero;
 
 pub(crate) use self::methods::EscapeDebugExtArgs;
@@ -373,176 +373,229 @@ impl fmt::Display for EscapeDebug {
     }
 }
 
-/// Returns an iterator that yields the lowercase equivalent of a `char`.
-///
-/// This `struct` is created by the [`to_lowercase`] method on [`char`]. See
-/// its documentation for more.
-///
-/// [`to_lowercase`]: char::to_lowercase
-#[stable(feature = "rust1", since = "1.0.0")]
+macro_rules! casemappingiter_impls {
+    ($(#[$attr:meta])* $ITER_NAME:ident) => {
+        $(#[$attr])*
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[derive(Debug, Clone)]
+        pub struct $ITER_NAME(CaseMappingIter);
+
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Iterator for $ITER_NAME {
+            type Item = char;
+            fn next(&mut self) -> Option<char> {
+                self.0.next()
+            }
+
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                self.0.size_hint()
+            }
+
+            fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+            where
+                Fold: FnMut(Acc, Self::Item) -> Acc,
+            {
+                self.0.fold(init, fold)
+            }
+
+            fn count(self) -> usize {
+                self.0.count()
+            }
+
+            fn last(self) -> Option<Self::Item> {
+                self.0.last()
+            }
+
+            fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+                self.0.advance_by(n)
+            }
+
+            unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
+                // SAFETY: just forwarding requirements to caller
+                unsafe { self.0.__iterator_get_unchecked(idx) }
+            }
+        }
+
+        #[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
+        impl DoubleEndedIterator for $ITER_NAME {
+            fn next_back(&mut self) -> Option<char> {
+                self.0.next_back()
+            }
+
+            fn rfold<Acc, Fold>(self, init: Acc, rfold: Fold) -> Acc
+            where
+                Fold: FnMut(Acc, Self::Item) -> Acc,
+            {
+                self.0.rfold(init, rfold)
+            }
+
+            fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+                self.0.advance_back_by(n)
+            }
+        }
+
+        #[stable(feature = "fused", since = "1.26.0")]
+        impl FusedIterator for $ITER_NAME {}
+
+        #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
+        impl ExactSizeIterator for $ITER_NAME {
+            fn len(&self) -> usize {
+                self.0.len()
+            }
+
+            fn is_empty(&self) -> bool {
+                self.0.is_empty()
+            }
+        }
+
+        // SAFETY: forwards to inner `array::IntoIter`
+        #[unstable(feature = "trusted_len", issue = "37572")]
+        unsafe impl TrustedLen for $ITER_NAME {}
+
+        // SAFETY: forwards to inner `array::IntoIter`
+        #[doc(hidden)]
+        #[unstable(feature = "std_internals", issue = "none")]
+        unsafe impl TrustedRandomAccessNoCoerce for $ITER_NAME {
+            const MAY_HAVE_SIDE_EFFECT: bool = false;
+        }
+
+        // SAFETY: this iter has no subtypes/supertypes
+        #[doc(hidden)]
+        #[unstable(feature = "std_internals", issue = "none")]
+        unsafe impl TrustedRandomAccess for $ITER_NAME {}
+
+        #[stable(feature = "char_struct_display", since = "1.16.0")]
+        impl fmt::Display for $ITER_NAME {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(&self.0, f)
+            }
+        }
+    }
+}
+
+casemappingiter_impls! {
+    /// Returns an iterator that yields the lowercase equivalent of a `char`.
+    ///
+    /// This `struct` is created by the [`to_lowercase`] method on [`char`]. See
+    /// its documentation for more.
+    ///
+    /// [`to_lowercase`]: char::to_lowercase
+    ToLowercase
+}
+
+casemappingiter_impls! {
+    /// Returns an iterator that yields the uppercase equivalent of a `char`.
+    ///
+    /// This `struct` is created by the [`to_uppercase`] method on [`char`]. See
+    /// its documentation for more.
+    ///
+    /// [`to_uppercase`]: char::to_uppercase
+    ToUppercase
+}
+
 #[derive(Debug, Clone)]
-pub struct ToLowercase(CaseMappingIter);
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Iterator for ToLowercase {
-    type Item = char;
-    fn next(&mut self) -> Option<char> {
-        self.0.next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
-}
-
-#[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
-impl DoubleEndedIterator for ToLowercase {
-    fn next_back(&mut self) -> Option<char> {
-        self.0.next_back()
-    }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl FusedIterator for ToLowercase {}
-
-#[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
-impl ExactSizeIterator for ToLowercase {}
-
-/// Returns an iterator that yields the uppercase equivalent of a `char`.
-///
-/// This `struct` is created by the [`to_uppercase`] method on [`char`]. See
-/// its documentation for more.
-///
-/// [`to_uppercase`]: char::to_uppercase
-#[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug, Clone)]
-pub struct ToUppercase(CaseMappingIter);
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Iterator for ToUppercase {
-    type Item = char;
-    fn next(&mut self) -> Option<char> {
-        self.0.next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
-}
-
-#[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
-impl DoubleEndedIterator for ToUppercase {
-    fn next_back(&mut self) -> Option<char> {
-        self.0.next_back()
-    }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl FusedIterator for ToUppercase {}
-
-#[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
-impl ExactSizeIterator for ToUppercase {}
-
-#[derive(Debug, Clone)]
-enum CaseMappingIter {
-    Zero,
-    One(char),
-    Two([char; 2]),
-    Three([char; 3]),
-}
+struct CaseMappingIter(core::array::IntoIter<char, 3>);
 
 impl CaseMappingIter {
+    #[inline]
     fn new(chars: [char; 3]) -> CaseMappingIter {
+        let mut iter = chars.into_iter();
         if chars[2] == '\0' {
+            iter.next_back();
             if chars[1] == '\0' {
-                CaseMappingIter::One(chars[0]) // Including if chars[0] == '\0'
-            } else {
-                CaseMappingIter::Two([chars[0], chars[1]])
+                iter.next_back();
+
+                // Deliberately don't check `chars[0]`,
+                // as '\0' lowercases to itself
             }
-        } else {
-            CaseMappingIter::Three([chars[0], chars[1], chars[2]])
         }
+        CaseMappingIter(iter)
     }
 }
 
 impl Iterator for CaseMappingIter {
     type Item = char;
+
     fn next(&mut self) -> Option<char> {
-        match *self {
-            CaseMappingIter::Zero => None,
-            CaseMappingIter::One(c) => {
-                *self = CaseMappingIter::Zero;
-                Some(c)
-            }
-            CaseMappingIter::Two([b, c]) => {
-                *self = CaseMappingIter::One(c);
-                Some(b)
-            }
-            CaseMappingIter::Three([a, b, c]) => {
-                *self = CaseMappingIter::Two([b, c]);
-                Some(a)
-            }
-        }
+        self.0.next()
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = match self {
-            CaseMappingIter::Zero => 0,
-            CaseMappingIter::One(_) => 1,
-            CaseMappingIter::Two(..) => 2,
-            CaseMappingIter::Three(..) => 3,
-        };
-        (size, Some(size))
+        self.0.size_hint()
+    }
+
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.0.fold(init, fold)
+    }
+
+    fn count(self) -> usize {
+        self.0.count()
+    }
+
+    fn last(self) -> Option<Self::Item> {
+        self.0.last()
+    }
+
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        self.0.advance_by(n)
+    }
+
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
+        // SAFETY: just forwarding requirements to caller
+        unsafe { self.0.__iterator_get_unchecked(idx) }
     }
 }
 
 impl DoubleEndedIterator for CaseMappingIter {
     fn next_back(&mut self) -> Option<char> {
-        match *self {
-            CaseMappingIter::Zero => None,
-            CaseMappingIter::One(c) => {
-                *self = CaseMappingIter::Zero;
-                Some(c)
-            }
-            CaseMappingIter::Two([b, c]) => {
-                *self = CaseMappingIter::One(b);
-                Some(c)
-            }
-            CaseMappingIter::Three([a, b, c]) => {
-                *self = CaseMappingIter::Two([a, b]);
-                Some(c)
-            }
-        }
+        self.0.next_back()
+    }
+
+    fn rfold<Acc, Fold>(self, init: Acc, rfold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.0.rfold(init, rfold)
+    }
+
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        self.0.advance_back_by(n)
     }
 }
+
+impl ExactSizeIterator for CaseMappingIter {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl FusedIterator for CaseMappingIter {}
+
+// SAFETY: forwards to inner `array::IntoIter`
+unsafe impl TrustedLen for CaseMappingIter {}
+
+// SAFETY: forwards to inner `array::IntoIter`
+unsafe impl TrustedRandomAccessNoCoerce for CaseMappingIter {
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
+}
+
+// SAFETY: `CaseMappingIter` has no subtypes/supertypes
+unsafe impl TrustedRandomAccess for CaseMappingIter {}
 
 impl fmt::Display for CaseMappingIter {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            CaseMappingIter::Zero => Ok(()),
-            CaseMappingIter::One(c) => f.write_char(c),
-            CaseMappingIter::Two([b, c]) => {
-                f.write_char(b)?;
-                f.write_char(c)
-            }
-            CaseMappingIter::Three([a, b, c]) => {
-                f.write_char(a)?;
-                f.write_char(b)?;
-                f.write_char(c)
-            }
+        for c in self.0.clone() {
+            f.write_char(c)?;
         }
-    }
-}
-
-#[stable(feature = "char_struct_display", since = "1.16.0")]
-impl fmt::Display for ToLowercase {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
-
-#[stable(feature = "char_struct_display", since = "1.16.0")]
-impl fmt::Display for ToUppercase {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
+        Ok(())
     }
 }
 
