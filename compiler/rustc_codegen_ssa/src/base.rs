@@ -573,6 +573,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> OngoingCodegen<B> {
+    // Run the monomorphization collector and partition the collected items into
+    // codegen units.
+    let codegen_units = tcx.collect_and_partition_mono_items(()).1;
+
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
         let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None);
@@ -585,10 +589,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     }
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
-
-    // Run the monomorphization collector and partition the collected items into
-    // codegen units.
-    let codegen_units = tcx.collect_and_partition_mono_items(()).1;
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
