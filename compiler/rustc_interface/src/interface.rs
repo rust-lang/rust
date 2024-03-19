@@ -48,6 +48,7 @@ pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
             let psess = ParseSess::with_silent_emitter(
                 vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
                 format!("this error occurred on the command line: `--cfg={s}`"),
+                true,
             );
             let filename = FileName::cfg_spec_source_code(&s);
 
@@ -111,6 +112,7 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
         let psess = ParseSess::with_silent_emitter(
             vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
             format!("this error occurred on the command line: `--check-cfg={s}`"),
+            true,
         );
         let filename = FileName::cfg_spec_source_code(&s);
 

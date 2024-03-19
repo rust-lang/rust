@@ -269,7 +269,11 @@ impl ParseSess {
         }
     }
 
-    pub fn with_silent_emitter(locale_resources: Vec<&'static str>, fatal_note: String) -> Self {
+    pub fn with_silent_emitter(
+        locale_resources: Vec<&'static str>,
+        fatal_note: String,
+        emit_fatal_diagnostic: bool,
+    ) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let emitter = Box::new(HumanEmitter::new(
@@ -281,6 +285,7 @@ impl ParseSess {
             fallback_bundle,
             fatal_dcx,
             fatal_note: Some(fatal_note),
+            emit_fatal_diagnostic,
         }))
         .disable_warnings();
         ParseSess::with_dcx(dcx, sm)

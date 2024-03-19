@@ -613,12 +613,18 @@ impl DiagCtxt {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
 
-    pub fn make_silent(&mut self, fallback_bundle: LazyFallbackBundle, fatal_note: Option<String>) {
+    pub fn make_silent(
+        &mut self,
+        fallback_bundle: LazyFallbackBundle,
+        fatal_note: Option<String>,
+        emit_fatal_diagnostic: bool,
+    ) {
         self.wrap_emitter(|old_dcx| {
             Box::new(emitter::SilentEmitter {
                 fallback_bundle,
                 fatal_dcx: DiagCtxt { inner: Lock::new(old_dcx) },
                 fatal_note,
+                emit_fatal_diagnostic,
             })
         });
     }

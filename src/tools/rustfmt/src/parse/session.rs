@@ -121,6 +121,7 @@ fn default_dcx(
             fallback_bundle,
             fatal_dcx: DiagCtxt::new(emitter),
             fatal_note: None,
+            emit_fatal_diagnostic: false,
         })
     } else {
         emitter
@@ -209,7 +210,7 @@ impl ParseSess {
             rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
             false,
         );
-        self.raw_psess.dcx.make_silent(fallback_bundle, None);
+        self.raw_psess.dcx.make_silent(fallback_bundle, None, false);
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {
