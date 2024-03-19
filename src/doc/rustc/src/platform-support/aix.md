@@ -1,5 +1,15 @@
 # `powerpc64-ibm-aix`
 
+<!--
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+***WARNING***
+This target has already been migrated to the new target docs system: #120745
+When editing this file, make sure that you keep the equivalent docs in ../../target_infos in sync!!!
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-->
+
 **Tier: 3**
 
 Rust for AIX operating system, currently only 64-bit PowerPC is supported.
