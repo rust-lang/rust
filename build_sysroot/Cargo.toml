@@ -18,5 +18,5 @@ rustc-std-workspace-alloc = { path = "./sysroot_src/library/rustc-std-workspace-
 rustc-std-workspace-std = { path = "./sysroot_src/library/rustc-std-workspace-std" }
 
 [profile.release]
-debug = true
+debug = "limited"
 #lto = "fat" # TODO(antoyo): re-enable when the failing LTO tests regarding proc-macros are fixed.

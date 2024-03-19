@@ -424,7 +424,7 @@ impl ConfigInfo {
             rustflags.push("-Csymbol-mangling-version=v0".to_string());
         }
 
-        rustflags.push("-Cdebuginfo=2".to_string());
+        
 
         // Since we don't support ThinLTO, disable LTO completely when not trying to do LTO.
         // TODO(antoyo): remove when we can handle ThinLTO.
