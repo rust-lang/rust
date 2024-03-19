@@ -838,9 +838,11 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     codegen_unit_name: &str,
     debug_context: &CodegenUnitDebugContext<'ll, 'tcx>,
 ) -> &'ll DIDescriptor {
+    use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
     let mut name_in_debuginfo = tcx
         .sess
         .local_crate_source_file()
+        .map(|src| src.for_scope(&tcx.sess, RemapPathScopeComponents::DEBUGINFO).to_path_buf())
         .unwrap_or_else(|| PathBuf::from(tcx.crate_name(LOCAL_CRATE).as_str()));
 
     // To avoid breaking split DWARF, we need to ensure that each codegen unit
@@ -868,7 +870,6 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
     let producer = format!("clang LLVM ({rustc_producer})");
 
-    use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
     let work_dir = tcx
         .sess

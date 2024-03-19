@@ -99,9 +99,16 @@ impl DebugContext {
                 FileNameDisplayPreference::Local
             })
             .into_owned();
+
         let (name, file_info) = match tcx.sess.local_crate_source_file() {
             Some(path) => {
-                let name = path.to_string_lossy().into_owned();
+                let name = path
+                    .to_string_lossy(if should_remap_filepaths {
+                        FileNameDisplayPreference::Remapped
+                    } else {
+                        FileNameDisplayPreference::Local
+                    })
+                    .into_owned();
                 (name, None)
             }
             None => (tcx.crate_name(LOCAL_CRATE).to_string(), None),
