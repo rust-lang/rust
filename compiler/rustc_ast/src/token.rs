@@ -105,7 +105,7 @@ impl Lit {
         }
     }
 
-    /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
+    /// Keep this in sync with `Token::can_begin_literal_maybe_minus` excluding unary negation.
     pub fn from_token(token: &Token) -> Option<Lit> {
         match token.uninterpolate().kind {
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
