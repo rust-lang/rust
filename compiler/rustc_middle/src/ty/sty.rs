@@ -2461,6 +2461,10 @@ impl<'tcx> Ty<'tcx> {
     /// `AsyncFn`/`AsyncFnMut`/`AsyncFnOnce`, we only need to distinguish two coroutine
     /// bodies: by-ref and by-value.
     ///
+    /// See the definition of `AsyncFn` and `AsyncFnMut` and the `CallRefFuture`
+    /// associated type for why we don't distinguish [`ty::ClosureKind::Fn`] and
+    /// [`ty::ClosureKind::FnMut`] for the purpose of the generated MIR bodies.
+    ///
     /// This method should be used when constructing a `Coroutine` out of a
     /// `CoroutineClosure`, when the `Coroutine`'s `kind` field is being populated
     /// directly from the `CoroutineClosure`'s `kind`.

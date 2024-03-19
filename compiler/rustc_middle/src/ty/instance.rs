@@ -101,7 +101,7 @@ pub enum InstanceDef<'tcx> {
         // because the signature of `<{async fn} as FnMut>::call_mut` is:
         // `fn(&mut self, args: A) -> <Self as FnOnce>::Output`, that is to say
         // that it returns the `FnOnce`-flavored coroutine but takes the closure
-        // by ref (and similarly for `Fn::call`).
+        // by mut ref (and similarly for `Fn::call`).
         receiver_by_ref: bool,
     },
 
