@@ -887,37 +887,7 @@ impl Session {
     }
 
     pub fn should_prefer_remapped_for_codegen(&self) -> bool {
-        let has_split_debuginfo = match self.split_debuginfo() {
-            SplitDebuginfo::Off => false,
-            SplitDebuginfo::Packed => true,
-            SplitDebuginfo::Unpacked => true,
-        };
-
-        let remap_path_scopes = &self.opts.unstable_opts.remap_path_scope;
-        let mut prefer_remapped = false;
-
-        if remap_path_scopes.contains(RemapPathScopeComponents::UNSPLIT_DEBUGINFO) {
-            prefer_remapped |= !has_split_debuginfo;
-        }
-
-        if remap_path_scopes.contains(RemapPathScopeComponents::SPLIT_DEBUGINFO) {
-            prefer_remapped |= has_split_debuginfo;
-        }
-
-        prefer_remapped
-    }
-
-    pub fn should_prefer_remapped_for_split_debuginfo_paths(&self) -> bool {
-        let has_split_debuginfo = match self.split_debuginfo() {
-            SplitDebuginfo::Off => false,
-            SplitDebuginfo::Packed | SplitDebuginfo::Unpacked => true,
-        };
-
-        self.opts
-            .unstable_opts
-            .remap_path_scope
-            .contains(RemapPathScopeComponents::SPLIT_DEBUGINFO_PATH)
-            && has_split_debuginfo
+        self.opts.unstable_opts.remap_path_scope.contains(RemapPathScopeComponents::DEBUGINFO)
     }
 }
 
