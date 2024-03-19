@@ -1,6 +1,9 @@
 use crate::os::xous::ffi::{blocking_scalar, do_yield};
 use crate::os::xous::services::{ticktimer_server, TicktimerScalar};
-use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed, Ordering::SeqCst};
+use crate::sync::atomic::{
+    AtomicBool, AtomicUsize,
+    Ordering::{Acquire, Relaxed, Release},
+};
 
 pub struct Mutex {
     /// The "locked" value indicates how many threads are waiting on this
@@ -68,7 +71,7 @@ impl Mutex {
 
     #[inline]
     pub unsafe fn unlock(&self) {
-        let prev = self.locked.fetch_sub(1, SeqCst);
+        let prev = self.locked.fetch_sub(1, Release);
 
         // If the previous value was 1, then this was a "fast path" unlock, so no
         // need to involve the Ticktimer server
@@ -89,12 +92,12 @@ impl Mutex {
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        self.locked.compare_exchange(0, 1, SeqCst, SeqCst).is_ok()
+        self.locked.compare_exchange(0, 1, Acquire, Relaxed).is_ok()
     }
 
     #[inline]
     pub unsafe fn try_lock_or_poison(&self) -> bool {
-        self.locked.fetch_add(1, SeqCst) == 0
+        self.locked.fetch_add(1, Acquire) == 0
     }
 }
 
