@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(associated_type_bounds)]
-
 fn foo<F>(_: F)
 where
     F: for<'a> Trait<Output: 'a>,

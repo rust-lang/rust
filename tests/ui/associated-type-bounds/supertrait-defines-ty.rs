@@ -3,8 +3,6 @@
 // Make sure that we don't look into associated type bounds when looking for
 // supertraits that define an associated type. Fixes #76593.
 
-#![feature(associated_type_bounds)]
-
 trait Load: Sized {
     type Blob;
 }

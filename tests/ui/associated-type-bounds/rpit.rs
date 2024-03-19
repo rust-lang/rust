@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(associated_type_bounds)]
-
 use std::ops::Add;
 
 trait Tr1 { type As1; fn mk(self) -> Self::As1; }

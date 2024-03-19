@@ -194,8 +194,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
         sugg.extend(ty_spans.into_iter().map(|s| (s, type_param_name.to_string())));
 
         // Suggest `fn foo<T: Trait>(t: T) where <T as Trait>::A: Bound`.
-        // FIXME: once `#![feature(associated_type_bounds)]` is stabilized, we should suggest
-        // `fn foo(t: impl Trait<A: Bound>)` instead.
+        // FIXME: we should suggest `fn foo(t: impl Trait<A: Bound>)` instead.
         err.multipart_suggestion(
             "introduce a type parameter with a trait bound instead of using `impl Trait`",
             sugg,

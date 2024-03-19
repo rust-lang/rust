@@ -731,8 +731,6 @@ impl<'a> Parser<'a> {
                             && matches!(args.output, ast::FnRetTy::Default(..))
                         {
                             self.psess.gated_spans.gate(sym::return_type_notation, span);
-                        } else {
-                            self.psess.gated_spans.gate(sym::associated_type_bounds, span);
                         }
                     }
                     let constraint =
