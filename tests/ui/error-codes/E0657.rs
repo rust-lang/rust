@@ -11,7 +11,6 @@ fn free_fn_capture_hrtb_in_impl_trait()
         //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
 {
     Box::new(())
-    //~^ ERROR expected generic lifetime parameter, found `'static`
 }
 
 struct Foo;
@@ -21,7 +20,6 @@ impl Foo {
             //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
     {
         Box::new(())
-        //~^ ERROR expected generic lifetime parameter, found `'static`
     }
 }
 

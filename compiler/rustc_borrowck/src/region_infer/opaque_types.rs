@@ -478,6 +478,10 @@ fn check_opaque_type_parameter_valid<'tcx>(
             let opaque_param = opaque_generics.param_at(i, tcx);
             let kind = opaque_param.kind.descr();
 
+            if let Err(guar) = opaque_env.param_is_error(i) {
+                return Err(guar);
+            }
+
             return Err(tcx.dcx().emit_err(NonGenericOpaqueTypeParam {
                 ty: arg,
                 kind,
@@ -534,6 +538,10 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
     pub fn params_equal(&self, param1: usize, param2: usize) -> bool {
         let canonical_args = self.get_canonical_args();
         canonical_args[param1] == canonical_args[param2]
+    }
+
+    pub fn param_is_error(&self, param_index: usize) -> Result<(), ErrorGuaranteed> {
+        self.get_canonical_args()[param_index].error_reported()
     }
 
     fn get_canonical_args(&self) -> ty::GenericArgsRef<'tcx> {
