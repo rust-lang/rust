@@ -8,7 +8,7 @@
 
 #[no_sanitize(cfi)]
 pub fn foo(f: fn(i32) -> i32, arg: i32) -> i32 {
-    // CHECK-LABEL: cfi_emit_type_checks_attr_no_sanitize::foo
+    // CHECK-LABEL: emit_type_checks_attr_no_sanitize::foo
     // CHECK:       Function Attrs: {{.*}}
     // CHECK-LABEL: define{{.*}}foo{{.*}}!type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
     // CHECK:       start:
