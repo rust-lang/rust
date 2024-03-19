@@ -46,6 +46,7 @@ members = [
   "src/tools/rustdoc-gui-test",
   "src/tools/opt-dist",
   "src/tools/coverage-dump",
+  "src/tools/target-docs",
 ]
 
 exclude = [
