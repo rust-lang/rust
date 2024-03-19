@@ -17,9 +17,9 @@ use rustc_middle::mir::ConstValue;
 use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
-    GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
+    self, AdtDef, AliasTy, AssocItem, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind,
+    GenericArgsRef, GenericParamDefKind, IntTy, List, ParamEnv, Region, RegionKind, ToPredicate, TraitRef, Ty, TyCtxt,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -1345,16 +1345,22 @@ pub fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl 
 /// Checks if a Ty<'_> has some inherent method Symbol.
 /// This does not look for impls in the type's `Deref::Target` type.
 /// If you need this, you should wrap this call in `clippy_utils::ty::deref_chain().any(...)`.
-pub fn adt_has_inherent_method(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
+pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> Option<&'a AssocItem> {
     if let Some(ty_did) = ty.ty_adt_def().map(ty::AdtDef::did) {
-        cx.tcx.inherent_impls(ty_did).into_iter().flatten().any(|&did| {
-            cx.tcx
-                .associated_items(did)
-                .filter_by_name_unhygienic(method_name)
-                .next()
-                .is_some_and(|item| item.kind == ty::AssocKind::Fn)
-        })
+        cx.tcx
+            .inherent_impls(ty_did)
+            .into_iter()
+            .flatten()
+            .map(|&did| {
+                cx.tcx
+                    .associated_items(did)
+                    .filter_by_name_unhygienic(method_name)
+                    .next()
+                    .filter(|item| item.kind == ty::AssocKind::Fn)
+            })
+            .next()
+            .flatten()
     } else {
-        false
+        None
     }
 }

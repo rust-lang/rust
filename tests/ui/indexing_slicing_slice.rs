@@ -2,7 +2,13 @@
 // We also check the out_of_bounds_indexing lint here, because it lints similar things and
 // we want to avoid false positives.
 #![warn(clippy::out_of_bounds_indexing)]
-#![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::useless_vec)]
+#![allow(
+    clippy::no_effect,
+    clippy::unnecessary_operation,
+    clippy::useless_vec,
+    unused_must_use,
+    unused
+)]
 #![warn(clippy::indexing_slicing)]
 
 use std::ops::Index;
@@ -16,6 +22,28 @@ impl<T> Index<bool> for BoolMap<T> {
     type Output = T;
     fn index(&self, index: bool) -> &T {
         if index { &self.true_value } else { &self.false_value }
+    }
+}
+
+struct BoolMapWithGet<T> {
+    false_value: T,
+    true_value: T,
+}
+
+impl<T> Index<bool> for BoolMapWithGet<T> {
+    type Output = T;
+    fn index(&self, index: bool) -> &Self::Output {
+        if index { &self.true_value } else { &self.false_value }
+    }
+}
+
+impl<T> BoolMapWithGet<T> {
+    fn get(&self, index: bool) -> Option<&T> {
+        if index {
+            Some(&self.true_value)
+        } else {
+            Some(&self.false_value)
+        }
     }
 }
 
@@ -73,4 +101,12 @@ fn main() {
     };
 
     map[true]; // Ok, because `get` does not exist (custom indexing)
+
+    let map_with_get = BoolMapWithGet {
+        false_value: 2,
+        true_value: 4,
+    };
+
+    // Lint on this, because `get` does exist with same signature
+    map_with_get[true];
 }

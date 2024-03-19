@@ -3,12 +3,13 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::higher;
-use clippy_utils::ty::{adt_has_inherent_method, deref_chain};
+use clippy_utils::ty::{deref_chain, get_adt_inherent_method};
 use rustc_ast::ast::RangeLimits;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -111,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
             && deref.any(|l| {
                 l.peel_refs().is_slice()
                     || l.peel_refs().is_array()
-                    || adt_has_inherent_method(cx, l.peel_refs(), sym!(get))
+                    || ty_has_appliciable_get_function(cx, l.peel_refs(), expr_ty, expr)
             })
         {
             let note = "the suggestion might not be applicable in constant blocks";
@@ -239,4 +240,37 @@ fn to_const_range(cx: &LateContext<'_>, range: higher::Range<'_>, array_size: u1
     };
 
     (start, end)
+}
+
+/// Checks if the output Ty of the `get` method on this Ty (if any) matches the Ty returned by the
+/// indexing operation (if any).
+fn ty_has_appliciable_get_function<'tcx>(
+    cx: &LateContext<'tcx>,
+    ty: Ty<'tcx>,
+    array_ty: Ty<'tcx>,
+    index_expr: &Expr<'_>,
+) -> bool {
+    if let ty::Adt(_, array_args) = array_ty.kind()
+        && let Some(get_output_ty) = get_adt_inherent_method(cx, ty, sym!(get)).map(|m| {
+            cx.tcx
+                .fn_sig(m.def_id)
+                .instantiate(cx.tcx, array_args)
+                .output()
+                .skip_binder()
+        })
+        && let ty::Adt(def, args) = get_output_ty.kind()
+        && cx.tcx.is_diagnostic_item(sym::Option, def.0.did)
+        && let Some(option_generic_param) = args.get(0)
+        && let generic_ty = option_generic_param.expect_ty().peel_refs()
+        && let _ = println!(
+            "{}, {}",
+            cx.typeck_results().expr_ty(index_expr).peel_refs(),
+            generic_ty.peel_refs()
+        )
+        && cx.typeck_results().expr_ty(index_expr).peel_refs() == generic_ty.peel_refs()
+    {
+        true
+    } else {
+        false
+    }
 }
