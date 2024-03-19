@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 use crate::llvm::LLVMGetFirstBasicBlock;
+use crate::llvm::LLVMBuildRetVoid;
 use crate::llvm::LLVMRustEraseInstBefore;
 use crate::llvm::LLVMRustHasDbgMetadata;
 use crate::llvm::LLVMRustHasMetadata;
@@ -762,7 +763,13 @@ unsafe fn create_call<'a>(tgt: &'a Value, src: &'a Value, rev_mode: bool,
             struct_ret = LLVMBuildExtractValue(builder, struct_ret, 0, c_inner_grad_name.as_ptr());
         }
     }
-    let _ret = LLVMBuildRet(builder, struct_ret);
+    if f_return_type != void_type {
+        dbg!("Returning struct");
+        let _ret = LLVMBuildRet(builder, struct_ret);
+    } else {
+        dbg!("Returning void");
+        let _ret = LLVMBuildRetVoid(builder);
+    }
     LLVMDisposeBuilder(builder);
 
     dbg!(&tgt);

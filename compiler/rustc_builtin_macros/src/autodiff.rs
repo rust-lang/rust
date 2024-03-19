@@ -379,7 +379,10 @@ fn gen_enzyme_body(
 
     let ret_tuple: P<ast::Expr> = ecx.expr_tuple(span, exprs);
     let ret = ecx.expr_call(new_decl_span, blackbox_call_expr.clone(), thin_vec![ret_tuple]);
-    body.stmts.push(ecx.stmt_expr(ret));
+    if d_sig.decl.output.has_ret() {
+        // If we return (), we don't have to match the return type.
+        body.stmts.push(ecx.stmt_expr(ret));
+    }
 
     body
 }

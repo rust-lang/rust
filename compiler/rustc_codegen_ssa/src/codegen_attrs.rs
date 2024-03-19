@@ -704,8 +704,9 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
         .filter(|attr| attr.name_or_empty() == sym::rustc_autodiff)
         .collect::<Vec<_>>();
 
-    // check for exactly one autodiff attribute on extern block
-    let msg_once = "cg_ssa: autodiff attribute can only be applied once";
+    // check for exactly one autodiff attribute on placeholder functions.
+    // There should only be one, since we generate a new placeholder per ad macro.
+    let msg_once = "cg_ssa: implementation bug. Autodiff attribute can only be applied once";
     let attr = match attrs.len() {
         0 => return AutoDiffAttrs::inactive(),
         1 => attrs.get(0).unwrap(),
@@ -719,11 +720,9 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
     };
 
     let list = attr.meta_item_list().unwrap_or_default();
-    //dbg!("autodiff_attrs list = {:?}", &list);
 
     // empty autodiff attribute macros (i.e. `#[autodiff]`) are used to mark source functions
     if list.len() == 0 {
-        //dbg!("autodiff_attrs: source");
         return AutoDiffAttrs::source();
     }
 
@@ -784,7 +783,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
         }
     };
 
-    // Now parse all the intermediate (inptut) activities
+    // Now parse all the intermediate (input) activities
     let msg_arg_activity = "autodiff attribute must contain the return activity";
     let mut arg_activities: Vec<DiffActivity> = vec![];
     for arg in input_activities {
