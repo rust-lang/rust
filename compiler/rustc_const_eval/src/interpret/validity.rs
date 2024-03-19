@@ -121,6 +121,7 @@ pub enum PathElem {
     ArrayElem(usize),
     TupleElem(usize),
     Deref,
+    Offset(Size),
     EnumTag,
     CoroutineTag,
     DynDowncast,
@@ -199,6 +200,7 @@ fn write_path(out: &mut String, path: &[PathElem]) {
             // even use the usual syntax because we are just showing the projections,
             // not the root.
             Deref => write!(out, ".<deref>"),
+            Offset(offset) => write!(out, ".<offset({:x})>", offset.bytes()),
             DynDowncast => write!(out, ".<dyn-downcast>"),
         }
         .unwrap()
@@ -1047,18 +1049,26 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, crate::const_eval::CompileTimeInterpreter<
         if let Some(prov) = prov
             && let Some((_, alloc)) = self.memory.alloc_map().get(&prov.alloc_id())
         {
-            for (_, prov) in alloc.provenance().ptrs().iter() {
+            for &(offset, prov) in alloc.provenance().ptrs().iter() {
                 if let AllocKind::Dead = self.get_alloc_info(prov.alloc_id()).2 {
                     throw_validation_failure!(
                         path,
                         DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref(Mutability::Not) }
                     )
                 } else {
-                    let ptr = Pointer::new(Some(*prov), Size::ZERO);
+                    let ptr = Pointer::new(Some(prov), Size::ZERO);
                     let ty = self.tcx.types.unit;
                     let layout = self.layout_of(ty).unwrap();
                     let op = self.ptr_to_mplace(ptr, layout);
-                    ref_tracking.track(op, || path.clone())
+                    ref_tracking.track(op, || {
+                        // We need to clone the path anyway, make sure it gets created
+                        // with enough space for the additional `Deref`.
+                        let mut new_path = Vec::with_capacity(path.len() + 1);
+                        new_path.extend(path.iter().copied());
+                        new_path.push(PathElem::Offset(offset));
+                        new_path.push(PathElem::Deref);
+                        new_path
+                    })
                 }
             }
         }
