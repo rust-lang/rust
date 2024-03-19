@@ -1053,6 +1053,12 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, crate::const_eval::CompileTimeInterpreter<
                         path,
                         DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref(Mutability::Not) }
                     )
+                } else {
+                    let ptr = Pointer::new(Some(*prov), Size::ZERO);
+                    let ty = self.tcx.types.unit;
+                    let layout = self.layout_of(ty).unwrap();
+                    let op = self.ptr_to_mplace(ptr, layout);
+                    ref_tracking.track(op, || path.clone())
                 }
             }
         }

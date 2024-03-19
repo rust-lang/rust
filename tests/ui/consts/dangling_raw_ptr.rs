@@ -17,6 +17,11 @@ const BAR: Union = { //~ ERROR it is undefined behavior
     Union { ptr: &x }
 };
 
+const BAZ: Union = { //~ ERROR it is undefined behavior
+    let x = 42_u32;
+    Union { ptr: &(&x as *const u32) as *const *const u32 as _ }
+};
+
 fn main() {
     let x = FOO;
     let x = BAR;

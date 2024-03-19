@@ -20,6 +20,17 @@ LL | const BAR: Union = {
                HEX_DUMP
            }
 
-error: aborting due to 2 previous errors
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/dangling_raw_ptr.rs:20:1
+   |
+LL | const BAZ: Union = {
+   | ^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (use-after-free)
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
