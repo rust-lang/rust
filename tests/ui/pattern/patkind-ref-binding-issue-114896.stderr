@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `b` as mutable, as it is not declared as mutable
-  --> $DIR/issue-114896.rs:4:9
+  --> $DIR/patkind-ref-binding-issue-114896.rs:7:9
    |
 LL |         let &b = a;
    |             -- help: consider changing this to be mutable: `&(mut b)`
