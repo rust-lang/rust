@@ -68,40 +68,46 @@ LL |         a = b.clone();
    |         ^^^^^^^^^^^^^ help: use `clone_from()`: `a.clone_from(&b)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:145:5
+  --> tests/ui/assigning_clones.rs:139:5
+   |
+LL |     a = b.to_owned();
+   |     ^^^^^^^^^^^^^^^^ help: use `clone_into()`: `b.clone_into(&mut a)`
+
+error: assigning the result of `ToOwned::to_owned()` may be inefficient
+  --> tests/ui/assigning_clones.rs:156:5
    |
 LL |     *mut_string = ref_str.to_owned();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(mut_string)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:149:5
+  --> tests/ui/assigning_clones.rs:160:5
    |
 LL |     mut_string = ref_str.to_owned();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(&mut mut_string)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:170:5
+  --> tests/ui/assigning_clones.rs:181:5
    |
 LL |     **mut_box_string = ref_str.to_owned();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(&mut (*mut_box_string))`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:174:5
+  --> tests/ui/assigning_clones.rs:185:5
    |
 LL |     **mut_box_string = ref_str.to_owned();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(&mut (*mut_box_string))`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:178:5
+  --> tests/ui/assigning_clones.rs:189:5
    |
 LL |     *mut_thing = ToOwned::to_owned(ref_str);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ToOwned::clone_into(ref_str, mut_thing)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:182:5
+  --> tests/ui/assigning_clones.rs:193:5
    |
 LL |     mut_thing = ToOwned::to_owned(ref_str);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ToOwned::clone_into(ref_str, &mut mut_thing)`
 
-error: aborting due to 17 previous errors
+error: aborting due to 18 previous errors
 
