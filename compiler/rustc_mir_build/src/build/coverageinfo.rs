@@ -3,7 +3,9 @@ use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
-use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageKind, DecisionMarkerId};
+use rustc_middle::mir::coverage::{
+    BlockMarkerId, BranchSpan, CoverageKind, DecisionMarkerId, DecisionSpan,
+};
 use rustc_middle::mir::{self, BasicBlock, UnOp};
 use rustc_middle::thir::{ExprId, ExprKind, Thir};
 use rustc_middle::ty::TyCtxt;
@@ -103,7 +105,24 @@ impl BranchInfoBuilder {
             return None;
         }
 
-        Some(Box::new(mir::coverage::BranchInfo { num_block_markers, branch_spans, decisions }))
+        let mut decision_spans = IndexVec::from_iter(
+            decisions
+                .into_iter()
+                .map(|span| DecisionSpan { span, num_conditions: 0 }),
+        );
+
+        // Count the number of conditions linked to each decision.
+        if !decision_spans.is_empty() {
+            for branch_span in branch_spans.iter() {
+                decision_spans[branch_span.decision_id].num_conditions += 1;
+            }
+        }
+
+        Some(Box::new(mir::coverage::BranchInfo {
+            num_block_markers,
+            branch_spans,
+            decision_spans,
+        }))
     }
 }
 

@@ -257,7 +257,19 @@ pub struct BranchInfo {
     /// data structures without having to scan the entire body first.
     pub num_block_markers: usize,
     pub branch_spans: Vec<BranchSpan>,
-    pub decisions: IndexVec<DecisionMarkerId, Span>,
+
+    /// Associate a span for every decision in the function body.
+    /// Empty if MCDC coverage is disabled.
+    pub decision_spans: IndexVec<DecisionMarkerId, DecisionSpan>,
+}
+
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub struct DecisionSpan {
+    /// Source code region associated to the decision.
+    pub span: Span,
+    /// Number of conditions in the decision.
+    pub num_conditions: u32,
 }
 
 #[derive(Clone, Debug)]
@@ -265,7 +277,8 @@ pub struct BranchInfo {
 pub struct BranchSpan {
     /// Source code region associated to the branch.
     pub span: Span,
-    /// Decision structure the branch is part of. Only used in the MCDC coverage.
+    /// ID of Decision structure the branch is part of. Only used in
+    /// the MCDC coverage.
     pub decision_id: DecisionMarkerId,
     pub true_marker: BlockMarkerId,
     pub false_marker: BlockMarkerId,
