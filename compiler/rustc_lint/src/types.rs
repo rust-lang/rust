@@ -1054,7 +1054,7 @@ fn get_nullable_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> 
     })
 }
 
-/// A type is niche_optimization_candiate iff:
+/// A type is niche-optimization candidate iff:
 /// - Is a zero-sized type with alignment 1 (a “1-ZST”).
 /// - Has no fields.
 /// - Does not have the `#[non_exhaustive]` attribute.
