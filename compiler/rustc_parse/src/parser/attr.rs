@@ -362,22 +362,18 @@ impl<'a> Parser<'a> {
     /// meta_item_inner : (meta_item | UNSUFFIXED_LIT) (',' meta_item_inner)? ;
     /// ```
     pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
-        let nt_meta = match &self.token.kind {
-            token::Interpolated(nt) => match &nt.0 {
-                token::NtMeta(e) => Some(e.clone()),
-                _ => None,
-            },
-            _ => None,
-        };
-
-        if let Some(item) = nt_meta {
-            match item.meta(item.path.span) {
+        // We can't use `maybe_whole` here because it would bump in the `None`
+        // case, which we don't want.
+        if let token::Interpolated(nt) = &self.token.kind
+            && let token::NtMeta(attr_item) = &nt.0
+        {
+            match attr_item.meta(attr_item.path.span) {
                 Some(meta) => {
                     self.bump();
                     return Ok(meta);
                 }
                 None => self.unexpected()?,
-            };
+            }
         }
 
         let lo = self.token.span;
