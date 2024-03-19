@@ -554,13 +554,13 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
     ) -> &'ll DIFile {
         debug!(?source_file.name);
 
-        use rustc_session::RemapFileNameExt;
+        use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
         let (directory, file_name) = match &source_file.name {
             FileName::Real(filename) => {
                 let working_directory = &cx.sess().opts.working_dir;
                 debug!(?working_directory);
 
-                if cx.sess().should_prefer_remapped_for_codegen() {
+                if cx.sess().should_prefer_remapped(RemapPathScopeComponents::DEBUGINFO) {
                     let filename = cx
                         .sess()
                         .source_map()
@@ -623,7 +623,13 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
             }
             other => {
                 debug!(?other);
-                ("".into(), other.for_codegen(cx.sess()).to_string_lossy().into_owned())
+                (
+                    "".into(),
+                    other
+                        .for_scope(cx.sess(), RemapPathScopeComponents::DEBUGINFO)
+                        .to_string_lossy()
+                        .into_owned(),
+                )
             }
         };
 
@@ -862,9 +868,14 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
     let producer = format!("clang LLVM ({rustc_producer})");
 
-    use rustc_session::RemapFileNameExt;
+    use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
-    let work_dir = tcx.sess.opts.working_dir.for_codegen(tcx.sess).to_string_lossy();
+    let work_dir = tcx
+        .sess
+        .opts
+        .working_dir
+        .for_scope(tcx.sess, RemapPathScopeComponents::DEBUGINFO)
+        .to_string_lossy();
     let output_filenames = tcx.output_filenames(());
     let split_name = if tcx.sess.target_can_use_split_dwarf() {
         output_filenames
@@ -875,7 +886,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             )
             // We get a path relative to the working directory from split_dwarf_path
             .map(|f| {
-                if tcx.sess.should_prefer_remapped_for_codegen() {
+                if tcx.sess.should_prefer_remapped(RemapPathScopeComponents::DEBUGINFO) {
                     tcx.sess.source_map().path_mapping().map_prefix(f).0
                 } else {
                     f.into()
