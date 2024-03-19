@@ -14,9 +14,9 @@ use triomphe::Arc;
 pub use crate::{
     change::FileChange,
     input::{
-        CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency,
-        DependencyKind, Edition, Env, LangCrateOrigin, ProcMacroPaths, ReleaseChannel, SourceRoot,
-        SourceRootId, TargetLayoutLoadResult,
+        CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env,
+        LangCrateOrigin, ProcMacroPaths, ReleaseChannel, SourceRoot, SourceRootId,
+        TargetLayoutLoadResult,
     },
 };
 pub use salsa::{self, Cancelled};

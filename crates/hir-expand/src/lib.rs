@@ -30,10 +30,11 @@ use triomphe::Arc;
 
 use std::{fmt, hash::Hash};
 
-use base_db::{salsa::impl_intern_value_trivial, CrateId, Edition, FileId};
+use base_db::{salsa::impl_intern_value_trivial, CrateId, FileId};
 use either::Either;
 use span::{
-    ErasedFileAstId, FileRange, HirFileIdRepr, Span, SpanAnchor, SyntaxContextData, SyntaxContextId,
+    Edition, ErasedFileAstId, FileRange, HirFileIdRepr, Span, SpanAnchor, SyntaxContextData,
+    SyntaxContextId,
 };
 use syntax::{
     ast::{self, AstNode},

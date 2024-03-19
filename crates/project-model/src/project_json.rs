@@ -49,11 +49,12 @@
 //! user explores them belongs to that extension (it's totally valid to change
 //! rust-project.json over time via configuration request!)
 
-use base_db::{CrateDisplayName, CrateId, CrateName, Dependency, Edition};
+use base_db::{CrateDisplayName, CrateId, CrateName, Dependency};
 use la_arena::RawIdx;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::{de, Deserialize};
+use span::Edition;
 
 use crate::cfg_flag::CfgFlag;
 

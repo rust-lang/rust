@@ -6,13 +6,14 @@ use std::{collections::VecDeque, fmt, fs, iter, str::FromStr, sync};
 
 use anyhow::{format_err, Context};
 use base_db::{
-    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Edition, Env,
-    FileId, LangCrateOrigin, ProcMacroPaths, TargetLayoutLoadResult,
+    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env, FileId,
+    LangCrateOrigin, ProcMacroPaths, TargetLayoutLoadResult,
 };
 use cfg::{CfgAtom, CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
+use span::Edition;
 use stdx::always;
 use toolchain::Tool;
 use triomphe::Arc;
