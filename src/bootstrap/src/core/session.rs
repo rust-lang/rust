@@ -1495,7 +1495,7 @@ impl Session {
     /// and copied to `dst` instead of the symlink itself.
     #[track_caller]
     pub(crate) fn resolve_symlink_and_copy(&self, src: &Path, dst: &Path) {
-        self.copy_link_internal(src, dst, true);
+        self.copy_internal(src, dst, true, true);
     }
 
     /// Links a file from `src` to `dst`.
@@ -1504,21 +1504,35 @@ impl Session {
     /// so do not write to dst.
     #[track_caller]
     pub(crate) fn copy_link(&self, src: &Path, dst: &Path, file_type: FileType) {
-        self.copy_link_internal(src, dst, false);
+        self.copy_internal(src, dst, false, true);
 
         if file_type.could_have_split_debuginfo()
             && let Some(dbg_file) = split_debuginfo(src)
         {
-            self.copy_link_internal(
+            self.copy_internal(
                 &dbg_file,
                 &dst.with_extension(dbg_file.extension().unwrap()),
                 false,
+                true,
             );
         }
     }
 
+    /// Links a file from `src` to `dst`.
+    /// Unlike, [`Build::copy_link`], this makes an actual copy, which is usually not required,
+    /// so `copy_link` should be used instead if possible.
+    pub fn copy(&self, src: &Path, dst: &Path) {
+        self.copy_internal(src, dst, false, false);
+    }
+
     #[track_caller]
-    fn copy_link_internal(&self, src: &Path, dst: &Path, dereference_symlinks: bool) {
+    fn copy_internal(
+        &self,
+        src: &Path,
+        dst: &Path,
+        dereference_symlinks: bool,
+        link_if_possible: bool,
+    ) {
         if self.config.dry_run() {
             return;
         }
@@ -1554,7 +1568,8 @@ impl Session {
                 return;
             }
         }
-        if let Ok(()) = fs::hard_link(&src, dst) {
+
+        if link_if_possible && fs::hard_link(&src, dst).is_ok() {
             // Attempt to "easy copy" by creating a hard link (symlinks are privileged on windows),
             // but if that fails just fall back to a slow `copy` operation.
         } else {
@@ -1589,6 +1604,28 @@ impl Session {
                 self.cp_link_r(&path, &dst);
             } else {
                 self.copy_link(&path, &dst, FileType::Regular);
+            }
+        }
+    }
+
+    /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
+    /// when this function is called.
+    /// Unlike, [`Build::cp_link_r`], this makes an actual copy, which is usually not required,
+    /// so `cp_link_r` should be used instead if possible.
+    pub fn cp_r(&self, src: &Path, dst: &Path) {
+        if self.config.dry_run() {
+            return;
+        }
+        for f in self.read_dir(src) {
+            let path = f.path();
+            let name = path.file_name().unwrap();
+            let dst = dst.join(name);
+            if t!(f.file_type()).is_dir() {
+                t!(fs::create_dir_all(&dst));
+                self.cp_r(&path, &dst);
+            } else {
+                let _ = fs::remove_file(&dst);
+                self.copy(&path, &dst);
             }
         }
     }
@@ -1651,7 +1688,7 @@ impl Session {
             panic!("ERROR: File \"{}\" not found!", src.display());
         }
 
-        self.copy_link_internal(src, &dst, true);
+        self.copy_internal(src, &dst, true, true);
         chmod(&dst, file_type.perms());
 
         // If this file can have debuginfo, look for split debuginfo and install it too.

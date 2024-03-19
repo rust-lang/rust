@@ -47,6 +47,9 @@ target | notes
 [`x86_64-pc-windows-gnu`](platform-support/windows-gnu.md) | 64-bit MinGW (Windows 10+, Windows Server 2016+)
 [`x86_64-pc-windows-msvc`](platform-support/windows-msvc.md) | 64-bit MSVC (Windows 10+, Windows Server 2016+)
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
+<!-- TIER1HOST SECTION START -->
+<!-- See `src/tools/target-docs` -->
+<!-- TIER1HOST SECTION END -->
 
 [^x86_32-floats-return-ABI]: Due to limitations of the C ABI, floating-point support on `i686` targets is non-compliant: floating-point return values are passed via an x87 register, so NaN payload bits can be lost. Functions with the default Rust ABI are not affected. See [issue #115567][x86-32-float-return-issue].
 
@@ -118,6 +121,9 @@ target | notes
 [`x86_64-unknown-netbsd`](platform-support/netbsd.md) | NetBSD/amd64
 [`x86_64-pc-solaris`](platform-support/solaris.md) | 64-bit x86 Solaris 11.4
 [`sparcv9-sun-solaris`](platform-support/solaris.md) | SPARC V9 Solaris 11.4
+<!-- TIER2HOST SECTION START -->
+<!-- See `src/tools/target-docs` -->
+<!-- TIER2HOST SECTION END -->
 
 ## Tier 2 without Host Tools
 
@@ -234,6 +240,9 @@ target | std | notes
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
 [`x86_64-unknown-redox`](platform-support/redox.md) | ✓ | Redox OS
 [`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | ? | 64-bit UEFI
+<!-- TIER2 SECTION START -->
+<!-- See `src/tools/target-docs` -->
+<!-- TIER2 SECTION END -->
 
 [^x86_32-floats-x87]: Floating-point support on `i586` targets is non-compliant: the `x87` registers and instructions used for these targets do not provide IEEE-754-compliant behavior, in particular when it comes to rounding and NaN payload bits. See [issue #114479][x86-32-float-issue].
 
@@ -482,6 +491,9 @@ target | std | host | notes
 [`xtensa-esp32s2-none-elf`](platform-support/xtensa.md) | * |  | Xtensa ESP32-S2
 [`xtensa-esp32s3-espidf`](platform-support/esp-idf.md) | ✓ |  | Xtensa ESP32-S3
 [`xtensa-esp32s3-none-elf`](platform-support/xtensa.md) | * |  | Xtensa ESP32-S3
+<!-- TIER3 SECTION START -->
+<!-- See `src/tools/target-docs` -->
+<!-- TIER3 SECTION END -->
 
 [runs on NVIDIA GPUs]: https://github.com/japaric-archived/nvptx#targets
 [the AMD GPU]: https://llvm.org/docs/AMDGPUUsage.html#processors
