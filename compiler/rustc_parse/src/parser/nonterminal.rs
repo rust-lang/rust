@@ -66,15 +66,14 @@ impl<'a> Parser<'a> {
                 token::Interpolated(nt) => may_be_ident(&nt.0),
                 _ => false,
             },
-            NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => {
-                match &token.kind {
+            NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => match &token.kind {
                 token::Ident(..) |                          // box, ref, mut, and other identifiers (can stricten)
                 token::OpenDelim(Delimiter::Parenthesis) |  // tuple pattern
                 token::OpenDelim(Delimiter::Bracket) |      // slice pattern
                 token::BinOp(token::And) |                  // reference
                 token::BinOp(token::Minus) |                // negative literal
                 token::AndAnd |                             // double reference
-                token::Literal(_) |                        // literal
+                token::Literal(_) |                         // literal
                 token::DotDot |                             // range pattern (future compat)
                 token::DotDotDot |                          // range pattern (future compat)
                 token::ModSep |                             // path
@@ -84,8 +83,7 @@ impl<'a> Parser<'a> {
                 token::BinOp(token::Or) => matches!(kind, NonterminalKind::PatWithOr),
                 token::Interpolated(nt) => may_be_ident(&nt.0),
                 _ => false,
-            }
-            }
+            },
             NonterminalKind::Lifetime => match &token.kind {
                 token::Lifetime(_) => true,
                 token::Interpolated(nt) => {
