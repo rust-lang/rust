@@ -29,7 +29,8 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{DiagCtxt, FatalError, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, SwitchWithOptPath};
+use rustc_session::config::{self, Lto, OutputType, Passes};
+use rustc_session::config::{RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
@@ -257,7 +258,8 @@ pub fn target_machine_factory(
     };
     let debuginfo_compression = SmallCStr::new(&debuginfo_compression);
 
-    let should_prefer_remapped_paths = sess.should_prefer_remapped_for_codegen();
+    let should_prefer_remapped_paths =
+        sess.should_prefer_remapped(RemapPathScopeComponents::DEBUGINFO);
 
     Arc::new(move |config: TargetMachineFactoryConfig| {
         let path_to_cstring_helper = |path: Option<PathBuf>| -> CString {

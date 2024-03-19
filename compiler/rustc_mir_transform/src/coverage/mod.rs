@@ -123,8 +123,11 @@ fn create_mappings<'tcx>(
     let body_span = hir_info.body_span;
 
     let source_file = source_map.lookup_source_file(body_span.lo());
-    use rustc_session::RemapFileNameExt;
-    let file_name = Symbol::intern(&source_file.name.for_codegen(tcx.sess).to_string_lossy());
+
+    use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
+    let file_name = Symbol::intern(
+        &source_file.name.for_scope(tcx.sess, RemapPathScopeComponents::MACRO).to_string_lossy(),
+    );
 
     let term_for_bcb = |bcb| {
         coverage_counters

@@ -252,7 +252,8 @@ impl Session {
 
     pub fn local_crate_source_file(&self) -> Option<PathBuf> {
         let path = self.io.input.opt_path()?;
-        if self.should_prefer_remapped_for_codegen() {
+        // FIXME: The remap path scope should probably not be hardcoded.
+        if self.should_prefer_remapped(RemapPathScopeComponents::DEBUGINFO) {
             Some(self.opts.file_path_mapping().map_prefix(path).0.into_owned())
         } else {
             Some(path.to_path_buf())
@@ -886,8 +887,8 @@ impl Session {
         self.opts.cg.link_dead_code.unwrap_or(false)
     }
 
-    pub fn should_prefer_remapped_for_codegen(&self) -> bool {
-        self.opts.unstable_opts.remap_path_scope.contains(RemapPathScopeComponents::DEBUGINFO)
+    pub fn should_prefer_remapped(&self, scope: RemapPathScopeComponents) -> bool {
+        self.opts.unstable_opts.remap_path_scope.contains(scope)
     }
 }
 
@@ -1439,12 +1440,8 @@ pub trait RemapFileNameExt {
 
     /// Returns a possibly remapped filename based on the passed scope and remap cli options.
     ///
-    /// One and only one scope should be passed to this method. For anything related to
-    /// "codegen" see the [`RemapFileNameExt::for_codegen`] method.
+    /// One and only one scope should be passed to this method, it will panic otherwise.
     fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_>;
-
-    /// Return a possibly remapped filename, to be used in "codegen" related parts.
-    fn for_codegen(&self, sess: &Session) -> Self::Output<'_>;
 }
 
 impl RemapFileNameExt for rustc_span::FileName {
@@ -1461,14 +1458,6 @@ impl RemapFileNameExt for rustc_span::FileName {
             self.prefer_local()
         }
     }
-
-    fn for_codegen(&self, sess: &Session) -> Self::Output<'_> {
-        if sess.should_prefer_remapped_for_codegen() {
-            self.prefer_remapped_unconditionaly()
-        } else {
-            self.prefer_local()
-        }
-    }
 }
 
 impl RemapFileNameExt for rustc_span::RealFileName {
@@ -1480,14 +1469,6 @@ impl RemapFileNameExt for rustc_span::RealFileName {
             "one and only one scope should be passed to for_scope"
         );
         if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
-            self.remapped_path_if_available()
-        } else {
-            self.local_path_if_available()
-        }
-    }
-
-    fn for_codegen(&self, sess: &Session) -> Self::Output<'_> {
-        if sess.should_prefer_remapped_for_codegen() {
             self.remapped_path_if_available()
         } else {
             self.local_path_if_available()
