@@ -1362,7 +1362,7 @@ impl<'a> TyLoweringContext<'a> {
         ImplTrait { bounds: crate::make_single_type_binders(predicates) }
     }
 
-    fn lower_lifetime(&self, lifetime: &LifetimeRef) -> Lifetime {
+    pub fn lower_lifetime(&self, lifetime: &LifetimeRef) -> Lifetime {
         match self.resolver.resolve_lifetime(lifetime) {
             Some(resolution) => match resolution {
                 LifetimeNs::Static => static_lifetime(),

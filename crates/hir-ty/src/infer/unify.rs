@@ -16,12 +16,12 @@ use triomphe::Arc;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
-    consteval::unknown_const, db::HirDatabase, fold_tys_and_consts, static_lifetime,
-    to_chalk_trait_id, traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue,
-    DebruijnIndex, DomainGoal, GenericArg, GenericArgData, Goal, GoalData, Guidance, InEnvironment,
-    InferenceVar, Interner, Lifetime, OpaqueTyId, ParamKind, ProjectionTy, ProjectionTyExt, Scalar,
-    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind,
-    WhereClause,
+    consteval::unknown_const, db::HirDatabase, fold_generic_args, fold_tys_and_consts,
+    static_lifetime, to_chalk_trait_id, traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical,
+    Const, ConstValue, DebruijnIndex, DomainGoal, GenericArg, GenericArgData, Goal, GoalData,
+    Guidance, InEnvironment, InferenceVar, Interner, Lifetime, OpaqueTyId, ParamKind, ProjectionTy,
+    ProjectionTyExt, Scalar, Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
+    TyKind, VariableKind, WhereClause,
 };
 
 impl InferenceContext<'_> {
@@ -862,11 +862,16 @@ impl<'a> InferenceTable<'a> {
     where
         T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
     {
-        fold_tys_and_consts(
+        fold_generic_args(
             ty,
-            |it, _| match it {
-                Either::Left(ty) => Either::Left(self.insert_type_vars_shallow(ty)),
-                Either::Right(c) => Either::Right(self.insert_const_vars_shallow(c)),
+            |arg, _| match arg {
+                GenericArgData::Ty(ty) => GenericArgData::Ty(self.insert_type_vars_shallow(ty)),
+                // FIXME: insert lifetime vars once LifetimeData::InferenceVar
+                // and specific error variant for lifetimes start being constructed
+                GenericArgData::Lifetime(lt) => GenericArgData::Lifetime(lt),
+                GenericArgData::Const(c) => {
+                    GenericArgData::Const(self.insert_const_vars_shallow(c))
+                }
             },
             DebruijnIndex::INNERMOST,
         )

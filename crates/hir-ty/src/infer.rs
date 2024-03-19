@@ -42,7 +42,7 @@ use hir_def::{
     layout::Integer,
     path::{ModPath, Path},
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
-    type_ref::TypeRef,
+    type_ref::{LifetimeRef, TypeRef},
     AdtId, AssocItemId, DefWithBodyId, FieldId, FunctionId, ItemContainerId, Lookup, TraitId,
     TupleFieldId, TupleId, TypeAliasId, VariantId,
 };
@@ -1035,6 +1035,12 @@ impl<'a> InferenceContext<'a> {
 
     fn err_ty(&self) -> Ty {
         self.result.standard_types.unknown.clone()
+    }
+
+    fn make_lifetime(&mut self, lifetime_ref: &LifetimeRef) -> Lifetime {
+        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into());
+        let lt = ctx.lower_lifetime(lifetime_ref);
+        self.insert_type_vars(lt)
     }
 
     /// Replaces `Ty::Error` by a new type var, so we can maybe still infer it.

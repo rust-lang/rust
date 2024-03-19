@@ -1855,8 +1855,7 @@ impl InferenceContext<'_> {
                             DebruijnIndex::INNERMOST,
                         )
                     },
-                    // FIXME: create make_lifetimes and infer lifetimes
-                    |_, _| static_lifetime(),
+                    |this, lt_ref| this.make_lifetime(lt_ref),
                 ) {
                     substs.push(g);
                 }
