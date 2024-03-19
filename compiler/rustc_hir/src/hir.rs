@@ -3640,33 +3640,40 @@ impl<'hir> Node<'hir> {
         }
     }
 
-    pub fn body_id(&self) -> Option<BodyId> {
+    #[inline]
+    pub fn associated_body(&self) -> Option<(LocalDefId, BodyId)> {
         match self {
             Node::Item(Item {
+                owner_id,
                 kind:
-                    ItemKind::Static(_, _, body)
-                    | ItemKind::Const(_, _, body)
-                    | ItemKind::Fn(_, _, body),
+                    ItemKind::Const(_, _, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
                 ..
             })
             | Node::TraitItem(TraitItem {
+                owner_id,
                 kind:
-                    TraitItemKind::Fn(_, TraitFn::Provided(body)) | TraitItemKind::Const(_, Some(body)),
+                    TraitItemKind::Const(_, Some(body)) | TraitItemKind::Fn(_, TraitFn::Provided(body)),
                 ..
             })
             | Node::ImplItem(ImplItem {
-                kind: ImplItemKind::Fn(_, body) | ImplItemKind::Const(_, body),
+                owner_id,
+                kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
                 ..
-            })
-            | Node::Expr(Expr {
-                kind:
-                    ExprKind::ConstBlock(ConstBlock { body, .. })
-                    | ExprKind::Closure(Closure { body, .. })
-                    | ExprKind::Repeat(_, ArrayLen::Body(AnonConst { body, .. })),
-                ..
-            }) => Some(*body),
+            }) => Some((owner_id.def_id, *body)),
+
+            Node::Expr(Expr { kind: ExprKind::Closure(Closure { def_id, body, .. }), .. }) => {
+                Some((*def_id, *body))
+            }
+
+            Node::AnonConst(constant) => Some((constant.def_id, constant.body)),
+            Node::ConstBlock(constant) => Some((constant.def_id, constant.body)),
+
             _ => None,
         }
+    }
+
+    pub fn body_id(&self) -> Option<BodyId> {
+        Some(self.associated_body()?.1)
     }
 
     pub fn generics(self) -> Option<&'hir Generics<'hir>> {

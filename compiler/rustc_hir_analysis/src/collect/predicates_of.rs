@@ -123,43 +123,22 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // Preserving the order of insertion is important here so as not to break UI tests.
     let mut predicates: FxIndexSet<(ty::Clause<'_>, Span)> = FxIndexSet::default();
 
-    let ast_generics = match node {
-        Node::TraitItem(item) => item.generics,
-
-        Node::ImplItem(item) => item.generics,
-
-        Node::Item(item) => match item.kind {
+    let ast_generics = node.generics().unwrap_or(NO_GENERICS);
+    if let Node::Item(item) = node {
+        match item.kind {
             ItemKind::Impl(impl_) => {
                 if impl_.defaultness.is_default() {
                     is_default_impl_trait = tcx
                         .impl_trait_ref(def_id)
                         .map(|t| ty::Binder::dummy(t.instantiate_identity()));
                 }
-                impl_.generics
             }
-            ItemKind::Fn(.., generics, _)
-            | ItemKind::TyAlias(_, generics)
-            | ItemKind::Const(_, generics, _)
-            | ItemKind::Enum(_, generics)
-            | ItemKind::Struct(_, generics)
-            | ItemKind::Union(_, generics) => generics,
 
-            ItemKind::Trait(_, _, generics, self_bounds, ..)
-            | ItemKind::TraitAlias(generics, self_bounds) => {
+            ItemKind::Trait(_, _, _, self_bounds, ..) | ItemKind::TraitAlias(_, self_bounds) => {
                 is_trait = Some(self_bounds);
-                generics
             }
-            ItemKind::OpaqueTy(OpaqueTy { generics, .. }) => generics,
-            _ => NO_GENERICS,
-        },
-
-        Node::ForeignItem(item) => match item.kind {
-            ForeignItemKind::Static(..) => NO_GENERICS,
-            ForeignItemKind::Fn(_, _, generics) => generics,
-            ForeignItemKind::Type => NO_GENERICS,
-        },
-
-        _ => NO_GENERICS,
+            _ => {}
+        }
     };
 
     let generics = tcx.generics_of(def_id);
@@ -703,45 +682,17 @@ pub(super) fn type_param_predicates(
     let mut extend = None;
 
     let item_hir_id = tcx.local_def_id_to_hir_id(item_def_id);
-    let ast_generics = match tcx.hir_node(item_hir_id) {
-        Node::TraitItem(item) => item.generics,
 
-        Node::ImplItem(item) => item.generics,
-
-        Node::Item(item) => {
-            match item.kind {
-                ItemKind::Fn(.., generics, _)
-                | ItemKind::Impl(&hir::Impl { generics, .. })
-                | ItemKind::TyAlias(_, generics)
-                | ItemKind::Const(_, generics, _)
-                | ItemKind::OpaqueTy(&OpaqueTy {
-                    generics,
-                    origin: hir::OpaqueTyOrigin::TyAlias { .. },
-                    ..
-                })
-                | ItemKind::Enum(_, generics)
-                | ItemKind::Struct(_, generics)
-                | ItemKind::Union(_, generics) => generics,
-                ItemKind::Trait(_, _, generics, ..) => {
-                    // Implied `Self: Trait` and supertrait bounds.
-                    if param_id == item_hir_id {
-                        let identity_trait_ref =
-                            ty::TraitRef::identity(tcx, item_def_id.to_def_id());
-                        extend = Some((identity_trait_ref.to_predicate(tcx), item.span));
-                    }
-                    generics
-                }
-                _ => return result,
-            }
-        }
-
-        Node::ForeignItem(item) => match item.kind {
-            ForeignItemKind::Fn(_, _, generics) => generics,
-            _ => return result,
-        },
-
-        _ => return result,
-    };
+    let hir_node = tcx.hir_node(item_hir_id);
+    let Some(ast_generics) = hir_node.generics() else { return result };
+    if let Node::Item(item) = hir_node
+        && let ItemKind::Trait(..) = item.kind
+        // Implied `Self: Trait` and supertrait bounds.
+        && param_id == item_hir_id
+    {
+        let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id.to_def_id());
+        extend = Some((identity_trait_ref.to_predicate(tcx), item.span));
+    }
 
     let icx = ItemCtxt::new(tcx, item_def_id);
     let extra_predicates = extend.into_iter().chain(

@@ -95,29 +95,7 @@ macro_rules! type_error_struct {
 fn primary_body_of(
     node: Node<'_>,
 ) -> Option<(hir::BodyId, Option<&hir::Ty<'_>>, Option<&hir::FnSig<'_>>)> {
-    match node {
-        Node::Item(item) => match item.kind {
-            hir::ItemKind::Const(ty, _, body) | hir::ItemKind::Static(ty, _, body) => {
-                Some((body, Some(ty), None))
-            }
-            hir::ItemKind::Fn(ref sig, .., body) => Some((body, None, Some(sig))),
-            _ => None,
-        },
-        Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Const(ty, Some(body)) => Some((body, Some(ty), None)),
-            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                Some((body, None, Some(sig)))
-            }
-            _ => None,
-        },
-        Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Const(ty, body) => Some((body, Some(ty), None)),
-            hir::ImplItemKind::Fn(ref sig, body) => Some((body, None, Some(sig))),
-            _ => None,
-        },
-        Node::AnonConst(constant) => Some((constant.body, None, None)),
-        _ => None,
-    }
+    Some((node.body_id()?, node.ty(), node.fn_sig()))
 }
 
 fn has_typeck_results(tcx: TyCtxt<'_>, def_id: DefId) -> bool {

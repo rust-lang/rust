@@ -20,44 +20,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::spec::abi::Abi;
 
-#[inline]
-pub fn associated_body(node: Node<'_>) -> Option<(LocalDefId, BodyId)> {
-    match node {
-        Node::Item(Item {
-            owner_id,
-            kind: ItemKind::Const(_, _, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
-            ..
-        })
-        | Node::TraitItem(TraitItem {
-            owner_id,
-            kind:
-                TraitItemKind::Const(_, Some(body)) | TraitItemKind::Fn(_, TraitFn::Provided(body)),
-            ..
-        })
-        | Node::ImplItem(ImplItem {
-            owner_id,
-            kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
-            ..
-        }) => Some((owner_id.def_id, *body)),
-
-        Node::Expr(Expr { kind: ExprKind::Closure(Closure { def_id, body, .. }), .. }) => {
-            Some((*def_id, *body))
-        }
-
-        Node::AnonConst(constant) => Some((constant.def_id, constant.body)),
-        Node::ConstBlock(constant) => Some((constant.def_id, constant.body)),
-
-        _ => None,
-    }
-}
-
-fn is_body_owner(node: Node<'_>, hir_id: HirId) -> bool {
-    match associated_body(node) {
-        Some((_, b)) => b.hir_id == hir_id,
-        None => false,
-    }
-}
-
 // FIXME: the structure was necessary in the past but now it
 // only serves as "namespace" for HIR-related methods, and can be
 // removed if all the methods are reasonably renamed and moved to tcx
@@ -273,7 +235,7 @@ impl<'hir> Map<'hir> {
     #[track_caller]
     pub fn enclosing_body_owner(self, hir_id: HirId) -> LocalDefId {
         for (_, node) in self.parent_iter(hir_id) {
-            if let Some((def_id, _)) = associated_body(node) {
+            if let Some((def_id, _)) = node.associated_body() {
                 return def_id;
             }
         }
@@ -286,20 +248,18 @@ impl<'hir> Map<'hir> {
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(self, BodyId { hir_id }: BodyId) -> HirId {
         let parent = self.tcx.parent_hir_id(hir_id);
-        assert!(is_body_owner(self.tcx.hir_node(parent), hir_id), "{hir_id:?}");
+        assert_eq!(self.tcx.hir_node(parent).body_id().unwrap().hir_id, hir_id, "{hir_id:?}");
         parent
     }
 
     pub fn body_owner_def_id(self, BodyId { hir_id }: BodyId) -> LocalDefId {
-        associated_body(self.tcx.parent_hir_node(hir_id)).unwrap().0
+        self.tcx.parent_hir_node(hir_id).associated_body().unwrap().0
     }
 
     /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<BodyId> {
-        let node = self.tcx.hir_node_by_def_id(id);
-        let (_, body_id) = associated_body(node)?;
-        Some(body_id)
+        self.tcx.hir_node_by_def_id(id).body_id()
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
@@ -1314,7 +1274,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
     }
 
     fn visit_item(&mut self, item: &'hir Item<'hir>) {
-        if associated_body(Node::Item(item)).is_some() {
+        if Node::Item(item).associated_body().is_some() {
             self.body_owners.push(item.owner_id.def_id);
         }
 
@@ -1355,7 +1315,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
     }
 
     fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
-        if associated_body(Node::TraitItem(item)).is_some() {
+        if Node::TraitItem(item).associated_body().is_some() {
             self.body_owners.push(item.owner_id.def_id);
         }
 
@@ -1364,7 +1324,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
     }
 
     fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
-        if associated_body(Node::ImplItem(item)).is_some() {
+        if Node::ImplItem(item).associated_body().is_some() {
             self.body_owners.push(item.owner_id.def_id);
         }
 
