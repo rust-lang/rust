@@ -221,7 +221,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let param_env = ty::ParamEnv::new(
+    let param_env = ty::ParamEnv::from_elaborated_clauses(
         tcx.mk_clauses_from_iter(util::elaborate(tcx, hybrid_preds.predicates)),
         Reveal::UserFacing,
     );
@@ -488,7 +488,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         .into_iter()
         .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_to_placeholder_args))
         .map(|(clause, _)| clause);
-    let param_env = ty::ParamEnv::new(
+    let param_env = ty::ParamEnv::from_elaborated_clauses(
         tcx.mk_clauses_from_iter(util::elaborate(tcx, hybrid_preds)),
         Reveal::UserFacing,
     );
@@ -1782,7 +1782,7 @@ fn compare_const_predicate_entailment<'tcx>(
             .map(|(predicate, _)| predicate),
     );
 
-    let param_env = ty::ParamEnv::new(
+    let param_env = ty::ParamEnv::from_elaborated_clauses(
         tcx.mk_clauses_from_iter(util::elaborate(tcx, hybrid_preds.predicates)),
         Reveal::UserFacing,
     );
@@ -1924,7 +1924,7 @@ fn compare_type_predicate_entailment<'tcx>(
 
     let impl_ty_span = tcx.def_span(impl_ty_def_id);
     let normalize_cause = ObligationCause::misc(impl_ty_span, impl_ty_def_id);
-    let param_env = ty::ParamEnv::new(
+    let param_env = ty::ParamEnv::from_elaborated_clauses(
         tcx.mk_clauses_from_iter(util::elaborate(tcx, hybrid_preds.predicates)),
         Reveal::UserFacing,
     );
@@ -2236,7 +2236,7 @@ fn param_env_with_gat_bounds<'tcx>(
         };
     }
 
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates), Reveal::UserFacing)
+    ty::ParamEnv::from_elaborated_clauses(tcx.mk_clauses(&predicates), Reveal::UserFacing)
 }
 
 fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {

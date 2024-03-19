@@ -146,7 +146,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
 
     let local_did = def_id.as_local();
 
-    let unnormalized_env = ty::ParamEnv::new(
+    let unnormalized_env = ty::ParamEnv::from_elaborated_clauses(
         tcx.mk_clauses_from_iter(traits::elaborate(tcx, predicates)),
         traits::Reveal::UserFacing,
     );

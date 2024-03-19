@@ -1037,7 +1037,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(ParamEnv::new(
+        Ok(ParamEnv::from_elaborated_clauses(
             self.caller_bounds().try_fold_with(folder)?,
             self.reveal().try_fold_with(folder)?,
         ))
@@ -1076,7 +1076,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// are revealed. This is suitable for monomorphized, post-typeck
     /// environments like codegen or doing optimizations.
     ///
-    /// N.B., if you want to have predicates in scope, use `ParamEnv::new`,
+    /// N.B., if you want to have predicates in scope, use `ParamEnv::from_elaborated_clauses`,
     /// or invoke `param_env.with_reveal_all()`.
     #[inline]
     pub fn reveal_all() -> Self {
@@ -1085,7 +1085,10 @@ impl<'tcx> ParamEnv<'tcx> {
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(caller_bounds: &'tcx List<Clause<'tcx>>, reveal: Reveal) -> Self {
+    pub fn from_elaborated_clauses(
+        caller_bounds: &'tcx List<Clause<'tcx>>,
+        reveal: Reveal,
+    ) -> Self {
         ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, ParamTag { reveal }) }
     }
 
@@ -1108,7 +1111,10 @@ impl<'tcx> ParamEnv<'tcx> {
             return self;
         }
 
-        ParamEnv::new(tcx.reveal_opaque_types_in_bounds(self.caller_bounds()), Reveal::All)
+        ParamEnv::from_elaborated_clauses(
+            tcx.reveal_opaque_types_in_bounds(self.caller_bounds()),
+            Reveal::All,
+        )
     }
 
     /// Returns this same environment but with no caller bounds.

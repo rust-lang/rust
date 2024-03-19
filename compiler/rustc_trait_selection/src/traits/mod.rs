@@ -291,7 +291,8 @@ pub fn normalize_param_env_or_error<'tcx>(
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
     let reveal = unnormalized_env.reveal();
-    let eager_evaluated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates), reveal);
+    let eager_evaluated_env =
+        ty::ParamEnv::from_elaborated_clauses(tcx.mk_clauses(&predicates), reveal);
 
     // HACK: we are trying to normalize the param-env inside *itself*. The problem is that
     // normalization expects its param-env to be already normalized, which means we have
@@ -335,7 +336,8 @@ pub fn normalize_param_env_or_error<'tcx>(
     // here. I believe they should not matter, because we are ignoring TypeOutlives param-env
     // predicates here anyway. Keeping them here anyway because it seems safer.
     let outlives_env = non_outlives_predicates.iter().chain(&outlives_predicates).cloned();
-    let outlives_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(outlives_env), reveal);
+    let outlives_env =
+        ty::ParamEnv::from_elaborated_clauses(tcx.mk_clauses_from_iter(outlives_env), reveal);
     let Ok(outlives_predicates) =
         do_normalize_predicates(tcx, cause, outlives_env, outlives_predicates)
     else {
@@ -348,7 +350,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let mut predicates = non_outlives_predicates;
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates), reveal)
+    ty::ParamEnv::from_elaborated_clauses(tcx.mk_clauses(&predicates), reveal)
 }
 
 /// Normalize a type and process all resulting obligations, returning any errors.

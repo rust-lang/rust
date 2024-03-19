@@ -497,7 +497,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
         }
     }
 
-    ParamEnv::new(
+    ParamEnv::from_elaborated_clauses(
         tcx.mk_clauses_from_iter(ty_predicates.iter().map(|&(p, _)| p).chain(
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
                 ClauseKind::Trait(TraitPredicate {
