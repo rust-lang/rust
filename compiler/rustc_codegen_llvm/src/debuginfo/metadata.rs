@@ -875,7 +875,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             )
             // We get a path relative to the working directory from split_dwarf_path
             .map(|f| {
-                if tcx.sess.should_prefer_remapped_for_split_debuginfo_paths() {
+                if tcx.sess.should_prefer_remapped_for_codegen() {
                     tcx.sess.source_map().path_mapping().map_prefix(f).0
                 } else {
                     f.into()
