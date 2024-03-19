@@ -386,10 +386,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let infcx = &self.infcx;
                 let (ParamEnvAnd { param_env: _, value: self_ty }, canonical_inference_vars) =
-                    infcx.instantiate_canonical_with_fresh_inference_vars(
-                        span,
-                        &param_env_and_self_ty,
-                    );
+                    infcx.instantiate_canonical(span, &param_env_and_self_ty);
                 debug!(
                     "probe_op: Mode::Path, param_env_and_self_ty={:?} self_ty={:?}",
                     param_env_and_self_ty, self_ty
@@ -661,13 +658,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 // of the iterations in the autoderef loop, so there is no problem with it
                 // being discoverable in another one of these iterations.
                 //
-                // Using `instantiate_canonical_with_fresh_inference_vars` on our
+                // Using `instantiate_canonical` on our
                 // `Canonical<QueryResponse<Ty<'tcx>>>` and then *throwing away* the
                 // `CanonicalVarValues` will exactly give us such a generalization - it
                 // will still match the original object type, but it won't pollute our
                 // type variables in any form, so just do that!
                 let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
-                    self.fcx.instantiate_canonical_with_fresh_inference_vars(self.span, self_ty);
+                    self.fcx.instantiate_canonical(self.span, self_ty);
 
                 self.assemble_inherent_candidates_from_object(generalized_self_ty);
                 self.assemble_inherent_impl_candidates_for_type(p.def_id());
