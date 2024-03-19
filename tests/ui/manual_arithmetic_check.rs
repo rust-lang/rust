@@ -1,4 +1,5 @@
 #![warn(clippy::implicit_saturating_sub)]
+#![allow(clippy::if_same_then_else)]
 
 fn main() {
     let a = 12u32;
@@ -17,4 +18,7 @@ fn main() {
 
     // Should not warn!
     let result = if a > b { a - b } else { a - c };
+
+    // Just to check it won't break clippy.
+    let result = if b > a { 0 } else { 0 };
 }

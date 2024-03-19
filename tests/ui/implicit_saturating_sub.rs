@@ -230,18 +230,18 @@ fn main() {
     let mut m = Mock;
     let mut u_32 = 3000;
     let a = 200;
-    let mut _b = 8;
+    let mut b = 8;
 
     if m != 0 {
         m -= 1;
     }
 
     if a > 0 {
-        _b -= 1;
+        b -= 1;
     }
 
     if 0 > a {
-        _b -= 1;
+        b -= 1;
     }
 
     if u_32 > 0 {
