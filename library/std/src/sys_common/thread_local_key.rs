@@ -128,7 +128,7 @@ impl StaticKey {
 
     #[inline]
     unsafe fn key(&self) -> imp::Key {
-        match self.key.load(Ordering::Relaxed) {
+        match self.key.load(Ordering::Acquire) {
             KEY_SENTVAL => self.lazy_init() as imp::Key,
             n => n as imp::Key,
         }
@@ -156,8 +156,8 @@ impl StaticKey {
         match self.key.compare_exchange(
             KEY_SENTVAL,
             key as usize,
-            Ordering::SeqCst,
-            Ordering::SeqCst,
+            Ordering::Release,
+            Ordering::Acquire,
         ) {
             // The CAS succeeded, so we've created the actual key
             Ok(_) => key as usize,
