@@ -102,9 +102,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {
         match *b {
-            BlockCheckMode::Default => hir::BlockCheckMode::DefaultBlock,
+            BlockCheckMode::Default => return hir::BlockCheckMode::DefaultBlock,
             BlockCheckMode::Unsafe(u) => {
-                hir::BlockCheckMode::UnsafeBlock(self.lower_unsafe_source(u))
+                return hir::BlockCheckMode::UnsafeBlock(self.lower_unsafe_source(u))
             }
         }
     }
