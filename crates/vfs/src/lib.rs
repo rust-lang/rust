@@ -121,6 +121,11 @@ impl ChangedFile {
         matches!(self.change, Change::Create(_) | Change::Delete)
     }
 
+    /// Returns `true` if the change is [`Modify`](ChangeKind::Modify).
+    pub fn is_modified(&self) -> bool {
+        matches!(self.change, Change::Modify(_))
+    }
+
     pub fn kind(&self) -> ChangeKind {
         match self.change {
             Change::Create(_) => ChangeKind::Create,
