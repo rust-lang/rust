@@ -17,7 +17,7 @@ Apple visionOS targets:
 ## Requirements
 
 These targets are cross-compiled.
-To build these targets Xcode 15 or higher on macOS is required.
+To build these targets Xcode 15 or higher on macOS is required, along with LLVM 18.
 
 ## Building the target
 
