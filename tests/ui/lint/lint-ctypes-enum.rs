@@ -170,7 +170,8 @@ extern "C" {
     //~^ ERROR `extern` block uses type
     fn result_cascading_e(x: Result<(), Result<(), num::NonZero<u8>>>);
     //~^ ERROR `extern` block uses type
-
+    fn result_unit_t_e(x: Result<(), ()>);
+    //~^ ERROR `extern` block uses type
 }
 
 pub fn main() {}
