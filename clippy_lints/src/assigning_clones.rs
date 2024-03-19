@@ -1,3 +1,4 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::HirNode;
 use clippy_utils::sugg::Sugg;
@@ -6,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Instance, Mutability};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::ExpnKind;
@@ -49,10 +50,26 @@ declare_clippy_lint! {
     perf,
     "assigning the result of cloning may be inefficient"
 }
-declare_lint_pass!(AssigningClones => [ASSIGNING_CLONES]);
+
+pub struct AssigningClones {
+    msrv: Msrv,
+}
+
+impl AssigningClones {
+    #[must_use]
+    pub fn new(msrv: Msrv) -> Self {
+        Self { msrv }
+    }
+}
+
+impl_lint_pass!(AssigningClones => [ASSIGNING_CLONES]);
 
 impl<'tcx> LateLintPass<'tcx> for AssigningClones {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, assign_expr: &'tcx hir::Expr<'_>) {
+        if !self.msrv.meets(msrvs::ASSIGNING_CLONES) {
+            return;
+        }
+
         // Do not fire the lint in macros
         let expn_data = assign_expr.span().ctxt().outer_expn_data();
         match expn_data.kind {
@@ -72,6 +89,8 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             suggest(cx, assign_expr, lhs, &call);
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 // Try to resolve the call to `Clone::clone` or `ToOwned::to_owned`.
