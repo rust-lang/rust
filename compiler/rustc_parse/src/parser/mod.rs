@@ -93,12 +93,13 @@ pub enum TrailingToken {
 #[macro_export]
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
-        if let token::Interpolated(nt) = &$p.token.kind {
-            if let token::$constructor(x) = &nt.0 {
-                let $x = x.clone();
-                $p.bump();
-                return Ok($e);
-            }
+        if let token::Interpolated(nt) = &$p.token.kind
+            && let token::$constructor(x) = &nt.0
+        {
+            #[allow(unused_mut)]
+            let mut $x = x.clone();
+            $p.bump();
+            return Ok($e);
         }
     };
 }
