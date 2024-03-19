@@ -2335,10 +2335,9 @@ impl<'tcx> Ty<'tcx> {
                         .instantiate_identity();
                 }
 
-                debug_assert_eq!(adt_def.variants().len(), 1);
                 Self::chain_async_destructor_ty(
                     tcx,
-                    adt_def.variant(VariantIdx::from_u32(0)).fields.iter().map(|f| f.ty(tcx, args)),
+                    adt_def.non_enum_variant().fields.iter().map(|f| f.ty(tcx, args)),
                     self.is_async_drop(tcx, param_env).then_some(self),
                 )
             }
