@@ -47,7 +47,7 @@ declare_lint! {
     /// All nested bodies (functions, enum discriminant, array length, consts) (expect for
     /// `const _: Ty = { ... }` in top-level module, which is still undecided) are checked.
     pub NON_LOCAL_DEFINITIONS,
-    Allow,
+    Warn,
     "checks for non-local definitions",
     report_in_external_macro
 }
