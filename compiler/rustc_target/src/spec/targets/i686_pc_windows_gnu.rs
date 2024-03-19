@@ -18,10 +18,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "i686-pc-windows-gnu".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("32-bit MinGW (Windows 7+)".into()),
+            tier: Some(1),
+            host_tools: Some(true),
+            std: Some(true),
         },
         pointer_width: 32,
         data_layout: "e-m:x-p:32:32-p270:32:32-p271:32:32-p272:64:64-\

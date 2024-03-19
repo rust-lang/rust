@@ -49,6 +49,10 @@ ENV EXTERNAL_LLVM 1
 # be missing.
 ENV IS_NOT_LATEST_LLVM 1
 
+
+# Ubuntu LLVM 17 does not have support for experimental targets like csky.
+ENV TARGET_DOCS_SKIP_TARGETS "csky-unknown-linux-gnuabiv2,csky-unknown-linux-gnuabiv2hf"
+
 # Using llvm-link-shared due to libffi issues -- see #34486
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
