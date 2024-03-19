@@ -3,6 +3,7 @@
 #![feature(generic_nonzero)]
 #![feature(ptr_internals)]
 #![feature(transparent_unions)]
+#![feature(result_ffi_guarantees)]
 
 use std::num;
 
