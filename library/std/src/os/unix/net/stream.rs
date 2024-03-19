@@ -233,6 +233,7 @@ impl UnixStream {
         target_os = "tvos",
         target_os = "macos",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "netbsd",
         target_os = "openbsd"
     ))]

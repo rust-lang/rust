@@ -102,6 +102,7 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
             "ios" => ios_deployment_target(arch, abi),
             "tvos" => tvos_deployment_target(),
             "watchos" => watchos_deployment_target(),
+            "visionos" => visionos_deployment_target(),
             "macos" => macos_deployment_target(arch),
             _ => unreachable!(),
         };
@@ -202,6 +203,8 @@ pub fn sdk_version(platform: u32) -> Option<(u32, u32)> {
         | object::macho::PLATFORM_TVOSSIMULATOR
         | object::macho::PLATFORM_MACCATALYST => Some((16, 2)),
         object::macho::PLATFORM_WATCHOS | object::macho::PLATFORM_WATCHOSSIMULATOR => Some((9, 1)),
+        // FIXME: Upgrade to yet unreleased `object-rs` implementation with visionos platform definition
+        11 | 12 => Some((1, 0)),
         _ => None,
     }
 }
@@ -216,6 +219,9 @@ pub fn platform(target: &Target) -> Option<u32> {
         ("watchos", _) => object::macho::PLATFORM_WATCHOS,
         ("tvos", "sim") => object::macho::PLATFORM_TVOSSIMULATOR,
         ("tvos", _) => object::macho::PLATFORM_TVOS,
+        // FIXME: Upgrade to yet unreleased `object-rs` implementation with visionos platform definition
+        ("visionos", "sim") => 12,
+        ("visionos", _) => 11,
         _ => return None,
     })
 }
@@ -240,6 +246,7 @@ pub fn deployment_target(target: &Target) -> Option<(u32, u32)> {
         }
         "watchos" => watchos_deployment_target(),
         "tvos" => tvos_deployment_target(),
+        "visionos" => visionos_deployment_target(),
         _ => return None,
     };
 
@@ -290,6 +297,7 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
                 || sdkroot.contains("AppleTVSimulator.platform")
                 || sdkroot.contains("WatchOS.platform")
                 || sdkroot.contains("WatchSimulator.platform")
+                || sdkroot.contains("visionos.platform")
             {
                 env_remove.push("SDKROOT".into())
             }
@@ -299,6 +307,7 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
         // although this is apparently ignored when using the linker at "/usr/bin/ld".
         env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".into());
         env_remove.push("TVOS_DEPLOYMENT_TARGET".into());
+        env_remove.push("visionos_DEPLOYMENT_TARGET".into());
         env_remove.into()
     } else {
         // Otherwise if cross-compiling for a different OS/SDK (including Mac Catalyst), remove any part
@@ -362,4 +371,19 @@ fn watchos_deployment_target() -> (u32, u32) {
 pub fn watchos_sim_llvm_target(arch: Arch) -> String {
     let (major, minor) = watchos_deployment_target();
     format!("{}-apple-watchos{}.{}.0-simulator", arch.target_name(), major, minor)
+}
+
+fn visionos_deployment_target() -> (u32, u32) {
+    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    from_set_deployment_target("XROS_DEPLOYMENT_TARGET").unwrap_or((1, 0))
+}
+
+pub fn visionos_llvm_target(arch: Arch) -> String {
+    let (major, minor) = visionos_deployment_target();
+    format!("{}-apple-visionos{}.{}.0", arch.target_name(), major, minor)
+}
+
+pub fn visionos_sim_llvm_target(arch: Arch) -> String {
+    let (major, minor) = visionos_deployment_target();
+    format!("{}-apple-visionos{}.{}.0-simulator", arch.target_name(), major, minor)
 }

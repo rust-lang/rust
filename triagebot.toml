@@ -286,6 +286,11 @@ trigger_files = [
     "library/std/src/os/windows"
 ]
 
+[autolabel."O-visionos"]
+trigger_files = [
+    "library/std/src/os/visionos"
+]
+
 [autolabel."T-bootstrap"]
 trigger_files = [
     "x.py",

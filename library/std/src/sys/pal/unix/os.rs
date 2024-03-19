@@ -69,7 +69,8 @@ extern "C" {
             target_os = "ios",
             target_os = "tvos",
             target_os = "freebsd",
-            target_os = "watchos"
+            target_os = "watchos",
+            target_os = "visionos",
         ),
         link_name = "__error"
     )]
@@ -430,7 +431,13 @@ pub fn current_exe() -> io::Result<PathBuf> {
     Ok(PathBuf::from(OsString::from_vec(e)))
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "watchos",
+    target_os = "visionos",
+    target_os = "tvos"
+))]
 pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         let mut sz: u32 = 0;
@@ -699,6 +706,7 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "ios",
         target_os = "tvos",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "emscripten",
         target_os = "redox",
         target_os = "vxworks",
@@ -714,6 +722,7 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "ios",
         target_os = "tvos",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "emscripten",
         target_os = "redox",
         target_os = "vxworks",

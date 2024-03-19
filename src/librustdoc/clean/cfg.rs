@@ -511,6 +511,7 @@ impl<'a> fmt::Display for Display<'a> {
                         "wasi" => "WASI",
                         "watchos" => "watchOS",
                         "windows" => "Windows",
+                        "visionos" => "visionos",
                         _ => "",
                     },
                     (sym::target_arch, Some(arch)) => match arch.as_str() {

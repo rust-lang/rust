@@ -43,7 +43,8 @@ fn test_named_thread() {
     target_os = "macos",
     target_os = "ios",
     target_os = "tvos",
-    target_os = "watchos"
+    target_os = "watchos",
+    target_os = "visionos",
 ))]
 #[test]
 fn test_named_thread_truncation() {

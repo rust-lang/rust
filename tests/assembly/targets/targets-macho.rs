@@ -27,6 +27,12 @@
 //@ revisions: arm64_32_apple_watchos
 //@ [arm64_32_apple_watchos] compile-flags: --target arm64_32-apple-watchos
 //@ [arm64_32_apple_watchos] needs-llvm-components: aarch64
+//@ revisions: aarch64_apple_visionos
+//@ [aarch64_apple_visionos] compile-flags: --target aarch64-apple-visionos
+//@ [aarch64_apple_visionos] needs-llvm-components: aarch64
+//@ revisions: aarch64_apple_visionos_sim
+//@ [aarch64_apple_visionos_sim] compile-flags: --target aarch64-apple-visionos-sim
+//@ [aarch64_apple_visionos_sim] needs-llvm-components: aarch64
 //@ revisions: arm64e_apple_darwin
 //@ [arm64e_apple_darwin] compile-flags: --target arm64e-apple-darwin
 //@ [arm64e_apple_darwin] needs-llvm-components: aarch64

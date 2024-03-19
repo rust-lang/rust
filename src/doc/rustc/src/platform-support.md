@@ -242,6 +242,8 @@ target | std | host | notes
 [`aarch64-apple-tvos-sim`](platform-support/apple-tvos.md) | ? |  | ARM64 tvOS Simulator
 [`aarch64-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | ARM64 Apple WatchOS
 [`aarch64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | ARM64 Apple WatchOS Simulator
+[`aarch64-apple-visionos`](platform-support/apple-visionos.md) | ✓ |  | ARM64 Apple visionOS
+[`aarch64-apple-vision-sim`](platform-support/apple-visionos.md) | ✓ |  | ARM64 Apple visionOS Simulator
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
 [`aarch64-nintendo-switch-freestanding`](platform-support/aarch64-nintendo-switch-freestanding.md) | * |  | ARM64 Nintendo Switch, Horizon
 [`aarch64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |

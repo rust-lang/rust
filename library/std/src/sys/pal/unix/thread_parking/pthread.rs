@@ -48,6 +48,7 @@ unsafe fn wait_timeout(
         target_os = "ios",
         target_os = "tvos",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "espidf",
         target_os = "horizon",
     ))]
@@ -76,6 +77,7 @@ unsafe fn wait_timeout(
         target_os = "ios",
         target_os = "tvos",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "espidf",
         target_os = "horizon",
     )))]
@@ -124,6 +126,7 @@ impl Parker {
                 target_os = "ios",
                 target_os = "tvos",
                 target_os = "watchos",
+                target_os = "visionos",
                 target_os = "l4re",
                 target_os = "android",
                 target_os = "redox",
