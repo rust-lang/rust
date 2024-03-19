@@ -1,3 +1,7 @@
+#![feature(rustc_private)]
+
+#[cfg(unix)]
+extern crate libc;
 extern crate run_make_support;
 
 use run_make_support::{aux_build, tmp_dir};
@@ -7,6 +11,11 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 fn main() {
+    #[cfg(unix)]
+    unsafe {
+        libc::umask(0o002);
+    }
+
     aux_build().arg("foo.rs").run();
     verify(&tmp_dir().join("libfoo.rlib"));
 }
