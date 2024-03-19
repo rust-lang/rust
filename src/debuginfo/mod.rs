@@ -84,7 +84,9 @@ impl DebugContext {
 
         let mut dwarf = DwarfUnit::new(encoding);
 
-        let should_remap_filepaths = tcx.sess.should_prefer_remapped_for_codegen();
+        use rustc_session::config::RemapPathScopeComponents;
+        let should_remap_filepaths =
+            tcx.sess.should_prefer_remapped(RemapPathScopeComponents::DEBUGINFO);
 
         let producer = producer(tcx.sess);
         let comp_dir = tcx
