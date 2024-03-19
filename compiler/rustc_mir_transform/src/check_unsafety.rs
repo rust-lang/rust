@@ -497,8 +497,8 @@ fn mir_unsafety_check_result(tcx: TyCtxt<'_>, def: LocalDefId) -> &UnsafetyCheck
     debug!("unsafety_violations({:?})", def);
 
     // N.B., this borrow is valid because all the consumers of
-    // `mir_built` force this.
-    let body = &tcx.mir_built(def).borrow();
+    // `mir_const` force this.
+    let body = &tcx.mir_const(def).borrow();
 
     if body.is_custom_mir() || body.tainted_by_errors.is_some() {
         return tcx.arena.alloc(UnsafetyCheckResult {

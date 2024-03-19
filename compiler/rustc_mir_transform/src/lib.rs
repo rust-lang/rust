@@ -288,10 +288,7 @@ fn mir_const(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
         tcx.ensure_with_value().mir_unsafety_check_result(def);
     }
 
-    // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
-    tcx.ensure_with_value().has_ffi_unwind_calls(def);
-
-    let mut body = tcx.mir_built(def).steal();
+    let mut body = tcx.build_mir(def);
 
     pass_manager::dump_mir_for_phase_change(tcx, &body);
 
@@ -339,6 +336,8 @@ fn mir_promoted(
         | DefKind::AnonConst => tcx.mir_const_qualif(def),
         _ => ConstQualifs::default(),
     };
+    // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
+    tcx.ensure_with_value().has_ffi_unwind_calls(def);
     let mut body = tcx.mir_const(def).steal();
     if let Some(error_reported) = const_qualifs.tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);

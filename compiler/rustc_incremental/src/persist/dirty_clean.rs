@@ -65,7 +65,7 @@ const BASE_HIR: &[&str] = &[
 const BASE_IMPL: &[&str] =
     &[label_strs::associated_item_def_ids, label_strs::generics_of, label_strs::impl_trait_header];
 
-/// DepNodes for mir_built/Optimized, which is relevant in "executable"
+/// DepNodes for exported mir bodies, which is relevant in "executable"
 /// code, i.e., functions+methods
 const BASE_MIR: &[&str] = &[label_strs::optimized_mir, label_strs::promoted_mir];
 
