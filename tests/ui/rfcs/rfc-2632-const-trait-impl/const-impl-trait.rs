@@ -3,7 +3,6 @@
 
 #![allow(incomplete_features)]
 #![feature(
-    associated_type_bounds,
     const_trait_impl,
     effects,
     const_cmp,

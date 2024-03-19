@@ -1519,7 +1519,7 @@ extern "C" {
 
 #[link(name = "llvm-wrapper", kind = "static")]
 extern "C" {
-    pub fn LLVMRustInstallFatalErrorHandler();
+    pub fn LLVMRustInstallErrorHandlers();
     pub fn LLVMRustDisableSystemDialogsOnCrash();
 
     // Create and destroy contexts.

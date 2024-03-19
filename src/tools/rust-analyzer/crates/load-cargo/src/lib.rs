@@ -361,8 +361,8 @@ fn load_crate_graph(
     let changes = vfs.take_changes();
     for file in changes {
         if let vfs::Change::Create(v) | vfs::Change::Modify(v) = file.change {
-            if let Ok(text) = std::str::from_utf8(&v) {
-                analysis_change.change_file(file.file_id, Some(text.into()))
+            if let Ok(text) = String::from_utf8(v) {
+                analysis_change.change_file(file.file_id, Some(text))
             }
         }
     }
@@ -419,13 +419,9 @@ impl ProcMacroExpander for Expander {
 #[cfg(test)]
 mod tests {
     use ide_db::base_db::SourceDatabase;
+    use vfs::file_set::FileSetConfigBuilder;
 
     use super::*;
-
-    use ide_db::base_db::SourceRootId;
-    use vfs::{file_set::FileSetConfigBuilder, VfsPath};
-
-    use crate::SourceRootConfig;
 
     #[test]
     fn test_loading_rust_analyzer() {

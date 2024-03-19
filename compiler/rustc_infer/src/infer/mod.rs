@@ -1475,7 +1475,7 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         unevaluated: ty::UnevaluatedConst<'tcx>,
         ty: Ty<'tcx>,
-        span: Option<Span>,
+        span: Span,
     ) -> Result<ty::Const<'tcx>, ErrorHandled> {
         match self.const_eval_resolve(param_env, unevaluated, span) {
             Ok(Some(val)) => Ok(ty::Const::new_value(self.tcx, val, ty)),
@@ -1509,7 +1509,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         mut param_env: ty::ParamEnv<'tcx>,
         unevaluated: ty::UnevaluatedConst<'tcx>,
-        span: Option<Span>,
+        span: Span,
     ) -> EvalToValTreeResult<'tcx> {
         let mut args = self.resolve_vars_if_possible(unevaluated.args);
         debug!(?args);
@@ -1521,12 +1521,9 @@ impl<'tcx> InferCtxt<'tcx> {
             if let Some(ct) = tcx.thir_abstract_const(unevaluated.def)? {
                 let ct = tcx.expand_abstract_consts(ct.instantiate(tcx, args));
                 if let Err(e) = ct.error_reported() {
-                    return Err(ErrorHandled::Reported(
-                        e.into(),
-                        span.unwrap_or(rustc_span::DUMMY_SP),
-                    ));
+                    return Err(ErrorHandled::Reported(e.into(), span));
                 } else if ct.has_non_region_infer() || ct.has_non_region_param() {
-                    return Err(ErrorHandled::TooGeneric(span.unwrap_or(rustc_span::DUMMY_SP)));
+                    return Err(ErrorHandled::TooGeneric(span));
                 } else {
                     args = replace_param_and_infer_args_with_placeholder(tcx, args);
                 }

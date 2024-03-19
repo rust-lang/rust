@@ -58,12 +58,13 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
 
                 let candidate = candidates.pop().unwrap();
-                let certainty = ecx.instantiate_and_apply_query_response(
-                    trait_goal.param_env,
-                    orig_values,
-                    candidate.result,
-                );
-
+                let (normalization_nested_goals, certainty) = ecx
+                    .instantiate_and_apply_query_response(
+                        trait_goal.param_env,
+                        orig_values,
+                        candidate.result,
+                    );
+                assert!(normalization_nested_goals.is_empty());
                 Ok(Some((candidate, certainty)))
             });
 

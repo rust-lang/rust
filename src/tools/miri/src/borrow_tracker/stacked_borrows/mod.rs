@@ -865,24 +865,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.sb_retag_reference(val, new_perm, RetagInfo { cause, in_field: false })
     }
 
-    fn sb_retag_box_to_raw(
-        &mut self,
-        val: &ImmTy<'tcx, Provenance>,
-        alloc_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
-        let this = self.eval_context_mut();
-        let is_global_alloc = alloc_ty.ty_adt_def().is_some_and(|adt| {
-            let global_alloc = this.tcx.require_lang_item(rustc_hir::LangItem::GlobalAlloc, None);
-            adt.did() == global_alloc
-        });
-        if is_global_alloc {
-            // Retag this as-if it was a mutable reference.
-            this.sb_retag_ptr_value(RetagKind::Raw, val)
-        } else {
-            Ok(val.clone())
-        }
-    }
-
     fn sb_retag_place_contents(
         &mut self,
         kind: RetagKind,
@@ -891,9 +873,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let retag_fields = this.machine.borrow_tracker.as_mut().unwrap().get_mut().retag_fields;
         let retag_cause = match kind {
-            RetagKind::Raw | RetagKind::TwoPhase { .. } => unreachable!(), // these can only happen in `retag_ptr_value`
+            RetagKind::TwoPhase { .. } => unreachable!(), // can only happen in `retag_ptr_value`
             RetagKind::FnEntry => RetagCause::FnEntry,
-            RetagKind::Default => RetagCause::Normal,
+            RetagKind::Default | RetagKind::Raw => RetagCause::Normal,
         };
         let mut visitor =
             RetagVisitor { ecx: this, kind, retag_cause, retag_fields, in_field: false };
@@ -959,14 +941,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 // Check the type of this value to see what to do with it (retag, or recurse).
                 match place.layout.ty.kind() {
-                    ty::Ref(..) => {
-                        let new_perm =
-                            NewPermission::from_ref_ty(place.layout.ty, self.kind, self.ecx);
-                        self.retag_ptr_inplace(place, new_perm)?;
-                    }
-                    ty::RawPtr(..) => {
-                        // We do *not* want to recurse into raw pointers -- wide raw pointers have
-                        // fields, and for dyn Trait pointees those can have reference type!
+                    ty::Ref(..) | ty::RawPtr(..) => {
+                        if matches!(place.layout.ty.kind(), ty::Ref(..))
+                            || self.kind == RetagKind::Raw
+                        {
+                            let new_perm =
+                                NewPermission::from_ref_ty(place.layout.ty, self.kind, self.ecx);
+                            self.retag_ptr_inplace(place, new_perm)?;
+                        }
                     }
                     ty::Adt(adt, _) if adt.is_box() => {
                         // Recurse for boxes, they require some tricky handling and will end up in `visit_box` above.

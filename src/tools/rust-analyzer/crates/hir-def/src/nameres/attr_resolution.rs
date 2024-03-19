@@ -5,7 +5,7 @@ use hir_expand::{
     attrs::{Attr, AttrId, AttrInput},
     MacroCallId, MacroCallKind, MacroDefId,
 };
-use span::Span;
+use span::SyntaxContextId;
 use syntax::{ast, SmolStr};
 use triomphe::Arc;
 
@@ -109,14 +109,14 @@ pub(super) fn attr_macro_as_call_id(
     let arg = match macro_attr.input.as_deref() {
         Some(AttrInput::TokenTree(tt)) => {
             let mut tt = tt.as_ref().clone();
-            tt.delimiter = tt::Delimiter::invisible_spanned(macro_attr.span);
+            tt.delimiter.kind = tt::DelimiterKind::Invisible;
             Some(tt)
         }
 
         _ => None,
     };
 
-    def.as_lazy_macro(
+    def.make_call(
         db.upcast(),
         krate,
         MacroCallKind::Attr {
@@ -124,7 +124,7 @@ pub(super) fn attr_macro_as_call_id(
             attr_args: arg.map(Arc::new),
             invoc_attr_index: macro_attr.id,
         },
-        macro_attr.span,
+        macro_attr.ctxt,
     )
 }
 
@@ -133,14 +133,14 @@ pub(super) fn derive_macro_as_call_id(
     item_attr: &AstIdWithPath<ast::Adt>,
     derive_attr_index: AttrId,
     derive_pos: u32,
-    call_site: Span,
+    call_site: SyntaxContextId,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<(MacroId, MacroDefId)>,
 ) -> Result<(MacroId, MacroDefId, MacroCallId), UnresolvedMacro> {
     let (macro_id, def_id) = resolver(item_attr.path.clone())
         .filter(|(_, def_id)| def_id.is_derive())
         .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
-    let call_id = def_id.as_lazy_macro(
+    let call_id = def_id.make_call(
         db.upcast(),
         krate,
         MacroCallKind::Derive {

@@ -681,28 +681,29 @@ impl<'db> SemanticsImpl<'db> {
             .filter(|&(_, include_file_id)| include_file_id == file_id)
         {
             let macro_file = invoc.as_macro_file();
-            let expansion_info = cache
-                .entry(macro_file)
-                .or_insert_with(|| macro_file.expansion_info(self.db.upcast()));
+            let expansion_info = cache.entry(macro_file).or_insert_with(|| {
+                let exp_info = macro_file.expansion_info(self.db.upcast());
+
+                let InMacroFile { file_id, value } = exp_info.expanded();
+                self.cache(value, file_id.into());
+
+                exp_info
+            });
 
             // Create the source analyzer for the macro call scope
             let Some(sa) = self.analyze_no_infer(&self.parse_or_expand(expansion_info.call_file()))
             else {
                 continue;
             };
-            {
-                let InMacroFile { file_id: macro_file, value } = expansion_info.expanded();
-                self.cache(value, macro_file.into());
-            }
 
             // get mapped token in the include! macro file
-            let span = span::SpanData {
+            let span = span::Span {
                 range: token.text_range(),
                 anchor: span::SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
                 ctx: SyntaxContextId::ROOT,
             };
             let Some(InMacroFile { file_id, value: mut mapped_tokens }) =
-                expansion_info.map_range_down(span)
+                expansion_info.map_range_down_exact(span)
             else {
                 continue;
             };
@@ -753,22 +754,20 @@ impl<'db> SemanticsImpl<'db> {
         let def_map = sa.resolver.def_map();
 
         let mut stack: Vec<(_, SmallVec<[_; 2]>)> = vec![(file_id, smallvec![token])];
-
         let mut process_expansion_for_token = |stack: &mut Vec<_>, macro_file| {
-            let expansion_info = cache
-                .entry(macro_file)
-                .or_insert_with(|| macro_file.expansion_info(self.db.upcast()));
+            let exp_info = cache.entry(macro_file).or_insert_with(|| {
+                let exp_info = macro_file.expansion_info(self.db.upcast());
 
-            {
-                let InMacroFile { file_id, value } = expansion_info.expanded();
+                let InMacroFile { file_id, value } = exp_info.expanded();
                 self.cache(value, file_id.into());
-            }
 
-            let InMacroFile { file_id, value: mapped_tokens } =
-                expansion_info.map_range_down(span)?;
+                exp_info
+            });
+
+            let InMacroFile { file_id, value: mapped_tokens } = exp_info.map_range_down(span)?;
             let mapped_tokens: SmallVec<[_; 2]> = mapped_tokens.collect();
 
-            // if the length changed we have found a mapping for the token
+            // we have found a mapping for the token if the vec is non-empty
             let res = mapped_tokens.is_empty().not().then_some(());
             // requeue the tokens we got from mapping our current token down
             stack.push((HirFileId::from(file_id), mapped_tokens));
@@ -851,7 +850,13 @@ impl<'db> SemanticsImpl<'db> {
                         // remove any other token in this macro input, all their mappings are the
                         // same as this one
                         tokens.retain(|t| !text_range.contains_range(t.text_range()));
-                        process_expansion_for_token(&mut stack, file_id)
+
+                        process_expansion_for_token(&mut stack, file_id).or(file_id
+                            .eager_arg(self.db.upcast())
+                            .and_then(|arg| {
+                                // also descend into eager expansions
+                                process_expansion_for_token(&mut stack, arg.as_macro_file())
+                            }))
                     } else if let Some(meta) = ast::Meta::cast(parent) {
                         // attribute we failed expansion for earlier, this might be a derive invocation
                         // or derive helper attribute
@@ -960,7 +965,7 @@ impl<'db> SemanticsImpl<'db> {
     /// macro file the node resides in.
     pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
         let node = self.find_file(node);
-        node.original_file_range(self.db.upcast())
+        node.original_file_range_rooted(self.db.upcast())
     }
 
     /// Attempts to map the node out of macro expanded files returning the original file range.
@@ -984,9 +989,9 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Attempts to map the node out of macro expanded files.
     /// This only work for attribute expansions, as other ones do not have nodes as input.
-    pub fn original_syntax_node(&self, node: &SyntaxNode) -> Option<SyntaxNode> {
+    pub fn original_syntax_node_rooted(&self, node: &SyntaxNode) -> Option<SyntaxNode> {
         let InFile { file_id, .. } = self.find_file(node);
-        InFile::new(file_id, node).original_syntax_node(self.db.upcast()).map(
+        InFile::new(file_id, node).original_syntax_node_rooted(self.db.upcast()).map(
             |InRealFile { file_id, value }| {
                 self.cache(find_root(&value), file_id.into());
                 value
@@ -997,7 +1002,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
         let root = self.parse_or_expand(src.file_id);
         let node = src.map(|it| it.to_node(&root));
-        node.as_ref().original_file_range(self.db.upcast())
+        node.as_ref().original_file_range_rooted(self.db.upcast())
     }
 
     fn token_ancestors_with_macros(
@@ -1234,6 +1239,11 @@ impl<'db> SemanticsImpl<'db> {
         let sa = self.analyze(macro_call.syntax())?;
         let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);
         sa.resolve_macro_call(self.db, macro_call)
+    }
+
+    pub fn is_proc_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
+        self.resolve_macro_call(macro_call)
+            .map_or(false, |m| matches!(m.id, MacroId::ProcMacroId(..)))
     }
 
     pub fn is_unsafe_macro_call(&self, macro_call: &ast::MacroCall) -> bool {

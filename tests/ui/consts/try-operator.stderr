@@ -13,7 +13,10 @@ LL |         Err(())?;
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/result.rs:LL:COL
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0015]: `?` cannot convert from residual of `Result<bool, ()>` in constant functions
   --> $DIR/try-operator.rs:10:9
@@ -24,7 +27,10 @@ LL |         Err(())?;
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/result.rs:LL:COL
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0015]: `?` cannot determine the branch of `Option<()>` in constant functions
   --> $DIR/try-operator.rs:18:9
@@ -35,7 +41,10 @@ LL |         None?;
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/option.rs:LL:COL
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0015]: `?` cannot convert from residual of `Option<()>` in constant functions
   --> $DIR/try-operator.rs:18:9
@@ -46,7 +55,10 @@ LL |         None?;
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/option.rs:LL:COL
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error: aborting due to 5 previous errors
 

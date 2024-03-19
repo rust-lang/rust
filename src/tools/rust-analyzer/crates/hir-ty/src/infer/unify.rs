@@ -23,12 +23,9 @@ use crate::{
 };
 
 impl InferenceContext<'_> {
-    pub(super) fn canonicalize<T: TypeFoldable<Interner> + HasInterner<Interner = Interner>>(
-        &mut self,
-        t: T,
-    ) -> Canonicalized<T>
+    pub(super) fn canonicalize<T>(&mut self, t: T) -> Canonical<T>
     where
-        T: HasInterner<Interner = Interner>,
+        T: TypeFoldable<Interner> + HasInterner<Interner = Interner>,
     {
         self.table.canonicalize(t)
     }
@@ -128,14 +125,14 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
             }),
         );
         for (i, v) in solution.value.iter(Interner).enumerate() {
-            let var = self.free_vars[i].clone();
+            let var = &self.free_vars[i];
             if let Some(ty) = v.ty(Interner) {
                 // eagerly replace projections in the type; we may be getting types
                 // e.g. from where clauses where this hasn't happened yet
                 let ty = ctx.normalize_associated_types_in(new_vars.apply(ty.clone(), Interner));
                 ctx.unify(var.assert_ty_ref(Interner), &ty);
             } else {
-                let _ = ctx.try_unify(&var, &new_vars.apply(v.clone(), Interner));
+                let _ = ctx.try_unify(var, &new_vars.apply(v.clone(), Interner));
             }
         }
     }
@@ -243,7 +240,7 @@ pub(crate) struct InferenceTable<'a> {
     pub(crate) db: &'a dyn HirDatabase,
     pub(crate) trait_env: Arc<TraitEnvironment>,
     var_unification_table: ChalkInferenceTable,
-    type_variable_table: Vec<TypeVariableFlags>,
+    type_variable_table: SmallVec<[TypeVariableFlags; 16]>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
     /// Double buffer used in [`Self::resolve_obligations_as_possible`] to cut down on
     /// temporary allocations.
@@ -252,8 +249,8 @@ pub(crate) struct InferenceTable<'a> {
 
 pub(crate) struct InferenceTableSnapshot {
     var_table_snapshot: chalk_solve::infer::InferenceSnapshot<Interner>,
+    type_variable_table: SmallVec<[TypeVariableFlags; 16]>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
-    type_variable_table_snapshot: Vec<TypeVariableFlags>,
 }
 
 impl<'a> InferenceTable<'a> {
@@ -262,7 +259,7 @@ impl<'a> InferenceTable<'a> {
             db,
             trait_env,
             var_unification_table: ChalkInferenceTable::new(),
-            type_variable_table: Vec::new(),
+            type_variable_table: SmallVec::new(),
             pending_obligations: Vec::new(),
             resolve_obligations_buffer: Vec::new(),
         }
@@ -292,14 +289,14 @@ impl<'a> InferenceTable<'a> {
     }
 
     fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
+        let is_diverging = self
+            .type_variable_table
+            .get(iv.index() as usize)
+            .map_or(false, |data| data.contains(TypeVariableFlags::DIVERGING));
+        if is_diverging {
+            return TyKind::Never.intern(Interner);
+        }
         match kind {
-            _ if self
-                .type_variable_table
-                .get(iv.index() as usize)
-                .map_or(false, |data| data.contains(TypeVariableFlags::DIVERGING)) =>
-            {
-                TyKind::Never
-            }
             TyVariableKind::General => TyKind::Error,
             TyVariableKind::Integer => TyKind::Scalar(Scalar::Int(IntTy::I32)),
             TyVariableKind::Float => TyKind::Scalar(Scalar::Float(FloatTy::F64)),
@@ -307,12 +304,9 @@ impl<'a> InferenceTable<'a> {
         .intern(Interner)
     }
 
-    pub(crate) fn canonicalize<T: TypeFoldable<Interner> + HasInterner<Interner = Interner>>(
-        &mut self,
-        t: T,
-    ) -> Canonicalized<T>
+    pub(crate) fn canonicalize_with_free_vars<T>(&mut self, t: T) -> Canonicalized<T>
     where
-        T: HasInterner<Interner = Interner>,
+        T: TypeFoldable<Interner> + HasInterner<Interner = Interner>,
     {
         // try to resolve obligations before canonicalizing, since this might
         // result in new knowledge about variables
@@ -324,6 +318,16 @@ impl<'a> InferenceTable<'a> {
             .map(|free_var| free_var.to_generic_arg(Interner))
             .collect();
         Canonicalized { value: result.quantified, free_vars }
+    }
+
+    pub(crate) fn canonicalize<T>(&mut self, t: T) -> Canonical<T>
+    where
+        T: TypeFoldable<Interner> + HasInterner<Interner = Interner>,
+    {
+        // try to resolve obligations before canonicalizing, since this might
+        // result in new knowledge about variables
+        self.resolve_obligations_as_possible();
+        self.var_unification_table.canonicalize(Interner, t).quantified
     }
 
     /// Recurses through the given type, normalizing associated types mentioned
@@ -541,7 +545,7 @@ impl<'a> InferenceTable<'a> {
             Err(_) => return false,
         };
         result.goals.iter().all(|goal| {
-            let canonicalized = self.canonicalize(goal.clone());
+            let canonicalized = self.canonicalize_with_free_vars(goal.clone());
             self.try_resolve_obligation(&canonicalized).is_some()
         })
     }
@@ -575,19 +579,15 @@ impl<'a> InferenceTable<'a> {
 
     pub(crate) fn snapshot(&mut self) -> InferenceTableSnapshot {
         let var_table_snapshot = self.var_unification_table.snapshot();
-        let type_variable_table_snapshot = self.type_variable_table.clone();
+        let type_variable_table = self.type_variable_table.clone();
         let pending_obligations = self.pending_obligations.clone();
-        InferenceTableSnapshot {
-            var_table_snapshot,
-            pending_obligations,
-            type_variable_table_snapshot,
-        }
+        InferenceTableSnapshot { var_table_snapshot, pending_obligations, type_variable_table }
     }
 
     #[tracing::instrument(skip_all)]
     pub(crate) fn rollback_to(&mut self, snapshot: InferenceTableSnapshot) {
         self.var_unification_table.rollback_to(snapshot.var_table_snapshot);
-        self.type_variable_table = snapshot.type_variable_table_snapshot;
+        self.type_variable_table = snapshot.type_variable_table;
         self.pending_obligations = snapshot.pending_obligations;
     }
 
@@ -606,7 +606,7 @@ impl<'a> InferenceTable<'a> {
         let in_env = InEnvironment::new(&self.trait_env.env, goal);
         let canonicalized = self.canonicalize(in_env);
 
-        self.db.trait_solve(self.trait_env.krate, self.trait_env.block, canonicalized.value)
+        self.db.trait_solve(self.trait_env.krate, self.trait_env.block, canonicalized)
     }
 
     pub(crate) fn register_obligation(&mut self, goal: Goal) {
@@ -615,7 +615,7 @@ impl<'a> InferenceTable<'a> {
     }
 
     fn register_obligation_in_env(&mut self, goal: InEnvironment<Goal>) {
-        let canonicalized = self.canonicalize(goal);
+        let canonicalized = self.canonicalize_with_free_vars(goal);
         let solution = self.try_resolve_obligation(&canonicalized);
         if matches!(solution, Some(Solution::Ambig(_))) {
             self.pending_obligations.push(canonicalized);
@@ -798,7 +798,7 @@ impl<'a> InferenceTable<'a> {
         let trait_data = self.db.trait_data(fn_once_trait);
         let output_assoc_type = trait_data.associated_type_by_name(&name![Output])?;
 
-        let mut arg_tys = vec![];
+        let mut arg_tys = Vec::with_capacity(num_args);
         let arg_ty = TyBuilder::tuple(num_args)
             .fill(|it| {
                 let arg = match it {
@@ -828,11 +828,7 @@ impl<'a> InferenceTable<'a> {
             environment: trait_env.clone(),
         };
         let canonical = self.canonicalize(obligation.clone());
-        if self
-            .db
-            .trait_solve(krate, self.trait_env.block, canonical.value.cast(Interner))
-            .is_some()
-        {
+        if self.db.trait_solve(krate, self.trait_env.block, canonical.cast(Interner)).is_some() {
             self.register_obligation(obligation.goal);
             let return_ty = self.normalize_projection_ty(projection);
             for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
@@ -845,7 +841,7 @@ impl<'a> InferenceTable<'a> {
                 let canonical = self.canonicalize(obligation.clone());
                 if self
                     .db
-                    .trait_solve(krate, self.trait_env.block, canonical.value.cast(Interner))
+                    .trait_solve(krate, self.trait_env.block, canonical.cast(Interner))
                     .is_some()
                 {
                     return Some((fn_x, arg_tys, return_ty));

@@ -15,7 +15,8 @@ use std::{
 };
 
 use bootstrap::{
-    find_recent_config_change_ids, t, Build, Config, Subcommand, CONFIG_CHANGE_HISTORY,
+    find_recent_config_change_ids, human_readable_changes, t, Build, Config, Subcommand,
+    CONFIG_CHANGE_HISTORY,
 };
 
 fn main() {
@@ -164,14 +165,7 @@ fn check_version(config: &Config) -> Option<String> {
         }
 
         msg.push_str("There have been changes to x.py since you last updated:\n");
-
-        for change in changes {
-            msg.push_str(&format!("  [{}] {}\n", change.severity, change.summary));
-            msg.push_str(&format!(
-                "    - PR Link https://github.com/rust-lang/rust/pull/{}\n",
-                change.change_id
-            ));
-        }
+        msg.push_str(&human_readable_changes(&changes));
 
         msg.push_str("NOTE: to silence this warning, ");
         msg.push_str(&format!(

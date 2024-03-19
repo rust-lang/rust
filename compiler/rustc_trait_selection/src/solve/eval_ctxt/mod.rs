@@ -7,14 +7,14 @@ use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk, TyCtxtInferExt,
 };
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::solve::MaybeCause;
+use rustc_infer::traits::solve::{MaybeCause, NestedNormalizationGoals};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::solve::inspect;
 use rustc_middle::traits::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, IsNormalizesToHack, PredefinedOpaques,
-    PredefinedOpaquesData, QueryResult,
+    CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaques, PredefinedOpaquesData,
+    QueryResult,
 };
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::{
@@ -61,6 +61,14 @@ pub struct EvalCtxt<'a, 'tcx> {
     /// The variable info for the `var_values`, only used to make an ambiguous response
     /// with no constraints.
     variables: CanonicalVarInfos<'tcx>,
+    /// Whether we're currently computing a `NormalizesTo` goal. Unlike other goals,
+    /// `NormalizesTo` goals act like functions with the expected term always being
+    /// fully unconstrained. This would weaken inference however, as the nested goals
+    /// never get the inference constraints from the actual normalized-to type. Because
+    /// of this we return any ambiguous nested goals from `NormalizesTo` to the caller
+    /// when then adds these to its own context. The caller is always an `AliasRelate`
+    /// goal so this never leaks out of the solver.
+    is_normalizes_to_goal: bool,
     pub(super) var_values: CanonicalVarValues<'tcx>,
 
     predefined_opaques_in_body: PredefinedOpaques<'tcx>,
@@ -91,9 +99,9 @@ pub struct EvalCtxt<'a, 'tcx> {
     pub(super) inspect: ProofTreeBuilder<'tcx>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub(super) struct NestedGoals<'tcx> {
-    /// This normalizes-to goal that is treated specially during the evaluation
+    /// These normalizes-to goals are treated specially during the evaluation
     /// loop. In each iteration we take the RHS of the projection, replace it with
     /// a fresh inference variable, and only after evaluating that goal do we
     /// equate the fresh inference variable with the actual RHS of the predicate.
@@ -101,26 +109,24 @@ pub(super) struct NestedGoals<'tcx> {
     /// This is both to improve caching, and to avoid using the RHS of the
     /// projection predicate to influence the normalizes-to candidate we select.
     ///
-    /// This is not a 'real' nested goal. We must not forget to replace the RHS
-    /// with a fresh inference variable when we evaluate this goal. That can result
-    /// in a trait solver cycle. This would currently result in overflow but can be
-    /// can be unsound with more powerful coinduction in the future.
-    pub(super) normalizes_to_hack_goal: Option<Goal<'tcx, ty::NormalizesTo<'tcx>>>,
+    /// Forgetting to replace the RHS with a fresh inference variable when we evaluate
+    /// this goal results in an ICE..
+    pub(super) normalizes_to_goals: Vec<Goal<'tcx, ty::NormalizesTo<'tcx>>>,
     /// The rest of the goals which have not yet processed or remain ambiguous.
     pub(super) goals: Vec<(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>,
 }
 
 impl<'tcx> NestedGoals<'tcx> {
     pub(super) fn new() -> Self {
-        Self { normalizes_to_hack_goal: None, goals: Vec::new() }
+        Self { normalizes_to_goals: Vec::new(), goals: Vec::new() }
     }
 
     pub(super) fn is_empty(&self) -> bool {
-        self.normalizes_to_hack_goal.is_none() && self.goals.is_empty()
+        self.normalizes_to_goals.is_empty() && self.goals.is_empty()
     }
 
     pub(super) fn extend(&mut self, other: NestedGoals<'tcx>) {
-        assert_eq!(other.normalizes_to_hack_goal, None);
+        self.normalizes_to_goals.extend(other.normalizes_to_goals);
         self.goals.extend(other.goals)
     }
 }
@@ -155,6 +161,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         self.search_graph.solver_mode()
     }
 
+    pub(super) fn set_is_normalizes_to_goal(&mut self) {
+        self.is_normalizes_to_goal = true;
+    }
+
     /// Creates a root evaluation context and search graph. This should only be
     /// used from outside of any evaluation, and other methods should be preferred
     /// over using this manually (such as [`InferCtxtEvalExt::evaluate_root_goal`]).
@@ -167,8 +177,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let mut search_graph = search_graph::SearchGraph::new(mode);
 
         let mut ecx = EvalCtxt {
-            search_graph: &mut search_graph,
             infcx,
+            search_graph: &mut search_graph,
             nested_goals: NestedGoals::new(),
             inspect: ProofTreeBuilder::new_maybe_root(infcx.tcx, generate_proof_tree),
 
@@ -180,6 +190,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             max_input_universe: ty::UniverseIndex::ROOT,
             variables: ty::List::empty(),
             var_values: CanonicalVarValues::dummy(),
+            is_normalizes_to_goal: false,
             tainted: Ok(()),
         };
         let result = f(&mut ecx);
@@ -233,6 +244,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             infcx,
             variables: canonical_input.variables,
             var_values,
+            is_normalizes_to_goal: false,
             predefined_opaques_in_body: input.predefined_opaques_in_body,
             max_input_universe: canonical_input.max_universe,
             search_graph,
@@ -319,6 +331,27 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         source: GoalSource,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
     ) -> Result<(bool, Certainty), NoSolution> {
+        let (normalization_nested_goals, has_changed, certainty) =
+            self.evaluate_goal_raw(goal_evaluation_kind, source, goal)?;
+        assert!(normalization_nested_goals.is_empty());
+        Ok((has_changed, certainty))
+    }
+
+    /// Recursively evaluates `goal`, returning the nested goals in case
+    /// the nested goal is a `NormalizesTo` goal.
+    ///
+    /// As all other goal kinds do not return any nested goals and
+    /// `NormalizesTo` is only used by `AliasRelate`, all other callsites
+    /// should use [`EvalCtxt::evaluate_goal`] which discards that empty
+    /// storage.
+    // FIXME(-Znext-solver=coinduction): `_source` is currently unused but will
+    // be necessary once we implement the new coinduction approach.
+    fn evaluate_goal_raw(
+        &mut self,
+        goal_evaluation_kind: GoalEvaluationKind,
+        _source: GoalSource,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    ) -> Result<(NestedNormalizationGoals<'tcx>, bool, Certainty), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
@@ -336,12 +369,12 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             Ok(response) => response,
         };
 
-        let (certainty, has_changed) = self.instantiate_response_discarding_overflow(
-            goal.param_env,
-            source,
-            orig_values,
-            canonical_response,
-        );
+        let (normalization_nested_goals, certainty, has_changed) = self
+            .instantiate_response_discarding_overflow(
+                goal.param_env,
+                orig_values,
+                canonical_response,
+            );
         self.inspect.goal_evaluation(goal_evaluation);
         // FIXME: We previously had an assert here that checked that recomputing
         // a goal after applying its constraints did not change its response.
@@ -353,47 +386,25 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // Once we have decided on how to handle trait-system-refactor-initiative#75,
         // we should re-add an assert here.
 
-        Ok((has_changed, certainty))
+        Ok((normalization_nested_goals, has_changed, certainty))
     }
 
     fn instantiate_response_discarding_overflow(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        source: GoalSource,
         original_values: Vec<ty::GenericArg<'tcx>>,
         response: CanonicalResponse<'tcx>,
-    ) -> (Certainty, bool) {
-        // The old solver did not evaluate nested goals when normalizing.
-        // It returned the selection constraints allowing a `Projection`
-        // obligation to not hold in coherence while avoiding the fatal error
-        // from overflow.
-        //
-        // We match this behavior here by considering all constraints
-        // from nested goals which are not from where-bounds. We will already
-        // need to track which nested goals are required by impl where-bounds
-        // for coinductive cycles, so we simply reuse that here.
-        //
-        // While we could consider overflow constraints in more cases, this should
-        // not be necessary for backcompat and results in better perf. It also
-        // avoids a potential inconsistency which would otherwise require some
-        // tracking for root goals as well. See #119071 for an example.
-        let keep_overflow_constraints = || {
-            self.search_graph.current_goal_is_normalizes_to()
-                && source != GoalSource::ImplWhereBound
-        };
-
-        if let Certainty::Maybe(MaybeCause::Overflow { .. }) = response.value.certainty
-            && !keep_overflow_constraints()
-        {
-            return (response.value.certainty, false);
+    ) -> (NestedNormalizationGoals<'tcx>, Certainty, bool) {
+        if let Certainty::Maybe(MaybeCause::Overflow { .. }) = response.value.certainty {
+            return (NestedNormalizationGoals::empty(), response.value.certainty, false);
         }
 
         let has_changed = !response.value.var_values.is_identity_modulo_regions()
             || !response.value.external_constraints.opaque_types.is_empty();
 
-        let certainty =
+        let (normalization_nested_goals, certainty) =
             self.instantiate_and_apply_query_response(param_env, original_values, response);
-        (certainty, has_changed)
+        (normalization_nested_goals, certainty, has_changed)
     }
 
     fn compute_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) -> QueryResult<'tcx> {
@@ -496,7 +507,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     /// Goals for the next step get directly added to the nested goals of the `EvalCtxt`.
     fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
         let tcx = self.tcx();
-        let mut goals = core::mem::replace(&mut self.nested_goals, NestedGoals::new());
+        let mut goals = core::mem::take(&mut self.nested_goals);
 
         self.inspect.evaluate_added_goals_loop_start();
 
@@ -508,7 +519,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
-        if let Some(goal) = goals.normalizes_to_hack_goal.take() {
+        for goal in goals.normalizes_to_goals {
             // Replace the goal with an unconstrained infer var, so the
             // RHS does not affect projection candidate assembly.
             let unconstrained_rhs = self.next_term_infer_of_kind(goal.predicate.term);
@@ -517,11 +528,13 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::NormalizesTo { alias: goal.predicate.alias, term: unconstrained_rhs },
             );
 
-            let (_, certainty) = self.evaluate_goal(
-                GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::Yes },
+            let (NestedNormalizationGoals(nested_goals), _, certainty) = self.evaluate_goal_raw(
+                GoalEvaluationKind::Nested,
                 GoalSource::Misc,
                 unconstrained_goal,
             )?;
+            // Add the nested goals from normalization to our own nested goals.
+            goals.goals.extend(nested_goals);
 
             // Finally, equate the goal's RHS with the unconstrained var.
             // We put the nested goals from this into goals instead of
@@ -536,27 +549,23 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             // looking at the "has changed" return from evaluate_goal,
             // because we expect the `unconstrained_rhs` part of the predicate
             // to have changed -- that means we actually normalized successfully!
-            if goal.predicate.alias != self.resolve_vars_if_possible(goal.predicate.alias) {
+            let with_resolved_vars = self.resolve_vars_if_possible(goal);
+            if goal.predicate.alias != with_resolved_vars.predicate.alias {
                 unchanged_certainty = None;
             }
 
             match certainty {
                 Certainty::Yes => {}
                 Certainty::Maybe(_) => {
-                    // We need to resolve vars here so that we correctly
-                    // deal with `has_changed` in the next iteration.
-                    self.set_normalizes_to_hack_goal(self.resolve_vars_if_possible(goal));
+                    self.nested_goals.normalizes_to_goals.push(with_resolved_vars);
                     unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
                 }
             }
         }
 
-        for (source, goal) in goals.goals.drain(..) {
-            let (has_changed, certainty) = self.evaluate_goal(
-                GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::No },
-                source,
-                goal,
-            )?;
+        for (source, goal) in goals.goals {
+            let (has_changed, certainty) =
+                self.evaluate_goal(GoalEvaluationKind::Nested, source, goal)?;
             if has_changed {
                 unchanged_certainty = None;
             }
@@ -968,7 +977,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         ty: Ty<'tcx>,
     ) -> Option<ty::Const<'tcx>> {
         use rustc_middle::mir::interpret::ErrorHandled;
-        match self.infcx.try_const_eval_resolve(param_env, unevaluated, ty, None) {
+        match self.infcx.try_const_eval_resolve(param_env, unevaluated, ty, DUMMY_SP) {
             Ok(ct) => Some(ct),
             Err(ErrorHandled::Reported(e, _)) => {
                 Some(ty::Const::new_error(self.tcx(), e.into(), ty))

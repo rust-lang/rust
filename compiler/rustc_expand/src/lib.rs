@@ -1,7 +1,7 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![feature(array_windows)]
-#![feature(associated_type_bounds)]
+#![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![feature(associated_type_defaults)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]

@@ -938,9 +938,6 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     };
     // In the case of an empty match, replace the '`_` not covered' diagnostic with something more
     // informative.
-    let mut err;
-    let pattern;
-    let patterns_len;
     if is_empty_match && !non_empty_enum {
         return cx.tcx.dcx().emit_err(NonExhaustivePatternsTypeNotEmpty {
             cx,
@@ -948,33 +945,23 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             span: sp,
             ty: scrut_ty,
         });
-    } else {
-        // FIXME: migration of this diagnostic will require list support
-        let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
-        err = create_e0004(
-            cx.tcx.sess,
-            sp,
-            format!("non-exhaustive patterns: {joined_patterns} not covered"),
-        );
-        err.span_label(
-            sp,
-            format!(
-                "pattern{} {} not covered",
-                rustc_errors::pluralize!(witnesses.len()),
-                joined_patterns
-            ),
-        );
-        patterns_len = witnesses.len();
-        pattern = if witnesses.len() < 4 {
-            witnesses
-                .iter()
-                .map(|witness| cx.hoist_witness_pat(witness).to_string())
-                .collect::<Vec<String>>()
-                .join(" | ")
-        } else {
-            "_".to_string()
-        };
-    };
+    }
+
+    // FIXME: migration of this diagnostic will require list support
+    let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
+    let mut err = create_e0004(
+        cx.tcx.sess,
+        sp,
+        format!("non-exhaustive patterns: {joined_patterns} not covered"),
+    );
+    err.span_label(
+        sp,
+        format!(
+            "pattern{} {} not covered",
+            rustc_errors::pluralize!(witnesses.len()),
+            joined_patterns
+        ),
+    );
 
     // Point at the definition of non-covered `enum` variants.
     if let Some(AdtDefinedHere { adt_def_span, ty, variants }) =
@@ -1021,6 +1008,23 @@ fn report_non_exhaustive_match<'p, 'tcx>(
         }
     }
 
+    // Whether we suggest the actual missing patterns or `_`.
+    let suggest_the_witnesses = witnesses.len() < 4;
+    let suggested_arm = if suggest_the_witnesses {
+        let pattern = witnesses
+            .iter()
+            .map(|witness| cx.hoist_witness_pat(witness).to_string())
+            .collect::<Vec<String>>()
+            .join(" | ");
+        if witnesses.iter().all(|p| p.is_never_pattern()) && cx.tcx.features().never_patterns {
+            // Arms with a never pattern don't take a body.
+            pattern
+        } else {
+            format!("{pattern} => todo!()")
+        }
+    } else {
+        format!("_ => todo!()")
+    };
     let mut suggestion = None;
     let sm = cx.tcx.sess.source_map();
     match arms {
@@ -1033,7 +1037,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             };
             suggestion = Some((
                 sp.shrink_to_hi().with_hi(expr_span.hi()),
-                format!(" {{{indentation}{more}{pattern} => todo!(),{indentation}}}",),
+                format!(" {{{indentation}{more}{suggested_arm},{indentation}}}",),
             ));
         }
         [only] => {
@@ -1059,7 +1063,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             };
             suggestion = Some((
                 only.span.shrink_to_hi(),
-                format!("{comma}{pre_indentation}{pattern} => todo!()"),
+                format!("{comma}{pre_indentation}{suggested_arm}"),
             ));
         }
         [.., prev, last] => {
@@ -1082,7 +1086,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 if let Some(spacing) = spacing {
                     suggestion = Some((
                         last.span.shrink_to_hi(),
-                        format!("{comma}{spacing}{pattern} => todo!()"),
+                        format!("{comma}{spacing}{suggested_arm}"),
                     ));
                 }
             }
@@ -1093,13 +1097,13 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     let msg = format!(
         "ensure that all possible cases are being handled by adding a match arm with a wildcard \
          pattern{}{}",
-        if patterns_len > 1 && patterns_len < 4 && suggestion.is_some() {
+        if witnesses.len() > 1 && suggest_the_witnesses && suggestion.is_some() {
             ", a match arm with multiple or-patterns"
         } else {
             // we are either not suggesting anything, or suggesting `_`
             ""
         },
-        match patterns_len {
+        match witnesses.len() {
             // non-exhaustive enum case
             0 if suggestion.is_some() => " as shown",
             0 => "",

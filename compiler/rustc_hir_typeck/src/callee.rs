@@ -755,7 +755,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = callee_expr.kind
             && let Res::Local(_) = path.res
-            && let [segment] = &path.segments[..]
+            && let [segment] = &path.segments
         {
             for id in self.tcx.hir().items() {
                 if let Some(node) = self.tcx.hir().get_if_local(id.owner_id.into())

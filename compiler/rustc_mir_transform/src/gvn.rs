@@ -367,7 +367,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             Repeat(..) => return None,
 
             Constant { ref value, disambiguator: _ } => {
-                self.ecx.eval_mir_constant(value, None, None).ok()?
+                self.ecx.eval_mir_constant(value, DUMMY_SP, None).ok()?
             }
             Aggregate(kind, variant, ref fields) => {
                 let fields = fields

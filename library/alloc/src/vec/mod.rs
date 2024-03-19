@@ -1462,7 +1462,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// The removed element is replaced by the last element of the vector.
     ///
-    /// This does not preserve ordering, but is *O*(1).
+    /// This does not preserve ordering of the remaining elements, but is *O*(1).
     /// If you need to preserve the element order, use [`remove`] instead.
     ///
     /// [`remove`]: Vec::remove

@@ -21,8 +21,9 @@
 //! However, if `?fresh_var` ends up geteting equated to another type, we retry the
 //! `NormalizesTo` goal, at which point the opaque is actually defined.
 
-use super::{EvalCtxt, GoalSource};
+use super::EvalCtxt;
 use rustc_infer::traits::query::NoSolution;
+use rustc_infer::traits::solve::GoalSource;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty::{self, Ty};
 
@@ -121,10 +122,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::TermKind::Const(_) => {
                 if let Some(alias) = term.to_alias_ty(self.tcx()) {
                     let term = self.next_term_infer_of_kind(term);
-                    self.add_goal(
-                        GoalSource::Misc,
-                        Goal::new(self.tcx(), param_env, ty::NormalizesTo { alias, term }),
-                    );
+                    self.add_normalizes_to_goal(Goal::new(
+                        self.tcx(),
+                        param_env,
+                        ty::NormalizesTo { alias, term },
+                    ));
                     self.try_evaluate_added_goals()?;
                     Ok(Some(self.resolve_vars_if_possible(term)))
                 } else {
@@ -145,18 +147,25 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return None;
         }
 
-        let ty::Alias(_, alias) = *ty.kind() else {
+        let ty::Alias(kind, alias) = *ty.kind() else {
             return Some(ty);
         };
 
         match self.commit_if_ok(|this| {
+            let tcx = this.tcx();
             let normalized_ty = this.next_ty_infer();
-            let normalizes_to_goal = Goal::new(
-                this.tcx(),
-                param_env,
-                ty::NormalizesTo { alias, term: normalized_ty.into() },
-            );
-            this.add_goal(GoalSource::Misc, normalizes_to_goal);
+            let normalizes_to = ty::NormalizesTo { alias, term: normalized_ty.into() };
+            match kind {
+                ty::AliasKind::Opaque => {
+                    // HACK: Unlike for associated types, `normalizes-to` for opaques
+                    // is currently not treated as a function. We do not erase the
+                    // expected term.
+                    this.add_goal(GoalSource::Misc, Goal::new(tcx, param_env, normalizes_to));
+                }
+                ty::AliasKind::Projection | ty::AliasKind::Inherent | ty::AliasKind::Weak => {
+                    this.add_normalizes_to_goal(Goal::new(tcx, param_env, normalizes_to))
+                }
+            }
             this.try_evaluate_added_goals()?;
             Ok(this.resolve_vars_if_possible(normalized_ty))
         }) {

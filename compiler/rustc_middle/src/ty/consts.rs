@@ -335,7 +335,7 @@ impl<'tcx> Const<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-        span: Option<Span>,
+        span: Span,
     ) -> Result<ValTree<'tcx>, ErrorHandled> {
         assert!(!self.has_escaping_bound_vars(), "escaping vars in {self:?}");
         match self.kind() {
@@ -349,7 +349,7 @@ impl<'tcx> Const<'tcx> {
                 else {
                     // This can happen when we run on ill-typed code.
                     let e = tcx.dcx().span_delayed_bug(
-                        span.unwrap_or(DUMMY_SP),
+                        span,
                         "`ty::Const::eval` called on a non-valtree-compatible type",
                     );
                     return Err(e.into());
@@ -362,14 +362,14 @@ impl<'tcx> Const<'tcx> {
             | ConstKind::Infer(_)
             | ConstKind::Bound(_, _)
             | ConstKind::Placeholder(_)
-            | ConstKind::Expr(_) => Err(ErrorHandled::TooGeneric(span.unwrap_or(DUMMY_SP))),
+            | ConstKind::Expr(_) => Err(ErrorHandled::TooGeneric(span)),
         }
     }
 
     /// Normalizes the constant to a value or an error if possible.
     #[inline]
     pub fn normalize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
-        match self.eval(tcx, param_env, None) {
+        match self.eval(tcx, param_env, DUMMY_SP) {
             Ok(val) => Self::new_value(tcx, val, self.ty()),
             Err(ErrorHandled::Reported(r, _span)) => Self::new_error(tcx, r.into(), self.ty()),
             Err(ErrorHandled::TooGeneric(_span)) => self,
@@ -382,7 +382,7 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<Scalar> {
-        self.eval(tcx, param_env, None).ok()?.try_to_scalar()
+        self.eval(tcx, param_env, DUMMY_SP).ok()?.try_to_scalar()
     }
 
     #[inline]

@@ -56,8 +56,8 @@ use hir_def::{
     AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId,
     EnumId, EnumVariantId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule,
     ImplId, InTypeConstId, ItemContainerId, LifetimeParamId, LocalFieldId, Lookup, MacroExpander,
-    MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TupleId, TypeAliasId,
-    TypeOrConstParamId, TypeParamId, UnionId,
+    ModuleId, StaticId, StructId, TraitAliasId, TraitId, TupleId, TypeAliasId, TypeOrConstParamId,
+    TypeParamId, UnionId,
 };
 use hir_expand::{attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, MacroCallKind};
 use hir_ty::{
@@ -122,7 +122,7 @@ pub use {
         visibility::Visibility,
         // FIXME: This is here since some queries take it as input that are used
         // outside of hir.
-        {AdtId, ModuleDefId},
+        {AdtId, MacroId, ModuleDefId},
     },
     hir_expand::{
         attrs::{Attr, AttrId},
@@ -754,7 +754,7 @@ impl Module {
         scope
             .declarations()
             .map(ModuleDef::from)
-            .chain(scope.unnamed_consts(db.upcast()).map(|id| ModuleDef::Const(Const::from(id))))
+            .chain(scope.unnamed_consts().map(|id| ModuleDef::Const(Const::from(id))))
             .collect()
     }
 
@@ -1725,6 +1725,10 @@ impl DefWithBody {
                             Ok(s) => s.map(|it| it.into()),
                             Err(_) => continue,
                         },
+                        mir::MirSpan::SelfParam => match source_map.self_param_syntax() {
+                            Some(s) => s.map(|it| it.into()),
+                            None => continue,
+                        },
                         mir::MirSpan::Unknown => continue,
                     };
                     acc.push(
@@ -1775,6 +1779,11 @@ impl DefWithBody {
                                     mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
                                         Ok(s) => s.map(|it| it.into()),
                                         Err(_) => continue,
+                                    },
+                                    mir::MirSpan::SelfParam => match source_map.self_param_syntax()
+                                    {
+                                        Some(s) => s.map(|it| it.into()),
+                                        None => continue,
                                     },
                                     mir::MirSpan::Unknown => continue,
                                 };
@@ -2127,8 +2136,11 @@ impl Param {
     pub fn as_local(&self, db: &dyn HirDatabase) -> Option<Local> {
         let parent = DefWithBodyId::FunctionId(self.func.into());
         let body = db.body(parent);
-        let pat_id = body.params[self.idx];
-        if let Pat::Bind { id, .. } = &body[pat_id] {
+        if let Some(self_param) = body.self_param.filter(|_| self.idx == 0) {
+            Some(Local { parent, binding_id: self_param })
+        } else if let Pat::Bind { id, .. } =
+            &body[body.params[self.idx - body.self_param.is_some() as usize]]
+        {
             Some(Local { parent, binding_id: *id })
         } else {
             None
@@ -2143,7 +2155,7 @@ impl Param {
         let InFile { file_id, value } = self.func.source(db)?;
         let params = value.param_list()?;
         if params.self_param().is_some() {
-            params.params().nth(self.idx.checked_sub(1)?)
+            params.params().nth(self.idx.checked_sub(params.self_param().is_some() as usize)?)
         } else {
             params.params().nth(self.idx)
         }
@@ -2602,6 +2614,15 @@ impl Macro {
                 matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInDerive(_))
             }
             MacroId::ProcMacroId(_) => false,
+        }
+    }
+
+    pub fn is_env_or_option_env(&self, db: &dyn HirDatabase) -> bool {
+        match self.id {
+            MacroId::Macro2Id(it) => {
+                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInEager(eager) if eager.is_env_or_option_env())
+            }
+            MacroId::MacroRulesId(_) | MacroId::ProcMacroId(_) => false,
         }
     }
 
@@ -3134,35 +3155,59 @@ impl Local {
     /// All definitions for this local. Example: `let (a$0, _) | (_, a$0) = it;`
     pub fn sources(self, db: &dyn HirDatabase) -> Vec<LocalSource> {
         let (body, source_map) = db.body_with_source_map(self.parent);
-        self.sources_(db, &body, &source_map).collect()
+        match body.self_param.zip(source_map.self_param_syntax()) {
+            Some((param, source)) if param == self.binding_id => {
+                let root = source.file_syntax(db.upcast());
+                vec![LocalSource {
+                    local: self,
+                    source: source.map(|ast| Either::Right(ast.to_node(&root))),
+                }]
+            }
+            _ => body[self.binding_id]
+                .definitions
+                .iter()
+                .map(|&definition| {
+                    let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
+                    let root = src.file_syntax(db.upcast());
+                    LocalSource {
+                        local: self,
+                        source: src.map(|ast| match ast.to_node(&root) {
+                            ast::Pat::IdentPat(it) => Either::Left(it),
+                            _ => unreachable!("local with non ident-pattern"),
+                        }),
+                    }
+                })
+                .collect(),
+        }
     }
 
     /// The leftmost definition for this local. Example: `let (a$0, _) | (_, a) = it;`
     pub fn primary_source(self, db: &dyn HirDatabase) -> LocalSource {
         let (body, source_map) = db.body_with_source_map(self.parent);
-        let src = self.sources_(db, &body, &source_map).next().unwrap();
-        src
-    }
-
-    fn sources_<'a>(
-        self,
-        db: &'a dyn HirDatabase,
-        body: &'a hir_def::body::Body,
-        source_map: &'a hir_def::body::BodySourceMap,
-    ) -> impl Iterator<Item = LocalSource> + 'a {
-        body[self.binding_id]
-            .definitions
-            .iter()
-            .map(|&definition| {
-                let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
-                let root = src.file_syntax(db.upcast());
-                src.map(|ast| match ast.to_node(&root) {
-                    Either::Left(ast::Pat::IdentPat(it)) => Either::Left(it),
-                    Either::Left(_) => unreachable!("local with non ident-pattern"),
-                    Either::Right(it) => Either::Right(it),
+        match body.self_param.zip(source_map.self_param_syntax()) {
+            Some((param, source)) if param == self.binding_id => {
+                let root = source.file_syntax(db.upcast());
+                LocalSource {
+                    local: self,
+                    source: source.map(|ast| Either::Right(ast.to_node(&root))),
+                }
+            }
+            _ => body[self.binding_id]
+                .definitions
+                .first()
+                .map(|&definition| {
+                    let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
+                    let root = src.file_syntax(db.upcast());
+                    LocalSource {
+                        local: self,
+                        source: src.map(|ast| match ast.to_node(&root) {
+                            ast::Pat::IdentPat(it) => Either::Left(it),
+                            _ => unreachable!("local with non ident-pattern"),
+                        }),
+                    }
                 })
-            })
-            .map(move |source| LocalSource { local: self, source })
+                .unwrap(),
+        }
     }
 }
 
@@ -4037,7 +4082,7 @@ impl Type {
 
         let canonical_ty =
             Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
-        method_resolution::implements_trait(&canonical_ty, db, self.env.clone(), trait_)
+        method_resolution::implements_trait(&canonical_ty, db, &self.env, trait_)
     }
 
     /// Checks that particular type `ty` implements `std::ops::FnOnce`.
@@ -4052,12 +4097,7 @@ impl Type {
 
         let canonical_ty =
             Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
-        method_resolution::implements_trait_unique(
-            &canonical_ty,
-            db,
-            self.env.clone(),
-            fnonce_trait,
-        )
+        method_resolution::implements_trait_unique(&canonical_ty, db, &self.env, fnonce_trait)
     }
 
     // FIXME: Find better API that also handles const generics

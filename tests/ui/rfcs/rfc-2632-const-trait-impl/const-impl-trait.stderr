@@ -1,5 +1,5 @@
 error[E0277]: can't compare `()` with `()`
-  --> $DIR/const-impl-trait.rs:37:17
+  --> $DIR/const-impl-trait.rs:36:17
    |
 LL |     assert!(cmp(&()));
    |             --- ^^^ no implementation for `() == ()`
@@ -9,13 +9,13 @@ LL |     assert!(cmp(&()));
    = help: the trait `const PartialEq` is not implemented for `()`
    = help: the trait `PartialEq` is implemented for `()`
 note: required by a bound in `cmp`
-  --> $DIR/const-impl-trait.rs:14:23
+  --> $DIR/const-impl-trait.rs:13:23
    |
 LL | const fn cmp(a: &impl ~const PartialEq) -> bool {
    |                       ^^^^^^^^^^^^^^^^ required by this bound in `cmp`
 
 error[E0369]: binary operation `==` cannot be applied to type `&impl ~const PartialEq`
-  --> $DIR/const-impl-trait.rs:15:7
+  --> $DIR/const-impl-trait.rs:14:7
    |
 LL |     a == a
    |     - ^^ - &impl ~const PartialEq

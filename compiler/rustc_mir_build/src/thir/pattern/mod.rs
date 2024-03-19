@@ -524,12 +524,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // Prefer valtrees over opaque constants.
         let const_value = self
             .tcx
-            .const_eval_global_id_for_typeck(param_env_reveal_all, cid, Some(span))
+            .const_eval_global_id_for_typeck(param_env_reveal_all, cid, span)
             .map(|val| match val {
                 Some(valtree) => mir::Const::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
                 None => mir::Const::Val(
                     self.tcx
-                        .const_eval_global_id(param_env_reveal_all, cid, Some(span))
+                        .const_eval_global_id(param_env_reveal_all, cid, span)
                         .expect("const_eval_global_id_for_typeck should have already failed"),
                     ty,
                 ),
@@ -627,15 +627,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // First try using a valtree in order to destructure the constant into a pattern.
         // FIXME: replace "try to do a thing, then fall back to another thing"
         // but something more principled, like a trait query checking whether this can be turned into a valtree.
-        if let Ok(Some(valtree)) =
-            self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
+        if let Ok(Some(valtree)) = self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, span)
         {
             let subpattern =
                 self.const_to_pat(Const::Ty(ty::Const::new_value(self.tcx, valtree, ty)), id, span);
             PatKind::InlineConstant { subpattern, def: def_id }
         } else {
             // If that fails, convert it to an opaque constant pattern.
-            match tcx.const_eval_resolve(self.param_env, uneval, Some(span)) {
+            match tcx.const_eval_resolve(self.param_env, uneval, span) {
                 Ok(val) => self.const_to_pat(mir::Const::Val(val, ty), id, span).kind,
                 Err(ErrorHandled::TooGeneric(_)) => {
                     // If we land here it means the const can't be evaluated because it's `TooGeneric`.

@@ -155,16 +155,11 @@ impl<'tcx> CheckConstVisitor<'tcx> {
                 //
                 // FIXME(ecstaticmorse): Maybe this could be incorporated into `feature_err`? This
                 // is a pretty narrow case, however.
-                if tcx.sess.is_nightly_build() {
-                    for gate in missing_secondary {
-                        // FIXME: make this translatable
-                        #[allow(rustc::diagnostic_outside_of_impl)]
-                        #[allow(rustc::untranslatable_diagnostic)]
-                        err.help(format!(
-                            "add `#![feature({gate})]` to the crate attributes to enable"
-                        ));
-                    }
-                }
+                tcx.disabled_nightly_features(
+                    &mut err,
+                    def_id.map(|id| tcx.local_def_id_to_hir_id(id)),
+                    missing_secondary.into_iter().map(|gate| (String::new(), *gate)),
+                );
 
                 err.emit();
             }

@@ -259,7 +259,7 @@ impl Analysis {
             false,
             CrateOrigin::Local { repo: None, name: None },
         );
-        change.change_file(file_id, Some(Arc::from(text)));
+        change.change_file(file_id, Some(text));
         change.set_crate_graph(crate_graph);
         change.set_target_data_layouts(vec![Err("fixture has no layout".into())]);
         change.set_toolchains(vec![None]);

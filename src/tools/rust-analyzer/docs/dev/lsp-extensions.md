@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 6bc140531b403717
+lsp/ext.rs hash: 61f485497d6e8e88
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -508,6 +508,13 @@ interface ChangeTestStateParams {
     state: TestState;
 }
 ```
+
+**Method:** `experimental/appendOutputToRunTest`
+
+**Notification:** `string`
+
+This notification is used for reporting messages independent of any single test and related to the run session
+in general, e.g. cargo compiling progress messages or warnings.
 
 ## Open External Documentation
 

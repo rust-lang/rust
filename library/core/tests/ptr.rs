@@ -1141,3 +1141,16 @@ fn test_const_copy() {
         assert!(*ptr2 == 1);
     };
 }
+
+#[test]
+fn test_null_array_as_slice() {
+    let arr: *mut [u8; 4] = null_mut();
+    let ptr: *mut [u8] = arr.as_mut_slice();
+    assert!(ptr.is_null());
+    assert_eq!(ptr.len(), 4);
+
+    let arr: *const [u8; 4] = null();
+    let ptr: *const [u8] = arr.as_slice();
+    assert!(ptr.is_null());
+    assert_eq!(ptr.len(), 4);
+}

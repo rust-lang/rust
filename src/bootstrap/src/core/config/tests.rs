@@ -1,4 +1,4 @@
-use super::{flags::Flags, Config};
+use super::{flags::Flags, ChangeIdWrapper, Config};
 use crate::core::config::{LldMode, TomlConfig};
 
 use clap::CommandFactory;
@@ -236,4 +236,21 @@ fn rust_lld() {
     assert!(matches!(parse("rust.use-lld = \"external\"").lld_mode, LldMode::External));
     assert!(matches!(parse("rust.use-lld = true").lld_mode, LldMode::External));
     assert!(matches!(parse("rust.use-lld = false").lld_mode, LldMode::Unused));
+}
+
+#[test]
+#[should_panic]
+fn parse_config_with_unknown_field() {
+    parse("unknown-key = 1");
+}
+
+#[test]
+fn parse_change_id_with_unknown_field() {
+    let config = r#"
+        change-id = 3461
+        unknown-key = 1
+    "#;
+
+    let change_id_wrapper: ChangeIdWrapper = toml::from_str(config).unwrap();
+    assert_eq!(change_id_wrapper.inner, Some(3461));
 }

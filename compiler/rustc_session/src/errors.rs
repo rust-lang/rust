@@ -55,6 +55,18 @@ pub struct FeatureDiagnosticHelp {
 }
 
 #[derive(Subdiagnostic)]
+#[suggestion(
+    session_feature_diagnostic_suggestion,
+    applicability = "maybe-incorrect",
+    code = "#![feature({feature})]\n"
+)]
+pub struct FeatureDiagnosticSuggestion {
+    pub feature: Symbol,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
 #[help(session_cli_feature_diagnostic_help)]
 pub struct CliFeatureDiagnosticHelp {
     pub feature: Symbol,

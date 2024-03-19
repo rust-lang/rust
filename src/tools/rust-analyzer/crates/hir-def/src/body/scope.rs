@@ -96,6 +96,9 @@ impl ExprScopes {
             scope_by_expr: ArenaMap::with_capacity(body.exprs.len()),
         };
         let mut root = scopes.root_scope();
+        if let Some(self_param) = body.self_param {
+            scopes.add_bindings(body, root, self_param);
+        }
         scopes.add_params_bindings(body, root, &body.params);
         compute_expr_scopes(body.body_expr, body, &mut scopes, &mut root);
         scopes

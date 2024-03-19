@@ -658,10 +658,6 @@ pub fn check_intrinsic_type(
             sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
             sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
 
-            sym::retag_box_to_raw => {
-                (2, 0, vec![Ty::new_mut_ptr(tcx, param(0))], Ty::new_mut_ptr(tcx, param(0)))
-            }
-
             other => {
                 tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });
                 return;

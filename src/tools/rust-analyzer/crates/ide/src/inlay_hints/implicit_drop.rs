@@ -74,6 +74,10 @@ pub(super) fn hints(
                     Ok(s) => s.value.text_range(),
                     Err(_) => continue,
                 },
+                MirSpan::SelfParam => match source_map.self_param_syntax() {
+                    Some(s) => s.value.text_range(),
+                    None => continue,
+                },
                 MirSpan::Unknown => continue,
             };
             let binding = &hir.bindings[*binding];

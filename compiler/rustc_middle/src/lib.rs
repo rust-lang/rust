@@ -48,7 +48,7 @@
 #![feature(trusted_len)]
 #![feature(type_alias_impl_trait)]
 #![feature(strict_provenance)]
-#![feature(associated_type_bounds)]
+#![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![feature(rustc_attrs)]
 #![feature(control_flow_enum)]
 #![feature(trait_upcasting)]

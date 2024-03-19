@@ -27,7 +27,10 @@ LL |     let _x = foo::<_>([1,2]);
    |                    ^
    |
    = help: const arguments cannot yet be inferred with `_`
-   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   |
+LL + #![feature(generic_arg_infer)]
+   |
 
 error[E0658]: using `_` for array lengths is unstable
   --> $DIR/feature-gate-generic_arg_infer.rs:11:27

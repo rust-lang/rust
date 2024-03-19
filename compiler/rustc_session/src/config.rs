@@ -144,16 +144,10 @@ pub enum InstrumentCoverage {
 }
 
 /// Individual flag values controlled by `-Z coverage-options`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub struct CoverageOptions {
     /// Add branch coverage instrumentation.
     pub branch: bool,
-}
-
-impl Default for CoverageOptions {
-    fn default() -> Self {
-        Self { branch: false }
-    }
 }
 
 /// Settings for `-Z instrument-xray` flag.

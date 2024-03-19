@@ -8,7 +8,12 @@ use expect_test::expect;
 
 #[test]
 fn test_derive_empty() {
-    assert_expand("DeriveEmpty", r#"struct S;"#, expect!["SUBTREE $$ 1 1"], expect!["SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"]);
+    assert_expand(
+        "DeriveEmpty",
+        r#"struct S;"#,
+        expect!["SUBTREE $$ 1 1"],
+        expect!["SUBTREE $$ 42:2@0..100#0 42:2@0..100#0"],
+    );
 }
 
 #[test]
@@ -21,15 +26,15 @@ fn test_derive_error() {
               IDENT   compile_error 1
               PUNCH   ! [alone] 1
               SUBTREE () 1 1
-                LITERAL "#[derive(DeriveError)] struct S ;" 1
+                LITERAL "#[derive(DeriveError)] struct S ;"1
               PUNCH   ; [alone] 1"##]],
         expect![[r##"
-            SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              IDENT   compile_error SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   ! [alone] SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              SUBTREE () SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-                LITERAL "#[derive(DeriveError)] struct S ;" SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   ; [alone] SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"##]],
+            SUBTREE $$ 42:2@0..100#0 42:2@0..100#0
+              IDENT   compile_error 42:2@0..100#0
+              PUNCH   ! [alone] 42:2@0..100#0
+              SUBTREE () 42:2@0..100#0 42:2@0..100#0
+                LITERAL "#[derive(DeriveError)] struct S ;"42:2@0..100#0
+              PUNCH   ; [alone] 42:2@0..100#0"##]],
     );
 }
 
@@ -42,20 +47,20 @@ fn test_fn_like_macro_noop() {
             SUBTREE $$ 1 1
               IDENT   ident 1
               PUNCH   , [alone] 1
-              LITERAL 0 1
+              LITERAL 01
               PUNCH   , [alone] 1
-              LITERAL 1 1
+              LITERAL 11
               PUNCH   , [alone] 1
               SUBTREE [] 1 1"#]],
         expect![[r#"
-            SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              IDENT   ident SpanData { range: 0..5, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 5..6, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL 0 SpanData { range: 7..8, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 8..9, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL 1 SpanData { range: 10..11, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 11..12, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              SUBTREE [] SpanData { range: 13..14, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 14..15, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"#]],
+            SUBTREE $$ 42:2@0..100#0 42:2@0..100#0
+              IDENT   ident 42:2@0..5#0
+              PUNCH   , [alone] 42:2@5..6#0
+              LITERAL 042:2@7..8#0
+              PUNCH   , [alone] 42:2@8..9#0
+              LITERAL 142:2@10..11#0
+              PUNCH   , [alone] 42:2@11..12#0
+              SUBTREE [] 42:2@13..14#0 42:2@14..15#0"#]],
     );
 }
 
@@ -70,10 +75,10 @@ fn test_fn_like_macro_clone_ident_subtree() {
               PUNCH   , [alone] 1
               SUBTREE [] 1 1"#]],
         expect![[r#"
-            SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              IDENT   ident SpanData { range: 0..5, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 5..6, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              SUBTREE [] SpanData { range: 7..8, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 7..8, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"#]],
+            SUBTREE $$ 42:2@0..100#0 42:2@0..100#0
+              IDENT   ident 42:2@0..5#0
+              PUNCH   , [alone] 42:2@5..6#0
+              SUBTREE [] 42:2@7..8#0 42:2@7..8#0"#]],
     );
 }
 
@@ -86,8 +91,8 @@ fn test_fn_like_macro_clone_raw_ident() {
             SUBTREE $$ 1 1
               IDENT   r#async 1"#]],
         expect![[r#"
-            SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              IDENT   r#async SpanData { range: 0..7, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"#]],
+            SUBTREE $$ 42:2@0..100#0 42:2@0..100#0
+              IDENT   r#async 42:2@0..7#0"#]],
     );
 }
 
@@ -100,8 +105,8 @@ fn test_fn_like_fn_like_span_join() {
             SUBTREE $$ 1 1
               IDENT   r#joined 1"#]],
         expect![[r#"
-            SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              IDENT   r#joined SpanData { range: 0..11, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"#]],
+            SUBTREE $$ 42:2@0..100#0 42:2@0..100#0
+              IDENT   r#joined 42:2@0..11#0"#]],
     );
 }
 
@@ -116,10 +121,10 @@ fn test_fn_like_fn_like_span_ops() {
               IDENT   resolved_at_def_site 1
               IDENT   start_span 1"#]],
         expect![[r#"
-            SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              IDENT   set_def_site SpanData { range: 0..150, anchor: SpanAnchor(FileId(41), 1), ctx: SyntaxContextId(0) }
-              IDENT   resolved_at_def_site SpanData { range: 13..33, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              IDENT   start_span SpanData { range: 34..34, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"#]],
+            SUBTREE $$ 42:2@0..100#0 42:2@0..100#0
+              IDENT   set_def_site 41:1@0..150#0
+              IDENT   resolved_at_def_site 42:2@13..33#0
+              IDENT   start_span 42:2@34..34#0"#]],
     );
 }
 
@@ -130,22 +135,22 @@ fn test_fn_like_mk_literals() {
         r#""#,
         expect![[r#"
             SUBTREE $$ 1 1
-              LITERAL b"byte_string" 1
-              LITERAL 'c' 1
-              LITERAL "string" 1
-              LITERAL 3.14f64 1
-              LITERAL 3.14 1
-              LITERAL 123i64 1
-              LITERAL 123 1"#]],
+              LITERAL b"byte_string"1
+              LITERAL 'c'1
+              LITERAL "string"1
+              LITERAL 3.14f641
+              LITERAL 3.141
+              LITERAL 123i641
+              LITERAL 1231"#]],
         expect![[r#"
-            SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL b"byte_string" SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL 'c' SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL "string" SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL 3.14f64 SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL 3.14 SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL 123i64 SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL 123 SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"#]],
+            SUBTREE $$ 42:2@0..100#0 42:2@0..100#0
+              LITERAL b"byte_string"42:2@0..100#0
+              LITERAL 'c'42:2@0..100#0
+              LITERAL "string"42:2@0..100#0
+              LITERAL 3.14f6442:2@0..100#0
+              LITERAL 3.1442:2@0..100#0
+              LITERAL 123i6442:2@0..100#0
+              LITERAL 12342:2@0..100#0"#]],
     );
 }
 
@@ -159,9 +164,9 @@ fn test_fn_like_mk_idents() {
               IDENT   standard 1
               IDENT   r#raw 1"#]],
         expect![[r#"
-            SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              IDENT   standard SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              IDENT   r#raw SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"#]],
+            SUBTREE $$ 42:2@0..100#0 42:2@0..100#0
+              IDENT   standard 42:2@0..100#0
+              IDENT   r#raw 42:2@0..100#0"#]],
     );
 }
 
@@ -172,48 +177,48 @@ fn test_fn_like_macro_clone_literals() {
         r###"1u16, 2_u32, -4i64, 3.14f32, "hello bridge", "suffixed"suffix, r##"raw"##, 'a', b'b', c"null""###,
         expect![[r###"
             SUBTREE $$ 1 1
-              LITERAL 1u16 1
+              LITERAL 1u161
               PUNCH   , [alone] 1
-              LITERAL 2_u32 1
+              LITERAL 2_u321
               PUNCH   , [alone] 1
               PUNCH   - [alone] 1
-              LITERAL 4i64 1
+              LITERAL 4i641
               PUNCH   , [alone] 1
-              LITERAL 3.14f32 1
+              LITERAL 3.14f321
               PUNCH   , [alone] 1
-              LITERAL "hello bridge" 1
+              LITERAL "hello bridge"1
               PUNCH   , [alone] 1
-              LITERAL "suffixed"suffix 1
+              LITERAL "suffixed"suffix1
               PUNCH   , [alone] 1
-              LITERAL r##"raw"## 1
+              LITERAL r##"raw"##1
               PUNCH   , [alone] 1
-              LITERAL 'a' 1
+              LITERAL 'a'1
               PUNCH   , [alone] 1
-              LITERAL b'b' 1
+              LITERAL b'b'1
               PUNCH   , [alone] 1
-              LITERAL c"null" 1"###]],
+              LITERAL c"null"1"###]],
         expect![[r###"
-            SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL 1u16 SpanData { range: 0..4, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 4..5, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL 2_u32 SpanData { range: 6..11, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 11..12, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   - [alone] SpanData { range: 13..14, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL 4i64 SpanData { range: 14..18, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 18..19, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL 3.14f32 SpanData { range: 20..27, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 27..28, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL "hello bridge" SpanData { range: 29..43, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 43..44, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL "suffixed"suffix SpanData { range: 45..61, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 61..62, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL r##"raw"## SpanData { range: 63..73, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 73..74, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL 'a' SpanData { range: 75..78, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 78..79, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL b'b' SpanData { range: 80..84, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   , [alone] SpanData { range: 84..85, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL c"null" SpanData { range: 86..93, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"###]],
+            SUBTREE $$ 42:2@0..100#0 42:2@0..100#0
+              LITERAL 1u1642:2@0..4#0
+              PUNCH   , [alone] 42:2@4..5#0
+              LITERAL 2_u3242:2@6..11#0
+              PUNCH   , [alone] 42:2@11..12#0
+              PUNCH   - [alone] 42:2@13..14#0
+              LITERAL 4i6442:2@14..18#0
+              PUNCH   , [alone] 42:2@18..19#0
+              LITERAL 3.14f3242:2@20..27#0
+              PUNCH   , [alone] 42:2@27..28#0
+              LITERAL "hello bridge"42:2@29..43#0
+              PUNCH   , [alone] 42:2@43..44#0
+              LITERAL "suffixed"suffix42:2@45..61#0
+              PUNCH   , [alone] 42:2@61..62#0
+              LITERAL r##"raw"##42:2@63..73#0
+              PUNCH   , [alone] 42:2@73..74#0
+              LITERAL 'a'42:2@75..78#0
+              PUNCH   , [alone] 42:2@78..79#0
+              LITERAL b'b'42:2@80..84#0
+              PUNCH   , [alone] 42:2@84..85#0
+              LITERAL c"null"42:2@86..93#0"###]],
     );
 }
 
@@ -231,15 +236,15 @@ fn test_attr_macro() {
               IDENT   compile_error 1
               PUNCH   ! [alone] 1
               SUBTREE () 1 1
-                LITERAL "#[attr_error(some arguments)] mod m {}" 1
+                LITERAL "#[attr_error(some arguments)] mod m {}"1
               PUNCH   ; [alone] 1"##]],
         expect![[r##"
-            SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              IDENT   compile_error SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   ! [alone] SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              SUBTREE () SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-                LITERAL "#[attr_error(some arguments)] mod m {}" SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              PUNCH   ; [alone] SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"##]],
+            SUBTREE $$ 42:2@0..100#0 42:2@0..100#0
+              IDENT   compile_error 42:2@0..100#0
+              PUNCH   ! [alone] 42:2@0..100#0
+              SUBTREE () 42:2@0..100#0 42:2@0..100#0
+                LITERAL "#[attr_error(some arguments)] mod m {}"42:2@0..100#0
+              PUNCH   ; [alone] 42:2@0..100#0"##]],
     );
 }
 

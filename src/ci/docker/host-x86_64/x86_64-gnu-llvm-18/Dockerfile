@@ -24,10 +24,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   nodejs \
   mingw-w64 \
-  libgccjit-13-dev \
+  # libgccjit dependencies
+  flex \
+  libmpfr-dev \
+  libgmp-dev \
+  libmpc3 \
+  libmpc-dev \
   && rm -rf /var/lib/apt/lists/*
-
-# Note: libgccjit needs to match the default gcc version for the linker to find it.
 
 # Install powershell (universal package) so we can test x.ps1 on Linux
 # FIXME: need a "universal" version that supports libicu74, but for now it still works to ignore that dep.
@@ -50,6 +53,10 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-llvm-link-shared \
       --set rust.thin-lto-import-instr-limit=10
 
-COPY host-x86_64/x86_64-gnu-llvm-16/script.sh /tmp/
+COPY host-x86_64/dist-x86_64-linux/shared.sh /scripts/
+COPY host-x86_64/dist-x86_64-linux/build-gccjit.sh /scripts/
 
+RUN /scripts/build-gccjit.sh /scripts
+
+COPY scripts/x86_64-gnu-llvm.sh /tmp/script.sh
 ENV SCRIPT /tmp/script.sh

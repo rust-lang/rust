@@ -560,35 +560,32 @@ impl<'a> Ctx<'a> {
 
     fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<FileItemTreeId<MacroCall>> {
         let span_map = self.span_map();
-        let path = Interned::new(ModPath::from_src(self.db.upcast(), m.path()?, &mut |range| {
+        let path = m.path()?;
+        let range = path.syntax().text_range();
+        let path = Interned::new(ModPath::from_src(self.db.upcast(), path, &mut |range| {
             span_map.span_for_range(range).ctx
         })?);
         let ast_id = self.source_ast_id_map.ast_id(m);
         let expand_to = hir_expand::ExpandTo::from_call_site(m);
-        let res = MacroCall {
-            path,
-            ast_id,
-            expand_to,
-            call_site: span_map.span_for_range(m.syntax().text_range()),
-        };
+        let res = MacroCall { path, ast_id, expand_to, ctxt: span_map.span_for_range(range).ctx };
         Some(id(self.data().macro_calls.alloc(res)))
     }
 
     fn lower_macro_rules(&mut self, m: &ast::MacroRules) -> Option<FileItemTreeId<MacroRules>> {
-        let name = m.name().map(|it| it.as_name())?;
+        let name = m.name()?;
         let ast_id = self.source_ast_id_map.ast_id(m);
 
-        let res = MacroRules { name, ast_id };
+        let res = MacroRules { name: name.as_name(), ast_id };
         Some(id(self.data().macro_rules.alloc(res)))
     }
 
     fn lower_macro_def(&mut self, m: &ast::MacroDef) -> Option<FileItemTreeId<Macro2>> {
-        let name = m.name().map(|it| it.as_name())?;
+        let name = m.name()?;
 
         let ast_id = self.source_ast_id_map.ast_id(m);
         let visibility = self.lower_visibility(m);
 
-        let res = Macro2 { name, ast_id, visibility };
+        let res = Macro2 { name: name.as_name(), ast_id, visibility };
         Some(id(self.data().macro_defs.alloc(res)))
     }
 

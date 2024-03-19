@@ -29,6 +29,7 @@ impl DeclarativeMacroExpander {
         db: &dyn ExpandDatabase,
         tt: tt::Subtree,
         call_id: MacroCallId,
+        span: Span,
     ) -> ExpandResult<tt::Subtree> {
         let loc = db.lookup_intern_macro_call(call_id);
         let toolchain = db.toolchain(loc.def.krate);
@@ -45,7 +46,7 @@ impl DeclarativeMacroExpander {
         });
         match self.mac.err() {
             Some(_) => ExpandResult::new(
-                tt::Subtree::empty(tt::DelimSpan { open: loc.call_site, close: loc.call_site }),
+                tt::Subtree::empty(tt::DelimSpan { open: span, close: span }),
                 ExpandError::MacroDefinition,
             ),
             None => self
@@ -54,7 +55,7 @@ impl DeclarativeMacroExpander {
                     &tt,
                     |s| s.ctx = apply_mark(db, s.ctx, call_id, self.transparency),
                     new_meta_vars,
-                    loc.call_site,
+                    span,
                 )
                 .map_err(Into::into),
         }

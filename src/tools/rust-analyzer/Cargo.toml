@@ -105,6 +105,10 @@ anyhow = "1.0.75"
 arrayvec = "0.7.4"
 bitflags = "2.4.1"
 cargo_metadata = "0.18.1"
+chalk-solve = { version = "0.96.0", default-features = false }
+chalk-ir = "0.96.0"
+chalk-recursive = { version = "0.96.0", default-features = false }
+chalk-derive = "0.96.0"
 command-group = "2.0.1"
 crossbeam-channel = "0.5.8"
 dissimilar = "1.0.7"

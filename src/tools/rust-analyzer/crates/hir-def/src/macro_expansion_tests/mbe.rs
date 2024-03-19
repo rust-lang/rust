@@ -171,7 +171,7 @@ fn main(foo: ()) {
     }
 
     fn main(foo: ()) {
-        /* error: unresolved macro unresolved */"helloworld!"#0:3@207..323#2#;
+        /* error: unresolved macro unresolved */"helloworld!"#0:3@236..321#0#;
     }
 }
 
