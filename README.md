@@ -16,7 +16,7 @@ cd build
 
 Afterwards you can build rustc using:
 ```
-../x.py build --stage 1 library/std library/proc_macro library/test tools/rustdoc
+../x.py build --stage 1 library
 ```
 
 Afterwards rustc toolchain link will allow you to use it through cargo:
