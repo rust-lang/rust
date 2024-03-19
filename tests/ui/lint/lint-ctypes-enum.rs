@@ -2,6 +2,7 @@
 #![deny(improper_ctypes)]
 #![feature(ptr_internals)]
 #![feature(transparent_unions)]
+#![feature(result_ffi_guarantees)]
 
 use std::num;
 
