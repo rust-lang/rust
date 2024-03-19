@@ -1,5 +1,6 @@
 use std::iter;
 
+use either::Either;
 use hir::{HasSource, HirFileIdExt, ModuleSource};
 use ide_db::{
     assists::{AssistId, AssistKind},
@@ -10,17 +11,16 @@ use ide_db::{
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
-use stdx::format_to;
 use syntax::{
     algo::find_node_at_range,
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make, HasName, HasVisibility,
+        make, HasVisibility,
     },
-    match_ast, ted, AstNode, SourceFile,
+    match_ast, ted, AstNode,
     SyntaxKind::{self, WHITESPACE},
-    SyntaxNode, TextRange,
+    SyntaxNode, TextRange, TextSize,
 };
 
 use crate::{AssistContext, Assists};
@@ -109,76 +109,35 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
             //We are getting item usages and record_fields together, record_fields
             //for change_visibility and usages for first point mentioned above in the process
-            let (usages_to_be_processed, record_fields) = module.get_usages_and_record_fields(ctx);
+
+            let (usages_to_be_processed, record_fields, use_stmts_to_be_inserted) =
+                module.get_usages_and_record_fields(ctx);
+
+            builder.edit_file(ctx.file_id());
+            use_stmts_to_be_inserted.into_iter().for_each(|(_, use_stmt)| {
+                builder.insert(ctx.selection_trimmed().end(), format!("\n{use_stmt}"));
+            });
 
             let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, ctx);
             module.change_visibility(record_fields);
 
-            let mut body_items: Vec<String> = Vec::new();
-            let mut items_to_be_processed: Vec<ast::Item> = module.body_items.clone();
+            let module_def = generate_module_def(&impl_parent, &mut module, old_item_indent);
 
-            let new_item_indent = if impl_parent.is_some() {
-                old_item_indent + 2
-            } else {
-                items_to_be_processed = [module.use_items.clone(), items_to_be_processed].concat();
-                old_item_indent + 1
-            };
-
-            for item in items_to_be_processed {
-                let item = item.indent(IndentLevel(1));
-                let mut indented_item = String::new();
-                format_to!(indented_item, "{new_item_indent}{item}");
-                body_items.push(indented_item);
-            }
-
-            let mut body = body_items.join("\n\n");
-
-            if let Some(impl_) = &impl_parent {
-                let mut impl_body_def = String::new();
-
-                if let Some(self_ty) = impl_.self_ty() {
-                    {
-                        let impl_indent = old_item_indent + 1;
-                        format_to!(
-                            impl_body_def,
-                            "{impl_indent}impl {self_ty} {{\n{body}\n{impl_indent}}}",
-                        );
-                    }
-                    body = impl_body_def;
-
-                    // Add the import for enum/struct corresponding to given impl block
-                    module.make_use_stmt_of_node_with_super(self_ty.syntax());
-                    for item in module.use_items {
-                        let item_indent = old_item_indent + 1;
-                        body = format!("{item_indent}{item}\n\n{body}");
-                    }
-                }
-            }
-
-            let mut module_def = String::new();
-
-            let module_name = module.name;
-            format_to!(module_def, "mod {module_name} {{\n{body}\n{old_item_indent}}}");
-
-            let mut usages_to_be_updated_for_curr_file = vec![];
-            for usages_to_be_updated_for_file in usages_to_be_processed {
-                if usages_to_be_updated_for_file.0 == ctx.file_id() {
-                    usages_to_be_updated_for_curr_file = usages_to_be_updated_for_file.1;
+            let mut usages_to_be_processed_for_cur_file = vec![];
+            for (file_id, usages) in usages_to_be_processed {
+                if file_id == ctx.file_id() {
+                    usages_to_be_processed_for_cur_file = usages;
                     continue;
                 }
-                builder.edit_file(usages_to_be_updated_for_file.0);
-                for usage_to_be_processed in usages_to_be_updated_for_file.1 {
-                    builder.replace(usage_to_be_processed.0, usage_to_be_processed.1)
+                builder.edit_file(file_id);
+                for (text_range, usage) in usages {
+                    builder.replace(text_range, usage)
                 }
             }
 
             builder.edit_file(ctx.file_id());
-            for usage_to_be_processed in usages_to_be_updated_for_curr_file {
-                builder.replace(usage_to_be_processed.0, usage_to_be_processed.1)
-            }
-
-            for import_path_text_range in import_paths_to_be_removed {
-                builder.delete(import_path_text_range);
+            for (text_range, usage) in usages_to_be_processed_for_cur_file {
+                builder.replace(text_range, usage);
             }
 
             if let Some(impl_) = impl_parent {
@@ -199,10 +158,49 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
                 builder.insert(impl_.syntax().text_range().end(), format!("\n\n{module_def}"));
             } else {
+                for import_path_text_range in import_paths_to_be_removed {
+                    if module.text_range.intersect(import_path_text_range).is_some() {
+                        module.text_range = module.text_range.cover(import_path_text_range);
+                    } else {
+                        builder.delete(import_path_text_range);
+                    }
+                }
+
                 builder.replace(module.text_range, module_def)
             }
         },
     )
+}
+
+fn generate_module_def(
+    parent_impl: &Option<ast::Impl>,
+    module: &mut Module,
+    old_indent: IndentLevel,
+) -> String {
+    let (items_to_be_processed, new_item_indent) = if parent_impl.is_some() {
+        (Either::Left(module.body_items.iter()), old_indent + 2)
+    } else {
+        (Either::Right(module.use_items.iter().chain(module.body_items.iter())), old_indent + 1)
+    };
+
+    let mut body = items_to_be_processed
+        .map(|item| item.indent(IndentLevel(1)))
+        .map(|item| format!("{new_item_indent}{item}"))
+        .join("\n\n");
+
+    if let Some(self_ty) = parent_impl.as_ref().and_then(|imp| imp.self_ty()) {
+        let impl_indent = old_indent + 1;
+        body = format!("{impl_indent}impl {self_ty} {{\n{body}\n{impl_indent}}}");
+
+        // Add the import for enum/struct corresponding to given impl block
+        module.make_use_stmt_of_node_with_super(self_ty.syntax());
+        for item in module.use_items.iter() {
+            body = format!("{impl_indent}{item}\n\n{body}");
+        }
+    }
+
+    let module_name = module.name;
+    format!("mod {module_name} {{\n{body}\n{old_indent}}}")
 }
 
 #[derive(Debug)]
@@ -233,20 +231,24 @@ impl Module {
     fn get_usages_and_record_fields(
         &self,
         ctx: &AssistContext<'_>,
-    ) -> (FxHashMap<FileId, Vec<(TextRange, String)>>, Vec<SyntaxNode>) {
+    ) -> (FxHashMap<FileId, Vec<(TextRange, String)>>, Vec<SyntaxNode>, FxHashMap<TextSize, ast::Use>)
+    {
         let mut adt_fields = Vec::new();
         let mut refs: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
+        // use `TextSize` as key to avoid repeated use stmts
+        let mut use_stmts_to_be_inserted = FxHashMap::default();
 
         //Here impl is not included as each item inside impl will be tied to the parent of
         //implementing block(a struct, enum, etc), if the parent is in selected module, it will
         //get updated by ADT section given below or if it is not, then we dont need to do any operation
+
         for item in &self.body_items {
             match_ast! {
                 match (item.syntax()) {
                     ast::Adt(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Adt(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
+                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
 
                             //Enum Fields are not allowed to explicitly specify pub, it is implied
                             match it {
@@ -280,30 +282,30 @@ impl Module {
                     ast::TypeAlias(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::TypeAlias(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
+                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     ast::Const(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Const(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
+                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     ast::Static(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Static(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
+                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     ast::Fn(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Function(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
+                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     ast::Macro(it) => {
                         if let Some(nod) = ctx.sema.to_def(&it) {
-                            self.expand_and_group_usages_file_wise(ctx, Definition::Macro(nod), &mut refs);
+                            self.expand_and_group_usages_file_wise(ctx, Definition::Macro(nod), &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     _ => (),
@@ -311,7 +313,7 @@ impl Module {
             }
         }
 
-        (refs, adt_fields)
+        (refs, adt_fields, use_stmts_to_be_inserted)
     }
 
     fn expand_and_group_usages_file_wise(
@@ -319,49 +321,62 @@ impl Module {
         ctx: &AssistContext<'_>,
         node_def: Definition,
         refs_in_files: &mut FxHashMap<FileId, Vec<(TextRange, String)>>,
+        use_stmts_to_be_inserted: &mut FxHashMap<TextSize, ast::Use>,
     ) {
-        for (file_id, references) in node_def.usages(&ctx.sema).all() {
+        let mod_name = self.name;
+        let covering_node = match ctx.covering_element() {
+            syntax::NodeOrToken::Node(node) => node,
+            syntax::NodeOrToken::Token(tok) => tok.parent().unwrap(), // won't panic
+        };
+        let out_of_sel = |node: &SyntaxNode| !self.text_range.contains_range(node.text_range());
+        let mut use_stmts_set = FxHashSet::default();
+
+        for (file_id, refs) in node_def.usages(&ctx.sema).all() {
             let source_file = ctx.sema.parse(file_id);
-            let usages_in_file = references
-                .into_iter()
-                .filter_map(|usage| self.get_usage_to_be_processed(&source_file, usage));
-            refs_in_files.entry(file_id).or_default().extend(usages_in_file);
-        }
-    }
+            let usages = refs.into_iter().filter_map(|FileReference { range, .. }| {
+                // handle normal usages
+                let name_ref = find_node_at_range::<ast::NameRef>(source_file.syntax(), range)?;
 
-    fn get_usage_to_be_processed(
-        &self,
-        source_file: &SourceFile,
-        FileReference { range, name, .. }: FileReference,
-    ) -> Option<(TextRange, String)> {
-        let path: ast::Path = find_node_at_range(source_file.syntax(), range)?;
-
-        for desc in path.syntax().descendants() {
-            if desc.to_string() == name.syntax().to_string()
-                && !self.text_range.contains_range(desc.text_range())
-            {
-                if let Some(name_ref) = ast::NameRef::cast(desc) {
-                    let mod_name = self.name;
-                    return Some((
-                        name_ref.syntax().text_range(),
-                        format!("{mod_name}::{name_ref}"),
-                    ));
+                if out_of_sel(name_ref.syntax()) {
+                    let new_ref = format!("{mod_name}::{name_ref}");
+                    return Some((range, new_ref));
+                } else if let Some(use_) = name_ref.syntax().ancestors().find_map(ast::Use::cast) {
+                    // handle usages in use_stmts which is in_sel
+                    // check if `use` is top stmt in selection
+                    if use_.syntax().parent().is_some_and(|parent| parent == covering_node)
+                        && use_stmts_set.insert(use_.syntax().text_range().start())
+                    {
+                        let use_ = use_stmts_to_be_inserted
+                            .entry(use_.syntax().text_range().start())
+                            .or_insert_with(|| use_.clone_subtree().clone_for_update());
+                        for seg in use_
+                            .syntax()
+                            .descendants()
+                            .filter_map(ast::NameRef::cast)
+                            .filter(|seg| seg.syntax().to_string() == name_ref.to_string())
+                        {
+                            let new_ref = make::path_from_text(&format!("{mod_name}::{seg}"))
+                                .clone_for_update();
+                            ted::replace(seg.syntax().parent()?, new_ref.syntax());
+                        }
+                    }
                 }
-            }
-        }
 
-        None
+                None
+            });
+            refs_in_files.entry(file_id).or_default().extend(usages);
+        }
     }
 
     fn change_visibility(&mut self, record_fields: Vec<SyntaxNode>) {
         let (mut replacements, record_field_parents, impls) =
             get_replacements_for_visibility_change(&mut self.body_items, false);
 
-        let mut impl_items: Vec<ast::Item> = impls
+        let mut impl_items = impls
             .into_iter()
             .flat_map(|impl_| impl_.syntax().descendants())
             .filter_map(ast::Item::cast)
-            .collect();
+            .collect_vec();
 
         let (mut impl_item_replacements, _, _) =
             get_replacements_for_visibility_change(&mut impl_items, true);
@@ -394,133 +409,88 @@ impl Module {
 
     fn resolve_imports(
         &mut self,
-        curr_parent_module: Option<ast::Module>,
+        module: Option<ast::Module>,
         ctx: &AssistContext<'_>,
     ) -> Vec<TextRange> {
-        let mut import_paths_to_be_removed: Vec<TextRange> = vec![];
-        let mut node_set: FxHashSet<String> = FxHashSet::default();
+        let mut imports_to_remove = vec![];
+        let mut node_set = FxHashSet::default();
 
         for item in self.body_items.clone() {
-            for x in item.syntax().descendants() {
-                if let Some(name) = ast::Name::cast(x.clone()) {
-                    if let Some(name_classify) = NameClass::classify(&ctx.sema, &name) {
-                        //Necessary to avoid two same names going through
-                        if !node_set.contains(&name.syntax().to_string()) {
-                            node_set.insert(name.syntax().to_string());
-                            let def_opt: Option<Definition> = match name_classify {
-                                NameClass::Definition(def) => Some(def),
-                                _ => None,
-                            };
-
-                            if let Some(def) = def_opt {
-                                if let Some(import_path) = self
-                                    .process_names_and_namerefs_for_import_resolve(
-                                        def,
-                                        name.syntax(),
-                                        &curr_parent_module,
-                                        ctx,
-                                    )
-                                {
-                                    check_intersection_and_push(
-                                        &mut import_paths_to_be_removed,
-                                        import_path,
-                                    );
-                                }
-                            }
+            item.syntax()
+                .descendants()
+                .filter_map(|x| {
+                    if let Some(name) = ast::Name::cast(x.clone()) {
+                        NameClass::classify(&ctx.sema, &name).and_then(|nc| match nc {
+                            NameClass::Definition(def) => Some((name.syntax().clone(), def)),
+                            _ => None,
+                        })
+                    } else if let Some(name_ref) = ast::NameRef::cast(x) {
+                        NameRefClass::classify(&ctx.sema, &name_ref).and_then(|nc| match nc {
+                            NameRefClass::Definition(def) => Some((name_ref.syntax().clone(), def)),
+                            _ => None,
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .for_each(|(node, def)| {
+                    if node_set.insert(node.to_string()) {
+                        if let Some(import) = self.process_def_in_sel(def, &node, &module, ctx) {
+                            check_intersection_and_push(&mut imports_to_remove, import);
                         }
                     }
-                }
-
-                if let Some(name_ref) = ast::NameRef::cast(x) {
-                    if let Some(name_classify) = NameRefClass::classify(&ctx.sema, &name_ref) {
-                        //Necessary to avoid two same names going through
-                        if !node_set.contains(&name_ref.syntax().to_string()) {
-                            node_set.insert(name_ref.syntax().to_string());
-                            let def_opt: Option<Definition> = match name_classify {
-                                NameRefClass::Definition(def) => Some(def),
-                                _ => None,
-                            };
-
-                            if let Some(def) = def_opt {
-                                if let Some(import_path) = self
-                                    .process_names_and_namerefs_for_import_resolve(
-                                        def,
-                                        name_ref.syntax(),
-                                        &curr_parent_module,
-                                        ctx,
-                                    )
-                                {
-                                    check_intersection_and_push(
-                                        &mut import_paths_to_be_removed,
-                                        import_path,
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+                })
         }
 
-        import_paths_to_be_removed
+        imports_to_remove
     }
 
-    fn process_names_and_namerefs_for_import_resolve(
+    fn process_def_in_sel(
         &mut self,
         def: Definition,
-        node_syntax: &SyntaxNode,
+        use_node: &SyntaxNode,
         curr_parent_module: &Option<ast::Module>,
         ctx: &AssistContext<'_>,
     ) -> Option<TextRange> {
         //We only need to find in the current file
         let selection_range = ctx.selection_trimmed();
-        let curr_file_id = ctx.file_id();
-        let search_scope = SearchScope::single_file(curr_file_id);
-        let usage_res = def.usages(&ctx.sema).in_scope(&search_scope).all();
-        let file = ctx.sema.parse(curr_file_id);
+        let file_id = ctx.file_id();
+        let usage_res = def.usages(&ctx.sema).in_scope(&SearchScope::single_file(file_id)).all();
+        let file = ctx.sema.parse(file_id);
 
-        let mut exists_inside_sel = false;
-        let mut exists_outside_sel = false;
-        for (_, refs) in usage_res.iter() {
-            let mut non_use_nodes_itr = refs.iter().filter_map(|x| {
-                if find_node_at_range::<ast::Use>(file.syntax(), x.range).is_none() {
-                    let path_opt = find_node_at_range::<ast::Path>(file.syntax(), x.range);
-                    return path_opt;
-                }
-
-                None
-            });
-
-            if non_use_nodes_itr
-                .clone()
-                .any(|x| !selection_range.contains_range(x.syntax().text_range()))
+        // track uses which does not exists in `Use`
+        let mut uses_exist_in_sel = false;
+        let mut uses_exist_out_sel = false;
+        'outside: for (_, refs) in usage_res.iter() {
+            for x in refs
+                .iter()
+                .filter(|x| find_node_at_range::<ast::Use>(file.syntax(), x.range).is_none())
+                .filter_map(|x| find_node_at_range::<ast::Path>(file.syntax(), x.range))
             {
-                exists_outside_sel = true;
-            }
-            if non_use_nodes_itr.any(|x| selection_range.contains_range(x.syntax().text_range())) {
-                exists_inside_sel = true;
+                let in_selection = selection_range.contains_range(x.syntax().text_range());
+                uses_exist_in_sel |= in_selection;
+                uses_exist_out_sel |= !in_selection;
+
+                if uses_exist_in_sel && uses_exist_out_sel {
+                    break 'outside;
+                }
             }
         }
 
-        let source_exists_outside_sel_in_same_mod = does_source_exists_outside_sel_in_same_mod(
-            def,
-            ctx,
-            curr_parent_module,
-            selection_range,
-            curr_file_id,
-        );
+        let (def_in_mod, def_out_sel) =
+            check_def_in_mod_and_out_sel(def, ctx, curr_parent_module, selection_range, file_id);
 
-        let use_stmt_opt: Option<ast::Use> = usage_res.into_iter().find_map(|(file_id, refs)| {
-            if file_id == curr_file_id {
-                refs.into_iter()
-                    .rev()
-                    .find_map(|fref| find_node_at_range(file.syntax(), fref.range))
-            } else {
-                None
-            }
+        // Find use stmt that use def in current file
+        let use_stmt: Option<ast::Use> = usage_res
+            .into_iter()
+            .filter(|(use_file_id, _)| *use_file_id == file_id)
+            .flat_map(|(_, refs)| refs.into_iter().rev())
+            .find_map(|fref| find_node_at_range(file.syntax(), fref.range));
+        let use_stmt_not_in_sel = use_stmt.as_ref().is_some_and(|use_stmt| {
+            !selection_range.contains_range(use_stmt.syntax().text_range())
         });
 
-        let mut use_tree_str_opt: Option<Vec<ast::Path>> = None;
+        let mut use_tree_paths: Option<Vec<ast::Path>> = None;
         //Exists inside and outside selection
         // - Use stmt for item is present -> get the use_tree_str and reconstruct the path in new
         // module
@@ -534,37 +504,37 @@ impl Module {
         //get the use_tree_str, reconstruct the use stmt in new module
 
         let mut import_path_to_be_removed: Option<TextRange> = None;
-        if exists_inside_sel && exists_outside_sel {
+        if uses_exist_in_sel && uses_exist_out_sel {
             //Changes to be made only inside new module
 
             //If use_stmt exists, find the use_tree_str, reconstruct it inside new module
             //If not, insert a use stmt with super and the given nameref
-            if let Some((use_tree_str, _)) =
-                self.process_use_stmt_for_import_resolve(use_stmt_opt, node_syntax)
-            {
-                use_tree_str_opt = Some(use_tree_str);
-            } else if source_exists_outside_sel_in_same_mod {
-                //Considered only after use_stmt is not present
-                //source_exists_outside_sel_in_same_mod | exists_outside_sel(exists_inside_sel =
-                //true for all cases)
-                // false | false -> Do nothing
-                // false | true -> If source is in selection -> nothing to do, If source is outside
-                // mod -> ust_stmt transversal
-                // true  | false -> super import insertion
-                // true  | true -> super import insertion
-                self.make_use_stmt_of_node_with_super(node_syntax);
+            match self.process_use_stmt_for_import_resolve(use_stmt, use_node) {
+                Some((use_tree_str, _)) => use_tree_paths = Some(use_tree_str),
+                None if def_in_mod && def_out_sel => {
+                    //Considered only after use_stmt is not present
+                    //def_in_mod && def_out_sel | exists_outside_sel(exists_inside_sel =
+                    //true for all cases)
+                    // false | false -> Do nothing
+                    // false | true -> If source is in selection -> nothing to do, If source is outside
+                    // mod -> ust_stmt transversal
+                    // true  | false -> super import insertion
+                    // true  | true -> super import insertion
+                    self.make_use_stmt_of_node_with_super(use_node);
+                }
+                None => {}
             }
-        } else if exists_inside_sel && !exists_outside_sel {
+        } else if uses_exist_in_sel && !uses_exist_out_sel {
             //Changes to be made inside new module, and remove import from outside
 
             if let Some((mut use_tree_str, text_range_opt)) =
-                self.process_use_stmt_for_import_resolve(use_stmt_opt, node_syntax)
+                self.process_use_stmt_for_import_resolve(use_stmt, use_node)
             {
                 if let Some(text_range) = text_range_opt {
                     import_path_to_be_removed = Some(text_range);
                 }
 
-                if source_exists_outside_sel_in_same_mod {
+                if def_in_mod && def_out_sel {
                     if let Some(first_path_in_use_tree) = use_tree_str.last() {
                         let first_path_in_use_tree_str = first_path_in_use_tree.to_string();
                         if !first_path_in_use_tree_str.contains("super")
@@ -576,31 +546,43 @@ impl Module {
                     }
                 }
 
-                use_tree_str_opt = Some(use_tree_str);
-            } else if source_exists_outside_sel_in_same_mod {
-                self.make_use_stmt_of_node_with_super(node_syntax);
+                use_tree_paths = Some(use_tree_str);
+            } else if def_in_mod && def_out_sel {
+                self.make_use_stmt_of_node_with_super(use_node);
             }
         }
 
-        if let Some(use_tree_str) = use_tree_str_opt {
-            let mut use_tree_str = use_tree_str;
-            use_tree_str.reverse();
+        if let Some(mut use_tree_paths) = use_tree_paths {
+            use_tree_paths.reverse();
 
-            if !(!exists_outside_sel && exists_inside_sel && source_exists_outside_sel_in_same_mod)
-            {
-                if let Some(first_path_in_use_tree) = use_tree_str.first() {
-                    let first_path_in_use_tree_str = first_path_in_use_tree.to_string();
-                    if first_path_in_use_tree_str.contains("super") {
-                        let super_path = make::ext::ident_path("super");
-                        use_tree_str.insert(0, super_path)
+            if uses_exist_out_sel || !uses_exist_in_sel || !def_in_mod || !def_out_sel {
+                if let Some(first_path_in_use_tree) = use_tree_paths.first() {
+                    if first_path_in_use_tree.to_string().contains("super") {
+                        use_tree_paths.insert(0, make::ext::ident_path("super"));
                     }
                 }
             }
 
-            let use_ =
-                make::use_(None, make::use_tree(make::join_paths(use_tree_str), None, None, false));
-            let item = ast::Item::from(use_);
-            self.use_items.insert(0, item);
+            let is_item = matches!(
+                def,
+                Definition::Macro(_)
+                    | Definition::Module(_)
+                    | Definition::Function(_)
+                    | Definition::Adt(_)
+                    | Definition::Const(_)
+                    | Definition::Static(_)
+                    | Definition::Trait(_)
+                    | Definition::TraitAlias(_)
+                    | Definition::TypeAlias(_)
+            );
+
+            if (def_out_sel || !is_item) && use_stmt_not_in_sel {
+                let use_ = make::use_(
+                    None,
+                    make::use_tree(make::join_paths(use_tree_paths), None, None, false),
+                );
+                self.use_items.insert(0, ast::Item::from(use_));
+            }
         }
 
         import_path_to_be_removed
@@ -621,33 +603,26 @@ impl Module {
 
     fn process_use_stmt_for_import_resolve(
         &self,
-        use_stmt_opt: Option<ast::Use>,
+        use_stmt: Option<ast::Use>,
         node_syntax: &SyntaxNode,
     ) -> Option<(Vec<ast::Path>, Option<TextRange>)> {
-        if let Some(use_stmt) = use_stmt_opt {
-            for desc in use_stmt.syntax().descendants() {
-                if let Some(path_seg) = ast::PathSegment::cast(desc) {
-                    if path_seg.syntax().to_string() == node_syntax.to_string() {
-                        let mut use_tree_str = vec![path_seg.parent_path()];
-                        get_use_tree_paths_from_path(path_seg.parent_path(), &mut use_tree_str);
-                        for ancs in path_seg.syntax().ancestors() {
-                            //Here we are looking for use_tree with same string value as node
-                            //passed above as the range_to_remove function looks for a comma and
-                            //then includes it in the text range to remove it. But the comma only
-                            //appears at the use_tree level
-                            if let Some(use_tree) = ast::UseTree::cast(ancs) {
-                                if use_tree.syntax().to_string() == node_syntax.to_string() {
-                                    return Some((
-                                        use_tree_str,
-                                        Some(range_to_remove(use_tree.syntax())),
-                                    ));
-                                }
-                            }
-                        }
+        let use_stmt = use_stmt?;
+        for path_seg in use_stmt.syntax().descendants().filter_map(ast::PathSegment::cast) {
+            if path_seg.syntax().to_string() == node_syntax.to_string() {
+                let mut use_tree_str = vec![path_seg.parent_path()];
+                get_use_tree_paths_from_path(path_seg.parent_path(), &mut use_tree_str);
 
-                        return Some((use_tree_str, None));
+                //Here we are looking for use_tree with same string value as node
+                //passed above as the range_to_remove function looks for a comma and
+                //then includes it in the text range to remove it. But the comma only
+                //appears at the use_tree level
+                for use_tree in path_seg.syntax().ancestors().filter_map(ast::UseTree::cast) {
+                    if use_tree.syntax().to_string() == node_syntax.to_string() {
+                        return Some((use_tree_str, Some(range_to_remove(use_tree.syntax()))));
                     }
                 }
+
+                return Some((use_tree_str, None));
             }
         }
 
@@ -676,145 +651,58 @@ fn check_intersection_and_push(
     import_paths_to_be_removed.push(import_path);
 }
 
-fn does_source_exists_outside_sel_in_same_mod(
+fn check_def_in_mod_and_out_sel(
     def: Definition,
     ctx: &AssistContext<'_>,
     curr_parent_module: &Option<ast::Module>,
     selection_range: TextRange,
     curr_file_id: FileId,
-) -> bool {
-    let mut source_exists_outside_sel_in_same_mod = false;
+) -> (bool, bool) {
+    macro_rules! check_item {
+        ($x:ident) => {
+            if let Some(source) = $x.source(ctx.db()) {
+                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
+                    ctx.sema.to_module_def(ast_module).is_some_and(|it| it == $x.module(ctx.db()))
+                } else {
+                    source.file_id.original_file(ctx.db()) == curr_file_id
+                };
+
+                let in_sel = !selection_range.contains_range(source.value.syntax().text_range());
+                return (have_same_parent, in_sel);
+            }
+        };
+    }
+
     match def {
         Definition::Module(x) => {
             let source = x.definition_source(ctx.db());
-            let have_same_parent = if let Some(ast_module) = &curr_parent_module {
-                if let Some(hir_module) = x.parent(ctx.db()) {
-                    compare_hir_and_ast_module(ast_module, hir_module, ctx).is_some()
-                } else {
-                    let source_file_id = source.file_id.original_file(ctx.db());
-                    source_file_id == curr_file_id
+            let have_same_parent = match (&curr_parent_module, x.parent(ctx.db())) {
+                (Some(ast_module), Some(hir_module)) => {
+                    ctx.sema.to_module_def(ast_module).is_some_and(|it| it == hir_module)
                 }
-            } else {
-                let source_file_id = source.file_id.original_file(ctx.db());
-                source_file_id == curr_file_id
+                _ => source.file_id.original_file(ctx.db()) == curr_file_id,
             };
 
             if have_same_parent {
                 if let ModuleSource::Module(module_) = source.value {
-                    source_exists_outside_sel_in_same_mod =
-                        !selection_range.contains_range(module_.syntax().text_range());
+                    let in_sel = !selection_range.contains_range(module_.syntax().text_range());
+                    return (have_same_parent, in_sel);
                 }
             }
-        }
-        Definition::Function(x) => {
-            if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
-                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
-                } else {
-                    let source_file_id = source.file_id.original_file(ctx.db());
-                    source_file_id == curr_file_id
-                };
 
-                if have_same_parent {
-                    source_exists_outside_sel_in_same_mod =
-                        !selection_range.contains_range(source.value.syntax().text_range());
-                }
-            }
+            return (have_same_parent, false);
         }
-        Definition::Adt(x) => {
-            if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
-                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
-                } else {
-                    let source_file_id = source.file_id.original_file(ctx.db());
-                    source_file_id == curr_file_id
-                };
-
-                if have_same_parent {
-                    source_exists_outside_sel_in_same_mod =
-                        !selection_range.contains_range(source.value.syntax().text_range());
-                }
-            }
-        }
-        Definition::Variant(x) => {
-            if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
-                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
-                } else {
-                    let source_file_id = source.file_id.original_file(ctx.db());
-                    source_file_id == curr_file_id
-                };
-
-                if have_same_parent {
-                    source_exists_outside_sel_in_same_mod =
-                        !selection_range.contains_range(source.value.syntax().text_range());
-                }
-            }
-        }
-        Definition::Const(x) => {
-            if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
-                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
-                } else {
-                    let source_file_id = source.file_id.original_file(ctx.db());
-                    source_file_id == curr_file_id
-                };
-
-                if have_same_parent {
-                    source_exists_outside_sel_in_same_mod =
-                        !selection_range.contains_range(source.value.syntax().text_range());
-                }
-            }
-        }
-        Definition::Static(x) => {
-            if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
-                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
-                } else {
-                    let source_file_id = source.file_id.original_file(ctx.db());
-                    source_file_id == curr_file_id
-                };
-
-                if have_same_parent {
-                    source_exists_outside_sel_in_same_mod =
-                        !selection_range.contains_range(source.value.syntax().text_range());
-                }
-            }
-        }
-        Definition::Trait(x) => {
-            if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
-                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
-                } else {
-                    let source_file_id = source.file_id.original_file(ctx.db());
-                    source_file_id == curr_file_id
-                };
-
-                if have_same_parent {
-                    source_exists_outside_sel_in_same_mod =
-                        !selection_range.contains_range(source.value.syntax().text_range());
-                }
-            }
-        }
-        Definition::TypeAlias(x) => {
-            if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
-                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
-                } else {
-                    let source_file_id = source.file_id.original_file(ctx.db());
-                    source_file_id == curr_file_id
-                };
-
-                if have_same_parent {
-                    source_exists_outside_sel_in_same_mod =
-                        !selection_range.contains_range(source.value.syntax().text_range());
-                }
-            }
-        }
+        Definition::Function(x) => check_item!(x),
+        Definition::Adt(x) => check_item!(x),
+        Definition::Variant(x) => check_item!(x),
+        Definition::Const(x) => check_item!(x),
+        Definition::Static(x) => check_item!(x),
+        Definition::Trait(x) => check_item!(x),
+        Definition::TypeAlias(x) => check_item!(x),
         _ => {}
     }
 
-    source_exists_outside_sel_in_same_mod
+    (false, false)
 }
 
 fn get_replacements_for_visibility_change(
@@ -834,24 +722,30 @@ fn get_replacements_for_visibility_change(
             *item = item.clone_for_update();
         }
         //Use stmts are ignored
+        macro_rules! push_to_replacement {
+            ($it:ident) => {
+                replacements.push(($it.visibility(), $it.syntax().clone()))
+            };
+        }
+
         match item {
-            ast::Item::Const(it) => replacements.push((it.visibility(), it.syntax().clone())),
-            ast::Item::Enum(it) => replacements.push((it.visibility(), it.syntax().clone())),
-            ast::Item::ExternCrate(it) => replacements.push((it.visibility(), it.syntax().clone())),
-            ast::Item::Fn(it) => replacements.push((it.visibility(), it.syntax().clone())),
+            ast::Item::Const(it) => push_to_replacement!(it),
+            ast::Item::Enum(it) => push_to_replacement!(it),
+            ast::Item::ExternCrate(it) => push_to_replacement!(it),
+            ast::Item::Fn(it) => push_to_replacement!(it),
             //Associated item's visibility should not be changed
             ast::Item::Impl(it) if it.for_token().is_none() => impls.push(it.clone()),
-            ast::Item::MacroDef(it) => replacements.push((it.visibility(), it.syntax().clone())),
-            ast::Item::Module(it) => replacements.push((it.visibility(), it.syntax().clone())),
-            ast::Item::Static(it) => replacements.push((it.visibility(), it.syntax().clone())),
+            ast::Item::MacroDef(it) => push_to_replacement!(it),
+            ast::Item::Module(it) => push_to_replacement!(it),
+            ast::Item::Static(it) => push_to_replacement!(it),
             ast::Item::Struct(it) => {
-                replacements.push((it.visibility(), it.syntax().clone()));
+                push_to_replacement!(it);
                 record_field_parents.push((it.visibility(), it.syntax().clone()));
             }
-            ast::Item::Trait(it) => replacements.push((it.visibility(), it.syntax().clone())),
-            ast::Item::TypeAlias(it) => replacements.push((it.visibility(), it.syntax().clone())),
+            ast::Item::Trait(it) => push_to_replacement!(it),
+            ast::Item::TypeAlias(it) => push_to_replacement!(it),
             ast::Item::Union(it) => {
-                replacements.push((it.visibility(), it.syntax().clone()));
+                push_to_replacement!(it);
                 record_field_parents.push((it.visibility(), it.syntax().clone()));
             }
             _ => (),
@@ -865,8 +759,11 @@ fn get_use_tree_paths_from_path(
     path: ast::Path,
     use_tree_str: &mut Vec<ast::Path>,
 ) -> Option<&mut Vec<ast::Path>> {
-    path.syntax().ancestors().filter(|x| x.to_string() != path.to_string()).find_map(|x| {
-        if let Some(use_tree) = ast::UseTree::cast(x) {
+    path.syntax()
+        .ancestors()
+        .filter(|x| x.to_string() != path.to_string())
+        .filter_map(ast::UseTree::cast)
+        .find_map(|use_tree| {
             if let Some(upper_tree_path) = use_tree.path() {
                 if upper_tree_path.to_string() != path.to_string() {
                     use_tree_str.push(upper_tree_path.clone());
@@ -874,9 +771,8 @@ fn get_use_tree_paths_from_path(
                     return Some(use_tree);
                 }
             }
-        }
-        None
-    })?;
+            None
+        })?;
 
     Some(use_tree_str)
 }
@@ -888,20 +784,6 @@ fn add_change_vis(vis: Option<ast::Visibility>, node_or_token_opt: Option<syntax
             ted::insert(ted::Position::before(node_or_token), pub_crate_vis.syntax());
         }
     }
-}
-
-fn compare_hir_and_ast_module(
-    ast_module: &ast::Module,
-    hir_module: hir::Module,
-    ctx: &AssistContext<'_>,
-) -> Option<()> {
-    let hir_mod_name = hir_module.name(ctx.db())?;
-    let ast_mod_name = ast_module.name()?;
-    if hir_mod_name.display(ctx.db()).to_string() != ast_mod_name.to_string() {
-        return None;
-    }
-
-    Some(())
 }
 
 fn indent_range_before_given_node(node: &SyntaxNode) -> Option<TextRange> {
@@ -1798,6 +1680,54 @@ mod modname {
         pub(crate) state: C,
         pub(crate) condvar: B,
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_import_path_inside_selection() {
+        check_assist(
+            extract_module,
+            r#"
+$0struct Point;
+impl Point {
+    pub const fn direction(self, other: Self) -> Option<Direction> {
+        Some(Vertical)
+    }
+}
+
+pub enum Direction {
+    Horizontal,
+    Vertical,
+}
+use Direction::{Horizontal, Vertical};$0
+
+fn main() {
+    let x = Vertical;
+}
+"#,
+            r#"
+mod modname {
+    use Direction::{Horizontal, Vertical};
+
+    pub(crate) struct Point;
+
+    impl Point {
+        pub const fn direction(self, other: Self) -> Option<Direction> {
+            Some(Vertical)
+        }
+    }
+
+    pub enum Direction {
+        Horizontal,
+        Vertical,
+    }
+}
+use modname::Direction::{Horizontal, Vertical};
+
+fn main() {
+    let x = Vertical;
 }
 "#,
         );

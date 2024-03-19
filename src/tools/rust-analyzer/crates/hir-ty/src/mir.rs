@@ -1165,6 +1165,7 @@ impl MirBody {
 pub enum MirSpan {
     ExprId(ExprId),
     PatId(PatId),
+    SelfParam,
     Unknown,
 }
 

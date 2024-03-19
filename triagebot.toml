@@ -515,6 +515,9 @@ cc = ["@Nadrieril"]
 message = "Some changes occurred in exhaustiveness checking"
 cc = ["@Nadrieril"]
 
+[mentions."compiler/rustc_lint/src/context/diagnostics/check_cfg.rs"]
+cc = ["@Urgau"]
+
 [mentions."library/core/src/intrinsics/simd.rs"]
 message = """
 Some changes occurred to the platform-builtins intrinsics. Make sure the
@@ -699,6 +702,9 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 [mentions."src/doc/unstable-book/src/language-features/no-sanitize.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
+[mentions."src/doc/unstable-book/src/compiler-flags/check-cfg.md"]
+cc = ["@Urgau"]
+
 [mentions."tests/codegen/sanitizer"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
@@ -716,6 +722,33 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."tests/ui/stack-protector"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/ui/check-cfg"]
+cc = ["@Urgau"]
+
+[mentions."compiler/rustc_middle/src/mir/coverage.rs"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."compiler/rustc_mir_build/src/build/coverageinfo.rs"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."compiler/rustc_mir_transform/src/coverage"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."compiler/rustc_codegen_llvm/src/coverageinfo"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."compiler/rustc_codegen_ssa/src/mir/coverageinfo.rs"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."tests/coverage"]
+message = "Some changes occurred in coverage tests."
+cc = ["@Zalathar"]
 
 [assign]
 warn_non_default_branch = true

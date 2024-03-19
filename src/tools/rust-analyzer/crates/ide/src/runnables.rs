@@ -138,7 +138,9 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
         }) {
             if let Some(def) = def {
                 let file_id = match def {
-                    Definition::Module(it) => it.declaration_source(db).map(|src| src.file_id),
+                    Definition::Module(it) => {
+                        it.declaration_source_range(db).map(|src| src.file_id)
+                    }
                     Definition::Function(it) => it.source(db).map(|src| src.file_id),
                     _ => None,
                 };
@@ -269,15 +271,10 @@ fn find_related_tests_in_module(
         Some(it) => it,
         _ => return,
     };
-    let mod_source = parent_module.definition_source(sema.db);
-    let range = match &mod_source.value {
-        hir::ModuleSource::Module(m) => m.syntax().text_range(),
-        hir::ModuleSource::BlockExpr(b) => b.syntax().text_range(),
-        hir::ModuleSource::SourceFile(f) => f.syntax().text_range(),
-    };
+    let mod_source = parent_module.definition_source_range(sema.db);
 
     let file_id = mod_source.file_id.original_file(sema.db);
-    let mod_scope = SearchScope::file_range(FileRange { file_id, range });
+    let mod_scope = SearchScope::file_range(FileRange { file_id, range: mod_source.value });
     let fn_pos = FilePosition { file_id, offset: fn_name.syntax().text_range().start() };
     find_related_tests(sema, syntax, fn_pos, Some(mod_scope), tests)
 }
@@ -405,14 +402,15 @@ fn runnable_mod_outline_definition(
 
     let attrs = def.attrs(sema.db);
     let cfg = attrs.cfg();
-    match def.definition_source(sema.db).value {
-        hir::ModuleSource::SourceFile(_) => Some(Runnable {
+    if def.as_source_file_id(sema.db).is_some() {
+        Some(Runnable {
             use_name_in_title: false,
             nav: def.to_nav(sema.db).call_site(),
             kind: RunnableKind::TestMod { path },
             cfg,
-        }),
-        _ => None,
+        })
+    } else {
+        None
     }
 }
 

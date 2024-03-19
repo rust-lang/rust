@@ -401,9 +401,8 @@ pub(super) fn extract_branch_mappings(
             }
             let (span, _) = unexpand_into_body_span_with_visible_macro(raw_span, body_span)?;
 
-            let bcb_from_marker = |marker: BlockMarkerId| {
-                Some(basic_coverage_blocks.bcb_from_bb(block_markers[marker]?)?)
-            };
+            let bcb_from_marker =
+                |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
 
             let true_bcb = bcb_from_marker(true_marker)?;
             let false_bcb = bcb_from_marker(false_marker)?;

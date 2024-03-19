@@ -35,7 +35,10 @@ LL | struct A<const N: &u8>;
    |                   ^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
 
 error: `&u8` is forbidden as the type of a const generic parameter
   --> $DIR/const-param-elided-lifetime.rs:14:15
@@ -44,7 +47,10 @@ LL | impl<const N: &u8> A<N> {
    |               ^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
 
 error: `&u8` is forbidden as the type of a const generic parameter
   --> $DIR/const-param-elided-lifetime.rs:22:15
@@ -53,7 +59,10 @@ LL | impl<const N: &u8> B for A<N> {}
    |               ^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
 
 error: `&u8` is forbidden as the type of a const generic parameter
   --> $DIR/const-param-elided-lifetime.rs:26:17
@@ -62,7 +71,10 @@ LL | fn bar<const N: &u8>() {}
    |                 ^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
 
 error: `&u8` is forbidden as the type of a const generic parameter
   --> $DIR/const-param-elided-lifetime.rs:17:21
@@ -71,7 +83,10 @@ LL |     fn foo<const M: &u8>(&self) {}
    |                     ^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
 
 error: aborting due to 10 previous errors
 

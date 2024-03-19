@@ -9,6 +9,7 @@
 //!
 //! [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 use super::{CanonicalInput, Certainty, EvalCtxt, Goal};
+use crate::solve::eval_ctxt::NestedGoals;
 use crate::solve::{
     inspect, response_no_constraints_raw, CanonicalResponse, QueryResult, Response,
 };
@@ -19,6 +20,7 @@ use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
 use rustc_infer::infer::resolve::EagerResolver;
 use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::traits::solve::NestedNormalizationGoals;
 use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
@@ -28,6 +30,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use rustc_next_trait_solver::canonicalizer::{CanonicalizeMode, Canonicalizer};
 use rustc_span::DUMMY_SP;
+use std::assert_matches::assert_matches;
 use std::iter;
 use std::ops::Deref;
 
@@ -93,13 +96,31 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             previous call to `try_evaluate_added_goals!`"
         );
 
-        let certainty = certainty.unify_with(goals_certainty);
+        // When normalizing, we've replaced the expected term with an unconstrained
+        // inference variable. This means that we dropped information which could
+        // have been important. We handle this by instead returning the nested goals
+        // to the caller, where they are then handled.
+        //
+        // As we return all ambiguous nested goals, we can ignore the certainty returned
+        // by `try_evaluate_added_goals()`.
+        let (certainty, normalization_nested_goals) = if self.is_normalizes_to_goal {
+            let NestedGoals { normalizes_to_goals, goals } = std::mem::take(&mut self.nested_goals);
+            if cfg!(debug_assertions) {
+                assert!(normalizes_to_goals.is_empty());
+                if goals.is_empty() {
+                    assert_matches!(goals_certainty, Certainty::Yes);
+                }
+            }
+            (certainty, NestedNormalizationGoals(goals))
+        } else {
+            let certainty = certainty.unify_with(goals_certainty);
+            (certainty, NestedNormalizationGoals::empty())
+        };
 
-        let var_values = self.var_values;
-        let external_constraints = self.compute_external_query_constraints()?;
-
+        let external_constraints =
+            self.compute_external_query_constraints(normalization_nested_goals)?;
         let (var_values, mut external_constraints) =
-            (var_values, external_constraints).fold_with(&mut EagerResolver::new(self.infcx));
+            (self.var_values, external_constraints).fold_with(&mut EagerResolver::new(self.infcx));
         // Remove any trivial region constraints once we've resolved regions
         external_constraints
             .region_constraints
@@ -146,6 +167,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     fn compute_external_query_constraints(
         &self,
+        normalization_nested_goals: NestedNormalizationGoals<'tcx>,
     ) -> Result<ExternalConstraintsData<'tcx>, NoSolution> {
         // We only check for leaks from universes which were entered inside
         // of the query.
@@ -176,7 +198,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
         });
 
-        Ok(ExternalConstraintsData { region_constraints, opaque_types })
+        Ok(ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals })
     }
 
     /// After calling a canonical query, we apply the constraints returned
@@ -185,13 +207,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// This happens in three steps:
     /// - we instantiate the bound variables of the query response
     /// - we unify the `var_values` of the response with the `original_values`
-    /// - we apply the `external_constraints` returned by the query
+    /// - we apply the `external_constraints` returned by the query, returning
+    ///   the `normalization_nested_goals`
     pub(super) fn instantiate_and_apply_query_response(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
         original_values: Vec<ty::GenericArg<'tcx>>,
         response: CanonicalResponse<'tcx>,
-    ) -> Certainty {
+    ) -> (NestedNormalizationGoals<'tcx>, Certainty) {
         let instantiation = Self::compute_query_response_instantiation_values(
             self.infcx,
             &original_values,
@@ -203,11 +226,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         Self::unify_query_var_values(self.infcx, param_env, &original_values, var_values);
 
-        let ExternalConstraintsData { region_constraints, opaque_types } =
-            external_constraints.deref();
+        let ExternalConstraintsData {
+            region_constraints,
+            opaque_types,
+            normalization_nested_goals,
+        } = external_constraints.deref();
         self.register_region_constraints(region_constraints);
         self.register_new_opaque_types(param_env, opaque_types);
-        certainty
+        (normalization_nested_goals.clone(), certainty)
     }
 
     /// This returns the canoncial variable values to instantiate the bound variables of

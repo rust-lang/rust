@@ -68,7 +68,7 @@ pub fn is_const_evaluatable<'tcx>(
                 tcx.dcx().span_bug(span, "evaluating `ConstKind::Expr` is not currently supported");
             }
             ty::ConstKind::Unevaluated(uv) => {
-                let concrete = infcx.const_eval_resolve(param_env, uv, Some(span));
+                let concrete = infcx.const_eval_resolve(param_env, uv, span);
                 match concrete {
                     Err(ErrorHandled::TooGeneric(_)) => {
                         Err(NotConstEvaluatable::Error(infcx.dcx().span_delayed_bug(
@@ -99,7 +99,7 @@ pub fn is_const_evaluatable<'tcx>(
         // and hopefully soon change this to an error.
         //
         // See #74595 for more details about this.
-        let concrete = infcx.const_eval_resolve(param_env, uv, Some(span));
+        let concrete = infcx.const_eval_resolve(param_env, uv, span);
         match concrete {
             // If we're evaluating a generic foreign constant, under a nightly compiler while
             // the current crate does not enable `feature(generic_const_exprs)`, abort

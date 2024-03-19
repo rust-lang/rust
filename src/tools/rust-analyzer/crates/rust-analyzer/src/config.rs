@@ -31,6 +31,7 @@ use project_model::{
     CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustLibSource,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
+use semver::Version;
 use serde::{de::DeserializeOwned, Deserialize};
 use stdx::format_to_acc;
 use vfs::{AbsPath, AbsPathBuf};
@@ -624,7 +625,7 @@ pub struct Config {
     data: ConfigData,
     detached_files: Vec<AbsPathBuf>,
     snippets: Vec<Snippet>,
-    is_visual_studio_code: bool,
+    visual_studio_code_version: Option<Version>,
 }
 
 type ParallelCachePrimingNumThreads = u8;
@@ -823,7 +824,7 @@ impl Config {
         root_path: AbsPathBuf,
         caps: ClientCapabilities,
         workspace_roots: Vec<AbsPathBuf>,
-        is_visual_studio_code: bool,
+        visual_studio_code_version: Option<Version>,
     ) -> Self {
         Config {
             caps,
@@ -833,7 +834,7 @@ impl Config {
             root_path,
             snippets: Default::default(),
             workspace_roots,
-            is_visual_studio_code,
+            visual_studio_code_version,
         }
     }
 
@@ -1778,10 +1779,10 @@ impl Config {
         self.data.typing_autoClosingAngleBrackets_enable
     }
 
-    // FIXME: VSCode seems to work wrong sometimes, see https://github.com/microsoft/vscode/issues/193124
-    // hence, distinguish it for now.
-    pub fn is_visual_studio_code(&self) -> bool {
-        self.is_visual_studio_code
+    // VSCode is our reference implementation, so we allow ourselves to work around issues by
+    // special casing certain versions
+    pub fn visual_studio_code_version(&self) -> Option<&Version> {
+        self.visual_studio_code_version.as_ref()
     }
 }
 // Deserialization definitions
@@ -2694,7 +2695,7 @@ mod tests {
             AbsPathBuf::try_from(project_root()).unwrap(),
             Default::default(),
             vec![],
-            false,
+            None,
         );
         config
             .update(serde_json::json!({
@@ -2710,7 +2711,7 @@ mod tests {
             AbsPathBuf::try_from(project_root()).unwrap(),
             Default::default(),
             vec![],
-            false,
+            None,
         );
         config
             .update(serde_json::json!({
@@ -2726,7 +2727,7 @@ mod tests {
             AbsPathBuf::try_from(project_root()).unwrap(),
             Default::default(),
             vec![],
-            false,
+            None,
         );
         config
             .update(serde_json::json!({
@@ -2745,7 +2746,7 @@ mod tests {
             AbsPathBuf::try_from(project_root()).unwrap(),
             Default::default(),
             vec![],
-            false,
+            None,
         );
         config
             .update(serde_json::json!({
@@ -2764,7 +2765,7 @@ mod tests {
             AbsPathBuf::try_from(project_root()).unwrap(),
             Default::default(),
             vec![],
-            false,
+            None,
         );
         config
             .update(serde_json::json!({
@@ -2783,7 +2784,7 @@ mod tests {
             AbsPathBuf::try_from(project_root()).unwrap(),
             Default::default(),
             vec![],
-            false,
+            None,
         );
         config
             .update(serde_json::json!({

@@ -113,7 +113,7 @@ pub(crate) fn autoderef_step(
     ty: Ty,
     explicit: bool,
 ) -> Option<(AutoderefKind, Ty)> {
-    if let Some(derefed) = builtin_deref(table, &ty, explicit) {
+    if let Some(derefed) = builtin_deref(table.db, &ty, explicit) {
         Some((AutoderefKind::Builtin, table.resolve_ty_shallow(derefed)))
     } else {
         Some((AutoderefKind::Overloaded, deref_by_trait(table, ty)?))
@@ -121,7 +121,7 @@ pub(crate) fn autoderef_step(
 }
 
 pub(crate) fn builtin_deref<'ty>(
-    table: &mut InferenceTable<'_>,
+    db: &dyn HirDatabase,
     ty: &'ty Ty,
     explicit: bool,
 ) -> Option<&'ty Ty> {
@@ -129,7 +129,7 @@ pub(crate) fn builtin_deref<'ty>(
         TyKind::Ref(.., ty) => Some(ty),
         TyKind::Raw(.., ty) if explicit => Some(ty),
         &TyKind::Adt(chalk_ir::AdtId(adt), ref substs) => {
-            if crate::lang_items::is_box(table.db, adt) {
+            if crate::lang_items::is_box(db, adt) {
                 substs.at(Interner, 0).ty(Interner)
             } else {
                 None

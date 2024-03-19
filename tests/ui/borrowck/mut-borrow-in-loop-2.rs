@@ -1,4 +1,3 @@
-//@ run-rustfix
 #![allow(dead_code)]
 
 struct Events<R>(R);

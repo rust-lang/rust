@@ -150,13 +150,13 @@ impl RenderType {
             string.push('{');
             write_optional_id(self.id, string);
             string.push('{');
-            for generic in &self.generics.as_ref().map(Vec::as_slice).unwrap_or_default()[..] {
+            for generic in &self.generics.as_deref().unwrap_or_default()[..] {
                 generic.write_to_string(string);
             }
             string.push('}');
             if self.bindings.is_some() {
                 string.push('{');
-                for binding in &self.bindings.as_ref().map(Vec::as_slice).unwrap_or_default()[..] {
+                for binding in &self.bindings.as_deref().unwrap_or_default()[..] {
                     string.push('{');
                     binding.0.write_to_string(string);
                     string.push('{');

@@ -774,7 +774,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let (current_root, parent_root) =
             if self.tcx.sess.opts.unstable_opts.maximal_hir_to_mir_coverage {
                 // Some consumers of rustc need to map MIR locations back to HIR nodes. Currently
-                // the the only part of rustc that tracks MIR -> HIR is the
+                // the only part of rustc that tracks MIR -> HIR is the
                 // `SourceScopeLocalData::lint_root` field that tracks lint levels for MIR
                 // locations. Normally the number of source scopes is limited to the set of nodes
                 // with lint annotations. The -Zmaximal-hir-to-mir-coverage flag changes this

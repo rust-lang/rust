@@ -1964,15 +1964,21 @@ fn check_must_not_suspend_ty<'tcx>(
     debug!("Checking must_not_suspend for {}", ty);
 
     match *ty.kind() {
-        ty::Adt(..) if ty.is_box() => {
-            let boxed_ty = ty.boxed_ty();
-            let descr_pre = &format!("{}boxed ", data.descr_pre);
+        ty::Adt(_, args) if ty.is_box() => {
+            let boxed_ty = args.type_at(0);
+            let allocator_ty = args.type_at(1);
             check_must_not_suspend_ty(
                 tcx,
                 boxed_ty,
                 hir_id,
                 param_env,
-                SuspendCheckData { descr_pre, ..data },
+                SuspendCheckData { descr_pre: &format!("{}boxed ", data.descr_pre), ..data },
+            ) || check_must_not_suspend_ty(
+                tcx,
+                allocator_ty,
+                hir_id,
+                param_env,
+                SuspendCheckData { descr_pre: &format!("{}allocator ", data.descr_pre), ..data },
             )
         }
         ty::Adt(def, _) => check_must_not_suspend_def(tcx, def.did(), hir_id, data),

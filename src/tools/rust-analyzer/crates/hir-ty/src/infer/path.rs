@@ -321,7 +321,7 @@ impl InferenceContext<'_> {
 
         let mut not_visible = None;
         let res = method_resolution::iterate_method_candidates(
-            &canonical_ty.value,
+            &canonical_ty,
             self.db,
             self.table.trait_env.clone(),
             self.get_traits_in_scope().as_ref().left_or_else(|&it| it),

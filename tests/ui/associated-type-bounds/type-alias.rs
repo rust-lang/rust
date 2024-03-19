@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(associated_type_bounds)]
-
 type _TaWhere1<T> where T: Iterator<Item: Copy> = T; //~ WARNING type_alias_bounds
 type _TaWhere2<T> where T: Iterator<Item: 'static> = T; //~ WARNING type_alias_bounds
 type _TaWhere3<T> where T: Iterator<Item: 'static> = T; //~ WARNING type_alias_bounds

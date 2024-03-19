@@ -25,6 +25,13 @@
 
 #include <iostream>
 
+// for raw `write` in the bad-alloc handler
+#ifdef _MSC_VER
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
 //===----------------------------------------------------------------------===
 //
 // This file defines alternate interfaces to core functions that are more
@@ -88,8 +95,24 @@ static void FatalErrorHandler(void *UserData,
   exit(101);
 }
 
-extern "C" void LLVMRustInstallFatalErrorHandler() {
+// Custom error handler for bad-alloc LLVM errors.
+//
+// It aborts the process without any further allocations, similar to LLVM's
+// default except that may be configured to `throw std::bad_alloc()` instead.
+static void BadAllocErrorHandler(void *UserData,
+                                 const char* Reason,
+                                 bool GenCrashDiag) {
+  const char *OOM = "rustc-LLVM ERROR: out of memory\n";
+  (void)!::write(2, OOM, strlen(OOM));
+  (void)!::write(2, Reason, strlen(Reason));
+  (void)!::write(2, "\n", 1);
+  abort();
+}
+
+extern "C" void LLVMRustInstallErrorHandlers() {
+  install_bad_alloc_error_handler(BadAllocErrorHandler);
   install_fatal_error_handler(FatalErrorHandler);
+  install_out_of_memory_new_handler();
 }
 
 extern "C" void LLVMRustDisableSystemDialogsOnCrash() {
@@ -2127,21 +2150,5 @@ extern "C" LLVMValueRef LLVMConstStringInContext2(LLVMContextRef C,
                                                   size_t Length,
                                                   bool DontNullTerminate) {
   return wrap(ConstantDataArray::getString(*unwrap(C), StringRef(Str, Length), !DontNullTerminate));
-}
-#endif
-
-// FIXME: Remove when Rust's minimum supported LLVM version reaches 17.
-// https://github.com/llvm/llvm-project/commit/35276f16e5a2cae0dfb49c0fbf874d4d2f177acc
-#if LLVM_VERSION_LT(17, 0)
-extern "C" LLVMValueRef LLVMConstArray2(LLVMTypeRef ElementTy,
-                                        LLVMValueRef *ConstantVals,
-                                        uint64_t Length) {
-  ArrayRef<Constant *> V(unwrap<Constant>(ConstantVals, Length), Length);
-  return wrap(ConstantArray::get(ArrayType::get(unwrap(ElementTy), Length), V));
-}
-
-extern "C" LLVMTypeRef LLVMArrayType2(LLVMTypeRef ElementTy,
-                                      uint64_t ElementCount) {
-  return wrap(ArrayType::get(unwrap(ElementTy), ElementCount));
 }
 #endif

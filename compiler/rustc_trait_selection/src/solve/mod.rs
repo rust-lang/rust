@@ -18,8 +18,7 @@ use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
-    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, IsNormalizesToHack,
-    QueryResult, Response,
+    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, QueryResult, Response,
 };
 use rustc_middle::ty::{self, AliasRelationDirection, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
@@ -69,7 +68,7 @@ enum SolverMode {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum GoalEvaluationKind {
     Root,
-    Nested { is_normalizes_to_hack: IsNormalizesToHack },
+    Nested,
 }
 
 #[extension(trait CanonicalResponseExt)]
@@ -202,12 +201,9 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
-    fn set_normalizes_to_hack_goal(&mut self, goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
-        assert!(
-            self.nested_goals.normalizes_to_hack_goal.is_none(),
-            "attempted to set the projection eq hack goal when one already exists"
-        );
-        self.nested_goals.normalizes_to_hack_goal = Some(goal);
+    fn add_normalizes_to_goal(&mut self, goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
+        inspect::ProofTreeBuilder::add_normalizes_to_goal(self, goal);
+        self.nested_goals.normalizes_to_goals.push(goal);
     }
 
     #[instrument(level = "debug", skip(self))]

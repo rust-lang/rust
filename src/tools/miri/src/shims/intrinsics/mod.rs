@@ -140,18 +140,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 this.write_pointer(Pointer::new(ptr.provenance, masked_addr), dest)?;
             }
-            "retag_box_to_raw" => {
-                let [ptr] = check_arg_count(args)?;
-                let alloc_ty = generic_args[1].expect_ty();
-
-                let val = this.read_immediate(ptr)?;
-                let new_val = if this.machine.borrow_tracker.is_some() {
-                    this.retag_box_to_raw(&val, alloc_ty)?
-                } else {
-                    val
-                };
-                this.write_immediate(*new_val, dest)?;
-            }
 
             // We want to return either `true` or `false` at random, or else something like
             // ```

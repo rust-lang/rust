@@ -23,8 +23,11 @@ pub trait SpanMapper<S: Span> {
     fn span_for(&self, range: TextRange) -> S;
 }
 
-impl<S: Span> SpanMapper<S> for SpanMap<S> {
-    fn span_for(&self, range: TextRange) -> S {
+impl<S> SpanMapper<SpanData<S>> for SpanMap<S>
+where
+    SpanData<S>: Span,
+{
+    fn span_for(&self, range: TextRange) -> SpanData<S> {
         self.span_at(range.start())
     }
 }
@@ -38,32 +41,30 @@ impl<S: Span, SM: SpanMapper<S>> SpanMapper<S> for &SM {
 /// Dummy things for testing where spans don't matter.
 pub(crate) mod dummy_test_span_utils {
 
+    use span::{Span, SyntaxContextId};
+
     use super::*;
 
-    pub type DummyTestSpanData = span::SpanData<DummyTestSyntaxContext>;
-    pub const DUMMY: DummyTestSpanData = span::SpanData {
+    pub const DUMMY: Span = Span {
         range: TextRange::empty(TextSize::new(0)),
         anchor: span::SpanAnchor {
             file_id: span::FileId::BOGUS,
             ast_id: span::ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: DummyTestSyntaxContext,
+        ctx: SyntaxContextId::ROOT,
     };
-
-    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-    pub struct DummyTestSyntaxContext;
 
     pub struct DummyTestSpanMap;
 
-    impl SpanMapper<span::SpanData<DummyTestSyntaxContext>> for DummyTestSpanMap {
-        fn span_for(&self, range: syntax::TextRange) -> span::SpanData<DummyTestSyntaxContext> {
-            span::SpanData {
+    impl SpanMapper<Span> for DummyTestSpanMap {
+        fn span_for(&self, range: syntax::TextRange) -> Span {
+            Span {
                 range,
                 anchor: span::SpanAnchor {
                     file_id: span::FileId::BOGUS,
                     ast_id: span::ROOT_ERASED_FILE_AST_ID,
                 },
-                ctx: DummyTestSyntaxContext,
+                ctx: SyntaxContextId::ROOT,
             }
         }
     }
@@ -92,7 +93,7 @@ pub fn syntax_node_to_token_tree_modified<Ctx, SpanMap>(
     node: &SyntaxNode,
     map: SpanMap,
     append: FxHashMap<SyntaxElement, Vec<tt::Leaf<SpanData<Ctx>>>>,
-    remove: FxHashSet<SyntaxNode>,
+    remove: FxHashSet<SyntaxElement>,
     call_site: SpanData<Ctx>,
 ) -> tt::Subtree<SpanData<Ctx>>
 where
@@ -121,7 +122,7 @@ where
 pub fn token_tree_to_syntax_node<Ctx>(
     tt: &tt::Subtree<SpanData<Ctx>>,
     entry_point: parser::TopEntryPoint,
-) -> (Parse<SyntaxNode>, SpanMap<SpanData<Ctx>>)
+) -> (Parse<SyntaxNode>, SpanMap<Ctx>)
 where
     SpanData<Ctx>: Span,
     Ctx: Copy,
@@ -629,7 +630,7 @@ struct Converter<SpanMap, S> {
     /// Used to make the emitted text ranges in the spans relative to the span anchor.
     map: SpanMap,
     append: FxHashMap<SyntaxElement, Vec<tt::Leaf<S>>>,
-    remove: FxHashSet<SyntaxNode>,
+    remove: FxHashSet<SyntaxElement>,
     call_site: S,
 }
 
@@ -638,7 +639,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
         node: &SyntaxNode,
         map: SpanMap,
         append: FxHashMap<SyntaxElement, Vec<tt::Leaf<S>>>,
-        remove: FxHashSet<SyntaxNode>,
+        remove: FxHashSet<SyntaxElement>,
         call_site: S,
     ) -> Self {
         let mut this = Converter {
@@ -660,16 +661,25 @@ impl<SpanMap, S> Converter<SpanMap, S> {
     fn next_token(&mut self) -> Option<SyntaxToken> {
         while let Some(ev) = self.preorder.next() {
             match ev {
-                WalkEvent::Enter(SyntaxElement::Token(t)) => return Some(t),
-                WalkEvent::Enter(SyntaxElement::Node(n)) if self.remove.contains(&n) => {
-                    self.preorder.skip_subtree();
-                    if let Some(mut v) = self.append.remove(&n.into()) {
-                        v.reverse();
-                        self.current_leaves.extend(v);
-                        return None;
+                WalkEvent::Enter(token) => {
+                    if self.remove.contains(&token) {
+                        match token {
+                            syntax::NodeOrToken::Token(_) => {
+                                continue;
+                            }
+                            node => {
+                                self.preorder.skip_subtree();
+                                if let Some(mut v) = self.append.remove(&node) {
+                                    v.reverse();
+                                    self.current_leaves.extend(v);
+                                    return None;
+                                }
+                            }
+                        }
+                    } else if let syntax::NodeOrToken::Token(token) = token {
+                        return Some(token);
                     }
                 }
-                WalkEvent::Enter(SyntaxElement::Node(_)) => (),
                 WalkEvent::Leave(ele) => {
                     if let Some(mut v) = self.append.remove(&ele) {
                         v.reverse();
@@ -824,7 +834,7 @@ where
     cursor: Cursor<'a, SpanData<Ctx>>,
     text_pos: TextSize,
     inner: SyntaxTreeBuilder,
-    token_map: SpanMap<SpanData<Ctx>>,
+    token_map: SpanMap<Ctx>,
 }
 
 impl<'a, Ctx> TtTreeSink<'a, Ctx>
@@ -841,7 +851,7 @@ where
         }
     }
 
-    fn finish(mut self) -> (Parse<SyntaxNode>, SpanMap<SpanData<Ctx>>) {
+    fn finish(mut self) -> (Parse<SyntaxNode>, SpanMap<Ctx>) {
         self.token_map.finish();
         (self.inner.finish(), self.token_map)
     }

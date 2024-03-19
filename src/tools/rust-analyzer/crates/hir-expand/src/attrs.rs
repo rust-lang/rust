@@ -7,7 +7,7 @@ use either::Either;
 use intern::Interned;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
-use span::Span;
+use span::{Span, SyntaxContextId};
 use syntax::{ast, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
 use triomphe::Arc;
 
@@ -53,7 +53,7 @@ impl RawAttrs {
                 id,
                 input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
                 path: Interned::new(ModPath::from(crate::name!(doc))),
-                span: span_map.span_for_range(comment.syntax().text_range()),
+                ctxt: span_map.span_for_range(comment.syntax().text_range()).ctx,
             }),
         });
         let entries: Arc<[Attr]> = Arc::from_iter(entries);
@@ -173,7 +173,7 @@ pub struct Attr {
     pub id: AttrId,
     pub path: Interned<ModPath>,
     pub input: Option<Interned<AttrInput>>,
-    pub span: Span,
+    pub ctxt: SyntaxContextId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -201,10 +201,12 @@ impl Attr {
         span_map: SpanMapRef<'_>,
         id: AttrId,
     ) -> Option<Attr> {
-        let path = Interned::new(ModPath::from_src(db, ast.path()?, &mut |range| {
+        let path = ast.path()?;
+        let range = path.syntax().text_range();
+        let path = Interned::new(ModPath::from_src(db, path, &mut |range| {
             span_map.span_for_range(range).ctx
         })?);
-        let span = span_map.span_for_range(ast.syntax().text_range());
+        let span = span_map.span_for_range(range);
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let value = match lit.kind() {
                 ast::LiteralKind::String(string) => string.value()?.into(),
@@ -217,11 +219,11 @@ impl Attr {
         } else {
             None
         };
-        Some(Attr { id, path, input, span })
+        Some(Attr { id, path, input, ctxt: span.ctx })
     }
 
     fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree], id: AttrId) -> Option<Attr> {
-        let span = tt.first()?.first_span();
+        let ctxt = tt.first()?.first_span().ctx;
         let path_end = tt
             .iter()
             .position(|tt| {
@@ -253,7 +255,7 @@ impl Attr {
             }
             _ => None,
         };
-        Some(Attr { id, path, input, span })
+        Some(Attr { id, path, input, ctxt })
     }
 
     pub fn path(&self) -> &ModPath {

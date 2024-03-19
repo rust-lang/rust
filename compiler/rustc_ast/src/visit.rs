@@ -755,7 +755,7 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(
         }
         AssocItemKind::Delegation(box Delegation { id, qself, path, body }) => {
             if let Some(qself) = qself {
-                visitor.visit_ty(&qself.ty);
+                try_visit!(visitor.visit_ty(&qself.ty));
             }
             try_visit!(visitor.visit_path(path, *id));
             visit_opt!(visitor, visit_block, body);
@@ -994,7 +994,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
         ExprKind::InlineAsm(asm) => try_visit!(visitor.visit_inline_asm(asm)),
         ExprKind::FormatArgs(f) => try_visit!(visitor.visit_format_args(f)),
         ExprKind::OffsetOf(container, fields) => {
-            visitor.visit_ty(container);
+            try_visit!(visitor.visit_ty(container));
             walk_list!(visitor, visit_ident, fields.iter().copied());
         }
         ExprKind::Yield(optional_expression) => {

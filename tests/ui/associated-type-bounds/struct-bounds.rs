@@ -1,8 +1,6 @@
 //@ run-pass
 
 #![allow(unused)]
-#![feature(associated_type_bounds)]
-
 trait Tr1 { type As1; }
 trait Tr2 { type As2; }
 trait Tr3 {}

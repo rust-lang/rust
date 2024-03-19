@@ -351,8 +351,6 @@ declare_features! (
     (unstable, asm_unwind, "1.58.0", Some(93334)),
     /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
     (unstable, associated_const_equality, "1.58.0", Some(92827)),
-    /// Allows the user of associated type bounds.
-    (unstable, associated_type_bounds, "1.34.0", Some(52662)),
     /// Allows associated type defaults.
     (unstable, associated_type_defaults, "1.2.0", Some(29661)),
     /// Allows `async || body` closures.
@@ -495,8 +493,6 @@ declare_features! (
     (unstable, impl_trait_in_assoc_type, "1.70.0", Some(63063)),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
     (unstable, impl_trait_in_fn_trait_return, "1.64.0", Some(99697)),
-    /// Allows using imported `main` function
-    (unstable, imported_main, "1.53.0", Some(28937)),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
     /// Allow anonymous constants from an inline `const` block

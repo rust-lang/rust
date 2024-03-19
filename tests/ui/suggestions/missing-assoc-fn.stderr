@@ -1,13 +1,3 @@
-error[E0658]: associated type bounds are unstable
-  --> $DIR/missing-assoc-fn.rs:9:22
-   |
-LL |     fn bat<T: TraitB<Item: Copy>>(_: T) -> Self;
-   |                      ^^^^^^^^^^
-   |
-   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
-   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0046]: not all trait items implemented, missing: `foo`, `bar`, `baz`, `bat`
   --> $DIR/missing-assoc-fn.rs:14:1
    |
@@ -31,7 +21,6 @@ LL | impl FromIterator<()> for X {
    |
    = help: implement the missing item: `fn from_iter<T: IntoIterator<Item = ()>>(_: T) -> Self { todo!() }`
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0046, E0658.
-For more information about an error, try `rustc --explain E0046`.
+For more information about this error, try `rustc --explain E0046`.

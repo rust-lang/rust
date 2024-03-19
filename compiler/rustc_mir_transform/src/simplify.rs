@@ -37,8 +37,11 @@ pub enum SimplifyCfg {
     Initial,
     PromoteConsts,
     RemoveFalseEdges,
-    EarlyOpt,
-    ElaborateDrops,
+    /// Runs at the beginning of "analysis to runtime" lowering, *before* drop elaboration.
+    PostAnalysis,
+    /// Runs at the end of "analysis to runtime" lowering, *after* drop elaboration.
+    /// This is before the main optimization passes on runtime MIR kick in.
+    PreOptimizations,
     Final,
     MakeShim,
     AfterUninhabitedEnumBranching,
@@ -50,8 +53,8 @@ impl SimplifyCfg {
             SimplifyCfg::Initial => "SimplifyCfg-initial",
             SimplifyCfg::PromoteConsts => "SimplifyCfg-promote-consts",
             SimplifyCfg::RemoveFalseEdges => "SimplifyCfg-remove-false-edges",
-            SimplifyCfg::EarlyOpt => "SimplifyCfg-early-opt",
-            SimplifyCfg::ElaborateDrops => "SimplifyCfg-elaborate-drops",
+            SimplifyCfg::PostAnalysis => "SimplifyCfg-post-analysis",
+            SimplifyCfg::PreOptimizations => "SimplifyCfg-pre-optimizations",
             SimplifyCfg::Final => "SimplifyCfg-final",
             SimplifyCfg::MakeShim => "SimplifyCfg-make_shim",
             SimplifyCfg::AfterUninhabitedEnumBranching => {
