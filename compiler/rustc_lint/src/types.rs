@@ -1115,7 +1115,6 @@ fn is_niche_optimization_candidate<'tcx>(
     match ty.kind() {
         ty::Adt(ty_def, _) => {
             let non_exhaustive = ty_def.is_variant_list_non_exhaustive();
-            // Should single-variant enums be allowed?
             let empty = (ty_def.is_struct() && ty_def.all_fields().next().is_none())
                 || (ty_def.is_enum() && ty_def.variants().is_empty());
 
