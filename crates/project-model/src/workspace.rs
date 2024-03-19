@@ -1077,6 +1077,8 @@ fn cargo_to_crate_graph(
         }
     }
 
+    let mut delayed_dev_deps = vec![];
+
     // Now add a dep edge from all targets of upstream to the lib
     // target of downstream.
     for pkg in cargo.packages() {
@@ -1092,26 +1094,28 @@ fn cargo_to_crate_graph(
                 }
 
                 // If the dependency is a dev-dependency with both crates being member libraries of
-                // the workspace we discard the edge. The reason can be read up on in
+                // the workspace we delay adding the edge. The reason can be read up on in
                 // https://github.com/rust-lang/rust-analyzer/issues/14167
-                // but in short, such an edge usually causes some form of cycle in the crate graph
-                // wrt to unit tests. Something we cannot reasonable support.
+                // but in short, such an edge is able to cause some form of cycle in the crate graph
+                // for normal dependencies. If we do run into a cycle like this, we want to prefer
+                // the non dev-dependency edge, and so the easiest way to do that is by adding the
+                // dev-dependency edges last.
                 if dep.kind == DepKind::Dev
                     && matches!(kind, TargetKind::Lib { .. })
                     && cargo[dep.pkg].is_member
                     && cargo[pkg].is_member
                 {
-                    tracing::warn!(
-                        "Discarding dev-dependency edge from library target `{}` to library target `{}` to prevent potential cycles",
-                        cargo[dep.pkg].name,
-                        cargo[pkg].name
-                    );
+                    delayed_dev_deps.push((from, name.clone(), to));
                     continue;
                 }
 
                 add_dep(crate_graph, from, name.clone(), to)
             }
         }
+    }
+
+    for (from, name, to) in delayed_dev_deps {
+        add_dep(crate_graph, from, name, to);
     }
 
     if has_private {
