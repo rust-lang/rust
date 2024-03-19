@@ -13,7 +13,7 @@ use object::read::macho::FatArch;
 use tempfile::Builder as TempFileBuilder;
 
 use std::error::Error;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
@@ -276,19 +276,22 @@ impl<'a> ArArchiveBuilder<'a> {
         // This prevents programs (including rustc) from attempting to read a partial archive.
         // It also enables writing an archive with the same filename as a dependency on Windows as
         // required by a test.
-        let mut archive_tmpfile = TempFileBuilder::new()
+        // The tempfile crate currently uses 0o600 as mode for the temporary files and directories
+        // it creates. We need it to be the default mode for back compat reasons however. (See
+        // #107495) To handle this we are telling tempfile to create a temporary directory instead
+        // and then inside this directory create a file using File::create.
+        let archive_tmpdir = TempFileBuilder::new()
             .suffix(".temp-archive")
-            .tempfile_in(output.parent().unwrap_or_else(|| Path::new("")))
-            .map_err(|err| io_error_context("couldn't create a temp file", err))?;
+            .tempdir_in(output.parent().unwrap_or_else(|| Path::new("")))
+            .map_err(|err| {
+                io_error_context("couldn't create a directory for the temp file", err)
+            })?;
+        let archive_tmpfile_path = archive_tmpdir.path().join("tmp.a");
+        let mut archive_tmpfile = File::create_new(&archive_tmpfile_path)
+            .map_err(|err| io_error_context("couldn't create the temp file", err))?;
 
-        write_archive_to_stream(
-            archive_tmpfile.as_file_mut(),
-            &entries,
-            true,
-            archive_kind,
-            true,
-            false,
-        )?;
+        write_archive_to_stream(&mut archive_tmpfile, &entries, true, archive_kind, true, false)?;
+        drop(archive_tmpfile);
 
         let any_entries = !entries.is_empty();
         drop(entries);
@@ -296,9 +299,11 @@ impl<'a> ArArchiveBuilder<'a> {
         // output archive to the same location as an input archive on Windows.
         drop(self.src_archives);
 
-        archive_tmpfile
-            .persist(output)
-            .map_err(|err| io_error_context("failed to rename archive file", err.error))?;
+        fs::rename(archive_tmpfile_path, output)
+            .map_err(|err| io_error_context("failed to rename archive file", err))?;
+        archive_tmpdir
+            .close()
+            .map_err(|err| io_error_context("failed to remove temporary directory", err))?;
 
         Ok(any_entries)
     }
