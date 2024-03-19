@@ -16,6 +16,7 @@ use rustc_data_structures::{
 };
 use rustc_hir::{BindingAnnotation, ByRef};
 use rustc_middle::middle::region;
+use rustc_middle::mir::coverage::DecisionMarkerId;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
@@ -41,6 +42,9 @@ struct ThenElseArgs {
     /// Forwarded to [`Builder::lower_let_expr`] when lowering [`ExprKind::Let`].
     /// When false (for match guards), `let` bindings won't be declared.
     declare_let_bindings: bool,
+
+    /// Id of the parent decision id MCDC is enabled
+    decision_id: Option<DecisionMarkerId>,
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -58,10 +62,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         variable_source_info: SourceInfo,
         declare_let_bindings: bool,
     ) -> BlockAnd<()> {
+        // Get an ID for the decision if MCDC is enabled.
+        let decision_id = self.visit_coverage_decision(expr_id, block);
+
         self.then_else_break_inner(
             block,
             expr_id,
-            ThenElseArgs { temp_scope_override, variable_source_info, declare_let_bindings },
+            ThenElseArgs {
+                temp_scope_override,
+                variable_source_info,
+                declare_let_bindings,
+                decision_id,
+            },
         )
     }
 
@@ -159,7 +171,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // Record branch coverage info for this condition.
                 // (Does nothing if branch coverage is not enabled.)
-                this.visit_coverage_branch_condition(expr_id, then_block, else_block);
+                this.visit_coverage_branch_condition(
+                    expr_id,
+                    then_block,
+                    else_block,
+                    args.decision_id,
+                );
 
                 let source_info = this.source_info(expr_span);
                 this.cfg.terminate(block, source_info, term);

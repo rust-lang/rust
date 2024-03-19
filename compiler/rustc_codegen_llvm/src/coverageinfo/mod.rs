@@ -99,7 +99,10 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             .or_insert_with(|| FunctionCoverageCollector::new(instance, function_coverage_info));
 
         match *kind {
-            CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => unreachable!(
+            CoverageKind::SpanMarker
+            | CoverageKind::BlockMarker { .. }
+            | CoverageKind::MCDCBlockMarker { .. }
+            | CoverageKind::MCDCDecisionMarker { .. } => unreachable!(
                 "marker statement {kind:?} should have been removed by CleanupPostBorrowck"
             ),
             CoverageKind::CounterIncrement { id } => {

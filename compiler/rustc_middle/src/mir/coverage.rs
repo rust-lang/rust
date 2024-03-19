@@ -16,6 +16,13 @@ rustc_index::newtype_index! {
 }
 
 rustc_index::newtype_index! {
+    #[derive(HashStable)]
+    #[encodable]
+    #[debug_format = "DecisionMarkerId({})"]
+    pub struct DecisionMarkerId {}
+}
+
+rustc_index::newtype_index! {
     /// ID of a coverage counter. Values ascend from 0.
     ///
     /// Before MIR inlining, counter IDs are local to their enclosing function.
@@ -97,6 +104,18 @@ pub enum CoverageKind {
     /// Should be erased before codegen (at some point after `InstrumentCoverage`).
     BlockMarker { id: BlockMarkerId },
 
+    /// Same as BlockMarker, but carries a reference to its parent decision for
+    /// MCDC coverage.
+    ///
+    /// Has no effect during codegen.
+    MCDCBlockMarker { id: BlockMarkerId, decision_id: DecisionMarkerId },
+
+    /// Marks the first condition of a decision (boolean expression). All
+    /// conditions in the same decision will reference this id.
+    ///
+    /// Has no effect during codegen.
+    MCDCDecisionMarker { id: DecisionMarkerId },
+
     /// Marks the point in MIR control flow represented by a coverage counter.
     ///
     /// This is eventually lowered to `llvm.instrprof.increment` in LLVM IR.
@@ -122,6 +141,10 @@ impl Debug for CoverageKind {
         match self {
             SpanMarker => write!(fmt, "SpanMarker"),
             BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
+            MCDCBlockMarker { id, decision_id } => {
+                write!(fmt, "MCDCBlockMarker({:?}, {:?})", id.index(), decision_id.index())
+            }
+            MCDCDecisionMarker { id } => write!(fmt, "MCDCDecisionMarker({:?})", id.index()),
             CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
             ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
         }
@@ -234,12 +257,16 @@ pub struct BranchInfo {
     /// data structures without having to scan the entire body first.
     pub num_block_markers: usize,
     pub branch_spans: Vec<BranchSpan>,
+    pub decisions: IndexVec<DecisionMarkerId, Span>,
 }
 
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct BranchSpan {
+    /// Source code region associated to the branch.
     pub span: Span,
+    /// Decision structure the branch is part of. Only used in the MCDC coverage.
+    pub decision_id: DecisionMarkerId,
     pub true_marker: BlockMarkerId,
     pub false_marker: BlockMarkerId,
 }

@@ -2,11 +2,13 @@ use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageKind};
+use rustc_index::IndexVec;
+use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageKind, DecisionMarkerId};
 use rustc_middle::mir::{self, BasicBlock, UnOp};
 use rustc_middle::thir::{ExprId, ExprKind, Thir};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::Span;
 
 use crate::build::Builder;
 
@@ -16,6 +18,7 @@ pub(crate) struct BranchInfoBuilder {
 
     num_block_markers: usize,
     branch_spans: Vec<BranchSpan>,
+    decisions: IndexVec<DecisionMarkerId, Span>,
 }
 
 #[derive(Clone, Copy)]
@@ -32,8 +35,15 @@ impl BranchInfoBuilder {
     /// Creates a new branch info builder, but only if branch coverage instrumentation
     /// is enabled and `def_id` represents a function that is eligible for coverage.
     pub(crate) fn new_if_enabled(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Self> {
-        if tcx.sess.instrument_coverage_branch() && tcx.is_eligible_for_coverage(def_id) {
-            Some(Self { nots: FxHashMap::default(), num_block_markers: 0, branch_spans: vec![] })
+        if (tcx.sess.instrument_coverage_branch() || tcx.sess.instrument_coverage_mcdc())
+            && tcx.is_eligible_for_coverage(def_id)
+        {
+            Some(Self {
+                nots: FxHashMap::default(),
+                num_block_markers: 0,
+                branch_spans: vec![],
+                decisions: IndexVec::new(),
+            })
         } else {
             None
         }
@@ -86,14 +96,14 @@ impl BranchInfoBuilder {
     }
 
     pub(crate) fn into_done(self) -> Option<Box<mir::coverage::BranchInfo>> {
-        let Self { nots: _, num_block_markers, branch_spans } = self;
+        let Self { nots: _, num_block_markers, branch_spans, decisions } = self;
 
         if num_block_markers == 0 {
             assert!(branch_spans.is_empty());
             return None;
         }
 
-        Some(Box::new(mir::coverage::BranchInfo { num_block_markers, branch_spans }))
+        Some(Box::new(mir::coverage::BranchInfo { num_block_markers, branch_spans, decisions }))
     }
 }
 
@@ -105,6 +115,7 @@ impl Builder<'_, '_> {
         mut expr_id: ExprId,
         mut then_block: BasicBlock,
         mut else_block: BasicBlock,
+        decision_id: Option<DecisionMarkerId>, // If MCDC is enabled
     ) {
         // Bail out if branch coverage is not enabled for this function.
         let Some(branch_info) = self.coverage_branch_info.as_ref() else { return };
@@ -125,9 +136,15 @@ impl Builder<'_, '_> {
         let mut inject_branch_marker = |block: BasicBlock| {
             let id = branch_info.next_block_marker_id();
 
+            let cov_kind = if let Some(decision_id) = decision_id {
+                CoverageKind::MCDCBlockMarker { id, decision_id }
+            } else {
+                CoverageKind::BlockMarker { id }
+            };
+
             let marker_statement = mir::Statement {
                 source_info,
-                kind: mir::StatementKind::Coverage(CoverageKind::BlockMarker { id }),
+                kind: mir::StatementKind::Coverage(cov_kind),
             };
             self.cfg.push(block, marker_statement);
 
@@ -139,8 +156,41 @@ impl Builder<'_, '_> {
 
         branch_info.branch_spans.push(BranchSpan {
             span: source_info.span,
+            // FIXME: Handle case when MCDC is disabled better than just putting 0.
+            decision_id: decision_id.unwrap_or(DecisionMarkerId::from_u32(0)),
             true_marker,
             false_marker,
         });
+    }
+
+    /// If MCDC coverage is enabled, inject a marker in all the decisions
+    /// (boolean expressions)
+    pub(crate) fn visit_coverage_decision(
+        &mut self,
+        expr_id: ExprId,
+        block: BasicBlock,
+    ) -> Option<DecisionMarkerId> {
+        // Early return if MCDC coverage is not enabled.
+        if !self.tcx.sess.instrument_coverage_mcdc() {
+            return None;
+        }
+        let Some(branch_info) = self.coverage_branch_info.as_mut() else {
+            return None;
+        };
+
+        let span = self.thir[expr_id].span;
+        let decision_id = branch_info.decisions.push(span);
+
+        // Inject a decision marker
+        let source_info = self.source_info(span);
+        let marker_statement = mir::Statement {
+            source_info,
+            kind: mir::StatementKind::Coverage(
+                CoverageKind::MCDCDecisionMarker { id: decision_id },
+            ),
+        };
+        self.cfg.push(block, marker_statement);
+
+        Some(decision_id)
     }
 }

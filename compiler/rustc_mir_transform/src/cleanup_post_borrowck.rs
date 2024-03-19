@@ -5,7 +5,7 @@
 //!   - [`AscribeUserType`]
 //!   - [`FakeRead`]
 //!   - [`Assign`] statements with a [`Fake`] borrow
-//!   - [`Coverage`] statements of kind [`BlockMarker`] or [`SpanMarker`]
+//!   - [`Coverage`] statements of kind [`BlockMarker`], [`SpanMarker`], [`MCDCBlockMarker`], or [`MCDCDecisionMarker`]
 //!
 //! [`AscribeUserType`]: rustc_middle::mir::StatementKind::AscribeUserType
 //! [`Assign`]: rustc_middle::mir::StatementKind::Assign
@@ -15,6 +15,8 @@
 //! [`Coverage`]: rustc_middle::mir::StatementKind::Coverage
 //! [`BlockMarker`]: rustc_middle::mir::coverage::CoverageKind::BlockMarker
 //! [`SpanMarker`]: rustc_middle::mir::coverage::CoverageKind::SpanMarker
+//! [`MCDCBlockMarker`]: rustc_middle::mir::coverage::CoverageKind::MCDCBlockMarker
+//! [`MCDCDecisionMarker`]: rustc_middle::mir::coverage::CoverageKind::MCDCDecisionMarker
 
 use crate::MirPass;
 use rustc_middle::mir::coverage::CoverageKind;
@@ -33,7 +35,10 @@ impl<'tcx> MirPass<'tcx> for CleanupPostBorrowck {
                     | StatementKind::Coverage(
                         // These kinds of coverage statements are markers inserted during
                         // MIR building, and are not needed after InstrumentCoverage.
-                        CoverageKind::BlockMarker { .. } | CoverageKind::SpanMarker { .. },
+                        CoverageKind::BlockMarker { .. }
+                        | CoverageKind::SpanMarker { .. }
+                        | CoverageKind::MCDCBlockMarker { .. }
+                        | CoverageKind::MCDCDecisionMarker { .. },
                     )
                     | StatementKind::FakeRead(..) => statement.make_nop(),
                     _ => (),

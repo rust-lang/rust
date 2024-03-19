@@ -222,8 +222,13 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         | StatementKind::PlaceMention(..)
         | StatementKind::AscribeUserType(_, _) => Some(statement.source_info.span),
 
-        // Block markers are used for branch coverage, so ignore them here.
-        StatementKind::Coverage(CoverageKind::BlockMarker { .. }) => None,
+        StatementKind::Coverage(
+            // Block markers are used for branch coverage, so ignore them here.
+            CoverageKind::BlockMarker {..}
+            // Ignore MCDC markers as well
+            | CoverageKind::MCDCBlockMarker{ .. }
+            | CoverageKind::MCDCDecisionMarker{ .. }
+        ) => None,
 
         // These coverage statements should not exist prior to coverage instrumentation.
         StatementKind::Coverage(
@@ -378,8 +383,14 @@ pub(super) fn extract_branch_mappings(
     // Fill out the mapping from block marker IDs to their enclosing blocks.
     for (bb, data) in mir_body.basic_blocks.iter_enumerated() {
         for statement in &data.statements {
-            if let StatementKind::Coverage(CoverageKind::BlockMarker { id }) = statement.kind {
-                block_markers[id] = Some(bb);
+            if let StatementKind::Coverage(kind) = &statement.kind {
+                match kind {
+                    CoverageKind::BlockMarker { id }
+                    | CoverageKind::MCDCBlockMarker { id, decision_id: _ } => {
+                        block_markers[*id] = Some(bb);
+                    }
+                    _ => (),
+                }
             }
         }
     }
@@ -387,7 +398,7 @@ pub(super) fn extract_branch_mappings(
     branch_info
         .branch_spans
         .iter()
-        .filter_map(|&BranchSpan { span: raw_span, true_marker, false_marker }| {
+        .filter_map(|&BranchSpan { span: raw_span, decision_id: _, true_marker, false_marker }| {
             // For now, ignore any branch span that was introduced by
             // expansion. This makes things like assert macros less noisy.
             if !raw_span.ctxt().outer_expn_data().is_root() {
