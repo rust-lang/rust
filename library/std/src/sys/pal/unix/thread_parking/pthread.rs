@@ -5,7 +5,7 @@ use crate::marker::PhantomPinned;
 use crate::pin::Pin;
 use crate::ptr::addr_of_mut;
 use crate::sync::atomic::AtomicUsize;
-use crate::sync::atomic::Ordering::SeqCst;
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 #[cfg(not(target_os = "nto"))]
 use crate::sys::time::TIMESPEC_MAX;
 #[cfg(target_os = "nto")]
@@ -150,16 +150,18 @@ impl Parker {
 
     // This implementation doesn't require `unsafe`, but other implementations
     // may assume this is only called by the thread that owns the Parker.
+    //
+    // For memory ordering, see std/src/sys_common/thread_parking/futex.rs
     pub unsafe fn park(self: Pin<&Self>) {
         // If we were previously notified then we consume this notification and
         // return quickly.
-        if self.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst).is_ok() {
+        if self.state.compare_exchange(NOTIFIED, EMPTY, Acquire, Relaxed).is_ok() {
             return;
         }
 
         // Otherwise we need to coordinate going to sleep
         lock(self.lock.get());
-        match self.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
+        match self.state.compare_exchange(EMPTY, PARKED, Relaxed, Relaxed) {
             Ok(_) => {}
             Err(NOTIFIED) => {
                 // We must read here, even though we know it will be `NOTIFIED`.
@@ -168,7 +170,7 @@ impl Parker {
                 // acquire operation that synchronizes with that `unpark` to observe
                 // any writes it made before the call to unpark. To do that we must
                 // read from the write it made to `state`.
-                let old = self.state.swap(EMPTY, SeqCst);
+                let old = self.state.swap(EMPTY, Acquire);
 
                 unlock(self.lock.get());
 
@@ -185,7 +187,7 @@ impl Parker {
         loop {
             wait(self.cvar.get(), self.lock.get());
 
-            match self.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst) {
+            match self.state.compare_exchange(NOTIFIED, EMPTY, Acquire, Relaxed) {
                 Ok(_) => break, // got a notification
                 Err(_) => {}    // spurious wakeup, go back to sleep
             }
@@ -201,16 +203,16 @@ impl Parker {
         // Like `park` above we have a fast path for an already-notified thread, and
         // afterwards we start coordinating for a sleep.
         // return quickly.
-        if self.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst).is_ok() {
+        if self.state.compare_exchange(NOTIFIED, EMPTY, Acquire, Relaxed).is_ok() {
             return;
         }
 
         lock(self.lock.get());
-        match self.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
+        match self.state.compare_exchange(EMPTY, PARKED, Relaxed, Relaxed) {
             Ok(_) => {}
             Err(NOTIFIED) => {
                 // We must read again here, see `park`.
-                let old = self.state.swap(EMPTY, SeqCst);
+                let old = self.state.swap(EMPTY, Acquire);
                 unlock(self.lock.get());
 
                 assert_eq!(old, NOTIFIED, "park state changed unexpectedly");
@@ -228,7 +230,7 @@ impl Parker {
         // parked.
         wait_timeout(self.cvar.get(), self.lock.get(), dur);
 
-        match self.state.swap(EMPTY, SeqCst) {
+        match self.state.swap(EMPTY, Acquire) {
             NOTIFIED => unlock(self.lock.get()), // got a notification, hurray!
             PARKED => unlock(self.lock.get()),   // no notification, alas
             n => {
@@ -245,7 +247,7 @@ impl Parker {
         // `state` is already `NOTIFIED`. That is why this must be a swap
         // rather than a compare-and-swap that returns if it reads `NOTIFIED`
         // on failure.
-        match self.state.swap(NOTIFIED, SeqCst) {
+        match self.state.swap(NOTIFIED, Release) {
             EMPTY => return,    // no one was waiting
             NOTIFIED => return, // already unparked
             PARKED => {}        // gotta go wake someone up
