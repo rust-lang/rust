@@ -397,6 +397,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
         // We are adding a single work item, so the cost doesn't matter.
         vec![(WorkItem::LTO(module), 0)]
     } else {
+        assert!(autodiff.is_empty());
         assert!(needs_fat_lto.is_empty());
         let (lto_modules, copy_jobs) = B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules)
             .unwrap_or_else(|e| e.raise());
