@@ -388,6 +388,15 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         None
     }
 
+    // The `dependency` type is determined by the command line arguments(`--extern`) and
+    // `private_dep`. However, sometimes the directly dependent crate is not specified by
+    // `--extern`, in this case, `private-dep` is none during loading. This is equivalent to the
+    // scenario where the command parameter is set to `public-dependency`
+    fn is_private_dep(&self, name: &str, private_dep: Option<bool>) -> bool {
+        self.sess.opts.externs.get(name).map_or(private_dep.unwrap_or(false), |e| e.is_private_dep)
+            && private_dep.unwrap_or(true)
+    }
+
     fn register_crate(
         &mut self,
         host_lib: Option<Library>,
@@ -402,14 +411,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
-
-        let private_dep = self
-            .sess
-            .opts
-            .externs
-            .get(name.as_str())
-            .map_or(private_dep.unwrap_or(false), |e| e.is_private_dep)
-            && private_dep.unwrap_or(true);
+        let private_dep = self.is_private_dep(name.as_str(), private_dep);
 
         // Claim this crate number and cache it
         let cnum = self.cstore.intern_stable_crate_id(&crate_root)?;
@@ -599,14 +601,17 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
         match result {
             (LoadResult::Previous(cnum), None) => {
+                // When `private_dep` is none, it indicates the directly dependent crate. If it is
+                // not specified by `--extern` on command line parameters, it may be
+                // `private-dependency` when `register_crate` is called for the first time. Then it must be updated to
+                // `public-dependency` here.
+                let private_dep = self.is_private_dep(name.as_str(), private_dep);
                 let data = self.cstore.get_crate_data_mut(cnum);
                 if data.is_proc_macro_crate() {
                     dep_kind = CrateDepKind::MacrosOnly;
                 }
                 data.set_dep_kind(cmp::max(data.dep_kind(), dep_kind));
-                if let Some(private_dep) = private_dep {
-                    data.update_and_private_dep(private_dep);
-                }
+                data.update_and_private_dep(private_dep);
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
