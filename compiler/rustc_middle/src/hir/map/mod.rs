@@ -954,7 +954,7 @@ impl<'hir> Map<'hir> {
             Node::Crate(item) => item.spans.inner_span,
             Node::WhereBoundPredicate(pred) => pred.span,
             Node::ArrayLenInfer(inf) => inf.span,
-            Node::AssocOpaqueTy(..) => unreachable!(),
+            Node::Synthetic => unreachable!(),
             Node::Err(span) => *span,
         }
     }
@@ -1219,7 +1219,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Node::Crate(..) => String::from("(root_crate)"),
         Node::WhereBoundPredicate(_) => node_str("where bound predicate"),
         Node::ArrayLenInfer(_) => node_str("array len infer"),
-        Node::AssocOpaqueTy(..) => unreachable!(),
+        Node::Synthetic => unreachable!(),
         Node::Err(_) => node_str("error"),
     }
 }

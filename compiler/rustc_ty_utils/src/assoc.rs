@@ -241,18 +241,16 @@ fn associated_types_for_impl_traits_in_associated_fn(
 fn feed_hir(feed: &TyCtxtFeed<'_, LocalDefId>) {
     feed.local_def_id_to_hir_id(HirId::make_owner(feed.def_id()));
 
-    let node = hir::OwnerNode::AssocOpaqueTy(&hir::AssocOpaqueTy {});
+    let node = hir::OwnerNode::Synthetic;
     let bodies = Default::default();
     let attrs = hir::AttributeMap::EMPTY;
 
     let (opt_hash_including_bodies, _) = feed.tcx.hash_owner_nodes(node, &bodies, &attrs.map);
+    let node = node.into();
     feed.opt_hir_owner_nodes(Some(feed.tcx.arena.alloc(hir::OwnerNodes {
         opt_hash_including_bodies,
         nodes: IndexVec::from_elem_n(
-            hir::ParentedNode {
-                parent: hir::ItemLocalId::INVALID,
-                node: hir::Node::AssocOpaqueTy(&hir::AssocOpaqueTy {}),
-            },
+            hir::ParentedNode { parent: hir::ItemLocalId::INVALID, node },
             1,
         ),
         bodies,
