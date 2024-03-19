@@ -64,12 +64,9 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
         let mut by_move_body = body.clone();
         MakeByMoveBody { tcx, by_ref_fields, by_move_coroutine_ty }.visit_body(&mut by_move_body);
         dump_mir(tcx, false, "coroutine_by_move", &0, &by_move_body, |_, _| Ok(()));
-        by_move_body.source = mir::MirSource {
-            instance: InstanceDef::CoroutineKindShim {
-                coroutine_def_id: coroutine_def_id.to_def_id(),
-            },
-            promoted: None,
-        };
+        by_move_body.source = mir::MirSource::from_instance(InstanceDef::CoroutineKindShim {
+            coroutine_def_id: coroutine_def_id.to_def_id(),
+        });
         body.coroutine.as_mut().unwrap().by_move_body = Some(by_move_body);
     }
 }

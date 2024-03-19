@@ -8,7 +8,7 @@ pub async fn run(permit: ActionPermit<'_, ()>, ctx: &mut core::task::Context<'_>
     run2(permit, ctx);
 }
 
-// EMIT_MIR inline_coroutine_body.run2.Inline.diff
+// EMIT_MIR inline_coroutine_body.run2-{closure#0}.Inline.diff
 fn run2<T>(permit: ActionPermit<'_, T>, ctx: &mut core::task::Context) {
     _ = || {
         let mut fut = ActionPermit::perform(permit);
