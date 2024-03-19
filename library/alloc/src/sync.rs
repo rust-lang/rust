@@ -233,7 +233,7 @@ macro_rules! acquire {
 ///     let val = Arc::clone(&val);
 ///
 ///     thread::spawn(move || {
-///         let v = val.fetch_add(1, Ordering::SeqCst);
+///         let v = val.fetch_add(1, Ordering::Relaxed);
 ///         println!("{v:?}");
 ///     });
 /// }
