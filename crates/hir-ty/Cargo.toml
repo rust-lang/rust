@@ -53,7 +53,7 @@ expect-test = "1.4.0"
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
-project-model = { path = "../project-model" }
+project-model.workspace = true
 
 # local deps
 test-utils.workspace = true

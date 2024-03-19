@@ -51,8 +51,12 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option
 // Diagnostic: unused-mut
 //
 // This diagnostic is triggered when a mutable variable isn't actually mutated.
-pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Diagnostic {
+pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Option<Diagnostic> {
     let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
+    if ast.file_id.macro_file().is_some() {
+        // FIXME: Our infra can't handle allow from within macro expansions rn
+        return None;
+    }
     let fixes = (|| {
         let file_id = ast.file_id.file_id()?;
         let mut edit_builder = TextEdit::builder();
@@ -76,14 +80,16 @@ pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Di
         )])
     })();
     let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
-    Diagnostic::new_with_syntax_node_ptr(
-        ctx,
-        DiagnosticCode::RustcLint("unused_mut"),
-        "variable does not need to be mutable",
-        ast,
+    Some(
+        Diagnostic::new_with_syntax_node_ptr(
+            ctx,
+            DiagnosticCode::RustcLint("unused_mut"),
+            "variable does not need to be mutable",
+            ast,
+        )
+        .experimental() // Not supporting `#[allow(unused_mut)]` in proc macros leads to false positive.
+        .with_fixes(fixes),
     )
-    .experimental() // Not supporting `#[allow(unused_mut)]` in proc macros leads to false positive.
-    .with_fixes(fixes)
 }
 
 pub(super) fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
