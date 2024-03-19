@@ -1042,7 +1042,7 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
     span: Span,
     source_info: SourceInfo,
 
-    stack: Vec<Local>,
+    stack: Vec<Operand<'tcx>>,
     last_bb: BasicBlock,
 
     locals: IndexVec<Local, LocalDecl<'tcx>>,
@@ -1199,14 +1199,14 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
     /// Puts `to_drop: *mut Self` on top of the stack.
     fn put_self(&mut self) {
-        self.put_rvalue(Rvalue::Use(Operand::Copy(Self::SELF_PTR.into())))
+        self.put_operand(Operand::Copy(Self::SELF_PTR.into()))
     }
 
     /// Given that `Self is [ElemTy; N]` puts `to_drop: *mut [ElemTy]`
     /// on top of the stack.
     fn put_array_as_slice(&mut self, elem_ty: Ty<'tcx>) {
         let slice_ptr_ty = Ty::new_mut_ptr(self.tcx, Ty::new_slice(self.tcx, elem_ty));
-        self.put_rvalue(Rvalue::Cast(
+        self.put_temp_rvalue(Rvalue::Cast(
             CastKind::PointerCoercion(PointerCoercion::Unsize),
             Operand::Copy(Self::SELF_PTR.into()),
             slice_ptr_ty,
@@ -1222,7 +1222,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 .tcx
                 .mk_place_elems(&[PlaceElem::Deref, PlaceElem::Field(field, field_ty)]),
         };
-        self.put_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
+        self.put_temp_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
     }
 
     /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of
@@ -1242,22 +1242,22 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 PlaceElem::Field(field, field_ty),
             ]),
         };
-        self.put_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
+        self.put_temp_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
     }
 
     /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of
     /// the stack.
     fn put_discr(&mut self, discr: Discr<'tcx>) {
-        self.put_rvalue(Rvalue::Use(Operand::const_from_scalar(
+        self.put_operand(Operand::const_from_scalar(
             self.tcx,
             discr.ty,
             interpret::Scalar::from_u128(discr.val),
             self.span,
-        )));
+        ));
     }
 
     /// Puts `x: RvalueType` on top of the stack.
-    fn put_rvalue(&mut self, rvalue: Rvalue<'tcx>) {
+    fn put_temp_rvalue(&mut self, rvalue: Rvalue<'tcx>) {
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
 
@@ -1273,7 +1273,12 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             },
         ]);
 
-        self.stack.push(local);
+        self.put_operand(Operand::Move(local.into()));
+    }
+
+    /// Puts operand on top of the stack.
+    fn put_operand(&mut self, operand: Operand<'tcx>) {
+        self.stack.push(operand);
     }
 
     /// Puts `nop: async_drop::Nop` on top of the stack
@@ -1317,28 +1322,34 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
 
-        let &[output_local] = self.stack.as_slice() else {
+        let (1, Some(output)) = (self.stack.len(), self.stack.pop()) else {
             span_bug!(
                 self.span,
                 "async destructor ctor shim builder finished with invalid number of stack items: expected 1 found {}",
                 self.stack.len(),
             )
         };
-        let return_local = Local::new(0);
+        const RETURN_LOCAL: Local = Local::from_u32(0);
 
-        last_bb.statements.extend_from_slice(&[
-            Statement {
+        let dead_storage = match &output {
+            Operand::Move(Place { local, projection }) => {
+                assert!(projection.is_empty());
+                Some(Statement {
+                    source_info: self.source_info,
+                    kind: StatementKind::StorageDead(*local),
+                })
+            }
+            _ => None,
+        };
+
+        last_bb.statements.extend(
+            iter::once(Statement {
                 source_info: self.source_info,
-                kind: StatementKind::Assign(Box::new((
-                    return_local.into(),
-                    Rvalue::Use(Operand::Move(output_local.into())),
-                ))),
-            },
-            Statement {
-                source_info: self.source_info,
-                kind: StatementKind::StorageDead(output_local),
-            },
-        ]);
+                kind: StatementKind::Assign(Box::new((RETURN_LOCAL.into(), Rvalue::Use(output)))),
+            })
+            .chain(dead_storage),
+        );
+
         last_bb.terminator =
             Some(Terminator { source_info: self.source_info, kind: TerminatorKind::Return });
 
@@ -1356,33 +1367,39 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         args: &[ty::GenericArg<'tcx>],
     ) -> Ty<'tcx> {
         let function = self.tcx.require_lang_item(function, Some(self.span));
-        let operands = &self.stack[self
+        let operands_range = self
             .stack
             .len()
             .checked_sub(arity)
-            .expect("async destructor ctor shim combinator tried to consume too many items")..];
+            .expect("async destructor ctor shim combinator tried to consume too many items")..;
+        let operands = &self.stack[operands_range.clone()];
 
         let func_ty = Ty::new_fn_def(self.tcx, function, args.iter().copied());
         let func_sig = func_ty.fn_sig(self.tcx).no_bound_vars().unwrap();
         #[cfg(debug_assertions)]
         operands.iter().zip(func_sig.inputs()).for_each(|(operand, expected_ty)| {
-            debug_assert_eq!(self.locals[*operand].ty, *expected_ty)
+            debug_assert_eq!(operand.ty(&self.locals, self.tcx), *expected_ty)
         });
 
         let target = self.bbs.push(BasicBlockData {
             statements: operands
                 .iter()
                 .rev()
-                .map(|&l| Statement {
-                    source_info: self.source_info,
-                    kind: StatementKind::StorageDead(l),
+                .filter_map(|o| {
+                    if let Operand::Move(Place { local, projection }) = o {
+                        assert!(projection.is_empty());
+                        Some(Statement {
+                            source_info: self.source_info,
+                            kind: StatementKind::StorageDead(*local),
+                        })
+                    } else {
+                        None
+                    }
                 })
                 .collect(),
             terminator: None,
             is_cleanup: false,
         });
-
-        let args = operands.iter().map(|&l| respan(self.span, Operand::Move(l.into()))).collect();
 
         let dest_ty = func_sig.output();
         let dest =
@@ -1397,25 +1414,22 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         last_bb.terminator = Some(Terminator {
             source_info: self.source_info,
             kind: TerminatorKind::Call {
-                func: {
-                    Operand::Constant(Box::new(ConstOperand {
-                        span: self.span,
-                        user_ty: None,
-                        const_: Const::Val(ConstValue::ZeroSized, func_ty),
-                    }))
-                },
-                args,
+                func: Operand::Constant(Box::new(ConstOperand {
+                    span: self.span,
+                    user_ty: None,
+                    const_: Const::Val(ConstValue::ZeroSized, func_ty),
+                })),
                 destination: dest.into(),
                 target: Some(target),
                 // TODO: Figure out unwind (even tho they shouldn't panic?)
                 unwind: UnwindAction::Continue,
                 call_source: CallSource::Misc,
                 fn_span: self.span,
+                args: self.stack.drain(operands_range).map(|o| respan(self.span, o)).collect(),
             },
         });
 
-        drop(self.stack.drain(self.stack.len() - arity..));
-        self.stack.push(dest);
+        self.stack.push(Operand::Move(dest.into()));
         self.last_bb = target;
 
         dest_ty
