@@ -1034,8 +1034,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         trace!("{:?} is now live", local);
 
-        // We avoid `ty.is_trivially_sized` since that (a) cannot assume WF, so it recurses through
-        // all fields of a tuple, and (b) does something expensive for ADTs.
+        // We avoid `ty.is_trivially_sized` since that does something expensive for ADTs.
         fn is_very_trivially_sized(ty: Ty<'_>) -> bool {
             match ty.kind() {
                 ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -1054,9 +1053,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
                 | ty::Never
-                | ty::Error(_) => true,
+                | ty::Error(_)
+                | ty::Dynamic(_, _, ty::DynStar) => true,
 
-                ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
+                ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => false,
 
                 ty::Tuple(tys) => tys.last().iter().all(|ty| is_very_trivially_sized(**ty)),
 
