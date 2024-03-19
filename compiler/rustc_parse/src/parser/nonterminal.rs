@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Nonterminal::*, NonterminalKind, Token};
+use rustc_ast::token::{self, Delimiter, Nonterminal, Nonterminal::*, NonterminalKind, Token};
 use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
@@ -100,7 +100,10 @@ impl<'a> Parser<'a> {
     /// Parse a non-terminal (e.g. MBE `:pat` or `:ident`). Inlined because there is only one call
     /// site.
     #[inline]
-    pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, ParseNtResult> {
+    pub fn parse_nonterminal(
+        &mut self,
+        kind: NonterminalKind,
+    ) -> PResult<'a, ParseNtResult<Nonterminal>> {
         // A `macro_rules!` invocation may pass a captured item/expr to a proc-macro,
         // which requires having captured tokens available. Since we cannot determine
         // in advance whether or not a proc-macro will be (transitively) invoked,

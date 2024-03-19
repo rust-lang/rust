@@ -20,7 +20,7 @@ pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{AttributesData, DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
@@ -1572,8 +1572,21 @@ pub enum FlatToken {
     Empty,
 }
 
-#[derive(Debug)]
-pub enum ParseNtResult {
-    Nt(Nonterminal),
+// Metavar captures of various kinds.
+#[derive(Clone, Debug)]
+pub enum ParseNtResult<NtType> {
     Tt(TokenTree),
+    Nt(NtType),
+}
+
+impl<T> ParseNtResult<T> {
+    pub fn map_nt<F, U>(self, mut f: F) -> ParseNtResult<U>
+    where
+        F: FnMut(T) -> U,
+    {
+        match self {
+            ParseNtResult::Tt(tt) => ParseNtResult::Tt(tt),
+            ParseNtResult::Nt(nt) => ParseNtResult::Nt(f(nt)),
+        }
+    }
 }

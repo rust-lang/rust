@@ -3,14 +3,14 @@ use crate::errors::{
     CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
     NoSyntaxVarsExprRepeat, VarStillRepeating,
 };
-use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
+use crate::mbe::macro_parser::{NamedMatch, NamedMatch::*};
 use crate::mbe::{self, KleeneOp, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::Diag;
-use rustc_errors::{pluralize, PResult};
+use rustc_errors::{pluralize, Diag, PResult};
+use rustc_parse::parser::ParseNtResult;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::{with_metavar_spans, Span, SyntaxContext};
@@ -251,12 +251,12 @@ pub(super) fn transcribe<'a>(
                 let ident = MacroRulesNormalizedIdent::new(original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
                     let tt = match cur_matched {
-                        MatchedTokenTree(tt) => {
+                        MatchedSingle(ParseNtResult::Tt(tt)) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
                             maybe_use_metavar_location(cx, &stack, sp, tt, &mut marker)
                         }
-                        MatchedNonterminal(nt) => {
+                        MatchedSingle(ParseNtResult::Nt(nt)) => {
                             // Other variables are emitted into the output stream as groups with
                             // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
@@ -423,7 +423,7 @@ fn lookup_cur_matched<'a>(
     interpolations.get(&ident).map(|mut matched| {
         for &(idx, _) in repeats {
             match matched {
-                MatchedTokenTree(_) | MatchedNonterminal(_) => break,
+                MatchedSingle(_) => break,
                 MatchedSeq(ads) => matched = ads.get(idx).unwrap(),
             }
         }
@@ -513,7 +513,7 @@ fn lockstep_iter_size(
             let name = MacroRulesNormalizedIdent::new(*name);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
-                    MatchedTokenTree(_) | MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
+                    MatchedSingle(_) => LockstepIterSize::Unconstrained,
                     MatchedSeq(ads) => LockstepIterSize::Constraint(ads.len(), name),
                 },
                 _ => LockstepIterSize::Unconstrained,
@@ -556,7 +556,7 @@ fn count_repetitions<'a>(
     // (or at the top-level of `matched` if no depth is given).
     fn count<'a>(depth_curr: usize, depth_max: usize, matched: &NamedMatch) -> PResult<'a, usize> {
         match matched {
-            MatchedTokenTree(_) | MatchedNonterminal(_) => Ok(1),
+            MatchedSingle(_) => Ok(1),
             MatchedSeq(named_matches) => {
                 if depth_curr == depth_max {
                     Ok(named_matches.len())
@@ -570,7 +570,7 @@ fn count_repetitions<'a>(
     /// Maximum depth
     fn depth(counter: usize, matched: &NamedMatch) -> usize {
         match matched {
-            MatchedTokenTree(_) | MatchedNonterminal(_) => counter,
+            MatchedSingle(_) => counter,
             MatchedSeq(named_matches) => {
                 let rslt = counter + 1;
                 if let Some(elem) = named_matches.first() { depth(rslt, elem) } else { rslt }
@@ -598,7 +598,7 @@ fn count_repetitions<'a>(
         }
     }
 
-    if let MatchedTokenTree(_) | MatchedNonterminal(_) = matched {
+    if let MatchedSingle(_) = matched {
         return Err(cx.dcx().create_err(CountRepetitionMisplaced { span: sp.entire() }));
     }
 
