@@ -8,6 +8,7 @@ use rustc_hash::FxHashMap;
 use rustc_pattern_analysis::{
     constructor::{Constructor, ConstructorSet, VariantVisibility},
     index::IdxContainer,
+    usefulness::{compute_match_usefulness, PlaceValidity, UsefulnessReport},
     Captures, PatCx, PrivateUninhabitedField,
 };
 use smallvec::{smallvec, SmallVec};
@@ -57,6 +58,18 @@ impl<'p> MatchCheckCtx<'p> {
         let min_exhaustive_patterns =
             def_map.is_unstable_feature_enabled("min_exhaustive_patterns");
         Self { module, body, db, exhaustive_patterns, min_exhaustive_patterns }
+    }
+
+    pub(crate) fn compute_match_usefulness(
+        &self,
+        arms: &[MatchArm<'p>],
+        scrut_ty: Ty,
+    ) -> Result<UsefulnessReport<'p, Self>, ()> {
+        // FIXME: Determine place validity correctly. For now, err on the safe side.
+        let place_validity = PlaceValidity::MaybeInvalid;
+        // Measured to take ~100ms on modern hardware.
+        let complexity_limit = Some(500000);
+        compute_match_usefulness(self, arms, scrut_ty, place_validity, complexity_limit)
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
@@ -465,7 +478,6 @@ impl<'p> PatCx for MatchCheckCtx<'p> {
     }
 
     fn complexity_exceeded(&self) -> Result<(), Self::Error> {
-        // FIXME(Nadrieril): make use of the complexity counter.
         Err(())
     }
 }

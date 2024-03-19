@@ -23,6 +23,7 @@ mod tests {
         },
         DiagnosticsConfig,
     };
+    use test_utils::skip_slow_tests;
 
     #[track_caller]
     fn check_diagnostics_no_bails(ra_fixture: &str) {
@@ -1002,6 +1003,32 @@ fn f() {
 }",
             &["E0425"],
         );
+    }
+
+    #[test]
+    fn exponential_match() {
+        if skip_slow_tests() {
+            return;
+        }
+        // Constructs a match where match checking takes exponential time. Ensures we bail early.
+        use std::fmt::Write;
+        let struct_arity = 50;
+        let mut code = String::new();
+        write!(code, "struct BigStruct {{").unwrap();
+        for i in 0..struct_arity {
+            write!(code, "  field{i}: bool,").unwrap();
+        }
+        write!(code, "}}").unwrap();
+        write!(code, "fn big_match(s: BigStruct) {{").unwrap();
+        write!(code, "  match s {{").unwrap();
+        for i in 0..struct_arity {
+            write!(code, "    BigStruct {{ field{i}: true, ..}} => {{}},").unwrap();
+            write!(code, "    BigStruct {{ field{i}: false, ..}} => {{}},").unwrap();
+        }
+        write!(code, "    _ => {{}},").unwrap();
+        write!(code, "  }}").unwrap();
+        write!(code, "}}").unwrap();
+        check_diagnostics_no_bails(&code);
     }
 
     mod rust_unstable {
