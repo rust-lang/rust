@@ -653,7 +653,7 @@ impl GlobalState {
                 };
 
                 if let Some(state) = state {
-                    self.report_progress("Building", state, msg, None, None);
+                    self.report_progress("Building build-artifacts", state, msg, None, None);
                 }
             }
             Task::LoadProcMacros(progress) => {
@@ -669,7 +669,7 @@ impl GlobalState {
                 };
 
                 if let Some(state) = state {
-                    self.report_progress("Loading", state, msg, None, None);
+                    self.report_progress("Loading proc-macros", state, msg, None, None);
                 }
             }
             Task::BuildDepsHaveChanged => self.build_deps_changed = true,
@@ -861,7 +861,7 @@ impl GlobalState {
                 let title = if self.flycheck.len() == 1 {
                     format!("{}", self.config.flycheck())
                 } else {
-                    format!("cargo check (#{})", id + 1)
+                    format!("{} (#{})", self.config.flycheck(), id + 1)
                 };
                 self.report_progress(
                     &title,

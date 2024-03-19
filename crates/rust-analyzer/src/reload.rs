@@ -526,6 +526,13 @@ impl GlobalState {
         // crate graph construction relies on these paths, record them so when one of them gets
         // deleted or created we trigger a reconstruction of the crate graph
         let mut crate_graph_file_dependencies = FxHashSet::default();
+        self.report_progress(
+            "Building CrateGraph",
+            crate::lsp::utils::Progress::Begin,
+            None,
+            None,
+            None,
+        );
 
         let (crate_graph, proc_macro_paths, layouts, toolchains) = {
             // Create crate graph from all the workspaces
@@ -564,6 +571,13 @@ impl GlobalState {
         change.set_toolchains(toolchains);
         self.analysis_host.apply_change(change);
         self.crate_graph_file_dependencies = crate_graph_file_dependencies;
+        self.report_progress(
+            "Building CrateGraph",
+            crate::lsp::utils::Progress::End,
+            None,
+            None,
+            None,
+        );
 
         self.process_changes();
         self.reload_flycheck();
