@@ -250,26 +250,25 @@ pub(super) fn transcribe<'a>(
                 // the meta-var.
                 let ident = MacroRulesNormalizedIdent::new(original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
-                    match cur_matched {
+                    let tt = match cur_matched {
                         MatchedTokenTree(tt) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            let tt = maybe_use_metavar_location(cx, &stack, sp, tt, &mut marker);
-                            result.push(tt);
+                            maybe_use_metavar_location(cx, &stack, sp, tt, &mut marker)
                         }
                         MatchedNonterminal(nt) => {
                             // Other variables are emitted into the output stream as groups with
                             // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
-                            result
-                                .push(TokenTree::token_alone(token::Interpolated(nt.clone()), sp));
+                            TokenTree::token_alone(token::Interpolated(nt.clone()), sp)
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
                             return Err(cx.dcx().create_err(VarStillRepeating { span: sp, ident }));
                         }
-                    }
+                    };
+                    result.push(tt)
                 } else {
                     // If we aren't able to match the meta-var, we push it back into the result but
                     // with modified syntax context. (I believe this supports nested macros).
