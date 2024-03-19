@@ -943,7 +943,10 @@ impl<'a> Parser<'a> {
         // Stitch the list of outer attributes onto the return value.
         // A little bit ugly, but the best way given the current code
         // structure
-        let res = self.parse_expr_dot_or_call_with_(e0, lo);
+        let res = ensure_sufficient_stack(
+            // this expr demonstrates the recursion it guards against
+            || self.parse_expr_dot_or_call_with_(e0, lo),
+        );
         if attrs.is_empty() {
             res
         } else {
