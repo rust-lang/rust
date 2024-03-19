@@ -52,19 +52,17 @@ LL | |         }
 LL | |     }],
    | |_____^ required by this bound in `foo`
 
-error: unconstrained generic constant `{const expr}`
+error: unconstrained generic constant `L + 1 + L`
   --> $DIR/issue_114151.rs:17:5
    |
 LL |     foo::<_, L>([(); L + 1 + L]);
    |     ^^^^^^^^^^^
 
-error: unconstrained generic constant `{const expr}`
+error: unconstrained generic constant `L + 1`
   --> $DIR/issue_114151.rs:17:5
    |
 LL |     foo::<_, L>([(); L + 1 + L]);
    |     ^^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 6 previous errors
 
