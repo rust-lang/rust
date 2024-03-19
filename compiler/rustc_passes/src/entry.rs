@@ -7,6 +7,7 @@ use rustc_hir::{ItemId, Node, CRATE_HIR_ID};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{sigpipe, CrateType, EntryFnType};
+use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 
@@ -165,10 +166,14 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
 
     // There is no main function.
     let mut has_filename = true;
-    let filename = tcx.sess.local_crate_source_file().unwrap_or_else(|| {
-        has_filename = false;
-        Default::default()
-    });
+    let filename = tcx
+        .sess
+        .local_crate_source_file()
+        .map(|src| src.for_scope(&tcx.sess, RemapPathScopeComponents::DIAGNOSTICS).to_path_buf())
+        .unwrap_or_else(|| {
+            has_filename = false;
+            Default::default()
+        });
     let main_def_opt = tcx.resolutions(()).main_def;
     let code = E0601;
     let add_teach_note = tcx.sess.teach(code);

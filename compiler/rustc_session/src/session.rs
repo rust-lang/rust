@@ -29,6 +29,7 @@ use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FileLoader, FilePathMapping, RealFileLoader, SourceMap};
+use rustc_span::RealFileName;
 use rustc_span::{SourceFileHashAlgorithm, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
@@ -250,14 +251,9 @@ impl Session {
         self.miri_unleashed_features.lock().push((span, feature_gate));
     }
 
-    pub fn local_crate_source_file(&self) -> Option<PathBuf> {
+    pub fn local_crate_source_file(&self) -> Option<RealFileName> {
         let path = self.io.input.opt_path()?;
-        // FIXME: The remap path scope should probably not be hardcoded.
-        if self.should_prefer_remapped(RemapPathScopeComponents::DEBUGINFO) {
-            Some(self.opts.file_path_mapping().map_prefix(path).0.into_owned())
-        } else {
-            Some(path.to_path_buf())
-        }
+        Some(RealFileName::LocalPath(path.to_path_buf()))
     }
 
     fn check_miri_unleashed_features(&self) -> Option<ErrorGuaranteed> {
