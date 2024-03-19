@@ -85,6 +85,7 @@ where
 
 /// Allows access to the current `ImplicitCtxt` in a closure if one is available.
 #[inline]
+#[track_caller]
 pub fn with_context_opt<F, R>(f: F) -> R
 where
     F: for<'a, 'tcx> FnOnce(Option<&ImplicitCtxt<'a, 'tcx>>) -> R,
@@ -147,9 +148,13 @@ where
 /// Allows access to the `TyCtxt` in the current `ImplicitCtxt`.
 /// The closure is passed None if there is no `ImplicitCtxt` available.
 #[inline]
+#[track_caller]
 pub fn with_opt<F, R>(f: F) -> R
 where
     F: for<'tcx> FnOnce(Option<TyCtxt<'tcx>>) -> R,
 {
-    with_context_opt(|opt_context| f(opt_context.map(|context| context.tcx)))
+    with_context_opt(
+        #[track_caller]
+        |opt_context| f(opt_context.map(|context| context.tcx)),
+    )
 }

@@ -31,6 +31,7 @@
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(closure_track_caller)]
 #![feature(core_intrinsics)]
 #![feature(const_type_name)]
 #![feature(discriminant_kind)]
