@@ -462,7 +462,7 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
 
 /// # Impl method tactic
 ///
-/// Attempts to to call methods on types from lookup table.
+/// Attempts to call methods on types from lookup table.
 /// This includes both functions from direct impl blocks as well as functions from traits.
 /// Methods defined in impl blocks that are generic and methods that are themselves have
 /// generics are ignored for performance reasons.
