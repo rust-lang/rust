@@ -1173,7 +1173,6 @@ fn detached_files_to_crate_graph(
         };
         let display_name = detached_file
             .file_stem()
-            .and_then(|os_str| os_str.to_str())
             .map(|file_stem| CrateDisplayName::from_canonical_name(file_stem.to_owned()));
         let detached_file_crate = crate_graph.add_crate_root(
             file_id,
@@ -1555,7 +1554,7 @@ fn inject_cargo_env(package: &PackageData, env: &mut Env) {
     // CARGO_BIN_NAME, CARGO_BIN_EXE_<name>
 
     let manifest_dir = package.manifest.parent();
-    env.set("CARGO_MANIFEST_DIR", manifest_dir.as_os_str().to_string_lossy().into_owned());
+    env.set("CARGO_MANIFEST_DIR", manifest_dir.as_str().to_owned());
 
     // Not always right, but works for common cases.
     env.set("CARGO", "cargo".into());

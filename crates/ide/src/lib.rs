@@ -58,8 +58,6 @@ mod view_item_tree;
 mod view_memory_layout;
 mod view_mir;
 
-use std::ffi::OsStr;
-
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
 use hir::ChangeWithProcMacros;
@@ -511,8 +509,8 @@ impl Analysis {
     pub fn external_docs(
         &self,
         position: FilePosition,
-        target_dir: Option<&OsStr>,
-        sysroot: Option<&OsStr>,
+        target_dir: Option<&str>,
+        sysroot: Option<&str>,
     ) -> Cancellable<doc_links::DocumentationLinks> {
         self.with_db(|db| {
             doc_links::external_docs(db, position, target_dir, sysroot).unwrap_or_default()

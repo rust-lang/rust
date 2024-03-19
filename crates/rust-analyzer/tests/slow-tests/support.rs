@@ -1,7 +1,6 @@
 use std::{
     cell::{Cell, RefCell},
     fs,
-    path::{Path, PathBuf},
     sync::Once,
     time::Duration,
 };
@@ -9,6 +8,7 @@ use std::{
 use crossbeam_channel::{after, select, Receiver};
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{notification::Exit, request::Shutdown, TextDocumentIdentifier, Url};
+use paths::{Utf8Path, Utf8PathBuf};
 use rust_analyzer::{config::Config, lsp, main_loop};
 use serde::Serialize;
 use serde_json::{json, to_string_pretty, Value};
@@ -21,7 +21,7 @@ use crate::testdir::TestDir;
 pub(crate) struct Project<'a> {
     fixture: &'a str,
     tmp_dir: Option<TestDir>,
-    roots: Vec<PathBuf>,
+    roots: Vec<Utf8PathBuf>,
     config: serde_json::Value,
     root_dir_contains_symlink: bool,
 }
@@ -359,7 +359,7 @@ impl Server {
         self.client.sender.send(Message::Notification(not)).unwrap();
     }
 
-    pub(crate) fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Utf8Path {
         self.dir.path()
     }
 }

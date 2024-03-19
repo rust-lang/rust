@@ -732,6 +732,7 @@ dependencies = [
  "ide-db",
  "itertools",
  "once_cell",
+ "paths",
  "serde_json",
  "stdx",
  "syntax",
@@ -931,6 +932,7 @@ dependencies = [
  "hir-expand",
  "ide-db",
  "itertools",
+ "paths",
  "proc-macro-api",
  "project-model",
  "span",
@@ -1225,6 +1227,9 @@ checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
 [[package]]
 name = "paths"
 version = "0.0.0"
+dependencies = [
+ "camino",
+]
 
 [[package]]
 name = "percent-encoding"
@@ -1598,6 +1603,7 @@ dependencies = [
  "oorandom",
  "parking_lot",
  "parser",
+ "paths",
  "proc-macro-api",
  "profile",
  "project-model",
@@ -2020,6 +2026,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 name = "toolchain"
 version = "0.0.0"
 dependencies = [
+ "camino",
  "home",
 ]
 

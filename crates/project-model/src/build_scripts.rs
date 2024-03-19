@@ -77,7 +77,7 @@ impl WorkspaceBuildScripts {
                 cmd.args(&config.extra_args);
 
                 cmd.arg("--manifest-path");
-                cmd.arg(workspace_root.join("Cargo.toml").as_os_str());
+                cmd.arg(workspace_root.join("Cargo.toml"));
 
                 if let Some(target_dir) = &config.target_dir {
                     cmd.arg("--target-dir").arg(target_dir);
@@ -354,16 +354,11 @@ impl WorkspaceBuildScripts {
                             }
                             // cargo_metadata crate returns default (empty) path for
                             // older cargos, which is not absolute, so work around that.
-                            let out_dir = mem::take(&mut message.out_dir).into_os_string();
-                            if !out_dir.is_empty() {
-                                let out_dir = AbsPathBuf::assert(PathBuf::from(out_dir));
+                            let out_dir = mem::take(&mut message.out_dir);
+                            if !out_dir.as_str().is_empty() {
+                                let out_dir = AbsPathBuf::assert(out_dir);
                                 // inject_cargo_env(package, package_build_data);
-                                // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
-                                if let Some(out_dir) =
-                                    out_dir.as_os_str().to_str().map(|s| s.to_owned())
-                                {
-                                    data.envs.push(("OUT_DIR".to_owned(), out_dir));
-                                }
+                                data.envs.push(("OUT_DIR".to_owned(), out_dir.as_str().to_owned()));
                                 data.out_dir = Some(out_dir);
                                 data.cfgs = cfgs;
                             }
@@ -377,8 +372,8 @@ impl WorkspaceBuildScripts {
                                 if let Some(filename) =
                                     message.filenames.iter().find(|name| is_dylib(name))
                                 {
-                                    let filename = AbsPathBuf::assert(PathBuf::from(&filename));
-                                    data.proc_macro_dylib_path = Some(filename);
+                                    let filename = AbsPath::assert(filename);
+                                    data.proc_macro_dylib_path = Some(filename.to_owned());
                                 }
                             }
                         });
