@@ -2345,6 +2345,13 @@ impl<'tcx> Ty<'tcx> {
                 Self::chain_async_destructor_ty(tcx, args.as_closure().upvar_tys().iter(), None)
             }
 
+            ty::Never => tcx
+                .type_of(tcx.require_lang_item(LangItem::AsyncDropNever, None))
+                .instantiate_identity(),
+            ty::Adt(adt_def, _) if adt_def.is_enum() && adt_def.variants().is_empty() => tcx
+                .type_of(tcx.require_lang_item(LangItem::AsyncDropNever, None))
+                .instantiate_identity(),
+
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -2363,7 +2370,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Dynamic(..)
             | ty::CoroutineClosure(..)
             | ty::CoroutineWitness(..)
-            | ty::Never
             | ty::Error(_)
             | ty::Coroutine(..) => {
                 // TODO: This branch should emit a bug for some cases

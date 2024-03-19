@@ -389,3 +389,16 @@ impl Future for Nop {
         Poll::Ready(())
     }
 }
+
+/// Used for uninhabitable async destructors.
+#[derive(Clone, Copy)]
+#[lang = "async_drop_never"]
+enum Never {}
+
+impl Future for Never {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
+        match *self {}
+    }
+}

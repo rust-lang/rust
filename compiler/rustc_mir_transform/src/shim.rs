@@ -1110,6 +1110,9 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 self.build_chain(false, args.as_closure().upvar_tys().iter())
             }
 
+            ty::Never => self.build_unreachable(),
+            ty::Adt(adt_def, _) if adt_def.is_enum() && adt_def.variants().is_empty() => self.build_unreachable(),
+
             ty::Foreign(_)
             // TODO: implement enums, disallow unions
             | ty::Adt(_, _)
@@ -1139,8 +1142,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             | ty::RawPtr(_)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(_)
-            | ty::Never => self.build_nop(),
+            | ty::FnPtr(_) => self.build_nop(),
         }
     }
 
@@ -1316,6 +1318,28 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             LangItem::AsyncDropEitherCtor,
             &[self.self_ty.into(), matched.into(), other.into()],
         )
+    }
+
+    fn build_unreachable(mut self) -> Body<'tcx> {
+        let last_bb = &mut self.bbs[self.last_bb];
+        debug_assert!(last_bb.terminator.is_none());
+
+        if self.stack.is_empty() {
+            span_bug!(
+                self.span,
+                "async destructor ctor shim builder finished with invalid number of stack items: expected 0 found {}",
+                self.stack.len(),
+            )
+        }
+
+        last_bb.terminator =
+            Some(Terminator { source_info: self.source_info, kind: TerminatorKind::Unreachable });
+
+        let source = MirSource::from_instance(ty::InstanceDef::AsyncDropGlueCtorShim(
+            self.def_id,
+            self.self_ty,
+        ));
+        new_body(source, self.bbs, self.locals, Self::INPUT_COUNT, self.span)
     }
 
     fn return_(mut self) -> Body<'tcx> {
