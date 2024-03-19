@@ -111,6 +111,8 @@ fn intern_as_new_static<'tcx>(
     feed.generics_of(tcx.generics_of(static_id).clone());
     feed.def_ident_span(tcx.def_ident_span(static_id));
     feed.explicit_predicates_of(tcx.explicit_predicates_of(static_id));
+
+    feed.feed_hir()
 }
 
 /// How a constant value should be interned.
