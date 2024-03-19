@@ -34,7 +34,7 @@ fn macos_link_environment_unmodified() {
         // for the host.
         assert_eq!(
             target.link_env_remove,
-            crate::spec::cvs!["IPHONEOS_DEPLOYMENT_TARGET", "TVOS_DEPLOYMENT_TARGET"],
+            crate::spec::cvs!["IPHONEOS_DEPLOYMENT_TARGET", "TVOS_DEPLOYMENT_TARGET", "VISIONOS_DEPLOYMENT_TARGET"],
         );
     }
 }

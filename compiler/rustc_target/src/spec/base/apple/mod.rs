@@ -307,7 +307,7 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
         // although this is apparently ignored when using the linker at "/usr/bin/ld".
         env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".into());
         env_remove.push("TVOS_DEPLOYMENT_TARGET".into());
-        env_remove.push("visionos_DEPLOYMENT_TARGET".into());
+        env_remove.push("VISIONOS_DEPLOYMENT_TARGET".into());
         env_remove.into()
     } else {
         // Otherwise if cross-compiling for a different OS/SDK (including Mac Catalyst), remove any part
@@ -375,7 +375,7 @@ pub fn watchos_sim_llvm_target(arch: Arch) -> String {
 
 fn visionos_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    from_set_deployment_target("XROS_DEPLOYMENT_TARGET").unwrap_or((1, 0))
+    from_set_deployment_target("VISIONOS_DEPLOYMENT_TARGET").unwrap_or((1, 0))
 }
 
 pub fn visionos_llvm_target(arch: Arch) -> String {
