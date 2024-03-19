@@ -17,8 +17,8 @@ mod tt_iter;
 #[cfg(test)]
 mod benchmark;
 
+use span::Span;
 use stdx::impl_from;
-use tt::Span;
 
 use std::fmt;
 
@@ -127,8 +127,8 @@ impl fmt::Display for CountError {
 /// `tt::TokenTree`, but there's a crucial difference: in macro rules, `$ident`
 /// and `$()*` have special meaning (see `Var` and `Repeat` data structures)
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DeclarativeMacro<S> {
-    rules: Box<[Rule<S>]>,
+pub struct DeclarativeMacro {
+    rules: Box<[Rule]>,
     // This is used for correctly determining the behavior of the pat fragment
     // FIXME: This should be tracked by hygiene of the fragment identifier!
     is_2021: bool,
@@ -136,23 +136,23 @@ pub struct DeclarativeMacro<S> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct Rule<S> {
-    lhs: MetaTemplate<S>,
-    rhs: MetaTemplate<S>,
+struct Rule {
+    lhs: MetaTemplate,
+    rhs: MetaTemplate,
 }
 
-impl<S: Span> DeclarativeMacro<S> {
-    pub fn from_err(err: ParseError, is_2021: bool) -> DeclarativeMacro<S> {
+impl DeclarativeMacro {
+    pub fn from_err(err: ParseError, is_2021: bool) -> DeclarativeMacro {
         DeclarativeMacro { rules: Box::default(), is_2021, err: Some(Box::new(err)) }
     }
 
     /// The old, `macro_rules! m {}` flavor.
     pub fn parse_macro_rules(
-        tt: &tt::Subtree<S>,
+        tt: &tt::Subtree<Span>,
         is_2021: bool,
         // FIXME: Remove this once we drop support for rust 1.76 (defaults to true then)
         new_meta_vars: bool,
-    ) -> DeclarativeMacro<S> {
+    ) -> DeclarativeMacro {
         // Note: this parsing can be implemented using mbe machinery itself, by
         // matching against `$($lhs:tt => $rhs:tt);*` pattern, but implementing
         // manually seems easier.
@@ -189,11 +189,11 @@ impl<S: Span> DeclarativeMacro<S> {
 
     /// The new, unstable `macro m {}` flavor.
     pub fn parse_macro2(
-        tt: &tt::Subtree<S>,
+        tt: &tt::Subtree<Span>,
         is_2021: bool,
         // FIXME: Remove this once we drop support for rust 1.76 (defaults to true then)
         new_meta_vars: bool,
-    ) -> DeclarativeMacro<S> {
+    ) -> DeclarativeMacro {
         let mut src = TtIter::new(tt);
         let mut rules = Vec::new();
         let mut err = None;
@@ -249,18 +249,18 @@ impl<S: Span> DeclarativeMacro<S> {
 
     pub fn expand(
         &self,
-        tt: &tt::Subtree<S>,
-        marker: impl Fn(&mut S) + Copy,
+        tt: &tt::Subtree<Span>,
+        marker: impl Fn(&mut Span) + Copy,
         new_meta_vars: bool,
-        call_site: S,
-    ) -> ExpandResult<tt::Subtree<S>> {
+        call_site: Span,
+    ) -> ExpandResult<tt::Subtree<Span>> {
         expander::expand_rules(&self.rules, tt, marker, self.is_2021, new_meta_vars, call_site)
     }
 }
 
-impl<S: Span> Rule<S> {
+impl Rule {
     fn parse(
-        src: &mut TtIter<'_, S>,
+        src: &mut TtIter<'_, Span>,
         expect_arrow: bool,
         new_meta_vars: bool,
     ) -> Result<Self, ParseError> {
@@ -278,7 +278,7 @@ impl<S: Span> Rule<S> {
     }
 }
 
-fn validate<S: Span>(pattern: &MetaTemplate<S>) -> Result<(), ParseError> {
+fn validate(pattern: &MetaTemplate) -> Result<(), ParseError> {
     for op in pattern.iter() {
         match op {
             Op::Subtree { tokens, .. } => validate(tokens)?,
