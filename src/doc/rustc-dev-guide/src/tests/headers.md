@@ -69,7 +69,7 @@ found in [`header.rs`] from the compiletest source.
     * `only-X`
     * `needs-X`
     * `no-system-llvm`
-    * `min-llvm-versionX`
+    * `min-llvm-version`
     * `min-system-llvm-version`
     * `ignore-llvm-version`
 * [Environment variable headers](#environment-variable-headers)
