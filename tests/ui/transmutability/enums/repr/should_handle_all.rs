@@ -1,5 +1,4 @@
-//! An enum must have a well-defined layout to participate in a transmutation.
-
+//@ check-pass
 #![crate_type = "lib"]
 #![feature(repr128)]
 #![feature(transmutability)]
@@ -21,23 +20,17 @@ mod assert {
     {}
 }
 
-fn should_reject_repr_rust() {
-    fn void() {
-        enum repr_rust {}
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
-    }
-
+fn should_accept_repr_rust() {
     fn singleton() {
         enum repr_rust { V }
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<repr_rust, ()>();
+        assert::is_maybe_transmutable::<u128, repr_rust>();
     }
 
     fn duplex() {
         enum repr_rust { A, B }
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<repr_rust, ()>();
+        assert::is_maybe_transmutable::<u128, repr_rust>();
     }
 }
 
@@ -116,7 +109,7 @@ fn should_accept_primitive_reprs()
     }
 }
 
-fn should_accept_repr_C() {
+fn should_accept_repr_c() {
     #[repr(C)] enum repr_c { V }
     assert::is_maybe_transmutable::<repr_c, ()>();
     assert::is_maybe_transmutable::<i128, repr_c>();
