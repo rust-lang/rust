@@ -85,7 +85,7 @@ bitflags! {
                                           | TypeFlags::HAS_TY_INHERENT.bits()
                                           | TypeFlags::HAS_CT_PROJECTION.bits();
 
-        /// Is an error type/const reachable?
+        /// Is an error type/lifetime/const reachable?
         const HAS_ERROR                   = 1 << 15;
 
         /// Does this have any region that "appears free" in the type?

@@ -15,15 +15,6 @@ error[E0412]: cannot find type `ConnImpl` in this scope
 LL |     async fn foo(&'a self, key: &'b T) -> (&'a ConnImpl, &'b T);
    |                                                ^^^^^^^^ not found in this scope
 
-error[E0186]: method `foo` has a `&self` declaration in the trait, but not in the impl
-  --> $DIR/return-not-existing-pair.rs:11:5
-   |
-LL |     async fn foo(&'a self, key: &'b T) -> (&'a ConnImpl, &'b T);
-   |     ------------------------------------------------------------ `&self` used in trait
-...
-LL |     async fn foo(_: T) -> (&'a U, &'b T) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&self` in impl
-
 error[E0308]: mismatched types
   --> $DIR/return-not-existing-pair.rs:11:42
    |
@@ -33,7 +24,7 @@ LL |     async fn foo(_: T) -> (&'a U, &'b T) {}
    = note:  expected tuple `(&'a U, &'b T)`
            found unit type `()`
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0186, E0308, E0412, E0726.
-For more information about an error, try `rustc --explain E0186`.
+Some errors have detailed explanations: E0308, E0412, E0726.
+For more information about an error, try `rustc --explain E0308`.
