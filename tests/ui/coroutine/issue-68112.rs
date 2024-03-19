@@ -65,7 +65,6 @@ fn test2() {
     //~^ ERROR `RefCell<i32>` cannot be shared between threads safely
     //~| NOTE `RefCell<i32>` cannot be shared between threads safely
     //~| NOTE required for
-    //~| NOTE captures the following types
     //~| NOTE use `std::sync::RwLock` instead
 }
 
