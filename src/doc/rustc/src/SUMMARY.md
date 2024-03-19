@@ -166,3 +166,6 @@
     - [x86_64-unknown-linux-gnutsan](platform-support/x86_64-unknown-linux-gnutsan.md)
     - [xtensa-\*-none-elf](platform-support/xtensa.md)
     - [\*-nuttx-\*](platform-support/nuttx.md)
+<!--    - [List of Targets](platform-support/targets.md) (see #120745) -->
+<!-- TARGET_LIST SECTION START -->
+<!-- TARGET_LIST SECTION END -->
