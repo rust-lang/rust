@@ -2,7 +2,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/dangling_raw_ptr.rs:6:1
    |
 LL | const FOO: *const u32 = {
-   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (use-after-free)
+   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>: encountered a dangling reference (use-after-free)
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -13,7 +13,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/dangling_raw_ptr.rs:15:1
    |
 LL | const BAR: Union = {
-   | ^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (use-after-free)
+   | ^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>: encountered a dangling reference (use-after-free)
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -24,7 +24,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/dangling_raw_ptr.rs:20:1
    |
 LL | const BAZ: Union = {
-   | ^^^^^^^^^^^^^^^^ constructing invalid value at .<offset(0)>.<deref>: encountered a dangling reference (use-after-free)
+   | ^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.<deref>: encountered a dangling reference (use-after-free)
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -35,7 +35,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/dangling_raw_ptr.rs:25:1
    |
 LL | const FOOMP: *const u32 = {
-   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<offset(0)>.<deref>: encountered a dangling reference (use-after-free)
+   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.<deref>: encountered a dangling reference (use-after-free)
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {

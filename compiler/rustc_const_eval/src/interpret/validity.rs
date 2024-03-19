@@ -608,14 +608,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta(), place.layout)?;
                 }
-                if self.ref_tracking.is_some()
-                    && let Some(alloc_id) = place.ptr().provenance.and_then(|p| p.get_alloc_id())
-                    && let AllocKind::Dead = self.ecx.get_alloc_info(alloc_id).2
-                {
-                    throw_validation_failure!(
-                        self.path,
-                        DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref(Mutability::Not) }
-                    )
+                if let Some(ref_tracking) = &mut self.ref_tracking {
+                    self.ecx.track_relocation(place.ptr(), ref_tracking, &self.path, None)
                 }
                 Ok(true)
             }
@@ -993,6 +987,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Construct a visitor
         let mut visitor = ValidityVisitor { path, ref_tracking, ctfe_mode, ecx: self };
 
+        if visitor.ref_tracking.is_some()
+            && let Left(place) = op.as_mplace_or_imm()
+            && let Some(alloc_id) = place.ptr().provenance.and_then(|p| p.get_alloc_id())
+            && let AllocKind::Dead = self.get_alloc_info(alloc_id).2
+        {
+            throw_validation_failure!(
+                visitor.path,
+                DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref(Mutability::Not) }
+            )
+        }
+
         // Run it.
         match self.run_for_validation(|| visitor.visit_value(op)) {
             Ok(()) => Ok(visitor.path),
@@ -1050,26 +1055,8 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, crate::const_eval::CompileTimeInterpreter<
             && let Some((_, alloc)) = self.memory.alloc_map().get(&prov.alloc_id())
         {
             for &(offset, prov) in alloc.provenance().ptrs().iter() {
-                if let AllocKind::Dead = self.get_alloc_info(prov.alloc_id()).2 {
-                    throw_validation_failure!(
-                        path,
-                        DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref(Mutability::Not) }
-                    )
-                } else {
-                    let ptr = Pointer::new(Some(prov), Size::ZERO);
-                    let ty = self.tcx.types.unit;
-                    let layout = self.layout_of(ty).unwrap();
-                    let op = self.ptr_to_mplace(ptr, layout);
-                    ref_tracking.track(op, || {
-                        // We need to clone the path anyway, make sure it gets created
-                        // with enough space for the additional `Deref`.
-                        let mut new_path = Vec::with_capacity(path.len() + 1);
-                        new_path.extend(path.iter().copied());
-                        new_path.push(PathElem::Offset(offset));
-                        new_path.push(PathElem::Deref);
-                        new_path
-                    })
-                }
+                let ptr = Pointer::new(Some(prov), Size::ZERO);
+                self.track_relocation(ptr, ref_tracking, &path, Some(offset));
             }
         }
         Ok(())
@@ -1077,6 +1064,31 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, crate::const_eval::CompileTimeInterpreter<
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+    fn track_relocation(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+        ref_tracking: &mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Vec<PathElem>>,
+        path: &Vec<PathElem>,
+        offset: Option<Size>,
+    ) {
+        let ty = self.tcx.types.unit;
+        let layout = self.layout_of(ty).unwrap();
+        let op = self.ptr_to_mplace(ptr, layout);
+        ref_tracking.track(op, || {
+            // We need to clone the path anyway, make sure it gets created
+            // with enough space for the additional `Deref`.
+            let mut new_path = Vec::with_capacity(path.len() + 1);
+            new_path.extend(path.iter().copied());
+            if let Some(offset) = offset
+                && offset != Size::ZERO
+            {
+                new_path.push(PathElem::Offset(offset));
+            }
+            new_path.push(PathElem::Deref);
+            new_path
+        })
+    }
+
     /// This function checks the data at `op` to be runtime-valid.
     /// `op` is assumed to cover valid memory if it is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
