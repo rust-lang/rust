@@ -533,7 +533,7 @@ impl<'a> Parser<'a> {
         blk_mode: BlockCheckMode,
         can_be_struct_literal: bool,
     ) -> PResult<'a, (AttrVec, P<Block>)> {
-        maybe_whole!(self, NtBlock, |x| (AttrVec::new(), x));
+        maybe_whole!(self, NtBlock, |block| (AttrVec::new(), block));
 
         let maybe_ident = self.prev_token.clone();
         self.maybe_recover_unexpected_block_label();
@@ -637,7 +637,7 @@ impl<'a> Parser<'a> {
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, Option<Stmt>> {
         // Skip looking for a trailing semicolon when we have an interpolated statement.
-        maybe_whole!(self, NtStmt, |x| Some(x.into_inner()));
+        maybe_whole!(self, NtStmt, |stmt| Some(stmt.into_inner()));
 
         let Some(mut stmt) = self.parse_stmt_without_recovery(true, ForceCollect::No)? else {
             return Ok(None);

@@ -1395,7 +1395,7 @@ impl<'a> Parser<'a> {
     /// so emit a proper diagnostic.
     // Public for rustfmt usage.
     pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
-        maybe_whole!(self, NtVis, |x| x.into_inner());
+        maybe_whole!(self, NtVis, |vis| vis.into_inner());
 
         if !self.eat_keyword(kw::Pub) {
             // We need a span for our `Spanned<VisibilityKind>`, but there's inherently no

@@ -435,7 +435,7 @@ impl<'a> Parser<'a> {
         syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, P<Pat>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
-        maybe_whole!(self, NtPat, |x| x);
+        maybe_whole!(self, NtPat, |pat| pat);
 
         let mut lo = self.token.span;
 
