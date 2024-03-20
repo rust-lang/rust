@@ -1,7 +1,6 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::WithNumNodes;
-use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::*;
 
@@ -18,10 +17,6 @@ pub(super) enum BcbCounter {
 }
 
 impl BcbCounter {
-    fn is_expression(&self) -> bool {
-        matches!(self, Self::Expression { .. })
-    }
-
     pub(super) fn as_term(&self) -> CovTerm {
         match *self {
             BcbCounter::Counter { id, .. } => CovTerm::Counter(id),
@@ -60,10 +55,6 @@ pub(super) struct CoverageCounters {
     /// We currently don't iterate over this map, but if we do in the future,
     /// switch it back to `FxIndexMap` to avoid query stability hazards.
     bcb_edge_counters: FxHashMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
-    /// Tracks which BCBs have a counter associated with some incoming edge.
-    /// Only used by assertions, to verify that BCBs with incoming edge
-    /// counters do not have their own physical counters (expressions are allowed).
-    bcb_has_incoming_edge_counters: BitSet<BasicCoverageBlock>,
     /// Table of expression data, associating each expression ID with its
     /// corresponding operator (+ or -) and its LHS/RHS operands.
     expressions: IndexVec<ExpressionId, Expression>,
@@ -83,7 +74,6 @@ impl CoverageCounters {
             counter_increment_sites: IndexVec::new(),
             bcb_counters: IndexVec::from_elem_n(None, num_bcbs),
             bcb_edge_counters: FxHashMap::default(),
-            bcb_has_incoming_edge_counters: BitSet::new_empty(num_bcbs),
             expressions: IndexVec::new(),
         };
 
@@ -122,14 +112,6 @@ impl CoverageCounters {
     }
 
     fn set_bcb_counter(&mut self, bcb: BasicCoverageBlock, counter_kind: BcbCounter) -> BcbCounter {
-        assert!(
-            // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
-            // have an expression (to be injected into an existing `BasicBlock` represented by this
-            // `BasicCoverageBlock`).
-            counter_kind.is_expression() || !self.bcb_has_incoming_edge_counters.contains(bcb),
-            "attempt to add a `Counter` to a BCB target with existing incoming edge counters"
-        );
-
         if let Some(replaced) = self.bcb_counters[bcb].replace(counter_kind) {
             bug!(
                 "attempt to set a BasicCoverageBlock coverage counter more than once; \
@@ -146,19 +128,6 @@ impl CoverageCounters {
         to_bcb: BasicCoverageBlock,
         counter_kind: BcbCounter,
     ) -> BcbCounter {
-        // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
-        // have an expression (to be injected into an existing `BasicBlock` represented by this
-        // `BasicCoverageBlock`).
-        if let Some(node_counter) = self.bcb_counter(to_bcb)
-            && !node_counter.is_expression()
-        {
-            bug!(
-                "attempt to add an incoming edge counter from {from_bcb:?} \
-                when the target BCB already has {node_counter:?}"
-            );
-        }
-
-        self.bcb_has_incoming_edge_counters.insert(to_bcb);
         if let Some(replaced) = self.bcb_edge_counters.insert((from_bcb, to_bcb), counter_kind) {
             bug!(
                 "attempt to set an edge counter more than once; from_bcb: \

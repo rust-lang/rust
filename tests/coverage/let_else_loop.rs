@@ -1,6 +1,6 @@
 #![feature(coverage_attribute)]
 //@ edition: 2021
-//@ ignore-test
+
 // Regression test for <https://github.com/rust-lang/rust/issues/122738>.
 // These code patterns should not trigger an ICE when allocating a physical
 // counter to a node and also one of its in-edges, because that is allowed
