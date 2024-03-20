@@ -44,7 +44,6 @@ note: required because it appears within the type `impl Coroutine<Return = Arc<R
    |
 LL | fn make_non_send_coroutine2() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: required because it captures the following types: `impl Coroutine<Return = Arc<RefCell<i32>>>`
 note: required because it's used within this coroutine
   --> $DIR/issue-68112.rs:60:20
    |
