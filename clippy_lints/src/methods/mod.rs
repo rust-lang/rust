@@ -2863,7 +2863,7 @@ declare_clippy_lint! {
     ///
     /// OpenOptions::new().create(true).truncate(true);
     /// ```
-    #[clippy::version = "1.75.0"]
+    #[clippy::version = "1.77.0"]
     pub SUSPICIOUS_OPEN_OPTIONS,
     suspicious,
     "suspicious combination of options for opening a file"
@@ -3817,7 +3817,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let _ = std::iter::empty::<Result<i32, ()>>().flatten();
     /// ```
-    #[clippy::version = "1.76.0"]
+    #[clippy::version = "1.77.0"]
     pub RESULT_FILTER_MAP,
     complexity,
     "filtering `Result` for `Ok` then force-unwrapping, which can be one type-safe operation"
@@ -3843,7 +3843,7 @@ declare_clippy_lint! {
     /// // example code which does not raise clippy warning
     /// vec![Some(1)].into_iter().flatten();
     /// ```
-    #[clippy::version = "1.76.0"]
+    #[clippy::version = "1.77.0"]
     pub ITER_FILTER_IS_SOME,
     pedantic,
     "filtering an iterator over `Option`s for `Some` can be achieved with `flatten`"
@@ -3869,7 +3869,7 @@ declare_clippy_lint! {
     /// // example code which does not raise clippy warning
     /// vec![Ok::<i32, String>(1)].into_iter().flatten();
     /// ```
-    #[clippy::version = "1.76.0"]
+    #[clippy::version = "1.77.0"]
     pub ITER_FILTER_IS_OK,
     pedantic,
     "filtering an iterator over `Result`s for `Ok` can be achieved with `flatten`"
@@ -3896,7 +3896,7 @@ declare_clippy_lint! {
     /// option.is_some_and(|a| a > 10);
     /// result.is_ok_and(|a| a > 10);
     /// ```
-    #[clippy::version = "1.76.0"]
+    #[clippy::version = "1.77.0"]
     pub MANUAL_IS_VARIANT_AND,
     pedantic,
     "using `.map(f).unwrap_or_default()`, which is more succinctly expressed as `is_some_and(f)` or `is_ok_and(f)`"
@@ -3926,7 +3926,7 @@ declare_clippy_lint! {
     /// `"\r\n"`), for example during the parsing of a specific file format in which precisely one newline type is
     /// valid.
     /// ```
-    #[clippy::version = "1.76.0"]
+    #[clippy::version = "1.77.0"]
     pub STR_SPLIT_AT_NEWLINE,
     pedantic,
     "splitting a trimmed string at hard-coded newlines"

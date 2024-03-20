@@ -6,11 +6,65 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[a859e5cc...master](https://github.com/rust-lang/rust-clippy/compare/a859e5cc...master)
+[66c29b97...master](https://github.com/rust-lang/rust-clippy/compare/66c29b97...master)
+
+## Rust 1.77
+
+Current stable, released 2024-03-18
+
+[View all 93 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-12-16T18%3A20%3A00Z..2024-01-25T18%3A15%3A56Z+base%3Amaster)
+
+### New Lints
+
+* [`suspicious_open_options`]
+  [#11608](https://github.com/rust-lang/rust-clippy/pull/11608)
+* [`option_as_ref_cloned`]
+  [#12051](https://github.com/rust-lang/rust-clippy/pull/12051)
+* [`thread_local_initializer_can_be_made_const`]
+  [#12026](https://github.com/rust-lang/rust-clippy/pull/12026)
+* [`str_split_at_newline`]
+  [#11987](https://github.com/rust-lang/rust-clippy/pull/11987)
+* [`empty_enum_variants_with_brackets`]
+  [#12047](https://github.com/rust-lang/rust-clippy/pull/12047)
+* [`manual_is_variant_and`]
+  [#11865](https://github.com/rust-lang/rust-clippy/pull/11865)
+* [`pub_underscore_fields`]
+  [#10283](https://github.com/rust-lang/rust-clippy/pull/10283)
+* [`eager_transmute`]
+  [#11981](https://github.com/rust-lang/rust-clippy/pull/11981)
+* [`iter_filter_is_some`]
+  [#12004](https://github.com/rust-lang/rust/pull/12004)
+* [`iter_filter_is_ok`]
+  [#12004](https://github.com/rust-lang/rust/pull/12004)
+* [`result_filter_map`]
+  [#11869](https://github.com/rust-lang/rust-clippy/pull/11869)
+* [`unconditional_recursion`]
+  [#11938](https://github.com/rust-lang/rust-clippy/pull/11938)
+
+### Enhancements
+
+* [`multiple_crate_versions`]: Added the [`allowed-duplicate-crates`] configuration to allow specific crates
+  [#12179](https://github.com/rust-lang/rust-clippy/pull/12179)
+* [`single_call_fn`]: No longer ignores `#[allow]` attributes
+  [#12183](https://github.com/rust-lang/rust-clippy/pull/12183)
+* [`read_zero_byte_vec`]: Updated the heuristics used for linting
+  [#11766](https://github.com/rust-lang/rust-clippy/pull/11766)
+
+### ICE Fixes
+
+* [`unit_arg`]: No longer crashes when checking for const in nested bodies
+  [#11977](https://github.com/rust-lang/rust-clippy/pull/11977)
+* [`indexing_slicing`]: No longer crashes when the array index exceeds `usize`
+  [#12266](https://github.com/rust-lang/rust-clippy/pull/12266)
+
+### Others
+
+* Warnings about invalid fields inside `clippy.toml` files now include suggestions for existing fields
+  [#12180](https://github.com/rust-lang/rust-clippy/pull/12180)
 
 ## Rust 1.76
 
-Current stable, released 2024-02-08
+Released 2024-02-08
 
 [View all 85 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-11-02T20%3A23%3A40Z..2023-12-16T13%3A11%3A08Z+base%3Amaster)
 
