@@ -3982,6 +3982,10 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn force_color_svg(&self) -> bool {
+        self.props.compile_flags.iter().any(|s| s.contains("--color=always"))
+    }
+
     fn load_compare_outputs(
         &self,
         proc_res: &ProcRes,
@@ -3989,10 +3993,9 @@ impl<'test> TestCx<'test> {
         explicit_format: bool,
     ) -> usize {
         let stderr_bits = format!("{}bit.stderr", self.config.get_pointer_width());
-        let force_color_svg = self.props.compile_flags.iter().any(|s| s.contains("--color=always"));
         let (stderr_kind, stdout_kind) = match output_kind {
             TestOutput::Compile => (
-                if force_color_svg {
+                if self.force_color_svg() {
                     if self.config.target.contains("windows") {
                         // We single out Windows here because some of the CLI coloring is
                         // specifically changed for Windows.
@@ -4039,8 +4042,8 @@ impl<'test> TestCx<'test> {
             _ => {}
         };
 
-        let stderr = if force_color_svg {
-            anstyle_svg::Term::new().min_width_px(730).render_svg(&proc_res.stderr)
+        let stderr = if self.force_color_svg() {
+            anstyle_svg::Term::new().render_svg(&proc_res.stderr)
         } else if explicit_format {
             proc_res.stderr.clone()
         } else {
@@ -4652,7 +4655,13 @@ impl<'test> TestCx<'test> {
     }
 
     fn compare_output(&self, kind: &str, actual: &str, expected: &str) -> usize {
-        if actual == expected {
+        let are_different = match (self.force_color_svg(), expected.find('\n'), actual.find('\n')) {
+            // FIXME: We ignore the first line of SVG files
+            // because the width parameter is non-deterministic.
+            (true, Some(nl_e), Some(nl_a)) => expected[nl_e..] != actual[nl_a..],
+            _ => expected != actual,
+        };
+        if !are_different {
             return 0;
         }
 
