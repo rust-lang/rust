@@ -28,6 +28,7 @@
 //! - VTables
 //! - Object Shims
 //!
+//! The main entry point is `collect_crate_mono_items`, at the bottom of this file.
 //!
 //! General Algorithm
 //! -----------------
@@ -320,85 +321,6 @@ impl<'tcx> UsageMap<'tcx> {
             }
         }
     }
-}
-
-#[instrument(skip(tcx, strategy), level = "debug")]
-pub fn collect_crate_mono_items(
-    tcx: TyCtxt<'_>,
-    strategy: MonoItemCollectionStrategy,
-) -> (FxHashSet<MonoItem<'_>>, UsageMap<'_>) {
-    let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
-
-    let roots = tcx
-        .sess
-        .time("monomorphization_collector_root_collections", || collect_roots(tcx, strategy));
-
-    debug!("building mono item graph, beginning at roots");
-
-    let mut state = SharedState {
-        visited: MTLock::new(FxHashSet::default()),
-        mentioned: MTLock::new(FxHashSet::default()),
-        usage_map: MTLock::new(UsageMap::new()),
-    };
-    let recursion_limit = tcx.recursion_limit();
-
-    {
-        let state: LRef<'_, _> = &mut state;
-
-        tcx.sess.time("monomorphization_collector_graph_walk", || {
-            par_for_each_in(roots, |root| {
-                let mut recursion_depths = DefIdMap::default();
-                collect_items_rec(
-                    tcx,
-                    dummy_spanned(root),
-                    state,
-                    &mut recursion_depths,
-                    recursion_limit,
-                    CollectionMode::UsedItems,
-                );
-            });
-        });
-    }
-
-    (state.visited.into_inner(), state.usage_map.into_inner())
-}
-
-// Find all non-generic items by walking the HIR. These items serve as roots to
-// start monomorphizing from.
-#[instrument(skip(tcx, mode), level = "debug")]
-fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoItem<'_>> {
-    debug!("collecting roots");
-    let mut roots = Vec::new();
-
-    {
-        let entry_fn = tcx.entry_fn(());
-
-        debug!("collect_roots: entry_fn = {:?}", entry_fn);
-
-        let mut collector = RootCollector { tcx, strategy: mode, entry_fn, output: &mut roots };
-
-        let crate_items = tcx.hir_crate_items(());
-
-        for id in crate_items.items() {
-            collector.process_item(id);
-        }
-
-        for id in crate_items.impl_items() {
-            collector.process_impl_item(id);
-        }
-
-        collector.push_extra_entry_roots();
-    }
-
-    // We can only codegen items that are instantiable - items all of
-    // whose predicates hold. Luckily, items that aren't instantiable
-    // can't actually be used, so we can just skip codegenning them.
-    roots
-        .into_iter()
-        .filter_map(|Spanned { node: mono_item, .. }| {
-            mono_item.is_instantiable(tcx).then_some(mono_item)
-        })
-        .collect()
 }
 
 /// Collect all monomorphized items reachable from `starting_point`, and emit a note diagnostic if a
@@ -752,7 +674,7 @@ struct MirUsedCollector<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
-    pub fn monomorphize<T>(&self, value: T) -> T
+    fn monomorphize<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -1400,9 +1322,236 @@ fn create_mono_items_for_vtable_methods<'tcx>(
     visit_drop_use(tcx, impl_ty, false, source, output);
 }
 
+/// Scans the CTFE alloc in order to find function pointers and statics that must be monomorphized.
+fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoItems<'tcx>) {
+    match tcx.global_alloc(alloc_id) {
+        GlobalAlloc::Static(def_id) => {
+            assert!(!tcx.is_thread_local_static(def_id));
+            let instance = Instance::mono(tcx, def_id);
+            if should_codegen_locally(tcx, &instance) {
+                trace!("collecting static {:?}", def_id);
+                output.push(dummy_spanned(MonoItem::Static(def_id)));
+            }
+        }
+        GlobalAlloc::Memory(alloc) => {
+            trace!("collecting {:?} with {:#?}", alloc_id, alloc);
+            let ptrs = alloc.inner().provenance().ptrs();
+            // avoid `ensure_sufficient_stack` in the common case of "no pointers"
+            if !ptrs.is_empty() {
+                rustc_data_structures::stack::ensure_sufficient_stack(move || {
+                    for &prov in ptrs.values() {
+                        collect_alloc(tcx, prov.alloc_id(), output);
+                    }
+                });
+            }
+        }
+        GlobalAlloc::Function(fn_instance) => {
+            if should_codegen_locally(tcx, &fn_instance) {
+                trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
+                output.push(create_fn_mono_item(tcx, fn_instance, DUMMY_SP));
+            }
+        }
+        GlobalAlloc::VTable(ty, trait_ref) => {
+            let alloc_id = tcx.vtable_allocation((ty, trait_ref));
+            collect_alloc(tcx, alloc_id, output)
+        }
+    }
+}
+
+fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
+    for impl_def_id in tcx.inherent_impls(def_id).ok()? {
+        if let Some(new) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
+            tcx,
+            fn_ident,
+            AssocKind::Fn,
+            def_id,
+        ) {
+            return Some(new.def_id);
+        }
+    }
+    return None;
+}
+
+fn build_skip_move_check_fns(tcx: TyCtxt<'_>) -> Vec<DefId> {
+    let fns = [
+        (tcx.lang_items().owned_box(), "new"),
+        (tcx.get_diagnostic_item(sym::Rc), "new"),
+        (tcx.get_diagnostic_item(sym::Arc), "new"),
+    ];
+    fns.into_iter()
+        .filter_map(|(def_id, fn_name)| {
+            def_id.and_then(|def_id| assoc_fn_of_type(tcx, def_id, Ident::from_str(fn_name)))
+        })
+        .collect::<Vec<_>>()
+}
+
+/// Scans the MIR in order to find function calls, closures, and drop-glue.
+///
+/// Anything that's found is added to `output`. Furthermore the "mentioned items" of the MIR are returned.
+#[instrument(skip(tcx, used_items, mentioned_items), level = "debug")]
+fn collect_items_of_instance<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    used_items: &mut MonoItems<'tcx>,
+    mentioned_items: &mut MonoItems<'tcx>,
+    mode: CollectionMode,
+) {
+    let body = tcx.instance_mir(instance.def);
+    // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
+    // `mentioned_items`. Mentioned items processing will then notice that they have already been
+    // visited, but at that point each mentioned item has been monomorphized, added to the
+    // `mentioned_items` worklist, and checked in the global set of visited items. To remove that
+    // overhead, we have a special optimization that avoids adding items to `mentioned_items` when
+    // they are already added in `used_items`. We could just scan `used_items`, but that's a linear
+    // scan and not very efficient. Furthermore we can only do that *after* monomorphizing the
+    // mentioned item. So instead we collect all pre-monomorphized `MentionedItem` that were already
+    // added to `used_items` in a hash set, which can efficiently query in the
+    // `body.mentioned_items` loop below without even having to monomorphize the item.
+    let mut used_mentioned_items = FxHashSet::<MentionedItem<'tcx>>::default();
+    let mut collector = MirUsedCollector {
+        tcx,
+        body,
+        used_items,
+        used_mentioned_items: &mut used_mentioned_items,
+        instance,
+        move_size_spans: vec![],
+        visiting_call_terminator: false,
+        skip_move_check_fns: None,
+    };
+
+    if mode == CollectionMode::UsedItems {
+        // Visit everything. Here we rely on the visitor also visiting `required_consts`, so that we
+        // evaluate them and abort compilation if any of them errors.
+        collector.visit_body(body);
+    } else {
+        // We only need to evaluate all constants, but can ignore the rest of the MIR.
+        for const_op in &body.required_consts {
+            if let Some(val) = collector.eval_constant(const_op) {
+                collect_const_value(tcx, val, mentioned_items);
+            }
+        }
+    }
+
+    // Always gather mentioned items. We try to avoid processing items that we have already added to
+    // `used_items` above.
+    for item in &body.mentioned_items {
+        if !collector.used_mentioned_items.contains(&item.node) {
+            let item_mono = collector.monomorphize(item.node);
+            visit_mentioned_item(tcx, &item_mono, item.span, mentioned_items);
+        }
+    }
+}
+
+/// `item` must be already monomorphized.
+#[instrument(skip(tcx, span, output), level = "debug")]
+fn visit_mentioned_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item: &MentionedItem<'tcx>,
+    span: Span,
+    output: &mut MonoItems<'tcx>,
+) {
+    match *item {
+        MentionedItem::Fn(ty) => {
+            if let ty::FnDef(def_id, args) = *ty.kind() {
+                let instance =
+                    Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args);
+                // `visit_instance_use` was written for "used" item collection but works just as well
+                // for "mentioned" item collection.
+                // We can set `is_direct_call`; that just means we'll skip a bunch of shims that anyway
+                // can't have their own failing constants.
+                visit_instance_use(tcx, instance, /*is_direct_call*/ true, span, output);
+            }
+        }
+        MentionedItem::Drop(ty) => {
+            visit_drop_use(tcx, ty, /*is_direct_call*/ true, span, output);
+        }
+        MentionedItem::UnsizeCast { source_ty, target_ty } => {
+            let (source_ty, target_ty) =
+                find_vtable_types_for_unsizing(tcx.at(span), source_ty, target_ty);
+            // This could also be a different Unsize instruction, like
+            // from a fixed sized array to a slice. But we are only
+            // interested in things that produce a vtable.
+            if (target_ty.is_trait() && !source_ty.is_trait())
+                || (target_ty.is_dyn_star() && !source_ty.is_dyn_star())
+            {
+                create_mono_items_for_vtable_methods(tcx, target_ty, source_ty, span, output);
+            }
+        }
+        MentionedItem::Closure(source_ty) => {
+            if let ty::Closure(def_id, args) = *source_ty.kind() {
+                let instance =
+                    Instance::resolve_closure(tcx, def_id, args, ty::ClosureKind::FnOnce);
+                if should_codegen_locally(tcx, &instance) {
+                    output.push(create_fn_mono_item(tcx, instance, span));
+                }
+            } else {
+                bug!()
+            }
+        }
+    }
+}
+
+#[instrument(skip(tcx, output), level = "debug")]
+fn collect_const_value<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    value: mir::ConstValue<'tcx>,
+    output: &mut MonoItems<'tcx>,
+) {
+    match value {
+        mir::ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => {
+            collect_alloc(tcx, ptr.provenance.alloc_id(), output)
+        }
+        mir::ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
+        mir::ConstValue::Slice { data, meta: _ } => {
+            for &prov in data.inner().provenance().ptrs().values() {
+                collect_alloc(tcx, prov.alloc_id(), output);
+            }
+        }
+        _ => {}
+    }
+}
+
 //=-----------------------------------------------------------------------------
 // Root Collection
 //=-----------------------------------------------------------------------------
+
+// Find all non-generic items by walking the HIR. These items serve as roots to
+// start monomorphizing from.
+#[instrument(skip(tcx, mode), level = "debug")]
+fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoItem<'_>> {
+    debug!("collecting roots");
+    let mut roots = Vec::new();
+
+    {
+        let entry_fn = tcx.entry_fn(());
+
+        debug!("collect_roots: entry_fn = {:?}", entry_fn);
+
+        let mut collector = RootCollector { tcx, strategy: mode, entry_fn, output: &mut roots };
+
+        let crate_items = tcx.hir_crate_items(());
+
+        for id in crate_items.items() {
+            collector.process_item(id);
+        }
+
+        for id in crate_items.impl_items() {
+            collector.process_impl_item(id);
+        }
+
+        collector.push_extra_entry_roots();
+    }
+
+    // We can only codegen items that are instantiable - items all of
+    // whose predicates hold. Luckily, items that aren't instantiable
+    // can't actually be used, so we can just skip codegenning them.
+    roots
+        .into_iter()
+        .filter_map(|Spanned { node: mono_item, .. }| {
+            mono_item.is_instantiable(tcx).then_some(mono_item)
+        })
+        .collect()
+}
 
 struct RootCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -1600,191 +1749,47 @@ fn create_mono_items_for_default_impls<'tcx>(
     }
 }
 
-/// Scans the CTFE alloc in order to find function pointers and statics that must be monomorphized.
-fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoItems<'tcx>) {
-    match tcx.global_alloc(alloc_id) {
-        GlobalAlloc::Static(def_id) => {
-            assert!(!tcx.is_thread_local_static(def_id));
-            let instance = Instance::mono(tcx, def_id);
-            if should_codegen_locally(tcx, &instance) {
-                trace!("collecting static {:?}", def_id);
-                output.push(dummy_spanned(MonoItem::Static(def_id)));
-            }
-        }
-        GlobalAlloc::Memory(alloc) => {
-            trace!("collecting {:?} with {:#?}", alloc_id, alloc);
-            let ptrs = alloc.inner().provenance().ptrs();
-            // avoid `ensure_sufficient_stack` in the common case of "no pointers"
-            if !ptrs.is_empty() {
-                rustc_data_structures::stack::ensure_sufficient_stack(move || {
-                    for &prov in ptrs.values() {
-                        collect_alloc(tcx, prov.alloc_id(), output);
-                    }
-                });
-            }
-        }
-        GlobalAlloc::Function(fn_instance) => {
-            if should_codegen_locally(tcx, &fn_instance) {
-                trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
-                output.push(create_fn_mono_item(tcx, fn_instance, DUMMY_SP));
-            }
-        }
-        GlobalAlloc::VTable(ty, trait_ref) => {
-            let alloc_id = tcx.vtable_allocation((ty, trait_ref));
-            collect_alloc(tcx, alloc_id, output)
-        }
-    }
-}
+//=-----------------------------------------------------------------------------
+// Top-level entry point, tying it all together
+//=-----------------------------------------------------------------------------
 
-fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
-    for impl_def_id in tcx.inherent_impls(def_id).ok()? {
-        if let Some(new) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
-            tcx,
-            fn_ident,
-            AssocKind::Fn,
-            def_id,
-        ) {
-            return Some(new.def_id);
-        }
-    }
-    return None;
-}
+#[instrument(skip(tcx, strategy), level = "debug")]
+pub fn collect_crate_mono_items(
+    tcx: TyCtxt<'_>,
+    strategy: MonoItemCollectionStrategy,
+) -> (FxHashSet<MonoItem<'_>>, UsageMap<'_>) {
+    let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
 
-fn build_skip_move_check_fns(tcx: TyCtxt<'_>) -> Vec<DefId> {
-    let fns = [
-        (tcx.lang_items().owned_box(), "new"),
-        (tcx.get_diagnostic_item(sym::Rc), "new"),
-        (tcx.get_diagnostic_item(sym::Arc), "new"),
-    ];
-    fns.into_iter()
-        .filter_map(|(def_id, fn_name)| {
-            def_id.and_then(|def_id| assoc_fn_of_type(tcx, def_id, Ident::from_str(fn_name)))
-        })
-        .collect::<Vec<_>>()
-}
+    let roots = tcx
+        .sess
+        .time("monomorphization_collector_root_collections", || collect_roots(tcx, strategy));
 
-/// Scans the MIR in order to find function calls, closures, and drop-glue.
-///
-/// Anything that's found is added to `output`. Furthermore the "mentioned items" of the MIR are returned.
-#[instrument(skip(tcx, used_items, mentioned_items), level = "debug")]
-fn collect_items_of_instance<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    instance: Instance<'tcx>,
-    used_items: &mut MonoItems<'tcx>,
-    mentioned_items: &mut MonoItems<'tcx>,
-    mode: CollectionMode,
-) {
-    let body = tcx.instance_mir(instance.def);
-    // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
-    // `mentioned_items`. Mentioned items processing will then notice that they have already been
-    // visited, but at that point each mentioned item has been monomorphized, added to the
-    // `mentioned_items` worklist, and checked in the global set of visited items. To remove that
-    // overhead, we have a special optimization that avoids adding items to `mentioned_items` when
-    // they are already added in `used_items`. We could just scan `used_items`, but that's a linear
-    // scan and not very efficient. Furthermore we can only do that *after* monomorphizing the
-    // mentioned item. So instead we collect all pre-monomorphized `MentionedItem` that were already
-    // added to `used_items` in a hash set, which can efficiently query in the
-    // `body.mentioned_items` loop below without even having to monomorphize the item.
-    let mut used_mentioned_items = FxHashSet::<MentionedItem<'tcx>>::default();
-    let mut collector = MirUsedCollector {
-        tcx,
-        body,
-        used_items,
-        used_mentioned_items: &mut used_mentioned_items,
-        instance,
-        move_size_spans: vec![],
-        visiting_call_terminator: false,
-        skip_move_check_fns: None,
+    debug!("building mono item graph, beginning at roots");
+
+    let mut state = SharedState {
+        visited: MTLock::new(FxHashSet::default()),
+        mentioned: MTLock::new(FxHashSet::default()),
+        usage_map: MTLock::new(UsageMap::new()),
     };
+    let recursion_limit = tcx.recursion_limit();
 
-    if mode == CollectionMode::UsedItems {
-        // Visit everything. Here we rely on the visitor also visiting `required_consts`, so that we
-        // evaluate them and abort compilation if any of them errors.
-        collector.visit_body(body);
-    } else {
-        // We only need to evaluate all constants, but can ignore the rest of the MIR.
-        for const_op in &body.required_consts {
-            if let Some(val) = collector.eval_constant(const_op) {
-                collect_const_value(tcx, val, mentioned_items);
-            }
-        }
+    {
+        let state: LRef<'_, _> = &mut state;
+
+        tcx.sess.time("monomorphization_collector_graph_walk", || {
+            par_for_each_in(roots, |root| {
+                let mut recursion_depths = DefIdMap::default();
+                collect_items_rec(
+                    tcx,
+                    dummy_spanned(root),
+                    state,
+                    &mut recursion_depths,
+                    recursion_limit,
+                    CollectionMode::UsedItems,
+                );
+            });
+        });
     }
 
-    // Always gather mentioned items. We try to avoid processing items that we have already added to
-    // `used_items` above.
-    for item in &body.mentioned_items {
-        if !collector.used_mentioned_items.contains(&item.node) {
-            let item_mono = collector.monomorphize(item.node);
-            visit_mentioned_item(tcx, &item_mono, item.span, mentioned_items);
-        }
-    }
-}
-
-/// `item` must be already monomorphized.
-#[instrument(skip(tcx, span, output), level = "debug")]
-fn visit_mentioned_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    item: &MentionedItem<'tcx>,
-    span: Span,
-    output: &mut MonoItems<'tcx>,
-) {
-    match *item {
-        MentionedItem::Fn(ty) => {
-            if let ty::FnDef(def_id, args) = *ty.kind() {
-                let instance =
-                    Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args);
-                // `visit_instance_use` was written for "used" item collection but works just as well
-                // for "mentioned" item collection.
-                // We can set `is_direct_call`; that just means we'll skip a bunch of shims that anyway
-                // can't have their own failing constants.
-                visit_instance_use(tcx, instance, /*is_direct_call*/ true, span, output);
-            }
-        }
-        MentionedItem::Drop(ty) => {
-            visit_drop_use(tcx, ty, /*is_direct_call*/ true, span, output);
-        }
-        MentionedItem::UnsizeCast { source_ty, target_ty } => {
-            let (source_ty, target_ty) =
-                find_vtable_types_for_unsizing(tcx.at(span), source_ty, target_ty);
-            // This could also be a different Unsize instruction, like
-            // from a fixed sized array to a slice. But we are only
-            // interested in things that produce a vtable.
-            if (target_ty.is_trait() && !source_ty.is_trait())
-                || (target_ty.is_dyn_star() && !source_ty.is_dyn_star())
-            {
-                create_mono_items_for_vtable_methods(tcx, target_ty, source_ty, span, output);
-            }
-        }
-        MentionedItem::Closure(source_ty) => {
-            if let ty::Closure(def_id, args) = *source_ty.kind() {
-                let instance =
-                    Instance::resolve_closure(tcx, def_id, args, ty::ClosureKind::FnOnce);
-                if should_codegen_locally(tcx, &instance) {
-                    output.push(create_fn_mono_item(tcx, instance, span));
-                }
-            } else {
-                bug!()
-            }
-        }
-    }
-}
-
-#[instrument(skip(tcx, output), level = "debug")]
-fn collect_const_value<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    value: mir::ConstValue<'tcx>,
-    output: &mut MonoItems<'tcx>,
-) {
-    match value {
-        mir::ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => {
-            collect_alloc(tcx, ptr.provenance.alloc_id(), output)
-        }
-        mir::ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
-        mir::ConstValue::Slice { data, meta: _ } => {
-            for &prov in data.inner().provenance().ptrs().values() {
-                collect_alloc(tcx, prov.alloc_id(), output);
-            }
-        }
-        _ => {}
-    }
+    (state.visited.into_inner(), state.usage_map.into_inner())
 }
