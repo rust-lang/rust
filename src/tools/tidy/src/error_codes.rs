@@ -153,7 +153,7 @@ fn check_error_codes_docs(
         if error_codes.iter().all(|e| e != err_code) {
             errors.push(format!(
                 "Found valid file `{}` in error code docs directory without corresponding \
-                entry in `error_code.rs`",
+                entry in `rustc_error_codes/src/lib.rs`",
                 path.display()
             ));
             return;

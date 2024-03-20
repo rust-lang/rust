@@ -3,7 +3,6 @@ use super::CandidateSource;
 use super::MethodError;
 use super::NoMatchData;
 
-use crate::errors::MethodCallOnUnknownRawPointee;
 use crate::FnCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -433,21 +432,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if is_suggestion.0 {
                 // Ambiguity was encountered during a suggestion. Just keep going.
                 debug!("ProbeContext: encountered ambiguity in suggestion");
-            } else if bad_ty.reached_raw_pointer && !self.tcx.features().arbitrary_self_types {
+            } else if bad_ty.reached_raw_pointer
+                && !self.tcx.features().arbitrary_self_types
+                && !self.tcx.sess.at_least_rust_2018()
+            {
                 // this case used to be allowed by the compiler,
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
-                if self.tcx.sess.at_least_rust_2018() {
-                    self.dcx().emit_err(MethodCallOnUnknownRawPointee { span });
-                } else {
-                    self.tcx.node_span_lint(
-                        lint::builtin::TYVAR_BEHIND_RAW_POINTER,
-                        scope_expr_id,
-                        span,
-                        "type annotations needed",
-                        |_| {},
-                    );
-                }
+                self.tcx.node_span_lint(
+                    lint::builtin::TYVAR_BEHIND_RAW_POINTER,
+                    scope_expr_id,
+                    span,
+                    "type annotations needed",
+                    |_| {},
+                );
             } else {
                 // Ended up encountering a type variable when doing autoderef,
                 // but it may not be a type variable after processing obligations
@@ -458,10 +456,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
                 let ty = self.resolve_vars_if_possible(ty.value);
                 let guar = match *ty.kind() {
-                    ty::Infer(ty::TyVar(_)) => self
-                        .err_ctxt()
-                        .emit_inference_failure_err(self.body_id, span, ty.into(), E0282, true)
-                        .emit(),
+                    ty::Infer(ty::TyVar(_)) => {
+                        let raw_ptr_call =
+                            bad_ty.reached_raw_pointer && !self.tcx.features().arbitrary_self_types;
+                        let mut err = self.err_ctxt().emit_inference_failure_err(
+                            self.body_id,
+                            span,
+                            ty.into(),
+                            E0282,
+                            !raw_ptr_call,
+                        );
+                        if raw_ptr_call {
+                            err.span_label(span, "cannot call a method on a raw pointer with an unknown pointee type");
+                        }
+                        err.emit()
+                    }
                     ty::Error(guar) => guar,
                     _ => bug!("unexpected bad final type in method autoderef"),
                 };
