@@ -313,7 +313,7 @@ pub struct LocationDetail {
 }
 
 impl LocationDetail {
-    pub fn all() -> Self {
+    pub(crate) fn all() -> Self {
         Self { file: true, line: true, column: true }
     }
 }
@@ -549,7 +549,7 @@ impl OutputTypes {
         OutputTypes(BTreeMap::from_iter(entries.iter().map(|&(k, ref v)| (k, v.clone()))))
     }
 
-    pub fn get(&self, key: &OutputType) -> Option<&Option<OutFileName>> {
+    pub(crate) fn get(&self, key: &OutputType) -> Option<&Option<OutFileName>> {
         self.0.get(key)
     }
 
@@ -661,10 +661,6 @@ impl Externs {
 
     pub fn iter(&self) -> BTreeMapIter<'_, String, ExternEntry> {
         self.0.iter()
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
     }
 }
 
@@ -854,13 +850,13 @@ impl OutFileName {
 
 #[derive(Clone, Hash, Debug, HashStable_Generic, Encodable, Decodable)]
 pub struct OutputFilenames {
-    pub out_directory: PathBuf,
+    pub(crate) out_directory: PathBuf,
     /// Crate name. Never contains '-'.
     crate_stem: String,
     /// Typically based on `.rs` input file name. Any '-' is preserved.
     filestem: String,
     pub single_output_file: Option<OutFileName>,
-    pub temps_directory: Option<PathBuf>,
+    temps_directory: Option<PathBuf>,
     pub outputs: OutputTypes,
 }
 
@@ -898,7 +894,7 @@ impl OutputFilenames {
 
     /// Gets the output path where a compilation artifact of the given type
     /// should be placed on disk.
-    pub fn output_path(&self, flavor: OutputType) -> PathBuf {
+    fn output_path(&self, flavor: OutputType) -> PathBuf {
         let extension = flavor.extension();
         match flavor {
             OutputType::Metadata => {
@@ -1092,7 +1088,7 @@ impl Options {
             || self.unstable_opts.query_dep_graph
     }
 
-    pub fn file_path_mapping(&self) -> FilePathMapping {
+    pub(crate) fn file_path_mapping(&self) -> FilePathMapping {
         file_path_mapping(self.remap_path_prefix.clone(), &self.unstable_opts)
     }
 
@@ -1173,14 +1169,14 @@ pub enum Passes {
 }
 
 impl Passes {
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         match *self {
             Passes::Some(ref v) => v.is_empty(),
             Passes::All => false,
         }
     }
 
-    pub fn extend(&mut self, passes: impl IntoIterator<Item = String>) {
+    pub(crate) fn extend(&mut self, passes: impl IntoIterator<Item = String>) {
         match *self {
             Passes::Some(ref mut v) => v.extend(passes),
             Passes::All => {}
@@ -1206,7 +1202,7 @@ pub struct BranchProtection {
     pub pac_ret: Option<PacRet>,
 }
 
-pub const fn default_lib_output() -> CrateType {
+pub(crate) const fn default_lib_output() -> CrateType {
     CrateType::Rlib
 }
 
@@ -1584,15 +1580,15 @@ pub fn build_target_config(
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum OptionStability {
+enum OptionStability {
     Stable,
     Unstable,
 }
 
 pub struct RustcOptGroup {
     pub apply: Box<dyn Fn(&mut getopts::Options) -> &mut getopts::Options>,
-    pub name: &'static str,
-    pub stability: OptionStability,
+    name: &'static str,
+    stability: OptionStability,
 }
 
 impl RustcOptGroup {
@@ -1628,8 +1624,8 @@ mod opt {
 
     use super::RustcOptGroup;
 
-    pub type R = RustcOptGroup;
-    pub type S = &'static str;
+    type R = RustcOptGroup;
+    type S = &'static str;
 
     fn stable<F>(name: S, f: F) -> R
     where
@@ -1649,32 +1645,34 @@ mod opt {
         if a.len() > b.len() { a } else { b }
     }
 
-    pub fn opt_s(a: S, b: S, c: S, d: S) -> R {
+    pub(crate) fn opt_s(a: S, b: S, c: S, d: S) -> R {
         stable(longer(a, b), move |opts| opts.optopt(a, b, c, d))
     }
-    pub fn multi_s(a: S, b: S, c: S, d: S) -> R {
+    pub(crate) fn multi_s(a: S, b: S, c: S, d: S) -> R {
         stable(longer(a, b), move |opts| opts.optmulti(a, b, c, d))
     }
-    pub fn flag_s(a: S, b: S, c: S) -> R {
+    pub(crate) fn flag_s(a: S, b: S, c: S) -> R {
         stable(longer(a, b), move |opts| opts.optflag(a, b, c))
     }
-    pub fn flagmulti_s(a: S, b: S, c: S) -> R {
+    pub(crate) fn flagmulti_s(a: S, b: S, c: S) -> R {
         stable(longer(a, b), move |opts| opts.optflagmulti(a, b, c))
     }
 
-    pub fn opt(a: S, b: S, c: S, d: S) -> R {
+    fn opt(a: S, b: S, c: S, d: S) -> R {
         unstable(longer(a, b), move |opts| opts.optopt(a, b, c, d))
     }
-    pub fn multi(a: S, b: S, c: S, d: S) -> R {
+    pub(crate) fn multi(a: S, b: S, c: S, d: S) -> R {
         unstable(longer(a, b), move |opts| opts.optmulti(a, b, c, d))
     }
 }
+
 static EDITION_STRING: LazyLock<String> = LazyLock::new(|| {
     format!(
         "Specify which edition of the compiler to use when compiling code. \
 The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE_EDITION}."
     )
 });
+
 /// Returns the "short" subset of the rustc command line options,
 /// including metadata for each option, such as whether the option is
 /// part of the stable long-term interface for rustc.
@@ -1864,9 +1862,9 @@ pub fn parse_color(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Col
 /// Possible json config files
 pub struct JsonConfig {
     pub json_rendered: HumanReadableErrorType,
-    pub json_artifact_notifications: bool,
+    json_artifact_notifications: bool,
     pub json_unused_externs: JsonUnusedExterns,
-    pub json_future_incompat: bool,
+    json_future_incompat: bool,
 }
 
 /// Report unused externs in event stream
@@ -2992,7 +2990,7 @@ pub mod nightly_options {
         is_nightly_build(matches.opt_str("crate-name").as_deref())
     }
 
-    pub fn is_nightly_build(krate: Option<&str>) -> bool {
+    fn is_nightly_build(krate: Option<&str>) -> bool {
         UnstableFeatures::from_environment(krate).is_nightly_build()
     }
 
@@ -3199,7 +3197,7 @@ pub(crate) mod dep_tracking {
     use std::num::NonZero;
     use std::path::PathBuf;
 
-    pub trait DepTrackingHash {
+    pub(crate) trait DepTrackingHash {
         fn hash(
             &self,
             hasher: &mut DefaultHasher,

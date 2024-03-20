@@ -8,7 +8,6 @@ fn main() {
     //~| NOTE cannot be sent
     //~| NOTE bound introduced by
     //~| NOTE appears within the type
-    //~| NOTE captures the following types
 }
 
 fn gimme_send<T: Send>(t: T) {

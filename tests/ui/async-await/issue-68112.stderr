@@ -58,7 +58,6 @@ note: required because it appears within the type `impl Future<Output = Arc<RefC
    |
 LL | fn make_non_send_future2() -> impl Future<Output = Arc<RefCell<i32>>> {
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: required because it captures the following types: `impl Future<Output = Arc<RefCell<i32>>>`, `Ready<i32>`
 note: required because it's used within this `async` block
   --> $DIR/issue-68112.rs:57:20
    |

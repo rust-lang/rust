@@ -1514,7 +1514,7 @@ impl<'a> Parser<'a> {
                 let ident = this.parse_field_ident("enum", vlo)?;
 
                 if this.token == token::Not {
-                    if let Err(err) = this.unexpected::<()>() {
+                    if let Err(err) = this.unexpected() {
                         err.with_note(fluent::parse_macro_expands_to_enum_variant).emit();
                     }
 
@@ -1937,7 +1937,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
         if self.token.kind == token::Not {
-            if let Err(mut err) = self.unexpected::<FieldDef>() {
+            if let Err(mut err) = self.unexpected() {
                 // Encounter the macro invocation
                 err.subdiagnostic(self.dcx(), MacroExpandsToAdtField { adt_ty });
                 return Err(err);
@@ -2067,7 +2067,7 @@ impl<'a> Parser<'a> {
             let params = self.parse_token_tree(); // `MacParams`
             let pspan = params.span();
             if !self.check(&token::OpenDelim(Delimiter::Brace)) {
-                return self.unexpected();
+                self.unexpected()?;
             }
             let body = self.parse_token_tree(); // `MacBody`
             // Convert `MacParams MacBody` into `{ MacParams => MacBody }`.
@@ -2077,7 +2077,7 @@ impl<'a> Parser<'a> {
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
             P(DelimArgs { dspan, delim: Delimiter::Brace, tokens })
         } else {
-            return self.unexpected();
+            self.unexpected_any()?
         };
 
         self.psess.gated_spans.gate(sym::decl_macro, lo.to(self.prev_token.span));
@@ -2692,7 +2692,7 @@ impl<'a> Parser<'a> {
                 debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
                 let (pat, colon) = this.parse_fn_param_pat_colon()?;
                 if !colon {
-                    let mut err = this.unexpected::<()>().unwrap_err();
+                    let mut err = this.unexpected().unwrap_err();
                     return if let Some(ident) =
                         this.parameter_without_type(&mut err, pat, is_name_required, first_param)
                     {
@@ -2716,7 +2716,7 @@ impl<'a> Parser<'a> {
                 {
                     // This wasn't actually a type, but a pattern looking like a type,
                     // so we are going to rollback and re-parse for recovery.
-                    ty = this.unexpected();
+                    ty = this.unexpected_any();
                 }
                 match ty {
                     Ok(ty) => {

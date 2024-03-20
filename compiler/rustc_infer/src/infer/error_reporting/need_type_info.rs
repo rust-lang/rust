@@ -990,7 +990,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             let generics_def_id = tcx.res_generics_def_id(path.res)?;
             let generics = tcx.generics_of(generics_def_id);
             if generics.has_impl_trait() {
-                None?;
+                do yeet ();
             }
             let insert_span =
                 path.segments.last().unwrap().ident.span.shrink_to_hi().with_hi(path.span.hi());
@@ -1044,7 +1044,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 let generics = tcx.generics_of(def_id);
                 let segment: Option<_> = try {
                     if !segment.infer_args || generics.has_impl_trait() {
-                        None?;
+                        do yeet ();
                     }
                     let span = tcx.hir().span(segment.hir_id);
                     let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());

@@ -76,20 +76,16 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
         if self.current_id == CRATE_HIR_ID {
             return None;
         }
-        loop {
-            // There are nodes that do not have entries, so we need to skip them.
-            let parent_id = self.map.def_key(self.current_id.owner.def_id).parent;
 
-            let parent_id = parent_id.map_or(CRATE_OWNER_ID, |local_def_index| {
-                let def_id = LocalDefId { local_def_index };
-                self.map.tcx.local_def_id_to_hir_id(def_id).owner
-            });
-            self.current_id = HirId::make_owner(parent_id.def_id);
+        let parent_id = self.map.def_key(self.current_id.owner.def_id).parent;
+        let parent_id = parent_id.map_or(CRATE_OWNER_ID, |local_def_index| {
+            let def_id = LocalDefId { local_def_index };
+            self.map.tcx.local_def_id_to_hir_id(def_id).owner
+        });
+        self.current_id = HirId::make_owner(parent_id.def_id);
 
-            // If this `HirId` doesn't have an entry, skip it and look for its `parent_id`.
-            let node = self.map.tcx.hir_owner_node(self.current_id.owner);
-            return Some((self.current_id.owner, node));
-        }
+        let node = self.map.tcx.hir_owner_node(self.current_id.owner);
+        return Some((self.current_id.owner, node));
     }
 }
 

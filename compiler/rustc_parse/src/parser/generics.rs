@@ -481,7 +481,7 @@ impl<'a> Parser<'a> {
             }))
         } else {
             self.maybe_recover_bounds_doubled_colon(&ty)?;
-            self.unexpected()
+            self.unexpected_any()
         }
     }
 
