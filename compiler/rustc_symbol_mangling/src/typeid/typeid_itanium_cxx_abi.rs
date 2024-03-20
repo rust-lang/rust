@@ -1023,6 +1023,8 @@ fn transform_fn_trait_fnabi<'tcx>(
 ///   the vtable (i.e., the signature of the closure passed as an argument to the shim).
 /// * Adjusts the type ids of ClosureOnceShims to the type id expected in the call sites for that
 ///   entry in the vtable (i.e., the signature of the closure passed as an argument to the shim).
+/// * Adjusts the type ids of DropGlues to the type id expected in the call sites for that
+///   entry in the vtable (i.e., a call on a synthesized Drop trait object).
 ///
 /// For compatibility between types, it uses their least common denominator and:
 ///
@@ -1079,6 +1081,47 @@ pub fn transform_fnabi<'tcx>(
             ty::InstanceDef::VTableShim(..) | ty::InstanceDef::ClosureOnceShim { .. } => {
                 // Adjust the type ids of VTableShims and ClosureOnceShims
                 return transform_closure_fnabi(tcx, fn_abi, options);
+            }
+            ty::InstanceDef::DropGlue(..) => {
+                // Adjust the type ids of DropGlues
+                //
+                // DropGlues may have indirect calls to one or more given types drop function.
+                // However, Rust allows for types to be erased to any trait object and retains the
+                // drop function for the original type, which means at the indirect call sites in
+                // DropGlues, when typeid_for_fnabi is called a second time, it only has an FnAbi
+                // (i.e., without an Instance, and after type erasure), and it could be an FnAbi to
+                // a call on any arbitrary trait object, so normalize them to a synthesized Drop
+                // trait object, both on declaration/definition, and during code generation at call
+                // sites so they have the same type id and match.
+                if !fn_abi.args.is_empty() {
+                    let self_ty = if fn_abi.args[0].layout.ty.is_mutable_ptr() {
+                        Ty::new_mut_ref(
+                            tcx,
+                            tcx.lifetimes.re_erased,
+                            new_dynamic_trait(
+                                tcx,
+                                tcx.lang_items().drop_trait().unwrap(),
+                                List::empty(),
+                            ),
+                        )
+                    } else {
+                        Ty::new_imm_ref(
+                            tcx,
+                            tcx.lifetimes.re_erased,
+                            new_dynamic_trait(
+                                tcx,
+                                tcx.lang_items().drop_trait().unwrap(),
+                                List::empty(),
+                            ),
+                        )
+                    };
+                    let mut fn_abi = fn_abi.clone();
+                    // HACK(rcvalle): It is okay to not replace or update the entire ArgAbi here
+                    //   because the other fields are never used.
+                    fn_abi.args[0].layout.ty = self_ty;
+                    return fn_abi;
+                }
+                return fn_abi.clone();
             }
             _ => {}
         }
@@ -1402,6 +1445,45 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
     }
 
     ty
+}
+
+/// Returns a type metadata identifier for the specified drop FnAbi using the Itanium C++ ABI with
+/// vendor extended type qualifiers and types for Rust types that are not used at the FFI boundary.
+pub fn typeid_for_drop_fnabi<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    options: TypeIdOptions,
+) -> String {
+    // Transform self into a Drop trait object to match what the drop method's self is transformed
+    // into in transform_fnabi.
+    //
+    // DropGlues may have indirect calls to one or more given types drop function. However, Rust
+    // allows for types to be erased to any trait object and retains the drop function for the
+    // original type, which means at the indirect call sites in DropGlues, when typeid_for_fnabi is
+    // called a second time, it only has an FnAbi (i.e., without an Instance, and after type
+    // erasure), and it could be an FnAbi to a call on any arbitrary trait object, so normalize them
+    // to a synthesized Drop trait object, both on declaration/definition, and during code
+    // generation at call sites so they have the same type id and match.
+    let self_ty = if fn_abi.args[0].layout.ty.is_mutable_ptr() {
+        Ty::new_mut_ref(
+            tcx,
+            tcx.lifetimes.re_erased,
+            new_dynamic_trait(tcx, tcx.lang_items().drop_trait().unwrap(), List::empty()),
+        )
+    } else {
+        Ty::new_imm_ref(
+            tcx,
+            tcx.lifetimes.re_erased,
+            new_dynamic_trait(tcx, tcx.lang_items().drop_trait().unwrap(), List::empty()),
+        )
+    };
+
+    let mut fn_abi = fn_abi.clone();
+    // HACK(rcvalle): It is okay to not replace or update the entire ArgAbi here because the other
+    //   fields are never used.
+    fn_abi.args[0].layout.ty = self_ty;
+
+    return typeid_for_fnabi(tcx, &fn_abi, options);
 }
 
 /// Returns a type metadata identifier for the specified FnAbi using the Itanium C++ ABI with vendor

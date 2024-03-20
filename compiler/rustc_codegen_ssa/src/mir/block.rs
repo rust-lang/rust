@@ -160,6 +160,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         mut unwind: mir::UnwindAction,
         copied_constant_arguments: &[PlaceRef<'tcx, <Bx as BackendTypes>::Value>],
         instance: Option<Instance<'tcx>>,
+        is_drop: bool,
         mergeable_succ: bool,
     ) -> MergingSucc {
         let tcx = bx.tcx();
@@ -232,6 +233,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 ret_llbb,
                 unwind_block,
                 self.funclet(fx),
+                is_drop,
             );
             if fx.mir[self.bb].is_cleanup {
                 bx.apply_attrs_to_cleanup_callsite(invokeret);
@@ -247,7 +249,8 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
             MergingSucc::False
         } else {
-            let llret = bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, llargs, self.funclet(fx));
+            let llret =
+                bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, llargs, self.funclet(fx), false);
             if fx.mir[self.bb].is_cleanup {
                 bx.apply_attrs_to_cleanup_callsite(llret);
             }
@@ -606,6 +609,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             unwind,
             &[],
             Some(instance),
+            true,
             mergeable_succ,
         )
     }
@@ -685,8 +689,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (fn_abi, llfn, instance) = common::build_langcall(bx, Some(span), lang_item);
 
         // Codegen the actual panic invoke/call.
-        let merging_succ =
-            helper.do_call(self, bx, fn_abi, llfn, &args, None, unwind, &[], Some(instance), false);
+        let merging_succ = helper.do_call(
+            self,
+            bx,
+            fn_abi,
+            llfn,
+            &args,
+            None,
+            unwind,
+            &[],
+            Some(instance),
+            false,
+            false,
+        );
         assert_eq!(merging_succ, MergingSucc::False);
         MergingSucc::False
     }
@@ -715,6 +730,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::UnwindAction::Unreachable,
             &[],
             Some(instance),
+            false,
             false,
         );
         assert_eq!(merging_succ, MergingSucc::False);
@@ -778,6 +794,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     unwind,
                     &[],
                     Some(instance),
+                    false,
                     mergeable_succ,
                 )
             } else {
@@ -1135,6 +1152,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             unwind,
             &copied_constant_arguments,
             instance,
+            false,
             mergeable_succ,
         )
     }
@@ -1699,7 +1717,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             let fn_ty = bx.fn_decl_backend_type(fn_abi);
 
-            let llret = bx.call(fn_ty, None, Some(fn_abi), fn_ptr, &[], funclet.as_ref());
+            let llret = bx.call(fn_ty, None, Some(fn_abi), fn_ptr, &[], funclet.as_ref(), false);
             bx.apply_attrs_to_cleanup_callsite(llret);
         }
 

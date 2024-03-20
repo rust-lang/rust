@@ -21,7 +21,10 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
-use rustc_symbol_mangling::typeid::{kcfi_typeid_for_fnabi, typeid_for_fnabi, TypeIdOptions};
+use rustc_symbol_mangling::typeid::{
+    kcfi_typeid_for_drop_fnabi, kcfi_typeid_for_fnabi, typeid_for_drop_fnabi, typeid_for_fnabi,
+    TypeIdOptions,
+};
 use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
@@ -221,6 +224,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         then: &'ll BasicBlock,
         catch: &'ll BasicBlock,
         funclet: Option<&Funclet<'ll>>,
+        is_drop: bool,
     ) -> &'ll Value {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
@@ -233,10 +237,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
 
         // Emit CFI pointer type membership test
-        self.cfi_type_test(fn_attrs, fn_abi, llfn);
+        self.cfi_type_test(fn_attrs, fn_abi, llfn, is_drop);
 
         // Emit KCFI operand bundle
-        let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, llfn);
+        let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, llfn, is_drop);
         let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
         if let Some(kcfi_bundle) = kcfi_bundle {
             bundles.push(kcfi_bundle);
@@ -1231,6 +1235,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         llfn: &'ll Value,
         args: &[&'ll Value],
         funclet: Option<&Funclet<'ll>>,
+        is_drop: bool,
     ) -> &'ll Value {
         debug!("call {:?} with args ({:?})", llfn, args);
 
@@ -1243,10 +1248,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
 
         // Emit CFI pointer type membership test
-        self.cfi_type_test(fn_attrs, fn_abi, llfn);
+        self.cfi_type_test(fn_attrs, fn_abi, llfn, is_drop);
 
         // Emit KCFI operand bundle
-        let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, llfn);
+        let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, llfn, is_drop);
         let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
         if let Some(kcfi_bundle) = kcfi_bundle {
             bundles.push(kcfi_bundle);
@@ -1468,7 +1473,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     pub(crate) fn call_intrinsic(&mut self, intrinsic: &str, args: &[&'ll Value]) -> &'ll Value {
         let (ty, f) = self.cx.get_intrinsic(intrinsic);
-        self.call(ty, None, None, f, args, None)
+        self.call(ty, None, None, f, args, None, false)
     }
 
     fn call_lifetime_intrinsic(&mut self, intrinsic: &str, ptr: &'ll Value, size: Size) {
@@ -1526,7 +1531,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             format!("llvm.{instr}.sat.i{int_width}.f{float_width}")
         };
         let f = self.declare_cfn(&name, llvm::UnnamedAddr::No, self.type_func(&[src_ty], dest_ty));
-        self.call(self.type_func(&[src_ty], dest_ty), None, None, f, &[val], None)
+        self.call(self.type_func(&[src_ty], dest_ty), None, None, f, &[val], None, false)
     }
 
     pub(crate) fn landing_pad(
@@ -1554,6 +1559,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         default_dest: &'ll BasicBlock,
         indirect_dest: &[&'ll BasicBlock],
         funclet: Option<&Funclet<'ll>>,
+        is_drop: bool,
     ) -> &'ll Value {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
@@ -1566,10 +1572,10 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
 
         // Emit CFI pointer type membership test
-        self.cfi_type_test(fn_attrs, fn_abi, llfn);
+        self.cfi_type_test(fn_attrs, fn_abi, llfn, is_drop);
 
         // Emit KCFI operand bundle
-        let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, llfn);
+        let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, llfn, is_drop);
         let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
         if let Some(kcfi_bundle) = kcfi_bundle {
             bundles.push(kcfi_bundle);
@@ -1602,6 +1608,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
+        is_drop: bool,
     ) {
         let is_indirect_call = unsafe { llvm::LLVMRustIsNonGVFunctionPointerTy(llfn) };
         if self.tcx.sess.is_sanitizer_cfi_enabled()
@@ -1622,7 +1629,11 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 options.insert(TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
-            let typeid = typeid_for_fnabi(self.tcx, fn_abi, options);
+            let typeid = if is_drop {
+                typeid_for_drop_fnabi(self.tcx, fn_abi, options)
+            } else {
+                typeid_for_fnabi(self.tcx, fn_abi, options)
+            };
             let typeid_metadata = self.cx.typeid_metadata(typeid).unwrap();
 
             // Test whether the function pointer is associated with the type identifier.
@@ -1645,6 +1656,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
+        is_drop: bool,
     ) -> Option<llvm::OperandBundleDef<'ll>> {
         let is_indirect_call = unsafe { llvm::LLVMRustIsNonGVFunctionPointerTy(llfn) };
         let kcfi_bundle = if self.tcx.sess.is_sanitizer_kcfi_enabled()
@@ -1665,7 +1677,11 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 options.insert(TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
-            let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi, options);
+            let kcfi_typeid = if is_drop {
+                kcfi_typeid_for_drop_fnabi(self.tcx, fn_abi, options)
+            } else {
+                kcfi_typeid_for_fnabi(self.tcx, fn_abi, options)
+            };
             Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
         } else {
             None
