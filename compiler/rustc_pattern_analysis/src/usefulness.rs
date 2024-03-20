@@ -1042,7 +1042,7 @@ struct MatrixRow<'p, Cx: PatCx> {
     is_under_guard: bool,
     /// When we specialize, we remember which row of the original matrix produced a given row of the
     /// specialized matrix. When we unspecialize, we use this to propagate usefulness back up the
-    /// callstack.
+    /// callstack. On creation, this stores the index of the original match arm.
     parent_row: usize,
     /// False when the matrix is just built. This is set to `true` by
     /// [`compute_exhaustiveness_and_usefulness`] if the arm is found to be useful.
@@ -1163,10 +1163,10 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
             place_info: smallvec![place_info],
             wildcard_row_is_relevant: true,
         };
-        for (row_id, arm) in arms.iter().enumerate() {
+        for (arm_id, arm) in arms.iter().enumerate() {
             let v = MatrixRow {
                 pats: PatStack::from_pattern(arm.pat),
-                parent_row: row_id, // dummy, we don't read it
+                parent_row: arm_id,
                 is_under_guard: arm.has_guard,
                 useful: false,
                 intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
@@ -1738,6 +1738,9 @@ pub struct UsefulnessReport<'p, Cx: PatCx> {
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
     pub non_exhaustiveness_witnesses: Vec<WitnessPat<Cx>>,
+    /// For each arm, a set of indices of arms above it that have non-empty intersection, i.e. there
+    /// is a value matched by both arms. This may miss real intersections.
+    pub arm_intersections: Vec<BitSet<usize>>,
 }
 
 /// Computes whether a match is exhaustive and which of its arms are useful.
@@ -1769,5 +1772,19 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
         })
         .collect();
 
-    Ok(UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses })
+    let mut arm_intersections: Vec<_> =
+        arms.iter().enumerate().map(|(i, _)| BitSet::new_empty(i)).collect();
+    for row in matrix.rows() {
+        let arm_id = row.parent_row;
+        for intersection in row.intersects.iter() {
+            // Convert the matrix row ids into arm ids (they can differ because we expand or-patterns).
+            let arm_intersection = matrix.rows[intersection].parent_row;
+            // Note: self-intersection can happen with or-patterns.
+            if arm_intersection != arm_id {
+                arm_intersections[arm_id].insert(arm_intersection);
+            }
+        }
+    }
+
+    Ok(UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses, arm_intersections })
 }
