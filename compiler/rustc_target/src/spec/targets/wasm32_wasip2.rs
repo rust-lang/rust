@@ -18,7 +18,7 @@
 
 use crate::spec::crt_objects;
 use crate::spec::LinkSelfContainedDefault;
-use crate::spec::{base, Target};
+use crate::spec::{base, MaybeLazy, Target};
 
 pub fn target() -> Target {
     let mut options = base::wasm::options();
@@ -27,8 +27,9 @@ pub fn target() -> Target {
     options.env = "p2".into();
     options.linker = Some("wasm-component-ld".into());
 
-    options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();
-    options.post_link_objects_self_contained = crt_objects::post_wasi_self_contained();
+    options.pre_link_objects_self_contained = MaybeLazy::lazy(crt_objects::pre_wasi_self_contained);
+    options.post_link_objects_self_contained =
+        MaybeLazy::lazy(crt_objects::post_wasi_self_contained);
 
     // FIXME: Figure out cases in which WASM needs to link with a native toolchain.
     options.link_self_contained = LinkSelfContainedDefault::True;

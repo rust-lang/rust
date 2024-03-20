@@ -1826,7 +1826,7 @@ fn add_pre_link_objects(
     // FIXME: we are currently missing some infra here (per-linker-flavor CRT objects),
     // so Fuchsia has to be special-cased.
     let opts = &sess.target;
-    let empty = Default::default();
+    let empty = CrtObjects::default();
     let objects = if self_contained {
         &opts.pre_link_objects_self_contained
     } else if !(sess.target.os == "fuchsia" && matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))) {

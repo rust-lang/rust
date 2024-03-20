@@ -15,6 +15,7 @@
 #![feature(assert_matches)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
+#![feature(lazy_cell)]
 #![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(rustc_attrs)]
 #![feature(step_trait)]

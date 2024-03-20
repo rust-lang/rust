@@ -1,8 +1,10 @@
-use crate::spec::base::apple::{opts, Arch};
-use crate::spec::{Target, TargetOptions};
+use crate::spec::base::apple::{opts, pre_link_args, Arch};
+use crate::spec::{MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let arch = Arch::Armv7k;
+    const ARCH: Arch = Arch::Armv7k;
+    const OS: &'static str = "watchos";
+
     Target {
         llvm_target: "armv7k-apple-watchos".into(),
         metadata: crate::spec::TargetMetadata {
@@ -13,13 +15,13 @@ pub fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:o-p:32:32-Fi8-i64:64-a:0:32-n32-S128".into(),
-        arch: arch.target_arch(),
+        arch: ARCH.target_arch(),
         options: TargetOptions {
             features: "+v7,+vfp4,+neon".into(),
             max_atomic_width: Some(64),
             dynamic_linking: false,
             position_independent_executables: true,
-            ..opts("watchos", arch)
+            ..opts(OS, ARCH, MaybeLazy::lazy(|| pre_link_args(OS, ARCH)))
         },
     }
 }

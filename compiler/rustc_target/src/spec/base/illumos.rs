@@ -1,28 +1,30 @@
-use crate::spec::{cvs, Cc, FramePointer, LinkerFlavor, TargetOptions};
+use crate::spec::{cvs, Cc, FramePointer, LinkerFlavor, MaybeLazy, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let late_link_args = TargetOptions::link_args(
-        LinkerFlavor::Unix(Cc::Yes),
-        &[
-            // The illumos libc contains a stack unwinding implementation, as
-            // does libgcc_s. The latter implementation includes several
-            // additional symbols that are not always in base libc. To force
-            // the consistent use of just one unwinder, we ensure libc appears
-            // after libgcc_s in the NEEDED list for the resultant binary by
-            // ignoring any attempts to add it as a dynamic dependency until the
-            // very end.
-            // FIXME: This should be replaced by a more complete and generic
-            // mechanism for controlling the order of library arguments passed
-            // to the linker.
-            "-lc",
-            // LLVM will insert calls to the stack protector functions
-            // "__stack_chk_fail" and "__stack_chk_guard" into code in native
-            // object files. Some platforms include these symbols directly in
-            // libc, but at least historically these have been provided in
-            // libssp.so on illumos and Solaris systems.
-            "-lssp",
-        ],
-    );
+    let late_link_args = MaybeLazy::lazy(|| {
+        TargetOptions::link_args(
+            LinkerFlavor::Unix(Cc::Yes),
+            &[
+                // The illumos libc contains a stack unwinding implementation, as
+                // does libgcc_s. The latter implementation includes several
+                // additional symbols that are not always in base libc. To force
+                // the consistent use of just one unwinder, we ensure libc appears
+                // after libgcc_s in the NEEDED list for the resultant binary by
+                // ignoring any attempts to add it as a dynamic dependency until the
+                // very end.
+                // FIXME: This should be replaced by a more complete and generic
+                // mechanism for controlling the order of library arguments passed
+                // to the linker.
+                "-lc",
+                // LLVM will insert calls to the stack protector functions
+                // "__stack_chk_fail" and "__stack_chk_guard" into code in native
+                // object files. Some platforms include these symbols directly in
+                // libc, but at least historically these have been provided in
+                // libssp.so on illumos and Solaris systems.
+                "-lssp",
+            ],
+        )
+    });
 
     TargetOptions {
         os: "illumos".into(),

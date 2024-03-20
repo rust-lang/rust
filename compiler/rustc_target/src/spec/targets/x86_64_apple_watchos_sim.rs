@@ -1,10 +1,12 @@
-use crate::spec::base::apple::{opts, watchos_sim_llvm_target, Arch};
-use crate::spec::{Target, TargetOptions};
+use crate::spec::base::apple::{opts, pre_link_args, watchos_sim_llvm_target, Arch};
+use crate::spec::{MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let arch = Arch::X86_64_sim;
+    const ARCH: Arch = Arch::X86_64_sim;
+    const OS: &'static str = "watchos";
+
     Target {
-        llvm_target: watchos_sim_llvm_target(arch).into(),
+        llvm_target: MaybeLazy::lazy(|| watchos_sim_llvm_target(ARCH)),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,
@@ -14,7 +16,10 @@ pub fn target() -> Target {
         pointer_width: 64,
         data_layout:
             "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128".into(),
-        arch: arch.target_arch(),
-        options: TargetOptions { max_atomic_width: Some(128), ..opts("watchos", arch) },
+        arch: ARCH.target_arch(),
+        options: TargetOptions {
+            max_atomic_width: Some(128),
+            ..opts(OS, ARCH, MaybeLazy::lazy(|| pre_link_args(OS, ARCH)))
+        },
     }
 }

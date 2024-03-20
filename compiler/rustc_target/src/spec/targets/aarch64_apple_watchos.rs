@@ -1,8 +1,11 @@
-use crate::spec::base::apple::{opts, Arch};
-use crate::spec::{Target, TargetOptions};
+use crate::spec::base::apple::{opts, pre_link_args, Arch};
+use crate::spec::{MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = opts("watchos", Arch::Arm64);
+    const ARCH: Arch = Arch::Arm64;
+    const OS: &'static str = "watchos";
+
+    let base = opts(OS, ARCH, MaybeLazy::lazy(|| pre_link_args(OS, ARCH)));
     Target {
         llvm_target: "aarch64-apple-watchos".into(),
         metadata: crate::spec::TargetMetadata {

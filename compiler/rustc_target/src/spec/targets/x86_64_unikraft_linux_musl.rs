@@ -1,4 +1,4 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
+use crate::spec::{base, Cc, LinkerFlavor, Lld, MaybeLazy, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -16,7 +16,9 @@ pub fn target() -> Target {
         options: TargetOptions {
             cpu: "x86-64".into(),
             plt_by_default: false,
-            pre_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]),
+            pre_link_args: MaybeLazy::lazy(|| {
+                TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"])
+            }),
             max_atomic_width: Some(64),
             stack_probes: StackProbeType::Inline,
             ..base::unikraft_linux_musl::opts()

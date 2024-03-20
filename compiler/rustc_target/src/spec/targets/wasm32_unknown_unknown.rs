@@ -11,7 +11,7 @@
 //! Group nowadays at <https://github.com/rustwasm>.
 
 use crate::spec::abi::Abi;
-use crate::spec::{base, Cc, LinkerFlavor, Target};
+use crate::spec::{add_link_args, base, Cc, LinkerFlavor, MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut options = base::wasm::options();
@@ -27,23 +27,27 @@ pub fn target() -> Target {
     // code on this target due to this ABI mismatch.
     options.default_adjusted_cabi = Some(Abi::Wasm);
 
-    options.add_pre_link_args(
-        LinkerFlavor::WasmLld(Cc::No),
-        &[
-            // For now this target just never has an entry symbol no matter the output
-            // type, so unconditionally pass this.
-            "--no-entry",
-        ],
-    );
-    options.add_pre_link_args(
-        LinkerFlavor::WasmLld(Cc::Yes),
-        &[
-            // Make sure clang uses LLD as its linker and is configured appropriately
-            // otherwise
-            "--target=wasm32-unknown-unknown",
-            "-Wl,--no-entry",
-        ],
-    );
+    options.pre_link_args = MaybeLazy::lazy(|| {
+        let mut pre_link_args = TargetOptions::link_args(
+            LinkerFlavor::WasmLld(Cc::No),
+            &[
+                // For now this target just never has an entry symbol no matter the output
+                // type, so unconditionally pass this.
+                "--no-entry",
+            ],
+        );
+        add_link_args(
+            &mut pre_link_args,
+            LinkerFlavor::WasmLld(Cc::Yes),
+            &[
+                // Make sure clang uses LLD as its linker and is configured appropriately
+                // otherwise
+                "--target=wasm32-unknown-unknown",
+                "-Wl,--no-entry",
+            ],
+        );
+        pre_link_args
+    });
 
     Target {
         llvm_target: "wasm32-unknown-unknown".into(),
