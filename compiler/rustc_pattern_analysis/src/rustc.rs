@@ -874,13 +874,14 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
 
     fn write_variant_name(
         f: &mut fmt::Formatter<'_>,
-        pat: &crate::pat::DeconstructedPat<Self>,
+        ctor: &crate::constructor::Constructor<Self>,
+        ty: &Self::Ty,
     ) -> fmt::Result {
-        if let ty::Adt(adt, _) = pat.ty().kind() {
+        if let ty::Adt(adt, _) = ty.kind() {
             if adt.is_box() {
                 write!(f, "Box")?
             } else {
-                let variant = adt.variant(Self::variant_index_for_adt(pat.ctor(), *adt));
+                let variant = adt.variant(Self::variant_index_for_adt(ctor, *adt));
                 write!(f, "{}", variant.name)?;
             }
         }
