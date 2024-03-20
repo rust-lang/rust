@@ -716,7 +716,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 .copied()
                 .find_map(find_fn_kind_from_did),
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => tcx
-                .explicit_item_bounds(def_id)
+                .explicit_item_super_predicates(def_id)
                 .iter_instantiated_copied(tcx, args)
                 .find_map(|(clause, span)| find_fn_kind_from_did((clause, span))),
             ty::Closure(_, args) => match args.as_closure().kind() {

@@ -300,7 +300,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         alias_ty: ty::AliasTy<'tcx>,
     ) -> impl Iterator<Item = ty::Region<'tcx>> {
         let tcx = self.tcx;
-        let bounds = tcx.item_bounds(alias_ty.def_id);
+        let bounds = tcx.item_super_predicates(alias_ty.def_id);
         trace!("{:#?}", bounds.skip_binder());
         bounds
             .iter_instantiated(tcx, alias_ty.args)

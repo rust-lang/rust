@@ -1098,8 +1098,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         ))
                     }
                     ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                        self.tcx.item_bounds(def_id).instantiate(self.tcx, args).iter().find_map(
-                            |pred| {
+                        self.tcx
+                            .item_super_predicates(def_id)
+                            .instantiate(self.tcx, args)
+                            .iter()
+                            .find_map(|pred| {
                                 if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                         // args tuple will always be args[1]
@@ -1113,8 +1116,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 } else {
                                     None
                                 }
-                            },
-                        )
+                            })
                     }
                     ty::Dynamic(data, _, ty::Dyn) => {
                         data.iter().find_map(|pred| {

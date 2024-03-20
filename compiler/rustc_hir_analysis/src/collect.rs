@@ -61,6 +61,9 @@ pub fn provide(providers: &mut Providers) {
         type_alias_is_lazy: type_of::type_alias_is_lazy,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
+        item_super_predicates: item_bounds::item_super_predicates,
+        explicit_item_super_predicates: item_bounds::explicit_item_super_predicates,
+        item_non_self_assumptions: item_bounds::item_non_self_assumptions,
         generics_of: generics_of::generics_of,
         predicates_of: predicates_of::predicates_of,
         predicates_defined_on,
@@ -633,7 +636,9 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().predicates_of(def_id);
             tcx.ensure().explicit_item_bounds(def_id);
+            tcx.ensure().explicit_item_super_predicates(def_id);
             tcx.ensure().item_bounds(def_id);
+            tcx.ensure().item_super_predicates(def_id);
         }
 
         hir::ItemKind::TyAlias(..) => {
@@ -689,6 +694,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
         hir::TraitItemKind::Type(_, Some(_)) => {
             tcx.ensure().item_bounds(def_id);
+            tcx.ensure().item_super_predicates(def_id);
             tcx.ensure().type_of(def_id);
             // Account for `type T = _;`.
             let mut visitor = HirPlaceholderCollector::default();
@@ -698,6 +704,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
         hir::TraitItemKind::Type(_, None) => {
             tcx.ensure().item_bounds(def_id);
+            tcx.ensure().item_super_predicates(def_id);
             // #74612: Visit and try to find bad placeholders
             // even if there is no concrete type.
             let mut visitor = HirPlaceholderCollector::default();

@@ -299,8 +299,11 @@ impl<T> Trait<T> for X {
                     }
                     (ty::Dynamic(t, _, ty::DynKind::Dyn), ty::Alias(ty::Opaque, alias))
                         if let Some(def_id) = t.principal_def_id()
-                            && tcx.explicit_item_bounds(alias.def_id).skip_binder().iter().any(
-                                |(pred, _span)| match pred.kind().skip_binder() {
+                            && tcx
+                                .explicit_item_super_predicates(alias.def_id)
+                                .skip_binder()
+                                .iter()
+                                .any(|(pred, _span)| match pred.kind().skip_binder() {
                                     ty::ClauseKind::Trait(trait_predicate)
                                         if trait_predicate.polarity
                                             == ty::ImplPolarity::Positive =>
@@ -308,8 +311,7 @@ impl<T> Trait<T> for X {
                                         trait_predicate.def_id() == def_id
                                     }
                                     _ => false,
-                                },
-                            ) =>
+                                }) =>
                     {
                         diag.help(format!(
                             "you can box the `{}` to coerce it to `Box<{}>`, but you'll have to \
@@ -412,7 +414,7 @@ impl<T> Trait<T> for X {
                             ty::Alias(..) => values.expected,
                             _ => values.found,
                         };
-                        let preds = tcx.explicit_item_bounds(opaque_ty.def_id);
+                        let preds = tcx.explicit_item_super_predicates(opaque_ty.def_id);
                         for (pred, _span) in preds.skip_binder() {
                             let ty::ClauseKind::Trait(trait_predicate) = pred.kind().skip_binder()
                             else {
