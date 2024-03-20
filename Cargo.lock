@@ -4440,6 +4440,8 @@ dependencies = [
  "rustc_target",
  "smallvec",
  "tracing",
+ "tracing-subscriber",
+ "tracing-tree",
 ]
 
 [[package]]
