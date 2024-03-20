@@ -2643,3 +2643,44 @@ fn test_vec_from_array_ref() {
 fn test_vec_from_array_mut_ref() {
     assert_eq!(Vec::from(&mut [1, 2, 3]), vec![1, 2, 3]);
 }
+
+/// This assortment of tests, in combination with miri, verifies we handle UB on fishy arguments
+/// in the stdlib. Draining and extending the allocation are fairly well-tested earlier, but
+/// `vec.insert(usize::MAX, val)` once slipped by!
+///
+/// All code that manipulates the collection types should be tested with "trivially wrong" args.
+#[test]
+fn max_dont_panic() {
+    let mut v = vec![0];
+    let _ = v.get(usize::MAX);
+    v.shrink_to(usize::MAX);
+    v.truncate(usize::MAX);
+}
+
+#[test]
+#[should_panic]
+fn max_insert() {
+    let mut v = vec![0];
+    v.insert(usize::MAX, 1);
+}
+
+#[test]
+#[should_panic]
+fn max_remove() {
+    let mut v = vec![0];
+    v.remove(usize::MAX);
+}
+
+#[test]
+#[should_panic]
+fn max_splice() {
+    let mut v = vec![0];
+    v.splice(usize::MAX.., core::iter::once(1));
+}
+
+#[test]
+#[should_panic]
+fn max_swap_remove() {
+    let mut v = vec![0];
+    v.swap_remove(usize::MAX);
+}
