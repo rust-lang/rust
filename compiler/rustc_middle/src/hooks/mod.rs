@@ -81,6 +81,6 @@ declare_hooks! {
     /// Create the MIR for a given `DefId` - this includes
     /// unreachable code.
     /// You do not want to call this yourself, instead use the cached version
-    /// via `mir_const`
+    /// via `mir_built`
     hook build_mir(key: LocalDefId) -> mir::Body<'tcx>;
 }

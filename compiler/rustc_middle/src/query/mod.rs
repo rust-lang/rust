@@ -489,7 +489,7 @@ rustc_queries! {
     /// ready for const qualification.
     ///
     /// See the README for the `mir` module for details.
-    query mir_const(key: LocalDefId) -> &'tcx Steal<mir::Body<'tcx>> {
+    query mir_built(key: LocalDefId) -> &'tcx Steal<mir::Body<'tcx>> {
         desc { |tcx| "preparing `{}` for borrow checking", tcx.def_path_str(key) }
     }
 

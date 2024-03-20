@@ -18,7 +18,7 @@ LL | struct Dealigned<T>(u8, T);
    |
    = Box<dyn Any>
 query stack during panic:
-#0 [mir_const] preparing `<impl at $DIR/multiple_definitions_attribute_merging.rs:15:10: 15:19>::eq` for borrow checking
+#0 [mir_built] preparing `<impl at $DIR/multiple_definitions_attribute_merging.rs:15:10: 15:19>::eq` for borrow checking
 #1 [check_unsafety] unsafety-checking `<impl at $DIR/multiple_definitions_attribute_merging.rs:15:10: 15:19>::eq`
 end of query stack
 error: aborting due to 2 previous errors
