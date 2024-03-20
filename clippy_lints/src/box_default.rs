@@ -6,7 +6,7 @@ use clippy_utils::{is_default_equivalent, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_ty, Visitor};
-use rustc_hir::{Block, Expr, ExprKind, Local, Node, QPath, Ty, TyKind};
+use rustc_hir::{Block, Expr, ExprKind, LetStmt, Node, QPath, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -139,7 +139,7 @@ impl<'tcx> Visitor<'tcx> for InferVisitor {
 
 fn given_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match cx.tcx.parent_hir_node(expr.hir_id) {
-        Node::Local(Local { ty: Some(ty), .. }) => {
+        Node::Local(LetStmt { ty: Some(ty), .. }) => {
             let mut v = InferVisitor::default();
             v.visit_ty(ty);
             !v.0

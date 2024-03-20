@@ -158,7 +158,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &hir::Stmt<'tcx>) {
-        let (hir::StmtKind::Let(&hir::Local { init: Some(expr), .. })
+        let (hir::StmtKind::Let(&hir::LetStmt { init: Some(expr), .. })
         | hir::StmtKind::Expr(expr)
         | hir::StmtKind::Semi(expr)) = stmt.kind
         else {
@@ -342,7 +342,7 @@ fn block_parents_have_safety_comment(
 ) -> bool {
     let (span, hir_id) = match cx.tcx.parent_hir_node(id) {
         Node::Expr(expr) => match cx.tcx.parent_hir_node(expr.hir_id) {
-            Node::Local(hir::Local { span, hir_id, .. }) => (*span, *hir_id),
+            Node::Local(hir::LetStmt { span, hir_id, .. }) => (*span, *hir_id),
             Node::Item(hir::Item {
                 kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
                 span,
@@ -358,12 +358,12 @@ fn block_parents_have_safety_comment(
         },
         Node::Stmt(hir::Stmt {
             kind:
-                hir::StmtKind::Let(hir::Local { span, hir_id, .. })
+                hir::StmtKind::Let(hir::LetStmt { span, hir_id, .. })
                 | hir::StmtKind::Expr(hir::Expr { span, hir_id, .. })
                 | hir::StmtKind::Semi(hir::Expr { span, hir_id, .. }),
             ..
         })
-        | Node::Local(hir::Local { span, hir_id, .. }) => (*span, *hir_id),
+        | Node::Local(hir::LetStmt { span, hir_id, .. }) => (*span, *hir_id),
         Node::Item(hir::Item {
             kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
             span,

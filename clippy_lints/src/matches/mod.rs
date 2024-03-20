@@ -27,7 +27,7 @@ mod wild_in_or_pats;
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet_opt, walk_span_to_context};
 use clippy_utils::{higher, in_constant, is_direct_expn_of, is_span_match, tokenize_with_text};
-use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
+use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat};
 use rustc_lexer::TokenKind;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -1124,7 +1124,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         }
     }
 
-    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'_>) {
         self.infallible_destructuring_match_linted |=
             local.els.is_none() && infallible_destructuring_match::check(cx, local);
     }
