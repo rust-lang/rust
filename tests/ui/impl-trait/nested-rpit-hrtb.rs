@@ -31,6 +31,7 @@ fn one_hrtb_trait_param() -> impl for<'a> Foo<'a, Assoc = impl Qux<'a>> {}
 
 fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
 //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+//~| ERROR implementation of `Bar` is not general enough
 
 fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
 //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
@@ -43,7 +44,7 @@ fn one_hrtb_mention_fn_outlives<'b>() -> impl for<'a> Foo<'a, Assoc = impl Sized
 
 // This should resolve.
 fn one_hrtb_mention_fn_trait_param_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Qux<'b>> {}
-//~^ ERROR: the trait bound `for<'a> &'a (): Qux<'b>` is not satisfied
+//~^ ERROR type annotations needed: cannot satisfy `for<'a> &'a (): Qux<'b>`
 
 // This should resolve.
 fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'b> {}

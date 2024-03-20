@@ -10,14 +10,6 @@ note: lifetime declared here
 LL | pub type Foo = impl for<'a> Trait<'a, Assoc = impl Test<'a>>;
    |                         ^^
 
-error: unconstrained opaque type
-  --> $DIR/escaping-bound-var.rs:9:47
-   |
-LL | pub type Foo = impl for<'a> Trait<'a, Assoc = impl Test<'a>>;
-   |                                               ^^^^^^^^^^^^^
-   |
-   = note: `Foo` must be used in combination with a concrete type within the same module
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0657`.

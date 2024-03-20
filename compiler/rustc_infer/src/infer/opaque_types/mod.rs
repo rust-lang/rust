@@ -94,9 +94,6 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferResult<'tcx, ()> {
-        if a.references_error() || b.references_error() {
-            return Ok(InferOk { value: (), obligations: vec![] });
-        }
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
