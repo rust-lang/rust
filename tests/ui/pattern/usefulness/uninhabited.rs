@@ -5,7 +5,6 @@
 // `Ty::is_inhabited_from` function.
 #![feature(never_type)]
 #![feature(never_type_fallback)]
-#![feature(min_exhaustive_patterns)]
 #![deny(unreachable_patterns)]
 
 macro_rules! assert_empty {
