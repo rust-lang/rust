@@ -414,7 +414,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                             ),
                             output_coroutine_ty.into(),
                         ),
-                        sym::CallMutFuture | sym::CallFuture => (
+                        sym::CallRefFuture => (
                             ty::AliasTy::new(
                                 tcx,
                                 goal.predicate.def_id(),

@@ -278,13 +278,6 @@ pub struct CoroutineInfo<'tcx> {
     /// using `run_passes`.
     pub by_move_body: Option<Body<'tcx>>,
 
-    /// The body of the coroutine, modified to take its upvars by mutable ref rather than by
-    /// immutable ref.
-    ///
-    /// FIXME(async_closures): This is literally the same body as the parent body. Find a better
-    /// way to represent the by-mut signature (or cap the closure-kind of the coroutine).
-    pub by_mut_body: Option<Body<'tcx>>,
-
     /// The layout of a coroutine. This field is populated after the state transform pass.
     pub coroutine_layout: Option<CoroutineLayout<'tcx>>,
 
@@ -305,7 +298,6 @@ impl<'tcx> CoroutineInfo<'tcx> {
             yield_ty: Some(yield_ty),
             resume_ty: Some(resume_ty),
             by_move_body: None,
-            by_mut_body: None,
             coroutine_drop: None,
             coroutine_layout: None,
         }
@@ -626,10 +618,6 @@ impl<'tcx> Body<'tcx> {
 
     pub fn coroutine_by_move_body(&self) -> Option<&Body<'tcx>> {
         self.coroutine.as_ref()?.by_move_body.as_ref()
-    }
-
-    pub fn coroutine_by_mut_body(&self) -> Option<&Body<'tcx>> {
-        self.coroutine.as_ref()?.by_mut_body.as_ref()
     }
 
     #[inline]

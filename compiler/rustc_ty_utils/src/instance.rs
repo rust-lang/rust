@@ -282,7 +282,7 @@ fn resolve_associated_item<'tcx>(
                             Some(Instance {
                                 def: ty::InstanceDef::ConstructCoroutineInClosureShim {
                                     coroutine_closure_def_id,
-                                    target_kind: ty::ClosureKind::FnOnce,
+                                    receiver_by_ref: target_kind != ty::ClosureKind::FnOnce,
                                 },
                                 args,
                             })
@@ -297,25 +297,20 @@ fn resolve_associated_item<'tcx>(
             {
                 match *rcvr_args.type_at(0).kind() {
                     ty::CoroutineClosure(coroutine_closure_def_id, args) => {
-                        match (target_kind, args.as_coroutine_closure().kind()) {
-                            (ClosureKind::FnOnce | ClosureKind::FnMut, ClosureKind::Fn)
-                            | (ClosureKind::FnOnce, ClosureKind::FnMut) => {
-                                // If we're computing `AsyncFnOnce`/`AsyncFnMut` for a by-ref closure,
-                                // or `AsyncFnOnce` for a by-mut closure, then construct a new body that
-                                // has the right return types.
-                                //
-                                // Specifically, `AsyncFnMut` for a by-ref coroutine-closure just needs
-                                // to have its input and output types fixed (`&mut self` and returning
-                                // `i16` coroutine kind).
-                                Some(Instance {
-                                    def: ty::InstanceDef::ConstructCoroutineInClosureShim {
-                                        coroutine_closure_def_id,
-                                        target_kind,
-                                    },
-                                    args,
-                                })
-                            }
-                            _ => Some(Instance::new(coroutine_closure_def_id, args)),
+                        if target_kind == ClosureKind::FnOnce
+                            && args.as_coroutine_closure().kind() != ClosureKind::FnOnce
+                        {
+                            // If we're computing `AsyncFnOnce` for a by-ref closure then
+                            // construct a new body that has the right return types.
+                            Some(Instance {
+                                def: ty::InstanceDef::ConstructCoroutineInClosureShim {
+                                    coroutine_closure_def_id,
+                                    receiver_by_ref: false,
+                                },
+                                args,
+                            })
+                        } else {
+                            Some(Instance::new(coroutine_closure_def_id, args))
                         }
                     }
                     ty::Closure(closure_def_id, args) => {

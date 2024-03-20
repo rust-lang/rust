@@ -87,7 +87,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.tcx(),
                     ty::CoroutineArgsParts {
                         parent_args: args.parent_args(),
-                        kind_ty: Ty::from_closure_kind(self.tcx(), args.kind()),
+                        kind_ty: Ty::from_coroutine_closure_kind(self.tcx(), args.kind()),
                         return_ty: user_provided_sig.output(),
                         tupled_upvars_ty,
                         // For async closures, none of these can be annotated, so just fill
