@@ -7,19 +7,19 @@ use std::rc::Rc;
 fn main() {
     let vec: Vec<u32> = Vec::new();
     match vec {
-        box [..] => {}
+        deref!([..]) => {}
         _ => {}
     }
     match Box::new(true) {
-        box true => {}
+        deref!(true) => {}
         _ => {}
     }
     match &Box::new(true) {
-        box true => {}
+        deref!(true) => {}
         _ => {}
     }
     match &Rc::new(0) {
-        box (1..) => {}
+        deref!(1..) => {}
         _ => {}
     }
     // FIXME(deref_patterns): fails to typecheck because `"foo"` has type &str but deref creates a

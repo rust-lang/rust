@@ -26,12 +26,16 @@ note: closure parameter defined here
 LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                       ^
 
-error[E0425]: cannot find function `deref` in this scope
+error[E0423]: expected function, found macro `deref`
   --> $DIR/unboxed-closures-type-mismatch-closure-from-another-scope.rs:13:5
    |
 LL |     deref(p);
-   |     ^^^^^ not found in this scope
+   |     ^^^^^ not a function
    |
+help: use `!` to invoke the macro
+   |
+LL |     deref!(p);
+   |          +
 help: use the `.` operator to call the method `Deref::deref` on `&&()`
    |
 LL -     deref(p);
@@ -40,5 +44,5 @@ LL +     p.deref();
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0308, E0425.
+Some errors have detailed explanations: E0308, E0423, E0425.
 For more information about an error, try `rustc --explain E0308`.

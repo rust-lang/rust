@@ -955,6 +955,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
             PatKind::Box(pat) => self.hash_pat(pat),
+            PatKind::Deref(pat) => self.hash_pat(pat),
             PatKind::Lit(expr) => self.hash_expr(expr),
             PatKind::Or(pats) => {
                 for pat in pats {

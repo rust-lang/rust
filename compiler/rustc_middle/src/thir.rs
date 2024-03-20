@@ -1179,7 +1179,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 write!(f, "{subpattern}")
             }
             PatKind::DerefPattern { ref subpattern } => {
-                write!(f, "k#deref {subpattern}")
+                write!(f, "deref!({subpattern})")
             }
             PatKind::Constant { value } => write!(f, "{value}"),
             PatKind::InlineConstant { def: _, ref subpattern } => {

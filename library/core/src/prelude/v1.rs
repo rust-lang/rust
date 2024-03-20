@@ -103,3 +103,11 @@ pub use crate::macros::builtin::cfg_eval;
     reason = "placeholder syntax for type ascription"
 )]
 pub use crate::macros::builtin::type_ascribe;
+
+#[cfg(not(bootstrap))]
+#[unstable(
+    feature = "deref_patterns",
+    issue = "87121",
+    reason = "placeholder syntax for deref patterns"
+)]
+pub use crate::macros::builtin::deref;
