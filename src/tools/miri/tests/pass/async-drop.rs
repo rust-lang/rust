@@ -4,9 +4,9 @@
 #![feature(async_drop, impl_trait_in_assoc_type, noop_waker)]
 #![allow(incomplete_features)]
 
-use core::future::{async_drop, async_drop_in_place, AsyncDrop, Future};
+use core::future::{async_drop, AsyncDrop, Future};
 use core::hint::black_box;
-use core::mem::{ManuallyDrop, MaybeUninit};
+use core::mem::ManuallyDrop;
 use core::pin::{pin, Pin};
 use core::task::{Context, Poll, Waker};
 
@@ -15,6 +15,7 @@ fn main() {
     let mut cx = Context::from_waker(&waker);
 
     let i = 13;
+    // TODO: Check idempotency
     let fut = pin!(async {
         async_drop(Bar(0)).await;
         async_drop(Foo(0)).await;
@@ -27,18 +28,15 @@ fn main() {
         async_drop(Baz { _b: Foo(8), _a: Foo(7), n: 6 }).await;
         async_drop(ManuallyDrop::new(Foo(9))).await;
 
-        // This is a temporary test for fused futures before enums get
-        // support too
-        let mut fiz = MaybeUninit::new(Fiz::A(10));
-        let mut fut = pin!(unsafe { async_drop_in_place(fiz.as_mut_ptr()) });
-        fut.as_mut().await;
-        fut.await;
-
-        let foo = Foo(11);
+        let foo = Foo(10);
         async_drop(Qux { foo: &foo }).await;
 
-        let foo = Foo(12);
+        let foo = Foo(11);
         async_drop(|| black_box(foo)).await;
+
+        let foo = Foo(13);
+        async_drop(Fiz::A(Foo(12))).await;
+        async_drop(Fiz::B(Qux { foo: &foo })).await;
     });
 
     let res = fut.poll(&mut cx);
@@ -72,22 +70,6 @@ impl AsyncDrop for Qux<'_> {
     }
 }
 
-enum Fiz {
-    A(i32),
-}
-
-impl AsyncDrop for Fiz {
-    type Dropper<'a> = impl Future<Output = ()> + 'a;
-
-    fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_> {
-        async move {
-            match &*self {
-                Fiz::A(i) => println!("<Fiz::A as AsyncDrop>::Dropper::poll: {i}"),
-            }
-        }
-    }
-}
-
 #[allow(dead_code)]
 struct Bar(i32);
 
@@ -105,4 +87,10 @@ impl AsyncDrop for Baz {
             println!("<Baz as AsyncDrop>::Dropper::poll: {}", self.n);
         }
     }
+}
+
+#[allow(dead_code)]
+enum Fiz<'a> {
+    A(Foo),
+    B(Qux<'a>),
 }

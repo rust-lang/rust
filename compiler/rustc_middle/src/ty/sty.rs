@@ -2348,9 +2348,51 @@ impl<'tcx> Ty<'tcx> {
             ty::Never => tcx
                 .type_of(tcx.require_lang_item(LangItem::AsyncDropNever, None))
                 .instantiate_identity(),
-            ty::Adt(adt_def, _) if adt_def.is_enum() && adt_def.variants().is_empty() => tcx
-                .type_of(tcx.require_lang_item(LangItem::AsyncDropNever, None))
-                .instantiate_identity(),
+            ty::Adt(adt_def, args) if adt_def.is_enum() => {
+                let into_async_destructor =
+                    tcx.type_of(tcx.require_lang_item(LangItem::IntoAsyncDestructor, None));
+                let into_chain =
+                    tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropIntoChain, None));
+                let nop = tcx
+                    .type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                    .instantiate_identity();
+                let either = tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropEither, None));
+
+                let variants_dtor = adt_def
+                    .variants()
+                    .iter()
+                    .map(|variant| {
+                        variant
+                            .fields
+                            .iter()
+                            .map(|field| field.ty(tcx, args))
+                            .map(|ty| into_async_destructor.instantiate(tcx, &[ty.into()]))
+                            .reduce(|acc, next| {
+                                into_chain.instantiate(tcx, &[acc.into(), next.into()])
+                            })
+                            .unwrap_or(nop)
+                    })
+                    .reduce(|other, matched| {
+                        either.instantiate(tcx, &[other.into(), matched.into(), self.into()])
+                    })
+                    .unwrap();
+
+                if self.is_async_drop(tcx, param_env) {
+                    let assoc_items = tcx
+                        .associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDrop, None));
+                    // FIXME: Should this lifetime be `'static` or erased?
+                    let dropper_ty = Ty::new_projection(
+                        tcx,
+                        assoc_items[0],
+                        [ty::GenericArg::from(self), tcx.lifetimes.re_static.into()],
+                    );
+
+                    tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropChain, None))
+                        .instantiate(tcx, &[dropper_ty.into(), variants_dtor.into()])
+                } else {
+                    variants_dtor
+                }
+            }
 
             ty::Bool
             | ty::Char
@@ -2366,8 +2408,11 @@ impl<'tcx> Ty<'tcx> {
                 .type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
                 .instantiate_identity(),
 
-            ty::Adt(..)
-            | ty::Dynamic(..)
+            ty::Adt(adt_def, _) if adt_def.is_union() => tcx
+                .type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                .instantiate_identity(),
+
+            ty::Dynamic(..)
             | ty::CoroutineClosure(..)
             | ty::CoroutineWitness(..)
             | ty::Error(_)
@@ -2399,7 +2444,8 @@ impl<'tcx> Ty<'tcx> {
                 }
             }
 
-            ty::Bound(..)
+            ty::Adt(..)
+            | ty::Bound(..)
             | ty::Foreign(_)
             | ty::Placeholder(_)
             | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {

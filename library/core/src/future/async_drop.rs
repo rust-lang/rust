@@ -296,19 +296,19 @@ impl<T: ?Sized> IntoFuture for IntoAsyncDestructor<T> {
     }
 }
 
-/// If `T`'s discriminant is equal to the stored one then asynchronously
-/// destructs `T` otherwise awaits the `F` future.
+/// If `T`'s discriminant is equal to the stored one then awaits `M`
+/// otherwise awaits the `O`.
 #[lang = "async_drop_either"]
-enum Either<T, F: IntoFuture, G: IntoFuture> {
+enum Either<O: IntoFuture, M: IntoFuture, T> {
     Unresumed {
         this_enum: ptr::NonNull<T>,
         discr: <T as DiscriminantKind>::Discriminant,
-        matched: F,
-        other: G,
+        matched: M,
+        other: O,
         _pinned: PhantomPinned,
     },
-    Matched(F::IntoFuture),
-    Other(G::IntoFuture),
+    Other(O::IntoFuture),
+    Matched(M::IntoFuture),
 }
 
 /// Construct async drop either
@@ -317,12 +317,12 @@ enum Either<T, F: IntoFuture, G: IntoFuture> {
 ///
 /// `last` will be passed into `async_drop_in_place`
 #[lang = "async_drop_either_ctor"]
-unsafe fn either<T, F: IntoFuture, G: IntoFuture>(
+unsafe fn either<O: IntoFuture, M: IntoFuture, T>(
+    other: O,
+    matched: M,
     this: *mut T,
     discr: <T as DiscriminantKind>::Discriminant,
-    matched: F,
-    other: G,
-) -> Either<T, F, G> {
+) -> Either<O, M, T> {
     // SAFETY: Guaranteed by the safety section of this funtion's documentation
     Either::Unresumed {
         this_enum: unsafe { ptr::NonNull::new_unchecked(this) },
@@ -333,12 +333,12 @@ unsafe fn either<T, F: IntoFuture, G: IntoFuture>(
     }
 }
 
-impl<T, F, G> Future for Either<T, F, G>
+impl<O, M, T> Future for Either<O, M, T>
 where
     // Copy there so that we don't need to wrap `F` and `G` with `Option`
     // to move from it
-    F: IntoFuture<Output = ()> + Copy,
-    G: IntoFuture<Output = ()> + Copy,
+    O: IntoFuture<Output = ()> + Copy,
+    M: IntoFuture<Output = ()> + Copy,
 {
     type Output = ();
 
