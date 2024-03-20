@@ -291,7 +291,11 @@ fn execute_pipeline(
             // packaged `libLLVM.so` file *will* be BOLT optimized.
             bolt_optimize(&llvm_lib, &llvm_profile).context("Could not optimize LLVM with BOLT")?;
 
-            let rustc_lib = io::find_file_in_dir(&libdir, "librustc_driver", ".so")?;
+            let rustc_lib = io::find_file_in_dir(
+                &env.build_artifacts().join("stage2").join("bin"),
+                "rustc",
+                "",
+            )?;
 
             log::info!("Optimizing {rustc_lib} with BOLT");
 
