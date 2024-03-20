@@ -2,6 +2,7 @@
 
 #![allow(rustc::untranslatable_diagnostic)]
 #![allow(rustc::diagnostic_outside_of_impl)]
+#![feature(freeze)]
 
 pub mod constructor;
 #[cfg(feature = "rustc")]
@@ -90,9 +91,9 @@ pub trait PatCx: Sized + fmt::Debug {
     /// Errors that can abort analysis.
     type Error: fmt::Debug;
     /// The index of an enum variant.
-    type VariantIdx: Clone + index::Idx + fmt::Debug;
+    type VariantIdx: Clone + index::Idx + fmt::Debug + std::marker::Freeze;
     /// A string literal
-    type StrLit: Clone + PartialEq + fmt::Debug;
+    type StrLit: Clone + PartialEq + fmt::Debug + std::marker::Freeze;
     /// Extra data to store in a match arm.
     type ArmData: Copy + Clone + fmt::Debug;
     /// Extra data to store in a pattern.
