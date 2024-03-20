@@ -1731,7 +1731,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 match self.tcx.parent_hir_node(*hir_id) {
                     // foo.clone()
-                    hir::Node::Local(hir::Local { init: Some(init), .. }) => {
+                    hir::Node::Local(hir::LetStmt { init: Some(init), .. }) => {
                         self.note_type_is_not_clone_inner_expr(init)
                     }
                     // When `expr` is more complex like a tuple
@@ -1740,7 +1740,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         kind: hir::PatKind::Tuple(pats, ..),
                         ..
                     }) => {
-                        let hir::Node::Local(hir::Local { init: Some(init), .. }) =
+                        let hir::Node::Local(hir::LetStmt { init: Some(init), .. }) =
                             self.tcx.parent_hir_node(*pat_hir_id)
                         else {
                             return expr;
@@ -1774,7 +1774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let hir::Path { segments: [_], res: crate::Res::Local(binding), .. } =
                         call_expr_path
                     && let hir::Node::Pat(hir::Pat { hir_id, .. }) = self.tcx.hir_node(*binding)
-                    && let hir::Node::Local(hir::Local { init: Some(init), .. }) =
+                    && let hir::Node::Local(hir::LetStmt { init: Some(init), .. }) =
                         self.tcx.parent_hir_node(*hir_id)
                     && let Expr {
                         kind: hir::ExprKind::Closure(hir::Closure { body: body_id, .. }),
@@ -3134,7 +3134,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::Node::Pat(pat) = self.tcx.hir_node(hir_id) else {
             return;
         };
-        let hir::Node::Local(hir::Local { ty: None, init: Some(init), .. }) =
+        let hir::Node::Local(hir::LetStmt { ty: None, init: Some(init), .. }) =
             self.tcx.parent_hir_node(pat.hir_id)
         else {
             return;

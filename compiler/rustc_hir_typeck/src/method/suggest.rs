@@ -2166,7 +2166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         match (filename, parent_node) {
                             (
                                 FileName::Real(_),
-                                Node::Local(hir::Local {
+                                Node::Local(hir::LetStmt {
                                     source: hir::LocalSource::Normal,
                                     ty,
                                     ..
@@ -2221,7 +2221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 impl<'v> Visitor<'v> for LetVisitor {
                     type Result = ControlFlow<Option<&'v hir::Expr<'v>>>;
                     fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) -> Self::Result {
-                        if let hir::StmtKind::Let(&hir::Local { pat, init, .. }) = ex.kind
+                        if let hir::StmtKind::Let(&hir::LetStmt { pat, init, .. }) = ex.kind
                             && let Binding(_, _, ident, ..) = pat.kind
                             && ident.name == self.ident_name
                         {

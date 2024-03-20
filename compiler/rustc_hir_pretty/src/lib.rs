@@ -1544,7 +1544,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_local_decl(&mut self, loc: &hir::Local<'_>) {
+    fn print_local_decl(&mut self, loc: &hir::LetStmt<'_>) {
         self.print_pat(loc.pat);
         if let Some(ty) = loc.ty {
             self.word_space(":");

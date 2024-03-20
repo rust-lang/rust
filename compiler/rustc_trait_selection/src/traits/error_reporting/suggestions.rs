@@ -930,7 +930,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let hir::Node::Pat(pat) = self.tcx.hir_node(hir_id) else {
             return;
         };
-        let hir::Node::Local(hir::Local { ty: None, init: Some(init), .. }) =
+        let hir::Node::Local(hir::LetStmt { ty: None, init: Some(init), .. }) =
             self.tcx.parent_hir_node(pat.hir_id)
         else {
             return;
@@ -2966,7 +2966,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     err.downgrade_to_delayed_bug();
                 }
                 match tcx.parent_hir_node(hir_id) {
-                    Node::Local(hir::Local { ty: Some(ty), .. }) => {
+                    Node::Local(hir::LetStmt { ty: Some(ty), .. }) => {
                         err.span_suggestion_verbose(
                             ty.span.shrink_to_lo(),
                             "consider borrowing here",
@@ -2975,7 +2975,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         );
                         err.note("all local variables must have a statically known size");
                     }
-                    Node::Local(hir::Local {
+                    Node::Local(hir::LetStmt {
                         init: Some(hir::Expr { kind: hir::ExprKind::Index(..), span, .. }),
                         ..
                     }) => {

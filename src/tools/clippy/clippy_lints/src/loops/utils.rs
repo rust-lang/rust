@@ -3,7 +3,7 @@ use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_loc
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_local, Visitor};
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, Mutability, PatKind};
+use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, LetStmt, Mutability, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
@@ -141,7 +141,7 @@ impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_local(&mut self, l: &'tcx Local<'_>) {
+    fn visit_local(&mut self, l: &'tcx LetStmt<'_>) {
         // Look for declarations of the variable
         if l.pat.hir_id == self.var_id
             && let PatKind::Binding(.., ident, _) = l.pat.kind

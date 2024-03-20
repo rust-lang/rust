@@ -622,7 +622,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                     // FIXME: We make sure that this is a normal top-level binding,
                     // but we could suggest `todo!()` for all uninitalized bindings in the pattern pattern
-                    if let hir::StmtKind::Let(hir::Local { span, ty, init: None, pat, .. }) =
+                    if let hir::StmtKind::Let(hir::LetStmt { span, ty, init: None, pat, .. }) =
                         &ex.kind
                         && let hir::PatKind::Binding(..) = pat.kind
                         && span.contains(self.decl_span)
@@ -800,7 +800,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         for (_, node) in tcx.hir().parent_iter(expr.hir_id) {
             let e = match node {
                 hir::Node::Expr(e) => e,
-                hir::Node::Local(hir::Local { els: Some(els), .. }) => {
+                hir::Node::Local(hir::LetStmt { els: Some(els), .. }) => {
                     let mut finder = BreakFinder { found_breaks: vec![], found_continues: vec![] };
                     finder.visit_block(els);
                     if !finder.found_breaks.is_empty() {
@@ -2124,7 +2124,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 hir::intravisit::walk_expr(self, e);
             }
 
-            fn visit_local(&mut self, local: &'hir hir::Local<'hir>) {
+            fn visit_local(&mut self, local: &'hir hir::LetStmt<'hir>) {
                 if let hir::Pat { kind: hir::PatKind::Binding(_, hir_id, _ident, _), .. } =
                     local.pat
                     && let Some(init) = local.init

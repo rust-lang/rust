@@ -99,7 +99,7 @@ use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
     self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Destination, Expr,
     ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item,
-    ItemKind, LangItem, Local, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment, PrimTy,
+    ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment, PrimTy,
     QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
 };
 use rustc_lexer::{tokenize, TokenKind};
@@ -1462,7 +1462,7 @@ pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 pub fn is_inside_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     let mut child_id = expr.hir_id;
     for (parent_id, node) in tcx.hir().parent_iter(child_id) {
-        if let Node::Local(Local {
+        if let Node::Local(LetStmt {
             init: Some(init),
             els: Some(els),
             ..
@@ -1482,7 +1482,7 @@ pub fn is_inside_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 pub fn is_else_clause_in_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     let mut child_id = expr.hir_id;
     for (parent_id, node) in tcx.hir().parent_iter(child_id) {
-        if let Node::Local(Local { els: Some(els), .. }) = node
+        if let Node::Local(LetStmt { els: Some(els), .. }) = node
             && els.hir_id == child_id
         {
             return true;
@@ -2158,7 +2158,7 @@ pub fn is_expr_used_or_unified(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
             Node::Stmt(Stmt {
                 kind: StmtKind::Expr(_)
                     | StmtKind::Semi(_)
-                    | StmtKind::Let(Local {
+                    | StmtKind::Let(LetStmt {
                         pat: Pat {
                             kind: PatKind::Wild,
                             ..
@@ -2639,7 +2639,7 @@ pub struct ExprUseCtxt<'tcx> {
 /// The node which consumes a value.
 pub enum ExprUseNode<'tcx> {
     /// Assignment to, or initializer for, a local
-    Local(&'tcx Local<'tcx>),
+    Local(&'tcx LetStmt<'tcx>),
     /// Initializer for a const or static item.
     ConstStatic(OwnerId),
     /// Implicit or explicit return from a function.
@@ -2671,7 +2671,7 @@ impl<'tcx> ExprUseNode<'tcx> {
     /// Gets the needed type as it's defined without any type inference.
     pub fn defined_ty(&self, cx: &LateContext<'tcx>) -> Option<DefinedTy<'tcx>> {
         match *self {
-            Self::Local(Local { ty: Some(ty), .. }) => Some(DefinedTy::Hir(ty)),
+            Self::Local(LetStmt { ty: Some(ty), .. }) => Some(DefinedTy::Hir(ty)),
             Self::ConstStatic(id) => Some(DefinedTy::Mir(
                 cx.param_env
                     .and(Binder::dummy(cx.tcx.type_of(id).instantiate_identity())),
@@ -3158,7 +3158,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
             }
         }
 
-        fn visit_local(&mut self, l: &'tcx Local<'_>) {
+        fn visit_local(&mut self, l: &'tcx LetStmt<'_>) {
             if let Some(e) = l.init {
                 self.visit_expr(e);
             }

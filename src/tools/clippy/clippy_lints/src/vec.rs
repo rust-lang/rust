@@ -9,7 +9,7 @@ use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{get_parent_expr, higher, is_trait_method};
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, Local, Mutability, Node, Pat, PatKind};
+use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, LetStmt, Mutability, Node, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
         match cx.tcx.parent_hir_node(expr.hir_id) {
             // search for `let foo = vec![_]` expressions where all uses of `foo`
             // adjust to slices or call a method that exist on slices (e.g. len)
-            Node::Local(Local {
+            Node::Local(LetStmt {
                 ty: None,
                 pat:
                     Pat {
@@ -93,7 +93,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                 }
             },
             // if the local pattern has a specified type, do not lint.
-            Node::Local(Local { ty: Some(_), .. }) if higher::VecArgs::hir(cx, expr).is_some() => {
+            Node::Local(LetStmt { ty: Some(_), .. }) if higher::VecArgs::hir(cx, expr).is_some() => {
                 self.span_to_lint_map.insert(callsite, None);
             },
             // search for `for _ in vec![...]`

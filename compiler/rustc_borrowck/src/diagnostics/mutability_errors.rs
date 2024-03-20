@@ -558,7 +558,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     hir::intravisit::walk_stmt(self, stmt);
                     let expr = match stmt.kind {
                         hir::StmtKind::Semi(expr) | hir::StmtKind::Expr(expr) => expr,
-                        hir::StmtKind::Let(hir::Local { init: Some(expr), .. }) => expr,
+                        hir::StmtKind::Let(hir::LetStmt { init: Some(expr), .. }) => expr,
                         _ => {
                             return;
                         }
@@ -737,7 +737,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             && let body = self.infcx.tcx.hir().body(body_id)
             && let Some(hir_id) = (BindingFinder { span: pat_span }).visit_body(body).break_value()
             && let node = self.infcx.tcx.hir_node(hir_id)
-            && let hir::Node::Local(hir::Local {
+            && let hir::Node::Local(hir::LetStmt {
                 pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
                 ..
             })

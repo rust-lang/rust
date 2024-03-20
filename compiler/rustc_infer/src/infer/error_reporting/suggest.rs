@@ -2,7 +2,7 @@ use crate::infer::error_reporting::hir::Path;
 use core::ops::ControlFlow;
 use hir::def::CtorKind;
 use hir::intravisit::{walk_expr, walk_stmt, Visitor};
-use hir::{Local, QPath};
+use hir::{LetStmt, QPath};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
@@ -321,7 +321,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             && let Some(expr) = block.expr
             && let hir::ExprKind::Path(QPath::Resolved(_, Path { res, .. })) = expr.kind
             && let Res::Local(local) = res
-            && let Node::Local(Local { init: Some(init), .. }) = self.tcx.parent_hir_node(*local)
+            && let Node::Local(LetStmt { init: Some(init), .. }) = self.tcx.parent_hir_node(*local)
         {
             fn collect_blocks<'hir>(expr: &hir::Expr<'hir>, blocks: &mut Vec<&hir::Block<'hir>>) {
                 match expr.kind {
@@ -585,7 +585,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
 
             fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) -> Self::Result {
-                if let hir::StmtKind::Let(hir::Local {
+                if let hir::StmtKind::Let(LetStmt {
                     span,
                     pat: hir::Pat { .. },
                     ty: None,

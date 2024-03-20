@@ -1452,7 +1452,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let Some((
             _,
-            hir::Node::Local(hir::Local { ty: Some(ty), .. })
+            hir::Node::Local(hir::LetStmt { ty: Some(ty), .. })
             | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _, _), .. }),
         )) = parent_node
         else {
