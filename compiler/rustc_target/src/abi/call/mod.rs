@@ -255,11 +255,14 @@ pub struct Uniform {
     ///   for 64-bit integers with a total size of 20 bytes. When the argument is actually passed,
     ///   this size will be rounded up to the nearest multiple of `unit.size`.
     pub total: Size,
+
+    /// Force the use of an array, even if there is only a single element.
+    pub force_array: bool,
 }
 
 impl From<Reg> for Uniform {
     fn from(unit: Reg) -> Uniform {
-        Uniform { unit, total: unit.size }
+        Uniform { unit, total: unit.size, force_array: false }
     }
 }
 

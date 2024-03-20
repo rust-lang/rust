@@ -150,7 +150,7 @@ impl LlvmType for CastTarget {
         // Simplify to a single unit or an array if there's no prefix.
         // This produces the same layout, but using a simpler type.
         if self.prefix.iter().all(|x| x.is_none()) {
-            if rest_count == 1 {
+            if rest_count == 1 && !self.rest.force_array {
                 return rest_ll_unit;
             }
 
