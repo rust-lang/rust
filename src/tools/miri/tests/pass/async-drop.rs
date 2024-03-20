@@ -89,6 +89,7 @@ impl AsyncDrop for Baz {
     }
 }
 
+// TODO: switch variant during surface async drop test
 #[allow(dead_code)]
 enum Fiz<'a> {
     A(Foo),
