@@ -1,8 +1,8 @@
 //@ run-pass
-
+#![allow(unreachable_patterns)]
 #![allow(dead_code)]
 
-enum Empty { }
+enum Empty {}
 enum Test1 {
     A(u8),
     B(Empty),

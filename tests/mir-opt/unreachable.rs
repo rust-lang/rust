@@ -35,7 +35,7 @@ fn if_let() {
             _y = 42;
         }
 
-        match _x { }
+        match _x {}
     }
 }
 
@@ -45,18 +45,11 @@ fn as_match() {
     // CHECK: bb0: {
     // CHECK: {{_.*}} = empty()
     // CHECK: bb1: {
-    // CHECK: [[eq:_.*]] = Eq({{.*}}, const 0_isize);
-    // CHECK-NEXT: assume(move [[eq]]);
-    // CHECK-NEXT: goto -> bb4;
-    // CHECK: bb2: {
-    // CHECK-NEXT: unreachable;
-    // CHECK: bb3: {
-    // CHECK-NEXT: unreachable;
-    // CHECK: bb4: {
+    // CHECK-NEXT: _0 = const ();
     // CHECK: return;
     match empty() {
         None => {}
-        Some(_x) => match _x {}
+        Some(_x) => match _x {},
     }
 }
 

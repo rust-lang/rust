@@ -49,7 +49,7 @@ struct Plop {
 fn simple() {
     // CHECK-LABEL: fn simple(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [0: [[unreachable:bb.*]], 1: [[unreachable]], 2: bb2, otherwise: [[unreachable]]];
+    // CHECK: switchInt(move [[discr]]) -> [0: [[unreachable:bb.*]], 1: [[unreachable]], 2: bb1, otherwise: [[unreachable]]];
     // CHECK: [[unreachable]]: {
     // CHECK-NEXT: unreachable;
     match Test1::C {
