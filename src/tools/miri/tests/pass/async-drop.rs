@@ -10,6 +10,8 @@ use core::mem::ManuallyDrop;
 use core::pin::{pin, Pin};
 use core::task::{Context, Poll, Waker};
 
+static FOO: Foo = Foo(999);
+
 fn main() {
     let waker = Waker::noop();
     let mut cx = Context::from_waker(&waker);
@@ -89,9 +91,28 @@ impl AsyncDrop for Baz {
     }
 }
 
-// TODO: switch variant during surface async drop test
 #[allow(dead_code)]
 enum Fiz<'a> {
     A(Foo),
     B(Qux<'a>),
+}
+
+impl AsyncDrop for Fiz<'_> {
+    type Dropper<'b> = impl Future<Output = ()> + 'b
+        where Self: 'b;
+
+    fn async_drop(mut self: Pin<&mut Self>) -> Self::Dropper<'_> {
+        async move {
+            *self = match &*self {
+                Fiz::A(foo) => {
+                    println!("<Fiz::A as AsyncDrop>::Dropper::poll: {}", foo.0);
+                    Fiz::B(Qux { foo: &FOO })
+                }
+                Fiz::B(qux) => {
+                    println!("<Fiz::B as AsyncDrop>::Dropper::poll: {}", qux.foo.0);
+                    Fiz::A(Foo(qux.foo.0))
+                }
+            }
+        }
+    }
 }

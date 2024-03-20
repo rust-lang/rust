@@ -203,22 +203,20 @@ impl<T> Future for Slice<T> {
 /// Awaits the `F` future and then awaits `G::IntoFuture`.
 #[lang = "async_drop_chain"]
 enum Chain<F, G: IntoFuture> {
-    First(F, G),
+    First(F, Option<G>),
     Last(G::IntoFuture),
 }
 
 /// Construct async drop chain
 #[lang = "async_drop_chain_ctor"]
 fn chain<F, G: IntoFuture>(first: F, last: G) -> Chain<F, G> {
-    Chain::First(first, last)
+    Chain::First(first, Some(last))
 }
 
 impl<F, G> Future for Chain<F, G>
 where
     F: Future<Output = ()>,
-    // Copy there so that we don't need to wrap `G` with `Option` to
-    // move from it
-    G: IntoFuture<Output = ()> + Copy,
+    G: IntoFuture<Output = ()>,
 {
     type Output = ();
 
@@ -233,7 +231,7 @@ where
                     // It might be important to destroy the first
                     // future so that it wouldn't possibly hold anything
                     // important long enough to cause problems.
-                    *this = Chain::Last(last.into_future());
+                    *this = Chain::Last(last.take().unwrap().into_future());
                 }
                 // SAFETY: simple pin projection
                 Chain::Last(last) => return unsafe { Pin::new_unchecked(last) }.poll(cx),
