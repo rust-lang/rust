@@ -1,6 +1,6 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, Location, MentionedItem, MirPass};
-use rustc_middle::ty::{adjustment::PointerCoercion, TyCtxt};
+use rustc_middle::ty::{self, adjustment::PointerCoercion, TyCtxt};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 
@@ -76,14 +76,21 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
             )
             | mir::Rvalue::Cast(mir::CastKind::DynStar, ref operand, target_ty) => {
                 // This isn't monomorphized yet so we can't tell what the actual types are -- just
-                // add everything.
-                self.mentioned_items.push(Spanned {
-                    node: MentionedItem::UnsizeCast {
-                        source_ty: operand.ty(self.body, self.tcx),
-                        target_ty,
-                    },
-                    span: span(),
-                });
+                // add everything that may involve a vtable.
+                let source_ty = operand.ty(self.body, self.tcx);
+                let may_involve_vtable = match (
+                    source_ty.builtin_deref(true).map(|t| t.ty.kind()),
+                    target_ty.builtin_deref(true).map(|t| t.ty.kind()),
+                ) {
+                    (Some(ty::Array(..)), Some(ty::Str | ty::Slice(..))) => false, // &str/&[T] unsizing
+                    _ => true,
+                };
+                if may_involve_vtable {
+                    self.mentioned_items.push(Spanned {
+                        node: MentionedItem::UnsizeCast { source_ty, target_ty },
+                        span: span(),
+                    });
+                }
             }
             // Similarly, record closures that are turned into function pointers.
             mir::Rvalue::Cast(
