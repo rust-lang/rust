@@ -2129,7 +2129,6 @@ dependencies = [
  "anyhow",
  "clap",
  "fs-err",
- "rustc-hash",
  "rustdoc-json-types",
  "serde",
  "serde_json",
@@ -4787,7 +4786,6 @@ name = "rustdoc-json-types"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "rustc-hash",
  "serde",
  "serde_json",
 ]
