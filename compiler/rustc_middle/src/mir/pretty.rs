@@ -475,14 +475,33 @@ fn write_coverage_branch_info(
     branch_info: &coverage::BranchInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::BranchInfo { branch_spans, .. } = branch_info;
+    let coverage::BranchInfo { branch_spans, decision_spans, .. } = branch_info;
 
-    for coverage::BranchSpan { span, true_marker, false_marker, .. } in branch_spans {
+    // Write MCDC stuff as well if present
+    for (id, coverage::DecisionSpan { span, num_conditions }) in decision_spans.iter_enumerated() {
         writeln!(
             w,
-            "{INDENT}coverage branch {{ true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
+            "{INDENT}coverage MCDC decision {{ id: {id:?}, num_conditions: {num_conditions:?} }} => {span:?}",
         )?;
     }
+
+    if !decision_spans.is_empty() {
+        writeln!(w)?;
+        for coverage::BranchSpan { span, true_marker, false_marker, decision_id } in branch_spans {
+            writeln!(
+                w,
+                "{INDENT}coverage branch {{ decision: {decision_id:?}, true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
+            )?;
+        }
+    } else {
+        for coverage::BranchSpan { span, true_marker, false_marker, .. } in branch_spans {
+            writeln!(
+                w,
+                "{INDENT}coverage branch {{ true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
+            )?;
+        }
+    }
+
     if !branch_spans.is_empty() {
         writeln!(w)?;
     }

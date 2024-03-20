@@ -232,7 +232,8 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
 
         // These coverage statements should not exist prior to coverage instrumentation.
         StatementKind::Coverage(
-            CoverageKind::CounterIncrement { .. } | CoverageKind::ExpressionUsed { .. },
+            CoverageKind::CounterIncrement { .. } | CoverageKind::ExpressionUsed { .. }
+            | CoverageKind::MCDCBitmapRequire { .. },
         ) => bug!(
             "Unexpected coverage statement found during coverage instrumentation: {statement:?}"
         ),

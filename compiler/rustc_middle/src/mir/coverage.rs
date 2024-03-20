@@ -116,6 +116,13 @@ pub enum CoverageKind {
     /// Has no effect during codegen.
     MCDCDecisionMarker { id: DecisionMarkerId },
 
+    /// Declares the number of bytes needed to store the test-vector bitmaps of
+    /// all the decisions in the function body.
+    ///
+    /// In LLVM backend, this is done by inserting a call to the
+    /// `instrprof.mcdc.parameters` intrinsic.
+    MCDCBitmapRequire { needed_bytes: u32 },
+
     /// Marks the point in MIR control flow represented by a coverage counter.
     ///
     /// This is eventually lowered to `llvm.instrprof.increment` in LLVM IR.
@@ -145,6 +152,7 @@ impl Debug for CoverageKind {
                 write!(fmt, "MCDCBlockMarker({:?}, {:?})", id.index(), decision_id.index())
             }
             MCDCDecisionMarker { id } => write!(fmt, "MCDCDecisionMarker({:?})", id.index()),
+            MCDCBitmapRequire { needed_bytes } => write!(fmt, "MCDCBitmapRequire({needed_bytes} bytes)"),
             CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
             ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
         }

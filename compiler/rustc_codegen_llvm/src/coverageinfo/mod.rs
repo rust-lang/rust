@@ -105,6 +105,11 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             | CoverageKind::MCDCDecisionMarker { .. } => unreachable!(
                 "marker statement {kind:?} should have been removed by CleanupPostBorrowck"
             ),
+            CoverageKind::MCDCBitmapRequire { needed_bytes } => {
+                // FIXME(dprn): TODO
+                let _ = needed_bytes;
+                warn!("call to correct intrinsic");
+            }
             CoverageKind::CounterIncrement { id } => {
                 func_coverage.mark_counter_id_seen(id);
                 // We need to explicitly drop the `RefMut` before calling into `instrprof_increment`,
