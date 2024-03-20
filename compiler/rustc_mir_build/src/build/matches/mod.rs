@@ -1364,9 +1364,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
     ) {
-        let mut split_or_candidate = false;
-        for candidate in &mut *candidates {
-            if let [MatchPair { test_case: TestCase::Or { .. }, .. }] = &*candidate.match_pairs {
+        let expand_or_pats = candidates.iter().any(|candidate| {
+            matches!(&*candidate.match_pairs, [MatchPair { test_case: TestCase::Or { .. }, .. }])
+        });
+
+        ensure_sufficient_stack(|| {
+            if expand_or_pats {
                 // Split a candidate in which the only match-pair is an or-pattern into multiple
                 // candidates. This is so that
                 //
@@ -1376,30 +1379,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // }
                 //
                 // only generates a single switch.
-                let match_pair = candidate.match_pairs.pop().unwrap();
-                self.create_or_subcandidates(candidate, match_pair);
-                split_or_candidate = true;
-            }
-        }
-
-        ensure_sufficient_stack(|| {
-            if split_or_candidate {
-                // At least one of the candidates has been split into subcandidates.
-                // We need to change the candidate list to include those.
                 let mut new_candidates = Vec::new();
                 for candidate in candidates.iter_mut() {
-                    candidate.visit_leaves(|leaf_candidate| new_candidates.push(leaf_candidate));
+                    if let [MatchPair { test_case: TestCase::Or { .. }, .. }] =
+                        &*candidate.match_pairs
+                    {
+                        let match_pair = candidate.match_pairs.pop().unwrap();
+                        self.create_or_subcandidates(candidate, match_pair);
+                        for subcandidate in candidate.subcandidates.iter_mut() {
+                            new_candidates.push(subcandidate);
+                        }
+                    } else {
+                        new_candidates.push(candidate);
+                    }
                 }
                 self.match_candidates(
                     span,
                     scrutinee_span,
                     start_block,
                     otherwise_block,
-                    &mut *new_candidates,
+                    new_candidates.as_mut_slice(),
                 );
 
                 for candidate in candidates {
-                    self.merge_trivial_subcandidates(candidate);
+                    if !candidate.subcandidates.is_empty() {
+                        self.merge_trivial_subcandidates(candidate);
+                    }
                 }
             } else {
                 self.match_simplified_candidates(
