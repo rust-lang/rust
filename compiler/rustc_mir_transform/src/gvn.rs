@@ -82,6 +82,7 @@
 //! Second, when writing constants in MIR, we do not write `Const::Slice` or `Const`
 //! that contain `AllocId`s.
 
+use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{intern_const_alloc_for_constprop, MemoryKind};
 use rustc_const_eval::interpret::{ImmTy, InterpCx, OpTy, Projectable, Scalar};
 use rustc_data_structures::fx::FxIndexSet;
@@ -101,7 +102,6 @@ use rustc_target::abi::{self, Abi, Size, VariantIdx, FIRST_VARIANT};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 
-use crate::dataflow_const_prop::DummyMachine;
 use crate::ssa::{AssignedValue, SsaLocals};
 use either::Either;
 

@@ -36,6 +36,7 @@
 //! cost by `MAX_COST`.
 
 use rustc_arena::DroplessArena;
+use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
@@ -50,7 +51,6 @@ use rustc_span::DUMMY_SP;
 use rustc_target::abi::{TagEncoding, Variants};
 
 use crate::cost_checker::CostChecker;
-use crate::dataflow_const_prop::DummyMachine;
 
 pub struct JumpThreading;
 
