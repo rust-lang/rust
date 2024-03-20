@@ -30,6 +30,10 @@ pub struct ModuleItems {
 }
 
 impl ModuleItems {
+    /// Returns all non-associated locally defined items in all modules.
+    ///
+    /// Note that this does *not* include associated items of `impl` blocks! It also does not
+    /// include foreign items. If you want to e.g. get all functions, use `definitions()` below.
     pub fn items(&self) -> impl Iterator<Item = ItemId> + '_ {
         self.items.iter().copied()
     }
@@ -38,6 +42,8 @@ impl ModuleItems {
         self.trait_items.iter().copied()
     }
 
+    /// Returns all items that are associated with some `impl` block (both inherent and trait impl
+    /// blocks).
     pub fn impl_items(&self) -> impl Iterator<Item = ImplItemId> + '_ {
         self.impl_items.iter().copied()
     }
