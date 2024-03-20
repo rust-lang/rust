@@ -1,6 +1,6 @@
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{Closure, Expr, ExprKind, Stmt, StmtKind};
+use rustc_hir::{Block, BlockCheckMode, Closure, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::{sym, Span, Symbol};
@@ -68,7 +68,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
             // e.g. `v.iter().for_each(f)` is simpler and clearer than using `for` loop.
             && let ExprKind::Closure(&Closure { body, .. }) = for_each_arg.kind
             && let body = cx.tcx.hir().body(body)
-            && let ExprKind::Block(..) = body.value.kind
+            // Skip the lint if the body is not safe.
+            && let ExprKind::Block(Block { rules: BlockCheckMode::DefaultBlock, .. }, ..) = body.value.kind
         {
             let mut ret_collector = RetCollector::default();
             ret_collector.visit_expr(body.value);
