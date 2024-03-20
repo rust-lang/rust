@@ -546,40 +546,55 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             }
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {
-                let mut printer = fmt_printer(self, Namespace::ValueNS);
-                printer.print_def_path(def_id, args).unwrap();
-                let def_path = printer.into_buffer();
+                let placeholder = Some(self.next_ty_var(TypeVariableOrigin {
+                    span: rustc_span::DUMMY_SP,
+                    kind: TypeVariableOriginKind::MiscVariable,
+                }));
+                if let Some(args) = args.make_suggestable(self.infcx.tcx, true, placeholder) {
+                    let mut printer = fmt_printer(self, Namespace::ValueNS);
+                    printer.print_def_path(def_id, args).unwrap();
+                    let def_path = printer.into_buffer();
 
-                // We only care about whether we have to add `&` or `&mut ` for now.
-                // This is the case if the last adjustment is a borrow and the
-                // first adjustment was not a builtin deref.
-                let adjustment = match typeck_results.expr_adjustments(receiver) {
-                    [
-                        Adjustment { kind: Adjust::Deref(None), target: _ },
-                        ..,
-                        Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), target: _ },
-                    ] => "",
-                    [
-                        ..,
-                        Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mut_)), target: _ },
-                    ] => hir::Mutability::from(*mut_).ref_prefix_str(),
-                    _ => "",
-                };
+                    // We only care about whether we have to add `&` or `&mut ` for now.
+                    // This is the case if the last adjustment is a borrow and the
+                    // first adjustment was not a builtin deref.
+                    let adjustment = match typeck_results.expr_adjustments(receiver) {
+                        [
+                            Adjustment { kind: Adjust::Deref(None), target: _ },
+                            ..,
+                            Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), target: _ },
+                        ] => "",
+                        [
+                            ..,
+                            Adjustment {
+                                kind: Adjust::Borrow(AutoBorrow::Ref(_, mut_)),
+                                target: _,
+                            },
+                        ] => hir::Mutability::from(*mut_).ref_prefix_str(),
+                        _ => "",
+                    };
 
-                multi_suggestions.push(SourceKindMultiSuggestion::new_fully_qualified(
-                    receiver.span,
-                    def_path,
-                    adjustment,
-                    successor,
-                ));
+                    multi_suggestions.push(SourceKindMultiSuggestion::new_fully_qualified(
+                        receiver.span,
+                        def_path,
+                        adjustment,
+                        successor,
+                    ));
+                }
             }
             InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
-                let ty_info = ty_to_string(self, ty, None);
-                multi_suggestions.push(SourceKindMultiSuggestion::new_closure_return(
-                    ty_info,
-                    data,
-                    should_wrap_expr,
-                ));
+                let placeholder = Some(self.next_ty_var(TypeVariableOrigin {
+                    span: rustc_span::DUMMY_SP,
+                    kind: TypeVariableOriginKind::MiscVariable,
+                }));
+                if let Some(ty) = ty.make_suggestable(self.infcx.tcx, true, placeholder) {
+                    let ty_info = ty_to_string(self, ty, None);
+                    multi_suggestions.push(SourceKindMultiSuggestion::new_closure_return(
+                        ty_info,
+                        data,
+                        should_wrap_expr,
+                    ));
+                }
             }
         }
         match error_code {
