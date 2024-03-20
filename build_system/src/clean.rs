@@ -42,12 +42,8 @@ fn usage() {
 }
 
 fn clean_all() -> Result<(), String> {
-    let dirs_to_remove = [
-        "target",
-        "build_sysroot/sysroot",
-        "build_sysroot/sysroot_src",
-        "build_sysroot/target",
-    ];
+    let dirs_to_remove =
+        ["target", "build_sysroot/sysroot", "build_sysroot/sysroot_src", "build_sysroot/target"];
     for dir in dirs_to_remove {
         let _ = remove_dir_all(dir);
     }

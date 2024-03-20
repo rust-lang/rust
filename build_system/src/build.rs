@@ -151,15 +151,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     // Copy the source files to the sysroot (Rust for Linux needs this).
     let sysroot_src_path = start_dir.join("sysroot/lib/rustlib/src/rust");
     create_dir(&sysroot_src_path)?;
-    run_command(
-        &[
-            &"cp",
-            &"-r",
-            &start_dir.join("sysroot_src/library/"),
-            &sysroot_src_path,
-        ],
-        None,
-    )?;
+    run_command(&[&"cp", &"-r", &start_dir.join("sysroot_src/library/"), &sysroot_src_path], None)?;
 
     Ok(())
 }
@@ -167,20 +159,11 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     let mut env = HashMap::new();
 
-    env.insert(
-        "LD_LIBRARY_PATH".to_string(),
-        args.config_info.gcc_path.clone(),
-    );
-    env.insert(
-        "LIBRARY_PATH".to_string(),
-        args.config_info.gcc_path.clone(),
-    );
+    env.insert("LD_LIBRARY_PATH".to_string(), args.config_info.gcc_path.clone());
+    env.insert("LIBRARY_PATH".to_string(), args.config_info.gcc_path.clone());
 
     if args.config_info.no_default_features {
-        env.insert(
-            "RUSTFLAGS".to_string(),
-            "-Csymbol-mangling-version=v0".to_string(),
-        );
+        env.insert("RUSTFLAGS".to_string(), "-Csymbol-mangling-version=v0".to_string());
     }
 
     let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"rustc"];

@@ -1,8 +1,9 @@
 use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
-    create_dir, get_toolchain, git_clone, git_clone_root_dir, remove_file, run_command, run_command_with_env,
-    run_command_with_output_and_env, rustc_version_info, split_args, walk_dir,
+    create_dir, get_toolchain, git_clone, git_clone_root_dir, remove_file, run_command,
+    run_command_with_env, run_command_with_output_and_env, rustc_version_info, split_args,
+    walk_dir,
 };
 
 use std::collections::{BTreeSet, HashMap};
@@ -19,46 +20,23 @@ type Runners = HashMap<&'static str, (&'static str, Runner)>;
 fn get_runners() -> Runners {
     let mut runners = HashMap::new();
 
-    runners.insert(
-        "--test-rustc",
-        ("Run all rustc tests", test_rustc as Runner),
-    );
-    runners.insert(
-        "--test-successful-rustc",
-        ("Run successful rustc tests", test_successful_rustc),
-    );
-    runners.insert(
-        "--test-failing-rustc",
-        ("Run failing rustc tests", test_failing_rustc),
-    );
-    runners.insert(
-        "--projects",
-        ("Run the tests of popular crates", test_projects),
-    );
+    runners.insert("--test-rustc", ("Run all rustc tests", test_rustc as Runner));
+    runners
+        .insert("--test-successful-rustc", ("Run successful rustc tests", test_successful_rustc));
+    runners.insert("--test-failing-rustc", ("Run failing rustc tests", test_failing_rustc));
+    runners.insert("--projects", ("Run the tests of popular crates", test_projects));
     runners.insert("--test-libcore", ("Run libcore tests", test_libcore));
     runners.insert("--clean", ("Empty cargo target directory", clean));
     runners.insert("--build-sysroot", ("Build sysroot", build_sysroot));
     runners.insert("--std-tests", ("Run std tests", std_tests));
     runners.insert("--asm-tests", ("Run asm tests", asm_tests));
-    runners.insert(
-        "--extended-tests",
-        ("Run extended sysroot tests", extended_sysroot_tests),
-    );
-    runners.insert(
-        "--extended-rand-tests",
-        ("Run extended rand tests", extended_rand_tests),
-    );
+    runners.insert("--extended-tests", ("Run extended sysroot tests", extended_sysroot_tests));
+    runners.insert("--extended-rand-tests", ("Run extended rand tests", extended_rand_tests));
     runners.insert(
         "--extended-regex-example-tests",
-        (
-            "Run extended regex example tests",
-            extended_regex_example_tests,
-        ),
+        ("Run extended regex example tests", extended_regex_example_tests),
     );
-    runners.insert(
-        "--extended-regex-tests",
-        ("Run extended regex tests", extended_regex_tests),
-    );
+    runners.insert("--extended-regex-tests", ("Run extended regex tests", extended_regex_tests));
     runners.insert("--mini-tests", ("Run mini tests", mini_tests));
 
     runners
@@ -71,15 +49,9 @@ fn get_number_after_arg(
     match args.next() {
         Some(nb) if !nb.is_empty() => match usize::from_str(&nb) {
             Ok(nb) => Ok(nb),
-            Err(_) => Err(format!(
-                "Expected a number after `{}`, found `{}`",
-                option, nb
-            )),
+            Err(_) => Err(format!("Expected a number after `{}`, found `{}`", option, nb)),
         },
-        _ => Err(format!(
-            "Expected a number after `{}`, found nothing",
-            option
-        )),
+        _ => Err(format!("Expected a number after `{}`, found nothing", option)),
     }
 }
 
@@ -130,9 +102,7 @@ impl TestArg {
             match arg.as_str() {
                 "--features" => match args.next() {
                     Some(feature) if !feature.is_empty() => {
-                        test_arg
-                            .flags
-                            .extend_from_slice(&["--features".into(), feature]);
+                        test_arg.flags.extend_from_slice(&["--features".into(), feature]);
                     }
                     _ => {
                         return Err("Expected an argument after `--features`, found nothing".into())
@@ -303,13 +273,8 @@ fn maybe_run_command_in_vm(
     let sudo_command: &[&dyn AsRef<OsStr>] = &[&"sudo", &"cp", &exe, &vm_exe_path];
     run_command_with_env(sudo_command, None, Some(env))?;
 
-    let mut vm_command: Vec<&dyn AsRef<OsStr>> = vec![
-        &"sudo",
-        &"chroot",
-        &vm_dir,
-        &"qemu-m68k-static",
-        &inside_vm_exe_path,
-    ];
+    let mut vm_command: Vec<&dyn AsRef<OsStr>> =
+        vec![&"sudo", &"chroot", &vm_dir, &"qemu-m68k-static", &inside_vm_exe_path];
     vm_command.extend_from_slice(command);
     run_command_with_output_and_env(&vm_command, Some(&vm_parent_dir), Some(env))?;
     Ok(())
@@ -398,11 +363,7 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     }
     run_command_with_env(&command, None, Some(env))?;
     maybe_run_command_in_vm(
-        &[
-            &cargo_target_dir.join("std_example"),
-            &"--target",
-            &args.config_info.target_triple,
-        ],
+        &[&cargo_target_dir.join("std_example"), &"--target", &args.config_info.target_triple],
         env,
         args,
     )?;
@@ -426,11 +387,7 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         command.push(test_flag);
     }
     run_command_with_env(&command, None, Some(env))?;
-    maybe_run_command_in_vm(
-        &[&cargo_target_dir.join("subslice-patterns-const-eval")],
-        env,
-        args,
-    )?;
+    maybe_run_command_in_vm(&[&cargo_target_dir.join("subslice-patterns-const-eval")], env, args)?;
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] track-caller-attribute");
@@ -446,11 +403,7 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         command.push(test_flag);
     }
     run_command_with_env(&command, None, Some(env))?;
-    maybe_run_command_in_vm(
-        &[&cargo_target_dir.join("track-caller-attribute")],
-        env,
-        args,
-    )?;
+    maybe_run_command_in_vm(&[&cargo_target_dir.join("track-caller-attribute")], env, args)?;
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] mod_bench");
@@ -476,11 +429,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     );
     let rust_dir_path = Path::new(crate::BUILD_DIR).join("rust");
     // If the repository was already cloned, command will fail, so doesn't matter.
-    let _ = git_clone(
-        "https://github.com/rust-lang/rust.git",
-        Some(&rust_dir_path),
-        false,
-    );
+    let _ = git_clone("https://github.com/rust-lang/rust.git", Some(&rust_dir_path), false);
     let rust_dir: Option<&Path> = Some(&rust_dir_path);
     run_command(&[&"git", &"checkout", &"--", &"tests/"], rust_dir)?;
     run_command_with_output_and_env(&[&"git", &"fetch"], rust_dir, Some(env))?;
@@ -510,12 +459,8 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
         }
     })?;
     let rustc = String::from_utf8(
-        run_command_with_env(
-            &[&"rustup", &toolchain, &"which", &"rustc"],
-            rust_dir,
-            Some(env),
-        )?
-        .stdout,
+        run_command_with_env(&[&"rustup", &toolchain, &"which", &"rustc"], rust_dir, Some(env))?
+            .stdout,
     )
     .map_err(|error| format!("Failed to retrieve rustc path: {:?}", error))
     .and_then(|rustc| {
@@ -572,13 +517,7 @@ download-ci-llvm = false
             llvm_filecheck = llvm_filecheck.trim(),
         ),
     )
-    .map_err(|error| {
-        format!(
-            "Failed to write into `{}`: {:?}",
-            file_path.display(),
-            error
-        )
-    })?;
+    .map_err(|error| format!("Failed to write into `{}`: {:?}", file_path.display(), error))?;
     Ok(rust_dir_path)
 }
 
@@ -590,11 +529,8 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
 
     env.insert("COMPILETEST_FORCE_STAGE0".to_string(), "1".to_string());
 
-    let extra = if args.is_using_gcc_master_branch() {
-        ""
-    } else {
-        " -Csymbol-mangling-version=v0"
-    };
+    let extra =
+        if args.is_using_gcc_master_branch() { "" } else { " -Csymbol-mangling-version=v0" };
 
     let rustc_args = &format!(
         r#"-Zpanic-abort-tests \
@@ -761,10 +697,8 @@ fn extended_rand_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     }
     let mut env = env.clone();
     // newer aho_corasick versions throw a deprecation warning
-    let rustflags = format!(
-        "{} --cap-lints warn",
-        env.get("RUSTFLAGS").cloned().unwrap_or_default()
-    );
+    let rustflags =
+        format!("{} --cap-lints warn", env.get("RUSTFLAGS").cloned().unwrap_or_default());
     env.insert("RUSTFLAGS".to_string(), rustflags);
 
     let path = Path::new(crate::BUILD_DIR).join("rand");
@@ -786,18 +720,11 @@ fn extended_regex_example_tests(env: &Env, args: &TestArg) -> Result<(), String>
     println!("[TEST] rust-lang/regex example shootout-regex-dna");
     let mut env = env.clone();
     // newer aho_corasick versions throw a deprecation warning
-    let rustflags = format!(
-        "{} --cap-lints warn",
-        env.get("RUSTFLAGS").cloned().unwrap_or_default()
-    );
+    let rustflags =
+        format!("{} --cap-lints warn", env.get("RUSTFLAGS").cloned().unwrap_or_default());
     env.insert("RUSTFLAGS".to_string(), rustflags);
     // Make sure `[codegen mono items] start` doesn't poison the diff
-    run_cargo_command(
-        &[&"build", &"--example", &"shootout-regex-dna"],
-        Some(&path),
-        &env,
-        args,
-    )?;
+    run_cargo_command(&[&"build", &"--example", &"shootout-regex-dna"], Some(&path), &env, args)?;
 
     run_cargo_command_with_callback(
         &[&"run", &"--example", &"shootout-regex-dna"],
@@ -808,10 +735,8 @@ fn extended_regex_example_tests(env: &Env, args: &TestArg) -> Result<(), String>
             // FIXME: rewrite this with `child.stdin.write_all()` because
             // `examples/regexdna-input.txt` is very small.
             let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"bash", &"-c"];
-            let cargo_args = cargo_command
-                .iter()
-                .map(|s| s.as_ref().to_str().unwrap())
-                .collect::<Vec<_>>();
+            let cargo_args =
+                cargo_command.iter().map(|s| s.as_ref().to_str().unwrap()).collect::<Vec<_>>();
             let bash_command = format!(
                 "cat examples/regexdna-input.txt | {} | grep -v 'Spawned thread' > res.txt",
                 cargo_args.join(" "),
@@ -839,10 +764,8 @@ fn extended_regex_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     println!("[TEST] rust-lang/regex tests");
     let mut env = env.clone();
     // newer aho_corasick versions throw a deprecation warning
-    let rustflags = format!(
-        "{} --cap-lints warn",
-        env.get("RUSTFLAGS").cloned().unwrap_or_default()
-    );
+    let rustflags =
+        format!("{} --cap-lints warn", env.get("RUSTFLAGS").cloned().unwrap_or_default());
     env.insert("RUSTFLAGS".to_string(), rustflags);
     let path = Path::new(crate::BUILD_DIR).join("regex");
     run_cargo_command(
@@ -897,6 +820,7 @@ fn should_not_remove_test(file: &str) -> bool {
     .any(|to_ignore| file.ends_with(to_ignore))
 }
 
+#[rustfmt::skip]
 fn should_remove_test(file_path: &Path) -> Result<bool, String> {
     // Tests generating errors.
     let file = File::open(file_path)
@@ -914,8 +838,8 @@ fn should_remove_test(file_path: &Path) -> Result<bool, String> {
             "//~",
             "thread",
         ]
-        .iter()
-        .any(|check| line.contains(check))
+            .iter()
+            .any(|check| line.contains(check))
         {
             return Ok(true);
         }
@@ -923,11 +847,7 @@ fn should_remove_test(file_path: &Path) -> Result<bool, String> {
             return Ok(true);
         }
     }
-    if file_path
-        .display()
-        .to_string()
-        .contains("ambiguous-4-extern.rs")
-    {
+    if file_path.display().to_string().contains("ambiguous-4-extern.rs") {
         eprintln!("nothing found for {file_path:?}");
     }
     Ok(false)
@@ -970,21 +890,13 @@ where
     // These two functions are used to remove files that are known to not be working currently
     // with the GCC backend to reduce noise.
     fn dir_handling(dir: &Path) -> Result<(), String> {
-        if dir
-            .file_name()
-            .map(|name| name == "auxiliary")
-            .unwrap_or(true)
-        {
+        if dir.file_name().map(|name| name == "auxiliary").unwrap_or(true) {
             return Ok(());
         }
         walk_dir(dir, dir_handling, file_handling)
     }
     fn file_handling(file_path: &Path) -> Result<(), String> {
-        if !file_path
-            .extension()
-            .map(|extension| extension == "rs")
-            .unwrap_or(false)
-        {
+        if !file_path.extension().map(|extension| extension == "rs").unwrap_or(false) {
             return Ok(());
         }
         let path_str = file_path.display().to_string().replace("\\", "/");
@@ -1017,10 +929,7 @@ where
     if nb_parts > 0 {
         let current_part = args.current_part.unwrap();
         // FIXME: create a function "display_if_not_quiet" or something along the line.
-        println!(
-            "Splitting ui_test into {} parts (and running part {})",
-            nb_parts, current_part
-        );
+        println!("Splitting ui_test into {} parts (and running part {})", nb_parts, current_part);
         let out = String::from_utf8(
             run_command(
                 &[
@@ -1060,11 +969,8 @@ where
     println!("[TEST] rustc test suite");
     env.insert("COMPILETEST_FORCE_STAGE0".to_string(), "1".to_string());
 
-    let extra = if args.is_using_gcc_master_branch() {
-        ""
-    } else {
-        " -Csymbol-mangling-version=v0"
-    };
+    let extra =
+        if args.is_using_gcc_master_branch() { "" } else { " -Csymbol-mangling-version=v0" };
 
     let rustc_args = format!(
         "{} -Zcodegen-backend={} --sysroot {}{}",
@@ -1118,18 +1024,11 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         // Putting back only the failing ones.
         let path = "tests/failing-ui-tests.txt";
         if let Ok(files) = std::fs::read_to_string(path) {
-            for file in files
-                .split('\n')
-                .map(|line| line.trim())
-                .filter(|line| !line.is_empty())
-            {
+            for file in files.split('\n').map(|line| line.trim()).filter(|line| !line.is_empty()) {
                 run_command(&[&"git", &"checkout", &"--", &file], Some(&rust_path))?;
             }
         } else {
-            println!(
-                "Failed to read `{}`, not putting back failing ui tests",
-                path
-            );
+            println!("Failed to read `{}`, not putting back failing ui tests", path);
         }
         Ok(true)
     })
@@ -1140,19 +1039,12 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         // Removing the failing tests.
         let path = "tests/failing-ui-tests.txt";
         if let Ok(files) = std::fs::read_to_string(path) {
-            for file in files
-                .split('\n')
-                .map(|line| line.trim())
-                .filter(|line| !line.is_empty())
-            {
+            for file in files.split('\n').map(|line| line.trim()).filter(|line| !line.is_empty()) {
                 let path = rust_path.join(file);
                 remove_file(&path)?;
             }
         } else {
-            println!(
-                "Failed to read `{}`, not putting back failing ui tests",
-                path
-            );
+            println!("Failed to read `{}`, not putting back failing ui tests", path);
         }
         Ok(true)
     })
@@ -1179,14 +1071,8 @@ pub fn run() -> Result<(), String> {
 
     if !args.use_system_gcc {
         args.config_info.setup_gcc_path()?;
-        env.insert(
-            "LIBRARY_PATH".to_string(),
-            args.config_info.gcc_path.clone(),
-        );
-        env.insert(
-            "LD_LIBRARY_PATH".to_string(),
-            args.config_info.gcc_path.clone(),
-        );
+        env.insert("LIBRARY_PATH".to_string(), args.config_info.gcc_path.clone());
+        env.insert("LD_LIBRARY_PATH".to_string(), args.config_info.gcc_path.clone());
     }
 
     build_if_no_backend(&env, &args)?;
