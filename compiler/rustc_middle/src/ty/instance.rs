@@ -592,7 +592,7 @@ impl<'tcx> Instance<'tcx> {
 
     pub fn resolve_async_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, None);
-        let args = tcx.mk_args(&[tcx.lifetimes.re_erased.into(), ty.into()]);
+        let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
     }
 
