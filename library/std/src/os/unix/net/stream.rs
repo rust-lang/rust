@@ -8,7 +8,8 @@
     target_os = "macos",
     target_os = "watchos",
     target_os = "netbsd",
-    target_os = "openbsd"
+    target_os = "openbsd",
+    target_os = "nto"
 ))]
 use super::{peer_cred, UCred};
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
@@ -234,7 +235,8 @@ impl UnixStream {
         target_os = "macos",
         target_os = "watchos",
         target_os = "netbsd",
-        target_os = "openbsd"
+        target_os = "openbsd",
+        target_os = "nto"
     ))]
     pub fn peer_cred(&self) -> io::Result<UCred> {
         peer_cred(self)
