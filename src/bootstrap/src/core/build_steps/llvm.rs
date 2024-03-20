@@ -488,7 +488,14 @@ impl Step for Llvm {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
+        configure_cmake(
+            builder,
+            target,
+            &mut cfg,
+            true,
+            ldflags,
+            &["-fexperimental-relative-c++-abi-vtables"],
+        );
         configure_llvm(builder, target, &mut cfg);
 
         for (key, val) in &builder.config.llvm_build_config {
