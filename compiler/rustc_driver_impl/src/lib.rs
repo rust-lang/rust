@@ -890,7 +890,7 @@ pub fn version_at_macro_invocation(
         let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
         let opts = config::Options::default();
         let sysroot = filesearch::materialize_sysroot(opts.maybe_sysroot.clone());
-        let target = config::build_target_config(early_dcx, &opts, None, &sysroot);
+        let target = config::build_target_config(early_dcx, &opts, &sysroot);
 
         get_codegen_backend(early_dcx, &sysroot, backend_name, &target).print_version();
     }
@@ -1100,7 +1100,7 @@ pub fn describe_flag_categories(early_dcx: &EarlyDiagCtxt, matches: &Matches) ->
 
         let opts = config::Options::default();
         let sysroot = filesearch::materialize_sysroot(opts.maybe_sysroot.clone());
-        let target = config::build_target_config(early_dcx, &opts, None, &sysroot);
+        let target = config::build_target_config(early_dcx, &opts, &sysroot);
 
         get_codegen_backend(early_dcx, &sysroot, backend_name, &target).print_passes();
         return true;

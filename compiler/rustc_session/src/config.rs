@@ -22,7 +22,7 @@ use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHa
 use rustc_target::abi::Align;
 use rustc_target::spec::LinkSelfContainedComponents;
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, SplitDebuginfo};
-use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
+use rustc_target::spec::{Target, TargetTriple, TARGETS};
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };
@@ -1549,34 +1549,25 @@ pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
     user_cfg
 }
 
-pub fn build_target_config(
-    early_dcx: &EarlyDiagCtxt,
-    opts: &Options,
-    target_override: Option<Target>,
-    sysroot: &Path,
-) -> Target {
-    let target_result = target_override.map_or_else(
-        || Target::search(&opts.target_triple, sysroot),
-        |t| Ok((t, TargetWarnings::empty())),
-    );
-    let (target, target_warnings) = target_result.unwrap_or_else(|e| {
-        early_dcx.early_fatal(format!(
+pub fn build_target_config(early_dcx: &EarlyDiagCtxt, opts: &Options, sysroot: &Path) -> Target {
+    match Target::search(&opts.target_triple, sysroot) {
+        Ok((target, warnings)) => {
+            for warning in warnings.warning_messages() {
+                early_dcx.early_warn(warning)
+            }
+            if !matches!(target.pointer_width, 16 | 32 | 64) {
+                early_dcx.early_fatal(format!(
+                    "target specification was invalid: unrecognized target-pointer-width {}",
+                    target.pointer_width
+                ))
+            }
+            target
+        }
+        Err(e) => early_dcx.early_fatal(format!(
             "Error loading target specification: {e}. \
-                 Run `rustc --print target-list` for a list of built-in targets"
-        ))
-    });
-    for warning in target_warnings.warning_messages() {
-        early_dcx.early_warn(warning)
+                     Run `rustc --print target-list` for a list of built-in targets"
+        )),
     }
-
-    if !matches!(target.pointer_width, 16 | 32 | 64) {
-        early_dcx.early_fatal(format!(
-            "target specification was invalid: unrecognized target-pointer-width {}",
-            target.pointer_width
-        ))
-    }
-
-    target
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

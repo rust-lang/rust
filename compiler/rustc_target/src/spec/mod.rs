@@ -2091,6 +2091,9 @@ pub struct TargetOptions {
     /// compiling `rustc` will be used instead (or llvm if it is not set).
     ///
     /// N.B. when *using* the compiler, backend can always be overridden with `-Zcodegen-backend`.
+    ///
+    /// This was added by WaffleLapkin in #116793. The motivation is a rustc fork that requires a
+    /// custom codegen backend for a particular target.
     pub default_codegen_backend: Option<StaticCow<str>>,
 
     /// Whether to generate trap instructions in places where optimization would
