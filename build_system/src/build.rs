@@ -55,8 +55,7 @@ impl BuildArg {
     }
 }
 
-pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
-    let start_dir = Path::new("build_sysroot");
+fn cleanup_sysroot_previous_build(start_dir: &Path) {
     // Cleanup for previous run
     // Clean target dir except for build scripts and incremental cache
     let _ = walk_dir(
@@ -100,6 +99,11 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     let _ = fs::remove_file(start_dir.join("Cargo.lock"));
     let _ = fs::remove_file(start_dir.join("test_target/Cargo.lock"));
     let _ = fs::remove_dir_all(start_dir.join("sysroot"));
+}
+
+pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
+    let start_dir = Path::new("build_sysroot");
+    cleanup_sysroot_previous_build(&start_dir);
 
     // Builds libs
     let mut rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
