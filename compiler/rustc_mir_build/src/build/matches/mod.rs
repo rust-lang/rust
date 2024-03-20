@@ -229,7 +229,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         scrutinee_span: Span,
     ) -> BlockAnd<()> {
-        let scrutinee_span = scrutinee_span;
         let scrutinee_place =
             unpack!(block = self.lower_scrutinee(block, scrutinee_id, scrutinee_span));
 
