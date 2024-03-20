@@ -62,7 +62,7 @@ pub(crate) fn parse_external_mod(
 
         // Ensure file paths are acyclic.
         if let Some(pos) = module.file_path_stack.iter().position(|p| p == &mp.file_path) {
-            Err(ModError::CircularInclusion(module.file_path_stack[pos..].to_vec()))?;
+            do yeet ModError::CircularInclusion(module.file_path_stack[pos..].to_vec());
         }
 
         // Actually parse the external file as a module.

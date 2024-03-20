@@ -189,7 +189,7 @@ pub fn parse_asm_args<'a>(
             args.templates.push(template);
             continue;
         } else {
-            return p.unexpected();
+            p.unexpected_any()?
         };
 
         allow_templates = false;

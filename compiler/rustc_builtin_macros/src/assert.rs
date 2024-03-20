@@ -151,7 +151,7 @@ fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PRes
         };
 
     if parser.token != token::Eof {
-        return parser.unexpected();
+        parser.unexpected()?;
     }
 
     Ok(Assert { cond_expr, custom_message })

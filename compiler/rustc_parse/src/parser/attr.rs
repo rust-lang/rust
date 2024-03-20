@@ -380,12 +380,12 @@ impl<'a> Parser<'a> {
         };
 
         if let Some(item) = nt_meta {
-            return match item.meta(item.path.span) {
+            match item.meta(item.path.span) {
                 Some(meta) => {
                     self.bump();
-                    Ok(meta)
+                    return Ok(meta);
                 }
-                None => self.unexpected(),
+                None => self.unexpected()?,
             };
         }
 
