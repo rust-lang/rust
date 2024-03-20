@@ -1,5 +1,5 @@
 use crate::utils::{
-    create_symlink, get_os_name, run_command_with_output, rustc_version_info, split_args,
+    create_dir, create_symlink, get_os_name, run_command_with_output, rustc_version_info, split_args,
 };
 use std::collections::HashMap;
 use std::env as std_env;
@@ -228,13 +228,7 @@ impl ConfigInfo {
 
         let output_dir = output_dir.join(&commit);
         if !output_dir.is_dir() {
-            std::fs::create_dir_all(&output_dir).map_err(|err| {
-                format!(
-                    "failed to create folder `{}`: {:?}",
-                    output_dir.display(),
-                    err,
-                )
-            })?;
+            create_dir(&output_dir)?;
         }
         let output_dir = output_dir.canonicalize().map_err(|err| {
             format!(

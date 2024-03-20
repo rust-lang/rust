@@ -1,13 +1,13 @@
 use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
-    get_toolchain, git_clone, git_clone_root_dir, remove_file, run_command, run_command_with_env,
+    create_dir, get_toolchain, git_clone, git_clone_root_dir, remove_file, run_command, run_command_with_env,
     run_command_with_output_and_env, rustc_version_info, split_args, walk_dir,
 };
 
 use std::collections::{BTreeSet, HashMap};
 use std::ffi::OsStr;
-use std::fs::{create_dir_all, remove_dir_all, File};
+use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -211,8 +211,7 @@ fn build_if_no_backend(env: &Env, args: &TestArg) -> Result<(), String> {
 fn clean(_env: &Env, args: &TestArg) -> Result<(), String> {
     let _ = std::fs::remove_dir_all(&args.config_info.cargo_target_dir);
     let path = Path::new(&args.config_info.cargo_target_dir).join("gccjit");
-    std::fs::create_dir_all(&path)
-        .map_err(|error| format!("failed to create folder `{}`: {:?}", path.display(), error))
+    create_dir(&path)
 }
 
 fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
@@ -715,8 +714,7 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
     };
 
     let projects_path = Path::new("projects");
-    create_dir_all(projects_path)
-        .map_err(|err| format!("Failed to create directory `projects`: {}", err))?;
+    create_dir(projects_path)?;
 
     let nb_parts = args.nb_parts.unwrap_or(0);
     if nb_parts > 0 {

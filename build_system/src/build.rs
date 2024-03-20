@@ -1,5 +1,5 @@
 use crate::config::{Channel, ConfigInfo};
-use crate::utils::{run_command, run_command_with_output_and_env, walk_dir};
+use crate::utils::{create_dir, run_command, run_command_with_output_and_env, walk_dir};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -103,6 +103,7 @@ fn cleanup_sysroot_previous_build(start_dir: &Path) {
 
 pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
     let start_dir = Path::new("build_sysroot");
+
     cleanup_sysroot_previous_build(&start_dir);
 
     // Builds libs
@@ -136,13 +137,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 
     // Copy files to sysroot
     let sysroot_path = start_dir.join(format!("sysroot/lib/rustlib/{}/lib/", config.target_triple));
-    fs::create_dir_all(&sysroot_path).map_err(|error| {
-        format!(
-            "Failed to create directory `{}`: {:?}",
-            sysroot_path.display(),
-            error
-        )
-    })?;
+    create_dir(&sysroot_path)?;
     let copier = |dir_to_copy: &Path| {
         // FIXME: should not use shell command!
         run_command(&[&"cp", &"-r", &dir_to_copy, &sysroot_path], None).map(|_| ())
@@ -155,13 +150,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 
     // Copy the source files to the sysroot (Rust for Linux needs this).
     let sysroot_src_path = start_dir.join("sysroot/lib/rustlib/src/rust");
-    fs::create_dir_all(&sysroot_src_path).map_err(|error| {
-        format!(
-            "Failed to create directory `{}`: {:?}",
-            sysroot_src_path.display(),
-            error
-        )
-    })?;
+    create_dir(&sysroot_src_path)?;
     run_command(
         &[
             &"cp",
@@ -216,12 +205,7 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     // We voluntarily ignore the error.
     let _ = fs::remove_dir_all("target/out");
     let gccjit_target = "target/out/gccjit";
-    fs::create_dir_all(gccjit_target).map_err(|error| {
-        format!(
-            "Failed to create directory `{}`: {:?}",
-            gccjit_target, error
-        )
-    })?;
+    create_dir(gccjit_target)?;
 
     println!("[BUILD] sysroot");
     build_sysroot(&env, &args.config_info)?;

@@ -1,6 +1,6 @@
 use crate::rustc_info::get_rustc_path;
 use crate::utils::{
-    cargo_install, git_clone_root_dir, remove_file, run_command, run_command_with_output, walk_dir,
+    cargo_install, create_dir, git_clone_root_dir, remove_file, run_command, run_command_with_output, walk_dir,
 };
 
 use std::fs;
@@ -41,13 +41,7 @@ fn prepare_libcore(
     }
 
     let sysroot_library_dir = sysroot_dir.join("library");
-    fs::create_dir_all(&sysroot_library_dir).map_err(|error| {
-        format!(
-            "Failed to create folder `{}`: {:?}",
-            sysroot_library_dir.display(),
-            error,
-        )
-    })?;
+    create_dir(&sysroot_library_dir)?;
 
     run_command(
         &[&"cp", &"-r", &rustlib_dir.join("library"), &sysroot_dir],
