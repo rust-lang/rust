@@ -279,9 +279,6 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
     validator.qualifs_in_return_place()
 }
 
-/// Make MIR ready for const evaluation. This is run on all MIR, not just on consts!
-/// FIXME(oli-obk): it's unclear whether we still need this phase (and its corresponding query).
-/// We used to have this for pre-miri MIR based const eval.
 fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
     // MIR unsafety check uses the raw mir, so make sure it is run.
     if !tcx.sess.opts.unstable_opts.thir_unsafeck {
