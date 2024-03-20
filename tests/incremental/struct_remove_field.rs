@@ -1,4 +1,4 @@
-// Test incremental compilation tracking where we change field names
+// Test incremental compilation tracking where we remove a field
 // in between revisions (hashing should be stable).
 
 //@ revisions:rpass1 rpass2

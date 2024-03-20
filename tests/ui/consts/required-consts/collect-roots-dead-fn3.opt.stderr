@@ -1,0 +1,23 @@
+error[E0080]: evaluation of `fail::<()>::{constant#0}` failed
+  --> $DIR/collect-roots-dead-fn3.rs:35:13
+   |
+LL |     const { panic!(); }
+   |             ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-roots-dead-fn3.rs:35:13
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/collect-roots-dead-fn3.rs:35:5
+   |
+LL |     const { panic!(); }
+   |     ^^^^^^^^^^^^^^^^^^^
+
+note: the above error was encountered while instantiating `fn fail::<()>`
+  --> $DIR/collect-roots-dead-fn3.rs:28:5
+   |
+LL |     fail::<()>();
+   |     ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

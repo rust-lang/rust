@@ -1,0 +1,23 @@
+error[E0080]: evaluation of `Zst::<u32>::ASSERT` failed
+  --> $DIR/collect-roots-inline-fn.rs:13:9
+   |
+LL |         panic!();
+   |         ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-roots-inline-fn.rs:13:9
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/collect-roots-inline-fn.rs:18:5
+   |
+LL |     Zst::<T>::ASSERT;
+   |     ^^^^^^^^^^^^^^^^
+
+note: the above error was encountered while instantiating `fn f::<u32>`
+  --> $DIR/collect-roots-inline-fn.rs:22:5
+   |
+LL |     f::<u32>()
+   |     ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

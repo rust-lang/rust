@@ -1513,16 +1513,26 @@ fn collect_const_value<'tcx>(
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
 #[instrument(skip(tcx, mode), level = "debug")]
-fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoItem<'_>> {
+fn collect_roots(
+    tcx: TyCtxt<'_>,
+    mode: MonoItemCollectionStrategy,
+) -> Vec<(MonoItem<'_>, CollectionMode)> {
     debug!("collecting roots");
-    let mut roots = Vec::new();
+    let mut used_roots = MonoItems::new();
+    let mut mentioned_roots = MonoItems::new();
 
     {
         let entry_fn = tcx.entry_fn(());
 
         debug!("collect_roots: entry_fn = {:?}", entry_fn);
 
-        let mut collector = RootCollector { tcx, strategy: mode, entry_fn, output: &mut roots };
+        let mut collector = RootCollector {
+            tcx,
+            strategy: mode,
+            entry_fn,
+            used_roots: &mut used_roots,
+            mentioned_roots: &mut mentioned_roots,
+        };
 
         let crate_items = tcx.hir_crate_items(());
 
@@ -1537,21 +1547,30 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
         collector.push_extra_entry_roots();
     }
 
+    // Chain the two root lists together. Used items go first, to make it
+    // more likely that when we visit a mentioned item, we can stop immediately as it was already used.
     // We can only codegen items that are instantiable - items all of
     // whose predicates hold. Luckily, items that aren't instantiable
     // can't actually be used, so we can just skip codegenning them.
-    roots
+    used_roots
         .into_iter()
-        .filter_map(|Spanned { node: mono_item, .. }| {
-            mono_item.is_instantiable(tcx).then_some(mono_item)
-        })
+        .map(|mono_item| (mono_item.node, CollectionMode::UsedItems))
+        .chain(
+            mentioned_roots
+                .into_iter()
+                .map(|mono_item| (mono_item.node, CollectionMode::MentionedItems)),
+        )
+        .filter(|(mono_item, _mode)| mono_item.is_instantiable(tcx))
         .collect()
 }
 
 struct RootCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     strategy: MonoItemCollectionStrategy,
-    output: &'a mut MonoItems<'tcx>,
+    // `MonoItems` includes spans we don't actually want... but this lets us reuse some of the
+    // collector's functions.
+    used_roots: &'a mut MonoItems<'tcx>,
+    mentioned_roots: &'a mut MonoItems<'tcx>,
     entry_fn: Option<(DefId, EntryFnType)>,
 }
 
@@ -1565,7 +1584,7 @@ impl<'v> RootCollector<'_, 'v> {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
 
                     let ty = self.tcx.type_of(id.owner_id.to_def_id()).no_bound_vars().unwrap();
-                    visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
+                    visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.used_roots);
                 }
             }
             DefKind::GlobalAsm => {
@@ -1573,12 +1592,12 @@ impl<'v> RootCollector<'_, 'v> {
                     "RootCollector: ItemKind::GlobalAsm({})",
                     self.tcx.def_path_str(id.owner_id)
                 );
-                self.output.push(dummy_spanned(MonoItem::GlobalAsm(id)));
+                self.used_roots.push(dummy_spanned(MonoItem::GlobalAsm(id)));
             }
             DefKind::Static { .. } => {
                 let def_id = id.owner_id.to_def_id();
                 debug!("RootCollector: ItemKind::Static({})", self.tcx.def_path_str(def_id));
-                self.output.push(dummy_spanned(MonoItem::Static(def_id)));
+                self.used_roots.push(dummy_spanned(MonoItem::Static(def_id)));
             }
             DefKind::Const => {
                 // const items only generate mono items if they are
@@ -1586,12 +1605,12 @@ impl<'v> RootCollector<'_, 'v> {
 
                 // but even just declaring them must collect the items they refer to
                 if let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id()) {
-                    collect_const_value(self.tcx, val, self.output);
+                    collect_const_value(self.tcx, val, self.used_roots);
                 }
             }
             DefKind::Impl { .. } => {
                 if self.strategy == MonoItemCollectionStrategy::Eager {
-                    create_mono_items_for_default_impls(self.tcx, id, self.output);
+                    create_mono_items_for_default_impls(self.tcx, id, self.used_roots);
                 }
             }
             DefKind::Fn => {
@@ -1607,31 +1626,54 @@ impl<'v> RootCollector<'_, 'v> {
         }
     }
 
-    fn is_root(&self, def_id: LocalDefId) -> bool {
-        !self.tcx.generics_of(def_id).requires_monomorphization(self.tcx)
-            && match self.strategy {
-                MonoItemCollectionStrategy::Eager => true,
-                MonoItemCollectionStrategy::Lazy => {
-                    self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
-                        || self.tcx.is_reachable_non_generic(def_id)
-                        || self
-                            .tcx
-                            .codegen_fn_attrs(def_id)
-                            .flags
-                            .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-                }
+    /// Determines whether this is an item we start walking, and in which mode. The "real" roots are
+    /// walked as "used" items, but that set is optimization-dependent. We add all other non-generic
+    /// items as "mentioned" roots. This makes the set of items where `is_root` return `Some`
+    /// optimization-independent, which is crucial to ensure that optimized and unoptimized builds
+    /// evaluate the same constants.
+    fn is_root(&self, def_id: LocalDefId) -> Option<CollectionMode> {
+        // Generic things are never roots.
+        if self.tcx.generics_of(def_id).requires_monomorphization(self.tcx) {
+            return None;
+        }
+        // We have to skip `must_be_overridden` bodies; asking for their MIR ICEs.
+        if self.tcx.intrinsic(def_id).is_some_and(|i| i.must_be_overridden) {
+            return None;
+        }
+        // The rest is definitely a root, but is it used or merely mentioned?
+        // Determine whether this item is reachable, which makes it "used".
+        let is_used_root = match self.strategy {
+            MonoItemCollectionStrategy::Eager => true,
+            MonoItemCollectionStrategy::Lazy => {
+                self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
+                    || self.tcx.is_reachable_non_generic(def_id)
+                    || self
+                        .tcx
+                        .codegen_fn_attrs(def_id)
+                        .flags
+                        .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
             }
+        };
+        if is_used_root {
+            Some(CollectionMode::UsedItems)
+        } else {
+            Some(CollectionMode::MentionedItems)
+        }
     }
 
     /// If `def_id` represents a root, pushes it onto the list of
     /// outputs. (Note that all roots must be monomorphic.)
     #[instrument(skip(self), level = "debug")]
     fn push_if_root(&mut self, def_id: LocalDefId) {
-        if self.is_root(def_id) {
+        if let Some(mode) = self.is_root(def_id) {
             debug!("found root");
 
             let instance = Instance::mono(self.tcx, def_id.to_def_id());
-            self.output.push(create_fn_mono_item(self.tcx, instance, DUMMY_SP));
+            let mono_item = create_fn_mono_item(self.tcx, instance, DUMMY_SP);
+            match mode {
+                CollectionMode::UsedItems => self.used_roots.push(mono_item),
+                CollectionMode::MentionedItems => self.mentioned_roots.push(mono_item),
+            }
         }
     }
 
@@ -1667,7 +1709,7 @@ impl<'v> RootCollector<'_, 'v> {
             self.tcx.mk_args(&[main_ret_ty.into()]),
         );
 
-        self.output.push(create_fn_mono_item(self.tcx, start_instance, DUMMY_SP));
+        self.used_roots.push(create_fn_mono_item(self.tcx, start_instance, DUMMY_SP));
     }
 }
 
@@ -1772,7 +1814,7 @@ pub fn collect_crate_mono_items(
         let state: LRef<'_, _> = &mut state;
 
         tcx.sess.time("monomorphization_collector_graph_walk", || {
-            par_for_each_in(roots, |root| {
+            par_for_each_in(roots, |(root, mode)| {
                 let mut recursion_depths = DefIdMap::default();
                 collect_items_rec(
                     tcx,
@@ -1780,7 +1822,7 @@ pub fn collect_crate_mono_items(
                     state,
                     &mut recursion_depths,
                     recursion_limit,
-                    CollectionMode::UsedItems,
+                    mode,
                 );
             });
         });
