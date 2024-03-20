@@ -415,7 +415,7 @@ impl<'tcx> NonConstOp<'tcx> for LiveDrop<'tcx> {
 pub struct TransientCellBorrow;
 impl<'tcx> NonConstOp<'tcx> for TransientCellBorrow {
     fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
-        Status::Unstable(sym::const_refs_to_cell)
+        Status::Allowed
     }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         ccx.tcx
