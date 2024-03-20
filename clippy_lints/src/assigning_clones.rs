@@ -66,10 +66,6 @@ impl_lint_pass!(AssigningClones => [ASSIGNING_CLONES]);
 
 impl<'tcx> LateLintPass<'tcx> for AssigningClones {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, assign_expr: &'tcx hir::Expr<'_>) {
-        if !self.msrv.meets(msrvs::ASSIGNING_CLONES) {
-            return;
-        }
-
         // Do not fire the lint in macros
         let expn_data = assign_expr.span().ctxt().outer_expn_data();
         match expn_data.kind {
@@ -85,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             return;
         };
 
-        if is_ok_to_suggest(cx, lhs, &call) {
+        if is_ok_to_suggest(cx, lhs, &call, &self.msrv) {
             suggest(cx, assign_expr, lhs, &call);
         }
     }
@@ -154,7 +150,13 @@ fn extract_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<
 
 // Return true if we find that the called method has a custom implementation and isn't derived or
 // provided by default by the corresponding trait.
-fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallCandidate<'tcx>) -> bool {
+fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallCandidate<'tcx>, msrv: &Msrv) -> bool {
+    // For calls to .to_owned we suggest using .clone_into(), which was only stablilized in 1.63.
+    // If the current MSRV is below that, don't suggest the lint.
+    if !msrv.meets(msrvs::ASSIGNING_CLONES) && matches!(call.target, TargetTrait::ToOwned) {
+        return false;
+    }
+
     // If the left-hand side is a local variable, it might be uninitialized at this point.
     // In that case we do not want to suggest the lint.
     if let Some(local) = path_to_local(lhs) {
