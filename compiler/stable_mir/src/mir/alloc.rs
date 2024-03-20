@@ -55,7 +55,7 @@ impl IndexedVal for AllocId {
 /// Utility function used to read an allocation data into a unassigned integer.
 pub(crate) fn read_target_uint(mut bytes: &[u8]) -> Result<u128, Error> {
     let mut buf = [0u8; std::mem::size_of::<u128>()];
-    match MachineInfo::target_endianess() {
+    match MachineInfo::target_endianness() {
         Endian::Little => {
             bytes.read(&mut buf)?;
             Ok(u128::from_le_bytes(buf))
@@ -70,7 +70,7 @@ pub(crate) fn read_target_uint(mut bytes: &[u8]) -> Result<u128, Error> {
 /// Utility function used to read an allocation data into an assigned integer.
 pub(crate) fn read_target_int(mut bytes: &[u8]) -> Result<i128, Error> {
     let mut buf = [0u8; std::mem::size_of::<i128>()];
-    match MachineInfo::target_endianess() {
+    match MachineInfo::target_endianness() {
         Endian::Little => {
             bytes.read(&mut buf)?;
             Ok(i128::from_le_bytes(buf))

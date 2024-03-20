@@ -427,7 +427,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let bitmask_len = u32::try_from(bitmask_len).unwrap();
 
                 // To read the mask, we transmute it to an integer.
-                // That does the right thing wrt endianess.
+                // That does the right thing wrt endianness.
                 let mask_ty = this.machine.layouts.uint(mask.layout.size).unwrap();
                 let mask = mask.transmute(mask_ty, this)?;
                 let mask: u64 = this.read_scalar(&mask)?.to_bits(mask_ty.size)?.try_into().unwrap();
@@ -479,7 +479,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                 }
                 // We have to change the type of the place to be able to write `res` into it. This
-                // transmutes the integer to an array, which does the right thing wrt endianess.
+                // transmutes the integer to an array, which does the right thing wrt endianness.
                 let dest =
                     dest.transmute(this.machine.layouts.uint(dest.layout.size).unwrap(), this)?;
                 this.write_int(res, &dest)?;
