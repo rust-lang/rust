@@ -8,7 +8,7 @@ use rustc_hir::def::Res;
 use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::{
     ArrayLen, BinOpKind, BindingAnnotation, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy, GenericArg,
-    GenericArgs, HirId, HirIdMap, InlineAsmOperand, Let, Lifetime, LifetimeName, Pat, PatField, PatKind, Path,
+    GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeName, Pat, PatField, PatKind, Path,
     PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
 use rustc_lexer::{tokenize, TokenKind};
@@ -837,7 +837,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                 }
             },
-            ExprKind::Let(Let { pat, init, ty, .. }) => {
+            ExprKind::Let(LetExpr { pat, init, ty, .. }) => {
                 self.hash_expr(init);
                 if let Some(ty) = ty {
                     self.hash_ty(ty);

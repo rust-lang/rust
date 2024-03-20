@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::hir_id::ItemLocalId;
-use rustc_hir::{Block, Body, BodyOwnerKind, Expr, ExprKind, HirId, Let, Node, Pat, PatKind, QPath, UnOp};
+use rustc_hir::{Block, Body, BodyOwnerKind, Expr, ExprKind, HirId, LetExpr, Node, Pat, PatKind, QPath, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
@@ -238,7 +238,7 @@ fn find_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'
         let init = match node {
             Node::Arm(_) | Node::Pat(_) => continue,
             Node::Expr(expr) => match expr.kind {
-                ExprKind::Match(e, _, _) | ExprKind::Let(&Let { init: e, .. }) => Some(e),
+                ExprKind::Match(e, _, _) | ExprKind::Let(&LetExpr { init: e, .. }) => Some(e),
                 _ => None,
             },
             Node::Local(local) => local.init,

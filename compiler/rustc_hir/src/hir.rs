@@ -1259,7 +1259,7 @@ pub struct Arm<'hir> {
 /// In an `if let`, imagine it as `if (let <pat> = <expr>) { ... }`; in a let-else, it is part of
 /// the desugaring to if-let. Only let-else supports the type annotation at present.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct Let<'hir> {
+pub struct LetExpr<'hir> {
     pub span: Span,
     pub pat: &'hir Pat<'hir>,
     pub ty: Option<&'hir Ty<'hir>>,
@@ -1852,7 +1852,7 @@ pub enum ExprKind<'hir> {
     ///
     /// These are not `Local` and only occur as expressions.
     /// The `let Some(x) = foo()` in `if let Some(x) = foo()` is an example of `Let(..)`.
-    Let(&'hir Let<'hir>),
+    Let(&'hir LetExpr<'hir>),
     /// An `if` block, with an optional else block.
     ///
     /// I.e., `if <expr> { <expr> } else { <expr> }`.
