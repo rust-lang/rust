@@ -7,6 +7,7 @@ impl Trait for i32 {}
 // ICE in this case.
 fn produce<T>() -> impl Trait<Assoc = impl Trait> {
     //~^ ERROR associated type `Assoc` not found for `Trait`
+    //~| ERROR associated type `Assoc` not found for `Trait`
     16
 }
 

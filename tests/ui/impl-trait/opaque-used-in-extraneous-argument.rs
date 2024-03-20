@@ -7,6 +7,7 @@ fn frob() -> impl Fn<P, Output = T> + '_ {}
 //~| ERROR cannot find type `P`
 //~| ERROR cannot find type `T`
 //~| ERROR `Fn`-family traits' type parameters is subject to change
+//~| ERROR `Fn`-family traits' type parameters is subject to change
 
 fn open_parent<'path>() {
     todo!()
