@@ -24,6 +24,8 @@ cfg_if::cfg_if! {
     }
 }
 
+// FIXME(#110897): remove this
+#[allow(unused)] // Not used by key-based TLS.
 mod lazy {
     use crate::cell::UnsafeCell;
     use crate::hint;
