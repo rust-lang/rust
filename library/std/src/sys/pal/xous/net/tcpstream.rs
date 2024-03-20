@@ -406,7 +406,7 @@ impl TcpStream {
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
-        self.nonblocking.store(nonblocking, Ordering::SeqCst);
+        self.nonblocking.store(nonblocking, Ordering::Relaxed);
         Ok(())
     }
 }
