@@ -8,7 +8,7 @@ use std::cell::Cell;
 use crate::abi::{FnAbi, Layout, LayoutShape};
 use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::mono::{Instance, InstanceDef, StaticDef};
-use crate::mir::Body;
+use crate::mir::{Body, Place};
 use crate::target::MachineInfo;
 use crate::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, ForeignDef,
@@ -126,10 +126,13 @@ pub trait Context {
     fn def_ty_with_args(&self, item: DefId, args: &GenericArgs) -> Ty;
 
     /// Returns literal value of a const as a string.
-    fn const_literal(&self, cnst: &Const) -> String;
+    fn const_pretty(&self, cnst: &Const) -> String;
 
     /// `Span` of an item
     fn span_of_an_item(&self, def_id: DefId) -> Span;
+
+    /// Obtain the representation of a type.
+    fn ty_pretty(&self, ty: Ty) -> String;
 
     /// Obtain the representation of a type.
     fn ty_kind(&self, ty: Ty) -> TyKind;
@@ -205,6 +208,9 @@ pub trait Context {
 
     /// Get the layout shape.
     fn layout_shape(&self, id: Layout) -> LayoutShape;
+
+    /// Get a debug string representation of a place.
+    fn place_debug(&self, place: &Place) -> String;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
