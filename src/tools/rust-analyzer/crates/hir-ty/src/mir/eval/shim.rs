@@ -27,6 +27,7 @@ macro_rules! from_bytes {
     ($ty:tt, $value:expr) => {
         ($ty::from_le_bytes(match ($value).try_into() {
             Ok(it) => it,
+            #[allow(unreachable_patterns)]
             Err(_) => return Err(MirEvalError::InternalError("mismatched size".into())),
         }))
     };

@@ -1161,6 +1161,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                     ProjectionElem::OpaqueCast(it) => {
                                         ProjectionElem::OpaqueCast(it)
                                     }
+                                    #[allow(unreachable_patterns)]
                                     ProjectionElem::Index(it) => match it {},
                                 })
                                 .collect(),
