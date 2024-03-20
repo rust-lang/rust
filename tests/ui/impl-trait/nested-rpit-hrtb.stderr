@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/nested-rpit-hrtb.rs:58:77
+  --> $DIR/nested-rpit-hrtb.rs:57:77
    |
 LL | fn two_htrb_outlives() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> {}
    |                                                                             ^^ undeclared lifetime
@@ -15,7 +15,7 @@ LL | fn two_htrb_outlives<'b>() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Siz
    |                     ++++
 
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/nested-rpit-hrtb.rs:66:82
+  --> $DIR/nested-rpit-hrtb.rs:65:82
    |
 LL | fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
    |                                                                                  ^^ undeclared lifetime
@@ -86,26 +86,18 @@ note: lifetime declared here
 LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
    |                                            ^^
 
-error[E0277]: the trait bound `for<'a> &'a (): Qux<'_>` is not satisfied
-  --> $DIR/nested-rpit-hrtb.rs:36:64
-   |
-LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
-   |                                                                ^^^^^^^^^^^^ the trait `for<'a> Qux<'_>` is not implemented for `&'a ()`
-   |
-   = help: the trait `Qux<'_>` is implemented for `()`
-   = help: for that trait implementation, expected `()`, found `&'a ()`
-
-error[E0277]: the trait bound `for<'a> &'a (): Qux<'b>` is not satisfied
-  --> $DIR/nested-rpit-hrtb.rs:47:79
+error[E0283]: type annotations needed: cannot satisfy `for<'a> &'a (): Qux<'b>`
+  --> $DIR/nested-rpit-hrtb.rs:46:79
    |
 LL | fn one_hrtb_mention_fn_trait_param_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Qux<'b>> {}
-   |                                                                               ^^^^^^^^^^^^ the trait `for<'a> Qux<'b>` is not implemented for `&'a ()`
+   |                                                                               ^^^^^^^^^^^^
    |
+   = note: cannot satisfy `for<'a> &'a (): Qux<'b>`
    = help: the trait `Qux<'_>` is implemented for `()`
    = help: for that trait implementation, expected `()`, found `&'a ()`
 
 error: implementation of `Bar` is not general enough
-  --> $DIR/nested-rpit-hrtb.rs:51:93
+  --> $DIR/nested-rpit-hrtb.rs:50:93
    |
 LL | fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'b> {}
    |                                                                                             ^^ implementation of `Bar` is not general enough
@@ -114,7 +106,7 @@ LL | fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = 
    = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
 
 error[E0277]: the trait bound `for<'a, 'b> &'a (): Qux<'b>` is not satisfied
-  --> $DIR/nested-rpit-hrtb.rs:62:64
+  --> $DIR/nested-rpit-hrtb.rs:61:64
    |
 LL | fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Qux<'b>> {}
    |                                                                ^^^^^^^^^^^^^^^^^^^^ the trait `for<'a, 'b> Qux<'b>` is not implemented for `&'a ()`
@@ -123,7 +115,7 @@ LL | fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b>
    = help: for that trait implementation, expected `()`, found `&'a ()`
 
 error: implementation of `Bar` is not general enough
-  --> $DIR/nested-rpit-hrtb.rs:66:86
+  --> $DIR/nested-rpit-hrtb.rs:65:86
    |
 LL | fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
    |                                                                                      ^^ implementation of `Bar` is not general enough
@@ -131,7 +123,7 @@ LL | fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Si
    = note: `()` must implement `Bar<'a>`
    = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
 
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 
-Some errors have detailed explanations: E0261, E0277, E0657.
+Some errors have detailed explanations: E0261, E0277, E0283, E0657.
 For more information about an error, try `rustc --explain E0261`.
