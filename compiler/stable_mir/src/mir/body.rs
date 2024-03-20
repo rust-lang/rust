@@ -91,7 +91,8 @@ impl Body {
         self.locals.iter().enumerate()
     }
 
-    pub(crate) fn dump<W: io::Write>(&self, w: &mut W, fn_name: &str) -> io::Result<()> {
+    /// Emit the body using the provided name for the signature.
+    pub fn dump<W: io::Write>(&self, w: &mut W, fn_name: &str) -> io::Result<()> {
         function_body(w, self, fn_name)
     }
 
