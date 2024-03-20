@@ -79,7 +79,7 @@ pub fn main_inner(profile: Profile) {
             compiler.args([
                 &format!("-Zcodegen-backend={}/target/debug/librustc_codegen_gcc.so", current_dir),
                 "--sysroot",
-                &format!("{}/build_sysroot/sysroot/", current_dir),
+                &format!("{}/build/build_sysroot/sysroot/", current_dir),
                 "-Zno-parallel-llvm",
                 "-C",
                 "link-arg=-lc",

@@ -1,9 +1,9 @@
 use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
-    create_dir, get_toolchain, git_clone, git_clone_root_dir, remove_file, run_command,
-    run_command_with_env, run_command_with_output_and_env, rustc_version_info, split_args,
-    walk_dir,
+    create_dir, get_sysroot_dir, get_toolchain, git_clone, git_clone_root_dir, remove_file,
+    run_command, run_command_with_env, run_command_with_output_and_env, rustc_version_info,
+    split_args, walk_dir,
 };
 
 use std::collections::{BTreeSet, HashMap};
@@ -535,12 +535,13 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     let rustc_args = &format!(
         r#"-Zpanic-abort-tests \
             -Zcodegen-backend="{pwd}/target/{channel}/librustc_codegen_gcc.{dylib_ext}" \
-            --sysroot "{pwd}/build_sysroot/sysroot" -Cpanic=abort{extra}"#,
+            --sysroot "{pwd}/{sysroot_dir}" -Cpanic=abort{extra}"#,
         pwd = std::env::current_dir()
             .map_err(|error| format!("`current_dir` failed: {:?}", error))?
             .display(),
         channel = args.config_info.channel.as_str(),
         dylib_ext = args.config_info.dylib_ext,
+        sysroot_dir = args.config_info.sysroot_path,
         extra = extra,
     );
 
@@ -671,9 +672,9 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
 fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] libcore");
-    let path = Path::new("build_sysroot/sysroot_src/library/core/tests");
+    let path = get_sysroot_dir().join("sysroot_src/library/core/tests");
     let _ = remove_dir_all(path.join("target"));
-    run_cargo_command(&[&"test"], Some(path), env, args)?;
+    run_cargo_command(&[&"test"], Some(&path), env, args)?;
     Ok(())
 }
 

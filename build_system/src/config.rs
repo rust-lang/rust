@@ -1,6 +1,6 @@
 use crate::utils::{
-    create_dir, create_symlink, get_os_name, run_command_with_output, rustc_version_info,
-    split_args,
+    create_dir, create_symlink, get_os_name, get_sysroot_dir, run_command_with_output,
+    rustc_version_info, split_args,
 };
 use std::collections::HashMap;
 use std::env as std_env;
@@ -363,7 +363,8 @@ impl ConfigInfo {
             .join(&format!("librustc_codegen_gcc.{}", self.dylib_ext))
             .display()
             .to_string();
-        self.sysroot_path = current_dir.join("build_sysroot/sysroot").display().to_string();
+        self.sysroot_path =
+            current_dir.join(&get_sysroot_dir()).join("sysroot").display().to_string();
         if let Some(backend) = &self.backend {
             // This option is only used in the rust compiler testsuite. The sysroot is handled
             // by its build system directly so no need to set it ourselves.
@@ -392,8 +393,6 @@ impl ConfigInfo {
             rustflags.push("-Csymbol-mangling-version=v0".to_string());
         }
 
-        
-
         // Since we don't support ThinLTO, disable LTO completely when not trying to do LTO.
         // TODO(antoyo): remove when we can handle ThinLTO.
         if !env.contains_key(&"FAT_LTO".to_string()) {
@@ -411,7 +410,8 @@ impl ConfigInfo {
         env.insert("RUSTC_LOG".to_string(), "warn".to_string());
 
         let sysroot = current_dir
-            .join(&format!("build_sysroot/sysroot/lib/rustlib/{}/lib", self.target_triple,));
+            .join(&get_sysroot_dir())
+            .join(&format!("sysroot/lib/rustlib/{}/lib", self.target_triple));
         let ld_library_path = format!(
             "{target}:{sysroot}:{gcc_path}",
             target = self.cargo_target_dir,

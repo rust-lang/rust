@@ -1,6 +1,6 @@
 use crate::rustc_info::get_rustc_path;
 use crate::utils::{
-    cargo_install, create_dir, git_clone_root_dir, remove_file, run_command,
+    cargo_install, create_dir, get_sysroot_dir, git_clone_root_dir, remove_file, run_command,
     run_command_with_output, walk_dir,
 };
 
@@ -89,7 +89,7 @@ fn prepare_libcore(
     patches.sort();
     for file_path in patches {
         println!("[GIT] apply `{}`", file_path.display());
-        let path = Path::new("../..").join(file_path);
+        let path = Path::new("../../..").join(file_path);
         run_command_with_output(&[&"git", &"apply", &path], Some(&sysroot_dir))?;
         run_command_with_output(&[&"git", &"add", &"-A"], Some(&sysroot_dir))?;
         run_command_with_output(
@@ -192,8 +192,8 @@ pub fn run() -> Result<(), String> {
         Some(a) => a,
         None => return Ok(()),
     };
-    let sysroot_path = Path::new("build_sysroot");
-    prepare_libcore(sysroot_path, args.libgccjit12_patches, args.cross_compile)?;
+    let sysroot_path = get_sysroot_dir();
+    prepare_libcore(&sysroot_path, args.libgccjit12_patches, args.cross_compile)?;
 
     if !args.only_libcore {
         cargo_install("hyperfine")?;

@@ -1,5 +1,7 @@
 use crate::config::{Channel, ConfigInfo};
-use crate::utils::{create_dir, run_command, run_command_with_output_and_env, walk_dir};
+use crate::utils::{
+    copy_file, create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, walk_dir,
+};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -101,10 +103,24 @@ fn cleanup_sysroot_previous_build(start_dir: &Path) {
     let _ = fs::remove_dir_all(start_dir.join("sysroot"));
 }
 
+pub fn create_build_sysroot_content(start_dir: &Path) -> Result<(), String> {
+    if !start_dir.is_dir() {
+        create_dir(start_dir)?;
+    }
+    copy_file("build_system/build_sysroot/Cargo.toml", &start_dir.join("Cargo.toml"))?;
+
+    let src_dir = start_dir.join("src");
+    if !src_dir.is_dir() {
+        create_dir(&src_dir)?;
+    }
+    copy_file("build_system/build_sysroot/lib.rs", &start_dir.join("src/lib.rs"))
+}
+
 pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
-    let start_dir = Path::new("build_sysroot");
+    let start_dir = get_sysroot_dir();
 
     cleanup_sysroot_previous_build(&start_dir);
+    create_build_sysroot_content(&start_dir)?;
 
     // Builds libs
     let mut rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
@@ -115,7 +131,6 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     if config.no_default_features {
         rustflags.push_str(" -Csymbol-mangling-version=v0");
     }
-    let mut env = env.clone();
 
     let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"build", &"--target", &config.target];
 
@@ -132,8 +147,9 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         "debug"
     };
 
+    let mut env = env.clone();
     env.insert("RUSTFLAGS".to_string(), rustflags);
-    run_command_with_output_and_env(&args, Some(start_dir), Some(&env))?;
+    run_command_with_output_and_env(&args, Some(&start_dir), Some(&env))?;
 
     // Copy files to sysroot
     let sysroot_path = start_dir.join(format!("sysroot/lib/rustlib/{}/lib/", config.target_triple));
