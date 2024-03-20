@@ -208,14 +208,11 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                 subpairs = cx.field_match_pairs(downcast_place, subpatterns);
 
                 let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
-                    i == variant_index || {
-                        (cx.tcx.features().exhaustive_patterns
-                            || cx.tcx.features().min_exhaustive_patterns)
-                            && !v
-                                .inhabited_predicate(cx.tcx, adt_def)
-                                .instantiate(cx.tcx, args)
-                                .apply_ignore_module(cx.tcx, cx.param_env)
-                    }
+                    i == variant_index
+                        || !v
+                            .inhabited_predicate(cx.tcx, adt_def)
+                            .instantiate(cx.tcx, args)
+                            .apply_ignore_module(cx.tcx, cx.param_env)
                 }) && (adt_def.did().is_local()
                     || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {
