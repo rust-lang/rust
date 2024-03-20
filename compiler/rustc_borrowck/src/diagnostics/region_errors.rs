@@ -675,12 +675,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if self.to_error_region(outlived_fr) != Some(tcx.lifetimes.re_static) {
             return;
         }
-        // FIXME: there's a case that's yet to be handled: `impl dyn Trait + '_ where Self: '_`
-        // causes *two* errors to be produded, one about `where Self: '_` not being allowed,
-        // and the regular error with no additional information about "lifetime may not live
-        // long enough for `'static`" without mentioning where it came from. This is because
-        // our error recovery fallback is indeed `ReStatic`. We should at some point introduce
-        // a `ReError` instead to avoid this and other similar issues.
 
         // Look for `'static` bounds in the generics of the method and the `impl`.
         // ```

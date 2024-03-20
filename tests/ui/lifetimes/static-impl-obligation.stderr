@@ -1,3 +1,9 @@
+error[E0637]: `'_` cannot be used here
+  --> $DIR/static-impl-obligation.rs:282:35
+   |
+LL |     impl dyn Foo + '_ where Self: '_ {
+   |                                   ^^ `'_` is a reserved lifetime name
+
 error[E0478]: lifetime bound not satisfied
   --> $DIR/static-impl-obligation.rs:222:10
    |
@@ -453,7 +459,15 @@ note: the `impl` on `dyn w::Foo` has a `'static` lifetime requirement
 LL |     trait Trait where Self: 'static { fn hello(&self) {} }
    |                             ^^^^^^^
 
-error: aborting due to 25 previous errors
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:287:27
+   |
+LL |     fn convert<'a>(x: &'a &'a u32) {
+   |                -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
 
-Some errors have detailed explanations: E0478, E0521.
+error: aborting due to 27 previous errors
+
+Some errors have detailed explanations: E0478, E0521, E0637.
 For more information about an error, try `rustc --explain E0478`.

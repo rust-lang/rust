@@ -276,4 +276,16 @@ mod w {
         y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
+mod x {
+    trait Foo {}
+    impl<'a> Foo for &'a u32 {}
+    impl dyn Foo + '_ where Self: '_ { //~ ERROR `'_` cannot be used here
+        fn hello(&self) {}
+
+    }
+    fn convert<'a>(x: &'a &'a u32) {
+        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
+        y.hello();
+    }
+}
 fn main() {}
