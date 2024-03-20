@@ -1892,11 +1892,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx hir::Pat<'tcx>,
         ty: Ty<'tcx>,
     ) {
+        struct V<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            pat_hir_ids: Vec<hir::HirId>,
+        }
+
+        impl<'tcx> Visitor<'tcx> for V<'tcx> {
+            type NestedFilter = rustc_middle::hir::nested_filter::All;
+
+            fn nested_visit_map(&mut self) -> Self::Map {
+                self.tcx.hir()
+            }
+
+            fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
+                self.pat_hir_ids.push(p.hir_id);
+                hir::intravisit::walk_pat(self, p);
+            }
+        }
         if let Err(guar) = ty.error_reported() {
             // Override the types everywhere with `err()` to avoid knock on errors.
             let err = Ty::new_error(self.tcx, guar);
             self.write_ty(hir_id, err);
             self.write_ty(pat.hir_id, err);
+            let mut visitor = V { tcx: self.tcx, pat_hir_ids: vec![] };
+            hir::intravisit::walk_pat(&mut visitor, pat);
+            // Mark all the subpatterns as `{type error}` as well. This allows errors for specific
+            // subpatterns to be silenced.
+            for hir_id in visitor.pat_hir_ids {
+                self.write_ty(hir_id, err);
+            }
             self.locals.borrow_mut().insert(hir_id, err);
             self.locals.borrow_mut().insert(pat.hir_id, err);
         }
