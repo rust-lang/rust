@@ -141,7 +141,7 @@ impl LlvmType for CastTarget {
 
         if self.prefix.iter().all(|x| x.is_none()) {
             // Simplify to a single unit when there is no prefix and size <= unit size
-            if self.rest.total <= self.rest.unit.size {
+            if self.rest.total <= self.rest.unit.size && !self.rest.force_array {
                 return rest_ll_unit;
             }
 
