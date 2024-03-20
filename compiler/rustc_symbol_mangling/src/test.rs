@@ -25,7 +25,7 @@ pub fn report_symbol_names(tcx: TyCtxt<'_>) {
         let mut symbol_names = SymbolNamesTest { tcx };
         let crate_items = tcx.hir_crate_items(());
 
-        for id in crate_items.items() {
+        for id in crate_items.free_items() {
             symbol_names.process_attrs(id.owner_id.def_id);
         }
 
