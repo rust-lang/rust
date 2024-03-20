@@ -272,7 +272,7 @@ fn default_hook(info: &PanicInfo<'_>) {
                 drop(backtrace::print(err, crate::backtrace_rs::PrintFmt::Full))
             }
             Some(BacktraceStyle::Off) => {
-                if FIRST_PANIC.swap(false, Ordering::SeqCst) {
+                if FIRST_PANIC.swap(false, Ordering::Relaxed) {
                     let _ = writeln!(
                         err,
                         "note: run with `RUST_BACKTRACE=1` environment variable to display a \

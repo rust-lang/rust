@@ -7,12 +7,12 @@ use crate::sync::atomic::{AtomicUsize, Ordering};
 static PORT: AtomicUsize = AtomicUsize::new(0);
 
 pub fn next_test_ip4() -> SocketAddr {
-    let port = PORT.fetch_add(1, Ordering::SeqCst) as u16 + base_port();
+    let port = PORT.fetch_add(1, Ordering::Relaxed) as u16 + base_port();
     SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port))
 }
 
 pub fn next_test_ip6() -> SocketAddr {
-    let port = PORT.fetch_add(1, Ordering::SeqCst) as u16 + base_port();
+    let port = PORT.fetch_add(1, Ordering::Relaxed) as u16 + base_port();
     SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), port, 0, 0))
 }
 

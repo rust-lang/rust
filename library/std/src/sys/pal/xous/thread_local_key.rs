@@ -2,7 +2,7 @@ use crate::mem::ManuallyDrop;
 use crate::ptr;
 use crate::sync::atomic::AtomicPtr;
 use crate::sync::atomic::AtomicUsize;
-use crate::sync::atomic::Ordering::SeqCst;
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use core::arch::asm;
 
 use crate::os::xous::ffi::{map_memory, unmap_memory, MemoryFlags};
@@ -92,7 +92,7 @@ fn tls_table() -> &'static mut [*mut u8] {
 pub unsafe fn create(dtor: Option<Dtor>) -> Key {
     // Allocate a new TLS key. These keys are shared among all threads.
     #[allow(unused_unsafe)]
-    let key = unsafe { TLS_KEY_INDEX.fetch_add(1, SeqCst) };
+    let key = unsafe { TLS_KEY_INDEX.fetch_add(1, Relaxed) };
     if let Some(f) = dtor {
         unsafe { register_dtor(key, f) };
     }
@@ -154,11 +154,11 @@ unsafe fn register_dtor(key: Key, dtor: Dtor) {
     let mut node = ManuallyDrop::new(Box::new(Node { key, dtor, next: ptr::null_mut() }));
 
     #[allow(unused_unsafe)]
-    let mut head = unsafe { DTORS.load(SeqCst) };
+    let mut head = unsafe { DTORS.load(Acquire) };
     loop {
         node.next = head;
         #[allow(unused_unsafe)]
-        match unsafe { DTORS.compare_exchange(head, &mut **node, SeqCst, SeqCst) } {
+        match unsafe { DTORS.compare_exchange(head, &mut **node, Release, Acquire) } {
             Ok(_) => return, // nothing to drop, we successfully added the node to the list
             Err(cur) => head = cur,
         }
@@ -199,7 +199,7 @@ unsafe fn run_dtors() {
         }
         any_run = false;
         #[allow(unused_unsafe)]
-        let mut cur = unsafe { DTORS.load(SeqCst) };
+        let mut cur = unsafe { DTORS.load(Acquire) };
         while !cur.is_null() {
             let ptr = unsafe { get((*cur).key) };
 
