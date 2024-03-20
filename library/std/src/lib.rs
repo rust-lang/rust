@@ -270,9 +270,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(exhaustive_patterns))]
-#![cfg_attr(bootstrap, feature(platform_intrinsics))]
-#![cfg_attr(not(bootstrap), feature(min_exhaustive_patterns))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -297,6 +294,7 @@
 #![feature(let_chains)]
 #![feature(link_cfg)]
 #![feature(linkage)]
+#![feature(min_exhaustive_patterns)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
 #![feature(needs_panic_runtime)]

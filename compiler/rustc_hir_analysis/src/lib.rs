@@ -68,7 +68,6 @@ This API is completely unstable and subject to change.
 #![feature(is_sorted)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(never_type)]
 #![feature(lazy_cell)]
 #![feature(slice_partition_dedup)]

@@ -9,7 +9,6 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(try_blocks)]
 
 #[macro_use]
