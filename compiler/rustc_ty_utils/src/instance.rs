@@ -73,15 +73,15 @@ fn resolve_instance<'tcx>(
                 | ty::FnPtr(..)
                 | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
                 | ty::Adt(..)
-                | ty::Dynamic(..)
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
                 | ty::CoroutineWitness(..)
                 | ty::Never
-                | ty::Error(_)
                 | ty::Coroutine(..) => {}
 
                 ty::Param(_)
+                | ty::Error(_)
+                | ty::Dynamic(..)
                 | ty::Alias(..)
                 | ty::Infer(ty::TyVar(_))
                 | ty::Bound(..)
