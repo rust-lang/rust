@@ -2014,7 +2014,10 @@ impl Config {
         let download_rustc = config.download_rustc_commit.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
         config.stage = match config.cmd {
-            Subcommand::Check { .. } => flags.stage.or(check_stage).unwrap_or(0),
+            // `x check std` does nothing in stage 0; use a higher stage by default if it's fast
+            Subcommand::Check { .. } => {
+                flags.stage.or(check_stage).unwrap_or(if download_rustc { 2 } else { 0 })
+            }
             // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
             Subcommand::Doc { .. } => {
                 flags.stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 0 })

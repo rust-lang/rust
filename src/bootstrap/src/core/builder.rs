@@ -1216,7 +1216,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> Command {
-        let initial_sysroot_bin = self.initial_rustc.parent().unwrap();
+        let initial_sysroot_bin = self.initial_sysroot.join("bin");
         // Set PATH to include the sysroot bin dir so clippy can find cargo.
         // FIXME: once rust-clippy#11944 lands on beta, set `CARGO` directly instead.
         let path = t!(env::join_paths(

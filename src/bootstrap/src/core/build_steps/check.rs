@@ -1,5 +1,6 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
+use super::compile;
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
 };
@@ -124,10 +125,18 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("sysroot").path("library")
+        let stage = run.builder.top_stage;
+        run.crate_or_deps("sysroot").path("library").default_condition(stage != 0)
     }
 
     fn make_run(run: RunConfig<'_>) {
+        if run.builder.top_stage == 0 {
+            eprintln!(
+                "check --stage 0 std is no longer supported - try --stage 1 or enabling rust.download-rustc"
+            );
+            build_helper::util::detail_exit(1, false);
+        }
+
         let crates = run.make_run_crates(Alias::Library);
         run.builder.ensure(Std { target: run.target, crates });
     }
@@ -137,6 +146,14 @@ impl Step for Std {
 
         let target = self.target;
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
+
+        if builder.top_stage == 0 {
+            // Reuse the beta compiler's libstd
+            builder.ensure(compile::Std::new(compiler, target));
+            return;
+        }
+
+        builder.update_submodule(&Path::new("library").join("stdarch"));
 
         let mut cargo = builder::Cargo::new(
             builder,
