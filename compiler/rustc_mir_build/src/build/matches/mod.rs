@@ -1575,21 +1575,52 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let first_match_pair = first_candidate.match_pairs.remove(0);
-        let remaining_match_pairs = mem::take(&mut first_candidate.match_pairs);
         let remainder_start = self.cfg.start_new_block();
         // Test the alternatives of this or-pattern.
-        self.test_or_pattern(first_candidate, start_block, remainder_start, first_match_pair);
+        self.test_or_pattern(
+            span,
+            scrutinee_span,
+            first_candidate,
+            start_block,
+            remainder_start,
+            first_match_pair,
+        );
 
-        if !remaining_match_pairs.is_empty() {
+        // Test the remaining candidates.
+        self.match_candidates(
+            span,
+            scrutinee_span,
+            remainder_start,
+            otherwise_block,
+            remaining_candidates,
+        );
+    }
+
+    /// Simplify subcandidates and process any leftover match pairs. The candidate should have been
+    /// expanded with `create_or_subcandidates`.
+    fn finalize_or_candidate(
+        &mut self,
+        span: Span,
+        scrutinee_span: Span,
+        candidate: &mut Candidate<'_, 'tcx>,
+    ) {
+        if candidate.subcandidates.is_empty() {
+            return;
+        }
+
+        self.merge_trivial_subcandidates(candidate);
+
+        if !candidate.match_pairs.is_empty() {
             // If more match pairs remain, test them after each subcandidate.
             // We could add them to the or-candidates before the call to `test_or_pattern` but this
             // would make it impossible to detect simplifiable or-patterns. That would guarantee
             // exponentially large CFGs for cases like `(1 | 2, 3 | 4, ...)`.
             let mut last_otherwise = None;
-            first_candidate.visit_leaves(|leaf_candidate| {
+            candidate.visit_leaves(|leaf_candidate| {
                 last_otherwise = leaf_candidate.otherwise_block;
             });
-            first_candidate.visit_leaves(|leaf_candidate| {
+            let remaining_match_pairs = mem::take(&mut candidate.match_pairs);
+            candidate.visit_leaves(|leaf_candidate| {
                 assert!(leaf_candidate.match_pairs.is_empty());
                 leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
                 let or_start = leaf_candidate.pre_binding_block.unwrap();
@@ -1612,20 +1643,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
             });
         }
-
-        // Test the remaining candidates.
-        self.match_candidates(
-            span,
-            scrutinee_span,
-            remainder_start,
-            otherwise_block,
-            remaining_candidates,
-        );
     }
 
     #[instrument(skip(self, start_block, otherwise_block, candidate, match_pair), level = "debug")]
     fn test_or_pattern<'pat>(
         &mut self,
+        span: Span,
+        scrutinee_span: Span,
         candidate: &mut Candidate<'pat, 'tcx>,
         start_block: BasicBlock,
         otherwise_block: BasicBlock,
@@ -1641,12 +1665,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             otherwise_block,
             &mut or_candidate_refs,
         );
-        self.merge_trivial_subcandidates(candidate);
+        self.finalize_or_candidate(span, scrutinee_span, candidate);
     }
 
     /// Given a match-pair that corresponds to an or-pattern, expand each subpattern into a new
     /// subcandidate. Any candidate that has been expanded that way should be passed to
-    /// `merge_trivial_subcandidates` after its subcandidates have been processed.
+    /// `finalize_or_candidate` after its subcandidates have been processed.
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
@@ -1664,8 +1688,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Try to merge all of the subcandidates of the given candidate into one. This avoids
-    /// exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`. The or-pattern should have
-    /// been expanded with `create_or_subcandidates`.
+    /// exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`. The candidate should have been
+    /// expanded with `create_or_subcandidates`.
     fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
         if candidate.subcandidates.is_empty() || candidate.has_guard {
             // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
