@@ -1575,6 +1575,27 @@ impl<T> NonNull<[T]> {
         self.as_ptr().len()
     }
 
+    /// Returns `true` if the non-null raw slice has a length of 0.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ptr::NonNull;
+    ///
+    /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
+    /// assert!(!slice.is_empty());
+    /// ```
+    #[stable(feature = "slice_ptr_is_empty_nonnull", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(
+        feature = "const_slice_ptr_is_empty_nonnull",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
+    #[must_use]
+    #[inline]
+    pub const fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
     /// Returns a non-null pointer to the slice's buffer.
     ///
     /// # Examples
