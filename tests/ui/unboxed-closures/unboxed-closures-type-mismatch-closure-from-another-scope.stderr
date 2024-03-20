@@ -32,10 +32,6 @@ error[E0423]: expected function, found macro `deref`
 LL |     deref(p);
    |     ^^^^^ not a function
    |
-help: use `!` to invoke the macro
-   |
-LL |     deref!(p);
-   |          +
 help: use the `.` operator to call the method `Deref::deref` on `&&()`
    |
 LL -     deref(p);
