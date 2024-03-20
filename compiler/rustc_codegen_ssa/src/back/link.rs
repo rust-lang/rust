@@ -1609,7 +1609,7 @@ fn exec_linker(
         args.push_str(
             &Escape {
                 arg: arg.to_str().unwrap(),
-                // LLD also uses MSVC-like parsing for @-files on windows
+                // LLD also uses MSVC-like parsing for @-files by default when running on windows hosts
                 is_like_msvc: sess.target.is_like_msvc || (cfg!(windows) && flavor.uses_lld()),
             }
             .to_string(),
