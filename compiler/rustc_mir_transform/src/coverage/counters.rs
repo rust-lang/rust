@@ -1,12 +1,12 @@
+use std::fmt::{self, Debug};
+
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::IndexVec;
-use rustc_middle::mir::coverage::*;
+use rustc_middle::mir::coverage::{CounterId, CovTerm, Expression, ExpressionId, Op};
 
-use super::graph::{BasicCoverageBlock, CoverageGraph, TraverseCoverageGraphWithLoops};
-
-use std::fmt::{self, Debug};
+use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, TraverseCoverageGraphWithLoops};
 
 /// The coverage counter or counter expression associated with a particular
 /// BCB node or BCB edge.
