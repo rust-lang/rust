@@ -148,7 +148,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
 
         let crate_items = tcx.hir_crate_items(());
 
-        for id in crate_items.items() {
+        for id in crate_items.free_items() {
             dirty_clean_visitor.check_item(id.owner_id.def_id);
         }
 
