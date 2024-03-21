@@ -1111,7 +1111,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             }
 
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
-let has_surface_async_drop = self_ty.is_async_drop(tcx, defer_param_env());                self.build_enum(*adt_def, *args, has_surface_async_drop)
+                let has_surface_async_drop = self_ty.is_async_drop(tcx, defer_param_env());
+                self.build_enum(*adt_def, *args, has_surface_async_drop)
             }
 
             ty::Never => self.build_unreachable(),
