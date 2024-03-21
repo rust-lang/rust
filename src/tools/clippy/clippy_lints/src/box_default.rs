@@ -70,7 +70,9 @@ impl LateLintPass<'_> for BoxDefault {
                 "try",
                 if is_plain_default(cx, arg_path) || given_type(cx, expr) {
                     "Box::default()".into()
-                } else if let Some(arg_ty) = cx.typeck_results().expr_ty(arg).make_suggestable(cx.tcx, true) {
+                } else if let Some(arg_ty) =
+                    cx.typeck_results().expr_ty(arg).make_suggestable(cx.tcx, true, None)
+                {
                     // Check if we can copy from the source expression in the replacement.
                     // We need the call to have no argument (see `explicit_default_type`).
                     if inner_call_args.is_empty()

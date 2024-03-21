@@ -1371,7 +1371,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             // recursive function definition to leak out into the fn sig.
             let mut should_recover = false;
 
-            if let Some(ret_ty) = ret_ty.make_suggestable(tcx, false) {
+            if let Some(ret_ty) = ret_ty.make_suggestable(tcx, false, None) {
                 diag.span_suggestion(
                     ty.span,
                     "replace with the correct return type",
@@ -1449,7 +1449,7 @@ fn suggest_impl_trait<'tcx>(
             let ty::Tuple(types) = *args_tuple.kind() else {
                 return None;
             };
-            let types = types.make_suggestable(tcx, false)?;
+            let types = types.make_suggestable(tcx, false, None)?;
             let maybe_ret =
                 if item_ty.is_unit() { String::new() } else { format!(" -> {item_ty}") };
             Some(format!(
@@ -1507,7 +1507,7 @@ fn suggest_impl_trait<'tcx>(
         // FIXME(compiler-errors): We may benefit from resolving regions here.
         if ocx.select_where_possible().is_empty()
             && let item_ty = infcx.resolve_vars_if_possible(item_ty)
-            && let Some(item_ty) = item_ty.make_suggestable(tcx, false)
+            && let Some(item_ty) = item_ty.make_suggestable(tcx, false, None)
             && let Some(sugg) = formatter(
                 tcx,
                 infcx.resolve_vars_if_possible(args),

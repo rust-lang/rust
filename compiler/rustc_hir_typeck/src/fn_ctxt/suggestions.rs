@@ -809,7 +809,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return true;
             }
             &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() => {
-                if let Some(found) = found.make_suggestable(self.tcx, false) {
+                if let Some(found) = found.make_suggestable(self.tcx, false, None) {
                     err.subdiagnostic(
                         self.dcx(),
                         errors::AddReturnTypeSuggestion::Add { span, found: found.to_string() },
