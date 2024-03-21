@@ -49,6 +49,12 @@ pub mod index {
         }
     }
 
+    impl<V> FromIterator<V> for IdxContainer<usize, V> {
+        fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
+            Self(iter.into_iter().enumerate().collect())
+        }
+    }
+
     #[derive(Debug)]
     pub struct IdxSet<T>(pub rustc_hash::FxHashSet<T>);
     impl<T: Idx> IdxSet<T> {
@@ -120,7 +126,8 @@ pub trait PatCx: Sized + fmt::Debug {
     /// `DeconstructedPat`. Only invoqued when `pat.ctor()` is `Struct | Variant(_) | UnionField`.
     fn write_variant_name(
         f: &mut fmt::Formatter<'_>,
-        pat: &crate::pat::DeconstructedPat<Self>,
+        ctor: &crate::constructor::Constructor<Self>,
+        ty: &Self::Ty,
     ) -> fmt::Result;
 
     /// Raise a bug.
