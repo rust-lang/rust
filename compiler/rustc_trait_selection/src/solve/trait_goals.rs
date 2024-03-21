@@ -456,6 +456,28 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
+    fn consider_builtin_fused_iterator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
+        let ty::Coroutine(def_id, _) = *goal.predicate.self_ty().kind() else {
+            return Err(NoSolution);
+        };
+
+        // Coroutines are not iterators unless they come from `gen` desugaring
+        let tcx = ecx.tcx();
+        if !tcx.coroutine_is_gen(def_id) {
+            return Err(NoSolution);
+        }
+
+        // Gen coroutines unconditionally implement `FusedIterator`
+        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+    }
+
     fn consider_builtin_async_iterator_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,

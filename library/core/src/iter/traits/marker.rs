@@ -28,6 +28,7 @@ pub unsafe trait TrustedFused {}
 #[rustc_unsafe_specialization_marker]
 // FIXME: this should be a #[marker] and have another blanket impl for T: TrustedFused
 // but that ICEs iter::Fuse specializations.
+#[cfg_attr(not(bootstrap), lang = "fused_iterator")]
 pub trait FusedIterator: Iterator {}
 
 #[stable(feature = "fused", since = "1.26.0")]
