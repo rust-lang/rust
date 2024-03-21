@@ -610,7 +610,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 let result = self
                     .lcx
                     .tcx
-                    .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, args), None)
+                    .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, args), qpath.span())
                     .ok()
                     .map(|val| rustc_middle::mir::Const::from_value(val, ty))?;
                 f(self, result)

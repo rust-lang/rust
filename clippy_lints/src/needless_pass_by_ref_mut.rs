@@ -13,7 +13,6 @@ use rustc_hir::{
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::associated_body;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarId, UpvarPath};
 use rustc_session::impl_lint_pass;
@@ -114,8 +113,8 @@ fn check_closures<'tcx>(
         ctx.prev_move_to_closure.clear();
         if let Some(body) = cx
             .tcx
-            .opt_hir_node_by_def_id(closure)
-            .and_then(associated_body)
+            .hir_node_by_def_id(closure)
+            .associated_body()
             .map(|(_, body_id)| hir.body(body_id))
         {
             euv::ExprUseVisitor::new(ctx, infcx, closure, cx.param_env, cx.typeck_results()).consume_body(body);

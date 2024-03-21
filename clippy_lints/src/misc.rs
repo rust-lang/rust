@@ -143,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if !in_external_macro(cx.tcx.sess, stmt.span)
-            && let StmtKind::Local(local) = stmt.kind
+            && let StmtKind::Let(local) = stmt.kind
             && let PatKind::Binding(BindingAnnotation(ByRef::Yes, mutabl), .., name, None) = local.pat.kind
             && let Some(init) = local.init
             // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.
@@ -225,10 +225,9 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                 if let Some(adt_def) = cx.typeck_results().expr_ty_adjusted(recv).ty_adt_def()
                     && let Some(field) = adt_def.all_fields().find(|field| field.name == ident.name)
                     && let Some(local_did) = field.did.as_local()
-                    && let Some(hir_id) = cx.tcx.opt_local_def_id_to_hir_id(local_did)
                     && !cx.tcx.type_of(field.did).skip_binder().is_phantom_data()
                 {
-                    (hir_id, ident)
+                    (cx.tcx.local_def_id_to_hir_id(local_did), ident)
                 } else {
                     return;
                 }

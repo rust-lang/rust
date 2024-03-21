@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                 return;
             }
 
-            if let StmtKind::Local(local) = stmt.kind
+            if let StmtKind::Let(local) = stmt.kind
                 && let Local {
                     pat, init: Some(init), ..
                 } = local

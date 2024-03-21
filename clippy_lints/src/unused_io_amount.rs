@@ -61,10 +61,10 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
     ///   we need to check them at `check_expr` or `check_block` as they are not stmts
     ///   but we can't check them at `check_expr` because we need the broader context
     ///   because we should do this only for the final expression of the block, and not for
-    ///   `StmtKind::Local` which binds values => the io amount is used.
+    ///   `StmtKind::Let` which binds values => the io amount is used.
     ///
     /// To check for unused io amount in stmts, we only consider `StmtKind::Semi`.
-    /// `StmtKind::Local` is not considered because it binds values => the io amount is used.
+    /// `StmtKind::Let` is not considered because it binds values => the io amount is used.
     /// `StmtKind::Expr` is not considered because requires unit type => the io amount is used.
     /// `StmtKind::Item` is not considered because it's not an expression.
     ///
