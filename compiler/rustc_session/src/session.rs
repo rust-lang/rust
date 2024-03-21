@@ -1008,7 +1008,7 @@ pub fn build_session(
     fluent_resources: Vec<&'static str>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
-    target_cfg: Target,
+    target: Target,
     sysroot: PathBuf,
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
@@ -1036,7 +1036,7 @@ pub fn build_session(
 
     let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
     let hash_kind = sopts.unstable_opts.src_hash_algorithm.unwrap_or_else(|| {
-        if target_cfg.is_like_msvc {
+        if target.is_like_msvc {
             SourceFileHashAlgorithm::Sha256
         } else {
             SourceFileHashAlgorithm::Md5
@@ -1117,11 +1117,10 @@ pub fn build_session(
         _ => CtfeBacktrace::Disabled,
     });
 
-    let asm_arch =
-        if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
+    let asm_arch = if target.allow_asm { InlineAsmArch::from_str(&target.arch).ok() } else { None };
 
     let sess = Session {
-        target: target_cfg,
+        target,
         host,
         opts: sopts,
         host_tlib_path,

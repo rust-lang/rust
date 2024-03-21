@@ -41,7 +41,7 @@ fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
 
     let sysroot = filesearch::materialize_sysroot(sessopts.maybe_sysroot.clone());
 
-    let target_cfg = rustc_session::config::build_target_config(&early_dcx, &sessopts, &sysroot);
+    let target = rustc_session::config::build_target_config(&early_dcx, &sessopts, &sysroot);
 
     let sess = build_session(
         early_dcx,
@@ -52,7 +52,7 @@ fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
         vec![],
         Default::default(),
         None,
-        target_cfg,
+        target,
         sysroot,
         "",
         None,
