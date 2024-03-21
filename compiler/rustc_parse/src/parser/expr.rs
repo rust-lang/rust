@@ -2053,16 +2053,6 @@ impl<'a> Parser<'a> {
         &mut self,
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
     ) -> PResult<'a, L> {
-        if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtExpr(e) | token::NtLiteral(e) = &nt.0
-            && matches!(e.kind, ExprKind::Err(_))
-        {
-            let mut err = self
-                .dcx()
-                .create_err(errors::InvalidInterpolatedExpression { span: self.token.span });
-            err.downgrade_to_delayed_bug();
-            return Err(err);
-        }
         let token = self.token.clone();
         let err = |self_: &Self| {
             let msg = format!("unexpected token: {}", super::token_descr(&token));

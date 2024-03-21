@@ -105,7 +105,7 @@ impl Lit {
         }
     }
 
-    /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
+    /// Keep this in sync with `Token::can_begin_literal_maybe_minus` excluding unary negation.
     pub fn from_token(token: &Token) -> Option<Lit> {
         match token.uninterpolate().kind {
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
@@ -664,7 +664,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is an interpolated path.
-    fn is_path(&self) -> bool {
+    fn is_whole_path(&self) -> bool {
         if let Interpolated(nt) = &self.kind
             && let NtPath(..) = &nt.0
         {
@@ -710,7 +710,7 @@ impl Token {
     pub fn is_path_start(&self) -> bool {
         self == &ModSep
             || self.is_qpath_start()
-            || self.is_path()
+            || self.is_whole_path()
             || self.is_path_segment_keyword()
             || self.is_ident() && !self.is_reserved_ident()
     }

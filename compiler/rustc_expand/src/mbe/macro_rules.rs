@@ -5,7 +5,7 @@ use crate::mbe;
 use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
 use crate::mbe::macro_check;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success, TtParser};
-use crate::mbe::macro_parser::{MatchedSeq, MatchedTokenTree, MatcherLoc};
+use crate::mbe::macro_parser::{MatcherLoc, NamedMatch::*};
 use crate::mbe::transcribe::transcribe;
 
 use ast::token::IdentIsRaw;
@@ -22,7 +22,7 @@ use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
 };
 use rustc_lint_defs::BuiltinLintDiag;
-use rustc_parse::parser::{Parser, Recovery};
+use rustc_parse::parser::{ParseNtResult, Parser, Recovery};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -479,7 +479,7 @@ pub fn compile_declarative_macro(
         MatchedSeq(s) => s
             .iter()
             .map(|m| {
-                if let MatchedTokenTree(tt) = m {
+                if let MatchedSingle(ParseNtResult::Tt(tt)) = m {
                     let tt = mbe::quoted::parse(
                         &TokenStream::new(vec![tt.clone()]),
                         true,
@@ -505,7 +505,7 @@ pub fn compile_declarative_macro(
         MatchedSeq(s) => s
             .iter()
             .map(|m| {
-                if let MatchedTokenTree(tt) = m {
+                if let MatchedSingle(ParseNtResult::Tt(tt)) = m {
                     return mbe::quoted::parse(
                         &TokenStream::new(vec![tt.clone()]),
                         false,
