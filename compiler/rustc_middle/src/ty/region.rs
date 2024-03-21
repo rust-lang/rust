@@ -358,7 +358,7 @@ impl Atom for RegionVid {
     }
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]
 #[derive(HashStable)]
 /// The parameter representation of late-bound function parameters, "some region
 /// at least as big as the scope `fr.scope`".
@@ -367,7 +367,7 @@ pub struct LateParamRegion {
     pub bound_region: BoundRegionKind,
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]
 #[derive(HashStable)]
 pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
@@ -384,7 +384,7 @@ pub enum BoundRegionKind {
     BrEnv,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct BoundRegion {
     pub var: BoundVar,

@@ -70,7 +70,7 @@ LL |     f4(|_: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'r, 'a> fn(&'a (), &'r ()) -> _`
+   = note: expected closure signature `for<'a, 'r> fn(&'a (), &'r ()) -> _`
               found closure signature `fn((), ()) -> _`
 note: required by a bound in `f4`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:19:25
@@ -217,7 +217,7 @@ LL |     h2(|_: (), _: (), _: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'t0, 'a> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'t0 (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
+   = note: expected closure signature `for<'a, 't0> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'t0 (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
               found closure signature `fn((), (), (), ()) -> _`
 note: required by a bound in `h2`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:30:25
