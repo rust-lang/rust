@@ -35,6 +35,7 @@ fn main() {
         foo::bar();
         foo::$b(); // issue #96698
         $a::bar();
+        $a::$b();
     } }
     m!(foo, bar);
 }
