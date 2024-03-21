@@ -1587,33 +1587,38 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn new_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
-        Ty::new(tcx, Ref(r, tm.ty, tm.mutbl))
+    pub fn new_ref(
+        tcx: TyCtxt<'tcx>,
+        r: Region<'tcx>,
+        ty: Ty<'tcx>,
+        mutbl: ty::Mutability,
+    ) -> Ty<'tcx> {
+        Ty::new(tcx, Ref(r, ty, mutbl))
     }
 
     #[inline]
     pub fn new_mut_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        Ty::new_ref(tcx, r, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
+        Ty::new_ref(tcx, r, ty, hir::Mutability::Mut)
     }
 
     #[inline]
     pub fn new_imm_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        Ty::new_ref(tcx, r, TypeAndMut { ty, mutbl: hir::Mutability::Not })
+        Ty::new_ref(tcx, r, ty, hir::Mutability::Not)
     }
 
     #[inline]
-    pub fn new_ptr(tcx: TyCtxt<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
-        Ty::new(tcx, RawPtr(tm))
+    pub fn new_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mutbl: ty::Mutability) -> Ty<'tcx> {
+        Ty::new(tcx, RawPtr(ty::TypeAndMut { ty, mutbl }))
     }
 
     #[inline]
     pub fn new_mut_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
+        Ty::new_ptr(tcx, ty, hir::Mutability::Mut)
     }
 
     #[inline]
     pub fn new_imm_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: hir::Mutability::Not })
+        Ty::new_ptr(tcx, ty, hir::Mutability::Not)
     }
 
     #[inline]

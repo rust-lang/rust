@@ -1213,7 +1213,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // In general, during probing we erase regions.
         let region = tcx.lifetimes.re_erased;
 
-        let autoref_ty = Ty::new_ref(tcx, region, ty::TypeAndMut { ty: self_ty, mutbl });
+        let autoref_ty = Ty::new_ref(tcx, region, self_ty, mutbl);
         self.pick_method(autoref_ty, unstable_candidates).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;

@@ -2299,14 +2299,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.lower_delegation_ty(*sig_id, *idx, hir_ty.span)
             }
             hir::TyKind::Slice(ty) => Ty::new_slice(tcx, self.lower_ty(ty)),
-            hir::TyKind::Ptr(mt) => {
-                Ty::new_ptr(tcx, ty::TypeAndMut { ty: self.lower_ty(mt.ty), mutbl: mt.mutbl })
-            }
+            hir::TyKind::Ptr(mt) => Ty::new_ptr(tcx, self.lower_ty(mt.ty), mt.mutbl),
             hir::TyKind::Ref(region, mt) => {
                 let r = self.lower_lifetime(region, None);
                 debug!(?r);
                 let t = self.lower_ty_common(mt.ty, true, false);
-                Ty::new_ref(tcx, r, ty::TypeAndMut { ty: t, mutbl: mt.mutbl })
+                Ty::new_ref(tcx, r, t, mt.mutbl)
             }
             hir::TyKind::Never => tcx.types.never,
             hir::TyKind::Tup(fields) => {

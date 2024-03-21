@@ -460,7 +460,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 
             let ty = relation.relate_with_variance(variance, info, a_ty, b_ty)?;
 
-            Ok(Ty::new_ptr(tcx, ty::TypeAndMut { mutbl: a_mutbl, ty }))
+            Ok(Ty::new_ptr(tcx, ty, a_mutbl))
         }
 
         (&ty::Ref(a_r, a_ty, a_mutbl), &ty::Ref(b_r, b_ty, b_mutbl)) => {
@@ -478,7 +478,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             let r = relation.relate(a_r, b_r)?;
             let ty = relation.relate_with_variance(variance, info, a_ty, b_ty)?;
 
-            Ok(Ty::new_ref(tcx, r, ty::TypeAndMut { mutbl: a_mutbl, ty }))
+            Ok(Ty::new_ref(tcx, r, ty, a_mutbl))
         }
 
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) => {

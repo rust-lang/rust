@@ -191,7 +191,7 @@ pub fn check_intrinsic_type(
                 ty::BoundRegion { var: ty::BoundVar::from_u32(2), kind: ty::BrEnv },
             );
             let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
-            (Ty::new_ref(tcx, env_region, ty::TypeAndMut { ty: va_list_ty, mutbl }), va_list_ty)
+            (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
         })
     };
 

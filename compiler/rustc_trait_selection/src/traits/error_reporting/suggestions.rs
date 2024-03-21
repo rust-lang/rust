@@ -31,8 +31,8 @@ use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, GenericArgs,
-    InferTy, IsSuggestable, ToPredicate, Ty, TyCtxt, TypeAndMut, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt, TypeckResults,
+    InferTy, IsSuggestable, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, TypeckResults,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -482,7 +482,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     if let Some(steps) =
                         autoderef.into_iter().enumerate().find_map(|(steps, (ty, obligations))| {
                             // Re-add the `&`
-                            let ty = Ty::new_ref(self.tcx, region, TypeAndMut { ty, mutbl });
+                            let ty = Ty::new_ref(self.tcx, region, ty, mutbl);
 
                             // Remapping bound vars here
                             let real_trait_pred_and_ty = real_trait_pred

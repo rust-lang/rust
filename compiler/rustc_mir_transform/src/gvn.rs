@@ -94,7 +94,7 @@ use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{self, Abi, Size, VariantIdx, FIRST_VARIANT};
@@ -451,11 +451,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     AddressKind::Ref(bk) => Ty::new_ref(
                         self.tcx,
                         self.tcx.lifetimes.re_erased,
-                        ty::TypeAndMut { ty: mplace.layout.ty, mutbl: bk.to_mutbl_lossy() },
+                        mplace.layout.ty,
+                        bk.to_mutbl_lossy(),
                     ),
-                    AddressKind::Address(mutbl) => {
-                        Ty::new_ptr(self.tcx, TypeAndMut { ty: mplace.layout.ty, mutbl })
-                    }
+                    AddressKind::Address(mutbl) => Ty::new_ptr(self.tcx, mplace.layout.ty, mutbl),
                 };
                 let layout = self.ecx.layout_of(ty).ok()?;
                 ImmTy::from_immediate(pointer, layout).into()

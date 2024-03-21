@@ -442,12 +442,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty =
             self.check_expr_with_expectation_and_needs(oprnd, hint, Needs::maybe_mut_place(mutbl));
 
-        let tm = ty::TypeAndMut { ty, mutbl };
         match kind {
-            _ if tm.ty.references_error() => Ty::new_misc_error(self.tcx),
+            _ if ty.references_error() => Ty::new_misc_error(self.tcx),
             hir::BorrowKind::Raw => {
                 self.check_named_place_expr(oprnd);
-                Ty::new_ptr(self.tcx, tm)
+                Ty::new_ptr(self.tcx, ty, mutbl)
             }
             hir::BorrowKind::Ref => {
                 // Note: at this point, we cannot say what the best lifetime
@@ -465,7 +464,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // whose address was taken can actually be made to live as long
                 // as it needs to live.
                 let region = self.next_region_var(infer::AddrOfRegion(expr.span));
-                Ty::new_ref(self.tcx, region, tm)
+                Ty::new_ref(self.tcx, region, ty, mutbl)
             }
         }
     }
@@ -3225,7 +3224,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.demand_coerce(expr, ty, fnptr_ty, None, AllowTwoPhase::No);
                 }
                 ty::Ref(_, base_ty, mutbl) => {
-                    let ptr_ty = Ty::new_ptr(self.tcx, ty::TypeAndMut { ty: base_ty, mutbl });
+                    let ptr_ty = Ty::new_ptr(self.tcx, base_ty, mutbl);
                     self.demand_coerce(expr, ty, ptr_ty, None, AllowTwoPhase::No);
                 }
                 _ => {}

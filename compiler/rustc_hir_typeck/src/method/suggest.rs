@@ -304,11 +304,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind() {
                     if needs_mut {
-                        let trait_type = Ty::new_ref(
-                            self.tcx,
-                            *region,
-                            ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() },
-                        );
+                        let trait_type =
+                            Ty::new_ref(self.tcx, *region, *t_type, mutability.invert());
                         let msg = format!("you need `{trait_type}` instead of `{rcvr_ty}`");
                         let mut kind = &self_expr.kind;
                         while let hir::ExprKind::AddrOf(_, _, expr)

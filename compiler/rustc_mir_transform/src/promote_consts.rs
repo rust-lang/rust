@@ -820,11 +820,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let ty = local_decls[place.local].ty;
             let span = statement.source_info.span;
 
-            let ref_ty = Ty::new_ref(
-                tcx,
-                tcx.lifetimes.re_erased,
-                ty::TypeAndMut { ty, mutbl: borrow_kind.to_mutbl_lossy() },
-            );
+            let ref_ty =
+                Ty::new_ref(tcx, tcx.lifetimes.re_erased, ty, borrow_kind.to_mutbl_lossy());
 
             let mut projection = vec![PlaceElem::Deref];
             projection.extend(place.projection);
