@@ -18,7 +18,7 @@ impl Display for Ty {
 
 impl Debug for Place {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        with(|ctx| write!(f, "{}", ctx.place_debug(self)))
+        with(|ctx| write!(f, "{}", ctx.place_pretty(self)))
     }
 }
 

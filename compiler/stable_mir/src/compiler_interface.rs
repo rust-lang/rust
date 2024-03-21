@@ -210,7 +210,7 @@ pub trait Context {
     fn layout_shape(&self, id: Layout) -> LayoutShape;
 
     /// Get a debug string representation of a place.
-    fn place_debug(&self, place: &Place) -> String;
+    fn place_pretty(&self, place: &Place) -> String;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt

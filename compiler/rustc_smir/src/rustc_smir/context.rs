@@ -660,7 +660,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         id.internal(&mut *tables, tcx).0.stable(&mut *tables)
     }
 
-    fn place_debug(&self, place: &Place) -> String {
+    fn place_pretty(&self, place: &Place) -> String {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         format!("{:?}", place.internal(&mut *tables, tcx))
