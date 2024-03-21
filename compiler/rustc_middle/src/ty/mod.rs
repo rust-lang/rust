@@ -280,17 +280,6 @@ pub enum ImplPolarity {
     Reservation,
 }
 
-impl ImplPolarity {
-    /// Flips polarity by turning `Positive` into `Negative` and `Negative` into `Positive`.
-    pub fn flip(&self) -> Option<ImplPolarity> {
-        match self {
-            ImplPolarity::Positive => Some(ImplPolarity::Negative),
-            ImplPolarity::Negative => Some(ImplPolarity::Positive),
-            ImplPolarity::Reservation => None,
-        }
-    }
-}
-
 impl fmt::Display for ImplPolarity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -301,15 +290,9 @@ impl fmt::Display for ImplPolarity {
     }
 }
 
-impl From<PredicatePolarity> for ImplPolarity {
-    fn from(value: PredicatePolarity) -> Self {
-        match value {
-            PredicatePolarity::Positive => ImplPolarity::Positive,
-            PredicatePolarity::Negative => ImplPolarity::Negative,
-        }
-    }
-}
-
+/// Polarity for a trait predicate. May either be negative or positive.
+/// Distinguished from [`ImplPolarity`] since we never compute goals with
+/// "reservation" level.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum PredicatePolarity {
