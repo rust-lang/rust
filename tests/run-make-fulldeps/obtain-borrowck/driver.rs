@@ -68,7 +68,7 @@ impl rustc_driver::Callbacks for CompilerCalls {
             let mut bodies = Vec::new();
 
             let crate_items = tcx.hir_crate_items(());
-            for id in crate_items.items() {
+            for id in crate_items.free_items() {
                 if matches!(tcx.def_kind(id.owner_id), DefKind::Fn) {
                     bodies.push(id.owner_id);
                 }
