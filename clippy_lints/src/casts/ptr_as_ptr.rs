@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Mutability, QPath, TyKind};
 use rustc_hir_pretty::qpath_to_string;
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, TypeAndMut};
+use rustc_middle::ty;
 use rustc_span::sym;
 
 use super::PTR_AS_PTR;
