@@ -1626,6 +1626,12 @@ impl<'a> State<'a> {
                 self.word("box ");
                 self.print_pat(inner);
             }
+            PatKind::Deref(inner) => {
+                self.word("deref!");
+                self.popen();
+                self.print_pat(inner);
+                self.pclose();
+            }
             PatKind::Ref(inner, mutbl) => {
                 self.word("&");
                 if mutbl.is_mut() {

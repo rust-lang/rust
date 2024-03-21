@@ -250,7 +250,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
-        maybe_whole!(self, NtTy, |x| x);
+        maybe_whole!(self, NtTy, |ty| ty);
 
         let lo = self.token.span;
         let mut impl_dyn_multi = false;

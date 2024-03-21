@@ -329,6 +329,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             elts.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(", ")
         ),
         PatKind::Box(p) => return name_from_pat(&*p),
+        PatKind::Deref(p) => format!("deref!({})", name_from_pat(&*p)),
         PatKind::Ref(p, _) => return name_from_pat(&*p),
         PatKind::Lit(..) => {
             warn!(

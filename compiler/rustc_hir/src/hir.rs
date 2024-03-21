@@ -1015,7 +1015,7 @@ impl<'hir> Pat<'hir> {
         use PatKind::*;
         match self.kind {
             Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => true,
-            Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_short_(it),
+            Box(s) | Deref(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_short_(it),
             Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short_(it)),
             Slice(before, slice, after) => {
@@ -1042,7 +1042,7 @@ impl<'hir> Pat<'hir> {
         use PatKind::*;
         match self.kind {
             Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => {}
-            Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_(it),
+            Box(s) | Deref(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_(it),
             Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk_(it)),
             Slice(before, slice, after) => {
@@ -1184,6 +1184,9 @@ pub enum PatKind<'hir> {
 
     /// A `box` pattern.
     Box(&'hir Pat<'hir>),
+
+    /// A `deref` pattern (currently `deref!()` macro-based syntax).
+    Deref(&'hir Pat<'hir>),
 
     /// A reference pattern (e.g., `&mut (a, b)`).
     Ref(&'hir Pat<'hir>, Mutability),

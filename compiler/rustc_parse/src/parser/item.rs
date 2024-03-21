@@ -6,6 +6,7 @@ use super::{
 };
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
+use crate::maybe_whole;
 use ast::token::IdentIsRaw;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
@@ -115,17 +116,10 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
-        // Don't use `maybe_whole` so that we have precise control
-        // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtItem(item) = &nt.0
-        {
-            let mut item = item.clone();
-            self.bump();
-
+        maybe_whole!(self, NtItem, |item| {
             attrs.prepend_to_nt_inner(&mut item.attrs);
-            return Ok(Some(item.into_inner()));
-        };
+            Some(item.into_inner())
+        });
 
         let item =
             self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {

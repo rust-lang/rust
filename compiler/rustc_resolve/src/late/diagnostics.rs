@@ -1592,18 +1592,23 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
         match (res, source) {
             (
-                Res::Def(DefKind::Macro(MacroKind::Bang), _),
+                Res::Def(DefKind::Macro(MacroKind::Bang), def_id),
                 PathSource::Expr(Some(Expr {
                     kind: ExprKind::Index(..) | ExprKind::Call(..), ..
                 }))
                 | PathSource::Struct,
             ) => {
+                // Don't suggest macro if it's unstable.
+                let suggestable = def_id.is_local()
+                    || self.r.tcx.lookup_stability(def_id).map_or(true, |s| s.is_stable());
+
                 err.span_label(span, fallback_label.to_string());
 
                 // Don't suggest `!` for a macro invocation if there are generic args
                 if path
                     .last()
                     .is_some_and(|segment| !segment.has_generic_args && !segment.has_lifetime_args)
+                    && suggestable
                 {
                     err.span_suggestion_verbose(
                         span.shrink_to_hi(),

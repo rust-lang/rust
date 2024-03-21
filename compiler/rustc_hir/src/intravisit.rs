@@ -660,7 +660,9 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) -> V:
         PatKind::Tuple(tuple_elements, _) => {
             walk_list!(visitor, visit_pat, tuple_elements);
         }
-        PatKind::Box(ref subpattern) | PatKind::Ref(ref subpattern, _) => {
+        PatKind::Box(ref subpattern)
+        | PatKind::Deref(ref subpattern)
+        | PatKind::Ref(ref subpattern, _) => {
             try_visit!(visitor.visit_pat(subpattern));
         }
         PatKind::Binding(_, _hir_id, ident, ref optional_subpattern) => {
