@@ -1250,6 +1250,7 @@ fn handle_rustc_crates(
                 let kind @ TargetKind::Lib { is_proc_macro } = rustc_workspace[tgt].kind else {
                     continue;
                 };
+                let pkg_crates = &mut rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new);
                 if let Some(file_id) = load(&rustc_workspace[tgt].root) {
                     let crate_id = add_target_crate_root(
                         crate_graph,
@@ -1268,7 +1269,7 @@ fn handle_rustc_crates(
                     if let Some(proc_macro) = libproc_macro {
                         add_proc_macro_dep(crate_graph, crate_id, proc_macro, is_proc_macro);
                     }
-                    rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
+                    pkg_crates.push(crate_id);
                 }
             }
         }
