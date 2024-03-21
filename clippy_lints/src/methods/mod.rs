@@ -3826,7 +3826,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `.filter(Option::is_some)` that may be replaced with a `.flatten()` call.
-    /// This lint will require additional changes to the follow-up calls as it appects the type.
+    /// This lint will require additional changes to the follow-up calls as it affects the type.
     ///
     /// ### Why is this bad?
     /// This pattern is often followed by manual unwrapping of the `Option`. The simplification
@@ -3852,7 +3852,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `.filter(Result::is_ok)` that may be replaced with a `.flatten()` call.
-    /// This lint will require additional changes to the follow-up calls as it appects the type.
+    /// This lint will require additional changes to the follow-up calls as it affects the type.
     ///
     /// ### Why is this bad?
     /// This pattern is often followed by manual unwrapping of `Result`. The simplification
