@@ -17,11 +17,11 @@ use rustc_errors::{DelayDm, FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{
     self, EarlyBinder, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeSuperVisitable,
     TypeVisitable, TypeVisitor,
 };
-use rustc_middle::ty::{GenericArg, GenericArgs};
 use rustc_middle::ty::{TypeVisitableExt, Upcast};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
@@ -265,7 +265,13 @@ fn predicates_reference_self(
         .predicates
         .iter()
         .map(|&(predicate, sp)| (predicate.instantiate_supertrait(tcx, &trait_ref), sp))
-        .filter_map(|predicate| predicate_references_self(tcx, predicate))
+        .filter_map(|(clause, sp)| {
+            // Super predicates cannot allow self projections, since they're
+            // impossible to make into existential bounds without eager resolution
+            // or something.
+            // e.g. `trait A: B<Item = Self::Assoc>`.
+            predicate_references_self(tcx, trait_def_id, clause, sp, AllowSelfProjections::No)
+        })
         .collect()
 }
 
@@ -274,20 +280,25 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Type)
         .flat_map(|item| tcx.explicit_item_bounds(item.def_id).instantiate_identity_iter_copied())
-        .filter_map(|c| predicate_references_self(tcx, c))
+        .filter_map(|(clause, sp)| {
+            // Item bounds *can* have self projections, since they never get
+            // their self type erased.
+            predicate_references_self(tcx, trait_def_id, clause, sp, AllowSelfProjections::Yes)
+        })
         .collect()
 }
 
 fn predicate_references_self<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (predicate, sp): (ty::Clause<'tcx>, Span),
+    trait_def_id: DefId,
+    predicate: ty::Clause<'tcx>,
+    sp: Span,
+    allow_self_projections: AllowSelfProjections,
 ) -> Option<Span> {
-    let self_ty = tcx.types.self_param;
-    let has_self_ty = |arg: &GenericArg<'tcx>| arg.walk().any(|arg| arg == self_ty.into());
     match predicate.kind().skip_binder() {
         ty::ClauseKind::Trait(ref data) => {
             // In the case of a trait predicate, we can skip the "self" type.
-            data.trait_ref.args[1..].iter().any(has_self_ty).then_some(sp)
+            data.trait_ref.args[1..].iter().any(|&arg| contains_illegal_self_type_reference(tcx, trait_def_id, arg, allow_self_projections)).then_some(sp)
         }
         ty::ClauseKind::Projection(ref data) => {
             // And similarly for projections. This should be redundant with
@@ -305,9 +316,9 @@ fn predicate_references_self<'tcx>(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            data.projection_term.args[1..].iter().any(has_self_ty).then_some(sp)
+            data.projection_term.args[1..].iter().any(|&arg| contains_illegal_self_type_reference(tcx, trait_def_id, arg, allow_self_projections)).then_some(sp)
         }
-        ty::ClauseKind::ConstArgHasType(_ct, ty) => has_self_ty(&ty.into()).then_some(sp),
+        ty::ClauseKind::ConstArgHasType(_ct, ty) => contains_illegal_self_type_reference(tcx, trait_def_id, ty, allow_self_projections).then_some(sp),
 
         ty::ClauseKind::WellFormed(..)
         | ty::ClauseKind::TypeOutlives(..)
@@ -453,7 +464,12 @@ fn virtual_call_violations_for_method<'tcx>(
     let mut errors = Vec::new();
 
     for (i, &input_ty) in sig.skip_binder().inputs().iter().enumerate().skip(1) {
-        if contains_illegal_self_type_reference(tcx, trait_def_id, sig.rebind(input_ty)) {
+        if contains_illegal_self_type_reference(
+            tcx,
+            trait_def_id,
+            sig.rebind(input_ty),
+            AllowSelfProjections::Yes,
+        ) {
             let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, _),
                 ..
@@ -466,7 +482,12 @@ fn virtual_call_violations_for_method<'tcx>(
             errors.push(MethodViolationCode::ReferencesSelfInput(span));
         }
     }
-    if contains_illegal_self_type_reference(tcx, trait_def_id, sig.output()) {
+    if contains_illegal_self_type_reference(
+        tcx,
+        trait_def_id,
+        sig.output(),
+        AllowSelfProjections::Yes,
+    ) {
         errors.push(MethodViolationCode::ReferencesSelfOutput);
     }
     if let Some(code) = contains_illegal_impl_trait_in_trait(tcx, method.def_id, sig.output()) {
@@ -603,7 +624,7 @@ fn virtual_call_violations_for_method<'tcx>(
             return false;
         }
 
-        contains_illegal_self_type_reference(tcx, trait_def_id, pred)
+        contains_illegal_self_type_reference(tcx, trait_def_id, pred, AllowSelfProjections::Yes)
     }) {
         errors.push(MethodViolationCode::WhereClauseReferencesSelf);
     }
@@ -783,10 +804,17 @@ fn receiver_is_dispatchable<'tcx>(
     infcx.predicate_must_hold_modulo_regions(&obligation)
 }
 
+#[derive(Copy, Clone)]
+enum AllowSelfProjections {
+    Yes,
+    No,
+}
+
 fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     value: T,
+    allow_self_projections: AllowSelfProjections,
 ) -> bool {
     // This is somewhat subtle. In general, we want to forbid
     // references to `Self` in the argument and return types,
@@ -831,6 +859,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
         tcx: TyCtxt<'tcx>,
         trait_def_id: DefId,
         supertraits: Option<Vec<DefId>>,
+        allow_self_projections: AllowSelfProjections,
     }
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
@@ -852,38 +881,42 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
                     ControlFlow::Continue(())
                 }
                 ty::Alias(ty::Projection, ref data) => {
-                    // This is a projected type `<Foo as SomeTrait>::X`.
+                    match self.allow_self_projections {
+                        AllowSelfProjections::Yes => {
+                            // This is a projected type `<Foo as SomeTrait>::X`.
 
-                    // Compute supertraits of current trait lazily.
-                    if self.supertraits.is_none() {
-                        let trait_ref =
-                            ty::Binder::dummy(ty::TraitRef::identity(self.tcx, self.trait_def_id));
-                        self.supertraits = Some(
-                            traits::supertraits(self.tcx, trait_ref).map(|t| t.def_id()).collect(),
-                        );
-                    }
+                            // Compute supertraits of current trait lazily.
+                            if self.supertraits.is_none() {
+                                self.supertraits = Some(
+                                    traits::supertrait_def_ids(self.tcx, self.trait_def_id)
+                                        .collect(),
+                                );
+                            }
 
-                    // Determine whether the trait reference `Foo as
-                    // SomeTrait` is in fact a supertrait of the
-                    // current trait. In that case, this type is
-                    // legal, because the type `X` will be specified
-                    // in the object type. Note that we can just use
-                    // direct equality here because all of these types
-                    // are part of the formal parameter listing, and
-                    // hence there should be no inference variables.
-                    let is_supertrait_of_current_trait = self
-                        .supertraits
-                        .as_ref()
-                        .unwrap()
-                        .contains(&data.trait_ref(self.tcx).def_id);
+                            // Determine whether the trait reference `Foo as
+                            // SomeTrait` is in fact a supertrait of the
+                            // current trait. In that case, this type is
+                            // legal, because the type `X` will be specified
+                            // in the object type. Note that we can just use
+                            // direct equality here because all of these types
+                            // are part of the formal parameter listing, and
+                            // hence there should be no inference variables.
+                            let is_supertrait_of_current_trait = self
+                                .supertraits
+                                .as_ref()
+                                .unwrap()
+                                .contains(&data.trait_ref(self.tcx).def_id);
 
-                    if is_supertrait_of_current_trait {
-                        ControlFlow::Continue(()) // do not walk contained types, do not report error, do collect $200
-                    } else {
-                        t.super_visit_with(self) // DO walk contained types, POSSIBLY reporting an error
+                            if is_supertrait_of_current_trait {
+                                ControlFlow::Continue(())
+                            } else {
+                                t.super_visit_with(self)
+                            }
+                        }
+                        AllowSelfProjections::No => t.super_visit_with(self),
                     }
                 }
-                _ => t.super_visit_with(self), // walk contained types, if any
+                _ => t.super_visit_with(self),
             }
         }
 
@@ -895,7 +928,12 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     }
 
     value
-        .visit_with(&mut IllegalSelfTypeVisitor { tcx, trait_def_id, supertraits: None })
+        .visit_with(&mut IllegalSelfTypeVisitor {
+            tcx,
+            trait_def_id,
+            supertraits: None,
+            allow_self_projections,
+        })
         .is_break()
 }
 
