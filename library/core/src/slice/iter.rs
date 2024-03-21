@@ -7,7 +7,8 @@ use crate::cmp;
 use crate::fmt;
 use crate::hint::assert_unchecked;
 use crate::iter::{
-    FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, UncheckedIterator,
+    FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
+    UncheckedIndexedIterator, UncheckedIterator,
 };
 use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};

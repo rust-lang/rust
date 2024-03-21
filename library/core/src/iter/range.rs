@@ -1,5 +1,6 @@
 use crate::ascii::Char as AsciiChar;
 use crate::convert::TryFrom;
+use crate::iter::UncheckedIndexedIterator;
 use crate::mem;
 use crate::net::{Ipv4Addr, Ipv6Addr};
 use crate::num::NonZero;
@@ -637,6 +638,25 @@ macro_rules! unsafe_range_trusted_random_access_impl {
         unsafe impl TrustedRandomAccessNoCoerce for ops::Range<$t> {
             const MAY_HAVE_SIDE_EFFECT: bool = false;
         }
+
+        #[unstable(feature = "trusted_indexed_access", issue = "none")]
+        impl UncheckedIndexedIterator for ops::Range<$t> {
+            // all impls are Copy
+            const MAY_HAVE_SIDE_EFFECT: bool = false;
+            const CLEANUP_ON_DROP: bool = false;
+
+            #[inline]
+            unsafe fn set_front_index_from_end_unchecked(&mut self, new_len: usize, _old_len: usize) {
+                // SAFETY: ...
+                self.start = unsafe { Step::backward_unchecked(self.end.clone(), new_len) }
+            }
+
+            #[inline]
+            unsafe fn set_end_index_from_start_unchecked(&mut self, new_len: usize, _old_len: usize) {
+                // SAFETY: ...
+                self.start = unsafe { Step::forward_unchecked(self.start.clone(), new_len) }
+            }
+        }
     )*)
 }
 
@@ -909,6 +929,26 @@ impl<A: Step> Iterator for ops::Range<A> {
         // that is in bounds.
         // Additionally Self: TrustedRandomAccess is only implemented for Copy types
         // which means even repeated reads of the same index would be safe.
+        unsafe { Step::forward_unchecked(self.start.clone(), idx) }
+    }
+
+    #[inline]
+    unsafe fn index_from_end_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: The TrustedRandomAccess contract requires that callers only pass an index
+        // that is in bounds.
+        unsafe { Step::backward_unchecked(self.end.clone(), idx) }
+    }
+
+    #[inline]
+    unsafe fn index_from_start_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: The TrustedRandomAccess contract requires that callers only pass an index
+        // that is in bounds.
         unsafe { Step::forward_unchecked(self.start.clone(), idx) }
     }
 }

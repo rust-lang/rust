@@ -1,7 +1,9 @@
 use crate::cmp;
 use crate::fmt::{self, Debug};
-use crate::iter::{FusedIterator, TrustedFused};
+use crate::hint::assert_unchecked;
+use crate::iter::{FusedIterator, TrustedFused, UncheckedIndexedIterator};
 use crate::iter::{InPlaceIterable, SourceIter, TrustedLen, UncheckedIterator};
+use crate::mem;
 use crate::num::NonZero;
 
 /// An iterator that iterates two other iterators simultaneously.
@@ -15,9 +17,9 @@ pub struct Zip<A, B> {
     a: A,
     b: B,
     // index, len and a_len are only used by the specialized version of zip
-    index: usize,
-    len: usize,
-    a_len: usize,
+    remaining: usize,
+    a_offset: usize,
+    b_offset: usize,
 }
 impl<A: Iterator, B: Iterator> Zip<A, B> {
     pub(in crate::iter) fn new(a: A, b: B) -> Zip<A, B> {
@@ -112,6 +114,26 @@ where
         // requirements as `Iterator::__iterator_get_unchecked`.
         unsafe { ZipImpl::get_unchecked(self, idx) }
     }
+
+    #[inline]
+    unsafe fn index_from_end_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: `ZipImpl::get_unchecked_from_end` has same safety
+        // requirements as `Iterator::get_unchecked_from_end`.
+        unsafe { ZipImpl::get_unchecked_from_end(self, idx) }
+    }
+
+    #[inline]
+    unsafe fn index_from_start_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: `ZipImpl::get_unchecked_from_start` has same safety
+        // requirements as `Iterator::get_unchecked_from_start`.
+        unsafe { ZipImpl::get_unchecked_from_start(self, idx) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -145,6 +167,14 @@ trait ZipImpl<A, B> {
     unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
     where
         Self: Iterator + TrustedRandomAccessNoCoerce;
+
+    unsafe fn get_unchecked_from_end(&mut self, idx: usize) -> <Self as Iterator>::Item
+    where
+        Self: Iterator + UncheckedIndexedIterator;
+
+    unsafe fn get_unchecked_from_start(&mut self, idx: usize) -> <Self as Iterator>::Item
+    where
+        Self: Iterator + UncheckedIndexedIterator;
 }
 
 // Work around limitations of specialization, requiring `default` impls to be repeated
@@ -155,9 +185,9 @@ macro_rules! zip_impl_general_defaults {
             Zip {
                 a,
                 b,
-                index: 0, // unused
-                len: 0,   // unused
-                a_len: 0, // unused
+                remaining: 0, // unused
+                a_offset: 0,  // unused
+                b_offset: 0,  // unused
             }
         }
 
@@ -248,8 +278,23 @@ where
     {
         SpecFold::spec_fold(self, init, f)
     }
+
+    default unsafe fn get_unchecked_from_end(&mut self, _idx: usize) -> <Self as Iterator>::Item
+    where
+        Self: Iterator + UncheckedIndexedIterator,
+    {
+        unreachable!("Always specialized");
+    }
+
+    default unsafe fn get_unchecked_from_start(&mut self, _idx: usize) -> <Self as Iterator>::Item
+    where
+        Self: Iterator + UncheckedIndexedIterator,
+    {
+        unreachable!("Always specialized");
+    }
 }
 
+/*
 #[doc(hidden)]
 impl<A, B> ZipImpl<A, B> for Zip<A, B>
 where
@@ -411,6 +456,218 @@ where
         }
     }
 }
+*/
+
+impl<A, B> Zip<A, B>
+where
+    A: UncheckedIndexedIterator + DoubleEndedIterator + ExactSizeIterator,
+    B: UncheckedIndexedIterator + DoubleEndedIterator + ExactSizeIterator,
+{
+    fn equalize_lengths(&mut self) {
+        if self.a_offset > 0 {
+            let _ = self.a.advance_back_by(self.a_offset);
+            self.a_offset = 0;
+        }
+        if self.b_offset > 0 {
+            let _ = self.b.advance_back_by(self.b_offset);
+            self.b_offset = 0;
+        }
+    }
+}
+
+#[doc(hidden)]
+impl<A, B> ZipImpl<A, B> for Zip<A, B>
+where
+    A: UncheckedIndexedIterator + Iterator,
+    B: UncheckedIndexedIterator + Iterator,
+{
+    fn new(a: A, b: B) -> Self {
+        let a_len = a.size_hint().0;
+        let b_len = b.size_hint().0;
+        let len = a_len.min(b_len);
+        Zip {
+            a,
+            b,
+            remaining: len,
+            a_offset: a_len.saturating_sub(len),
+            b_offset: b_len.saturating_sub(len),
+        }
+    }
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let remaining = self.remaining;
+        if remaining > 0 {
+            self.remaining = remaining - 1;
+
+            // SAFETY: ...
+            unsafe {
+                let idx_a = remaining + self.a_offset;
+                let idx_b = remaining + self.b_offset;
+
+                let guard =
+                    IndexGuardForward { it: &mut self.a, new_len: idx_a - 1, old_len: idx_a };
+                let a = guard.it.index_from_end_unchecked(idx_a);
+                drop(guard);
+                let guard =
+                    IndexGuardForward { it: &mut self.b, new_len: idx_b - 1, old_len: idx_b };
+                let b = guard.it.index_from_end_unchecked(idx_b);
+                drop(guard);
+
+                return Some((a, b));
+            }
+        }
+
+        None
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.remaining, Some(self.remaining))
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        let to_skip = self.remaining.min(n);
+        self.remaining -= to_skip;
+        // SAFETY: UncheckedIndexedIterator contract requires that the length
+        // and thus the remaining count is correct. So we are sure
+        // we can skip this amount.
+        unsafe {
+            if A::MAY_HAVE_SIDE_EFFECT {
+                assert_unchecked(self.a.advance_by(to_skip).is_ok());
+            }
+            if B::MAY_HAVE_SIDE_EFFECT {
+                assert_unchecked(self.b.advance_by(to_skip).is_ok());
+            }
+        }
+
+        ZipImpl::next(self)
+    }
+
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item>
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
+    {
+        if Self::MAY_HAVE_SIDE_EFFECT && self.a_offset != self.b_offset {
+            self.equalize_lengths()
+        }
+
+        let remaining = self.remaining;
+        if remaining > 0 {
+            self.remaining = remaining - 1;
+
+            // SAFETY: ...
+            // don't have to use offsets here, equalized_lengths will have taken care of that.
+            unsafe {
+                let idx = remaining - 1;
+                let guard = IndexGuardBack { it: &mut self.a, new_len: idx, old_len: remaining };
+                let a = guard.it.index_from_start_unchecked(idx);
+                drop(guard);
+                let guard = IndexGuardBack { it: &mut self.b, new_len: idx, old_len: remaining };
+                let b = guard.it.index_from_start_unchecked(idx);
+
+                return Some((a, b));
+            }
+        }
+
+        None
+    }
+
+    fn fold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
+    where
+        F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        struct Guard<'a, A, B>
+        where
+            A: UncheckedIndexedIterator + Iterator,
+            B: UncheckedIndexedIterator + Iterator,
+        {
+            zip: &'a mut Zip<A, B>,
+            old_len: usize,
+            remaining_a: usize,
+            remaining_b: usize,
+        }
+
+        impl<A, B> Drop for Guard<'_, A, B>
+        where
+            A: UncheckedIndexedIterator + Iterator,
+            B: UncheckedIndexedIterator + Iterator,
+        {
+            fn drop(&mut self) {
+                let offset_a = self.zip.a_offset;
+                let offset_b = self.zip.b_offset;
+                // SAFETY: ...
+                unsafe {
+                    self.zip.a.set_front_index_from_end_unchecked(
+                        self.remaining_a + offset_a,
+                        self.old_len + offset_a,
+                    );
+                    self.zip.b.set_front_index_from_end_unchecked(
+                        self.remaining_b + offset_b,
+                        self.old_len + offset_b,
+                    );
+                }
+            }
+        }
+
+        let mut acc = init;
+        let len = self.remaining;
+        let mut guard = Guard { zip: &mut self, old_len: len, remaining_a: len, remaining_b: len };
+
+        for i in 0..len {
+            // SAFETY: ...
+            let (a, b) = unsafe {
+                guard.remaining_a = len - i - 1;
+                let a = guard.zip.a.index_from_end_unchecked(len - i + guard.zip.a_offset);
+                guard.remaining_b = len - i - 1;
+                let b = guard.zip.b.index_from_end_unchecked(len - i + guard.zip.b_offset);
+
+                (a, b)
+            };
+            acc = f(acc, (a, b));
+        }
+
+        if !Self::CLEANUP_ON_DROP {
+            mem::forget(guard);
+        }
+
+        acc
+    }
+
+    unsafe fn get_unchecked(&mut self, _idx: usize) -> <Self as Iterator>::Item
+    where
+        Self: Iterator + TrustedRandomAccessNoCoerce,
+    {
+        unreachable!("Wrong specialization")
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_from_end(&mut self, idx: usize) -> <Self as Iterator>::Item {
+        // SAFETY: the offsets represent how much longer each inner iterator is
+        // compared to the length we told the caller. So we adjust the index accordingly.
+        // Other than that the caller must uphold the same preconditions.
+        unsafe {
+            let a = self.a.index_from_end_unchecked(idx + self.a_offset);
+            let b = self.b.index_from_end_unchecked(idx + self.b_offset);
+
+            (a, b)
+        }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_from_start(&mut self, idx: usize) -> <Self as Iterator>::Item {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        unsafe {
+            let a = self.a.index_from_start_unchecked(idx);
+            let b = self.b.index_from_start_unchecked(idx);
+
+            (a, b)
+        }
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> ExactSizeIterator for Zip<A, B>
@@ -420,6 +677,7 @@ where
 {
 }
 
+/*
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
@@ -437,6 +695,53 @@ where
     B: TrustedRandomAccessNoCoerce,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT;
+}
+*/
+
+#[unstable(feature = "trusted_indexed_access", issue = "none")]
+impl<A, B> UncheckedIndexedIterator for Zip<A, B>
+where
+    A: UncheckedIndexedIterator,
+    B: UncheckedIndexedIterator,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT;
+    const CLEANUP_ON_DROP: bool = A::CLEANUP_ON_DROP || B::CLEANUP_ON_DROP;
+
+    #[inline]
+    unsafe fn set_front_index_from_end_unchecked(&mut self, new_len: usize, old_len: usize) {
+        debug_assert_eq!(self.remaining, old_len);
+        self.remaining = new_len;
+        // SAFETY: the offsets represent how much longer each inner iterator is
+        // compared to the length we told the caller. So we adjust the index accordingly.
+        // Other than that the caller must uphold the same preconditions.
+        unsafe {
+            self.a.set_front_index_from_end_unchecked(
+                new_len + self.a_offset,
+                old_len + self.a_offset,
+            );
+            self.b.set_front_index_from_end_unchecked(
+                new_len + self.b_offset,
+                old_len + self.b_offset,
+            );
+        }
+    }
+
+    #[inline]
+    unsafe fn set_end_index_from_start_unchecked(&mut self, new_len: usize, old_len: usize) {
+        debug_assert_eq!(self.remaining, old_len);
+        self.remaining = new_len;
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        unsafe {
+            self.a.set_end_index_from_start_unchecked(
+                new_len + self.a_offset,
+                old_len + self.a_offset,
+            );
+            self.b.set_end_index_from_start_unchecked(
+                new_len + self.b_offset,
+                old_len + self.b_offset,
+            );
+        }
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -690,5 +995,43 @@ impl<A: TrustedLen, B: TrustedLen> SpecFold for Zip<A, B> {
             }
         }
         accum
+    }
+}
+
+struct IndexGuardForward<'a, I>
+where
+    I: UncheckedIndexedIterator,
+{
+    new_len: usize,
+    old_len: usize,
+    it: &'a mut I,
+}
+
+struct IndexGuardBack<'a, I>
+where
+    I: UncheckedIndexedIterator,
+{
+    new_len: usize,
+    old_len: usize,
+    it: &'a mut I,
+}
+
+impl<I: UncheckedIndexedIterator> Drop for IndexGuardForward<'_, I> {
+    #[inline]
+    fn drop(&mut self) {
+        // SAFETY: ...
+        unsafe {
+            self.it.set_front_index_from_end_unchecked(self.new_len, self.old_len);
+        }
+    }
+}
+
+impl<I: UncheckedIndexedIterator> Drop for IndexGuardBack<'_, I> {
+    #[inline]
+    fn drop(&mut self) {
+        // SAFETY: ...
+        unsafe {
+            self.it.set_end_index_from_start_unchecked(self.new_len, self.old_len);
+        }
     }
 }

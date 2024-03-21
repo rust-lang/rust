@@ -13,6 +13,7 @@ use super::super::{
     Inspect, Map, MapWhile, MapWindows, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take,
     TakeWhile,
 };
+use super::UncheckedIndexedIterator;
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 
@@ -4053,6 +4054,24 @@ pub trait Iterator {
     unsafe fn __iterator_get_unchecked(&mut self, _idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,
+    {
+        unreachable!("Always specialized");
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "trusted_indexed_access", issue = "none")]
+    unsafe fn index_from_end_unchecked(&mut self, _idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        unreachable!("Always specialized");
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "trusted_indexed_access", issue = "none")]
+    unsafe fn index_from_start_unchecked(&mut self, _idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
     {
         unreachable!("Always specialized");
     }

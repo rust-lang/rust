@@ -461,6 +461,8 @@ pub use self::adapters::{
 pub use self::adapters::{Intersperse, IntersperseWith};
 
 pub(crate) use self::adapters::try_process;
+#[unstable(feature = "trusted_indexed_access", issue = "none")]
+pub use self::traits::UncheckedIndexedIterator;
 pub(crate) use self::traits::UncheckedIterator;
 
 mod adapters;

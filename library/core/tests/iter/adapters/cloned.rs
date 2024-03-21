@@ -31,7 +31,8 @@ fn test_cloned_side_effects() {
             .zip(&[1]);
         for _ in iter {}
     }
-    assert_eq!(count, 2);
+    // either result is permitted by the Iterator::zip contract
+    assert!([1, 2].contains(&count));
 }
 
 #[test]

@@ -4,8 +4,10 @@ use crate::num::NonZero;
 use crate::{
     fmt,
     intrinsics::transmute_unchecked,
-    iter::{self, FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce},
-    mem::MaybeUninit,
+    iter::{
+        self, FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce, UncheckedIndexedIterator,
+    },
+    mem::{self, MaybeUninit},
     ops::{IndexRange, Range},
     ptr,
 };
@@ -300,6 +302,24 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
         // SAFETY: The caller must provide an idx that is in bound of the remainder.
         unsafe { self.data.as_ptr().add(self.alive.start()).add(idx).cast::<T>().read() }
     }
+
+    #[inline]
+    unsafe fn index_from_end_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: The caller must provide an idx that is in bound of the remainder.
+        unsafe { self.data.as_ptr().add(self.alive.end()).sub(idx).cast::<T>().read() }
+    }
+
+    #[inline]
+    unsafe fn index_from_start_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: The caller must provide an idx that is in bound of the remainder.
+        unsafe { self.data.as_ptr().add(self.alive.start()).add(idx).cast::<T>().read() }
+    }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
@@ -398,6 +418,24 @@ where
     T: NonDrop,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+}
+
+#[unstable(feature = "trusted_indexed_access", issue = "none")]
+impl<T, const N: usize> UncheckedIndexedIterator for IntoIter<T, N> {
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const CLEANUP_ON_DROP: bool = mem::needs_drop::<T>();
+
+    #[inline]
+    unsafe fn set_front_index_from_end_unchecked(&mut self, new_len: usize, _old_len: usize) {
+        // SAFETY: ...
+        unsafe { self.alive.set_start_unchecked(self.alive.end() - new_len) };
+    }
+
+    #[inline]
+    unsafe fn set_end_index_from_start_unchecked(&mut self, new_len: usize, _old_len: usize) {
+        // SAFETY: ...
+        unsafe { self.alive.set_end_unchecked(self.alive.start() + new_len) };
+    }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]

@@ -2,7 +2,11 @@ use crate::fmt;
 use crate::iter::adapters::{
     zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
-use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused, TrustedLen, UncheckedIterator};
+use crate::iter::traits::SpecIndexedAccess;
+use crate::iter::{
+    FusedIterator, InPlaceIterable, TrustedFused, TrustedLen, UncheckedIndexedIterator,
+    UncheckedIterator,
+};
 use crate::num::NonZero;
 use crate::ops::Try;
 
@@ -137,6 +141,51 @@ where
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.
         unsafe { (self.f)(try_get_unchecked(&mut self.iter, idx)) }
+    }
+
+    #[inline]
+    unsafe fn index_from_end_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        let val = unsafe { self.iter.index_from_end_unchecked_inner(idx) };
+        (self.f)(val)
+    }
+
+    #[inline]
+    unsafe fn index_from_start_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        let val = unsafe { self.iter.index_from_start_unchecked_inner(idx) };
+        (self.f)(val)
+    }
+}
+
+#[unstable(feature = "trusted_indexed_access", issue = "none")]
+impl<I, F> UncheckedIndexedIterator for Map<I, F>
+where
+    I: UncheckedIndexedIterator,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = true;
+    const CLEANUP_ON_DROP: bool = I::CLEANUP_ON_DROP;
+
+    #[inline]
+    unsafe fn set_front_index_from_end_unchecked(&mut self, new_len: usize, old_len: usize) {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        unsafe {
+            self.iter.set_front_index_from_end_unchecked(new_len, old_len);
+        }
+    }
+
+    #[inline]
+    unsafe fn set_end_index_from_start_unchecked(&mut self, new_len: usize, old_len: usize) {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        unsafe {
+            self.iter.set_end_index_from_start_unchecked(new_len, old_len);
+        }
     }
 }
 

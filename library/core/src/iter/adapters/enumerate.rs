@@ -1,7 +1,10 @@
 use crate::iter::adapters::{
     zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
-use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused, TrustedLen};
+use crate::iter::traits::SpecIndexedAccess as _;
+use crate::iter::{
+    FusedIterator, InPlaceIterable, TrustedFused, TrustedLen, UncheckedIndexedIterator,
+};
 use crate::num::NonZero;
 use crate::ops::Try;
 
@@ -136,6 +139,27 @@ where
         let value = unsafe { try_get_unchecked(&mut self.iter, idx) };
         (self.count + idx, value)
     }
+
+    #[inline]
+    unsafe fn index_from_end_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        let val = unsafe { self.iter.index_from_end_unchecked_inner(idx) };
+        let unadjusted_len = self.iter.size_hint().0;
+        (unadjusted_len - idx + self.count, val)
+    }
+
+    #[inline]
+    unsafe fn index_from_start_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        let val = unsafe { self.iter.index_from_start_unchecked_inner(idx) };
+        (self.count + idx, val)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -238,6 +262,28 @@ where
     I: TrustedRandomAccessNoCoerce,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
+}
+
+#[unstable(feature = "trusted_indexed_access", issue = "none")]
+impl<I> UncheckedIndexedIterator for Enumerate<I>
+where
+    I: UncheckedIndexedIterator,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
+    const CLEANUP_ON_DROP: bool = I::CLEANUP_ON_DROP;
+
+    #[inline]
+    unsafe fn set_front_index_from_end_unchecked(&mut self, new_len: usize, old_len: usize) {
+        self.count += old_len - new_len;
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        unsafe { self.iter.set_front_index_from_end_unchecked(new_len, old_len) }
+    }
+
+    #[inline]
+    unsafe fn set_end_index_from_start_unchecked(&mut self, new_len: usize, old_len: usize) {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        unsafe { self.iter.set_end_index_from_start_unchecked(new_len, old_len) }
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]

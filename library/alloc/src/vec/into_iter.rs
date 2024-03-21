@@ -8,10 +8,10 @@ use core::array;
 use core::fmt;
 use core::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen,
-    TrustedRandomAccessNoCoerce,
+    TrustedRandomAccessNoCoerce, UncheckedIndexedIterator,
 };
 use core::marker::PhantomData;
-use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};
+use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::num::NonZero;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Deref;
@@ -224,7 +224,8 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         let exact = if T::IS_ZST {
             self.end.addr().wrapping_sub(self.ptr.as_ptr().addr())
         } else {
-            unsafe { non_null!(self.end, T).sub_ptr(self.ptr) }
+            // FIXME(#121239): this should use sub_ptr but llvm == 18 doesn't optimize as it should
+            unsafe { non_null!(self.end, T).offset_from(self.ptr) as usize }
         };
         (exact, Some(exact))
     }
@@ -302,6 +303,57 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         // that `T: Copy` so reading elements from the buffer doesn't invalidate
         // them for `Drop`.
         unsafe { self.ptr.add(i).read() }
+    }
+
+    #[inline]
+    unsafe fn index_from_end_unchecked(&mut self, idx: usize) -> Self::Item {
+        if T::IS_ZST {
+            // SAFETY: conjuring a ZST
+            unsafe { NonNull::dangling().read() }
+        } else {
+            let end = non_null!(self.end, T);
+            unsafe { end.sub(idx).read() }
+            //self.ptr = unsafe { end.sub(idx).add(1) };
+            //unsafe { self.end.sub(idx).read() }
+        }
+    }
+
+    #[inline]
+    unsafe fn index_from_start_unchecked(&mut self, idx: usize) -> Self::Item {
+        if T::IS_ZST {
+            // SAFETY: conjuring a ZST
+            unsafe { NonNull::dangling().read() }
+        } else {
+            //let end = non_null!(mut self.end, T);
+            //*end = unsafe { self.ptr.add(idx) };
+            unsafe { self.ptr.add(idx).read() }
+        }
+    }
+}
+
+#[unstable(feature = "trusted_indexed_access", issue = "none")]
+impl<T, A: Allocator> UncheckedIndexedIterator for IntoIter<T, A> {
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const CLEANUP_ON_DROP: bool = mem::needs_drop::<T>();
+
+    #[inline]
+    unsafe fn set_front_index_from_end_unchecked(&mut self, new_len: usize, _old_len: usize) {
+        if T::IS_ZST {
+            self.end = self.ptr.as_ptr().cast_const().wrapping_byte_add(new_len);
+        } else {
+            let end = non_null!(self.end, T);
+            self.ptr = unsafe { end.sub(new_len) };
+        }
+    }
+
+    #[inline]
+    unsafe fn set_end_index_from_start_unchecked(&mut self, new_len: usize, _old_len: usize) {
+        if T::IS_ZST {
+            self.end = self.ptr.as_ptr().cast_const().wrapping_byte_add(new_len);
+        } else {
+            let end = non_null!(mut self.end, T);
+            *end = unsafe { self.ptr.add(new_len) };
+        }
     }
 }
 
