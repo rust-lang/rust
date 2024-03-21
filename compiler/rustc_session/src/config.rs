@@ -2842,13 +2842,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
     });
 
-    let remap = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
-    let (path, remapped) = remap.map_prefix(&working_dir);
-    let working_dir = if remapped {
-        RealFileName::Remapped { virtual_name: path.into_owned(), local_path: Some(working_dir) }
-    } else {
-        RealFileName::LocalPath(path.into_owned())
-    };
+    let file_mapping = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
+    let working_dir = file_mapping.to_real_filename(&working_dir);
 
     let verbose = matches.opt_present("verbose") || unstable_opts.verbose_internals;
 

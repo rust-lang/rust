@@ -264,10 +264,11 @@ pub fn target_machine_factory(
     Arc::new(move |config: TargetMachineFactoryConfig| {
         let path_to_cstring_helper = |path: Option<PathBuf>| -> CString {
             let path = path.unwrap_or_default();
+            let path = path_mapping.to_real_filename(path);
             let path = if should_prefer_remapped_paths {
-                path_mapping.map_prefix(path).0
+                path.remapped_path_if_available()
             } else {
-                path.into()
+                path.local_path_if_available()
             };
             CString::new(path.to_str().unwrap()).unwrap()
         };

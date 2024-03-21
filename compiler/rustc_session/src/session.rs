@@ -252,8 +252,7 @@ impl Session {
     }
 
     pub fn local_crate_source_file(&self) -> Option<RealFileName> {
-        let path = self.io.input.opt_path()?;
-        Some(RealFileName::LocalPath(path.to_path_buf()))
+        Some(self.source_map().path_mapping().to_real_filename(self.io.input.opt_path()?))
     }
 
     fn check_miri_unleashed_features(&self) -> Option<ErrorGuaranteed> {

@@ -878,26 +878,21 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
         .for_scope(tcx.sess, RemapPathScopeComponents::DEBUGINFO)
         .to_string_lossy();
     let output_filenames = tcx.output_filenames(());
-    let split_name = if tcx.sess.target_can_use_split_dwarf() {
-        output_filenames
-            .split_dwarf_path(
-                tcx.sess.split_debuginfo(),
-                tcx.sess.opts.unstable_opts.split_dwarf_kind,
-                Some(codegen_unit_name),
-            )
-            // We get a path relative to the working directory from split_dwarf_path
-            .map(|f| {
-                if tcx.sess.should_prefer_remapped(RemapPathScopeComponents::DEBUGINFO) {
-                    tcx.sess.source_map().path_mapping().map_prefix(f).0
-                } else {
-                    f.into()
-                }
-            })
+    let split_name = if tcx.sess.target_can_use_split_dwarf()
+        && let Some(f) = output_filenames.split_dwarf_path(
+            tcx.sess.split_debuginfo(),
+            tcx.sess.opts.unstable_opts.split_dwarf_kind,
+            Some(codegen_unit_name),
+        ) {
+        // We get a path relative to the working directory from split_dwarf_path
+        Some(tcx.sess.source_map().path_mapping().to_real_filename(f))
     } else {
         None
-    }
-    .unwrap_or_default();
-    let split_name = split_name.to_str().unwrap();
+    };
+    let split_name = split_name
+        .as_ref()
+        .map(|f| f.for_scope(tcx.sess, RemapPathScopeComponents::DEBUGINFO).to_string_lossy())
+        .unwrap_or_default();
     let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
 
     let dwarf_version =
