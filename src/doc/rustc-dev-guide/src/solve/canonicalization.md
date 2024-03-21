@@ -78,7 +78,6 @@ TODO: link to code once the PR lands and elaborate
 - all regions in the input get all mapped to existentially bound vars and we "uniquify" them.
     `&'a (): Trait<'a>` gets canonicalized to `exists<'0, '1> &'0 (): Trait<'1>`. We do not care
     about their universes and simply put all regions into the highest universe of the input.
-- once we collected all canonical vars we compress their universes, see comment in `finalize`.
 - in the output everything in a universe of the caller gets put into the root universe and only
     gets its correct universe when we unify the var values with the orig values of the caller
 - we do not uniquify regions in the response and don't canonicalize `'static`
