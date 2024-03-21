@@ -2017,6 +2017,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.normalize(span, ty);
         let ty = self.try_structurally_resolve_type(span, ty);
         self.check_pat(inner, ty, pat_info);
+
+        // Check if the pattern has any `ref mut` bindings, which would require
+        // `DerefMut` to be emitted in MIR building instead of just `Deref`.
+        let mut needs_mut = false;
+        inner.walk(|pat| {
+            if let hir::PatKind::Binding(_, id, _, _) = pat.kind
+                && let Some(ty::BindByReference(ty::Mutability::Mut)) =
+                    self.typeck_results.borrow().pat_binding_modes().get(id)
+            {
+                needs_mut = true;
+                // No need to continue recursing
+                false
+            } else {
+                true
+            }
+        });
+        if needs_mut {
+            self.register_bound(
+                expected,
+                tcx.require_lang_item(hir::LangItem::DerefMut, Some(span)),
+                self.misc(span),
+            );
+        }
+
         expected
     }
 
