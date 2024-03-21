@@ -131,7 +131,7 @@ fn non_consuming_ok_arm<'a>(cx: &LateContext<'a>, arm: &hir::Arm<'a>) -> bool {
 fn check_expr<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) {
     match expr.kind {
         hir::ExprKind::If(cond, _, _)
-            if let ExprKind::Let(hir::Let { pat, init, .. }) = cond.kind
+            if let ExprKind::Let(hir::LetExpr { pat, init, .. }) = cond.kind
                 && is_ok_wild_or_dotdot_pattern(cx, pat)
                 && let Some(op) = should_lint(cx, init) =>
         {

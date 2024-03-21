@@ -1387,7 +1387,7 @@ impl<'a> State<'a> {
                 // Print `}`:
                 self.bclose_maybe_open(expr.span, true);
             }
-            hir::ExprKind::Let(&hir::Let { pat, ty, init, .. }) => {
+            hir::ExprKind::Let(&hir::LetExpr { pat, ty, init, .. }) => {
                 self.print_let(pat, ty, init);
             }
             hir::ExprKind::If(test, blk, elseopt) => {
