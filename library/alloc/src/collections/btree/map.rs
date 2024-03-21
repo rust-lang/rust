@@ -72,7 +72,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// `BTreeMap` that observed the logic error and not result in undefined behavior. This could
 /// include panics, incorrect results, aborts, memory leaks, and non-termination.
 ///
-/// Iterators obtained from functions such as [`BTreeMap::iter`], [`BTreeMap::values`], or
+/// Iterators obtained from functions such as [`BTreeMap::iter`], [`BTreeMap::into_iter`], [`BTreeMap::values`], or
 /// [`BTreeMap::keys`] produce their items in order by key, and take worst-case logarithmic and
 /// amortized constant time per item returned.
 ///

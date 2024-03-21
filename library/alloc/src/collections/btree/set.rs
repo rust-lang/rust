@@ -27,7 +27,7 @@ use crate::alloc::{Allocator, Global};
 /// `BTreeSet` that observed the logic error and not result in undefined behavior. This could
 /// include panics, incorrect results, aborts, memory leaks, and non-termination.
 ///
-/// Iterators returned by [`BTreeSet::iter`] produce their items in order, and take worst-case
+/// Iterators returned by [`BTreeSet::iter`] and [`BTreeSet::into_iter`] produce their items in order, and take worst-case
 /// logarithmic and amortized constant time per item returned.
 ///
 /// [`Cell`]: core::cell::Cell
