@@ -1907,7 +1907,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .all_impls(trait_pred.def_id())
             .filter_map(|def_id| {
                 let imp = self.tcx.impl_trait_header(def_id).unwrap();
-                if imp.polarity == ty::ImplPolarity::Negative
+                if imp.polarity != ty::ImplPolarity::Positive
                     || !self.tcx.is_user_visible_dep(def_id.krate)
                 {
                     return None;
