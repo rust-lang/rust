@@ -28,7 +28,7 @@ where
     if arg.layout.is_aggregate() {
         let pad_i32 = !offset.is_aligned(align);
         arg.cast_to_and_pad_i32(
-            Uniform { unit: Reg::i32(), total: size, force_array: false },
+            Uniform { unit: Reg::i32(), total: size, is_consecutive: false },
             pad_i32,
         );
     } else {

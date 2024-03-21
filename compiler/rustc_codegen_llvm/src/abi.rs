@@ -140,8 +140,12 @@ impl LlvmType for CastTarget {
         };
 
         if self.prefix.iter().all(|x| x.is_none()) {
-            // Simplify to a single unit when there is no prefix and size <= unit size
-            if self.rest.total <= self.rest.unit.size && !self.rest.force_array {
+            // Try to simplify to a single unit when there is no prefix and size <= unit size.
+            // We can't do this if is_consecutive is set and the unit would get split on the
+            // target. Currently, this is only relevant for i128 registers.
+            if self.rest.total <= self.rest.unit.size
+                && (!self.rest.is_consecutive || self.rest.unit != Reg::i128())
+            {
                 return rest_ll_unit;
             }
 

@@ -37,7 +37,7 @@ where
             RegKind::Vector => arg.layout.size.bits() == 128,
         };
 
-        valid_unit.then_some(Uniform { unit, total: arg.layout.size, force_array: false })
+        valid_unit.then_some(Uniform::consecutive(unit, arg.layout.size))
     })
 }
 
@@ -81,7 +81,7 @@ where
             Reg::i64()
         };
 
-        ret.cast_to(Uniform { unit, total: size, force_array: false });
+        ret.cast_to(Uniform::new(unit, size));
         return;
     }
 
@@ -117,11 +117,10 @@ where
         // of i64s or i128s, depending on the aggregate alignment. Always use an array for
         // this, even if there is only a single element.
         let reg = if arg.layout.align.abi.bytes() > 8 { Reg::i128() } else { Reg::i64() };
-        arg.cast_to(Uniform {
-            unit: reg,
-            total: size.align_to(Align::from_bytes(reg.size.bytes()).unwrap()),
-            force_array: true,
-        })
+        arg.cast_to(Uniform::consecutive(
+            reg,
+            size.align_to(Align::from_bytes(reg.size.bytes()).unwrap()),
+        ))
     };
 }
 

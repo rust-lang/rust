@@ -204,7 +204,7 @@ where
             arg.cast_to(Uniform {
                 unit: xlen_reg,
                 total: Size::from_bits(xlen * 2),
-                force_array: false,
+                is_consecutive: false,
             });
         }
         return false;
@@ -291,7 +291,7 @@ fn classify_arg<'a, Ty, C>(
             arg.cast_to(Uniform {
                 unit: if align_regs { double_xlen_reg } else { xlen_reg },
                 total: Size::from_bits(xlen * 2),
-                force_array: false,
+                is_consecutive: false,
             });
         }
         if align_regs && is_vararg {
