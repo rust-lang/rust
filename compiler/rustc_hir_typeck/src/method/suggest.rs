@@ -875,7 +875,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 match pred.kind().skip_binder() {
                                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
                                         Some(pred.def_id()) == self.tcx.lang_items().sized_trait()
-                                            && pred.polarity == ty::ImplPolarity::Positive
+                                            && pred.polarity == ty::PredicatePolarity::Positive
                                     }
                                     _ => false,
                                 }

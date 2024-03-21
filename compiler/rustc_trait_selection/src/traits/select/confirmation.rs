@@ -1458,7 +1458,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 cause.span,
                                 [nested_ty.into(), host_effect_param],
                             ),
-                            polarity: ty::ImplPolarity::Positive,
+                            polarity: ty::PredicatePolarity::Positive,
                         }),
                         &mut nested,
                     );
@@ -1483,7 +1483,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             cause.span,
                             [nested_ty.into(), host_effect_param],
                         ),
-                        polarity: ty::ImplPolarity::Positive,
+                        polarity: ty::PredicatePolarity::Positive,
                     });
 
                     nested.push(Obligation::with_depth(

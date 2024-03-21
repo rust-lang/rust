@@ -301,6 +301,43 @@ impl fmt::Display for ImplPolarity {
     }
 }
 
+impl From<PredicatePolarity> for ImplPolarity {
+    fn from(value: PredicatePolarity) -> Self {
+        match value {
+            PredicatePolarity::Positive => ImplPolarity::Positive,
+            PredicatePolarity::Negative => ImplPolarity::Negative,
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub enum PredicatePolarity {
+    /// `Type: Trait`
+    Positive,
+    /// `Type: !Trait`
+    Negative,
+}
+
+impl PredicatePolarity {
+    /// Flips polarity by turning `Positive` into `Negative` and `Negative` into `Positive`.
+    pub fn flip(&self) -> PredicatePolarity {
+        match self {
+            PredicatePolarity::Positive => PredicatePolarity::Negative,
+            PredicatePolarity::Negative => PredicatePolarity::Positive,
+        }
+    }
+}
+
+impl fmt::Display for PredicatePolarity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Positive => f.write_str("positive"),
+            Self::Negative => f.write_str("negative"),
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum Asyncness {

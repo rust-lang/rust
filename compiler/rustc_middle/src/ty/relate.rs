@@ -779,6 +779,20 @@ impl<'tcx> Relate<'tcx> for ty::ImplPolarity {
     }
 }
 
+impl<'tcx> Relate<'tcx> for ty::PredicatePolarity {
+    fn relate<R: TypeRelation<'tcx>>(
+        _relation: &mut R,
+        a: ty::PredicatePolarity,
+        b: ty::PredicatePolarity,
+    ) -> RelateResult<'tcx, ty::PredicatePolarity> {
+        if a != b {
+            Err(TypeError::PolarityMismatch(expected_found(a.into(), b.into())))
+        } else {
+            Ok(a)
+        }
+    }
+}
+
 impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,

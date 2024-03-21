@@ -645,7 +645,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         trait_ref: &hir::TraitRef<'tcx>,
         span: Span,
         constness: ty::BoundConstness,
-        polarity: ty::ImplPolarity,
+        polarity: ty::PredicatePolarity,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
         only_self_bounds: OnlySelfBounds,
@@ -682,7 +682,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             // Don't register additional associated type bounds for negative bounds,
             // since we should have emitten an error for them earlier, and they will
             // not be well-formed!
-            if polarity == ty::ImplPolarity::Negative {
+            if polarity == ty::PredicatePolarity::Negative {
                 assert!(
                     self.tcx().dcx().has_errors().is_some(),
                     "negative trait bounds should not have bindings",

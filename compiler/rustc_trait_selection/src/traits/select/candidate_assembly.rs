@@ -56,7 +56,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
 
         // Negative trait predicates have different rules than positive trait predicates.
-        if obligation.polarity() == ty::ImplPolarity::Negative {
+        if obligation.polarity() == ty::PredicatePolarity::Negative {
             self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
             self.assemble_candidates_from_impls(obligation, &mut candidates);
             self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;

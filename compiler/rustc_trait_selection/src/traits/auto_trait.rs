@@ -8,7 +8,7 @@ use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::traits::project::ProjectAndUnifyResult;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::ty::{ImplPolarity, Region, RegionVid};
+use rustc_middle::ty::{Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 
@@ -96,9 +96,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 ty::TraitPredicate {
                     trait_ref,
                     polarity: if polarity {
-                        ImplPolarity::Positive
+                        ty::PredicatePolarity::Positive
                     } else {
-                        ImplPolarity::Negative
+                        ty::PredicatePolarity::Negative
                     },
                 },
             ));
@@ -258,7 +258,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             trait_ref: ty::TraitRef::new(infcx.tcx, trait_did, [ty]),
 
             // Auto traits are positive
-            polarity: ty::ImplPolarity::Positive,
+            polarity: ty::PredicatePolarity::Positive,
         }));
 
         let computed_preds = param_env.caller_bounds().iter().map(|c| c.as_predicate());
