@@ -185,19 +185,30 @@ impl HirDisplay for Struct {
                 write_where_clause(def_id, f)?;
             }
             StructKind::Record => {
-                let has_where_clause = write_where_clause(def_id, f)?;
-                let fields = self.fields(f.db);
-                f.write_char(if !has_where_clause { ' ' } else { '\n' })?;
-                if fields.is_empty() {
-                    f.write_str("{}")?;
-                } else {
-                    f.write_str("{\n")?;
-                    for field in self.fields(f.db) {
-                        f.write_str("    ")?;
-                        field.hir_fmt(f)?;
-                        f.write_str(",\n")?;
+                if let Some(limit) = f.entity_limit {
+                    let has_where_clause = write_where_clause(def_id, f)?;
+                    let fields = self.fields(f.db);
+                    let count = fields.len().min(limit);
+                    f.write_char(if !has_where_clause { ' ' } else { '\n' })?;
+                    if count == 0 {
+                        if fields.is_empty() {
+                            f.write_str("{}")?;
+                        } else {
+                            f.write_str("{ /* … */ }")?;
+                        }
+                    } else {
+                        f.write_str(" {\n")?;
+                        for field in &fields[..count] {
+                            f.write_str("    ")?;
+                            field.hir_fmt(f)?;
+                            f.write_str(",\n")?;
+                        }
+
+                        if fields.len() > count {
+                            f.write_str("    /* … */\n")?;
+                        }
+                        f.write_str("}")?;
                     }
-                    f.write_str("}")?;
                 }
             }
             StructKind::Unit => _ = write_where_clause(def_id, f)?,
