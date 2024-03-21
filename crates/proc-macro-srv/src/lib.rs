@@ -52,7 +52,7 @@ use crate::server::TokenStream;
 // see `build.rs`
 include!(concat!(env!("OUT_DIR"), "/rustc_version.rs"));
 
-trait ProcMacroSrvSpan: tt::Span {
+trait ProcMacroSrvSpan: Copy {
     type Server: proc_macro::bridge::server::Server<TokenStream = TokenStream<Self>>;
     fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server;
 }

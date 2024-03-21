@@ -1,5 +1,7 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
+use std::fmt;
+
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{SpanAnchor, SpanData, SpanMap};
 use stdx::{never, non_empty_vec::NonEmptyVec};
@@ -9,30 +11,27 @@ use syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, WalkEvent, T,
 };
-use tt::{
-    buffer::{Cursor, TokenBuffer},
-    Span,
-};
+use tt::buffer::{Cursor, TokenBuffer};
 
 use crate::{to_parser_input::to_parser_input, tt_iter::TtIter};
 
 #[cfg(test)]
 mod tests;
 
-pub trait SpanMapper<S: Span> {
+pub trait SpanMapper<S> {
     fn span_for(&self, range: TextRange) -> S;
 }
 
 impl<S> SpanMapper<SpanData<S>> for SpanMap<S>
 where
-    SpanData<S>: Span,
+    SpanData<S>: Copy,
 {
     fn span_for(&self, range: TextRange) -> SpanData<S> {
         self.span_at(range.start())
     }
 }
 
-impl<S: Span, SM: SpanMapper<S>> SpanMapper<S> for &SM {
+impl<S: Copy, SM: SpanMapper<S>> SpanMapper<S> for &SM {
     fn span_for(&self, range: TextRange) -> S {
         SM::span_for(self, range)
     }
@@ -78,8 +77,7 @@ pub fn syntax_node_to_token_tree<Ctx, SpanMap>(
     span: SpanData<Ctx>,
 ) -> tt::Subtree<SpanData<Ctx>>
 where
-    SpanData<Ctx>: Span,
-    Ctx: Copy,
+    SpanData<Ctx>: Copy + fmt::Debug,
     SpanMap: SpanMapper<SpanData<Ctx>>,
 {
     let mut c = Converter::new(node, map, Default::default(), Default::default(), span);
@@ -98,8 +96,7 @@ pub fn syntax_node_to_token_tree_modified<Ctx, SpanMap>(
 ) -> tt::Subtree<SpanData<Ctx>>
 where
     SpanMap: SpanMapper<SpanData<Ctx>>,
-    SpanData<Ctx>: Span,
-    Ctx: Copy,
+    SpanData<Ctx>: Copy + fmt::Debug,
 {
     let mut c = Converter::new(node, map, append, remove, call_site);
     convert_tokens(&mut c)
@@ -124,8 +121,7 @@ pub fn token_tree_to_syntax_node<Ctx>(
     entry_point: parser::TopEntryPoint,
 ) -> (Parse<SyntaxNode>, SpanMap<Ctx>)
 where
-    SpanData<Ctx>: Span,
-    Ctx: Copy,
+    SpanData<Ctx>: Copy + fmt::Debug,
 {
     let buffer = match tt {
         tt::Subtree {
@@ -161,7 +157,7 @@ pub fn parse_to_token_tree<Ctx>(
     text: &str,
 ) -> Option<tt::Subtree<SpanData<Ctx>>>
 where
-    SpanData<Ctx>: Span,
+    SpanData<Ctx>: Copy + fmt::Debug,
     Ctx: Copy,
 {
     let lexed = parser::LexedStr::new(text);
@@ -175,7 +171,7 @@ where
 /// Convert a string to a `TokenTree`. The passed span will be used for all spans of the produced subtree.
 pub fn parse_to_token_tree_static_span<S>(span: S, text: &str) -> Option<tt::Subtree<S>>
 where
-    S: Span,
+    S: Copy + fmt::Debug,
 {
     let lexed = parser::LexedStr::new(text);
     if lexed.errors().next().is_some() {
@@ -186,11 +182,10 @@ where
 }
 
 /// Split token tree with separate expr: $($e:expr)SEP*
-pub fn parse_exprs_with_sep<S: Span>(
-    tt: &tt::Subtree<S>,
-    sep: char,
-    span: S,
-) -> Vec<tt::Subtree<S>> {
+pub fn parse_exprs_with_sep<S>(tt: &tt::Subtree<S>, sep: char, span: S) -> Vec<tt::Subtree<S>>
+where
+    S: Copy + fmt::Debug,
+{
     if tt.token_trees.is_empty() {
         return Vec::new();
     }
@@ -226,7 +221,8 @@ pub fn parse_exprs_with_sep<S: Span>(
 fn convert_tokens<S, C>(conv: &mut C) -> tt::Subtree<S>
 where
     C: TokenConverter<S>,
-    S: Span,
+    S: Copy + fmt::Debug,
+    C::Token: fmt::Debug,
 {
     let entry = tt::SubtreeBuilder {
         delimiter: tt::Delimiter::invisible_spanned(conv.call_site()),
@@ -485,7 +481,7 @@ struct StaticRawConverter<'a, S> {
     span: S,
 }
 
-trait SrcToken<Ctx, S>: std::fmt::Debug {
+trait SrcToken<Ctx, S> {
     fn kind(&self, ctx: &Ctx) -> SyntaxKind;
 
     fn to_char(&self, ctx: &Ctx) -> Option<char>;
@@ -525,7 +521,7 @@ impl<S, Ctx> SrcToken<RawConverter<'_, Ctx>, S> for usize {
     }
 }
 
-impl<S: Span> SrcToken<StaticRawConverter<'_, S>, S> for usize {
+impl<S: Copy> SrcToken<StaticRawConverter<'_, S>, S> for usize {
     fn kind(&self, ctx: &StaticRawConverter<'_, S>) -> SyntaxKind {
         ctx.lexed.kind(*self)
     }
@@ -541,7 +537,7 @@ impl<S: Span> SrcToken<StaticRawConverter<'_, S>, S> for usize {
 
 impl<Ctx: Copy> TokenConverter<SpanData<Ctx>> for RawConverter<'_, Ctx>
 where
-    SpanData<Ctx>: Span,
+    SpanData<Ctx>: Copy,
 {
     type Token = usize;
 
@@ -584,7 +580,7 @@ where
 
 impl<S> TokenConverter<S> for StaticRawConverter<'_, S>
 where
-    S: Span,
+    S: Copy,
 {
     type Token = usize;
 
@@ -709,7 +705,7 @@ impl<S> SynToken<S> {
     }
 }
 
-impl<SpanMap, S: std::fmt::Debug> SrcToken<Converter<SpanMap, S>, S> for SynToken<S> {
+impl<SpanMap, S> SrcToken<Converter<SpanMap, S>, S> for SynToken<S> {
     fn kind(&self, _ctx: &Converter<SpanMap, S>) -> SyntaxKind {
         match self {
             SynToken::Ordinary(token) => token.kind(),
@@ -748,7 +744,7 @@ impl<SpanMap, S: std::fmt::Debug> SrcToken<Converter<SpanMap, S>, S> for SynToke
 
 impl<S, SpanMap> TokenConverter<S> for Converter<SpanMap, S>
 where
-    S: Span,
+    S: Copy,
     SpanMap: SpanMapper<S>,
 {
     type Token = SynToken<S>;
@@ -828,7 +824,7 @@ where
 
 struct TtTreeSink<'a, Ctx>
 where
-    SpanData<Ctx>: Span,
+    SpanData<Ctx>: Copy,
 {
     buf: String,
     cursor: Cursor<'a, SpanData<Ctx>>,
@@ -839,7 +835,7 @@ where
 
 impl<'a, Ctx> TtTreeSink<'a, Ctx>
 where
-    SpanData<Ctx>: Span,
+    SpanData<Ctx>: Copy,
 {
     fn new(cursor: Cursor<'a, SpanData<Ctx>>) -> Self {
         TtTreeSink {
@@ -871,7 +867,7 @@ fn delim_to_str(d: tt::DelimiterKind, closing: bool) -> Option<&'static str> {
 
 impl<Ctx> TtTreeSink<'_, Ctx>
 where
-    SpanData<Ctx>: Span,
+    SpanData<Ctx>: Copy,
 {
     /// Parses a float literal as if it was a one to two name ref nodes with a dot inbetween.
     /// This occurs when a float literal is used as a field access.

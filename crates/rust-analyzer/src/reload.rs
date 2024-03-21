@@ -734,6 +734,8 @@ pub fn ws_to_crate_graph(
         });
         proc_macro_paths.push(crate_proc_macros);
     }
+    crate_graph.shrink_to_fit();
+    proc_macro_paths.shrink_to_fit();
     (crate_graph, proc_macro_paths, layouts, toolchains)
 }
 
