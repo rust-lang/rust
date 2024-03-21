@@ -139,7 +139,7 @@ fn process_enum(
     'variant: for variant in variants.variants() {
         for attr in variant.attrs() {
             if check_cfg_attr(&attr, loc, db).map(|enabled| !enabled).unwrap_or_default() {
-                // Rustc does not strip the attribute if it is enabled. So we will will leave it
+                // Rustc does not strip the attribute if it is enabled. So we will leave it
                 debug!("censoring type {:?}", variant.syntax());
                 remove.insert(variant.syntax().clone().into());
                 // We need to remove the , as well
