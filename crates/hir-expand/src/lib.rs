@@ -228,10 +228,6 @@ pub enum MacroCallKind {
         /// We will resolve the same token tree for all derive macros in the same derive attribute.
         derive_macro_id: MacroCallId,
     },
-    DeriveAttr {
-        ast_id: AstId<ast::Adt>,
-        invoc_attr_index: AttrId,
-    },
     Attr {
         ast_id: AstId<ast::Item>,
         // FIXME: This shouldn't be here, we can derive this from `invoc_attr_index`
@@ -519,8 +515,7 @@ impl MacroCallLoc {
             MacroCallKind::FnLike { ast_id, .. } => {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
             }
-            MacroCallKind::Derive { ast_id, derive_attr_index, .. }
-            | MacroCallKind::DeriveAttr { ast_id, invoc_attr_index: derive_attr_index } => {
+            MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
                 // FIXME: handle `cfg_attr`
                 ast_id.with_value(ast_id.to_node(db)).map(|it| {
                     collect_attrs(&it)
@@ -554,7 +549,7 @@ impl MacroCallLoc {
     fn expand_to(&self) -> ExpandTo {
         match self.kind {
             MacroCallKind::FnLike { expand_to, .. } => expand_to,
-            MacroCallKind::Derive { .. } | MacroCallKind::DeriveAttr { .. } => ExpandTo::Items,
+            MacroCallKind::Derive { .. } => ExpandTo::Items,
             MacroCallKind::Attr { .. } if self.def.is_attribute_derive() => ExpandTo::Items,
             MacroCallKind::Attr { .. } => {
                 // FIXME(stmt_expr_attributes)
@@ -588,7 +583,6 @@ impl MacroCallKind {
             MacroCallKind::FnLike { .. } => "macro call",
             MacroCallKind::Derive { .. } => "derive macro",
             MacroCallKind::Attr { .. } => "attribute macro",
-            MacroCallKind::DeriveAttr { .. } => "derive attribute",
         }
     }
 
@@ -597,7 +591,6 @@ impl MacroCallKind {
         match *self {
             MacroCallKind::FnLike { ast_id: InFile { file_id, .. }, .. }
             | MacroCallKind::Derive { ast_id: InFile { file_id, .. }, .. }
-            | MacroCallKind::DeriveAttr { ast_id: InFile { file_id, .. }, .. }
             | MacroCallKind::Attr { ast_id: InFile { file_id, .. }, .. } => file_id,
         }
     }
@@ -605,8 +598,7 @@ impl MacroCallKind {
     pub fn erased_ast_id(&self) -> ErasedFileAstId {
         match *self {
             MacroCallKind::FnLike { ast_id: InFile { value, .. }, .. } => value.erase(),
-            MacroCallKind::Derive { ast_id: InFile { value, .. }, .. }
-            | MacroCallKind::DeriveAttr { ast_id: InFile { value, .. }, .. } => value.erase(),
+            MacroCallKind::Derive { ast_id: InFile { value, .. }, .. } => value.erase(),
             MacroCallKind::Attr { ast_id: InFile { value, .. }, .. } => value.erase(),
         }
     }
@@ -627,9 +619,7 @@ impl MacroCallKind {
 
         let range = match kind {
             MacroCallKind::FnLike { ast_id, .. } => ast_id.to_ptr(db).text_range(),
-            MacroCallKind::Derive { ast_id, .. } | MacroCallKind::DeriveAttr { ast_id, .. } => {
-                ast_id.to_ptr(db).text_range()
-            }
+            MacroCallKind::Derive { ast_id, .. } => ast_id.to_ptr(db).text_range(),
             MacroCallKind::Attr { ast_id, .. } => ast_id.to_ptr(db).text_range(),
         };
 
@@ -675,15 +665,6 @@ impl MacroCallKind {
                     .syntax()
                     .text_range()
             }
-            MacroCallKind::DeriveAttr { ast_id, invoc_attr_index } => {
-                collect_attrs(&ast_id.to_node(db))
-                    .nth(invoc_attr_index.ast_index())
-                    .expect("missing attribute")
-                    .1
-                    .expect_left("attribute macro is a doc comment?")
-                    .syntax()
-                    .text_range()
-            }
         };
 
         FileRange { range, file_id }
@@ -694,7 +675,7 @@ impl MacroCallKind {
             MacroCallKind::FnLike { ast_id, .. } => {
                 ast_id.to_in_file_node(db).map(|it| Some(it.token_tree()?.syntax().clone()))
             }
-            MacroCallKind::Derive { ast_id, .. } | MacroCallKind::DeriveAttr { ast_id, .. } => {
+            MacroCallKind::Derive { ast_id, .. } => {
                 ast_id.to_in_file_node(db).syntax().cloned().map(Some)
             }
             MacroCallKind::Attr { ast_id, .. } => {

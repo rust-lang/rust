@@ -164,8 +164,7 @@ pub fn expand_speculative(
             SyntaxFixupUndoInfo::NONE,
         ),
         MacroCallKind::Derive { derive_attr_index: index, .. }
-        | MacroCallKind::Attr { invoc_attr_index: index, .. }
-        | MacroCallKind::DeriveAttr { invoc_attr_index: index, .. } => {
+        | MacroCallKind::Attr { invoc_attr_index: index, .. } => {
             let censor = if let MacroCallKind::Derive { .. } = loc.kind {
                 censor_derive_input(index, &ast::Adt::cast(speculative_args.clone())?)
             } else {
@@ -436,9 +435,9 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
             }
             return (Arc::new(tt), SyntaxFixupUndoInfo::NONE, span);
         }
+
         // MacroCallKind::Derive should not be here. As we are getting the argument for the derive macro
-        MacroCallKind::Derive { ast_id, derive_attr_index, .. }
-        | MacroCallKind::DeriveAttr { ast_id, invoc_attr_index: derive_attr_index } => {
+        MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
             let node = ast_id.to_ptr(db).to_node(&root);
             let censor_derive_input = censor_derive_input(derive_attr_index, &node);
             let item_node = node.into();
@@ -454,13 +453,23 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
         MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
             let node = ast_id.to_ptr(db).to_node(&root);
             let attr_source = attr_source(invoc_attr_index, &node);
+
             let span = map.span_for_range(
                 attr_source
                     .as_ref()
                     .and_then(|it| it.path())
                     .map_or_else(|| node.syntax().text_range(), |it| it.syntax().text_range()),
             );
-            (attr_source.into_iter().map(|it| it.syntax().clone().into()).collect(), node, span)
+            // If derive attribute we need to censor the derive input
+            if matches!(loc.def.kind, MacroDefKind::BuiltInAttr(expander, ..) if expander.is_derive())
+                && ast::Adt::can_cast(node.syntax().kind())
+            {
+                let adt = ast::Adt::cast(node.syntax().clone()).unwrap();
+                let censor_derive_input = censor_derive_input(invoc_attr_index, &adt);
+                (censor_derive_input, node, span)
+            } else {
+                (attr_source.into_iter().map(|it| it.syntax().clone().into()).collect(), node, span)
+            }
         }
     };
 
