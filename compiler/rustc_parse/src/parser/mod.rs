@@ -449,6 +449,7 @@ impl<'a> Parser<'a> {
         parser
     }
 
+    #[inline]
     pub fn recovery(mut self, recovery: Recovery) -> Self {
         self.recovery = recovery;
         self
@@ -461,6 +462,7 @@ impl<'a> Parser<'a> {
     ///
     /// Technically, this only needs to restrict eager recovery by doing lookahead at more tokens.
     /// But making the distinction is very subtle, and simply forbidding all recovery is a lot simpler to uphold.
+    #[inline]
     fn may_recover(&self) -> bool {
         matches!(self.recovery, Recovery::Allowed)
     }
@@ -548,6 +550,7 @@ impl<'a> Parser<'a> {
     ///
     /// This method will automatically add `tok` to `expected_tokens` if `tok` is not
     /// encountered.
+    #[inline]
     fn check(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.token == *tok;
         if !is_present {
@@ -556,6 +559,7 @@ impl<'a> Parser<'a> {
         is_present
     }
 
+    #[inline]
     fn check_noexpect(&self, tok: &TokenKind) -> bool {
         self.token == *tok
     }
@@ -564,6 +568,7 @@ impl<'a> Parser<'a> {
     ///
     /// the main purpose of this function is to reduce the cluttering of the suggestions list
     /// which using the normal eat method could introduce in some cases.
+    #[inline]
     pub fn eat_noexpect(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.check_noexpect(tok);
         if is_present {
@@ -573,6 +578,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Consumes a token 'tok' if it exists. Returns whether the given token was present.
+    #[inline]
     pub fn eat(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.check(tok);
         if is_present {
@@ -583,11 +589,13 @@ impl<'a> Parser<'a> {
 
     /// If the next token is the given keyword, returns `true` without eating it.
     /// An expectation is also added for diagnostics purposes.
+    #[inline]
     fn check_keyword(&mut self, kw: Symbol) -> bool {
         self.expected_tokens.push(TokenType::Keyword(kw));
         self.token.is_keyword(kw)
     }
 
+    #[inline]
     fn check_keyword_case(&mut self, kw: Symbol, case: Case) -> bool {
         if self.check_keyword(kw) {
             return true;
@@ -606,6 +614,7 @@ impl<'a> Parser<'a> {
     /// If the next token is the given keyword, eats it and returns `true`.
     /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
     // Public for rustfmt usage.
+    #[inline]
     pub fn eat_keyword(&mut self, kw: Symbol) -> bool {
         if self.check_keyword(kw) {
             self.bump();
@@ -618,6 +627,7 @@ impl<'a> Parser<'a> {
     /// Eats a keyword, optionally ignoring the case.
     /// If the case differs (and is ignored) an error is issued.
     /// This is useful for recovery.
+    #[inline]
     fn eat_keyword_case(&mut self, kw: Symbol, case: Case) -> bool {
         if self.eat_keyword(kw) {
             return true;
@@ -635,6 +645,7 @@ impl<'a> Parser<'a> {
         false
     }
 
+    #[inline]
     fn eat_keyword_noexpect(&mut self, kw: Symbol) -> bool {
         if self.token.is_keyword(kw) {
             self.bump();
@@ -656,6 +667,7 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw) && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
     }
 
+    #[inline]
     fn check_or_expected(&mut self, ok: bool, typ: TokenType) -> bool {
         if ok {
             true
@@ -703,6 +715,7 @@ impl<'a> Parser<'a> {
 
     /// Checks to see if the next token is either `+` or `+=`.
     /// Otherwise returns `false`.
+    #[inline]
     fn check_plus(&mut self) -> bool {
         self.check_or_expected(
             self.token.is_like_plus(),
