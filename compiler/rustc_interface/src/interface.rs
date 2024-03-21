@@ -5,6 +5,7 @@ use rustc_ast::{LitKind, MetaItemKind};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::defer;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::jobserver;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
@@ -323,6 +324,18 @@ pub struct Config {
     pub expanded_args: Vec<String>,
 }
 
+/// Initialize jobserver before getting `jobserver::client` and `build_session`.
+pub(crate) fn initialize_checked_jobserver(early_dcx: &EarlyDiagCtxt) {
+    jobserver::initialize_checked(|err| {
+        #[allow(rustc::untranslatable_diagnostic)]
+        #[allow(rustc::diagnostic_outside_of_impl)]
+        early_dcx
+            .early_struct_warn(err)
+            .with_note("the build environment is likely misconfigured")
+            .emit()
+    });
+}
+
 // JUSTIFICATION: before session exists, only config
 #[allow(rustc::bad_opt_access)]
 #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
@@ -334,7 +347,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
     // Check jobserver before run_in_thread_pool_with_globals, which call jobserver::acquire_thread
     let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
-    early_dcx.initialize_checked_jobserver();
+    initialize_checked_jobserver(&early_dcx);
 
     crate::callbacks::setup_callbacks();
 

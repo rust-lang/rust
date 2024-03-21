@@ -1397,16 +1397,10 @@ impl EarlyDiagCtxt {
         self.dcx.warn(msg)
     }
 
-    pub fn initialize_checked_jobserver(&self) {
-        // initialize jobserver before getting `jobserver::client` and `build_session`.
-        jobserver::initialize_checked(|err| {
-            #[allow(rustc::untranslatable_diagnostic)]
-            #[allow(rustc::diagnostic_outside_of_impl)]
-            self.dcx
-                .struct_warn(err)
-                .with_note("the build environment is likely misconfigured")
-                .emit()
-        });
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
+        self.dcx.struct_warn(msg)
     }
 }
 

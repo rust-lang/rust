@@ -1,5 +1,5 @@
 #![allow(rustc::bad_opt_access)]
-use crate::interface::parse_cfg;
+use crate::interface::{initialize_checked_jobserver, parse_cfg};
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::{
@@ -31,7 +31,7 @@ where
     F: FnOnce(Session, Cfg),
 {
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
-    early_dcx.initialize_checked_jobserver();
+    initialize_checked_jobserver(&early_dcx);
 
     let matches = optgroups().parse(args).unwrap();
     let sessopts = build_session_options(&mut early_dcx, &matches);
