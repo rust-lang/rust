@@ -124,6 +124,11 @@ fn handle_path(
             && let ty::Ref(_, ty, Mutability::Not) = ty.kind()
             && let ty::FnDef(_, lst) = cx.typeck_results().expr_ty(arg).kind()
             && lst.iter().all(|l| l.as_type() == Some(*ty))
+            && !matches!(
+                ty.ty_adt_def()
+                    .and_then(|adt_def| cx.tcx.get_diagnostic_name(adt_def.did())),
+                Some(sym::Arc | sym::ArcWeak | sym::Rc | sym::RcWeak)
+            )
         {
             lint_path(cx, e.span, recv.span, is_copy(cx, ty.peel_refs()));
         }
