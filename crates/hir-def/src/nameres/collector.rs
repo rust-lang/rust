@@ -24,7 +24,7 @@ use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{Edition, ErasedFileAstId, FileAstId, Span, SyntaxContextId};
 use stdx::always;
-use syntax::{ast, SmolStr};
+use syntax::ast;
 use triomphe::Arc;
 
 use crate::{
@@ -312,7 +312,7 @@ impl DefCollector<'_> {
                     }
                 }
                 () if *attr_name == hir_expand::name![crate_type] => {
-                    if let Some("proc-macro") = attr.string_value().map(SmolStr::as_str) {
+                    if let Some("proc-macro") = attr.string_value() {
                         self.is_proc_macro = true;
                     }
                 }
@@ -1902,7 +1902,7 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect_module(&mut self, module_id: FileItemTreeId<Mod>, attrs: &Attrs) {
-        let path_attr = attrs.by_key("path").string_value().map(SmolStr::as_str);
+        let path_attr = attrs.by_key("path").string_value();
         let is_macro_use = attrs.by_key("macro_use").exists();
         let module = &self.item_tree[module_id];
         match &module.kind {
@@ -2146,7 +2146,7 @@ impl ModCollector<'_, '_> {
                 Some(it) => {
                     // FIXME: a hacky way to create a Name from string.
                     name = tt::Ident {
-                        text: it.clone(),
+                        text: it.into(),
                         span: Span {
                             range: syntax::TextRange::empty(syntax::TextSize::new(0)),
                             anchor: span::SpanAnchor {

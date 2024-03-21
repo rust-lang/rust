@@ -2008,8 +2008,7 @@ impl Function {
         }
         let data = db.function_data(self.id);
 
-        data.name.to_smol_str() == "main"
-            || data.attrs.export_name().map(core::ops::Deref::deref) == Some("main")
+        data.name.to_smol_str() == "main" || data.attrs.export_name() == Some("main")
     }
 
     /// Does this function have the ignore attribute?
