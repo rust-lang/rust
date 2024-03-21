@@ -1617,21 +1617,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 _ => return ControlFlow::Continue(()),
             };
 
-            for bound in
-                self.tcx().item_bounds(alias_ty.def_id).instantiate(self.tcx(), alias_ty.args)
-            {
-                // HACK: On subsequent recursions, we only care about bounds that don't
-                // share the same type as `self_ty`. This is because for truly rigid
-                // projections, we will never be able to equate, e.g. `<T as Tr>::A`
-                // with `<<T as Tr>::A as Tr>::A`.
-                if in_parent_alias_type {
-                    match bound.kind().skip_binder() {
-                        ty::ClauseKind::Trait(tr) if tr.self_ty() == self_ty => continue,
-                        ty::ClauseKind::Projection(p) if p.self_ty() == self_ty => continue,
-                        _ => {}
-                    }
-                }
+            // HACK: On subsequent recursions, we only care about bounds that don't
+            // share the same type as `self_ty`. This is because for truly rigid
+            // projections, we will never be able to equate, e.g. `<T as Tr>::A`
+            // with `<<T as Tr>::A as Tr>::A`.
+            let relevant_bounds = if in_parent_alias_type {
+                self.tcx().item_non_self_assumptions(alias_ty.def_id)
+            } else {
+                self.tcx().item_super_predicates(alias_ty.def_id)
+            };
 
+            for bound in relevant_bounds.instantiate(self.tcx(), alias_ty.args) {
                 for_each(self, bound, idx)?;
                 idx += 1;
             }

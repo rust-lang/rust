@@ -645,7 +645,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for ty in [first_ty, second_ty] {
                     for (clause, _) in self
                         .tcx
-                        .explicit_item_bounds(rpit_def_id)
+                        .explicit_item_super_predicates(rpit_def_id)
                         .iter_instantiated_copied(self.tcx, args)
                     {
                         let pred = clause.kind().rebind(match clause.kind().skip_binder() {

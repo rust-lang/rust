@@ -4,6 +4,14 @@ error[E0582]: binding for associated type `Item` references lifetime `'missing`,
 LL |     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missing>> {}
    |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0582]: binding for associated type `Item` references lifetime `'missing`, which does not appear in the trait input types
+  --> $DIR/span-bug-issue-121457.rs:13:51
+   |
+LL |     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missing>> {}
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0195]: lifetime parameters or bounds on type `Item` do not match the trait declaration
   --> $DIR/span-bug-issue-121457.rs:10:14
    |
@@ -24,7 +32,7 @@ LL |     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missin
    |
    = help: the trait `Iterator` is not implemented for `()`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0195, E0277, E0582.
 For more information about an error, try `rustc --explain E0195`.

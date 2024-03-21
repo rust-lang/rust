@@ -1063,6 +1063,20 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         ty::EarlyBinder::bind(&*output)
     }
 
+    fn get_explicit_item_super_predicates(
+        self,
+        index: DefIndex,
+        tcx: TyCtxt<'tcx>,
+    ) -> ty::EarlyBinder<&'tcx [(ty::Clause<'tcx>, Span)]> {
+        let lazy = self.root.tables.explicit_item_super_predicates.get(self, index);
+        let output = if lazy.is_default() {
+            &mut []
+        } else {
+            tcx.arena.alloc_from_iter(lazy.decode((self, tcx)))
+        };
+        ty::EarlyBinder::bind(&*output)
+    }
+
     fn get_variant(
         self,
         kind: DefKind,

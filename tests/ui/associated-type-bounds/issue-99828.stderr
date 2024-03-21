@@ -19,6 +19,18 @@ LL | fn get_iter(vec: &[i32]) -> impl Iterator<Item = {}> + '_ {
 note: the associated type is defined here
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
-error: aborting due to 2 previous errors
+error: expected type, found constant
+  --> $DIR/issue-99828.rs:1:50
+   |
+LL | fn get_iter(vec: &[i32]) -> impl Iterator<Item = {}> + '_ {
+   |                                           ----   ^^ unexpected constant
+   |                                           |
+   |                                           expected a type because of this associated type
+   |
+note: the associated type is defined here
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
