@@ -2353,6 +2353,12 @@ impl<'tcx> Ty<'tcx> {
                     tcx.type_of(tcx.require_lang_item(LangItem::IntoAsyncDestructor, None));
                 let into_chain =
                     tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropIntoChain, None));
+                if adt_def.variants().is_empty() {
+                    return tcx
+                        .type_of(tcx.require_lang_item(LangItem::AsyncDropNever, None))
+                        .instantiate_identity();
+                }
+
                 let nop = tcx
                     .type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
                     .instantiate_identity();
