@@ -291,74 +291,28 @@ impl<T: ?Sized> IntoFuture for IntoAsyncDestructor<T> {
 
 /// If `T`'s discriminant is equal to the stored one then awaits `M`
 /// otherwise awaits the `O`.
-enum Either<O: IntoFuture, M: IntoFuture, T> {
-    Unresumed {
-        this_enum: ptr::NonNull<T>,
-        discr: <T as DiscriminantKind>::Discriminant,
-        matched: M,
-        other: O,
-        _pinned: PhantomPinned,
-    },
-    Other(O::IntoFuture),
-    Matched(M::IntoFuture),
-}
-
-/// Construct async drop either
 ///
 /// # Safety
 ///
-/// `last` will be passed into `async_drop_in_place`
+/// User should carefully manage returned future, since it would
+/// try creating an immutable referece from `this` and get pointee's
+/// discriminant.
+// TODO: Wrap this with `Fuse`
+// TODO: Send and Sync
 #[lang = "async_drop_either"]
-unsafe fn either<O: IntoFuture, M: IntoFuture, T>(
+async unsafe fn either<O: IntoFuture<Output = ()>, M: IntoFuture<Output = ()>, T>(
     other: O,
     matched: M,
     this: *mut T,
     discr: <T as DiscriminantKind>::Discriminant,
-) -> Either<O, M, T> {
+) {
     // SAFETY: Guaranteed by the safety section of this funtion's documentation
-    Either::Unresumed {
-        this_enum: unsafe { ptr::NonNull::new_unchecked(this) },
-        discr,
-        matched,
-        other,
-        _pinned: PhantomPinned,
-    }
-}
-
-impl<O, M, T> Future for Either<O, M, T>
-where
-    // Copy there so that we don't need to wrap `F` and `G` with `Option`
-    // to move from it
-    O: IntoFuture<Output = ()> + Copy,
-    M: IntoFuture<Output = ()> + Copy,
-{
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-        // SAFETY: We do not move any possibly immovable object from self
-        let this = unsafe { self.get_unchecked_mut() };
-        loop {
-            match this {
-                Either::Unresumed { this_enum, discr, matched, other, _pinned: _ } => {
-                    // SAFETY: simple pin projection + it's fine to
-                    //   immutably borrow pointee from pinned mutable
-                    //   references.
-                    if unsafe { discriminant_value(this_enum.as_ref()) } == *discr {
-                        *this = Either::Matched(matched.into_future())
-                    } else {
-                        *this = Either::Other(other.into_future())
-                    }
-                }
-                Either::Matched(fut) => {
-                    // SAFETY: simple pin projection
-                    return unsafe { Pin::new_unchecked(fut) }.poll(cx);
-                }
-                Either::Other(fut) => {
-                    // SAFETY: simple pin projection
-                    return unsafe { Pin::new_unchecked(fut) }.poll(cx);
-                }
-            }
-        }
+    if unsafe { discriminant_value(&*this) } == discr {
+        drop(other);
+        matched.await
+    } else {
+        drop(matched);
+        other.await
     }
 }
 
