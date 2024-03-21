@@ -9,7 +9,7 @@ use crate::{
 };
 
 pub trait Interner: Sized {
-    type DefId: Copy + Debug + Hash + Ord;
+    type DefId: Copy + Debug + Hash + Eq;
     type AdtDef: Copy + Debug + Hash + Eq;
 
     type GenericArgs: Copy

@@ -41,7 +41,7 @@ use std::hash::Hash;
 use std::mem;
 use thin_vec::ThinVec;
 
-use crate::core::{self, DocContext, ImplTraitParam};
+use crate::core::{self, DocContext};
 use crate::formats::item_type::ItemType;
 use crate::visit_ast::Module as DocModule;
 
@@ -761,7 +761,7 @@ fn clean_ty_generics<'tcx>(
 ) -> Generics {
     // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
     // since `Clean for ty::Predicate` would consume them.
-    let mut impl_trait = BTreeMap::<ImplTraitParam, Vec<GenericBound>>::default();
+    let mut impl_trait = BTreeMap::<u32, Vec<GenericBound>>::default();
 
     // Bounds in the type_params and lifetimes fields are repeated in the
     // predicates field (see rustc_hir_analysis::collect::ty_generics), so remove
@@ -778,7 +778,7 @@ fn clean_ty_generics<'tcx>(
                     return None;
                 }
                 if synthetic {
-                    impl_trait.insert(param.index.into(), vec![]);
+                    impl_trait.insert(param.index, vec![]);
                     return None;
                 }
                 Some(clean_generic_param_def(param, cx))
@@ -823,7 +823,7 @@ fn clean_ty_generics<'tcx>(
             })();
 
             if let Some(param_idx) = param_idx
-                && let Some(bounds) = impl_trait.get_mut(&param_idx.into())
+                && let Some(bounds) = impl_trait.get_mut(&param_idx)
             {
                 let pred = clean_predicate(*pred, cx)?;
 
@@ -847,7 +847,7 @@ fn clean_ty_generics<'tcx>(
         })
         .collect::<Vec<_>>();
 
-    for (param, mut bounds) in impl_trait {
+    for (idx, mut bounds) in impl_trait {
         let mut has_sized = false;
         bounds.retain(|b| {
             if b.is_sized_bound(cx) {
@@ -870,7 +870,6 @@ fn clean_ty_generics<'tcx>(
             bounds.insert(0, GenericBound::sized(cx));
         }
 
-        let crate::core::ImplTraitParam::ParamIndex(idx) = param else { unreachable!() };
         if let Some(proj) = impl_trait_proj.remove(&idx) {
             for (trait_did, name, rhs) in proj {
                 let rhs = clean_middle_term(rhs, cx);
@@ -878,7 +877,7 @@ fn clean_ty_generics<'tcx>(
             }
         }
 
-        cx.impl_trait_bounds.insert(param, bounds);
+        cx.impl_trait_bounds.insert(idx.into(), bounds);
     }
 
     // Now that `cx.impl_trait_bounds` is populated, we can process
