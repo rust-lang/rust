@@ -623,6 +623,10 @@ impl CrateGraph {
         }
         id_map
     }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.arena.shrink_to_fit();
+    }
 }
 
 impl ops::Index<CrateId> for CrateGraph {

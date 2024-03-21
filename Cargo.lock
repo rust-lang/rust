@@ -2115,7 +2115,6 @@ name = "tt"
 version = "0.0.0"
 dependencies = [
  "smol_str",
- "span",
  "stdx",
  "text-size",
 ]
