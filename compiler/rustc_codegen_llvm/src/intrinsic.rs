@@ -1548,8 +1548,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         require!(
             matches!(
-                element_ty1.kind(),
-                ty::RawPtr(p) if p.ty == in_elem && p.ty.kind() == element_ty0.kind()
+                *element_ty1.kind(),
+                ty::RawPtr(p_ty, _) if p_ty == in_elem && p_ty.kind() == element_ty0.kind()
             ),
             InvalidMonomorphization::ExpectedElementType {
                 span,
@@ -1654,8 +1654,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         require!(
             matches!(
-                pointer_ty.kind(),
-                ty::RawPtr(p) if p.ty == values_elem && p.ty.kind() == values_elem.kind()
+                *pointer_ty.kind(),
+                ty::RawPtr(p_ty, _) if p_ty == values_elem && p_ty.kind() == values_elem.kind()
             ),
             InvalidMonomorphization::ExpectedElementType {
                 span,
@@ -1746,8 +1746,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // The second argument must be a mutable pointer type matching the element type
         require!(
             matches!(
-                pointer_ty.kind(),
-                ty::RawPtr(p) if p.ty == values_elem && p.ty.kind() == values_elem.kind() && p.mutbl.is_mut()
+                *pointer_ty.kind(),
+                ty::RawPtr(p_ty, p_mutbl) if p_ty == values_elem && p_ty.kind() == values_elem.kind() && p_mutbl.is_mut()
             ),
             InvalidMonomorphization::ExpectedElementType {
                 span,
@@ -1843,9 +1843,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         require!(
             matches!(
-                element_ty1.kind(),
-                ty::RawPtr(p)
-                    if p.ty == in_elem && p.mutbl.is_mut() && p.ty.kind() == element_ty0.kind()
+                *element_ty1.kind(),
+                ty::RawPtr(p_ty, p_mutbl)
+                    if p_ty == in_elem && p_mutbl.is_mut() && p_ty.kind() == element_ty0.kind()
             ),
             InvalidMonomorphization::ExpectedElementType {
                 span,
@@ -2074,8 +2074,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         match in_elem.kind() {
-            ty::RawPtr(p) => {
-                let metadata = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+            ty::RawPtr(p_ty, _) => {
+                let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
                 require!(
@@ -2088,8 +2088,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
         }
         match out_elem.kind() {
-            ty::RawPtr(p) => {
-                let metadata = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+            ty::RawPtr(p_ty, _) => {
+                let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
                 require!(

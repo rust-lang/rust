@@ -2685,8 +2685,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 expr,
                 Some(span),
             );
-        } else if let ty::RawPtr(ty_and_mut) = expr_t.kind()
-            && let ty::Adt(adt_def, _) = ty_and_mut.ty.kind()
+        } else if let ty::RawPtr(ptr_ty, _) = expr_t.kind()
+            && let ty::Adt(adt_def, _) = ptr_ty.kind()
             && let ExprKind::Field(base_expr, _) = expr.kind
             && adt_def.variants().len() == 1
             && adt_def

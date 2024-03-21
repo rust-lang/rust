@@ -2284,8 +2284,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     }
                                 }
                             }
-                            ty::RawPtr(tnm) => {
-                                match tnm.mutbl {
+                            ty::RawPtr(_, mutbl) => {
+                                match mutbl {
                                     // `*const` raw pointers are not mutable
                                     hir::Mutability::Not => Err(place),
                                     // `*mut` raw pointers are always mutable, regardless of

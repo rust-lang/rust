@@ -1238,7 +1238,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return None;
         }
 
-        let &ty::RawPtr(ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut }) = self_ty.kind() else {
+        let &ty::RawPtr(ty, hir::Mutability::Mut) = self_ty.kind() else {
             return None;
         };
 

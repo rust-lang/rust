@@ -18,10 +18,10 @@ use rustc_errors::DiagMessage;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{
     self, AdtKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
-use rustc_middle::ty::{GenericArgsRef, TypeAndMut};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
@@ -1046,7 +1046,7 @@ fn get_nullable_type<'tcx>(
         }
         ty::Int(ty) => Ty::new_int(tcx, ty),
         ty::Uint(ty) => Ty::new_uint(tcx, ty),
-        ty::RawPtr(ty_mut) => Ty::new_ptr(tcx, ty_mut.ty, ty_mut.mutbl),
+        ty::RawPtr(ty, mutbl) => Ty::new_ptr(tcx, ty, mutbl),
         // As these types are always non-null, the nullable equivalent of
         // `Option<T>` of these types are their raw pointer counterparts.
         ty::Ref(_region, ty, mutbl) => Ty::new_ptr(tcx, ty, mutbl),

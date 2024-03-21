@@ -7,7 +7,6 @@ use crate::hir::is_range_literal;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use crate::rustc_middle::ty::Article;
-use crate::ty::TypeAndMut;
 use core::cmp::min;
 use core::iter;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
@@ -1479,7 +1478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
     ) -> bool {
         // Expected type needs to be a raw pointer.
-        let ty::RawPtr(mutbl, _) = expected_ty.kind() else {
+        let ty::RawPtr(_, mutbl) = expected_ty.kind() else {
             return false;
         };
 

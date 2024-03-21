@@ -920,8 +920,8 @@ where
         let param_env = cx.param_env();
 
         let pointee_info = match *this.ty.kind() {
-            ty::RawPtr(mt) if offset.bytes() == 0 => {
-                tcx.layout_of(param_env.and(mt.ty)).ok().map(|layout| PointeeInfo {
+            ty::RawPtr(p_ty, _) if offset.bytes() == 0 => {
+                tcx.layout_of(param_env.and(p_ty)).ok().map(|layout| PointeeInfo {
                     size: layout.size,
                     align: layout.align.abi,
                     safe: None,

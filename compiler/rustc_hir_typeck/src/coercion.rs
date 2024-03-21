@@ -222,8 +222,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Examine the supertype and consider auto-borrowing.
         match *b.kind() {
-            ty::RawPtr(mt_b) => {
-                return self.coerce_unsafe_ptr(a, b, mt_b.mutbl);
+            ty::RawPtr(_, b_mutbl) => {
+                return self.coerce_unsafe_ptr(a, b, b_mutbl);
             }
             ty::Ref(r_b, _, mutbl_b) => {
                 return self.coerce_borrowed_pointer(a, b, r_b, mutbl_b);
@@ -978,7 +978,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let (is_ref, mt_a) = match *a.kind() {
             ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
-            ty::RawPtr(mt) => (false, mt),
+            ty::RawPtr(ty, mutbl) => (false, ty::TypeAndMut { ty, mutbl }),
             _ => return self.unify_and(a, b, identity),
         };
         coerce_mutbls(mt_a.mutbl, mutbl_b)?;

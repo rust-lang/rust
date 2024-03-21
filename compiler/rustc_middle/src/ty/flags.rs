@@ -211,8 +211,8 @@ impl FlagComputation {
 
             &ty::Slice(tt) => self.add_ty(tt),
 
-            ty::RawPtr(m) => {
-                self.add_ty(m.ty);
+            &ty::RawPtr(ty, _) => {
+                self.add_ty(ty);
             }
 
             &ty::Ref(r, ty, _) => {

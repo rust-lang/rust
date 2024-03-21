@@ -356,7 +356,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     {
                         sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                     }
-                } else if let ty::RawPtr(mutbl, _) = *self.cast_ty.kind()
+                } else if let ty::RawPtr(_, mutbl) = *self.cast_ty.kind()
                     && fcx.can_coerce(
                         Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, self.expr_ty, mutbl),
                         self.cast_ty,

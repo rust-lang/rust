@@ -1969,11 +1969,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_mutable_ptr(self) -> bool {
-        matches!(
-            self.kind(),
-            RawPtr(TypeAndMut { mutbl: hir::Mutability::Mut, .. })
-                | Ref(_, _, hir::Mutability::Mut)
-        )
+        matches!(self.kind(), RawPtr(_, hir::Mutability::Mut) | Ref(_, _, hir::Mutability::Mut))
     }
 
     /// Get the mutability of the reference or `None` when not a reference
@@ -2179,7 +2175,7 @@ impl<'tcx> Ty<'tcx> {
                 Some(TypeAndMut { ty: self.boxed_ty(), mutbl: hir::Mutability::Not })
             }
             Ref(_, ty, mutbl) => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
-            RawPtr(mt) if explicit => Some(*mt),
+            RawPtr(ty, mutbl) if explicit => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
             _ => None,
         }
     }
