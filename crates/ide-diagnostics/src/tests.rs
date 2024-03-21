@@ -283,6 +283,10 @@ fn test_disabled_diagnostics() {
 
 #[test]
 fn minicore_smoke_test() {
+    if test_utils::skip_slow_tests() {
+        return;
+    }
+
     fn check(minicore: MiniCore) {
         let source = minicore.source_code();
         let mut config = DiagnosticsConfig::test_sample();
