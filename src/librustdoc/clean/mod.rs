@@ -626,7 +626,10 @@ fn is_impl_trait(param: &hir::GenericParam<'_>) -> bool {
 ///
 /// See `lifetime_to_generic_param` in `rustc_ast_lowering` for more information.
 fn is_elided_lifetime(param: &hir::GenericParam<'_>) -> bool {
-    matches!(param.kind, hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Elided })
+    matches!(
+        param.kind,
+        hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Elided(_) }
+    )
 }
 
 pub(crate) fn clean_generics<'tcx>(

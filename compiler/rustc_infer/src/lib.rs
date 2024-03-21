@@ -24,6 +24,7 @@
 #![feature(extend_one)]
 #![feature(let_chains)]
 #![feature(if_let_guard)]
+#![feature(iter_intersperse)]
 #![feature(iterator_try_collect)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
