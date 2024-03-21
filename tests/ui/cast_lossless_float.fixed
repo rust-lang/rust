@@ -1,11 +1,16 @@
 #![allow(clippy::no_effect, clippy::unnecessary_operation, dead_code)]
 #![warn(clippy::cast_lossless)]
 
+type F32 = f32;
+type F64 = f64;
+
 fn main() {
     // Test clippy::cast_lossless with casts to floating-point types
     let x0 = 1i8;
     let _ = f32::from(x0);
     let _ = f64::from(x0);
+    let _ = F32::from(x0);
+    let _ = F64::from(x0);
     let x1 = 1u8;
     let _ = f32::from(x1);
     let _ = f64::from(x1);

@@ -86,8 +86,11 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                                     }
                                 }
                             },
-                            hir::ExprKind::Call(call, [_]) => {
-                                if let hir::ExprKind::Path(qpath) = call.kind {
+                            hir::ExprKind::Call(call, args) => {
+                                if let hir::ExprKind::Path(qpath) = call.kind
+                                    && let [arg] = args
+                                    && ident_eq(name, arg)
+                                {
                                     handle_path(cx, call, &qpath, e, recv);
                                 }
                             },
@@ -118,7 +121,9 @@ fn handle_path(
         if let ty::Adt(_, args) = cx.typeck_results().expr_ty(recv).kind()
             && let args = args.as_slice()
             && let Some(ty) = args.iter().find_map(|generic_arg| generic_arg.as_type())
-            && ty.is_ref()
+            && let ty::Ref(_, ty, Mutability::Not) = ty.kind()
+            && let ty::FnDef(_, lst) = cx.typeck_results().expr_ty(arg).kind()
+            && lst.iter().all(|l| l.as_type() == Some(*ty))
         {
             lint_path(cx, e.span, recv.span, is_copy(cx, ty.peel_refs()));
         }

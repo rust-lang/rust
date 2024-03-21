@@ -1,12 +1,11 @@
-//@compile-flags: -Zdeduplicate-diagnostics=yes
-
 #![warn(clippy::single_match)]
 #![allow(
     unused,
     clippy::uninlined_format_args,
     clippy::needless_if,
     clippy::redundant_guards,
-    clippy::redundant_pattern_matching
+    clippy::redundant_pattern_matching,
+    clippy::manual_unwrap_or_default
 )]
 fn dummy() {}
 

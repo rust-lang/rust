@@ -2,7 +2,7 @@ use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
-use clippy_utils::{get_parent_expr, match_def_path, paths, SpanlessEq};
+use clippy_utils::{match_def_path, paths, SpanlessEq};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -69,17 +69,16 @@ impl_lint_pass!(ManualRetain => [MANUAL_RETAIN]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualRetain {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if let Some(parent_expr) = get_parent_expr(cx, expr)
-            && let Assign(left_expr, collect_expr, _) = &parent_expr.kind
+        if let Assign(left_expr, collect_expr, _) = &expr.kind
             && let hir::ExprKind::MethodCall(seg, ..) = &collect_expr.kind
             && seg.args.is_none()
             && let hir::ExprKind::MethodCall(_, target_expr, [], _) = &collect_expr.kind
             && let Some(collect_def_id) = cx.typeck_results().type_dependent_def_id(collect_expr.hir_id)
             && cx.tcx.is_diagnostic_item(sym::iterator_collect_fn, collect_def_id)
         {
-            check_into_iter(cx, left_expr, target_expr, parent_expr.span, &self.msrv);
-            check_iter(cx, left_expr, target_expr, parent_expr.span, &self.msrv);
-            check_to_owned(cx, left_expr, target_expr, parent_expr.span, &self.msrv);
+            check_into_iter(cx, left_expr, target_expr, expr.span, &self.msrv);
+            check_iter(cx, left_expr, target_expr, expr.span, &self.msrv);
+            check_to_owned(cx, left_expr, target_expr, expr.span, &self.msrv);
         }
     }
 

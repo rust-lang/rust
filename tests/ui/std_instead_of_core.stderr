@@ -14,12 +14,6 @@ LL |     use ::std::hash::Hash;
    |           ^^^ help: consider importing the item from `core`: `core`
 
 error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core.rs:20:9
-   |
-LL |     use std::env;
-   |         ^^^ help: consider importing the item from `core`: `core`
-
-error: used import from `std` instead of `core`
   --> tests/ui/std_instead_of_core.rs:23:9
    |
 LL |     use std::fmt::{Debug, Result};
@@ -85,5 +79,5 @@ LL |     use alloc::slice::from_ref;
    = note: `-D clippy::alloc-instead-of-core` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::alloc_instead_of_core)]`
 
-error: aborting due to 13 previous errors
+error: aborting due to 12 previous errors
 

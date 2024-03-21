@@ -1,5 +1,5 @@
 error: item has both inner and outer attributes
-  --> tests/ui/mixed_attributes_style.rs:3:1
+  --> tests/ui/mixed_attributes_style.rs:4:1
    |
 LL | / #[allow(unused)]
 LL | | fn foo1() {
@@ -10,7 +10,7 @@ LL | |     #![allow(unused)]
    = help: to override `-D warnings` add `#[allow(clippy::mixed_attributes_style)]`
 
 error: item has both inner and outer attributes
-  --> tests/ui/mixed_attributes_style.rs:17:1
+  --> tests/ui/mixed_attributes_style.rs:18:1
    |
 LL | / /// linux
 LL | |
@@ -19,7 +19,7 @@ LL | |     //! windows
    | |_______________^
 
 error: item has both inner and outer attributes
-  --> tests/ui/mixed_attributes_style.rs:32:1
+  --> tests/ui/mixed_attributes_style.rs:33:1
    |
 LL | / #[allow(unused)]
 LL | | mod bar {

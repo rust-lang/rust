@@ -37,7 +37,7 @@ declare_clippy_lint! {
     ///     static BUF: String = const { String::new() };
     /// }
     /// ```
-    #[clippy::version = "1.76.0"]
+    #[clippy::version = "1.77.0"]
     pub THREAD_LOCAL_INITIALIZER_CAN_BE_MADE_CONST,
     perf,
     "suggest using `const` in `thread_local!` macro"

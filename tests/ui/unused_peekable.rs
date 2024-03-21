@@ -174,3 +174,9 @@ fn valid() {
     let mut peekable = std::iter::empty::<u32>().peekable();
     takes_dyn(&mut peekable);
 }
+
+fn allow_works() {
+    #[allow(clippy::unused_peekable)]
+    let iter = [1, 2, 3].iter().peekable();
+    iter;
+}
