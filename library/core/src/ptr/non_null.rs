@@ -1580,16 +1580,14 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
+    /// #![feature(slice_ptr_is_empty_nonnull)]
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
     /// assert!(!slice.is_empty());
     /// ```
-    #[stable(feature = "slice_ptr_is_empty_nonnull", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(
-        feature = "const_slice_ptr_is_empty_nonnull",
-        since = "CURRENT_RUSTC_VERSION"
-    )]
+    #[unstable(feature = "slice_ptr_is_empty_nonnull", issue = "71146")]
+    #[rustc_const_unstable(feature = "const_slice_ptr_is_empty_nonnull", issue = "71146")]
     #[must_use]
     #[inline]
     pub const fn is_empty(self) -> bool {
