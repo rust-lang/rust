@@ -69,9 +69,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         continue;
                     }
 
+                    // Ignore non-universal regions because they result in an error eventually.
+                    // FIXME(aliemjay): This logic will be rewritten in a later commit.
+                    let Some(r1) = self.universal_name(r1) else {
+                        continue;
+                    };
+                    let Some(r2) = self.universal_name(r2) else {
+                        continue;
+                    };
+
                     infcx.dcx().emit_err(LifetimeMismatchOpaqueParam {
-                        arg: self.universal_name(r1).unwrap().into(),
-                        prev: self.universal_name(r2).unwrap().into(),
+                        arg: r1.into(),
+                        prev: r2.into(),
                         span: a_ty.span,
                         prev_span: b_ty.span,
                     });
