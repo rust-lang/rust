@@ -1795,6 +1795,7 @@ enum SharedEmitterMessage {
     Diagnostic(Diagnostic),
     InlineAsmError(u32, String, Level, Option<(String, Vec<InnerSpan>)>),
     Fatal(String),
+    Artifact(PathBuf, String),
 }
 
 #[derive(Clone)]
@@ -1862,6 +1863,13 @@ impl Emitter for SharedEmitter {
                 args,
             })),
         );
+    }
+
+    fn emit_artifact_notification(&mut self, path: &Path, artifact_type: &str) {
+        drop(
+            self.sender
+                .send(SharedEmitterMessage::Artifact(path.to_owned(), artifact_type.to_owned())),
+        )
     }
 
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
@@ -1938,6 +1946,9 @@ impl SharedEmitterMain {
                 }
                 Ok(SharedEmitterMessage::Fatal(msg)) => {
                     sess.dcx().fatal(msg);
+                }
+                Ok(SharedEmitterMessage::Artifact(path, artifact_type)) => {
+                    sess.dcx().emit_artifact_notification(&path, &artifact_type);
                 }
                 Err(_) => {
                     break;
