@@ -580,12 +580,6 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
                 }
             }
-            // Used to implement the `_mm_pause` function.
-            // The intrinsic is used to hint the processor that the code is in a spin-loop.
-            "pause" => {
-                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.yield_active_thread();
-            }
             _ => return Ok(EmulateForeignItemResult::NotSupported),
         }
         Ok(EmulateForeignItemResult::NeedsJumping)
