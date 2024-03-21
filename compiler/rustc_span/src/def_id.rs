@@ -234,6 +234,12 @@ pub struct DefId {
     pub index: DefIndex,
 }
 
+// To ensure correctness of incremental compilation,
+// `DefId` must not implement `Ord` or `PartialOrd`.
+// See https://github.com/rust-lang/rust/issues/90317.
+impl !Ord for DefId {}
+impl !PartialOrd for DefId {}
+
 // On 64-bit systems, we can hash the whole `DefId` as one `u64` instead of two `u32`s. This
 // improves performance without impairing `FxHash` quality. So the below code gets compiled to a
 // noop on little endian systems because the memory layout of `DefId` is as follows:
