@@ -720,8 +720,12 @@ impl<'tcx> Inliner<'tcx> {
             kind: TerminatorKind::Goto { target: integrator.map_block(START_BLOCK) },
         });
 
-        // Copy required constants from the callee_body into the caller_body.
-        caller_body.required_consts.extend(callee_body.required_consts);
+        // Copy required constants from the callee_body into the caller_body. Although we are only
+        // pushing unevaluated consts to `required_consts`, here they may have been evaluated
+        // because we are calling `instantiate_and_normalize_erasing_regions` -- so we filter again.
+        caller_body.required_consts.extend(
+            callee_body.required_consts.into_iter().filter(|ct| ct.const_.is_required_const()),
+        );
         // Now that we incorporated the callee's `required_consts`, we can remove the callee from
         // `mentioned_items` -- but we have to take their `mentioned_items` in return. This does
         // some extra work here to save the monomorphization collector work later. It helps a lot,

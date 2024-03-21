@@ -245,11 +245,10 @@ impl<'tcx> Const<'tcx> {
         match self {
             Const::Ty(c) => match c.kind() {
                 ty::ConstKind::Value(_) => false, // already a value, cannot error
-                ty::ConstKind::Param(_) | ty::ConstKind::Error(_) => true, // these are errors or could be replaced by errors
-                _ => bug!("is_required_const: unexpected ty::ConstKind {:#?}", c),
+                _ => true,
             },
-            Const::Unevaluated(..) => true,
             Const::Val(..) => false, // already a value, cannot error
+            Const::Unevaluated(..) => true,
         }
     }
 
