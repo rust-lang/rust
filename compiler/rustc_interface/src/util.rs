@@ -48,8 +48,8 @@ pub fn add_configuration(cfg: &mut Cfg, sess: &mut Session, codegen_backend: &dy
     }
 }
 
-static STACK_SIZE: OnceLock<usize> = OnceLock::new();
-const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
+pub static STACK_SIZE: OnceLock<usize> = OnceLock::new();
+pub const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
 
 fn init_stack_size() -> usize {
     // Obey the environment setting or default
