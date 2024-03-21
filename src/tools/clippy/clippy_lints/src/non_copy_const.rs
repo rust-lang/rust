@@ -290,14 +290,21 @@ impl NonCopyConst {
             promoted: None,
         };
         let param_env = cx.tcx.param_env(def_id).with_reveal_all_normalized(cx.tcx);
-        let result = cx.tcx.const_eval_global_id_for_typeck(param_env, cid, rustc_span::DUMMY_SP);
+        let result = cx
+            .tcx
+            .const_eval_global_id_for_typeck(param_env, cid, rustc_span::DUMMY_SP);
         self.is_value_unfrozen_raw(cx, result, ty)
     }
 
     fn is_value_unfrozen_expr<'tcx>(&self, cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
         let args = cx.typeck_results().node_args(hir_id);
 
-        let result = Self::const_eval_resolve(cx.tcx, cx.param_env, ty::UnevaluatedConst::new(def_id, args), rustc_span::DUMMY_SP);
+        let result = Self::const_eval_resolve(
+            cx.tcx,
+            cx.param_env,
+            ty::UnevaluatedConst::new(def_id, args),
+            rustc_span::DUMMY_SP,
+        );
         self.is_value_unfrozen_raw(cx, result, ty)
     }
 

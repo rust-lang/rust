@@ -128,6 +128,19 @@ fn ignore_generic_clone<T: Clone>(a: &mut T, b: &T) {
     *a = b.clone();
 }
 
+#[clippy::msrv = "1.62"]
+fn msrv_1_62(mut a: String, b: String, c: &str) {
+    a.clone_from(&b);
+    // Should not be linted, as clone_into wasn't stabilized until 1.63
+    a = c.to_owned();
+}
+
+#[clippy::msrv = "1.63"]
+fn msrv_1_63(mut a: String, b: String, c: &str) {
+    a.clone_from(&b);
+    c.clone_into(&mut a);
+}
+
 macro_rules! clone_inside {
     ($a:expr, $b: expr) => {
         $a = $b.clone();

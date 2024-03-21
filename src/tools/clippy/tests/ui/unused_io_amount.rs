@@ -271,5 +271,10 @@ pub fn wildcards(rdr: &mut dyn std::io::Read) {
         }
     }
 }
+fn allow_works<F: std::io::Read>(mut f: F) {
+    let mut data = Vec::with_capacity(100);
+    #[allow(clippy::unused_io_amount)]
+    f.read(&mut data).unwrap();
+}
 
 fn main() {}

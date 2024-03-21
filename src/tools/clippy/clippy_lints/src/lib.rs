@@ -172,6 +172,7 @@ mod init_numbered_fields;
 mod inline_fn_without_body;
 mod instant_subtraction;
 mod int_plus_one;
+mod integer_division_remainder_used;
 mod invalid_upcast_comparisons;
 mod item_name_repetitions;
 mod items_after_statements;
@@ -211,6 +212,7 @@ mod manual_retain;
 mod manual_slice_size_calculation;
 mod manual_string_new;
 mod manual_strip;
+mod manual_unwrap_or_default;
 mod map_unit_fn;
 mod match_result_ok;
 mod matches;
@@ -373,6 +375,7 @@ mod visibility;
 mod wildcard_imports;
 mod write;
 mod zero_div_zero;
+mod zero_repeat_side_effects;
 mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
@@ -1119,7 +1122,10 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(incompatible_msrv::IncompatibleMsrv::new(msrv())));
     store.register_late_pass(|_| Box::new(to_string_trait_impl::ToStringTraitImpl));
     store.register_early_pass(|| Box::new(multiple_bound_locations::MultipleBoundLocations));
-    store.register_late_pass(|_| Box::new(assigning_clones::AssigningClones));
+    store.register_late_pass(move |_| Box::new(assigning_clones::AssigningClones::new(msrv())));
+    store.register_late_pass(|_| Box::new(zero_repeat_side_effects::ZeroRepeatSideEffects));
+    store.register_late_pass(|_| Box::new(manual_unwrap_or_default::ManualUnwrapOrDefault));
+    store.register_late_pass(|_| Box::new(integer_division_remainder_used::IntegerDivisionRemainderUsed));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

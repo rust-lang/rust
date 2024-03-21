@@ -55,23 +55,15 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
         };
 
         let ty = cx.typeck_results().expr_ty(ex);
-        if *ty.kind() != ty::Bool || is_lint_allowed(cx, MATCH_BOOL, ex.hir_id) {
-            check_single_pattern(cx, ex, arms, expr, els);
-            check_opt_like(cx, ex, arms, expr, ty, els);
+        if (*ty.kind() != ty::Bool || is_lint_allowed(cx, MATCH_BOOL, ex.hir_id)) &&
+            (check_single_pattern(arms) || check_opt_like(cx, arms, ty)) {
+            report_single_pattern(cx, ex, arms, expr, els);
         }
     }
 }
 
-fn check_single_pattern(
-    cx: &LateContext<'_>,
-    ex: &Expr<'_>,
-    arms: &[Arm<'_>],
-    expr: &Expr<'_>,
-    els: Option<&Expr<'_>>,
-) {
-    if is_wild(arms[1].pat) {
-        report_single_pattern(cx, ex, arms, expr, els);
-    }
+fn check_single_pattern(arms: &[Arm<'_>]) -> bool {
+    is_wild(arms[1].pat)
 }
 
 fn report_single_pattern(
@@ -140,19 +132,10 @@ fn report_single_pattern(
     span_lint_and_sugg(cx, lint, expr.span, msg, "try", sugg, app);
 }
 
-fn check_opt_like<'a>(
-    cx: &LateContext<'a>,
-    ex: &Expr<'_>,
-    arms: &[Arm<'_>],
-    expr: &Expr<'_>,
-    ty: Ty<'a>,
-    els: Option<&Expr<'_>>,
-) {
+fn check_opt_like<'a>(cx: &LateContext<'a>, arms: &[Arm<'_>], ty: Ty<'a>) -> bool {
     // We don't want to lint if the second arm contains an enum which could
     // have more variants in the future.
-    if form_exhaustive_matches(cx, ty, arms[0].pat, arms[1].pat) {
-        report_single_pattern(cx, ex, arms, expr, els);
-    }
+    form_exhaustive_matches(cx, ty, arms[0].pat, arms[1].pat)
 }
 
 /// Returns `true` if all of the types in the pattern are enums which we know

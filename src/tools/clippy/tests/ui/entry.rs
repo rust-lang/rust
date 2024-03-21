@@ -180,4 +180,14 @@ pub fn issue_11935() {
     }
 }
 
+fn issue12489(map: &mut HashMap<u64, u64>) -> Option<()> {
+    if !map.contains_key(&1) {
+        let Some(1) = Some(2) else {
+            return None;
+        };
+        map.insert(1, 42);
+    }
+    Some(())
+}
+
 fn main() {}
