@@ -27,7 +27,6 @@ use crate::compiler_interface::with;
 pub use crate::crate_def::CrateDef;
 pub use crate::crate_def::DefId;
 pub use crate::error::*;
-use crate::mir::pretty::function_name;
 use crate::mir::Body;
 use crate::mir::Mutability;
 use crate::ty::{ForeignModuleDef, ImplDef, IndexedVal, Span, TraitDef, Ty};
@@ -148,9 +147,8 @@ impl CrateItem {
         with(|cx| cx.is_foreign_item(self.0))
     }
 
-    pub fn dump<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
-        writeln!(w, "{}", function_name(*self))?;
-        self.body().dump(w)
+    pub fn emit_mir<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
+        self.body().dump(w, &self.name())
     }
 }
 
