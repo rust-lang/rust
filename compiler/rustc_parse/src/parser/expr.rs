@@ -16,7 +16,6 @@ use core::mem;
 use core::ops::ControlFlow;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::Spacing;
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
@@ -999,6 +998,8 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_dot_suffix_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
+        // At this point we've consumed something like `expr.` and `self.token` holds the token
+        // after the dot.
         match self.token.uninterpolate().kind {
             token::Ident(..) => self.parse_dot_suffix(base, lo),
             token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
@@ -1010,39 +1011,41 @@ impl<'a> Parser<'a> {
                 Ok(match self.break_up_float(symbol, self.token.span) {
                     // 1e2
                     DestructuredFloat::Single(sym, _sp) => {
+                        // `foo.1e2`: a single complete dot access, fully consumed. We end up with
+                        // the `1e2` token in `self.prev_token` and the following token in
+                        // `self.token`.
                         let ident_span = self.token.span;
                         self.bump();
                         self.mk_expr_tuple_field_access(lo, ident_span, base, sym, suffix)
                     }
                     // 1.
                     DestructuredFloat::TrailingDot(sym, ident_span, dot_span) => {
+                        // `foo.1.`: a single complete dot access and the start of another.
+                        // We end up with the `sym` (`1`) token in `self.prev_token` and a dot in
+                        // `self.token`.
                         assert!(suffix.is_none());
                         self.token = Token::new(token::Ident(sym, IdentIsRaw::No), ident_span);
-                        let ident_span = self.token.span;
                         self.bump_with((Token::new(token::Dot, dot_span), self.token_spacing));
                         self.mk_expr_tuple_field_access(lo, ident_span, base, sym, None)
                     }
                     // 1.2 | 1.2e3
                     DestructuredFloat::MiddleDot(
-                        symbol1,
+                        sym1,
                         ident1_span,
-                        dot_span,
-                        symbol2,
+                        _dot_span,
+                        sym2,
                         ident2_span,
                     ) => {
-                        self.token = Token::new(token::Ident(symbol1, IdentIsRaw::No), ident1_span);
-                        // This needs to be `Spacing::Alone` to prevent regressions.
-                        // See issue #76399 and PR #76285 for more details
-                        let ident_span = self.token.span;
-                        self.bump_with((Token::new(token::Dot, dot_span), Spacing::Alone));
-                        let base1 =
-                            self.mk_expr_tuple_field_access(lo, ident_span, base, symbol1, None);
+                        // `foo.1.2` (or `foo.1.2e3`): two complete dot accesses. We end up with
+                        // the `sym2` (`2` or `2e3`) token in `self.prev_token` and the following
+                        // token in `self.token`.
                         let next_token2 =
-                            Token::new(token::Ident(symbol2, IdentIsRaw::No), ident2_span);
-                        self.bump_with((next_token2, self.token_spacing)); // `.`
-                        let ident_span = self.token.span;
+                            Token::new(token::Ident(sym2, IdentIsRaw::No), ident2_span);
+                        self.bump_with((next_token2, self.token_spacing));
                         self.bump();
-                        self.mk_expr_tuple_field_access(lo, ident_span, base1, symbol2, suffix)
+                        let base1 =
+                            self.mk_expr_tuple_field_access(lo, ident1_span, base, sym1, None);
+                        self.mk_expr_tuple_field_access(lo, ident2_span, base1, sym2, suffix)
                     }
                     DestructuredFloat::Error => base,
                 })
