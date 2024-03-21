@@ -3,32 +3,80 @@
 With the new solver we've made some fairly significant changes to normalization when compared
 to the existing implementation.
 
-We now differentiate between "shallow normalization" and "deep normalization".
-"Shallow normalization" normalizes a type until it is no-longer a potentially normalizeable alias;
-it does not recurse into the type. "deep normalization" replaces all normalizeable aliases in a
-type with its underlying type.
+We now differentiate between "one-step normalization", "structural normalization" and
+"deep normalization".
 
-The old trait solver currently always deeply normalizes via `Projection` obligations.
-This is the only way to normalize in the old solver. By replacing projections with a new
-inference variable and then emitting `Projection(<T as Trait>::Assoc, ?new_infer)` the old
-solver successfully deeply normalizes even in the case of ambiguity. This approach does not
-work for projections referencing bound variables.
+## One-step normalization
 
-## Inside of the trait solver
+One-step normalization is implemented via `NormalizesTo` goals. Unlike other goals
+in the trait solver, `NormalizesTo` always expects the term to be an unconstrained
+inference variable[^opaques]. Think of it as a function, taking an alias as input
+and returning its underlying value. If the alias is rigid, `NormalizesTo` fails and
+returns `NoSolution`.
 
-Normalization in the new solver exclusively happens via `Projection`[^0] goals.
-This only succeeds by first normalizing the alias by one level and then equating
-it with the expected type. This differs from [the behavior of projection clauses]
-which can also be proven by successfully equating the projection without normalizating.
-This means that `Projection`[^0] goals must only be used in places where we
-*have to normalize* to make progress. To normalize `<T as Trait>::Assoc`, we first create
-a fresh inference variable `?normalized` and then prove
-`Projection(<T as Trait>::Assoc, ?normalized)`[^0]. `?normalized` is then constrained to
-the underlying type. 
+The underlying value may itself be an unnormalized alias, e.g.
+`NormalizesTo(<<() as Id>::This as Id>::This)` only returns `<() as Id>::This`,
+even though that alias can be further normalized to `()`. As the term is
+always an unconstrained inference variable, the expected term cannot influence
+normalization, see [trait-system-refactor-initiative#22] for more.
 
-Inside of the trait solver we never deeply normalize. we only apply shallow normalization
-in [`assemble_candidates_after_normalizing_self_ty`] and inside for [`AliasRelate`]
-goals for the [`normalizes-to` candidates].
+Only ever computing `NormalizesTo` goals with an unconstrained inference variable
+requires special solver support. It is only used by `AliasRelate` goals and pending
+`NormalizesTo` goals are tracked separately from other goals: [source][try-eval-norm].
+As the expected term is always erased in `NormalizesTo`, we have to return its
+ambiguous nested goals to its caller as not doing so weakens inference. See
+[#122687] for more details.  
+
+[trait-system-refactor-initiative#22]: https://github.com/rust-lang/trait-system-refactor-initiative/issues/22
+[try-eval-norm]: https://github.com/rust-lang/rust/blob/2627e9f3012a97d3136b3e11bf6bd0853c38a534/compiler/rustc_trait_selection/src/solve/eval_ctxt/mod.rs#L523-L537
+[#122687]: https://github.com/rust-lang/rust/pull/122687
+
+## `AliasRelate` and structural normalization
+
+We structurally normalize an alias by applying one-step normalization until
+we end up with a rigid alias, ambiguity, or overflow. This is done by repeatedly
+evaluating `NormalizesTo` goals inside of a snapshot: [source][structural_norm].
+
+`AliasRelate(lhs, rhs)` is implemented by first structurally normalizing both the
+`lhs` and the `rhs` and then relating the resulting rigid types (or inference
+variables). Importantly, if `lhs` or `rhs` ends up as an alias, this alias can
+now be treated as rigid and gets unified without emitting a nested `AliasRelate`
+goal: [source][structural-relate].
+
+This means that `AliasRelate` with an unconstrained `rhs` ends up functioning
+similar to `NormalizesTo`, acting as a function which fully normalizes `lhs`
+before assigning the resulting rigid type to an inference variable. This is used by
+`fn structurally_normalize_ty` both [inside] and [outside] of the trait solver.
+This has to be used whenever we match on the value of some type, both inside
+and outside of the trait solver.
+
+FIXME: structure, maybe we should have an "alias handling" chapter instead as
+talking about normalization without explaining that doesn't make too much
+sense.
+
+FIXME: it is likely that this will subtly change again by mostly moving structural
+normalization into `NormalizesTo`.
+
+[structural_norm]: https://github.com/rust-lang/rust/blob/2627e9f3012a97d3136b3e11bf6bd0853c38a534/compiler/rustc_trait_selection/src/solve/alias_relate.rs#L140-L175
+[structural-relate]: https://github.com/rust-lang/rust/blob/a0569fa8f91b5271e92d2f73fd252de7d3d05b9c/compiler/rustc_trait_selection/src/solve/alias_relate.rs#L88-L107
+[inside]: https://github.com/rust-lang/rust/blob/a0569fa8f91b5271e92d2f73fd252de7d3d05b9c/compiler/rustc_trait_selection/src/solve/mod.rs#L278-L299
+[outside]: https://github.com/rust-lang/rust/blob/a0569fa8f91b5271e92d2f73fd252de7d3d05b9c/compiler/rustc_trait_selection/src/traits/structural_normalize.rs#L17-L48
+
+## Deep normalization
+
+By walking over a type, and using `fn structurally_normalize_ty` for each encountered
+alias, it is possible to deeply normalize a type, normalizing all aliases as much as
+possible. However, this only works for aliases referencing bound variables if they are
+not ambiguous as we're unable to replace the alias with a corresponding inference
+variable without leaking universes.
+
+FIXME: we previously had to also be careful about instantiating the new inference
+variable with another normalizeable alias. Due to our recent changes to generalization,
+this should not be the case anymore. Equating an inference variable with an alias
+now always uses `AliasRelate` to fully normalize the alias before instantiating the
+inference variable: [source][generalize-no-alias]
+
+[generalize-no-alias]: https://github.com/rust-lang/rust/blob/a0569fa8f91b5271e92d2f73fd252de7d3d05b9c/compiler/rustc_infer/src/infer/relate/generalize.rs#L353-L358
 
 ## Outside of the trait solver
 
@@ -41,10 +89,8 @@ Luckily deep normalization is currently only necessary in places where there is 
 
 If we only care about the outermost layer of types, we instead use
 `At::structurally_normalize` or `FnCtxt::(try_)structurally_resolve_type`.
-Unlike `At::deeply_normalize`, shallow normalization is also used in cases where we
-have to handle ambiguity. `At::structurally_normalize` normalizes until the self type
-is either rigid or an inference variable and we're stuck with ambiguity. This means
-that the self type may not be fully normalized after `At::structurally_normalize` was called.
+Unlike `At::deeply_normalize`, structural normalization is also used in cases where we
+have to handle ambiguity.
 
 Because this may result in behavior changes depending on how the trait solver handles
 ambiguity, it is safer to also require full normalization there. This happens in
@@ -70,11 +116,4 @@ for deep normalization to the new solver we cannot emulate this behavior. This d
 for projections with bound variables, sometimes leaving them unnormalized. An approach which
 also supports projections with bound variables will be even more involved. 
 
-
-[`assemble_candidates_after_normalizing_self_ty`]: https://github.com/rust-lang/rust/blob/1b6d4cdc4d923c148198ad4df230af48cdaca59e/compiler/rustc_trait_selection/src/solve/assembly/mod.rs#L330-L378
-[`AliasRelate`]: https://github.com/rust-lang/rust/blob/1b6d4cdc4d923c148198ad4df230af48cdaca59e/compiler/rustc_trait_selection/src/solve/alias_relate.rs#L16-L102
-[`normalizes-to` candidates]: https://github.com/rust-lang/rust/blob/1b6d4cdc4d923c148198ad4df230af48cdaca59e/compiler/rustc_trait_selection/src/solve/alias_relate.rs#L105-L151
-[the behavior of projection clauses]: https://github.com/rust-lang/trait-system-refactor-initiative/issues/1
-[normalize-via-infer]: https://github.com/rust-lang/rust/blob/1b6d4cdc4d923c148198ad4df230af48cdaca59e/compiler/rustc_trait_selection/src/solve/assembly/mod.rs#L350-L358
-
-[^0]: TODO: currently refactoring this to use `NormalizesTo` predicates instead.
+[^opaques]: opaque types are currently handled a bit differently. this may change in the future
