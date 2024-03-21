@@ -796,16 +796,16 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         // This counts how many pointers
         fn ptr_count(t: Ty<'_>) -> usize {
-            match t.kind() {
-                ty::RawPtr(p) => 1 + ptr_count(p.ty),
+            match *t.kind() {
+                ty::RawPtr(p_ty, _) => 1 + ptr_count(p_ty),
                 _ => 0,
             }
         }
 
         // Non-ptr type
         fn non_ptr(t: Ty<'_>) -> Ty<'_> {
-            match t.kind() {
-                ty::RawPtr(p) => non_ptr(p.ty),
+            match *t.kind() {
+                ty::RawPtr(p_ty, _) => non_ptr(p_ty),
                 _ => t,
             }
         }
@@ -814,8 +814,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // to the element type of the first argument
         let (_, element_ty0) = arg_tys[0].simd_size_and_type(bx.tcx());
         let (_, element_ty1) = arg_tys[1].simd_size_and_type(bx.tcx());
-        let (pointer_count, underlying_ty) = match element_ty1.kind() {
-            ty::RawPtr(p) if p.ty == in_elem => (ptr_count(element_ty1), non_ptr(element_ty1)),
+        let (pointer_count, underlying_ty) = match *element_ty1.kind() {
+            ty::RawPtr(p_ty, _) if p_ty == in_elem => (ptr_count(element_ty1), non_ptr(element_ty1)),
             _ => {
                 require!(
                     false,
@@ -910,16 +910,16 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         // This counts how many pointers
         fn ptr_count(t: Ty<'_>) -> usize {
-            match t.kind() {
-                ty::RawPtr(p) => 1 + ptr_count(p.ty),
+            match *t.kind() {
+                ty::RawPtr(p_ty, _) => 1 + ptr_count(p_ty),
                 _ => 0,
             }
         }
 
         // Non-ptr type
         fn non_ptr(t: Ty<'_>) -> Ty<'_> {
-            match t.kind() {
-                ty::RawPtr(p) => non_ptr(p.ty),
+            match *t.kind() {
+                ty::RawPtr(p_ty, _) => non_ptr(p_ty),
                 _ => t,
             }
         }
@@ -929,8 +929,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (_, element_ty0) = arg_tys[0].simd_size_and_type(bx.tcx());
         let (_, element_ty1) = arg_tys[1].simd_size_and_type(bx.tcx());
         let (_, element_ty2) = arg_tys[2].simd_size_and_type(bx.tcx());
-        let (pointer_count, underlying_ty) = match element_ty1.kind() {
-            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::Mutability::Mut => {
+        let (pointer_count, underlying_ty) = match *element_ty1.kind() {
+            ty::RawPtr(p_ty, mutbl) if p_ty == in_elem && mutbl == hir::Mutability::Mut => {
                 (ptr_count(element_ty1), non_ptr(element_ty1))
             }
             _ => {
