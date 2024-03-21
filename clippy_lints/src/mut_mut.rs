@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::{span_lint, span_lint_hir};
 use clippy_utils::higher;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
@@ -35,9 +35,34 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'_>) {
-        use rustc_hir::intravisit::Visitor;
+        if in_external_macro(cx.sess(), ty.span) {
+            return;
+        }
 
-        MutVisitor { cx }.visit_ty(ty);
+        if let hir::TyKind::Ref(
+            _,
+            hir::MutTy {
+                ty: pty,
+                mutbl: hir::Mutability::Mut,
+            },
+        ) = ty.kind
+        {
+            if let hir::TyKind::Ref(
+                _,
+                hir::MutTy {
+                    mutbl: hir::Mutability::Mut,
+                    ..
+                },
+            ) = pty.kind
+            {
+                span_lint(
+                    cx,
+                    MUT_MUT,
+                    ty.span,
+                    "generally you want to avoid `&mut &mut _` if possible",
+                );
+            }
+        }
     }
 }
 
@@ -62,55 +87,24 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             intravisit::walk_expr(self, body);
         } else if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, e) = expr.kind {
             if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, _) = e.kind {
-                span_lint(
+                span_lint_hir(
                     self.cx,
                     MUT_MUT,
+                    expr.hir_id,
                     expr.span,
                     "generally you want to avoid `&mut &mut _` if possible",
                 );
             } else if let ty::Ref(_, ty, hir::Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind() {
                 if ty.peel_refs().is_sized(self.cx.tcx, self.cx.param_env) {
-                    span_lint(
+                    span_lint_hir(
                         self.cx,
                         MUT_MUT,
+                        expr.hir_id,
                         expr.span,
                         "this expression mutably borrows a mutable reference. Consider reborrowing",
                     );
                 }
             }
         }
-    }
-
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
-        if in_external_macro(self.cx.sess(), ty.span) {
-            return;
-        }
-
-        if let hir::TyKind::Ref(
-            _,
-            hir::MutTy {
-                ty: pty,
-                mutbl: hir::Mutability::Mut,
-            },
-        ) = ty.kind
-        {
-            if let hir::TyKind::Ref(
-                _,
-                hir::MutTy {
-                    mutbl: hir::Mutability::Mut,
-                    ..
-                },
-            ) = pty.kind
-            {
-                span_lint(
-                    self.cx,
-                    MUT_MUT,
-                    ty.span,
-                    "generally you want to avoid `&mut &mut _` if possible",
-                );
-            }
-        }
-
-        intravisit::walk_ty(self, ty);
     }
 }

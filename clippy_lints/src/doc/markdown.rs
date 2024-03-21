@@ -8,7 +8,14 @@ use url::Url;
 
 use crate::doc::DOC_MARKDOWN;
 
-pub fn check(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, text: &str, span: Span, code_level: isize) {
+pub fn check(
+    cx: &LateContext<'_>,
+    valid_idents: &FxHashSet<String>,
+    text: &str,
+    span: Span,
+    code_level: isize,
+    blockquote_level: isize,
+) {
     for orig_word in text.split(|c: char| c.is_whitespace() || c == '\'') {
         // Trim punctuation as in `some comment (see foo::bar).`
         //                                                   ^^
@@ -46,11 +53,11 @@ pub fn check(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, text: &str,
             span.parent(),
         );
 
-        check_word(cx, word, span, code_level);
+        check_word(cx, word, span, code_level, blockquote_level);
     }
 }
 
-fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize) {
+fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize, blockquote_level: isize) {
     /// Checks if a string is upper-camel-case, i.e., starts with an uppercase and
     /// contains at least two uppercase letters (`Clippy` is ok) and one lower-case
     /// letter (`NASA` is ok).
@@ -97,7 +104,9 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize) {
     }
 
     // We assume that mixed-case words are not meant to be put inside backticks. (Issue #2343)
-    if code_level > 0 || (has_underscore(word) && has_hyphen(word)) {
+    //
+    // We also assume that backticks are not necessary if inside a quote. (Issue #10262)
+    if code_level > 0 || blockquote_level > 0 || (has_underscore(word) && has_hyphen(word)) {
         return;
     }
 

@@ -1,0 +1,161 @@
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:6:8
+   |
+LL |     if "".is_empty() {
+   |        ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::const-is-empty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::const_is_empty)]`
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:9:8
+   |
+LL |     if "foobar".is_empty() {
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:15:8
+   |
+LL |     if b"".is_empty() {
+   |        ^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:18:8
+   |
+LL |     if b"foobar".is_empty() {
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:35:8
+   |
+LL |     if empty2.is_empty() {
+   |        ^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:38:8
+   |
+LL |     if non_empty2.is_empty() {
+   |        ^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:60:13
+   |
+LL |     let _ = EMPTY_STR.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:62:13
+   |
+LL |     let _ = NON_EMPTY_STR.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:64:13
+   |
+LL |     let _ = EMPTY_BSTR.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:66:13
+   |
+LL |     let _ = NON_EMPTY_BSTR.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:68:13
+   |
+LL |     let _ = EMPTY_ARRAY.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:70:13
+   |
+LL |     let _ = EMPTY_ARRAY_REPEAT.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:72:13
+   |
+LL |     let _ = EMPTY_U8_SLICE.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:74:13
+   |
+LL |     let _ = NON_EMPTY_U8_SLICE.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:76:13
+   |
+LL |     let _ = NON_EMPTY_ARRAY.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:78:13
+   |
+LL |     let _ = NON_EMPTY_ARRAY_REPEAT.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:80:13
+   |
+LL |     let _ = EMPTY_REF_ARRAY.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:82:13
+   |
+LL |     let _ = NON_EMPTY_REF_ARRAY.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:84:13
+   |
+LL |     let _ = EMPTY_SLICE.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:86:13
+   |
+LL |     let _ = NON_EMPTY_SLICE.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:88:13
+   |
+LL |     let _ = NON_EMPTY_SLICE_REPEAT.is_empty();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:94:13
+   |
+LL |     let _ = value.is_empty();
+   |             ^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:97:13
+   |
+LL |     let _ = x.is_empty();
+   |             ^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:99:13
+   |
+LL |     let _ = "".is_empty();
+   |             ^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:101:13
+   |
+LL |     let _ = b"".is_empty();
+   |             ^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:155:13
+   |
+LL |     let _ = val.is_empty();
+   |             ^^^^^^^^^^^^^^
+
+error: aborting due to 26 previous errors
+

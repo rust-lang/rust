@@ -1,7 +1,11 @@
 //@no-rustfix
 
 #![warn(clippy::unconditional_recursion)]
-#![allow(clippy::partialeq_ne_impl, clippy::default_constructed_unit_structs)]
+#![allow(
+    clippy::partialeq_ne_impl,
+    clippy::default_constructed_unit_structs,
+    clippy::only_used_in_recursion
+)]
 
 enum Foo {
     A,
@@ -347,6 +351,50 @@ mod issue12154 {
         fn eq(&self, other: &T) -> bool {
             (&self.as_str()).eq(other)
         }
+    }
+}
+
+// From::from -> Into::into -> From::from
+struct BadFromTy1<'a>(&'a ());
+struct BadIntoTy1<'b>(&'b ());
+impl<'a> From<BadFromTy1<'a>> for BadIntoTy1<'static> {
+    fn from(f: BadFromTy1<'a>) -> Self {
+        f.into()
+    }
+}
+
+// Using UFCS syntax
+struct BadFromTy2<'a>(&'a ());
+struct BadIntoTy2<'b>(&'b ());
+impl<'a> From<BadFromTy2<'a>> for BadIntoTy2<'static> {
+    fn from(f: BadFromTy2<'a>) -> Self {
+        Into::into(f)
+    }
+}
+
+// Different Into impl (<i16 as Into<i32>>), so no infinite recursion
+struct BadFromTy3;
+impl From<BadFromTy3> for i32 {
+    fn from(f: BadFromTy3) -> Self {
+        Into::into(1i16)
+    }
+}
+
+// A conditional return that ends the recursion
+struct BadFromTy4;
+impl From<BadFromTy4> for i32 {
+    fn from(f: BadFromTy4) -> Self {
+        if true {
+            return 42;
+        }
+        f.into()
+    }
+}
+
+// Types differ in refs, don't lint
+impl From<&BadFromTy4> for i32 {
+    fn from(f: &BadFromTy4) -> Self {
+        BadFromTy4.into()
     }
 }
 
