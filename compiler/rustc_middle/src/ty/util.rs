@@ -682,6 +682,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Return the set of types that should be taken into account when checking
     /// trait bounds on a coroutine's internal state.
+    // FIXME(compiler-errors): We should remove this when the old solver goes away;
+    // and all other usages of this function should go through `bound_coroutine_hidden_types`
+    // instead.
     pub fn coroutine_hidden_types(
         self,
         def_id: DefId,
@@ -692,6 +695,33 @@ impl<'tcx> TyCtxt<'tcx> {
             .map_or_else(|| [].iter(), |l| l.field_tys.iter())
             .filter(|decl| !decl.ignore_for_traits)
             .map(|decl| ty::EarlyBinder::bind(decl.ty))
+    }
+
+    /// Return the set of types that should be taken into account when checking
+    /// trait bounds on a coroutine's internal state. This properly replaces
+    /// `ReErased` with new existential bound lifetimes.
+    pub fn bound_coroutine_hidden_types(
+        self,
+        def_id: DefId,
+    ) -> impl Iterator<Item = ty::EarlyBinder<ty::Binder<'tcx, Ty<'tcx>>>> {
+        let coroutine_layout = self.mir_coroutine_witnesses(def_id);
+        coroutine_layout
+            .as_ref()
+            .map_or_else(|| [].iter(), |l| l.field_tys.iter())
+            .filter(|decl| !decl.ignore_for_traits)
+            .map(move |decl| {
+                let mut vars = vec![];
+                let ty = self.fold_regions(decl.ty, |re, debruijn| {
+                    assert_eq!(re, self.lifetimes.re_erased);
+                    let var = ty::BoundVar::from_usize(vars.len());
+                    vars.push(ty::BoundVariableKind::Region(ty::BrAnon));
+                    ty::Region::new_bound(self, debruijn, ty::BoundRegion { var, kind: ty::BrAnon })
+                });
+                ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
+                    ty,
+                    self.mk_bound_variable_kinds(&vars),
+                ))
+            })
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.
@@ -998,8 +1028,10 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
                 Some(expanded_ty) => *expanded_ty,
                 None => {
                     if matches!(self.inspect_coroutine_fields, InspectCoroutineFields::Yes) {
-                        for bty in self.tcx.coroutine_hidden_types(def_id) {
-                            let hidden_ty = bty.instantiate(self.tcx, args);
+                        for bty in self.tcx.bound_coroutine_hidden_types(def_id) {
+                            let hidden_ty = self.tcx.instantiate_bound_regions_with_erased(
+                                bty.instantiate(self.tcx, args),
+                            );
                             self.fold_ty(hidden_ty);
                         }
                     }
