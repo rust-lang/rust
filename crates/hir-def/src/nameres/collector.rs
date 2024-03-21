@@ -1232,6 +1232,7 @@ impl DefCollector<'_> {
                         Some(def) if def.is_attribute() => def,
                         _ => return Resolved::No,
                     };
+
                     let call_id =
                         attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def);
                     if let MacroDefId {
@@ -1264,7 +1265,6 @@ impl DefCollector<'_> {
                         };
 
                         let ast_id = ast_id.with_value(ast_adt_id);
-                        // the call_id for the actual derive macro. This is used so all the derive proc macros can share a token tree
 
                         match attr.parse_path_comma_token_tree(self.db.upcast()) {
                             Some(derive_macros) => {
@@ -2305,7 +2305,7 @@ impl ModCollector<'_, '_> {
 
     fn collect_macro_call(
         &mut self,
-        &MacroCall { ref path, ast_id, expand_to, ctxt, .. }: &MacroCall,
+        &MacroCall { ref path, ast_id, expand_to, ctxt }: &MacroCall,
         container: ItemContainerId,
     ) {
         let ast_id = AstIdWithPath::new(self.file_id(), ast_id, ModPath::clone(path));
@@ -2444,10 +2444,7 @@ mod tests {
     use base_db::SourceDatabase;
     use test_fixture::WithFixture;
 
-    use crate::{
-        nameres::{DefMapCrateData, ModuleData, ModuleOrigin},
-        test_db::TestDB,
-    };
+    use crate::{nameres::DefMapCrateData, test_db::TestDB};
 
     use super::*;
 

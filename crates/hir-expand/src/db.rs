@@ -151,7 +151,7 @@ pub fn expand_speculative(
     let span_map = RealSpanMap::absolute(FileId::BOGUS);
     let span_map = SpanMapRef::RealSpanMap(&span_map);
 
-    let (_, _, span) = db.macro_arg(actual_macro_call);
+    let (_, _, span) = db.macro_arg_considering_derives(actual_macro_call, &loc.kind);
 
     // Build the subtree and token mapping for the speculative args
     let (mut tt, undo_info) = match loc.kind {
@@ -346,8 +346,6 @@ pub(crate) fn parse_with_map(
     }
 }
 
-/// Imagine the word smart in quotes.
-///
 /// This resolves the [MacroCallId] to check if it is a derive macro if so get the [macro_arg] for the derive.
 /// Other wise return the [macro_arg] for the macro_call_id.
 ///
@@ -435,20 +433,9 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
             }
             return (Arc::new(tt), SyntaxFixupUndoInfo::NONE, span);
         }
-
         // MacroCallKind::Derive should not be here. As we are getting the argument for the derive macro
-        MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
-            let node = ast_id.to_ptr(db).to_node(&root);
-            let censor_derive_input = censor_derive_input(derive_attr_index, &node);
-            let item_node = node.into();
-            let attr_source = attr_source(derive_attr_index, &item_node);
-            // FIXME: This is wrong, this should point to the path of the derive attribute`
-            let span =
-                map.span_for_range(attr_source.as_ref().and_then(|it| it.path()).map_or_else(
-                    || item_node.syntax().text_range(),
-                    |it| it.syntax().text_range(),
-                ));
-            (censor_derive_input, item_node, span)
+        MacroCallKind::Derive { .. } => {
+            unreachable!("`ExpandDatabase::macro_arg` called with `MacroCallKind::Derive`")
         }
         MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
             let node = ast_id.to_ptr(db).to_node(&root);
@@ -637,7 +624,7 @@ fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
 
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt::Subtree>> {
     let loc = db.lookup_intern_macro_call(id);
-    let (macro_arg, undo_info, span) = db.macro_arg_considering_derives(id, &loc.kind.clone());
+    let (macro_arg, undo_info, span) = db.macro_arg_considering_derives(id, &loc.kind);
 
     let (expander, ast) = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, _, ast) => (expander, ast),
