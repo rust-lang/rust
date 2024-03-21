@@ -35,8 +35,11 @@ pub use version::{read_dylib_info, read_version, RustCInfo};
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum ProcMacroKind {
     CustomDerive,
-    FuncLike,
     Attr,
+    // This used to be called FuncLike, so that's what the server expects currently.
+    #[serde(alias = "bang")]
+    #[serde(rename(serialize = "func_like", deserialize = "func_like"))]
+    Bang,
 }
 
 /// A handle to an external process which load dylibs with macros (.so or .dll)

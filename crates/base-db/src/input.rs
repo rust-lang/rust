@@ -500,13 +500,6 @@ impl CrateGraph {
         }
     }
 
-    // FIXME: this only finds one crate with the given root; we could have multiple
-    pub fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
-        let (crate_id, _) =
-            self.arena.iter().find(|(_crate_id, data)| data.root_file_id == file_id)?;
-        Some(crate_id)
-    }
-
     pub fn sort_deps(&mut self) {
         self.arena
             .iter_mut()

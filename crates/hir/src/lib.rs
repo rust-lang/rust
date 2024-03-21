@@ -2592,7 +2592,7 @@ impl Macro {
             },
             MacroId::ProcMacroId(it) => match it.lookup(db.upcast()).kind {
                 ProcMacroKind::CustomDerive => MacroKind::Derive,
-                ProcMacroKind::FuncLike => MacroKind::ProcMacro,
+                ProcMacroKind::Bang => MacroKind::ProcMacro,
                 ProcMacroKind::Attr => MacroKind::Attr,
             },
         }

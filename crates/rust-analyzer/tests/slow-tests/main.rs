@@ -903,6 +903,7 @@ fn out_dirs_check() {
 }
 
 #[test]
+#[cfg(not(windows))] // windows requires elevated permissions to create symlinks
 fn root_contains_symlink_out_dirs_check() {
     out_dirs_check_impl(true);
 }

@@ -22,11 +22,11 @@ fn attributes() {
     check_highlighting(
         r#"
 //- proc_macros: identity
-//- minicore: derive, copy
+//- minicore: derive, copy, default
 #[allow(dead_code)]
 #[rustfmt::skip]
 #[proc_macros::identity]
-#[derive(Copy)]
+#[derive(Default)]
 /// This is a doc comment
 // This is a normal comment
 /// This is a doc comment
@@ -36,7 +36,10 @@ fn attributes() {
 // This is another normal comment
 #[derive(Copy, Unresolved)]
 // The reason for these being here is to test AttrIds
-struct Foo;
+enum Foo {
+    #[default]
+    Bar
+}
 "#,
         expect_file!["./test_data/highlight_attributes.html"],
         false,

@@ -719,19 +719,22 @@ impl ProjectWorkspace {
     ) -> (CrateGraph, ProcMacroPaths) {
         let _p = tracing::span!(tracing::Level::INFO, "ProjectWorkspace::to_crate_graph").entered();
 
-        let (mut crate_graph, proc_macros) = match self {
+        let ((mut crate_graph, proc_macros), sysroot) = match self {
             ProjectWorkspace::Json {
                 project,
                 sysroot,
                 rustc_cfg,
                 toolchain: _,
                 target_layout: _,
-            } => project_json_to_crate_graph(
-                rustc_cfg.clone(),
-                load,
-                project,
-                sysroot.as_ref().ok(),
-                extra_env,
+            } => (
+                project_json_to_crate_graph(
+                    rustc_cfg.clone(),
+                    load,
+                    project,
+                    sysroot.as_ref().ok(),
+                    extra_env,
+                ),
+                sysroot,
             ),
             ProjectWorkspace::Cargo {
                 cargo,
@@ -743,14 +746,17 @@ impl ProjectWorkspace {
                 toolchain: _,
                 target_layout: _,
                 cargo_config_extra_env: _,
-            } => cargo_to_crate_graph(
-                load,
-                rustc.as_ref().map(|a| a.as_ref()).ok(),
-                cargo,
-                sysroot.as_ref().ok(),
-                rustc_cfg.clone(),
-                cfg_overrides,
-                build_scripts,
+            } => (
+                cargo_to_crate_graph(
+                    load,
+                    rustc.as_ref().map(|a| a.as_ref()).ok(),
+                    cargo,
+                    sysroot.as_ref().ok(),
+                    rustc_cfg.clone(),
+                    cfg_overrides,
+                    build_scripts,
+                ),
+                sysroot,
             ),
             ProjectWorkspace::DetachedFiles {
                 files,
@@ -758,11 +764,20 @@ impl ProjectWorkspace {
                 rustc_cfg,
                 toolchain: _,
                 target_layout: _,
-            } => {
-                detached_files_to_crate_graph(rustc_cfg.clone(), load, files, sysroot.as_ref().ok())
-            }
+            } => (
+                detached_files_to_crate_graph(
+                    rustc_cfg.clone(),
+                    load,
+                    files,
+                    sysroot.as_ref().ok(),
+                ),
+                sysroot,
+            ),
         };
-        if crate_graph.patch_cfg_if() {
+
+        if matches!(sysroot.as_ref().map(|it| it.mode()), Ok(SysrootMode::Workspace(_)))
+            && crate_graph.patch_cfg_if()
+        {
             tracing::debug!("Patched std to depend on cfg-if")
         } else {
             tracing::debug!("Did not patch std to depend on cfg-if")

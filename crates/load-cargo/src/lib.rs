@@ -387,7 +387,7 @@ fn expander_to_proc_macro(
     let name = From::from(expander.name());
     let kind = match expander.kind() {
         proc_macro_api::ProcMacroKind::CustomDerive => ProcMacroKind::CustomDerive,
-        proc_macro_api::ProcMacroKind::FuncLike => ProcMacroKind::FuncLike,
+        proc_macro_api::ProcMacroKind::Bang => ProcMacroKind::Bang,
         proc_macro_api::ProcMacroKind::Attr => ProcMacroKind::Attr,
     };
     let disabled = ignored_macros.iter().any(|replace| **replace == name);

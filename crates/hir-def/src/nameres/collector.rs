@@ -604,7 +604,7 @@ impl DefCollector<'_> {
         .intern(self.db);
         self.define_proc_macro(def.name.clone(), proc_macro_id);
         let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
-        if let ProcMacroKind::CustomDerive { helpers } = def.kind {
+        if let ProcMacroKind::Derive { helpers } = def.kind {
             crate_data.exported_derives.insert(self.db.macro_def(proc_macro_id.into()), helpers);
         }
         crate_data.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);

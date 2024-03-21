@@ -26,7 +26,6 @@ use itertools::Itertools;
 use load_cargo::{load_proc_macro, ProjectFolders};
 use proc_macro_api::ProcMacroServer;
 use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
-use rustc_hash::FxHashSet;
 use stdx::{format_to, thread::ThreadIntent};
 use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, ChangeKind};
@@ -526,7 +525,7 @@ impl GlobalState {
     fn recreate_crate_graph(&mut self, cause: String) {
         // crate graph construction relies on these paths, record them so when one of them gets
         // deleted or created we trigger a reconstruction of the crate graph
-        let mut crate_graph_file_dependencies = FxHashSet::default();
+        let mut crate_graph_file_dependencies = mem::take(&mut self.crate_graph_file_dependencies);
         self.report_progress(
             "Building CrateGraph",
             crate::lsp::utils::Progress::Begin,
