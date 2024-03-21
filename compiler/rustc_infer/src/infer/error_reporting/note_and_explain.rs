@@ -306,7 +306,7 @@ impl<T> Trait<T> for X {
                                 .any(|(pred, _span)| match pred.kind().skip_binder() {
                                     ty::ClauseKind::Trait(trait_predicate)
                                         if trait_predicate.polarity
-                                            == ty::ImplPolarity::Positive =>
+                                            == ty::PredicatePolarity::Positive =>
                                     {
                                         trait_predicate.def_id() == def_id
                                     }
@@ -420,7 +420,7 @@ impl<T> Trait<T> for X {
                             else {
                                 continue;
                             };
-                            if trait_predicate.polarity != ty::ImplPolarity::Positive {
+                            if trait_predicate.polarity != ty::PredicatePolarity::Positive {
                                 continue;
                             }
                             let def_id = trait_predicate.def_id();

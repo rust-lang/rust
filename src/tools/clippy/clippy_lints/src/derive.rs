@@ -11,7 +11,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, ToPredicate, TraitPredicate, Ty,
+    self, ClauseKind, GenericArgKind, GenericParamDefKind, ParamEnv, ToPredicate, TraitPredicate, Ty,
     TyCtxt,
 };
 use rustc_session::declare_lint_pass;
@@ -502,7 +502,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
                 ClauseKind::Trait(TraitPredicate {
                     trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
-                    polarity: ImplPolarity::Positive,
+                    polarity: ty::PredicatePolarity::Positive,
                 })
                 .to_predicate(tcx)
             }),
