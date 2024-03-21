@@ -23,6 +23,7 @@ use rustc_target::spec::{Target, TargetTriple};
 use tempfile::Builder as TempFileBuilder;
 
 use std::env;
+use std::fs::File;
 use std::io::{self, Write};
 use std::panic;
 use std::path::{Path, PathBuf};
@@ -30,6 +31,8 @@ use std::process::{self, Command, Stdio};
 use std::str;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+
+use tempfile::tempdir;
 
 use crate::clean::{types::AttributesExt, Attributes};
 use crate::config::Options as RustdocOptions;
@@ -48,7 +51,51 @@ pub(crate) struct GlobalTestOptions {
     pub(crate) attrs: Vec<String>,
 }
 
-pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> Result<(), String> {
+    let mut file = File::create(file_path)
+        .map_err(|error| format!("failed to create args file: {error:?}"))?;
+
+    // We now put the common arguments into the file we created.
+    let mut content = vec!["--crate-type=bin".to_string()];
+
+    for cfg in &options.cfgs {
+        content.push(format!("--cfg={cfg}"));
+    }
+    if !options.check_cfgs.is_empty() {
+        content.push("-Zunstable-options".to_string());
+        for check_cfg in &options.check_cfgs {
+            content.push(format!("--check-cfg={check_cfg}"));
+        }
+    }
+
+    if let Some(sysroot) = &options.maybe_sysroot {
+        content.push(format!("--sysroot={}", sysroot.display()));
+    }
+    for lib_str in &options.lib_strs {
+        content.push(format!("-L{lib_str}"));
+    }
+    for extern_str in &options.extern_strs {
+        content.push(format!("--extern={extern_str}"));
+    }
+    content.push("-Ccodegen-units=1".to_string());
+    for codegen_options_str in &options.codegen_options_strs {
+        content.push(format!("-C{codegen_options_str}"));
+    }
+    for unstable_option_str in &options.unstable_opts_strs {
+        content.push(format!("-Z{unstable_option_str}"));
+    }
+
+    let content = content.join("\n");
+
+    file.write(content.as_bytes())
+        .map_err(|error| format!("failed to write arguments to temporary file: {error:?}"))?;
+    Ok(())
+}
+
+pub(crate) fn run(
+    dcx: &rustc_errors::DiagCtxt,
+    options: RustdocOptions,
+) -> Result<(), ErrorGuaranteed> {
     let input = config::Input::File(options.input.clone());
 
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
@@ -118,6 +165,15 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
     let externs = options.externs.clone();
     let json_unused_externs = options.json_unused_externs;
 
+    let temp_dir = match tempdir()
+        .map_err(|error| format!("failed to create temporary directory: {error:?}"))
+    {
+        Ok(temp_dir) => temp_dir,
+        Err(error) => return crate::wrap_return(dcx, Err(error)),
+    };
+    let file_path = temp_dir.path().join("rustdoc-cfgs");
+    crate::wrap_return(dcx, generate_args_file(&file_path, &options))?;
+
     let (tests, unused_extern_reports, compiling_test_count) =
         interface::run_compiler(config, |compiler| {
             compiler.enter(|queries| {
@@ -134,6 +190,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
                         Some(compiler.sess.psess.clone_source_map()),
                         None,
                         enable_per_target_ignores,
+                        file_path,
                     );
 
                     let mut hir_collector = HirCollector {
@@ -334,6 +391,7 @@ fn run_test(
     path: PathBuf,
     test_id: &str,
     report_unused_externs: impl Fn(UnusedExterns),
+    arg_file: PathBuf,
 ) -> Result<(), TestFailure> {
     let (test, line_offset, supports_color) =
         make_test(test, Some(crate_name), lang_string.test_harness, opts, edition, Some(test_id));
@@ -347,19 +405,9 @@ fn run_test(
         .as_deref()
         .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
     let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
-    compiler.arg("--crate-type").arg("bin");
-    for cfg in &rustdoc_options.cfgs {
-        compiler.arg("--cfg").arg(&cfg);
-    }
-    if !rustdoc_options.check_cfgs.is_empty() {
-        compiler.arg("-Z").arg("unstable-options");
-        for check_cfg in &rustdoc_options.check_cfgs {
-            compiler.arg("--check-cfg").arg(&check_cfg);
-        }
-    }
-    if let Some(sysroot) = rustdoc_options.maybe_sysroot {
-        compiler.arg("--sysroot").arg(sysroot);
-    }
+
+    compiler.arg(&format!("@{}", arg_file.display()));
+
     compiler.arg("--edition").arg(&edition.to_string());
     compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", path);
     compiler.env("UNSTABLE_RUSTDOC_TEST_LINE", format!("{}", line as isize - line_offset as isize));
@@ -370,22 +418,10 @@ fn run_test(
     if rustdoc_options.json_unused_externs.is_enabled() && !lang_string.compile_fail {
         compiler.arg("--error-format=json");
         compiler.arg("--json").arg("unused-externs");
-        compiler.arg("-Z").arg("unstable-options");
         compiler.arg("-W").arg("unused_crate_dependencies");
+        compiler.arg("-Z").arg("unstable-options");
     }
-    for lib_str in &rustdoc_options.lib_strs {
-        compiler.arg("-L").arg(&lib_str);
-    }
-    for extern_str in &rustdoc_options.extern_strs {
-        compiler.arg("--extern").arg(&extern_str);
-    }
-    compiler.arg("-Ccodegen-units=1");
-    for codegen_options_str in &rustdoc_options.codegen_options_strs {
-        compiler.arg("-C").arg(&codegen_options_str);
-    }
-    for unstable_option_str in &rustdoc_options.unstable_opts_strs {
-        compiler.arg("-Z").arg(&unstable_option_str);
-    }
+
     if no_run && !lang_string.compile_fail && rustdoc_options.persist_doctests.is_none() {
         compiler.arg("--emit=metadata");
     }
@@ -941,6 +977,7 @@ pub(crate) struct Collector {
     visited_tests: FxHashMap<(String, usize), usize>,
     unused_extern_reports: Arc<Mutex<Vec<UnusedExterns>>>,
     compiling_test_count: AtomicUsize,
+    arg_file: PathBuf,
 }
 
 impl Collector {
@@ -952,6 +989,7 @@ impl Collector {
         source_map: Option<Lrc<SourceMap>>,
         filename: Option<PathBuf>,
         enable_per_target_ignores: bool,
+        arg_file: PathBuf,
     ) -> Collector {
         Collector {
             tests: Vec::new(),
@@ -967,6 +1005,7 @@ impl Collector {
             visited_tests: FxHashMap::default(),
             unused_extern_reports: Default::default(),
             compiling_test_count: AtomicUsize::new(0),
+            arg_file,
         }
     }
 
@@ -1067,6 +1106,8 @@ impl Tester for Collector {
             )
         };
 
+        let arg_file = self.arg_file.clone();
+
         debug!("creating test {name}: {test}");
         self.tests.push(test::TestDescAndFn {
             desc: test::TestDesc {
@@ -1108,6 +1149,7 @@ impl Tester for Collector {
                     path,
                     &test_id,
                     report_unused_externs,
+                    arg_file,
                 );
 
                 if let Err(err) = res {
