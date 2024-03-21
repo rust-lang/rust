@@ -107,7 +107,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
         && METHODS.iter().any(|m| *m == method_ident)
 
         // Get the pointee type
-        && let ty::RawPtr(TypeAndMut { ty: pointee_ty, .. }) =
+        && let ty::RawPtr(pointee_ty, _) =
             cx.typeck_results().expr_ty(ptr_self).kind()
     {
         return Some((*pointee_ty, count));
