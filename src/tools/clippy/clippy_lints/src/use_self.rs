@@ -8,11 +8,12 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{walk_inf, walk_ty, Visitor};
 use rustc_hir::{
-    self as hir, Expr, ExprKind, FnRetTy, FnSig, GenericArg, GenericArgsParentheses, GenericParam, GenericParamKind,
-    HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
+    self as hir, Expr, ExprKind, FnRetTy, FnSig, GenericArgsParentheses, GenericParam, GenericParamKind, HirId, Impl,
+    ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
 };
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::Ty as MiddleTy;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -95,10 +96,9 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         let stack_item = if let ItemKind::Impl(Impl { self_ty, generics, .. }) = item.kind
             && let TyKind::Path(QPath::Resolved(_, item_path)) = self_ty.kind
             && let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args
-            && parameters.as_ref().map_or(true, |params| {
-                params.parenthesized == GenericArgsParentheses::No
-                    && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
-            })
+            && parameters
+                .as_ref()
+                .map_or(true, |params| params.parenthesized == GenericArgsParentheses::No)
             && !item.span.from_expansion()
             && !is_from_proc_macro(cx, item)
         // expensive, should be last check
@@ -226,7 +226,12 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             } else {
                 hir_ty_to_ty(cx.tcx, hir_ty)
             }
-            && same_type_and_consts(ty, cx.tcx.type_of(impl_id).instantiate_identity())
+            && let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity()
+            && same_type_and_consts(ty, impl_ty)
+            // Ensure the type we encounter and the one from the impl have the same lifetime parameters. It may be that
+            // the lifetime parameters of `ty` are ellided (`impl<'a> Foo<'a> { fn new() -> Self { Foo{..} } }`, in
+            // which case we must still trigger the lint.
+            && (has_no_lifetime(ty) || same_lifetimes(ty, impl_ty))
         {
             span_lint(cx, hir_ty.span);
         }
@@ -316,5 +321,39 @@ fn lint_path_to_variant(cx: &LateContext<'_>, path: &Path<'_>) {
             .span
             .with_hi(self_seg.args().span_ext().unwrap_or(self_seg.ident.span).hi());
         span_lint(cx, span);
+    }
+}
+
+/// Returns `true` if types `a` and `b` have the same lifetime parameters, otherwise returns
+/// `false`.
+///
+/// This function does not check that types `a` and `b` are the same types.
+fn same_lifetimes<'tcx>(a: MiddleTy<'tcx>, b: MiddleTy<'tcx>) -> bool {
+    use rustc_middle::ty::{Adt, GenericArgKind};
+    match (&a.kind(), &b.kind()) {
+        (&Adt(_, args_a), &Adt(_, args_b)) => {
+            args_a
+                .iter()
+                .zip(args_b.iter())
+                .all(|(arg_a, arg_b)| match (arg_a.unpack(), arg_b.unpack()) {
+                    // TODO: Handle inferred lifetimes
+                    (GenericArgKind::Lifetime(inner_a), GenericArgKind::Lifetime(inner_b)) => inner_a == inner_b,
+                    (GenericArgKind::Type(type_a), GenericArgKind::Type(type_b)) => same_lifetimes(type_a, type_b),
+                    _ => true,
+                })
+        },
+        _ => a == b,
+    }
+}
+
+/// Returns `true` if `ty` has no lifetime parameter, otherwise returns `false`.
+fn has_no_lifetime(ty: MiddleTy<'_>) -> bool {
+    use rustc_middle::ty::{Adt, GenericArgKind};
+    match ty.kind() {
+        &Adt(_, args) => !args
+            .iter()
+            // TODO: Handle inferred lifetimes
+            .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(..))),
+        _ => true,
     }
 }

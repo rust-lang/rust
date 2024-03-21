@@ -8,6 +8,7 @@
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
+use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -32,6 +33,13 @@ declare_clippy_lint! {
     "detects missing documentation for private members"
 }
 
+macro_rules! note_prev_span_then_ret {
+    ($prev_span:expr, $span:expr) => {{
+        $prev_span = Some($span);
+        return;
+    }};
+}
+
 pub struct MissingDoc {
     /// Whether to **only** check for missing documentation in items visible within the current
     /// crate. For example, `pub(crate)` items.
@@ -39,6 +47,8 @@ pub struct MissingDoc {
     /// Stack of whether #[doc(hidden)] is set
     /// at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
+    /// Used to keep tracking of the previous item, field or variants etc, to get the search span.
+    prev_span: Option<Span>,
 }
 
 impl Default for MissingDoc {
@@ -54,6 +64,7 @@ impl MissingDoc {
         Self {
             crate_items_only,
             doc_hidden_stack: vec![false],
+            prev_span: None,
         }
     }
 
@@ -108,7 +119,8 @@ impl MissingDoc {
 
         let has_doc = attrs
             .iter()
-            .any(|a| a.doc_str().is_some() || Self::has_include(a.meta()));
+            .any(|a| a.doc_str().is_some() || Self::has_include(a.meta()))
+            || matches!(self.search_span(sp), Some(span) if span_to_snippet_contains_docs(cx, span));
 
         if !has_doc {
             span_lint(
@@ -118,6 +130,32 @@ impl MissingDoc {
                 &format!("missing documentation for {article} {desc}"),
             );
         }
+    }
+
+    /// Return a span to search for doc comments manually.
+    ///
+    /// # Example
+    /// ```ignore
+    /// fn foo() { ... }
+    /// ^^^^^^^^^^^^^^^^ prev_span
+    ///                ↑
+    /// |  search_span |
+    /// ↓
+    /// fn bar() { ... }
+    /// ^^^^^^^^^^^^^^^^ cur_span
+    /// ```
+    fn search_span(&self, cur_span: Span) -> Option<Span> {
+        let prev_span = self.prev_span?;
+        let start_pos = if prev_span.contains(cur_span) {
+            // In case when the prev_span is an entire struct, or enum,
+            // and the current span is a field, or variant, we need to search from
+            // the starting pos of the previous span.
+            prev_span.lo()
+        } else {
+            prev_span.hi()
+        };
+        let search_span = cur_span.with_lo(start_pos).with_hi(cur_span.lo());
+        Some(search_span)
     }
 }
 
@@ -138,6 +176,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         self.check_missing_docs_attrs(cx, CRATE_DEF_ID, attrs, cx.tcx.def_span(CRATE_DEF_ID), "the", "crate");
     }
 
+    fn check_crate_post(&mut self, _: &LateContext<'tcx>) {
+        self.prev_span = None;
+    }
+
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
         match it.kind {
             hir::ItemKind::Fn(..) => {
@@ -145,7 +187,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 if it.ident.name == sym::main {
                     let at_root = cx.tcx.local_parent(it.owner_id.def_id) == CRATE_DEF_ID;
                     if at_root {
-                        return;
+                        note_prev_span_then_ret!(self.prev_span, it.span);
                     }
                 }
             },
@@ -164,7 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::Impl { .. }
-            | hir::ItemKind::Use(..) => return,
+            | hir::ItemKind::Use(..) => note_prev_span_then_ret!(self.prev_span, it.span),
         };
 
         let (article, desc) = cx.tcx.article_and_description(it.owner_id.to_def_id());
@@ -173,6 +215,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         if !is_from_proc_macro(cx, it) {
             self.check_missing_docs_attrs(cx, it.owner_id.def_id, attrs, it.span, article, desc);
         }
+        self.prev_span = Some(it.span);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx hir::TraitItem<'_>) {
@@ -182,16 +225,17 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         if !is_from_proc_macro(cx, trait_item) {
             self.check_missing_docs_attrs(cx, trait_item.owner_id.def_id, attrs, trait_item.span, article, desc);
         }
+        self.prev_span = Some(trait_item.span);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
         if let Some(cid) = cx.tcx.associated_item(impl_item.owner_id).impl_container(cx.tcx) {
             if cx.tcx.impl_trait_ref(cid).is_some() {
-                return;
+                note_prev_span_then_ret!(self.prev_span, impl_item.span);
             }
         } else {
-            return;
+            note_prev_span_then_ret!(self.prev_span, impl_item.span);
         }
 
         let (article, desc) = cx.tcx.article_and_description(impl_item.owner_id.to_def_id());
@@ -199,6 +243,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         if !is_from_proc_macro(cx, impl_item) {
             self.check_missing_docs_attrs(cx, impl_item.owner_id.def_id, attrs, impl_item.span, article, desc);
         }
+        self.prev_span = Some(impl_item.span);
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'tcx>, sf: &'tcx hir::FieldDef<'_>) {
@@ -208,6 +253,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 self.check_missing_docs_attrs(cx, sf.def_id, attrs, sf.span, "a", "struct field");
             }
         }
+        self.prev_span = Some(sf.span);
     }
 
     fn check_variant(&mut self, cx: &LateContext<'tcx>, v: &'tcx hir::Variant<'_>) {
@@ -215,5 +261,13 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         if !is_from_proc_macro(cx, v) {
             self.check_missing_docs_attrs(cx, v.def_id, attrs, v.span, "a", "variant");
         }
+        self.prev_span = Some(v.span);
     }
+}
+
+fn span_to_snippet_contains_docs(cx: &LateContext<'_>, search_span: Span) -> bool {
+    let Some(snippet) = snippet_opt(cx, search_span) else {
+        return false;
+    };
+    snippet.lines().rev().any(|line| line.trim().starts_with("///"))
 }

@@ -1,7 +1,10 @@
 avoid-breaking-exported-api = false
 
-# use the various `span_lint_*` methods instead, which also add a link to the docs
-disallowed-methods = [
-    "rustc_lint::context::LintContext::span_lint",
-    "rustc_middle::ty::context::TyCtxt::node_span_lint"
-]
+[[disallowed-methods]]
+path = "rustc_lint::context::LintContext::span_lint"
+reason = "this function does not add a link to our documentation, please use the `clippy_utils::diagnostics::span_lint*` functions instead"
+
+
+[[disallowed-methods]]
+path = "rustc_middle::ty::context::TyCtxt::node_span_lint"
+reason = "this function does not add a link to our documentation, please use the `clippy_utils::diagnostics::span_lint_hir*` functions instead"

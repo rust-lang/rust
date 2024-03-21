@@ -1,3 +1,4 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::HirNode;
 use clippy_utils::sugg::Sugg;
@@ -6,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Instance, Mutability};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::ExpnKind;
@@ -49,7 +50,19 @@ declare_clippy_lint! {
     perf,
     "assigning the result of cloning may be inefficient"
 }
-declare_lint_pass!(AssigningClones => [ASSIGNING_CLONES]);
+
+pub struct AssigningClones {
+    msrv: Msrv,
+}
+
+impl AssigningClones {
+    #[must_use]
+    pub fn new(msrv: Msrv) -> Self {
+        Self { msrv }
+    }
+}
+
+impl_lint_pass!(AssigningClones => [ASSIGNING_CLONES]);
 
 impl<'tcx> LateLintPass<'tcx> for AssigningClones {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, assign_expr: &'tcx hir::Expr<'_>) {
@@ -68,10 +81,12 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             return;
         };
 
-        if is_ok_to_suggest(cx, lhs, &call) {
+        if is_ok_to_suggest(cx, lhs, &call, &self.msrv) {
             suggest(cx, assign_expr, lhs, &call);
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 // Try to resolve the call to `Clone::clone` or `ToOwned::to_owned`.
@@ -135,7 +150,13 @@ fn extract_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<
 
 // Return true if we find that the called method has a custom implementation and isn't derived or
 // provided by default by the corresponding trait.
-fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallCandidate<'tcx>) -> bool {
+fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallCandidate<'tcx>, msrv: &Msrv) -> bool {
+    // For calls to .to_owned we suggest using .clone_into(), which was only stablilized in 1.63.
+    // If the current MSRV is below that, don't suggest the lint.
+    if !msrv.meets(msrvs::ASSIGNING_CLONES) && matches!(call.target, TargetTrait::ToOwned) {
+        return false;
+    }
+
     // If the left-hand side is a local variable, it might be uninitialized at this point.
     // In that case we do not want to suggest the lint.
     if let Some(local) = path_to_local(lhs) {
