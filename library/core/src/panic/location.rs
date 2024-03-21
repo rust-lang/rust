@@ -81,7 +81,7 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "track_caller", since = "1.46.0")]
-    #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
+    #[rustc_const_stable(feature = "const_caller_location", since = "CURRENT_RUSTC_VERSION")]
     #[track_caller]
     #[inline]
     pub const fn caller() -> &'static Location<'static> {
@@ -123,7 +123,7 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
-    #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
+    #[rustc_const_stable(feature = "const_location_fields", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn file(&self) -> &str {
         self.file
@@ -148,7 +148,7 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
-    #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
+    #[rustc_const_stable(feature = "const_location_fields", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn line(&self) -> u32 {
         self.line
@@ -173,7 +173,7 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_col", since = "1.25.0")]
-    #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
+    #[rustc_const_stable(feature = "const_location_fields", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn column(&self) -> u32 {
         self.col
