@@ -140,7 +140,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     }
 }
 
-/// An owning iterator over the items of a `BTreeSet`.
+/// An owning iterator over the items of a `BTreeSet` in ascending order.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`BTreeSet`]
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
@@ -1232,6 +1232,7 @@ impl<T: Ord, const N: usize> From<[T; N]> for BTreeSet<T> {
     }
 }
 
+/// Gets an owning iterator over the elements of the `BTreeSet` in ascending order.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator + Clone> IntoIterator for BTreeSet<T, A> {
     type Item = T;

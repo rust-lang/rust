@@ -415,7 +415,7 @@ impl<'a, K: 'a, V: 'a> Default for IterMut<'a, K, V> {
     }
 }
 
-/// An owning iterator over the entries of a `BTreeMap`.
+/// An owning iterator over the entries of a `BTreeMap`, sorted by key.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`BTreeMap`]
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
@@ -1632,6 +1632,7 @@ impl<'a, K, V> IterMut<'a, K, V> {
     }
 }
 
+/// Gets an owning iterator over the entries of the map, sorted by key.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, A: Allocator + Clone> IntoIterator for BTreeMap<K, V, A> {
     type Item = (K, V);
