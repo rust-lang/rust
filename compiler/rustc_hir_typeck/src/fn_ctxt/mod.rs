@@ -5,7 +5,9 @@ mod checks;
 mod suggestions;
 
 use crate::coercion::DynamicCoerceMany;
+use crate::fallback::DivergingFallbackBehavior;
 use crate::{CoroutineTypes, Diverges, EnclosingBreakables, Inherited};
+use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -18,7 +20,7 @@ use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKin
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
-use rustc_span::{self, Span, DUMMY_SP};
+use rustc_span::{self, sym, Span, DUMMY_SP};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use std::cell::{Cell, RefCell};
@@ -108,6 +110,8 @@ pub struct FnCtxt<'a, 'tcx> {
     pub(super) inh: &'a Inherited<'tcx>,
 
     pub(super) fallback_has_occurred: Cell<bool>,
+
+    pub(super) diverging_fallback_behavior: DivergingFallbackBehavior,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -116,6 +120,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         body_id: LocalDefId,
     ) -> FnCtxt<'a, 'tcx> {
+        let diverging_fallback_behavior = parse_never_type_options_attr(inh.tcx);
         FnCtxt {
             body_id,
             param_env,
@@ -131,6 +136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }),
             inh,
             fallback_has_occurred: Cell::new(false),
+            diverging_fallback_behavior,
         }
     }
 
@@ -373,4 +379,48 @@ impl<'tcx> LoweredTy<'tcx> {
         };
         LoweredTy { raw, normalized }
     }
+}
+
+fn parse_never_type_options_attr(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
+    use DivergingFallbackBehavior::*;
+
+    // Error handling is dubious here (unwraps), but that's probably fine for an internal attribute.
+    // Just don't write incorrect attributes <3
+
+    let mut fallback = None;
+
+    let items = tcx
+        .get_attr(CRATE_DEF_ID, sym::rustc_never_type_options)
+        .map(|attr| attr.meta_item_list().unwrap())
+        .unwrap_or_default();
+
+    for item in items {
+        if item.has_name(sym::fallback) && fallback.is_none() {
+            let mode = item.value_str().unwrap();
+            match mode {
+                sym::unit => fallback = Some(FallbackToUnit),
+                sym::niko => fallback = Some(FallbackToNiko),
+                sym::never => fallback = Some(FallbackToNever),
+                sym::no => fallback = Some(NoFallback),
+                _ => {
+                    tcx.dcx().span_err(item.span(), format!("unknown never type fallback mode: `{mode}` (supported: `unit`, `niko`, `never` and `no`)"));
+                }
+            };
+            continue;
+        }
+
+        tcx.dcx().span_err(
+            item.span(),
+            format!(
+                "unknown never type option: `{}` (supported: `fallback`)",
+                item.name_or_empty()
+            ),
+        );
+    }
+
+    let fallback = fallback.unwrap_or_else(|| {
+        if tcx.features().never_type_fallback { FallbackToNiko } else { FallbackToUnit }
+    });
+
+    fallback
 }
