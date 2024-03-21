@@ -250,6 +250,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 | PatKind::Variant { .. }
                 | PatKind::Leaf { .. }
                 | PatKind::Deref { .. }
+                | PatKind::DerefPattern { .. }
                 | PatKind::Range { .. }
                 | PatKind::Slice { .. }
                 | PatKind::Array { .. } => {
@@ -310,7 +311,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
                 visit::walk_pat(self, pat);
             }
-            PatKind::Deref { .. } => {
+            PatKind::Deref { .. } | PatKind::DerefPattern { .. } => {
                 let old_inside_adt = std::mem::replace(&mut self.inside_adt, false);
                 visit::walk_pat(self, pat);
                 self.inside_adt = old_inside_adt;
