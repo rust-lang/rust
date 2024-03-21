@@ -674,6 +674,7 @@ symbols! {
         deref_mut,
         deref_mut_method,
         deref_patterns,
+        deref_pure,
         deref_target,
         derive,
         derive_const,

@@ -2479,6 +2479,9 @@ impl ops::Deref for String {
     }
 }
 
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl ops::DerefPure for String {}
+
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::DerefMut for String {
     #[inline]

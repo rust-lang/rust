@@ -2002,8 +2002,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        // FIXME(deref_patterns): use `DerefPure` for soundness
-        // FIXME(deref_patterns): use `DerefMut` when required
+        // Register a `DerefPure` bound, which is required by all `deref!()` pats.
+        self.register_bound(
+            expected,
+            tcx.require_lang_item(hir::LangItem::DerefPure, Some(span)),
+            self.misc(span),
+        );
         // <expected as Deref>::Target
         let ty = Ty::new_projection(
             tcx,
