@@ -295,7 +295,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     }) = impl_source
                     {
                         // Blame 'tidy' for the weird bracket placement.
-                        if infcx.tcx.impl_polarity(*impl_def_id) == ty::ImplPolarity::Negative {
+                        if infcx.tcx.impl_polarity(*impl_def_id) != ty::ImplPolarity::Positive {
                             debug!(
                                 "evaluate_nested_obligations: found explicit negative impl\
                                         {:?}, bailing out",

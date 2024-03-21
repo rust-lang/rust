@@ -245,7 +245,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         associated_ty: Option<(&'static str, Ty<'tcx>)>,
         mut body_id: LocalDefId,
     ) {
-        if trait_pred.skip_binder().polarity == ty::PredicatePolarity::Negative {
+        if trait_pred.skip_binder().polarity != ty::PredicatePolarity::Positive {
             return;
         }
 
