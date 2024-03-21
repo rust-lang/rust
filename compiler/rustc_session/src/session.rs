@@ -28,9 +28,9 @@ use rustc_errors::{
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{FileLoader, FilePathMapping, RealFileLoader, SourceMap};
+use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileNameDisplayPreference, RealFileName};
-use rustc_span::{SourceFileHashAlgorithm, Span, Symbol};
+use rustc_span::{Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
 use rustc_target::spec::{
@@ -988,7 +988,6 @@ pub fn build_session(
     registry: rustc_errors::registry::Registry,
     fluent_resources: Vec<&'static str>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
-    file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     target: Target,
     sysroot: PathBuf,
     cfg_version: &'static str,
@@ -1015,24 +1014,11 @@ pub fn build_session(
         early_dcx.early_warn(warning)
     }
 
-    let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
-    let hash_kind = sopts.unstable_opts.src_hash_algorithm.unwrap_or_else(|| {
-        if target.is_like_msvc {
-            SourceFileHashAlgorithm::Sha256
-        } else {
-            SourceFileHashAlgorithm::Md5
-        }
-    });
-    let source_map = Lrc::new(SourceMap::with_file_loader_and_hash_kind(
-        loader,
-        sopts.file_path_mapping(),
-        hash_kind,
-    ));
-
     let fallback_bundle = fallback_fluent_bundle(
         fluent_resources,
         sopts.unstable_opts.translate_directionality_markers,
     );
+    let source_map = rustc_span::source_map::get_source_map().unwrap();
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
     let mut dcx =

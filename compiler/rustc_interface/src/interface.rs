@@ -21,7 +21,7 @@ use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileN
 use rustc_session::filesearch::{self, sysroot_candidates};
 use rustc_session::parse::ParseSess;
 use rustc_session::{lint, CompilerIO, EarlyDiagCtxt, Session};
-use rustc_span::source_map::FileLoader;
+use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use std::path::PathBuf;
@@ -336,17 +336,22 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
     early_dcx.initialize_checked_jobserver();
 
+    crate::callbacks::setup_callbacks();
+
+    let sysroot = filesearch::materialize_sysroot(config.opts.maybe_sysroot.clone());
+    let target = config::build_target_config(&early_dcx, &config.opts, &sysroot);
+    let file_loader = config.file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
+    let path_mapping = config.opts.file_path_mapping();
+    let hash_kind = config.opts.unstable_opts.src_hash_algorithm(&target);
+
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.unstable_opts.threads,
+        SourceMapInputs { file_loader, path_mapping, hash_kind },
         |current_gcx| {
-            crate::callbacks::setup_callbacks();
-
+            // The previous `early_dcx` can't be reused here because it doesn't
+            // impl `Send`. Creating a new one is fine.
             let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
-
-            let sysroot = filesearch::materialize_sysroot(config.opts.maybe_sysroot.clone());
-
-            let target = config::build_target_config(&early_dcx, &config.opts, &sysroot);
 
             let codegen_backend = match config.make_codegen_backend {
                 None => util::get_codegen_backend(
@@ -372,9 +377,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.opts.unstable_opts.translate_directionality_markers,
             ) {
                 Ok(bundle) => bundle,
-                Err(e) => {
-                    early_dcx.early_fatal(format!("failed to load fluent bundle: {e}"));
-                }
+                Err(e) => early_dcx.early_fatal(format!("failed to load fluent bundle: {e}")),
             };
 
             let mut locale_resources = Vec::from(config.locale_resources);
@@ -393,7 +396,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.registry.clone(),
                 locale_resources,
                 config.lint_caps,
-                config.file_loader,
                 target,
                 sysroot,
                 util::rustc_version_str().unwrap_or("unknown"),
@@ -440,45 +442,43 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 current_gcx,
             };
 
-            rustc_span::set_source_map(compiler.sess.psess.clone_source_map(), move || {
-                // There are two paths out of `f`.
-                // - Normal exit.
-                // - Panic, e.g. triggered by `abort_if_errors`.
-                //
-                // We must run `finish_diagnostics` in both cases.
-                let res = {
-                    // If `f` panics, `finish_diagnostics` will run during
-                    // unwinding because of the `defer`.
-                    let mut guar = None;
-                    let sess_abort_guard = defer(|| {
-                        guar = compiler.sess.finish_diagnostics(&config.registry);
-                    });
+            // There are two paths out of `f`.
+            // - Normal exit.
+            // - Panic, e.g. triggered by `abort_if_errors`.
+            //
+            // We must run `finish_diagnostics` in both cases.
+            let res = {
+                // If `f` panics, `finish_diagnostics` will run during
+                // unwinding because of the `defer`.
+                let mut guar = None;
+                let sess_abort_guard = defer(|| {
+                    guar = compiler.sess.finish_diagnostics(&config.registry);
+                });
 
-                    let res = f(&compiler);
+                let res = f(&compiler);
 
-                    // If `f` doesn't panic, `finish_diagnostics` will run
-                    // normally when `sess_abort_guard` is dropped.
-                    drop(sess_abort_guard);
+                // If `f` doesn't panic, `finish_diagnostics` will run
+                // normally when `sess_abort_guard` is dropped.
+                drop(sess_abort_guard);
 
-                    // If `finish_diagnostics` emits errors (e.g. stashed
-                    // errors) we can't return an error directly, because the
-                    // return type of this function is `R`, not `Result<R, E>`.
-                    // But we need to communicate the errors' existence to the
-                    // caller, otherwise the caller might mistakenly think that
-                    // no errors occurred and return a zero exit code. So we
-                    // abort (panic) instead, similar to if `f` had panicked.
-                    if guar.is_some() {
-                        compiler.sess.dcx().abort_if_errors();
-                    }
-
-                    res
-                };
-
-                let prof = compiler.sess.prof.clone();
-                prof.generic_activity("drop_compiler").run(move || drop(compiler));
+                // If `finish_diagnostics` emits errors (e.g. stashed
+                // errors) we can't return an error directly, because the
+                // return type of this function is `R`, not `Result<R, E>`.
+                // But we need to communicate the errors' existence to the
+                // caller, otherwise the caller might mistakenly think that
+                // no errors occurred and return a zero exit code. So we
+                // abort (panic) instead, similar to if `f` had panicked.
+                if guar.is_some() {
+                    compiler.sess.dcx().abort_if_errors();
+                }
 
                 res
-            })
+            };
+
+            let prof = compiler.sess.prof.clone();
+            prof.generic_activity("drop_compiler").run(move || drop(compiler));
+
+            res
         },
     )
 }
