@@ -908,7 +908,7 @@ impl BoundVariableKind {
 /// e.g., `liberate_late_bound_regions`).
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable, Lift)]
 pub struct Binder<'tcx, T> {
     value: T,
