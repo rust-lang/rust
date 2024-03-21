@@ -1,10 +1,13 @@
 // miri has some special hacks here that make things unused.
 #![cfg_attr(miri, allow(unused))]
 
+#[cfg(test)]
+mod tests;
+
 use crate::os::unix::prelude::*;
 
 use crate::ffi::{CStr, OsStr, OsString};
-use crate::fmt;
+use crate::fmt::{self, Write as _};
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
@@ -354,7 +357,7 @@ pub struct DirEntry {
     entry: dirent64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct OpenOptions {
     // generic
     read: bool,
@@ -368,7 +371,7 @@ pub struct OpenOptions {
     mode: mode_t,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FilePermissions {
     mode: mode_t,
 }
@@ -381,7 +384,7 @@ pub struct FileTimes {
     created: Option<SystemTime>,
 }
 
-#[derive(Copy, Clone, Eq, Debug)]
+#[derive(Copy, Clone, Eq)]
 pub struct FileType {
     mode: mode_t,
 }
@@ -398,10 +401,11 @@ impl core::hash::Hash for FileType {
     }
 }
 
-#[derive(Debug)]
 pub struct DirBuilder {
     mode: mode_t,
 }
+
+struct Mode(mode_t);
 
 cfg_has_statx! {{
     impl FileAttr {
@@ -673,9 +677,23 @@ impl FileType {
     }
 }
 
+impl fmt::Debug for FileType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let FileType { mode } = self;
+        f.debug_struct("FileType").field("mode", &Mode(*mode)).finish()
+    }
+}
+
 impl FromInner<u32> for FilePermissions {
     fn from_inner(mode: u32) -> FilePermissions {
         FilePermissions { mode: mode as mode_t }
+    }
+}
+
+impl fmt::Debug for FilePermissions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let FilePermissions { mode } = self;
+        f.debug_struct("FilePermissions").field("mode", &Mode(*mode)).finish()
     }
 }
 
@@ -1116,6 +1134,23 @@ impl OpenOptions {
     }
 }
 
+impl fmt::Debug for OpenOptions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let OpenOptions { read, write, append, truncate, create, create_new, custom_flags, mode } =
+            self;
+        f.debug_struct("OpenOptions")
+            .field("read", read)
+            .field("write", write)
+            .field("append", append)
+            .field("truncate", truncate)
+            .field("create", create)
+            .field("create_new", create_new)
+            .field("custom_flags", custom_flags)
+            .field("mode", &Mode(*mode))
+            .finish()
+    }
+}
+
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         run_path_with_cstr(path, &|path| File::open_c(path, opts))
@@ -1402,6 +1437,13 @@ impl DirBuilder {
     }
 }
 
+impl fmt::Debug for DirBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let DirBuilder { mode } = self;
+        f.debug_struct("DirBuilder").field("mode", &Mode(*mode)).finish()
+    }
+}
+
 impl AsInner<FileDesc> for File {
     #[inline]
     fn as_inner(&self) -> &FileDesc {
@@ -1571,6 +1613,62 @@ impl fmt::Debug for File {
             b.field("read", &read).field("write", &write);
         }
         b.finish()
+    }
+}
+
+// Format in octal, followed by the mode format used in `ls -l`.
+//
+// References:
+//   https://pubs.opengroup.org/onlinepubs/009696899/utilities/ls.html
+//   https://www.gnu.org/software/libc/manual/html_node/Testing-File-Type.html
+//   https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
+//
+// Example:
+//   0o100664 (-rw-rw-r--)
+impl fmt::Debug for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self(mode) = self;
+        write!(f, "0o{mode:06o}")?;
+
+        let entry_type = match mode & libc::S_IFMT {
+            libc::S_IFDIR => 'd',
+            libc::S_IFBLK => 'b',
+            libc::S_IFCHR => 'c',
+            libc::S_IFLNK => 'l',
+            libc::S_IFIFO => 'p',
+            libc::S_IFREG => '-',
+            _ => return Ok(()),
+        };
+
+        f.write_str(" (")?;
+        f.write_char(entry_type)?;
+
+        // Owner permissions
+        f.write_char(if mode & libc::S_IRUSR != 0 { 'r' } else { '-' })?;
+        f.write_char(if mode & libc::S_IWUSR != 0 { 'w' } else { '-' })?;
+        f.write_char(match (mode & libc::S_IXUSR != 0, mode & libc::S_ISUID != 0) {
+            (true, true) => 's',  // executable and setuid
+            (false, true) => 'S', // setuid
+            (true, false) => 'x', // executable
+            (false, false) => '-',
+        })?;
+
+        // Group permissions
+        f.write_char(if mode & libc::S_IRGRP != 0 { 'r' } else { '-' })?;
+        f.write_char(if mode & libc::S_IWGRP != 0 { 'w' } else { '-' })?;
+        f.write_char(match (mode & libc::S_IXGRP != 0, mode & libc::S_ISGID != 0) {
+            (true, true) => 's',  // executable and setgid
+            (false, true) => 'S', // setgid
+            (true, false) => 'x', // executable
+            (false, false) => '-',
+        })?;
+
+        // Other permissions
+        f.write_char(if mode & libc::S_IROTH != 0 { 'r' } else { '-' })?;
+        f.write_char(if mode & libc::S_IWOTH != 0 { 'w' } else { '-' })?;
+        f.write_char(if mode & libc::S_IXOTH != 0 { 'x' } else { '-' })?;
+
+        f.write_char(')')
     }
 }
 
