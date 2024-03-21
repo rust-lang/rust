@@ -3,6 +3,7 @@ pub mod query;
 mod counters;
 mod graph;
 mod spans;
+mod mcdc;
 
 #[cfg(test)]
 mod tests;
@@ -99,6 +100,10 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
         bcb_has_coverage_spans,
         &coverage_counters,
     );
+
+    ////////////////////////////////////////////////////
+    // Add the MCDC instrumentation. This is a no-op if MCDC coverage is disabled.
+    mcdc::instrument_function_mcdc(tcx, mir_body);
 
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,

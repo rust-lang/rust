@@ -106,9 +106,18 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 "marker statement {kind:?} should have been removed by CleanupPostBorrowck"
             ),
             CoverageKind::MCDCBitmapRequire { needed_bytes } => {
-                // FIXME(dprn): TODO
-                let _ = needed_bytes;
-                warn!("call to correct intrinsic");
+                // We need to explicitly drop the `RefMut` before calling into `instrprof_mcdc_parameters`,
+                // as that needs an exclusive borrow.
+                drop(coverage_map);
+
+                let fn_name = bx.get_pgo_func_name_var(instance);
+                let hash = bx.const_u64(function_coverage_info.function_source_hash);
+                let num_bitmap_bytes = bx.const_u32(needed_bytes);
+                debug!(
+                    "codegen intrinsic instrprof.mcdc.parameters(fn_name={:?}, hash={:?}, bitmap_bytes={:?})",
+                    fn_name, hash, num_bitmap_bytes,
+                );
+                bx.instrprof_mcdc_parameters(fn_name, hash, num_bitmap_bytes);
             }
             CoverageKind::CounterIncrement { id } => {
                 func_coverage.mark_counter_id_seen(id);

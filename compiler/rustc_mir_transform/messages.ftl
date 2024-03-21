@@ -34,6 +34,8 @@ mir_transform_mutation_layout_constrained_borrow_label = borrow of layout constr
 mir_transform_mutation_layout_constrained_borrow_note = references to fields of layout constrained fields lose the constraints. Coupled with interior mutability, the field can be changed to invalid values
 mir_transform_mutation_layout_constrained_label = mutation of layout constrained field
 mir_transform_mutation_layout_constrained_note = mutating layout constrained fields cannot statically be checked for valid values
+mir_transform_mcdc_too_many_conditions = Unsupported MCDC Decision: Number of conditions ({$num_conditions}) exceeds max ({$max_conditions}). Expression will be skipped.
+
 mir_transform_operation_will_panic = this operation will panic at runtime
 
 mir_transform_requires_unsafe = {$details} is unsafe and requires unsafe {$op_in_unsafe_fn_allowed ->
