@@ -229,6 +229,7 @@ pub fn walk_pat<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     match &pat.kind {
         AscribeUserType { subpattern, ascription: _ }
         | Deref { subpattern }
+        | DerefPattern { subpattern }
         | Binding {
             subpattern: Some(subpattern),
             mutability: _,

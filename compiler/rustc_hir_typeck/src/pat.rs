@@ -18,8 +18,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Span;
-use rustc_span::{BytePos, DUMMY_SP};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
 use ty::VariantDef;
@@ -210,6 +209,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             PatKind::Tuple(elements, ddpos) => {
                 self.check_pat_tuple(pat.span, elements, ddpos, expected, pat_info)
+            }
+            PatKind::Box(inner) if self.tcx.features().deref_patterns => {
+                self.check_pat_deref(pat.span, inner, expected, pat_info)
             }
             PatKind::Box(inner) => self.check_pat_box(pat.span, inner, expected, pat_info),
             PatKind::Ref(inner, mutbl) => self.check_pat_ref(pat, inner, mutbl, expected, pat_info),
@@ -1973,6 +1975,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         self.check_pat(inner, inner_ty, pat_info);
         box_ty
+    }
+
+    fn check_pat_deref(
+        &self,
+        span: Span,
+        inner: &'tcx Pat<'tcx>,
+        expected: Ty<'tcx>,
+        pat_info: PatInfo<'tcx, '_>,
+    ) -> Ty<'tcx> {
+        let tcx = self.tcx;
+        // FIXME(deref_patterns): use `DerefPure` for soundness
+        // FIXME(deref_patterns): use `DerefMut` when required
+        // <expected as Deref>::Target
+        let ty = Ty::new_projection(
+            tcx,
+            tcx.require_lang_item(hir::LangItem::DerefTarget, Some(span)),
+            [expected],
+        );
+        let ty = self.normalize(span, ty);
+        let ty = self.try_structurally_resolve_type(span, ty);
+        self.check_pat(inner, ty, pat_info);
+        expected
     }
 
     // Precondition: Pat is Ref(inner)

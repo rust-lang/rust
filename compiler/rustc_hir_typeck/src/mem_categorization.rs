@@ -719,6 +719,12 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 self.cat_pattern_(place_with_id, subpat, op)?;
             }
 
+            PatKind::Box(subpat) if self.infcx.tcx.features().deref_patterns => {
+                let ty = self.pat_ty_adjusted(pat)?;
+                // A deref pattern generates a temporary.
+                let place = self.cat_rvalue(pat.hir_id, ty);
+                self.cat_pattern_(place, subpat, op)?;
+            }
             PatKind::Box(subpat) | PatKind::Ref(subpat, _) => {
                 // box p1, &p1, &mut p1. we can ignore the mutability of
                 // PatKind::Ref since that information is already contained

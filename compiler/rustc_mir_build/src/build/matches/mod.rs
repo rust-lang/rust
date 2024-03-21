@@ -5,7 +5,7 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
-use crate::build::expr::as_place::PlaceBuilder;
+use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::build::scope::DropKind;
 use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
@@ -213,12 +213,77 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// ## False edges
     ///
-    /// We don't want to have the exact structure of the decision tree be
-    /// visible through borrow checking. False edges ensure that the CFG as
-    /// seen by borrow checking doesn't encode this. False edges are added:
+    /// We don't want to have the exact structure of the decision tree be visible through borrow
+    /// checking. Specifically we want borrowck to think that:
+    /// - at any point, any or none of the patterns and guards seen so far may have been tested;
+    /// - after the match, any of the patterns may have matched.
     ///
-    /// * From each pre-binding block to the next pre-binding block.
-    /// * From each otherwise block to the next pre-binding block.
+    /// For example, all of these would fail to error if borrowck could see the real CFG (examples
+    /// taken from `tests/ui/nll/match-cfg-fake-edges.rs`):
+    /// ```ignore (too many errors, this is already in the test suite)
+    /// let x = String::new();
+    /// let _ = match true {
+    ///     _ => {},
+    ///     _ => drop(x),
+    /// };
+    /// // Borrowck must not know the second arm is never run.
+    /// drop(x); //~ ERROR use of moved value
+    ///
+    /// let x;
+    /// # let y = true;
+    /// match y {
+    ///     _ if { x = 2; true } => {},
+    ///     // Borrowck must not know the guard is always run.
+    ///     _ => drop(x), //~ ERROR used binding `x` is possibly-uninitialized
+    /// };
+    ///
+    /// let x = String::new();
+    /// # let y = true;
+    /// match y {
+    ///     false if { drop(x); true } => {},
+    ///     // Borrowck must not know the guard is not run in the `true` case.
+    ///     true => drop(x), //~ ERROR use of moved value: `x`
+    ///     false => {},
+    /// };
+    ///
+    /// # let mut y = (true, true);
+    /// let r = &mut y.1;
+    /// match y {
+    ///     //~^ ERROR cannot use `y.1` because it was mutably borrowed
+    ///     (false, true) => {}
+    ///     // Borrowck must not know we don't test `y.1` when `y.0` is `true`.
+    ///     (true, _) => drop(r),
+    ///     (false, _) => {}
+    /// };
+    /// ```
+    ///
+    /// We add false edges to act as if we were naively matching each arm in order. What we need is
+    /// a (fake) path from each candidate to the next, specifically from candidate C's pre-binding
+    /// block to next candidate D's pre-binding block. For maximum precision (needed for deref
+    /// patterns), we choose the earliest node on D's success path that doesn't also lead to C (to
+    /// avoid loops).
+    ///
+    /// This turns out to be easy to compute: that block is the `start_block` of the first call to
+    /// `match_candidates` where D is the first candidate in the list.
+    ///
+    /// For example:
+    /// ```rust
+    /// # let (x, y) = (true, true);
+    /// match (x, y) {
+    ///   (true, true) => 1,
+    ///   (false, true) => 2,
+    ///   (true, false) => 3,
+    ///   _ => 4,
+    /// }
+    /// # ;
+    /// ```
+    /// In this example, the pre-binding block of arm 1 has a false edge to the block for result
+    /// `false` of the first test on `x`. The other arms have false edges to the pre-binding blocks
+    /// of the next arm.
+    ///
+    /// On top of this, we also add a false edge from the otherwise_block of each guard to the
+    /// aforementioned start block of the next candidate, to ensure borrock doesn't rely on which
+    /// guards may have run.
     #[instrument(level = "debug", skip(self, arms))]
     pub(crate) fn match_expr(
         &mut self,
@@ -364,14 +429,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for candidate in candidates {
             candidate.visit_leaves(|leaf_candidate| {
                 if let Some(ref mut prev) = previous_candidate {
-                    prev.next_candidate_pre_binding_block = leaf_candidate.pre_binding_block;
+                    assert!(leaf_candidate.false_edge_start_block.is_some());
+                    prev.next_candidate_start_block = leaf_candidate.false_edge_start_block;
                 }
                 previous_candidate = Some(leaf_candidate);
             });
         }
 
         if let Some(ref borrows) = fake_borrows {
-            self.calculate_fake_borrows(borrows, scrutinee_span)
+            self.calculate_fake_borrows(borrows, scrutinee_place_builder.base(), scrutinee_span)
         } else {
             Vec::new()
         }
@@ -484,7 +550,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // candidate.
             self.bind_and_guard_matched_candidate(
                 candidate,
-                &[],
+                &mut vec![],
                 fake_borrow_temps,
                 scrutinee_span,
                 arm_match_scope,
@@ -515,13 +581,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             traverse_candidate(
                 candidate,
                 &mut Vec::new(),
-                &mut |leaf_candidate, parent_data| {
+                &mut |leaf_candidate, collected_data| {
                     if let Some(arm) = arm {
                         self.clear_top_scope(arm.scope);
                     }
                     let binding_end = self.bind_and_guard_matched_candidate(
                         leaf_candidate,
-                        parent_data,
+                        collected_data,
                         fake_borrow_temps,
                         scrutinee_span,
                         arm_match_scope,
@@ -533,12 +599,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     self.cfg.goto(binding_end, outer_source_info, target_block);
                 },
-                |inner_candidate, parent_data| {
-                    parent_data.push(inner_candidate.extra_data);
+                |inner_candidate, collected_data| {
+                    collected_data.push(inner_candidate.extra_data);
                     inner_candidate.subcandidates.into_iter()
                 },
-                |parent_data| {
-                    parent_data.pop();
+                |collected_data| {
+                    collected_data.pop();
                 },
             );
 
@@ -879,6 +945,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.visit_primary_bindings(subpattern, pattern_user_ty.deref(), f);
             }
 
+            PatKind::DerefPattern { ref subpattern } => {
+                self.visit_primary_bindings(subpattern, UserTypeProjections::none(), f);
+            }
+
             PatKind::AscribeUserType {
                 ref subpattern,
                 ascription: thir::Ascription { ref annotation, variance: _ },
@@ -935,7 +1005,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
 /// Data extracted from a pattern that doesn't affect which branch is taken. Collected during
 /// pattern simplification and not mutated later.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct PatternExtraData<'tcx> {
     /// [`Span`] of the original pattern.
     span: Span,
@@ -949,6 +1019,7 @@ struct PatternExtraData<'tcx> {
 
 impl<'tcx> PatternExtraData<'tcx> {
     fn is_empty(&self) -> bool {
+        // FIXME(deref_patterns): can we merge trivial subcandidates that use deref patterns?
         self.bindings.is_empty() && self.ascriptions.is_empty()
     }
 }
@@ -1002,10 +1073,18 @@ struct Candidate<'pat, 'tcx> {
     /// If the candidate matches, bindings and ascriptions must be established.
     extra_data: PatternExtraData<'tcx>,
 
+    /// If we filled `self.subcandidate`, we store here the span of the or-pattern they came from.
+    // Invariant: it is `None` iff `subcandidates.is_empty()`.
+    or_span: Option<Span>,
+
     /// The block before the `bindings` have been established.
     pre_binding_block: Option<BasicBlock>,
-    /// The pre-binding block of the next candidate.
-    next_candidate_pre_binding_block: Option<BasicBlock>,
+
+    /// The earliest block that has only candidates >= this one as descendents. Used for false
+    /// edges, see the doc for [`Builder::match_expr`].
+    false_edge_start_block: Option<BasicBlock>,
+    /// The `false_edge_start_block` of the next candidate.
+    next_candidate_start_block: Option<BasicBlock>,
 }
 
 impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
@@ -1024,9 +1103,11 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
             extra_data: flat_pat.extra_data,
             has_guard,
             subcandidates: Vec::new(),
+            or_span: None,
             otherwise_block: None,
             pre_binding_block: None,
-            next_candidate_pre_binding_block: None,
+            false_edge_start_block: None,
+            next_candidate_start_block: None,
         }
     }
 
@@ -1090,6 +1171,7 @@ enum TestCase<'pat, 'tcx> {
     Constant { value: mir::Const<'tcx> },
     Range(&'pat PatRange<'tcx>),
     Slice { len: usize, variable_length: bool },
+    Deref { temp: Place<'tcx> },
     Or { pats: Box<[FlatPat<'pat, 'tcx>]> },
 }
 
@@ -1146,6 +1228,12 @@ enum TestKind<'tcx> {
 
     /// Test that the length of the slice is equal to `len`.
     Len { len: u64, op: BinOp },
+
+    /// Call `Deref::deref` on the value.
+    Deref {
+        /// Temporary to store the result of `deref()`.
+        temp: Place<'tcx>,
+    },
 }
 
 /// A test to perform to determine which [`Candidate`] matches a value.
@@ -1260,9 +1348,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let mut split_or_candidate = false;
         for candidate in &mut *candidates {
-            if let [MatchPair { test_case: TestCase::Or { pats, .. }, .. }] =
-                &*candidate.match_pairs
-            {
+            if let [MatchPair { test_case: TestCase::Or { .. }, .. }] = &*candidate.match_pairs {
                 // Split a candidate in which the only match-pair is an or-pattern into multiple
                 // candidates. This is so that
                 //
@@ -1272,8 +1358,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // }
                 //
                 // only generates a single switch.
-                candidate.subcandidates = self.create_or_subcandidates(pats, candidate.has_guard);
-                candidate.match_pairs.pop();
+                let match_pair = candidate.match_pairs.pop().unwrap();
+                self.create_or_subcandidates(candidate, match_pair);
                 split_or_candidate = true;
             }
         }
@@ -1283,17 +1369,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // At least one of the candidates has been split into subcandidates.
                 // We need to change the candidate list to include those.
                 let mut new_candidates = Vec::new();
-
-                for candidate in candidates {
+                for candidate in candidates.iter_mut() {
                     candidate.visit_leaves(|leaf_candidate| new_candidates.push(leaf_candidate));
                 }
-                self.match_simplified_candidates(
+                self.match_candidates(
                     span,
                     scrutinee_span,
                     start_block,
                     otherwise_block,
                     &mut *new_candidates,
                 );
+
+                for candidate in candidates {
+                    self.merge_trivial_subcandidates(candidate);
+                }
             } else {
                 self.match_simplified_candidates(
                     span,
@@ -1314,6 +1403,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
     ) {
+        if let [first, ..] = candidates {
+            if first.false_edge_start_block.is_none() {
+                first.false_edge_start_block = Some(start_block);
+            }
+        }
+
         match candidates {
             [] => {
                 // If there are no candidates that still need testing, we're done. Since all matches are
@@ -1458,14 +1553,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return;
         }
 
-        let match_pairs = mem::take(&mut first_candidate.match_pairs);
-        let (first_match_pair, remaining_match_pairs) = match_pairs.split_first().unwrap();
-        let TestCase::Or { ref pats } = &first_match_pair.test_case else { unreachable!() };
-
+        let first_match_pair = first_candidate.match_pairs.remove(0);
+        let remaining_match_pairs = mem::take(&mut first_candidate.match_pairs);
         let remainder_start = self.cfg.start_new_block();
-        let or_span = first_match_pair.pattern.span;
         // Test the alternatives of this or-pattern.
-        self.test_or_pattern(first_candidate, start_block, remainder_start, pats, or_span);
+        self.test_or_pattern(first_candidate, start_block, remainder_start, first_match_pair);
 
         if !remaining_match_pairs.is_empty() {
             // If more match pairs remain, test them after each subcandidate.
@@ -1500,25 +1592,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
     }
 
-    #[instrument(
-        skip(self, start_block, otherwise_block, or_span, candidate, pats),
-        level = "debug"
-    )]
+    #[instrument(skip(self, start_block, otherwise_block, candidate, match_pair), level = "debug")]
     fn test_or_pattern<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
         start_block: BasicBlock,
         otherwise_block: BasicBlock,
-        pats: &[FlatPat<'pat, 'tcx>],
-        or_span: Span,
+        match_pair: MatchPair<'pat, 'tcx>,
     ) {
-        debug!("candidate={:#?}\npats={:#?}", candidate, pats);
-        let mut or_candidates: Vec<_> = pats
-            .iter()
-            .cloned()
-            .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
-            .collect();
-        let mut or_candidate_refs: Vec<_> = or_candidates.iter_mut().collect();
+        let or_span = match_pair.pattern.span;
+        self.create_or_subcandidates(candidate, match_pair);
+        let mut or_candidate_refs: Vec<_> = candidate.subcandidates.iter_mut().collect();
         self.match_candidates(
             or_span,
             or_span,
@@ -1526,39 +1610,53 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             otherwise_block,
             &mut or_candidate_refs,
         );
-        candidate.subcandidates = or_candidates;
-        self.merge_trivial_subcandidates(candidate, self.source_info(or_span));
+        self.merge_trivial_subcandidates(candidate);
     }
 
-    /// Try to merge all of the subcandidates of the given candidate into one.
-    /// This avoids exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`.
-    fn merge_trivial_subcandidates(
+    /// Given a match-pair that corresponds to an or-pattern, expand each subpattern into a new
+    /// subcandidate. Any candidate that has been expanded that way should be passed to
+    /// `merge_trivial_subcandidates` after its subcandidates have been processed.
+    fn create_or_subcandidates<'pat>(
         &mut self,
-        candidate: &mut Candidate<'_, 'tcx>,
-        source_info: SourceInfo,
+        candidate: &mut Candidate<'pat, 'tcx>,
+        match_pair: MatchPair<'pat, 'tcx>,
     ) {
+        let TestCase::Or { pats } = match_pair.test_case else { bug!() };
+        debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
+        candidate.or_span = Some(match_pair.pattern.span);
+        candidate.subcandidates = pats
+            .into_vec()
+            .into_iter()
+            .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
+            .collect();
+        candidate.subcandidates[0].false_edge_start_block = candidate.false_edge_start_block;
+    }
+
+    /// Try to merge all of the subcandidates of the given candidate into one. This avoids
+    /// exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`. The or-pattern should have
+    /// been expanded with `create_or_subcandidates`.
+    fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
         if candidate.subcandidates.is_empty() || candidate.has_guard {
             // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
             return;
         }
 
-        let mut can_merge = true;
-
-        // Not `Iterator::all` because we don't want to short-circuit.
-        for subcandidate in &mut candidate.subcandidates {
-            self.merge_trivial_subcandidates(subcandidate, source_info);
-
-            // FIXME(or_patterns; matthewjasper) Try to be more aggressive here.
-            can_merge &=
-                subcandidate.subcandidates.is_empty() && subcandidate.extra_data.is_empty();
-        }
-
+        // FIXME(or_patterns; matthewjasper) Try to be more aggressive here.
+        let can_merge = candidate.subcandidates.iter().all(|subcandidate| {
+            subcandidate.subcandidates.is_empty() && subcandidate.extra_data.is_empty()
+        });
         if can_merge {
             let any_matches = self.cfg.start_new_block();
+            let source_info = self.source_info(candidate.or_span.unwrap());
+            if candidate.false_edge_start_block.is_none() {
+                candidate.false_edge_start_block =
+                    candidate.subcandidates[0].false_edge_start_block;
+            }
             for subcandidate in mem::take(&mut candidate.subcandidates) {
                 let or_block = subcandidate.pre_binding_block.unwrap();
                 self.cfg.goto(or_block, source_info, any_matches);
             }
+            candidate.or_span = None;
             candidate.pre_binding_block = Some(any_matches);
         }
     }
@@ -1845,6 +1943,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn calculate_fake_borrows<'b>(
         &mut self,
         fake_borrows: &'b FxIndexSet<Place<'tcx>>,
+        scrutinee_base: PlaceBase,
         temp_span: Span,
     ) -> Vec<(Place<'tcx>, Local)> {
         let tcx = self.tcx;
@@ -1855,6 +1954,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Insert a Shallow borrow of the prefixes of any fake borrows.
         for place in fake_borrows {
+            if let PlaceBase::Local(l) = scrutinee_base
+                && l != place.local
+            {
+                // The base of this place is a temporary created for deref patterns. We don't emit
+                // fake borrows for these as they are not initialized in all branches.
+                // FIXME(deref_patterns): does this allow for subtle bugs?
+                continue;
+            }
+
             let mut cursor = place.projection.as_ref();
             while let [proj_base @ .., elem] = cursor {
                 cursor = proj_base;
@@ -1957,7 +2065,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bind_and_guard_matched_candidate<'pat>(
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
-        parent_data: &[PatternExtraData<'tcx>],
+        // Manage in a stack fashion.
+        collected_data: &mut Vec<PatternExtraData<'tcx>>,
         fake_borrows: &[(Place<'tcx>, Local)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
@@ -1969,28 +2078,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug_assert!(candidate.match_pairs.is_empty());
 
         let candidate_source_info = self.source_info(candidate.extra_data.span);
+        collected_data.push(candidate.extra_data);
 
         let mut block = candidate.pre_binding_block.unwrap();
 
-        if candidate.next_candidate_pre_binding_block.is_some() {
+        if candidate.next_candidate_start_block.is_some() {
             let fresh_block = self.cfg.start_new_block();
             self.false_edges(
                 block,
                 fresh_block,
-                candidate.next_candidate_pre_binding_block,
+                candidate.next_candidate_start_block,
                 candidate_source_info,
             );
             block = fresh_block;
         }
 
-        self.ascribe_types(
-            block,
-            parent_data
-                .iter()
-                .flat_map(|d| &d.ascriptions)
-                .cloned()
-                .chain(candidate.extra_data.ascriptions),
-        );
+        self.ascribe_types(block, collected_data.iter().flat_map(|d| &d.ascriptions).cloned());
 
         // rust-lang/rust#27282: The `autoref` business deserves some
         // explanation here.
@@ -2073,12 +2176,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //      the reference that we create for the arm.
         //    * So we eagerly create the reference for the arm and then take a
         //      reference to that.
-        if let Some((arm, match_scope)) = arm_match_scope
+        let block = if let Some((arm, match_scope)) = arm_match_scope
             && let Some(guard) = arm.guard
         {
             let tcx = self.tcx;
-            let bindings =
-                parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings);
+            let bindings = collected_data.iter().flat_map(|d| &d.bindings);
 
             self.bind_matched_candidate_for_guard(block, schedule_drops, bindings.clone());
             let guard_frame = GuardFrame {
@@ -2126,7 +2228,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.false_edges(
                 otherwise_post_guard_block,
                 otherwise_block,
-                candidate.next_candidate_pre_binding_block,
+                candidate.next_candidate_start_block,
                 source_info,
             );
 
@@ -2156,10 +2258,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // ```
             //
             // and that is clearly not correct.
-            let by_value_bindings = parent_data
+            let by_value_bindings = collected_data
                 .iter()
                 .flat_map(|d| &d.bindings)
-                .chain(&candidate.extra_data.bindings)
                 .filter(|binding| matches!(binding.binding_mode, BindingMode::ByValue));
             // Read all of the by reference bindings to ensure that the
             // place they refer to can't be modified by the guard.
@@ -2184,11 +2285,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.bind_matched_candidate_for_arm_body(
                 block,
                 schedule_drops,
-                parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings),
+                collected_data.iter().flat_map(|d| &d.bindings),
                 storages_alive,
             );
             block
-        }
+        };
+        collected_data.pop();
+        block
     }
 
     /// Append `AscribeUserType` statements onto the end of `block`

@@ -1,0 +1,54 @@
+error[E0308]: mismatched types
+  --> $DIR/typeck_fail.rs:10:13
+   |
+LL |     match "foo".to_string() {
+   |           ----------------- this expression has type `String`
+LL |         box "foo" => {}
+   |             ^^^^^ expected `str`, found `&str`
+
+error[E0308]: mismatched types
+  --> $DIR/typeck_fail.rs:15:13
+   |
+LL |     match &"foo".to_string() {
+   |           ------------------ this expression has type `&String`
+LL |         box "foo" => {}
+   |             ^^^^^ expected `str`, found `&str`
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/typeck_fail.rs:24:11
+   |
+LL |     match b {
+   |           ^
+LL |
+LL |         box x => x,
+   |             -
+   |             |
+   |             data moved here
+   |             move occurs because `x` has type `Struct`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         box ref x => x,
+   |             +++
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/typeck_fail.rs:32:11
+   |
+LL |     match rc {
+   |           ^^
+LL |
+LL |         box x => x,
+   |             -
+   |             |
+   |             data moved here
+   |             move occurs because `x` has type `Struct`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         box ref x => x,
+   |             +++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0507.
+For more information about an error, try `rustc --explain E0308`.

@@ -48,7 +48,7 @@ fn main() -> () {
     }
 
     bb2: {
-        falseEdge -> [real: bb15, imaginary: bb6];
+        falseEdge -> [real: bb15, imaginary: bb3];
     }
 
     bb3: {
