@@ -18,7 +18,6 @@ use rustc_span::symbol::sym;
 use rustc_target::abi::{ReprOptions, VariantIdx, FIRST_VARIANT};
 
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::str;
@@ -102,20 +101,6 @@ pub struct AdtDefData {
     repr: ReprOptions,
 }
 
-impl PartialOrd for AdtDefData {
-    fn partial_cmp(&self, other: &AdtDefData) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-/// There should be only one AdtDef for each `did`, therefore
-/// it is fine to implement `Ord` only based on `did`.
-impl Ord for AdtDefData {
-    fn cmp(&self, other: &AdtDefData) -> Ordering {
-        self.did.cmp(&other.did)
-    }
-}
-
 impl PartialEq for AdtDefData {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -180,7 +165,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct AdtDef<'tcx>(pub Interned<'tcx, AdtDefData>);
 
