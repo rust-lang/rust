@@ -80,7 +80,7 @@ help: use `impl Foo` to return an opaque type, as long as you return a single un
    |
 LL | fn bar(x: Foo) -> impl Foo {
    |                   ++++
-help: alternatively, you can return an owned trait object
+help: alternatively, you can return a boxed trait object
    |
 LL | fn bar(x: Foo) -> Box<dyn Foo> {
    |                   +++++++    +

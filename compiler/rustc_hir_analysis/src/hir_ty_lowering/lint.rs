@@ -204,7 +204,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             diag.multipart_suggestion_verbose(msg, impl_sugg, Applicability::MachineApplicable);
             if is_object_safe {
                 diag.multipart_suggestion_verbose(
-                    "alternatively, you can return an owned trait object",
+                    "alternatively, you can return a boxed trait object",
                     vec![
                         (ty.span.shrink_to_lo(), "Box<dyn ".to_string()),
                         (ty.span.shrink_to_hi(), ">".to_string()),

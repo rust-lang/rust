@@ -48,25 +48,50 @@ help: alternatively, consider constraining `foo` so it does not apply to trait o
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++
 
+error[E0038]: the trait `NotObjectSafe` cannot be made into an object
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:36:18
+   |
+LL | fn can(x: &A) -> dyn NotObjectSafe {
+   |                  ^^^^^^^^^^^^^^^^^ `NotObjectSafe` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:3:8
+   |
+LL | trait NotObjectSafe {
+   |       ------------- this trait cannot be made into an object...
+LL |     fn foo() -> Self;
+   |        ^^^ ...because associated function `foo` has no `self` parameter
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `NotObjectSafe` for this new enum and using it instead:
+             A
+             B
+help: consider turning `foo` into a method by giving it a `&self` argument
+   |
+LL |     fn foo(&self) -> Self;
+   |            +++++
+help: alternatively, consider constraining `foo` so it does not apply to trait objects
+   |
+LL |     fn foo() -> Self where Self: Sized;
+   |                      +++++++++++++++++
+
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:21:13
    |
 LL | fn car() -> dyn NotObjectSafe {
    |             ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+help: the returned values do not all have the same type, so `impl Trait` can't be used
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:24:16
    |
-LL | fn car() -> impl NotObjectSafe {
-   |             ~~~~
-help: box the return type, and wrap all of the returned values in `Box::new`
-   |
-LL ~ fn car() -> Box<dyn NotObjectSafe> {
-LL |
-LL |     if true {
-LL ~         return Box::new(A);
+LL |         return A;
+   |                ^ this returned value has type `A`
 LL |     }
-LL ~     Box::new(B)
+LL |     B
+   |     ^ this returned value has type `B`
+help: trait `NotObjectSafe` is not object safe, so you can't return a boxed trait object `Box<dyn NotObjectSafe>`
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:21:17
    |
+LL | fn car() -> dyn NotObjectSafe {
+   |                 ^^^^^^^^^^^^^
 
 error[E0038]: the trait `NotObjectSafe` cannot be made into an object
   --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:31:16
@@ -120,7 +145,27 @@ help: alternatively, consider constraining `foo` so it does not apply to trait o
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++
 
-error: aborting due to 5 previous errors
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:36:18
+   |
+LL | fn can(x: &A) -> dyn NotObjectSafe {
+   |                  ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: trait `NotObjectSafe` is not object safe, so you can't return a boxed trait object `Box<dyn NotObjectSafe>`
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:36:22
+   |
+LL | fn can(x: &A) -> dyn NotObjectSafe {
+   |                      ^^^^^^^^^^^^^
+help: return an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn can(x: &A) -> impl NotObjectSafe {
+   |                  ~~~~
+help: alternatively, you might be able to borrow from the function's argument
+   |
+LL | fn can(x: &A) -> &dyn NotObjectSafe {
+   |                  +
+
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0038, E0746.
 For more information about an error, try `rustc --explain E0038`.

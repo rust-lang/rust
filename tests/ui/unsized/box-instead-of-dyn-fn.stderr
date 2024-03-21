@@ -4,17 +4,21 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn print_on_or_the_other<'a>(a: i32, b: &'a String) -> dyn Fn() + 'a {
    |                                                        ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn print_on_or_the_other<'a>(a: i32, b: &'a String) -> impl Fn() + 'a {
    |                                                        ~~~~
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: alternatively, box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn print_on_or_the_other<'a>(a: i32, b: &'a String) -> Box<dyn Fn() + 'a> {
 LL |
 LL |     if a % 2 == 0 {
 LL ~         Box::new(move || println!("{a}"))
    |
+help: finally, you might be able to borrow from the function's argument
+   |
+LL | fn print_on_or_the_other<'a>(a: i32, b: &'a String) -> &dyn Fn() + 'a {
+   |                                                        +
 
 error: aborting due to 1 previous error
 

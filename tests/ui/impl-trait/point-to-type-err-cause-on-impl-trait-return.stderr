@@ -171,11 +171,11 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn hat() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn hat() -> impl std::fmt::Display {
    |             ~~~~
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: alternatively, box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn hat() -> Box<dyn std::fmt::Display> {
 LL |     match 13 {
@@ -192,11 +192,11 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn pug() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn pug() -> impl std::fmt::Display {
    |             ~~~~
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: alternatively, box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn pug() -> Box<dyn std::fmt::Display> {
 LL |     match 13 {
@@ -211,11 +211,15 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn man() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+help: the returned values do not all have the same type, so `impl Trait` can't be used
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:87:9
    |
-LL | fn man() -> impl std::fmt::Display {
-   |             ~~~~
-help: box the return type, and wrap all of the returned values in `Box::new`
+LL |         0i32
+   |         ^^^^ this returned value has type `i32`
+LL |     } else {
+LL |         1u32
+   |         ^^^^ this returned value has type `u32`
+help: box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn man() -> Box<dyn std::fmt::Display> {
 LL |     if false {

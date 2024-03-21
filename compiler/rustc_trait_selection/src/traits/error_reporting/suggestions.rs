@@ -10,6 +10,7 @@ use crate::infer::InferCtxt;
 use crate::traits::{ImplDerivedObligationCause, NormalizeExt, ObligationCtxt};
 
 use hir::def::CtorOf;
+use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
@@ -1791,27 +1792,90 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         err.primary_message("return type cannot have an unboxed trait object");
         err.children.clear();
 
-        let span = obligation.cause.span;
-        if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span)
-            && snip.starts_with("dyn ")
-        {
-            err.span_suggestion(
-                span.with_hi(span.lo() + BytePos(4)),
-                "return an `impl Trait` instead of a `dyn Trait`, \
-                if all returned values are the same type",
-                "impl ",
-                Applicability::MaybeIncorrect,
-            );
-        }
-
         let body = self.tcx.hir().body(self.tcx.hir().body_owned_by(obligation.cause.body_id));
 
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(body);
 
-        let mut sugg =
-            vec![(span.shrink_to_lo(), "Box<".to_string()), (span.shrink_to_hi(), ">".to_string())];
-        sugg.extend(visitor.returns.into_iter().flat_map(|expr| {
+        let fn_id = self.tcx.hir().body_owner(body.id());
+        let Some(fn_decl) = self.tcx.hir_node(fn_id).fn_decl() else {
+            return false;
+        };
+        let hir::FnRetTy::Return(hir::Ty {
+            kind: hir::TyKind::TraitObject(traits @ [tr, ..], _lt, syn),
+            span,
+            ..
+        }) = fn_decl.output
+        else {
+            return false;
+        };
+
+        // Suggest `-> impl Trait`
+        let ret_tys = if let Some(typeck) = &self.typeck_results {
+            visitor
+                .returns
+                .iter()
+                .filter_map(|expr| typeck.node_type_opt(expr.hir_id).map(|ty| (expr, ty)))
+                .collect()
+        } else {
+            vec![]
+        };
+
+        // FIXME: account for `impl` assoc `fn`, where suggesting `Box<dyn Trait>` if `impl Trait`
+        // is expected is ok, but suggesting `impl Trait` where `Box<dyn Trait>` is expected is not.
+        // FIXME: account for the case where `-> dyn Trait` but the returned value is
+        // `Box<dyn Trait>`, like in `tests/ui/unsized/issue-91801.rs`.
+
+        let mut all_same_ty = true;
+        let mut prev_ty = None;
+        for (_, ty) in &ret_tys {
+            if let Some(prev_ty) = prev_ty {
+                if prev_ty != ty {
+                    all_same_ty = false;
+                    break;
+                }
+            } else {
+                prev_ty = Some(ty);
+            }
+        }
+        let mut alternatively = "";
+        if all_same_ty || visitor.returns.len() == 1 {
+            // We're certain that `impl Trait` will work.
+            err.span_suggestion_verbose(
+                // This will work for both `Dyn` and `None` object syntax.
+                span.until(tr.span),
+                "return an `impl Trait` instead of a `dyn Trait`",
+                "impl ",
+                Applicability::MachineApplicable,
+            );
+            alternatively = "alternatively, ";
+        } else {
+            let mut span: MultiSpan =
+                ret_tys.iter().map(|(expr, _)| expr.span).collect::<Vec<Span>>().into();
+            for (expr, ty) in &ret_tys {
+                span.push_span_label(expr.span, format!("this returned value has type `{ty}`"));
+            }
+
+            err.span_help(
+                span,
+                format!(
+                    "the returned values do not all have the same type, so `impl Trait` can't be \
+                     used",
+                ),
+            );
+        }
+
+        // Suggest `-> Box<dyn Trait>`
+        let pre = match syn {
+            TraitObjectSyntax::None => "dyn ",
+            _ => "",
+        };
+        let mut sugg = vec![
+            (span.shrink_to_lo(), format!("Box<{pre}")),
+            (span.shrink_to_hi(), ">".to_string()),
+        ];
+
+        sugg.extend(visitor.returns.iter().flat_map(|expr| {
             let span =
                 expr.span.find_ancestor_in_same_ctxt(obligation.cause.span).unwrap_or(expr.span);
             if !span.can_be_used_for_suggestions() {
@@ -1835,11 +1899,77 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }));
 
-        err.multipart_suggestion(
-            "box the return type, and wrap all of the returned values in `Box::new`",
-            sugg,
-            Applicability::MaybeIncorrect,
-        );
+        let object_unsafe: Vec<_> = traits
+            .iter()
+            .filter_map(|tr| {
+                tr.trait_ref
+                    .path
+                    .res
+                    .opt_def_id()
+                    .filter(|def_id| !self.tcx.object_safety_violations(def_id).is_empty())
+                    .map(|def_id| (def_id, tr.span))
+            })
+            .collect();
+        if !object_unsafe.is_empty() {
+            let span: MultiSpan =
+                object_unsafe.iter().map(|(_, sp)| *sp).collect::<Vec<Span>>().into();
+            err.span_help(
+                span,
+                format!(
+                    "{} not object safe, so you can't return a boxed trait object `{}`",
+                    if let [(def_id, _)] = &object_unsafe[..] {
+                        format!("trait `{}` is", self.tcx.def_path_str(*def_id))
+                    } else {
+                        "the following traits are".to_string()
+                    },
+                    format!(
+                        "Box<dyn {}>",
+                        object_unsafe
+                            .iter()
+                            .map(|(def_id, _)| self.tcx.def_path_str(*def_id))
+                            .collect::<Vec<_>>()
+                            .join(" + ")
+                    ),
+                ),
+            );
+        } else {
+            err.multipart_suggestion(
+                format!(
+                    "{alternatively}box the return type to make a boxed trait object, and wrap \
+                     all of the returned values in `Box::new`",
+                ),
+                sugg,
+                Applicability::MaybeIncorrect,
+            );
+            alternatively = if alternatively.is_empty() { "alternatively, " } else { "finally, " };
+        }
+
+        // Suggest `-> &dyn Trait`
+        let borrow_input_tys: Vec<_> = fn_decl
+            .inputs
+            .iter()
+            .filter(|hir_ty| matches!(hir_ty.kind, hir::TyKind::Ref(..)))
+            .collect();
+        if !borrow_input_tys.is_empty() {
+            // Maybe returning a `&dyn Trait` borrowing from an argument might be ok?
+            err.span_suggestion_verbose(
+                // This will work for both `Dyn` and `None` object syntax.
+                span.shrink_to_lo(),
+                format!(
+                    "{alternatively}you might be able to borrow from {}",
+                    if borrow_input_tys.len() == 1 {
+                        "the function's argument"
+                    } else {
+                        "one of the function's arguments"
+                    },
+                ),
+                match syn {
+                    TraitObjectSyntax::None => "&dyn ",
+                    _ => "&",
+                },
+                Applicability::MachineApplicable,
+            );
+        }
 
         true
     }
