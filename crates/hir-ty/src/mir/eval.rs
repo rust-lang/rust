@@ -1710,7 +1710,14 @@ impl Evaluator<'_> {
             }
             ConstScalar::Unknown => not_supported!("evaluating unknown const"),
         };
-        let patch_map = memory_map.transform_addresses(|b, align| {
+        let patch_map = memory_map.transform_addresses(|b, mut align| {
+            // Prevent recursive addresses is adts and slices
+            match ((&b[..b.len() / 2]).try_into(), HEAP_OFFSET.checked_add(align)) {
+                (Ok(arr), Some(new_addr)) if usize::from_le_bytes(arr) == new_addr => {
+                    align *= 2;
+                }
+                _ => (),
+            };
             let addr = self.heap_allocate(b.len(), align)?;
             self.write_memory(addr, b)?;
             Ok(addr.to_usize())
