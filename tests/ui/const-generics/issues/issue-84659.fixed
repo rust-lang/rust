@@ -6,7 +6,7 @@ trait Bar<const N: usize> {}
 
 trait Foo<'a> {
     const N: usize;
-    type Baz: Bar<{ Self::N }>;
+    type Baz: Bar<{ Self::N }> where [(); { Self::N }]:;
     //~^ ERROR: unconstrained generic constant
 }
 

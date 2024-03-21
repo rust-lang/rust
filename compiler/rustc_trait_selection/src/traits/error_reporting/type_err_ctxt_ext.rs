@@ -3538,12 +3538,39 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let mut err =
                         self.dcx().struct_span_err(span, "unconstrained generic constant");
                     let const_span = self.tcx.def_span(uv.def);
+
+                    let const_ty = self.tcx.type_of(uv.def).instantiate(self.tcx, uv.args);
+                    let cast = if const_ty != self.tcx.types.usize { " as usize" } else { "" };
+                    let msg = "try adding a `where` bound";
                     match self.tcx.sess.source_map().span_to_snippet(const_span) {
-                            Ok(snippet) => err.help(format!(
-                                "try adding a `where` bound using this expression: `where [(); {snippet}]:`"
-                            )),
-                            _ => err.help("consider adding a `where` bound using this expression"),
-                        };
+                        Ok(snippet) => {
+                            let code = format!("[(); {snippet}{cast}]:");
+                            let def_id = if let ObligationCauseCode::CompareImplItemObligation {
+                                trait_item_def_id,
+                                ..
+                            } = obligation.cause.code()
+                            {
+                                trait_item_def_id.as_local()
+                            } else {
+                                Some(obligation.cause.body_id)
+                            };
+                            if let Some(def_id) = def_id
+                                && let Some(generics) = self.tcx.hir().get_generics(def_id)
+                            {
+                                err.span_suggestion_verbose(
+                                    generics.tail_span_for_predicate_suggestion(),
+                                    msg,
+                                    format!("{} {code}", generics.add_where_or_trailing_comma()),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            } else {
+                                err.help(format!("{msg}: where {code}"));
+                            };
+                        }
+                        _ => {
+                            err.help(msg);
+                        }
+                    };
                     Ok(err)
                 }
                 ty::ConstKind::Expr(_) => {

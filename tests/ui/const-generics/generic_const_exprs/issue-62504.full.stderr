@@ -13,7 +13,10 @@ error: unconstrained generic constant
 LL |         ArrayHolder([0; Self::SIZE])
    |                         ^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); Self::SIZE]:`
+help: try adding a `where` bound
+   |
+LL |     pub const fn new() -> Self where [(); Self::SIZE]: {
+   |                                +++++++++++++++++++++++
 
 error[E0282]: type annotations needed for `ArrayHolder<X>`
   --> $DIR/issue-62504.rs:26:9
