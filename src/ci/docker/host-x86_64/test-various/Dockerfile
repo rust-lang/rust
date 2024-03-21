@@ -55,9 +55,9 @@ ENV RUST_CONFIGURE_ARGS \
 ENV NO_DEBUG_ASSERTIONS=1
 ENV NO_OVERFLOW_CHECKS=1
 
-RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v18.0.2/wasmtime-v18.0.2-x86_64-linux.tar.xz | \
+RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v19.0.0/wasmtime-v19.0.0-x86_64-linux.tar.xz | \
   tar -xJ
-ENV PATH "$PATH:/wasmtime-v18.0.2-x86_64-linux"
+ENV PATH "$PATH:/wasmtime-v19.0.0-x86_64-linux"
 
 ENV WASM_TARGETS=wasm32-wasip1
 ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_TARGETS \
