@@ -1,0 +1,38 @@
+[package]
+name = "miniz_oxide"
+authors = ["Frommi <daniil.liferenko@gmail.com>", "oyvindln <oyvindln@users.noreply.github.com>"]
+version = "0.7.2"
+license = "MIT OR Zlib OR Apache-2.0"
+readme = "Readme.md"
+keywords = ["zlib", "miniz", "deflate", "encoding"]
+categories = ["compression"]
+repository = "https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide"
+homepage = "https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide"
+documentation = "https://docs.rs/miniz_oxide"
+description = "DEFLATE compression and decompression library rewritten in Rust based on miniz"
+edition = "2018"
+exclude = ["benches/*", "tests/*"]
+
+[lib]
+name = "miniz_oxide"
+
+[dependencies]
+adler = { version = "1.0", default-features = false }
+simd-adler32 = { version = "0.3", default-features = false, optional = true }
+
+# Internal feature, only used when building as part of libstd, not part of the
+# stable interface of this crate.
+core = { version = '1.0.0', optional = true, package = 'rustc-std-workspace-core' }
+alloc = { version = '1.0.0', optional = true, package = 'rustc-std-workspace-alloc' }
+compiler_builtins = { version = '0.1.2', optional = true }
+
+[features]
+default = ["with-alloc"]
+with-alloc = []
+std = []
+
+# Internal feature, only used when building as part of libstd, not part of the
+# stable interface of this crate.
+rustc-dep-of-std = ['core', 'alloc', 'compiler_builtins', 'adler/rustc-dep-of-std']
+
+simd = ['simd-adler32']

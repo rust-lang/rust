@@ -774,7 +774,7 @@ dependencies = [
  "tracing-subscriber",
  "unified-diff",
  "walkdir",
- "windows",
+ "windows 0.52.0",
 ]
 
 [[package]]
@@ -875,8 +875,10 @@ dependencies = [
 [[package]]
 name = "crossbeam-utils"
 version = "0.8.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "248e3bacc7dc6baa3b21e405ee045c3047101a49145e7e9eca583ab4c2ca5345"
+dependencies = [
+ "loom",
+ "rand",
+]
 
 [[package]]
 name = "crypto-common"
@@ -1531,6 +1533,19 @@ name = "generate-windows-sys"
 version = "0.1.0"
 dependencies = [
  "windows-bindgen",
+]
+
+[[package]]
+name = "generator"
+version = "0.7.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5cc16584ff22b460a382b7feec54b23d2908d858152e5739a120b949293bd74e"
+dependencies = [
+ "cc",
+ "libc",
+ "log",
+ "rustversion",
+ "windows 0.48.0",
 ]
 
 [[package]]
@@ -2305,6 +2320,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
 
 [[package]]
+name = "loom"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e045d70ddfbc984eacfa964ded019534e8f6cbf36f6410aee0ed5cefa5a9175"
+dependencies = [
+ "cfg-if",
+ "generator",
+ "scoped-tls",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "lzma-sys"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2461,13 +2489,12 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 [[package]]
 name = "miniz_oxide"
 version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d811f3e15f28568be3407c8e7fdb6514c1cda3cb30683f15b6a1a1dc4ea14a7"
 dependencies = [
  "adler",
  "compiler_builtins",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
+ "simd-adler32",
 ]
 
 [[package]]
@@ -3094,6 +3121,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9e1dcb320d6839f6edb64f7a4a59d39b30480d4d1765b56873f7c858538a5fe"
 
 [[package]]
+name = "quickcheck"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "588f6378e4dd99458b60ec275b4477add41ce4fa9f64dcba6f15adccb19b50d6"
+dependencies = [
+ "rand",
+]
+
+[[package]]
 name = "quine-mc_cluskey"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3220,11 +3256,12 @@ dependencies = [
 [[package]]
 name = "regex"
 version = "1.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0ab3ca65655bb1e41f2a8c8cd662eb4fb035e67c3f78da1d61dffe89d07300f"
 dependencies = [
  "aho-corasick",
+ "lazy_static",
  "memchr",
+ "quickcheck",
+ "rand",
  "regex-syntax 0.7.5",
 ]
 
@@ -3723,7 +3760,7 @@ dependencies = [
  "thorin-dwp",
  "tracing",
  "wasm-encoder",
- "windows",
+ "windows 0.52.0",
 ]
 
 [[package]]
@@ -3780,7 +3817,7 @@ dependencies = [
  "tempfile",
  "thin-vec",
  "tracing",
- "windows",
+ "windows 0.52.0",
 ]
 
 [[package]]
@@ -3843,7 +3880,7 @@ dependencies = [
  "shlex",
  "time",
  "tracing",
- "windows",
+ "windows 0.52.0",
 ]
 
 [[package]]
@@ -3895,7 +3932,7 @@ dependencies = [
  "termize",
  "tracing",
  "unicode-width",
- "windows",
+ "windows 0.52.0",
 ]
 
 [[package]]
@@ -4593,7 +4630,7 @@ dependencies = [
  "smallvec",
  "termize",
  "tracing",
- "windows",
+ "windows 0.52.0",
 ]
 
 [[package]]
@@ -5115,6 +5152,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "simd-adler32"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d66dc143e6b11c1eddc06d5c423cfc97062865baf299914ab64caa38182078fe"
+
+[[package]]
 name = "siphasher"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5379,7 +5422,7 @@ dependencies = [
  "libc",
  "ntapi",
  "once_cell",
- "windows",
+ "windows 0.52.0",
 ]
 
 [[package]]
@@ -6309,6 +6352,15 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+
+[[package]]
+name = "windows"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e686886bc078bc1b0b600cac0147aadb815089b6e4da64016cbd754b6342700f"
+dependencies = [
+ "windows-targets 0.48.5",
+]
 
 [[package]]
 name = "windows"
