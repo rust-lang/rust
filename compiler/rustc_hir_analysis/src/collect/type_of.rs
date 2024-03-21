@@ -47,7 +47,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             let ty = tcx.fold_regions(ty, |r, _| {
                 if r.is_erased() { ty::Region::new_error_misc(tcx) } else { r }
             });
-            let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false) {
+            let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                 (ty, Some((span, Applicability::MachineApplicable)))
             } else {
                 (ty, None)
@@ -587,7 +587,7 @@ fn infer_placeholder_type<'a>(
                     suggestions.clear();
                 }
 
-                if let Some(ty) = ty.make_suggestable(tcx, false) {
+                if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                     err.span_suggestion(
                         span,
                         format!("provide a type for the {kind}"),
@@ -606,7 +606,7 @@ fn infer_placeholder_type<'a>(
             let mut diag = bad_placeholder(tcx, vec![span], kind);
 
             if !ty.references_error() {
-                if let Some(ty) = ty.make_suggestable(tcx, false) {
+                if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                     diag.span_suggestion(
                         span,
                         "replace with the correct type",
