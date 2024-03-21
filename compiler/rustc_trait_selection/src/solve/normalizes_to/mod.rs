@@ -647,6 +647,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         )
     }
 
+    fn consider_builtin_fused_iterator_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`FusedIterator` does not have an associated type: {:?}", goal);
+    }
+
     fn consider_builtin_async_iterator_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
