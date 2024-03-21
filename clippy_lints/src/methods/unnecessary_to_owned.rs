@@ -336,12 +336,9 @@ fn check_other_call_arg<'tcx>(
         && let Some((n_refs, receiver_ty)) = if n_refs > 0 || is_copy(cx, receiver_ty) {
             Some((n_refs, receiver_ty))
         } else if trait_predicate.def_id() != deref_trait_id {
-            Some((1, Ty::new_ref(cx.tcx,
+            Some((1, Ty::new_imm_ref(cx.tcx,
                 cx.tcx.lifetimes.re_erased,
-                ty::TypeAndMut {
-                    ty: receiver_ty,
-                    mutbl: Mutability::Not,
-                },
+                receiver_ty,
             )))
         } else {
             None
