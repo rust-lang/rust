@@ -1346,6 +1346,13 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             ty = transform_ty(tcx, fn_ptr, options);
         }
 
+        ty::CoroutineClosure(_, args) => {
+            // Transform async closures into function pointers
+            let fn_ptr = args.as_coroutine_closure().signature_parts_ty();
+            // Transform fn_sig inputs and output
+            ty = transform_ty(tcx, fn_ptr, options);
+        }
+
         ty::Ref(region, ty0, ..) => {
             // Remove references from function items, closures, Fn trait and Fn subtrait objects
             if ty0.is_fn_def()
@@ -1436,7 +1443,6 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
 
         ty::Bound(..)
         | ty::Error(..)
-        | ty::CoroutineClosure(..)
         | ty::CoroutineWitness(..)
         | ty::Infer(..)
         | ty::Placeholder(..) => {
