@@ -48,12 +48,20 @@ pub fn add_configuration(cfg: &mut Cfg, sess: &mut Session, codegen_backend: &dy
     }
 }
 
-const STACK_SIZE: usize = 8 * 1024 * 1024;
+static STACK_SIZE: OnceLock<usize> = OnceLock::new();
+const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
 
-fn get_stack_size() -> Option<usize> {
-    // FIXME: Hacks on hacks. If the env is trying to override the stack size
-    // then *don't* set it explicitly.
-    env::var_os("RUST_MIN_STACK").is_none().then_some(STACK_SIZE)
+fn init_stack_size() -> usize {
+    // Obey the environment setting or default
+    *STACK_SIZE.get_or_init(|| {
+        env::var_os("RUST_MIN_STACK")
+            .map(|os_str| os_str.to_string_lossy().into_owned())
+            // ignore if it is set to nothing
+            .filter(|s| s.trim() != "")
+            .map(|s| s.trim().parse::<usize>().unwrap())
+            // otherwise pick a consistent default
+            .unwrap_or(DEFAULT_STACK_SIZE)
+    })
 }
 
 pub(crate) fn run_in_thread_with_globals<F: FnOnce() -> R + Send, R: Send>(
@@ -66,10 +74,7 @@ pub(crate) fn run_in_thread_with_globals<F: FnOnce() -> R + Send, R: Send>(
     // the parallel compiler, in particular to ensure there is no accidental
     // sharing of data between the main thread and the compilation thread
     // (which might cause problems for the parallel compiler).
-    let mut builder = thread::Builder::new().name("rustc".to_string());
-    if let Some(size) = get_stack_size() {
-        builder = builder.stack_size(size);
-    }
+    let builder = thread::Builder::new().name("rustc".to_string()).stack_size(init_stack_size());
 
     // We build the session globals and run `f` on the spawned thread, because
     // `SessionGlobals` does not impl `Send` in the non-parallel compiler.
@@ -120,7 +125,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
         });
     }
 
-    let mut builder = rayon::ThreadPoolBuilder::new()
+    let builder = rayon::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
@@ -144,10 +149,8 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
                     on_panic.disable();
                 })
                 .unwrap();
-        });
-    if let Some(size) = get_stack_size() {
-        builder = builder.stack_size(size);
-    }
+        })
+        .stack_size(init_stack_size());
 
     // We create the session globals on the main thread, then create the thread
     // pool. Upon creation, each worker thread created gets a copy of the
