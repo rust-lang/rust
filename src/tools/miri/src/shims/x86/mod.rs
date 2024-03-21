@@ -88,6 +88,19 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 this.write_immediate(*sub, &this.project_field(dest, 1)?)?;
             }
 
+            // Used to implement the `_mm_pause` function.
+            // The intrinsic is used to hint the processor that the code is in a spin-loop.
+            // It is compiled down to a `pause` instruction. When SSE2 is not available,
+            // the instruction behaves like a no-op, so it is always safe to call the
+            // intrinsic.
+            "sse2.pause" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // Only exhibit the spin-loop hint behavior when SSE2 is enabled.
+                if this.tcx.sess.unstable_target_features.contains(&Symbol::intern("sse2")) {
+                    this.yield_active_thread();
+                }
+            }
+
             name if name.starts_with("sse.") => {
                 return sse::EvalContextExt::emulate_x86_sse_intrinsic(
                     this, link_name, abi, args, dest,

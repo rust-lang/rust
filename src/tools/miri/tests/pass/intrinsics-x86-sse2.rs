@@ -54,6 +54,11 @@ mod tests {
             }
         }
 
+        fn test_mm_pause() {
+            unsafe { _mm_pause() }
+        }
+        test_mm_pause();
+
         #[target_feature(enable = "sse2")]
         unsafe fn test_mm_avg_epu8() {
             let (a, b) = (_mm_set1_epi8(3), _mm_set1_epi8(9));
