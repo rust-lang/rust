@@ -1567,7 +1567,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sources: &mut Vec<CandidateSource>,
         sugg_span: Option<Span>,
     ) {
-        sources.sort();
+        sources.sort_by_key(|source| match source {
+            CandidateSource::Trait(id) => (0, self.tcx.def_path_str(id)),
+            CandidateSource::Impl(id) => (1, self.tcx.def_path_str(id)),
+        });
         sources.dedup();
         // Dynamic limit to avoid hiding just one candidate, which is silly.
         let limit = if sources.len() == 5 { 5 } else { 4 };
