@@ -317,7 +317,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.note("`if` expressions without `else` evaluate to `()`");
         err.help("consider adding an `else` block that evaluates to the expected type");
         *error = true;
-        if let ExprKind::Let(hir::Let { span, pat, init, .. }) = cond_expr.kind
+        if let ExprKind::Let(hir::LetExpr { span, pat, init, .. }) = cond_expr.kind
             && let ExprKind::Block(block, _) = then_expr.kind
             // Refutability checks occur on the MIR, so we approximate it here by checking
             // if we have an enum with a single variant or a struct in the pattern.
