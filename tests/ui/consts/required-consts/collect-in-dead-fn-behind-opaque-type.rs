@@ -13,6 +13,7 @@ mod m {
 
     pub type NotCalledFn = impl Fn();
 
+    #[inline(never)]
     fn not_called<T>() {
         if false {
             let _ = Fail::<T>::C;

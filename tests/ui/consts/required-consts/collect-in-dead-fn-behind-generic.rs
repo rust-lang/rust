@@ -9,12 +9,14 @@ impl<T> Fail<T> {
     const C: () = panic!(); //~ERROR evaluation of `Fail::<i32>::C` failed
 }
 
+#[inline(never)]
 fn not_called<T>() {
     if false {
         let _ = Fail::<T>::C;
     }
 }
 
+#[inline(never)]
 fn callit_not(f: impl Fn()) {
     if false {
         f();

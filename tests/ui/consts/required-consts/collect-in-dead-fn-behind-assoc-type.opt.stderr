@@ -7,7 +7,7 @@ LL |     const C: () = panic!();
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant encountered
-  --> $DIR/collect-in-dead-fn-behind-assoc-type.rs:15:17
+  --> $DIR/collect-in-dead-fn-behind-assoc-type.rs:16:17
    |
 LL |         let _ = Fail::<T>::C;
    |                 ^^^^^^^^^^^^
