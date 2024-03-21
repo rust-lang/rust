@@ -2117,7 +2117,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 })
                 .collect();
 
-            impl_candidates.sort();
+            impl_candidates.sort_by_key(|tr| tr.to_string());
             impl_candidates.dedup();
             return report(impl_candidates, err);
         }
@@ -2143,7 +2143,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 cand
             })
             .collect();
-        impl_candidates.sort_by_key(|cand| (cand.similarity, cand.trait_ref));
+        impl_candidates.sort_by_key(|cand| (cand.similarity, cand.trait_ref.to_string()));
         let mut impl_candidates: Vec<_> =
             impl_candidates.into_iter().map(|cand| cand.trait_ref).collect();
         impl_candidates.dedup();

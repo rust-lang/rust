@@ -247,14 +247,14 @@ LL |     _ = &&0 == Foo;
    |
    = help: the trait `PartialEq<Foo>` is not implemented for `&&{integer}`
    = help: the following other types implement trait `PartialEq<Rhs>`:
-             isize
-             i8
+             f32
+             f64
+             i128
              i16
              i32
              i64
-             i128
-             usize
-             u8
+             i8
+             isize
            and 6 others
 
 error[E0369]: binary operation `==` cannot be applied to type `Foo`
@@ -303,10 +303,10 @@ LL |     let _ = FOO & (*"Sized".to_string().into_boxed_str());
    |
    = help: the trait `BitAnd<str>` is not implemented for `i32`
    = help: the following other types implement trait `BitAnd<Rhs>`:
-             <i32 as BitAnd>
-             <i32 as BitAnd<&i32>>
              <&'a i32 as BitAnd<i32>>
              <&i32 as BitAnd<&i32>>
+             <i32 as BitAnd<&i32>>
+             <i32 as BitAnd>
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/binary-op-suggest-deref.rs:78:17

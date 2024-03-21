@@ -22,14 +22,14 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
    |
    = help: the trait `PartialEq<[{integer}; 0]>` is not implemented for `[{integer}; Self::HOST_SIZE]`
    = help: the following other types implement trait `PartialEq<Rhs>`:
-             <[T; N] as PartialEq<[U; N]>>
-             <[T; N] as PartialEq<[U]>>
+             <&[T] as PartialEq<Vec<U, A>>>
+             <&[T] as PartialEq<[U; N]>>
+             <&mut [T] as PartialEq<Vec<U, A>>>
+             <&mut [T] as PartialEq<[U; N]>>
              <[T; N] as PartialEq<&[U]>>
              <[T; N] as PartialEq<&mut [U]>>
-             <[T] as PartialEq<Vec<U, A>>>
-             <[T] as PartialEq<[U; N]>>
-             <[T] as PartialEq<[U]>>
-             <&[T] as PartialEq<Vec<U, A>>>
+             <[T; N] as PartialEq<[U; N]>>
+             <[T; N] as PartialEq<[U]>>
            and 3 others
 
 error: aborting due to 3 previous errors

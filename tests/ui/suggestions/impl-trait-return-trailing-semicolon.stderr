@@ -16,8 +16,8 @@ LL | fn bar() -> impl Bar {
    |             ^^^^^^^^ the trait `Bar` is not implemented for `()`
    |
    = help: the following other types implement trait `Bar`:
-             i32
              Qux
+             i32
 
 error: aborting due to 2 previous errors
 
