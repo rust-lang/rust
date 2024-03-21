@@ -2,8 +2,8 @@
 use std::{iter, mem, ops::Not, str::FromStr, sync};
 
 use base_db::{
-    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Edition, Env,
-    FileChange, FileSet, LangCrateOrigin, SourceDatabaseExt, SourceRoot, Version, VfsPath,
+    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env, FileChange,
+    FileSet, LangCrateOrigin, SourceDatabaseExt, SourceRoot, Version, VfsPath,
 };
 use cfg::CfgOptions;
 use hir_expand::{
@@ -14,7 +14,7 @@ use hir_expand::{
     },
 };
 use rustc_hash::FxHashMap;
-use span::{FileId, FilePosition, FileRange, Span};
+use span::{Edition, FileId, FilePosition, FileRange, Span};
 use test_utils::{
     extract_range_or_offset, Fixture, FixtureWithProjectMeta, RangeOrOffset, CURSOR_MARKER,
     ESCAPED_CURSOR_MARKER,
@@ -137,7 +137,10 @@ impl ChangeFixture {
         let mut crate_deps = Vec::new();
         let mut default_crate_root: Option<FileId> = None;
         let mut default_cfg = CfgOptions::default();
-        let mut default_env = Env::new_for_test_fixture();
+        let mut default_env = Env::from_iter([(
+            String::from("__ra_is_test_fixture"),
+            String::from("__ra_is_test_fixture"),
+        )]);
 
         let mut file_set = FileSet::default();
         let mut current_source_root_kind = SourceRootKind::Local;
@@ -262,7 +265,10 @@ impl ChangeFixture {
                 None,
                 Default::default(),
                 Default::default(),
-                Env::new_for_test_fixture(),
+                Env::from_iter([(
+                    String::from("__ra_is_test_fixture"),
+                    String::from("__ra_is_test_fixture"),
+                )]),
                 false,
                 CrateOrigin::Lang(LangCrateOrigin::Core),
             );
@@ -298,7 +304,10 @@ impl ChangeFixture {
                 None,
                 Default::default(),
                 Default::default(),
-                Env::new_for_test_fixture(),
+                Env::from_iter([(
+                    String::from("__ra_is_test_fixture"),
+                    String::from("__ra_is_test_fixture"),
+                )]),
                 true,
                 CrateOrigin::Local { repo: None, name: None },
             );

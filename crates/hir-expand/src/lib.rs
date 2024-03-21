@@ -30,10 +30,11 @@ use triomphe::Arc;
 
 use std::{fmt, hash::Hash};
 
-use base_db::{salsa::impl_intern_value_trivial, CrateId, Edition, FileId};
+use base_db::{salsa::impl_intern_value_trivial, CrateId, FileId};
 use either::Either;
 use span::{
-    ErasedFileAstId, FileRange, HirFileIdRepr, Span, SpanAnchor, SyntaxContextData, SyntaxContextId,
+    Edition, ErasedFileAstId, FileRange, HirFileIdRepr, Span, SpanAnchor, SyntaxContextData,
+    SyntaxContextId,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -53,10 +54,8 @@ use crate::{
 
 pub use crate::files::{AstId, ErasedAstId, InFile, InMacroFile, InRealFile};
 
-pub use mbe::ValueResult;
+pub use mbe::{DeclarativeMacro, ValueResult};
 pub use span::{HirFileId, MacroCallId, MacroFileId};
-
-pub type DeclarativeMacro = ::mbe::DeclarativeMacro<tt::Span>;
 
 pub mod tt {
     pub use span::Span;

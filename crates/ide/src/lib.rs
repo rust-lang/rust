@@ -119,8 +119,8 @@ pub use ide_completion::{
 };
 pub use ide_db::{
     base_db::{
-        Cancelled, CrateGraph, CrateId, Edition, FileChange, FileId, FilePosition, FileRange,
-        SourceRoot, SourceRootId,
+        Cancelled, CrateGraph, CrateId, FileChange, FileId, FilePosition, FileRange, SourceRoot,
+        SourceRootId,
     },
     documentation::Documentation,
     label::Label,
@@ -135,6 +135,7 @@ pub use ide_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode, Severity,
 };
 pub use ide_ssr::SsrError;
+pub use span::Edition;
 pub use syntax::{TextRange, TextSize};
 pub use text_edit::{Indel, TextEdit};
 

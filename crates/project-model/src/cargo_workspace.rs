@@ -4,13 +4,13 @@ use std::ops;
 use std::str::from_utf8;
 
 use anyhow::Context;
-use base_db::Edition;
 use cargo_metadata::{CargoOpt, MetadataCommand};
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use serde_json::from_value;
+use span::Edition;
 use toolchain::Tool;
 
 use crate::{utf8_stdout, InvocationLocation, ManifestPath, Sysroot};

@@ -4,7 +4,7 @@
 //! and the corresponding code mostly in rustc_hir_analysis/check/method/probe.rs.
 use std::ops::ControlFlow;
 
-use base_db::{CrateId, Edition};
+use base_db::CrateId;
 use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex, WhereClause};
 use hir_def::{
     data::{adt::StructFlags, ImplData},
@@ -15,6 +15,7 @@ use hir_def::{
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
+use span::Edition;
 use stdx::never;
 use triomphe::Arc;
 
