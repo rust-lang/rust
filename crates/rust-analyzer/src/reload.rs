@@ -436,16 +436,19 @@ impl GlobalState {
                     .flat_map(|ws| ws.to_roots())
                     .filter(|it| it.is_local)
                     .flat_map(|root| {
-                        root.include.into_iter().flat_map(|it| {
-                            [
-                                format!("{it}/**/*.rs"),
-                                format!("{it}/**/Cargo.toml"),
-                                format!("{it}/**/Cargo.lock"),
-                            ]
-                        })
+                        root.include
+                            .into_iter()
+                            .flat_map(|it| [(it.clone(), "**/*.rs"), (it, "**/Cargo.{lock,toml}")])
                     })
-                    .map(|glob_pattern| lsp_types::FileSystemWatcher {
-                        glob_pattern: lsp_types::GlobPattern::String(glob_pattern),
+                    .map(|(base, pat)| lsp_types::FileSystemWatcher {
+                        glob_pattern: lsp_types::GlobPattern::Relative(
+                            lsp_types::RelativePattern {
+                                base_uri: lsp_types::OneOf::Right(
+                                    lsp_types::Url::from_file_path(base).unwrap(),
+                                ),
+                                pattern: pat.to_owned(),
+                            },
+                        ),
                         kind: None,
                     })
                     .collect(),
