@@ -346,14 +346,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind()
                         && expr_mutbl == Mutability::Not
                         && mutbl == Mutability::Mut
-                        && fcx.can_coerce(
-                            Ty::new_ref(
-                                fcx.tcx,
-                                expr_reg,
-                                TypeAndMut { ty: expr_ty, mutbl: Mutability::Mut },
-                            ),
-                            self.cast_ty,
-                        )
+                        && fcx.can_coerce(Ty::new_mut_ref(fcx.tcx, expr_reg, expr_ty), self.cast_ty)
                     {
                         sugg_mutref = true;
                     }

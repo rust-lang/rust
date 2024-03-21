@@ -1242,8 +1242,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return None;
         };
 
-        let const_self_ty = ty::TypeAndMut { ty, mutbl: hir::Mutability::Not };
-        let const_ptr_ty = Ty::new_ptr(self.tcx, const_self_ty);
+        let const_ptr_ty = Ty::new_imm_ptr(self.tcx, ty);
         self.pick_method(const_ptr_ty, unstable_candidates).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;

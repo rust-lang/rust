@@ -374,9 +374,9 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
     fn new(layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, &'tcx LayoutError<'tcx>> {
         let tcx = layout_cx.tcx;
         let mut_raw_ptr =
-            Ty::new_ptr(tcx, TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Mut });
+            Ty::new_mut_ptr(tcx, tcx.types.unit);
         let const_raw_ptr =
-            Ty::new_ptr(tcx, TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Not });
+            Ty::new_imm_ptr(tcx, tcx.types.unit);
         Ok(Self {
             unit: layout_cx.layout_of(Ty::new_unit(tcx))?,
             i8: layout_cx.layout_of(tcx.types.i8)?,

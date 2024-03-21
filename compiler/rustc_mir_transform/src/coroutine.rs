@@ -570,11 +570,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let coroutine_ty = body.local_decls.raw[1].ty;
 
-    let ref_coroutine_ty = Ty::new_ref(
-        tcx,
-        tcx.lifetimes.re_erased,
-        ty::TypeAndMut { ty: coroutine_ty, mutbl: Mutability::Mut },
-    );
+    let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
     // Replace the by value coroutine argument
     body.local_decls.raw[1].ty = ref_coroutine_ty;
@@ -1265,10 +1261,8 @@ fn create_coroutine_drop_shim<'tcx>(
     make_coroutine_state_argument_indirect(tcx, &mut body);
 
     // Change the coroutine argument from &mut to *mut
-    body.local_decls[SELF_ARG] = LocalDecl::with_source_info(
-        Ty::new_ptr(tcx, ty::TypeAndMut { ty: coroutine_ty, mutbl: hir::Mutability::Mut }),
-        source_info,
-    );
+    body.local_decls[SELF_ARG] =
+        LocalDecl::with_source_info(Ty::new_mut_ptr(tcx, coroutine_ty), source_info);
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function

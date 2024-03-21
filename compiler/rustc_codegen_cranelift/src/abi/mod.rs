@@ -663,11 +663,7 @@ pub(crate) fn codegen_drop<'tcx>(
 
                 let arg_value = drop_place.place_ref(
                     fx,
-                    fx.layout_of(Ty::new_ref(
-                        fx.tcx,
-                        fx.tcx.lifetimes.re_erased,
-                        TypeAndMut { ty, mutbl: crate::rustc_hir::Mutability::Mut },
-                    )),
+                    fx.layout_of(Ty::new_mut_ref(fx.tcx, fx.tcx.lifetimes.re_erased, ty)),
                 );
                 let arg_value = adjust_arg_for_abi(fx, arg_value, &fn_abi.args[0], true);
 
