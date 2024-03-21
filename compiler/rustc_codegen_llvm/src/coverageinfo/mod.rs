@@ -32,6 +32,10 @@ pub struct CrateCoverageContext<'ll, 'tcx> {
     pub(crate) function_coverage_map:
         RefCell<FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
     pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
+
+    /// When MCDC is enabled, holds references to the stack-allocated function-wise
+    /// condition bitmaps.
+    pub(crate) mcdc_condbitmap_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
 }
 
 impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
@@ -39,6 +43,7 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
         Self {
             function_coverage_map: Default::default(),
             pgo_func_name_var_map: Default::default(),
+            mcdc_condbitmap_map: Default::default(),
         }
     }
 
@@ -105,20 +110,6 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             | CoverageKind::MCDCDecisionMarker { .. } => unreachable!(
                 "marker statement {kind:?} should have been removed by CleanupPostBorrowck"
             ),
-            CoverageKind::MCDCBitmapRequire { needed_bytes } => {
-                // We need to explicitly drop the `RefMut` before calling into `instrprof_mcdc_parameters`,
-                // as that needs an exclusive borrow.
-                drop(coverage_map);
-
-                let fn_name = bx.get_pgo_func_name_var(instance);
-                let hash = bx.const_u64(function_coverage_info.function_source_hash);
-                let num_bitmap_bytes = bx.const_u32(needed_bytes);
-                debug!(
-                    "codegen intrinsic instrprof.mcdc.parameters(fn_name={:?}, hash={:?}, bitmap_bytes={:?})",
-                    fn_name, hash, num_bitmap_bytes,
-                );
-                bx.instrprof_mcdc_parameters(fn_name, hash, num_bitmap_bytes);
-            }
             CoverageKind::CounterIncrement { id } => {
                 func_coverage.mark_counter_id_seen(id);
                 // We need to explicitly drop the `RefMut` before calling into `instrprof_increment`,
@@ -150,6 +141,39 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             CoverageKind::ExpressionUsed { id } => {
                 func_coverage.mark_expression_id_seen(id);
             }
+            CoverageKind::MCDCBitmapRequire { needed_bytes } => {
+                // We need to explicitly drop the `RefMut` before calling into `instrprof_mcdc_parameters`,
+                // as that needs an exclusive borrow.
+                drop(coverage_map);
+
+                let fn_name = bx.get_pgo_func_name_var(instance);
+                let hash = bx.const_u64(function_coverage_info.function_source_hash);
+                let num_bitmap_bytes = bx.const_u32(needed_bytes);
+                debug!(
+                    "codegen intrinsic instrprof.mcdc.parameters(fn_name={:?}, hash={:?}, bitmap_bytes={:?})",
+                    fn_name, hash, num_bitmap_bytes,
+                );
+                // Call the intrinsic to ask LLVM to allocate a global variable for the
+                // test vector bitmaps in the function body.
+                bx.instrprof_mcdc_parameters(fn_name, hash, num_bitmap_bytes);
+
+                // Allocates an integer in the function stackframe that will be
+                // used for the condition bitmaps of the decisions.
+                let cond_bitmap_addr = bx.alloca(
+                    bx.type_uint_from_ty(rustc_middle::ty::UintTy::U32),
+                    Align::from_bytes(4).expect("4 bytes alignment failed"),
+                );
+
+                // Acquire a new handle to coverage_context.
+                let coverage_context = bx.coverage_context().expect("Presence checked");
+                coverage_context
+                    .mcdc_condbitmap_map
+                    .borrow_mut()
+                    .insert(instance, cond_bitmap_addr);
+            }
+            CoverageKind::MCDCCondBitmapReset => todo!(),
+            CoverageKind::MCDCCondBitmapUpdate { condition_id: _, bool_value: _ } => todo!(),
+            CoverageKind::MCDCTestBitmapUpdate { needed_bytes: _, decision_index: _ } => todo!(),
         }
     }
 }
