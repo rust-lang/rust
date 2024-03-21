@@ -127,7 +127,9 @@ impl TestArg {
                     show_usage();
                     return Ok(None);
                 }
-                x if runners.contains_key(x) && !test_arg.runners.iter().any(|runner| runner == x) => {
+                x if runners.contains_key(x)
+                    && !test_arg.runners.iter().any(|runner| runner == x) =>
+                {
                     test_arg.runners.push(x.into());
                 }
                 arg => {
