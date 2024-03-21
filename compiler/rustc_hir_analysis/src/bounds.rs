@@ -42,7 +42,7 @@ impl<'tcx> Bounds<'tcx> {
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
         span: Span,
-        polarity: ty::ImplPolarity,
+        polarity: ty::PredicatePolarity,
     ) {
         self.push_trait_bound_inner(tcx, trait_ref, span, polarity);
     }
@@ -52,7 +52,7 @@ impl<'tcx> Bounds<'tcx> {
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
         span: Span,
-        polarity: ty::ImplPolarity,
+        polarity: ty::PredicatePolarity,
     ) {
         self.clauses.push((
             trait_ref

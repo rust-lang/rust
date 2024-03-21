@@ -245,7 +245,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         associated_ty: Option<(&'static str, Ty<'tcx>)>,
         mut body_id: LocalDefId,
     ) {
-        if trait_pred.skip_binder().polarity == ty::ImplPolarity::Negative {
+        if trait_pred.skip_binder().polarity == ty::PredicatePolarity::Negative {
             return;
         }
 
@@ -4057,7 +4057,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 span,
                                 [*ty],
                             ),
-                            polarity: ty::ImplPolarity::Positive,
+                            polarity: ty::PredicatePolarity::Positive,
                         });
                         let Some(generics) = node.generics() else {
                             continue;
@@ -4802,7 +4802,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             Some(desc) => format!(" {desc}"),
             None => String::new(),
         };
-        if let ty::ImplPolarity::Positive = trait_predicate.polarity() {
+        if let ty::PredicatePolarity::Positive = trait_predicate.polarity() {
             format!(
                 "{pre_message}the trait `{}` is not implemented for{desc} `{}`{post}",
                 trait_predicate.print_modifiers_and_trait_path(),
