@@ -57,7 +57,6 @@ tests/ui/lto/msvc-imp-present.rs
 tests/ui/lto/lto-thin-rustc-loads-linker-plugin.rs
 tests/ui/lto/all-crates.rs
 tests/ui/async-await/deep-futures-are-freeze.rs
-tests/ui/panic-runtime/lto-abort.rs
 tests/ui/closures/capture-unsized-by-ref.rs
 tests/ui/coroutine/resume-after-return.rs
 tests/ui/macros/rfc-2011-nicer-assert-messages/all-expr-kinds.rs
