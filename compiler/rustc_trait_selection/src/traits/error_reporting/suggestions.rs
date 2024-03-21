@@ -1801,13 +1801,43 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let Some(fn_decl) = self.tcx.hir_node(fn_id).fn_decl() else {
             return false;
         };
-        let hir::FnRetTy::Return(hir::Ty {
-            kind: hir::TyKind::TraitObject(traits @ [tr, ..], _lt, syn),
-            span,
-            ..
-        }) = fn_decl.output
-        else {
-            return false;
+        let (traits, tr, syn, span, can_be_impl) = match fn_decl.output {
+            hir::FnRetTy::Return(hir::Ty {
+                kind: hir::TyKind::TraitObject(traits @ [tr, ..], _lt, syn),
+                span,
+                ..
+            }) => (traits, tr, syn, span, true),
+            hir::FnRetTy::Return(hir::Ty {
+                kind:
+                    hir::TyKind::Path(hir::QPath::Resolved(
+                        None,
+                        hir::Path { res: hir::def::Res::Def(DefKind::TyAlias, def_id), .. },
+                    )),
+                span,
+                ..
+            }) => {
+                if let ty::Dynamic(..) = self.tcx.type_of(def_id).instantiate_identity().kind() {
+                    // We have a `type Alias = dyn Trait;` and a return type `-> Alias`.
+                    if let Some(def_id) = def_id.as_local()
+                        && let node = self.tcx.hir_node_by_def_id(def_id)
+                        && let Some(hir::Ty {
+                            kind: hir::TyKind::TraitObject(traits @ [tr, ..], _lt, syn),
+                            ..
+                        }) = node.ty()
+                    {
+                        (traits, tr, syn, span, false)
+                    } else {
+                        let mut span: MultiSpan = (*span).into();
+                        span.push_span_label(self.tcx.def_span(def_id), "defined here");
+                        err.span_note(span, "the return type is a type alias to a trait object");
+                        err.help("consider boxing or borrowing it");
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+            _ => return false,
         };
 
         // Suggest `-> impl Trait`
@@ -1841,14 +1871,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let mut alternatively = "";
         if all_same_ty || visitor.returns.len() == 1 {
             // We're certain that `impl Trait` will work.
-            err.span_suggestion_verbose(
-                // This will work for both `Dyn` and `None` object syntax.
-                span.until(tr.span),
-                "return an `impl Trait` instead of a `dyn Trait`",
-                "impl ",
-                Applicability::MachineApplicable,
-            );
-            alternatively = "alternatively, ";
+            if can_be_impl {
+                // We know it's not a `type Alias = dyn Trait;`.
+                err.span_suggestion_verbose(
+                    // This will work for both `Dyn` and `None` object syntax.
+                    span.until(tr.span),
+                    "return an `impl Trait` instead of a `dyn Trait`",
+                    "impl ",
+                    Applicability::MachineApplicable,
+                );
+                alternatively = "alternatively, ";
+            }
         } else {
             let mut span: MultiSpan =
                 ret_tys.iter().map(|(expr, _)| expr.span).collect::<Vec<Span>>().into();
