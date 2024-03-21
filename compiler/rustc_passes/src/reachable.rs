@@ -437,7 +437,7 @@ fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
         // trait is a lang item.
         let crate_items = tcx.hir_crate_items(());
 
-        for id in crate_items.items() {
+        for id in crate_items.free_items() {
             check_item(tcx, id, &mut reachable_context.worklist, effective_visibilities);
         }
 
