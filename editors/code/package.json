@@ -546,6 +546,11 @@
                     "minimum": 0,
                     "maximum": 255
                 },
+                "rust-analyzer.cargo.allTargets": {
+                    "markdownDescription": "Pass `--all-targets` to cargo invocation. Overridden by `#rust-analyzer.check.allTargets#`\nwhen the latter is set.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.cargo.autoreload": {
                     "markdownDescription": "Automatically refresh project info via `cargo metadata` on\n`Cargo.toml` or `.cargo/config.toml` changes.",
                     "default": true,
@@ -707,9 +712,12 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.check.allTargets": {
-                    "markdownDescription": "Check all targets and tests (`--all-targets`).",
-                    "default": true,
-                    "type": "boolean"
+                    "markdownDescription": "Check all targets and tests (`--all-targets`). Overrides `#rust-analyzer.cargo.allTargets#`.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "boolean"
+                    ]
                 },
                 "rust-analyzer.check.command": {
                     "markdownDescription": "Cargo command to use for `cargo check`.",

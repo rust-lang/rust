@@ -19,6 +19,12 @@ Warm up caches on project load.
 --
 How many worker threads to handle priming caches. The default `0` means to pick automatically.
 --
+[[rust-analyzer.cargo.allTargets]]rust-analyzer.cargo.allTargets (default: `true`)::
++
+--
+Pass `--all-targets` to cargo invocation. Overridden by `#rust-analyzer.check.allTargets#`
+when the latter is set.
+--
 [[rust-analyzer.cargo.autoreload]]rust-analyzer.cargo.autoreload (default: `true`)::
 +
 --
@@ -164,10 +170,10 @@ Unsets the implicit `#[cfg(test)]` for the specified crates.
 --
 Run the check command for diagnostics on save.
 --
-[[rust-analyzer.check.allTargets]]rust-analyzer.check.allTargets (default: `true`)::
+[[rust-analyzer.check.allTargets]]rust-analyzer.check.allTargets (default: `null`)::
 +
 --
-Check all targets and tests (`--all-targets`).
+Check all targets and tests (`--all-targets`). Overrides `#rust-analyzer.cargo.allTargets#`.
 --
 [[rust-analyzer.check.command]]rust-analyzer.check.command (default: `"check"`)::
 +

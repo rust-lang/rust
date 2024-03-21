@@ -76,6 +76,8 @@ impl Default for CargoFeatures {
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct CargoConfig {
+    /// Whether to pass `--all-targets` to cargo invocations.
+    pub all_targets: bool,
     /// List of features to activate.
     pub features: CargoFeatures,
     /// rustc target

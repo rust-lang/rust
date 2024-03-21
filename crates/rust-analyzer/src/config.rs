@@ -71,6 +71,9 @@ config_data! {
         /// How many worker threads to handle priming caches. The default `0` means to pick automatically.
         cachePriming_numThreads: ParallelCachePrimingNumThreads = "0",
 
+        /// Pass `--all-targets` to cargo invocation. Overridden by `#rust-analyzer.check.allTargets#`
+        /// when the latter is set.
+        cargo_allTargets: bool           = "true",
         /// Automatically refresh project info via `cargo metadata` on
         /// `Cargo.toml` or `.cargo/config.toml` changes.
         cargo_autoreload: bool           = "true",
@@ -163,8 +166,8 @@ config_data! {
         /// Run the check command for diagnostics on save.
         checkOnSave | checkOnSave_enable: bool                         = "true",
 
-        /// Check all targets and tests (`--all-targets`).
-        check_allTargets | checkOnSave_allTargets: bool                  = "true",
+        /// Check all targets and tests (`--all-targets`). Overrides `#rust-analyzer.cargo.allTargets#`.
+        check_allTargets | checkOnSave_allTargets: Option<bool>          = "null",
         /// Cargo command to use for `cargo check`.
         check_command | checkOnSave_command: String                      = "\"check\"",
         /// Extra arguments for `cargo check`.
@@ -1273,6 +1276,7 @@ impl Config {
         let sysroot_query_metadata = self.data.cargo_sysrootQueryMetadata;
 
         CargoConfig {
+            all_targets: self.data.cargo_allTargets,
             features: match &self.data.cargo_features {
                 CargoFeaturesDef::All => CargoFeatures::All,
                 CargoFeaturesDef::Selected(features) => CargoFeatures::Selected {
@@ -1383,7 +1387,7 @@ impl Config {
                         targets => Some(targets.into()),
                     })
                     .unwrap_or_else(|| self.data.cargo_target.clone().into_iter().collect()),
-                all_targets: self.data.check_allTargets,
+                all_targets: self.data.check_allTargets.unwrap_or(self.data.cargo_allTargets),
                 no_default_features: self
                     .data
                     .check_noDefaultFeatures
