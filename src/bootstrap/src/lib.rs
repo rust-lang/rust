@@ -1009,15 +1009,23 @@ impl Build {
         let result = if !output.status.success() {
             if print_error {
                 println!(
-                    "\n\ncommand did not execute successfully: {:?}\n\
-                    expected success, got: {}\n\n\
-                    stdout ----\n{}\n\
-                    stderr ----\n{}\n\n",
-                    command.command,
+                    "\n\nCommand did not execute successfully.\
+                    \nExpected success, got: {}",
                     output.status,
-                    String::from_utf8_lossy(&output.stdout),
-                    String::from_utf8_lossy(&output.stderr)
                 );
+
+                if !self.is_verbose() {
+                    println!("Add `-v` to see more details.\n");
+                }
+
+                self.verbose(|| {
+                    println!(
+                        "\nSTDOUT ----\n{}\n\
+                        STDERR ----\n{}\n",
+                        String::from_utf8_lossy(&output.stdout),
+                        String::from_utf8_lossy(&output.stderr)
+                    )
+                });
             }
             Err(())
         } else {
