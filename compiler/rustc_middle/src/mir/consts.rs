@@ -238,6 +238,24 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
+    /// Determines whether we need to add this const to `required_consts`. This is the case if and
+    /// only if evaluating it may error.
+    #[inline]
+    pub fn is_required_const(&self) -> bool {
+        match self {
+            Const::Ty(c) => match c.kind() {
+                ty::ConstKind::Value(_) => false, // already a value, cannot error
+                ty::ConstKind::Param(_) | ty::ConstKind::Error(_) => true, // these are errors or could be replaced by errors
+                _ => bug!(
+                    "only ConstKind::Param/Value/Error should be encountered here, got {:#?}",
+                    c
+                ),
+            },
+            Const::Unevaluated(..) => true,
+            Const::Val(..) => false, // already a value, cannot error
+        }
+    }
+
     #[inline]
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {

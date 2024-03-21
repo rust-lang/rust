@@ -953,6 +953,14 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
             *local = self.promote_temp(*local);
         }
     }
+
+    fn visit_constant(&mut self, constant: &mut ConstOperand<'tcx>, _location: Location) {
+        if constant.const_.is_required_const() {
+            self.promoted.required_consts.push(*constant);
+        }
+
+        // Skipping `super_constant` as the visitor is otherwise only looking for locals.
+    }
 }
 
 fn promote_candidates<'tcx>(
@@ -997,11 +1005,6 @@ fn promote_candidates<'tcx>(
             None,
             body.tainted_by_errors,
         );
-        // We keep `required_consts` of the new MIR body empty. All consts mentioned here have
-        // already been added to the parent MIR's `required_consts` (that is computed before
-        // promotion), and no matter where this promoted const ends up, our parent MIR must be
-        // somewhere in the reachable dependency chain so we can rely on its required consts being
-        // evaluated.
         promoted.phase = MirPhase::Analysis(AnalysisPhase::Initial);
 
         let promoter = Promoter {
@@ -1014,6 +1017,7 @@ fn promote_candidates<'tcx>(
             add_to_required: false,
         };
 
+        // `required_consts` of the promoted itself gets filled while building the MIR body.
         let mut promoted = promoter.promote_candidate(candidate, promotions.len());
         promoted.source.promoted = Some(promotions.next_index());
         promotions.push(promoted);

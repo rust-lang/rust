@@ -1,6 +1,6 @@
 //@revisions: noopt opt
 //@[opt] compile-flags: -O
-//! Make sure we error on erroneous consts even if they are unused.
+//! Make sure we evaluate const fn calls even if they get promoted and their result ignored.
 
 const unsafe fn ub() {
     std::hint::unreachable_unchecked();
