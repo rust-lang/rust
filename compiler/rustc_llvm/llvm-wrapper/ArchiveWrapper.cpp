@@ -147,7 +147,7 @@ LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
   Expected<StringRef> NameOrErr = Child->getName();
   if (!NameOrErr) {
     // rustc_codegen_llvm currently doesn't use this error string, but it might be
-    // useful in the future, and in the mean time this tells LLVM that the
+    // useful in the future, and in the meantime this tells LLVM that the
     // error was not ignored and that it shouldn't abort the process.
     LLVMRustSetLastError(toString(NameOrErr.takeError()).c_str());
     return nullptr;

@@ -20,7 +20,7 @@ declare_lint! {
     /// This functionality was removed in #97346, but then rolled back in #99860
     /// because it caused regressions.
     ///
-    /// We plan on reintroducing this as a hard error, but in the mean time,
+    /// We plan on reintroducing this as a hard error, but in the meantime,
     /// this lint serves to warn and suggest fixes for any use-cases which rely
     /// on this behavior.
     ///
@@ -83,7 +83,9 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 };
                 // Only check types, since those are the only things that may
                 // have opaques in them anyways.
-                let Some(proj_term) = proj.term.ty() else { return };
+                let Some(proj_term) = proj.term.ty() else {
+                    return;
+                };
 
                 // HACK: `impl Trait<Assoc = impl Trait2>` from an RPIT is "ok"...
                 if let ty::Alias(ty::Opaque, opaque_ty) = *proj_term.kind()
@@ -114,7 +116,9 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 // type in our opaque type.
                 let proj_replacer = &mut BottomUpFolder {
                     tcx: cx.tcx,
-                    ty_op: |ty| if ty == proj_ty { proj_term } else { ty },
+                    ty_op: |ty| {
+                        if ty == proj_ty { proj_term } else { ty }
+                    },
                     lt_op: |lt| lt,
                     ct_op: |ct| ct,
                 };
