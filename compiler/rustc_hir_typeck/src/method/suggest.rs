@@ -1185,7 +1185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         })
                         .collect::<Vec<_>>();
                     if !inherent_impls_candidate.is_empty() {
-                        inherent_impls_candidate.sort();
+                        inherent_impls_candidate.sort_by_key(|id| self.tcx.def_path_str(id));
                         inherent_impls_candidate.dedup();
 
                         // number of types to show at most
