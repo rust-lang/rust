@@ -46,11 +46,8 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
     type MemoryKind = !;
     const PANIC_ON_ALLOC_FAIL: bool = true;
 
-    #[inline(always)]
-    fn all_required_consts_are_checked(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
-        // We want to just eval random consts in the program, so `eval_mir_const` can fail.
-        false
-    }
+    // We want to just eval random consts in the program, so `eval_mir_const` can fail.
+    const ALL_CONSTS_ARE_PRECHECKED: bool = false;
 
     #[inline(always)]
     fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {

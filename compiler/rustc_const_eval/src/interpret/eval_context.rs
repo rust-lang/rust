@@ -1179,9 +1179,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         M::eval_mir_constant(self, *val, span, layout, |ecx, val, span, layout| {
             let const_val = val.eval(*ecx.tcx, ecx.param_env, span).map_err(|err| {
-                if M::all_required_consts_are_checked(self)
-                    && !matches!(err, ErrorHandled::TooGeneric(..))
-                {
+                if M::ALL_CONSTS_ARE_PRECHECKED && !matches!(err, ErrorHandled::TooGeneric(..)) {
                     // Looks like the const is not captued by `required_consts`, that's bad.
                     bug!("interpret const eval failure of {val:?} which is not in required_consts");
                 }

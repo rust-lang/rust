@@ -142,7 +142,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
 
     /// Determines whether `eval_mir_constant` can never fail because all required consts have
     /// already been checked before.
-    fn all_required_consts_are_checked(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    const ALL_CONSTS_ARE_PRECHECKED: bool = true;
 
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
