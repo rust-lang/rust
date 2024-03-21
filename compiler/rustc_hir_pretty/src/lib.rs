@@ -1808,6 +1808,12 @@ impl<'a> State<'a> {
                     self.pclose();
                 }
             }
+            PatKind::Deref(inner) => {
+                self.word("deref!");
+                self.popen();
+                self.print_pat(inner);
+                self.pclose();
+            }
             PatKind::Ref(inner, mutbl) => {
                 let is_range_inner = matches!(inner.kind, PatKind::Range(..));
                 self.word("&");

@@ -689,6 +689,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Box({pat})");
                 self.pat(pat);
             },
+            PatKind::Deref(pat) => {
+                bind!(self, pat);
+                kind!("Deref({pat})");
+                self.pat(pat);
+            },
             PatKind::Ref(pat, muta) => {
                 bind!(self, pat);
                 kind!("Ref({pat}, Mutability::{muta:?})");

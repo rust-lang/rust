@@ -257,7 +257,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 return self.lower_path(qpath, pat.hir_id, pat.span);
             }
 
-            hir::PatKind::Box(subpattern) if self.tcx.features().deref_patterns => {
+            hir::PatKind::Deref(subpattern) => {
                 PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern) }
             }
             hir::PatKind::Ref(subpattern, _) | hir::PatKind::Box(subpattern) => {

@@ -55,9 +55,10 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
         ast::PatKind::TupleStruct(_, ref path, ref subpats) => {
             path.segments.len() <= 1 && subpats.len() <= 1
         }
-        ast::PatKind::Box(ref p) | ast::PatKind::Ref(ref p, _) | ast::PatKind::Paren(ref p) => {
-            is_short_pattern_inner(&*p)
-        }
+        ast::PatKind::Box(ref p)
+        | PatKind::Deref(ref p)
+        | ast::PatKind::Ref(ref p, _)
+        | ast::PatKind::Paren(ref p) => is_short_pattern_inner(&*p),
         PatKind::Or(ref pats) => pats.iter().all(|p| is_short_pattern_inner(p)),
     }
 }
@@ -277,6 +278,7 @@ impl Rewrite for Pat {
                 .rewrite(context, shape.offset_left(1)?.sub_width(1)?)
                 .map(|inner_pat| format!("({})", inner_pat)),
             PatKind::Err(_) => None,
+            PatKind::Deref(_) => None,
         }
     }
 }

@@ -210,10 +210,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Tuple(elements, ddpos) => {
                 self.check_pat_tuple(pat.span, elements, ddpos, expected, pat_info)
             }
-            PatKind::Box(inner) if self.tcx.features().deref_patterns => {
-                self.check_pat_deref(pat.span, inner, expected, pat_info)
-            }
             PatKind::Box(inner) => self.check_pat_box(pat.span, inner, expected, pat_info),
+            PatKind::Deref(inner) => self.check_pat_deref(pat.span, inner, expected, pat_info),
             PatKind::Ref(inner, mutbl) => self.check_pat_ref(pat, inner, mutbl, expected, pat_info),
             PatKind::Slice(before, slice, after) => {
                 self.check_pat_slice(pat.span, before, slice, after, expected, pat_info)
@@ -297,6 +295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | PatKind::TupleStruct(..)
             | PatKind::Tuple(..)
             | PatKind::Box(_)
+            | PatKind::Deref(_)
             | PatKind::Range(..)
             | PatKind::Slice(..) => AdjustMode::Peel,
             // A never pattern behaves somewhat like a literal or unit variant.
@@ -762,6 +761,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | PatKind::Binding(..)
                         | PatKind::Path(..)
                         | PatKind::Box(..)
+                        | PatKind::Deref(_)
                         | PatKind::Ref(..)
                         | PatKind::Lit(..)
                         | PatKind::Range(..)

@@ -463,6 +463,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     }
                     PatKind::Or(_)
                     | PatKind::Box(_)
+                    | PatKind::Deref(_)
                     | PatKind::Ref(..)
                     | PatKind::Wild
                     | PatKind::Err(_) => {
