@@ -1,0 +1,53 @@
+error[E0080]: evaluation of `Fail::<T>::C` failed
+  --> $DIR/collect-in-promoted-const.rs:9:19
+   |
+LL |     const C: () = panic!();
+   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-in-promoted-const.rs:9:19
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/collect-in-promoted-const.rs:20:21
+   |
+LL |         let _val = &Fail::<T>::C;
+   |                     ^^^^^^^^^^^^
+
+error[E0080]: evaluation of `Fail::<i32>::C` failed
+  --> $DIR/collect-in-promoted-const.rs:9:19
+   |
+LL |     const C: () = panic!();
+   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-in-promoted-const.rs:9:19
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/collect-in-promoted-const.rs:20:21
+   |
+LL |         let _val = &Fail::<T>::C;
+   |                     ^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/collect-in-promoted-const.rs:20:20
+   |
+LL |         let _val = &Fail::<T>::C;
+   |                    ^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/collect-in-promoted-const.rs:20:21
+   |
+LL |         let _val = &Fail::<T>::C;
+   |                     ^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: the above error was encountered while instantiating `fn f::<i32>`
+  --> $DIR/collect-in-promoted-const.rs:25:5
+   |
+LL |     f::<i32>();
+   |     ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
