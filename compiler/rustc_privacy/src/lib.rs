@@ -1696,7 +1696,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         }
     }
 
-    for id in module.items() {
+    for id in module.free_items() {
         if let ItemKind::Impl(i) = tcx.hir().item(id).kind {
             if let Some(item) = i.of_trait {
                 let trait_ref = tcx.impl_trait_ref(id.owner_id.def_id).unwrap();
