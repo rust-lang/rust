@@ -113,15 +113,7 @@ use self::RegionKind::*;
 /// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
 #[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    PartialOrd(bound = ""),
-    PartialOrd = "feature_allow_slow_enum",
-    Ord(bound = ""),
-    Ord = "feature_allow_slow_enum",
-    Hash(bound = "")
-)]
+#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""))]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
 pub enum RegionKind<I: Interner> {
     /// A region parameter; for example `'a` in `impl<'a> Trait for &'a ()`.
