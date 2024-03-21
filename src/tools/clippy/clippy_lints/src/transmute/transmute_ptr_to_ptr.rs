@@ -16,7 +16,7 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
-        (ty::RawPtr(_, _), ty::RawPtr(to_ty)) => {
+        (ty::RawPtr(_, _), ty::RawPtr(to_ty, to_mutbl)) => {
             span_lint_and_then(
                 cx,
                 TRANSMUTE_PTR_TO_PTR,
@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(
                 "transmute from a pointer to a pointer",
                 |diag| {
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
-                        let sugg = arg.as_ty(Ty::new_ptr(cx.tcx, *to_ty));
+                        let sugg = arg.as_ty(Ty::new_ptr(cx.tcx, *to_ty, *to_mutbl));
                         diag.span_suggestion(e.span, "try", sugg, Applicability::Unspecified);
                     }
                 },

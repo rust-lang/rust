@@ -12,7 +12,6 @@ use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
 
-use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
@@ -22,7 +21,7 @@ use rustc_middle::{
     ty::{
         self,
         layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout},
-        Instance, Ty, TyCtxt, TypeAndMut,
+        Instance, Ty, TyCtxt,
     },
 };
 use rustc_span::def_id::{CrateNum, DefId};

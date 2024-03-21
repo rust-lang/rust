@@ -4,7 +4,7 @@ use clippy_utils::ty::is_c_void;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{RawPtr, TypeAndMut};
+use rustc_middle::ty::{RawPtr};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -44,7 +44,7 @@ impl LateLintPass<'_> for FromRawWithVoidPtr {
             && seg.ident.name == sym!(from_raw)
             && let Some(type_str) = path_def_id(cx, ty).and_then(|id| def_id_matches_type(cx, id))
             && let arg_kind = cx.typeck_results().expr_ty(arg).kind()
-            && let ty::RawPtr(ty, _) = arg_kind
+            && let RawPtr(ty, _) = arg_kind
             && is_c_void(cx, *ty)
         {
             let msg = format!("creating a `{type_str}` from a void raw pointer");

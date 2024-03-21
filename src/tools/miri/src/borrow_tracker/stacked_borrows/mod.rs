@@ -90,7 +90,7 @@ impl NewPermission {
                     }
                 }
             }
-            ty::RawPtr(ty::TypeAndMut { mutbl: Mutability::Mut, .. }) => {
+            ty::RawPtr(_, Mutability::Mut) => {
                 assert!(protector.is_none()); // RetagKind can't be both FnEntry and Raw.
                 // Mutable raw pointer. No access, not protected.
                 NewPermission::Uniform {
@@ -114,7 +114,7 @@ impl NewPermission {
                     // This fixes https://github.com/rust-lang/rust/issues/55005.
                 }
             }
-            ty::RawPtr(ty::TypeAndMut { mutbl: Mutability::Not, .. }) => {
+            ty::RawPtr(_, Mutability::Not) => {
                 assert!(protector.is_none()); // RetagKind can't be both FnEntry and Raw.
                 // `*const T`, when freshly created, are read-only in the frozen part.
                 NewPermission::FreezeSensitive {

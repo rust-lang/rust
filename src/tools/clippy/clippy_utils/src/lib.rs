@@ -112,7 +112,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgsRef, IntTy, ParamEnv,
-    ParamEnvAnd, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, UintTy, UpvarCapture,
+    ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt, UintTy, UpvarCapture,
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
