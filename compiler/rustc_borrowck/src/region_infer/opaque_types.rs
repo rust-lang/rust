@@ -434,10 +434,6 @@ fn check_opaque_type_parameter_valid(
     // Only check the parent generics, which will ignore any of the
     // duplicated lifetime args that come from reifying late-bounds.
     for (i, arg) in opaque_type_key.args.iter().take(parent_generics.count()).enumerate() {
-        if let Err(guar) = arg.error_reported() {
-            return Err(guar);
-        }
-
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
             GenericArgKind::Lifetime(lt) if is_ty_alias => {

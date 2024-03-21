@@ -5,7 +5,6 @@ fn a() -> impl Fn(&u8) -> impl Debug + '_ {
     //~^ ERROR ambiguous `+` in a type
     //~| ERROR cannot capture higher-ranked lifetime from outer `impl Trait`
     |x| x
-    //~^ ERROR lifetime may not live long enough
 }
 
 fn b() -> impl Fn() -> impl Debug + Send {
