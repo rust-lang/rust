@@ -1232,13 +1232,12 @@ impl<T: Ord, const N: usize> From<[T; N]> for BTreeSet<T> {
     }
 }
 
-/// Gets an owning iterator over the elements of the `BTreeSet` in ascending order.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator + Clone> IntoIterator for BTreeSet<T, A> {
     type Item = T;
     type IntoIter = IntoIter<T, A>;
 
-    /// Gets an iterator for moving out the `BTreeSet`'s contents.
+    /// Gets an iterator for moving out the `BTreeSet`'s contents in ascending order.
     ///
     /// # Examples
     ///

@@ -1632,12 +1632,12 @@ impl<'a, K, V> IterMut<'a, K, V> {
     }
 }
 
-/// Gets an owning iterator over the entries of the map, sorted by key.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, A: Allocator + Clone> IntoIterator for BTreeMap<K, V, A> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V, A>;
 
+    /// Gets an owning iterator over the entries of the map, sorted by key.
     fn into_iter(self) -> IntoIter<K, V, A> {
         let mut me = ManuallyDrop::new(self);
         if let Some(root) = me.root.take() {
