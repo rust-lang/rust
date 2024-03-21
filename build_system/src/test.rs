@@ -6,7 +6,7 @@ use crate::utils::{
     split_args, walk_dir,
 };
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader};
@@ -82,7 +82,7 @@ fn show_usage() {
 struct TestArg {
     build_only: bool,
     use_system_gcc: bool,
-    runners: BTreeSet<String>,
+    runners: Vec<String>,
     flags: Vec<String>,
     nb_parts: Option<usize>,
     current_part: Option<usize>,
@@ -127,8 +127,8 @@ impl TestArg {
                     show_usage();
                     return Ok(None);
                 }
-                x if runners.contains_key(x) => {
-                    test_arg.runners.insert(x.into());
+                x if runners.contains_key(x) && !test_arg.runners.iter().any(|runner| runner == x) => {
+                    test_arg.runners.push(x.into());
                 }
                 arg => {
                     if !test_arg.config_info.parse_argument(arg, &mut args)? {
@@ -535,7 +535,7 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     let rustc_args = &format!(
         r#"-Zpanic-abort-tests \
             -Zcodegen-backend="{pwd}/target/{channel}/librustc_codegen_gcc.{dylib_ext}" \
-            --sysroot "{pwd}/{sysroot_dir}" -Cpanic=abort{extra}"#,
+            --sysroot "{sysroot_dir}" -Cpanic=abort{extra}"#,
         pwd = std::env::current_dir()
             .map_err(|error| format!("`current_dir` failed: {:?}", error))?
             .display(),
@@ -974,11 +974,11 @@ where
         if args.is_using_gcc_master_branch() { "" } else { " -Csymbol-mangling-version=v0" };
 
     let rustc_args = format!(
-        "{} -Zcodegen-backend={} --sysroot {}{}",
-        env.get("TEST_FLAGS").unwrap_or(&String::new()),
-        args.config_info.cg_backend_path,
-        args.config_info.sysroot_path,
-        extra,
+        "{test_flags} -Zcodegen-backend={backend} --sysroot {sysroot}{extra}",
+        test_flags = env.get("TEST_FLAGS").unwrap_or(&String::new()),
+        backend = args.config_info.cg_backend_path,
+        sysroot = args.config_info.sysroot_path,
+        extra = extra,
     );
 
     env.get_mut("RUSTFLAGS").unwrap().clear();
