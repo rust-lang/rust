@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(macro_metavar_expr)]
-
 fn main() {
     macro_rules! one_nested_count_and_length {
         ( $( [ $( $l:literal ),* ] ),* ) => {

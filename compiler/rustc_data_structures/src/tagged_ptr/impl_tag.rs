@@ -11,7 +11,7 @@
 /// Basic usage:
 ///
 /// ```
-/// #![feature(macro_metavar_expr)]
+/// #![cfg_attr(bootstrap, feature(macro_metavar_expr))]
 /// use rustc_data_structures::{impl_tag, tagged_ptr::Tag};
 ///
 /// #[derive(Copy, Clone, PartialEq, Debug)]
@@ -51,7 +51,7 @@
 /// Structs are supported:
 ///
 /// ```
-/// #![feature(macro_metavar_expr)]
+/// #![cfg_attr(bootstrap, feature(macro_metavar_expr))]
 /// # use rustc_data_structures::impl_tag;
 /// #[derive(Copy, Clone)]
 /// struct Flags { a: bool, b: bool }
@@ -68,7 +68,7 @@
 /// Not specifying all values results in a compile error:
 ///
 /// ```compile_fail,E0004
-/// #![feature(macro_metavar_expr)]
+/// #![cfg_attr(bootstrap, feature(macro_metavar_expr))]
 /// # use rustc_data_structures::impl_tag;
 /// #[derive(Copy, Clone)]
 /// enum E {
