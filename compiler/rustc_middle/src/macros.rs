@@ -11,12 +11,18 @@
 /// [`span_bug`]: crate::span_bug
 #[macro_export]
 macro_rules! bug {
-    () => ( $crate::bug!("impossible case reached") );
-    ($msg:expr) => ({ $crate::util::bug::bug_fmt(::std::format_args!($msg)) });
-    ($msg:expr,) => ({ $crate::bug!($msg) });
-    ($fmt:expr, $($arg:tt)+) => ({
+    () => (
+        $crate::bug!("impossible case reached")
+    );
+    ($msg:expr) => (
+        $crate::util::bug::bug_fmt(::std::format_args!($msg))
+    );
+    ($msg:expr,) => (
+        $crate::bug!($msg)
+    );
+    ($fmt:expr, $($arg:tt)+) => (
         $crate::util::bug::bug_fmt(::std::format_args!($fmt, $($arg)+))
-    });
+    );
 }
 
 /// A macro for triggering an ICE with a span.
@@ -30,11 +36,15 @@ macro_rules! bug {
 /// [`DiagCtxt::span_delayed_bug`]: rustc_errors::DiagCtxt::span_delayed_bug
 #[macro_export]
 macro_rules! span_bug {
-    ($span:expr, $msg:expr) => ({ $crate::util::bug::span_bug_fmt($span, ::std::format_args!($msg)) });
-    ($span:expr, $msg:expr,) => ({ $crate::span_bug!($span, $msg) });
-    ($span:expr, $fmt:expr, $($arg:tt)+) => ({
+    ($span:expr, $msg:expr) => (
+        $crate::util::bug::span_bug_fmt($span, ::std::format_args!($msg))
+    );
+    ($span:expr, $msg:expr,) => (
+        $crate::span_bug!($span, $msg)
+    );
+    ($span:expr, $fmt:expr, $($arg:tt)+) => (
         $crate::util::bug::span_bug_fmt($span, ::std::format_args!($fmt, $($arg)+))
-    });
+    );
 }
 
 ///////////////////////////////////////////////////////////////////////////
