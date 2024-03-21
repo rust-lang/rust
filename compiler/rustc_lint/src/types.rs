@@ -673,7 +673,7 @@ fn lint_wide_pointer<'tcx>(
             refs += 1;
         }
         match ty.kind() {
-            ty::RawPtr(TypeAndMut { mutbl: _, ty }) => (!ty.is_sized(cx.tcx, cx.param_env))
+            ty::RawPtr(ty, _) => (!ty.is_sized(cx.tcx, cx.param_env))
                 .then(|| (refs, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn)))),
             _ => None,
         }
@@ -1374,7 +1374,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(fluent::lint_improper_ctypes_tuple_help),
             },
 
-            ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _)
+            ty::RawPtr(ty, _) | ty::Ref(_, ty, _)
                 if {
                     matches!(self.mode, CItemKind::Definition)
                         && ty.is_sized(self.cx.tcx, self.cx.param_env)
@@ -1383,7 +1383,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::RawPtr(ty::TypeAndMut { ty, .. })
+            ty::RawPtr(ty, _)
                 if match ty.kind() {
                     ty::Tuple(tuple) => tuple.is_empty(),
                     _ => false,
@@ -1392,9 +1392,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _) => {
-                self.check_type_for_ffi(cache, ty)
-            }
+            ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => self.check_type_for_ffi(cache, ty),
 
             ty::Array(inner_ty, _) => self.check_type_for_ffi(cache, inner_ty),
 

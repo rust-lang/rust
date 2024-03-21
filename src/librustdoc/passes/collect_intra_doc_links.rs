@@ -493,7 +493,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             ty::Tuple(_) => Res::Primitive(Tuple),
             ty::Array(..) => Res::Primitive(Array),
             ty::Slice(_) => Res::Primitive(Slice),
-            ty::RawPtr(_) => Res::Primitive(RawPointer),
+            ty::RawPtr(_, _) => Res::Primitive(RawPointer),
             ty::Ref(..) => Res::Primitive(Reference),
             ty::FnDef(..) => panic!("type alias to a function definition"),
             ty::FnPtr(_) => Res::Primitive(Fn),

@@ -1608,7 +1608,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mutbl: ty::Mutability) -> Ty<'tcx> {
-        Ty::new(tcx, RawPtr(ty::TypeAndMut { ty, mutbl }))
+        Ty::new(tcx, ty::RawPtr(ty, mutbl))
     }
 
     #[inline]
@@ -1915,7 +1915,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_array_slice(self) -> bool {
         match self.kind() {
             Slice(_) => true,
-            RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => matches!(ty.kind(), Slice(_)),
+            ty::RawPtr(ty, _) | Ref(_, ty, _) => matches!(ty.kind(), Slice(_)),
             _ => false,
         }
     }
@@ -1987,7 +1987,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_unsafe_ptr(self) -> bool {
-        matches!(self.kind(), RawPtr(_))
+        matches!(self.kind(), RawPtr(_, _))
     }
 
     /// Tests if this is any kind of primitive pointer type (reference, raw pointer, fn pointer).
@@ -2043,7 +2043,7 @@ impl<'tcx> Ty<'tcx> {
                 | Uint(_)
                 | FnDef(..)
                 | FnPtr(_)
-                | RawPtr(_)
+                | RawPtr(_, _)
                 | Infer(IntVar(_) | FloatVar(_))
         )
     }
@@ -2298,7 +2298,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Str
             | ty::Array(..)
             | ty::Slice(_)
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
@@ -2641,7 +2641,7 @@ impl<'tcx> Ty<'tcx> {
             | Str
             | Array(_, _)
             | Slice(_)
-            | RawPtr(_)
+            | RawPtr(_, _)
             | Ref(_, _, _)
             | FnDef(_, _)
             | FnPtr(_)

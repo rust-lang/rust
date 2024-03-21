@@ -530,7 +530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
         }
-        if let ty::RawPtr(_) = &rcvr_ty.kind() {
+        if let ty::RawPtr(_, _) = &rcvr_ty.kind() {
             err.note(
                 "try using `<*const T>::as_ref()` to get a reference to the \
                  type behind the pointer: https://doc.rust-lang.org/std/\

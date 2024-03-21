@@ -1483,7 +1483,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 v.normalize(bx.target_spec().pointer_width).bit_width().unwrap()
             ),
             ty::Float(v) => format!("v{}f{}", vec_len, v.bit_width()),
-            ty::RawPtr(_) => format!("v{}p0", vec_len),
+            ty::RawPtr(_, _) => format!("v{}p0", vec_len),
             _ => unreachable!(),
         }
     }
@@ -1493,7 +1493,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             ty::Int(v) => cx.type_int_from_ty(v),
             ty::Uint(v) => cx.type_uint_from_ty(v),
             ty::Float(v) => cx.type_float_from_ty(v),
-            ty::RawPtr(_) => cx.type_ptr(),
+            ty::RawPtr(_, _) => cx.type_ptr(),
             _ => unreachable!(),
         };
         cx.type_vector(elem_ty, vec_len)
@@ -2120,7 +2120,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         match in_elem.kind() {
-            ty::RawPtr(_) => {}
+            ty::RawPtr(_, _) => {}
             _ => {
                 return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: in_elem })
             }
@@ -2152,7 +2152,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             _ => return_error!(InvalidMonomorphization::ExpectedUsize { span, name, ty: in_elem }),
         }
         match out_elem.kind() {
-            ty::RawPtr(_) => {}
+            ty::RawPtr(_, _) => {}
             _ => {
                 return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: out_elem })
             }

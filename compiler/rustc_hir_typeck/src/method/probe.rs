@@ -528,7 +528,7 @@ fn method_autoderef_steps<'tcx>(
                 from_unsafe_deref: reached_raw_pointer,
                 unsize: false,
             };
-            if let ty::RawPtr(_) = ty.kind() {
+            if let ty::RawPtr(_, _) = ty.kind() {
                 // all the subsequent steps will be from_unsafe_deref
                 reached_raw_pointer = true;
             }
@@ -696,7 +696,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::Str
             | ty::Array(..)
             | ty::Slice(_)
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::Never
             | ty::Tuple(..) => self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty),

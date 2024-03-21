@@ -16,7 +16,7 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
-        (ty::RawPtr(_), ty::RawPtr(to_ty)) => {
+        (ty::RawPtr(_, _), ty::RawPtr(to_ty)) => {
             span_lint_and_then(
                 cx,
                 TRANSMUTE_PTR_TO_PTR,

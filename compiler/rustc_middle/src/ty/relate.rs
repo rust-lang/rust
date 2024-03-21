@@ -443,10 +443,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_coroutine_closure(tcx, a_id, args))
         }
 
-        (
-            &ty::RawPtr(ty::TypeAndMut { ty: a_ty, mutbl: a_mutbl }),
-            &ty::RawPtr(ty::TypeAndMut { ty: b_ty, mutbl: b_mutbl }),
-        ) => {
+        (&ty::RawPtr(a_ty, a_mutbl), &ty::RawPtr(b_ty, b_mutbl)) => {
             if a_mutbl != b_mutbl {
                 return Err(TypeError::Mutability);
             }

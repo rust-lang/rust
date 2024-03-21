@@ -623,7 +623,7 @@ fn fn_abi_new_uncached<'tcx>(
         let is_return = arg_idx.is_none();
         let is_drop_target = is_drop_in_place && arg_idx == Some(0);
         let drop_target_pointee = is_drop_target.then(|| match ty.kind() {
-            ty::RawPtr(ty::TypeAndMut { ty, .. }) => *ty,
+            ty::RawPtr(ty, _) => *ty,
             _ => bug!("argument to drop_in_place is not a raw ptr: {:?}", ty),
         });
 

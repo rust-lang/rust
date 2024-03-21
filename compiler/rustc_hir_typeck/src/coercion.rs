@@ -560,7 +560,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     },
                 ))
             }
-            (&ty::Ref(_, ty_a, mt_a), &ty::RawPtr(ty::TypeAndMut { mutbl: mt_b, .. })) => {
+            (&ty::Ref(_, ty_a, mt_a), &ty::RawPtr(_, mt_b)) => {
                 coerce_mutbls(mt_a, mt_b)?;
 
                 Some((

@@ -1649,7 +1649,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     | ty::Str
                     | ty::Array(_, _)
                     | ty::Slice(_)
-                    | ty::RawPtr(_)
+                    | ty::RawPtr(_, _)
                     | ty::Ref(_, _, _)
                     | ty::FnDef(_, _)
                     | ty::FnPtr(_)

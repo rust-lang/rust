@@ -46,7 +46,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
             bug!("unexpected type `{ty}`")
         }
 
-        ty::RawPtr(ty::TypeAndMut { ty: element_ty, .. }) | ty::Ref(_, element_ty, _) => {
+        ty::RawPtr(element_ty, _) | ty::Ref(_, element_ty, _) => {
             Ok(vec![ty::Binder::dummy(element_ty)])
         }
 
@@ -340,7 +340,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         | ty::Str
         | ty::Array(_, _)
         | ty::Slice(_)
-        | ty::RawPtr(_)
+        | ty::RawPtr(_, _)
         | ty::Ref(_, _, _)
         | ty::Dynamic(_, _, _)
         | ty::Coroutine(_, _)
@@ -527,7 +527,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
         | ty::Str
         | ty::Array(_, _)
         | ty::Slice(_)
-        | ty::RawPtr(_)
+        | ty::RawPtr(_, _)
         | ty::Ref(_, _, _)
         | ty::Dynamic(_, _, _)
         | ty::Coroutine(_, _)

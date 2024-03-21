@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
     );
 
     if matches!(cast_from.kind(), ty::Ref(..))
-        && let ty::RawPtr(TypeAndMut { mutbl: to_mutbl, .. }) = cast_to.kind()
+        && let ty::RawPtr(_, to_mutbl) = cast_to.kind()
         && let Some(use_cx) = expr_use_ctxt(cx, expr)
         // TODO: only block the lint if `cast_expr` is a temporary
         && !matches!(use_cx.node, ExprUseNode::Local(_) | ExprUseNode::ConstStatic(_))

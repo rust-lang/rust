@@ -1752,7 +1752,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(write("{:?}", char::try_from(int).unwrap()))
             }
             // Pointer types
-            ty::Ref(..) | ty::RawPtr(_) | ty::FnPtr(_) => {
+            ty::Ref(..) | ty::RawPtr(_, _) | ty::FnPtr(_) => {
                 let data = int.assert_bits(self.tcx().data_layout.pointer_size);
                 self.typed_value(
                     |this| {

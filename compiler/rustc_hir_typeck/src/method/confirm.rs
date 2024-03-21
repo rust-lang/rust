@@ -217,7 +217,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
                 target = match target.kind() {
-                    &ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
+                    &ty::RawPtr(ty, mutbl) => {
                         assert!(mutbl.is_mut());
                         Ty::new_imm_ptr(self.tcx, ty)
                     }

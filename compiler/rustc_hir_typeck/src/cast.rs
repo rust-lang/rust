@@ -128,7 +128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Float(_)
             | ty::Array(..)
             | ty::CoroutineWitness(..)
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
@@ -332,7 +332,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let mut sugg = None;
                 let mut sugg_mutref = false;
                 if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
-                    if let ty::RawPtr(TypeAndMut { ty: expr_ty, .. }) = *self.expr_ty.kind()
+                    if let ty::RawPtr(expr_ty, _) = *self.expr_ty.kind()
                         && fcx.can_coerce(
                             Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, expr_ty, mutbl),
                             self.cast_ty,
@@ -356,7 +356,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     {
                         sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                     }
-                } else if let ty::RawPtr(TypeAndMut { mutbl, .. }) = *self.cast_ty.kind()
+                } else if let ty::RawPtr(mutbl, _) = *self.cast_ty.kind()
                     && fcx.can_coerce(
                         Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, self.expr_ty, mutbl),
                         self.cast_ty,

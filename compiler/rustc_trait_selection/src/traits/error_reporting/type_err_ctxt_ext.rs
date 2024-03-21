@@ -1357,7 +1357,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     "using function pointers as const generic parameters is forbidden",
                 )
             }
-            ty::RawPtr(_) => {
+            ty::RawPtr(_, _) => {
                 struct_span_code_err!(
                     self.dcx(),
                     span,
@@ -1809,9 +1809,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let strip_references = |mut t: Ty<'tcx>| -> Ty<'tcx> {
             loop {
                 match t.kind() {
-                    ty::Ref(_, inner, _) | ty::RawPtr(ty::TypeAndMut { ty: inner, .. }) => {
-                        t = *inner
-                    }
+                    ty::Ref(_, inner, _) | ty::RawPtr(inner, _) => t = *inner,
                     _ => break t,
                 }
             }

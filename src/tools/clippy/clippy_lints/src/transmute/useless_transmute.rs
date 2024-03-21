@@ -53,7 +53,7 @@ pub(super) fn check<'tcx>(
             }
             true
         },
-        (ty::Int(_) | ty::Uint(_), ty::RawPtr(_)) => {
+        (ty::Int(_) | ty::Uint(_), ty::RawPtr(_, _)) => {
             span_lint_and_then(
                 cx,
                 USELESS_TRANSMUTE,

@@ -2190,12 +2190,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_from = op.ty(body, tcx);
 
                         let opt_ty_elem_mut = match ty_from.kind() {
-                            ty::RawPtr(ty::TypeAndMut { mutbl: array_mut, ty: array_ty }) => {
-                                match array_ty.kind() {
-                                    ty::Array(ty_elem, _) => Some((ty_elem, *array_mut)),
-                                    _ => None,
-                                }
-                            }
+                            ty::RawPtr(array_ty, array_mut) => match array_ty.kind() {
+                                ty::Array(ty_elem, _) => Some((ty_elem, *array_mut)),
+                                _ => None,
+                            },
                             _ => None,
                         };
 
@@ -2210,9 +2208,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         };
 
                         let (ty_to, ty_to_mut) = match ty.kind() {
-                            ty::RawPtr(ty::TypeAndMut { mutbl: ty_to_mut, ty: ty_to }) => {
-                                (ty_to, *ty_to_mut)
-                            }
+                            ty::RawPtr(ty_to, ty_to_mut) => (ty_to, *ty_to_mut),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -2413,7 +2409,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let ty_left = left.ty(body, tcx);
                 match ty_left.kind() {
                     // Types with regions are comparable if they have a common super-type.
-                    ty::RawPtr(_) | ty::FnPtr(_) => {
+                    ty::RawPtr(_, _) | ty::FnPtr(_) => {
                         let ty_right = right.ty(body, tcx);
                         let common_ty = self.infcx.next_ty_var(TypeVariableOrigin {
                             kind: TypeVariableOriginKind::MiscVariable,

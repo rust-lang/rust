@@ -1479,7 +1479,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
     ) -> bool {
         // Expected type needs to be a raw pointer.
-        let ty::RawPtr(ty::TypeAndMut { mutbl, .. }) = expected_ty.kind() else {
+        let ty::RawPtr(mutbl, _) = expected_ty.kind() else {
             return false;
         };
 
@@ -2509,11 +2509,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return make_sugg(sp, expr.span.lo());
                 }
             }
-            (
-                _,
-                &ty::RawPtr(TypeAndMut { ty: ty_b, mutbl: mutbl_b }),
-                &ty::Ref(_, ty_a, mutbl_a),
-            ) => {
+            (_, &ty::RawPtr(ty_b, mutbl_b), &ty::Ref(_, ty_a, mutbl_a)) => {
                 if let Some(steps) = self.deref_steps(ty_a, ty_b)
                     // Only suggest valid if dereferencing needed.
                     && steps > 0

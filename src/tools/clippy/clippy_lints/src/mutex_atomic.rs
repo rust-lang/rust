@@ -127,7 +127,7 @@ fn get_atomic_name(ty: Ty<'_>) -> Option<&'static str> {
                 IntTy::I128 => None,
             }
         },
-        ty::RawPtr(_) => Some("AtomicPtr"),
+        ty::RawPtr(_, _) => Some("AtomicPtr"),
         _ => None,
     }
 }

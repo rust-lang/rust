@@ -183,7 +183,7 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
 ) -> Option<(TyAndLayout<'tcx>, TyAndLayout<'tcx>, Expr<'tcx>)> {
     let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
 
-    let ty::RawPtr(TypeAndMut { ty: inner_end_ty, mutbl: _ }) = end_ty.kind() else {
+    let ty::RawPtr(inner_end_ty, _) = end_ty.kind() else {
         return None;
     };
 

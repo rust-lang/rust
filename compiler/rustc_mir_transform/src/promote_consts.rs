@@ -464,7 +464,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let op = *op;
                 let lhs_ty = lhs.ty(self.body, self.tcx);
 
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs_ty.kind() {
+                if let ty::RawPtr(_, _) | ty::FnPtr(..) = lhs_ty.kind() {
                     // Raw and fn pointer operations are not allowed inside consts and thus not promotable.
                     assert!(matches!(
                         op,

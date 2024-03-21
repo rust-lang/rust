@@ -2493,7 +2493,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     Some("integers must be initialized".into())
                 }
                 Float(_) if init == InitKind::Uninit => Some("floats must be initialized".into()),
-                RawPtr(_) if init == InitKind::Uninit => {
+                RawPtr(_, _) if init == InitKind::Uninit => {
                     Some("raw pointers must be initialized".into())
                 }
                 // Recurse and checks for some compound types. (but not unions)
