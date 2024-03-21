@@ -24,7 +24,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
-use rustc_hir::{GenericArg, GenericArgs};
+use rustc_hir::{GenericArg, GenericArgs, HirId};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
@@ -137,7 +137,7 @@ pub trait AstConv<'tcx> {
     /// report.
     fn set_tainted_by_errors(&self, e: ErrorGuaranteed);
 
-    fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span);
+    fn record_ty(&self, hir_id: HirId, ty: Ty<'tcx>, span: Span);
 
     fn astconv(&self) -> &dyn AstConv<'tcx>
     where
@@ -943,7 +943,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     #[instrument(level = "debug", skip(self, hir_ref_id, span, qself, assoc_segment), fields(assoc_ident=?assoc_segment.ident), ret)]
     pub fn associated_path_to_ty(
         &self,
-        hir_ref_id: hir::HirId,
+        hir_ref_id: HirId,
         span: Span,
         qself_ty: Ty<'tcx>,
         qself: &hir::Ty<'_>,
@@ -1226,7 +1226,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         segment: &hir::PathSegment<'tcx>,
         adt_did: DefId,
         self_ty: Ty<'tcx>,
-        block: hir::HirId,
+        block: HirId,
         span: Span,
     ) -> Result<Option<(Ty<'tcx>, DefId)>, ErrorGuaranteed> {
         let tcx = self.tcx();
@@ -1377,7 +1377,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     fn lookup_assoc_ty(
         &self,
         name: Ident,
-        block: hir::HirId,
+        block: HirId,
         span: Span,
         scope: DefId,
     ) -> Option<DefId> {
@@ -1389,7 +1389,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     fn lookup_assoc_ty_unchecked(
         &self,
         name: Ident,
-        block: hir::HirId,
+        block: HirId,
         scope: DefId,
     ) -> Option<(DefId, DefId)> {
         let tcx = self.tcx();
@@ -1406,14 +1406,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         Some((item.def_id, def_scope))
     }
 
-    fn check_assoc_ty(
-        &self,
-        item: DefId,
-        name: Ident,
-        def_scope: DefId,
-        block: hir::HirId,
-        span: Span,
-    ) {
+    fn check_assoc_ty(&self, item: DefId, name: Ident, def_scope: DefId, block: HirId, span: Span) {
         let tcx = self.tcx();
         let kind = DefKind::AssocTy;
 
@@ -1816,7 +1809,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         &self,
         opt_self_ty: Option<Ty<'tcx>>,
         path: &hir::Path<'tcx>,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         permit_variants: bool,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
@@ -2054,7 +2047,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
     // Converts a hir id corresponding to a type parameter to
     // a early-bound `ty::Param` or late-bound `ty::Bound`.
-    pub(crate) fn hir_id_to_bound_ty(&self, hir_id: hir::HirId) -> Ty<'tcx> {
+    pub(crate) fn hir_id_to_bound_ty(&self, hir_id: HirId) -> Ty<'tcx> {
         let tcx = self.tcx();
         match tcx.named_bound_var(hir_id) {
             Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
@@ -2079,11 +2072,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
     // Converts a hir id corresponding to a const parameter to
     // a early-bound `ConstKind::Param` or late-bound `ConstKind::Bound`.
-    pub(crate) fn hir_id_to_bound_const(
-        &self,
-        hir_id: hir::HirId,
-        param_ty: Ty<'tcx>,
-    ) -> Const<'tcx> {
+    pub(crate) fn hir_id_to_bound_const(&self, hir_id: HirId, param_ty: Ty<'tcx>) -> Const<'tcx> {
         let tcx = self.tcx();
         match tcx.named_bound_var(hir_id) {
             Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
@@ -2417,7 +2406,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     #[instrument(level = "debug", skip(self, hir_id, unsafety, abi, decl, generics, hir_ty), ret)]
     pub fn ty_of_fn(
         &self,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         unsafety: hir::Unsafety,
         abi: abi::Abi,
         decl: &hir::FnDecl<'tcx>,
@@ -2551,7 +2540,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// corresponds to the return type.
     fn suggest_trait_fn_ty_for_impl_fn_infer(
         &self,
-        fn_hir_id: hir::HirId,
+        fn_hir_id: HirId,
         arg_idx: Option<usize>,
     ) -> Option<Ty<'tcx>> {
         let tcx = self.tcx();

@@ -1827,13 +1827,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         has_unsuggestable_args = true;
                         match arg.unpack() {
                             GenericArgKind::Lifetime(_) => self
-                                .next_region_var(RegionVariableOrigin::MiscVariable(
-                                    rustc_span::DUMMY_SP,
-                                ))
+                                .next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
                                 .into(),
                             GenericArgKind::Type(_) => self
                                 .next_ty_var(TypeVariableOrigin {
-                                    span: rustc_span::DUMMY_SP,
+                                    span: DUMMY_SP,
                                     kind: TypeVariableOriginKind::MiscVariable,
                                 })
                                 .into(),
@@ -1841,7 +1839,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .next_const_var(
                                     arg.ty(),
                                     ConstVariableOrigin {
-                                        span: rustc_span::DUMMY_SP,
+                                        span: DUMMY_SP,
                                         kind: ConstVariableOriginKind::MiscVariable,
                                     },
                                 )
@@ -2741,7 +2739,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let SelfSource::QPath(ty) = self_source else {
             return;
         };
-        for (deref_ty, _) in self.autoderef(rustc_span::DUMMY_SP, rcvr_ty).skip(1) {
+        for (deref_ty, _) in self.autoderef(DUMMY_SP, rcvr_ty).skip(1) {
             if let Ok(pick) = self.probe_for_name(
                 Mode::Path,
                 item_name,

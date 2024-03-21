@@ -3,8 +3,7 @@ use askama::Template;
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
-use rustc_middle::ty::layout::LayoutError;
-use rustc_middle::ty::Adt;
+use rustc_middle::ty::{self, layout::LayoutError};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::{Primitive, TagEncoding, Variants};
 
@@ -57,7 +56,7 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
             variants
                 .iter_enumerated()
                 .map(|(variant_idx, variant_layout)| {
-                    let Adt(adt, _) = type_layout.ty.kind() else {
+                    let ty::Adt(adt, _) = type_layout.ty.kind() else {
                         span_bug!(tcx.def_span(ty_def_id), "not an adt")
                     };
                     let name = adt.variant(variant_idx).name;

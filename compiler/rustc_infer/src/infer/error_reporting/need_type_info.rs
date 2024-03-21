@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, InferConst};
 use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
 use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeckResults};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::iter;
 
@@ -518,7 +518,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
                                 GenericArgKind::Type(_) => self
                                     .next_ty_var(TypeVariableOrigin {
-                                        span: rustc_span::DUMMY_SP,
+                                        span: DUMMY_SP,
                                         kind: TypeVariableOriginKind::MiscVariable,
                                     })
                                     .into(),
@@ -526,7 +526,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     .next_const_var(
                                         arg.ty(),
                                         ConstVariableOrigin {
-                                            span: rustc_span::DUMMY_SP,
+                                            span: DUMMY_SP,
                                             kind: ConstVariableOriginKind::MiscVariable,
                                         },
                                     )

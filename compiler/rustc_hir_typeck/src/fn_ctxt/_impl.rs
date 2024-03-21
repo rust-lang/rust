@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, GenericArg, Node, QPath};
+use rustc_hir::{ExprKind, GenericArg, HirId, Node, QPath};
 use rustc_hir_analysis::astconv::generics::{
     check_generic_arg_count_for_call, create_args_for_parent_generic_args,
 };
@@ -46,7 +46,7 @@ use std::slice;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
-    pub(in super::super) fn warn_if_unreachable(&self, id: hir::HirId, span: Span, kind: &str) {
+    pub(in super::super) fn warn_if_unreachable(&self, id: HirId, span: Span, kind: &str) {
         // FIXME: Combine these two 'if' expressions into one once
         // let chains are implemented
         if let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() {
@@ -129,14 +129,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         format!("{self:p}")
     }
 
-    pub fn local_ty(&self, span: Span, nid: hir::HirId) -> Ty<'tcx> {
+    pub fn local_ty(&self, span: Span, nid: HirId) -> Ty<'tcx> {
         self.locals.borrow().get(&nid).cloned().unwrap_or_else(|| {
             span_bug!(span, "no type for local variable {}", self.tcx.hir().node_to_string(nid))
         })
     }
 
     #[inline]
-    pub fn write_ty(&self, id: hir::HirId, ty: Ty<'tcx>) {
+    pub fn write_ty(&self, id: HirId, ty: Ty<'tcx>) {
         debug!("write_ty({:?}, {:?}) in fcx {}", id, self.resolve_vars_if_possible(ty), self.tag());
         let mut typeck = self.typeck_results.borrow_mut();
         let mut node_ty = typeck.node_types_mut();
@@ -160,7 +160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_field_index(
         &self,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         index: FieldIdx,
         nested_fields: Vec<(Ty<'tcx>, FieldIdx)>,
     ) {
@@ -173,7 +173,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub(in super::super) fn write_resolution(
         &self,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         r: Result<(DefKind, DefId), ErrorGuaranteed>,
     ) {
         self.typeck_results.borrow_mut().type_dependent_defs_mut().insert(hir_id, r);
@@ -182,7 +182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub fn write_method_call_and_enforce_effects(
         &self,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         span: Span,
         method: MethodCallee<'tcx>,
     ) {
@@ -191,7 +191,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.write_args(hir_id, method.args);
     }
 
-    pub fn write_args(&self, node_id: hir::HirId, args: GenericArgsRef<'tcx>) {
+    pub fn write_args(&self, node_id: HirId, args: GenericArgsRef<'tcx>) {
         if !args.is_empty() {
             debug!("write_args({:?}, {:?}) in fcx {}", node_id, args, self.tag());
 
@@ -209,7 +209,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn write_user_type_annotation_from_args(
         &self,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
         user_self_ty: Option<UserSelfTy<'tcx>>,
@@ -229,7 +229,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn write_user_type_annotation(
         &self,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         canonical_user_type_annotation: CanonicalUserType<'tcx>,
     ) {
         debug!("fcx {}", self.tag());
@@ -466,7 +466,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         t.has_free_regions() || t.has_projections() || t.has_infer_types()
     }
 
-    pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {
+    pub fn node_ty(&self, id: HirId) -> Ty<'tcx> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => t,
             None if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx, e),
@@ -480,7 +480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn node_ty_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
+    pub fn node_ty_opt(&self, id: HirId) -> Option<Ty<'tcx>> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => Some(t),
             None if let Some(e) = self.tainted_by_errors() => Some(Ty::new_error(self.tcx, e)),
@@ -767,7 +767,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         lang_item: hir::LangItem,
         span: Span,
-        hir_id: hir::HirId,
+        hir_id: HirId,
     ) -> (Res, Ty<'tcx>) {
         let def_id = self.tcx.require_lang_item(lang_item, Some(span));
         let def_kind = self.tcx.def_kind(def_id);
@@ -815,7 +815,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn resolve_ty_and_res_fully_qualified_call(
         &self,
         qpath: &'tcx QPath<'tcx>,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         span: Span,
         args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> (Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
@@ -945,7 +945,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn get_node_fn_decl(
         &self,
         node: Node<'tcx>,
-    ) -> Option<(hir::HirId, &'tcx hir::FnDecl<'tcx>, Ident, bool)> {
+    ) -> Option<(HirId, &'tcx hir::FnDecl<'tcx>, Ident, bool)> {
         match node {
             Node::Item(&hir::Item {
                 ident,
@@ -957,7 +957,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // method called `main`, regardless of whether it is actually the entry point,
                 // but it will still present it as the reason for the expected type.
                 Some((
-                    hir::HirId::make_owner(owner_id.def_id),
+                    HirId::make_owner(owner_id.def_id),
                     &sig.decl,
                     ident,
                     ident.name != sym::main,
@@ -968,13 +968,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: hir::TraitItemKind::Fn(ref sig, ..),
                 owner_id,
                 ..
-            }) => Some((hir::HirId::make_owner(owner_id.def_id), &sig.decl, ident, true)),
+            }) => Some((HirId::make_owner(owner_id.def_id), &sig.decl, ident, true)),
             Node::ImplItem(&hir::ImplItem {
                 ident,
                 kind: hir::ImplItemKind::Fn(ref sig, ..),
                 owner_id,
                 ..
-            }) => Some((hir::HirId::make_owner(owner_id.def_id), &sig.decl, ident, false)),
+            }) => Some((HirId::make_owner(owner_id.def_id), &sig.decl, ident, false)),
             Node::Expr(&hir::Expr {
                 hir_id,
                 kind:
@@ -1005,7 +1005,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => return None,
                 };
                 Some((
-                    hir::HirId::make_owner(owner_id.def_id),
+                    HirId::make_owner(owner_id.def_id),
                     &sig.decl,
                     ident,
                     ident.name != sym::main,
@@ -1017,10 +1017,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Given a `HirId`, return the `HirId` of the enclosing function, its `FnDecl`, and whether a
     /// suggestion can be made, `None` otherwise.
-    pub fn get_fn_decl(
-        &self,
-        blk_id: hir::HirId,
-    ) -> Option<(hir::HirId, &'tcx hir::FnDecl<'tcx>, bool)> {
+    pub fn get_fn_decl(&self, blk_id: HirId) -> Option<(HirId, &'tcx hir::FnDecl<'tcx>, bool)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
         self.tcx.hir().get_return_block(blk_id).and_then(|blk_id| {
@@ -1115,7 +1112,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         res: Res,
         span: Span,
         path_span: Span,
-        hir_id: hir::HirId,
+        hir_id: HirId,
     ) -> (Ty<'tcx>, Res) {
         let tcx = self.tcx;
 
@@ -1489,7 +1486,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-        hir_id: hir::HirId,
+        hir_id: HirId,
     ) {
         self.add_required_obligations_with_code(span, def_id, args, |idx, span| {
             if span.is_dummy() {
@@ -1580,7 +1577,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn with_breakable_ctxt<F: FnOnce() -> R, R>(
         &self,
-        id: hir::HirId,
+        id: HirId,
         ctxt: BreakableCtxt<'tcx>,
         f: F,
     ) -> (BreakableCtxt<'tcx>, R) {
@@ -1619,7 +1616,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Returns `true` if an expression is contained inside the LHS of an assignment expression.
-    pub(in super::super) fn expr_in_place(&self, mut expr_id: hir::HirId) -> bool {
+    pub(in super::super) fn expr_in_place(&self, mut expr_id: HirId) -> bool {
         let mut contained_in_place = false;
 
         while let hir::Node::Expr(parent_expr) = self.tcx.parent_hir_node(expr_id) {
