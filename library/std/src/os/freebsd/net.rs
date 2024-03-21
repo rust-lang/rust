@@ -2,6 +2,7 @@
 
 #![unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 
+use crate::ffi::CStr;
 use crate::io;
 use crate::os::unix::net;
 use crate::sealed::Sealed;
@@ -40,6 +41,15 @@ pub trait UnixSocketExt: Sealed {
     /// ```
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     fn set_local_creds_persistent(&self, local_creds_persistent: bool) -> io::Result<()>;
+
+    /// Get a filter name if one had been set previously on the socket.
+    #[unstable(feature = "acceptfilter", issue = "121891")]
+    fn acceptfilter(&self) -> io::Result<&CStr>;
+
+    /// Set or disable a filter on the socket to filter incoming connections
+    /// to defer it before accept(2)
+    #[unstable(feature = "acceptfilter", issue = "121891")]
+    fn set_acceptfilter(&self, name: &CStr) -> io::Result<()>;
 }
 
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
@@ -51,6 +61,14 @@ impl UnixSocketExt for net::UnixDatagram {
     fn set_local_creds_persistent(&self, local_creds_persistent: bool) -> io::Result<()> {
         self.as_inner().set_local_creds_persistent(local_creds_persistent)
     }
+
+    fn acceptfilter(&self) -> io::Result<&CStr> {
+        self.as_inner().acceptfilter()
+    }
+
+    fn set_acceptfilter(&self, name: &CStr) -> io::Result<()> {
+        self.as_inner().set_acceptfilter(name)
+    }
 }
 
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
@@ -61,5 +79,13 @@ impl UnixSocketExt for net::UnixStream {
 
     fn set_local_creds_persistent(&self, local_creds_persistent: bool) -> io::Result<()> {
         self.as_inner().set_local_creds_persistent(local_creds_persistent)
+    }
+
+    fn acceptfilter(&self) -> io::Result<&CStr> {
+        self.as_inner().acceptfilter()
+    }
+
+    fn set_acceptfilter(&self, name: &CStr) -> io::Result<()> {
+        self.as_inner().set_acceptfilter(name)
     }
 }
