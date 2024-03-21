@@ -689,6 +689,7 @@ symbols! {
         dispatch_from_dyn,
         div,
         div_assign,
+        diverging_block_default,
         do_not_recommend,
         doc,
         doc_alias,

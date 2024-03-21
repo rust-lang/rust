@@ -6,6 +6,7 @@ mod suggestions;
 
 use crate::coercion::DynamicCoerceMany;
 use crate::fallback::DivergingFallbackBehavior;
+use crate::fn_ctxt::checks::DivergingBlockBehavior;
 use crate::{CoroutineTypes, Diverges, EnclosingBreakables, Inherited};
 use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::{DiagCtxt, ErrorGuaranteed};
@@ -112,6 +113,7 @@ pub struct FnCtxt<'a, 'tcx> {
     pub(super) fallback_has_occurred: Cell<bool>,
 
     pub(super) diverging_fallback_behavior: DivergingFallbackBehavior,
+    pub(super) diverging_block_behavior: DivergingBlockBehavior,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -120,7 +122,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         body_id: LocalDefId,
     ) -> FnCtxt<'a, 'tcx> {
-        let diverging_fallback_behavior = parse_never_type_options_attr(inh.tcx);
+        let (diverging_fallback_behavior, diverging_block_behavior) =
+            parse_never_type_options_attr(inh.tcx);
         FnCtxt {
             body_id,
             param_env,
@@ -137,6 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             inh,
             fallback_has_occurred: Cell::new(false),
             diverging_fallback_behavior,
+            diverging_block_behavior,
         }
     }
 
@@ -381,13 +385,16 @@ impl<'tcx> LoweredTy<'tcx> {
     }
 }
 
-fn parse_never_type_options_attr(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
+fn parse_never_type_options_attr(
+    tcx: TyCtxt<'_>,
+) -> (DivergingFallbackBehavior, DivergingBlockBehavior) {
     use DivergingFallbackBehavior::*;
 
     // Error handling is dubious here (unwraps), but that's probably fine for an internal attribute.
     // Just don't write incorrect attributes <3
 
     let mut fallback = None;
+    let mut block = None;
 
     let items = tcx
         .get_attr(CRATE_DEF_ID, sym::rustc_never_type_options)
@@ -409,6 +416,18 @@ fn parse_never_type_options_attr(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
             continue;
         }
 
+        if item.has_name(sym::diverging_block_default) && fallback.is_none() {
+            let mode = item.value_str().unwrap();
+            match mode {
+                sym::unit => block = Some(DivergingBlockBehavior::Unit),
+                sym::never => block = Some(DivergingBlockBehavior::Never),
+                _ => {
+                    tcx.dcx().span_err(item.span(), format!("unknown diverging block default: `{mode}` (supported: `unit` and `never`)"));
+                }
+            };
+            continue;
+        }
+
         tcx.dcx().span_err(
             item.span(),
             format!(
@@ -422,5 +441,7 @@ fn parse_never_type_options_attr(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
         if tcx.features().never_type_fallback { FallbackToNiko } else { FallbackToUnit }
     });
 
-    fallback
+    let block = block.unwrap_or_default();
+
+    (fallback, block)
 }
