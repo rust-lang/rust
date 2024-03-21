@@ -327,7 +327,7 @@ impl<'tcx> Deref for Region<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct EarlyParamRegion {
     pub def_id: DefId,
