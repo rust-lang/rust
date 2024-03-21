@@ -49,7 +49,6 @@ use std::borrow::Cow;
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
 use rustc_hir::intravisit::Visitor;
-use std::cmp::{self, Ordering};
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -3215,8 +3214,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if !candidates.is_empty() {
-            // Sort from most relevant to least relevant.
-            candidates.sort_by_key(|&info| cmp::Reverse(info));
+            // Sort local crate results before others
+            candidates
+                .sort_by_key(|&info| (!info.def_id.is_local(), self.tcx.def_path_str(info.def_id)));
             candidates.dedup();
 
             let param_type = match rcvr_ty.kind() {
@@ -3564,31 +3564,9 @@ pub enum SelfSource<'a> {
     MethodCall(&'a hir::Expr<'a> /* rcvr */),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct TraitInfo {
     pub def_id: DefId,
-}
-
-impl PartialEq for TraitInfo {
-    fn eq(&self, other: &TraitInfo) -> bool {
-        self.cmp(other) == Ordering::Equal
-    }
-}
-impl Eq for TraitInfo {}
-impl PartialOrd for TraitInfo {
-    fn partial_cmp(&self, other: &TraitInfo) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for TraitInfo {
-    fn cmp(&self, other: &TraitInfo) -> Ordering {
-        // Local crates are more important than remote ones (local:
-        // `cnum == 0`), and otherwise we throw in the defid for totality.
-
-        let lhs = (other.def_id.krate, other.def_id);
-        let rhs = (self.def_id.krate, self.def_id);
-        lhs.cmp(&rhs)
-    }
 }
 
 /// Retrieves all traits in this crate and any dependent crates,
