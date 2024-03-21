@@ -256,19 +256,33 @@ pub struct Uniform {
     ///   this size will be rounded up to the nearest multiple of `unit.size`.
     pub total: Size,
 
-    /// Force the use of an array, even if there is only a single element.
-    pub force_array: bool,
+    /// Indicate that the argument is consecutive, in the sense that either all values need to be
+    /// passed in register, or all on the stack. If they are passed on the stack, there should be
+    /// no additional padding between elements.
+    pub is_consecutive: bool,
 }
 
 impl From<Reg> for Uniform {
     fn from(unit: Reg) -> Uniform {
-        Uniform { unit, total: unit.size, force_array: false }
+        Uniform { unit, total: unit.size, is_consecutive: false }
     }
 }
 
 impl Uniform {
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         self.unit.align(cx)
+    }
+
+    /// Pass using one or more values of the given type, without requiring them to be consecutive.
+    /// That is, some values may be passed in register and some on the stack.
+    pub fn new(unit: Reg, total: Size) -> Self {
+        Uniform { unit, total, is_consecutive: false }
+    }
+
+    /// Pass using one or more consecutive values of the given type. Either all values will be
+    /// passed in registers, or all on the stack.
+    pub fn consecutive(unit: Reg, total: Size) -> Self {
+        Uniform { unit, total, is_consecutive: true }
     }
 }
 
