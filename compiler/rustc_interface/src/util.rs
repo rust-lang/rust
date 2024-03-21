@@ -13,6 +13,7 @@ use rustc_session::lint::{self, BuiltinLintDiag, LintBuffer};
 use rustc_session::{filesearch, Session};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
+use rustc_span::source_map::SourceMapInputs;
 use rustc_span::symbol::sym;
 use rustc_target::spec::Target;
 use session::output::{categorize_crate_type, CRATE_TYPES};
@@ -56,8 +57,9 @@ fn get_stack_size() -> Option<usize> {
     env::var_os("RUST_MIN_STACK").is_none().then_some(STACK_SIZE)
 }
 
-pub(crate) fn run_in_thread_with_globals<F: FnOnce() -> R + Send, R: Send>(
+fn run_in_thread_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
+    sm_inputs: SourceMapInputs,
     f: F,
 ) -> R {
     // The "thread pool" is a single spawned thread in the non-parallel
@@ -77,7 +79,9 @@ pub(crate) fn run_in_thread_with_globals<F: FnOnce() -> R + Send, R: Send>(
         // `unwrap` is ok here because `spawn_scoped` only panics if the thread
         // name contains null bytes.
         let r = builder
-            .spawn_scoped(s, move || rustc_span::create_session_globals_then(edition, f))
+            .spawn_scoped(s, move || {
+                rustc_span::create_session_globals_then(edition, Some(sm_inputs), f)
+            })
             .unwrap()
             .join();
 
@@ -92,15 +96,17 @@ pub(crate) fn run_in_thread_with_globals<F: FnOnce() -> R + Send, R: Send>(
 pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     _threads: usize,
+    sm_inputs: SourceMapInputs,
     f: F,
 ) -> R {
-    run_in_thread_with_globals(edition, f)
+    run_in_thread_with_globals(edition, sm_inputs, f)
 }
 
 #[cfg(parallel_compiler)]
 pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
+    sm_inputs: SourceMapInputs,
     f: F,
 ) -> R {
     use rustc_data_structures::{defer, jobserver, sync::FromDyn};
@@ -112,7 +118,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     let registry = sync::Registry::new(std::num::NonZero::new(threads).unwrap());
 
     if !sync::is_dyn_thread_safe() {
-        return run_in_thread_with_globals(edition, || {
+        return run_in_thread_with_globals(edition, sm_inputs, || {
             // Register the thread for use with the `WorkerLocal` type.
             registry.register();
 
@@ -153,7 +159,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     // pool. Upon creation, each worker thread created gets a copy of the
     // session globals in TLS. This is possible because `SessionGlobals` impls
     // `Send` in the parallel compiler.
-    rustc_span::create_session_globals_then(edition, || {
+    rustc_span::create_session_globals_then(edition, Some(sm_inputs), || {
         rustc_span::with_session_globals(|session_globals| {
             let session_globals = FromDyn::from(session_globals);
             builder

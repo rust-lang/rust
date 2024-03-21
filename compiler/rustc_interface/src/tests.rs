@@ -16,6 +16,7 @@ use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use rustc_session::{build_session, filesearch, getopts, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
+use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
 use rustc_span::symbol::sym;
 use rustc_span::{FileName, SourceFileHashAlgorithm};
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, RelocModel};
@@ -36,8 +37,14 @@ where
     let sessopts = build_session_options(&mut early_dcx, &matches);
     let sysroot = filesearch::materialize_sysroot(sessopts.maybe_sysroot.clone());
     let target = rustc_session::config::build_target_config(&early_dcx, &sessopts, &sysroot);
+    let hash_kind = sessopts.unstable_opts.src_hash_algorithm(&target);
+    let sm_inputs = Some(SourceMapInputs {
+        file_loader: Box::new(RealFileLoader) as _,
+        path_mapping: sessopts.file_path_mapping(),
+        hash_kind,
+    });
 
-    rustc_span::create_default_session_globals_then(|| {
+    rustc_span::create_session_globals_then(DEFAULT_EDITION, sm_inputs, || {
         let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
         let io = CompilerIO {
             input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
@@ -45,6 +52,7 @@ where
             output_file: None,
             temps_dir,
         };
+
         let sess = build_session(
             early_dcx,
             sessopts,
@@ -53,7 +61,6 @@ where
             registry::Registry::new(&[]),
             vec![],
             Default::default(),
-            None,
             target,
             sysroot,
             "",
