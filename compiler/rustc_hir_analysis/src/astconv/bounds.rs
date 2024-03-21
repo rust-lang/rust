@@ -565,7 +565,7 @@ fn check_assoc_const_binding_type<'tcx>(
     let mut guar = ty.visit_with(&mut collector).break_value();
 
     let ty_note = ty
-        .make_suggestable(tcx, false)
+        .make_suggestable(tcx, false, None)
         .map(|ty| crate::errors::TyOfAssocConstBindingNote { assoc_const, ty });
 
     let enclosing_item_owner_id = tcx

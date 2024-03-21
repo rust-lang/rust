@@ -14,7 +14,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
-    TraitPredicate, Ty, TyCtxt, TypeVisitableExt,
+    TraitPredicate, Ty, TyCtxt,
 };
 use rustc_span::def_id::DefId;
 
@@ -1438,10 +1438,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::CoroutineWitness(def_id, args) => {
                     let tcx = self.tcx();
-                    stack.extend(tcx.coroutine_hidden_types(def_id).map(|bty| {
-                        let ty = bty.instantiate(tcx, args);
-                        debug_assert!(!ty.has_bound_regions());
-                        ty
+                    stack.extend(tcx.bound_coroutine_hidden_types(def_id).map(|bty| {
+                        self.infcx.enter_forall_and_leak_universe(bty.instantiate(tcx, args))
                     }))
                 }
 

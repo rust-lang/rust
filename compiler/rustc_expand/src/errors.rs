@@ -448,3 +448,11 @@ pub struct InvalidFragmentSpecifier {
     pub fragment: Ident,
     pub help: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(expand_expected_paren_or_brace)]
+pub struct ExpectedParenOrBrace<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub token: Cow<'a, str>,
+}

@@ -1,8 +1,12 @@
-# `riscv32{i,im,imc,imac,imafc}-unknown-none-elf`
+# `riscv32{i,im,ima,imc,imac,imafc}-unknown-none-elf`
 
 **Tier: 2**
 
 Bare-metal target for RISC-V CPUs with the RV32I, RV32IM, RV32IMC, RV32IMAFC and RV32IMAC ISAs.
+
+**Tier: 3**
+
+Bare-metal target for RISC-V CPUs with the RV32IMA ISA.
 
 ## Target maintainers
 

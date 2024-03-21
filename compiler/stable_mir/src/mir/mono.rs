@@ -4,6 +4,7 @@ use crate::mir::Body;
 use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, IndexedVal, Ty};
 use crate::{with, CrateItem, DefId, Error, ItemKind, Opaque, Symbol};
 use std::fmt::{Debug, Formatter};
+use std::io;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MonoItem {
@@ -156,6 +157,11 @@ impl Instance {
     /// `type_id`.
     pub fn try_const_eval(&self, const_ty: Ty) -> Result<Allocation, Error> {
         with(|cx| cx.eval_instance(self.def, const_ty))
+    }
+
+    /// Emit the body of this instance if it has one.
+    pub fn emit_mir<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
+        if let Some(body) = self.body() { body.dump(w, &self.name()) } else { Ok(()) }
     }
 }
 

@@ -75,24 +75,32 @@ error[E0745]: cannot take address of a temporary
    |
 LL |     let ref_ascribe = &raw const type_ascribe!(2, i32);
    |                                  ^^^^^^^^^^^^^^^^^^^^^ temporary value
+   |
+   = note: this error originates in the macro `type_ascribe` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0745]: cannot take address of a temporary
   --> $DIR/raw-ref-temp.rs:27:36
    |
 LL |     let mut_ref_ascribe = &raw mut type_ascribe!(3, i32);
    |                                    ^^^^^^^^^^^^^^^^^^^^^ temporary value
+   |
+   = note: this error originates in the macro `type_ascribe` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0745]: cannot take address of a temporary
   --> $DIR/raw-ref-temp.rs:29:40
    |
 LL |     let ascribe_field_ref = &raw const type_ascribe!(PAIR.0, i32);
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value
+   |
+   = note: this error originates in the macro `type_ascribe` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0745]: cannot take address of a temporary
   --> $DIR/raw-ref-temp.rs:30:38
    |
 LL |     let ascribe_index_ref = &raw mut type_ascribe!(ARRAY[0], i32);
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value
+   |
+   = note: this error originates in the macro `type_ascribe` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 16 previous errors
 
