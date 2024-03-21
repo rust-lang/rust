@@ -1939,11 +1939,11 @@ impl<'a> Parser<'a> {
     /// Parse `builtin # ident(args,*)`.
     fn parse_expr_builtin(&mut self) -> PResult<'a, P<Expr>> {
         self.parse_builtin(|this, lo, ident| {
-            if ident.name == sym::offset_of {
-                return Ok(Some(this.parse_expr_offset_of(lo)?));
-            }
-
-            Ok(None)
+            Ok(match ident.name {
+                sym::offset_of => Some(this.parse_expr_offset_of(lo)?),
+                sym::type_ascribe => Some(this.parse_expr_type_ascribe(lo)?),
+                _ => None,
+            })
         })
     }
 
@@ -1978,6 +1978,7 @@ impl<'a> Parser<'a> {
         ret
     }
 
+    /// Built-in macro for `offset_of!` expressions.
     pub(crate) fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, P<Expr>> {
         let container = self.parse_ty()?;
         self.expect(&TokenKind::Comma)?;
@@ -2005,6 +2006,15 @@ impl<'a> Parser<'a> {
 
         let span = lo.to(self.token.span);
         Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields)))
+    }
+
+    /// Built-in macro for type ascription expressions.
+    pub(crate) fn parse_expr_type_ascribe(&mut self, lo: Span) -> PResult<'a, P<Expr>> {
+        let expr = self.parse_expr()?;
+        self.expect(&token::Comma)?;
+        let ty = self.parse_ty()?;
+        let span = lo.to(self.token.span);
+        Ok(self.mk_expr(span, ExprKind::Type(expr, ty)))
     }
 
     /// Returns a string literal if the next token is a string literal.
