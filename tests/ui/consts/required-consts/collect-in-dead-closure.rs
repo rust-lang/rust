@@ -9,10 +9,8 @@ impl<T> Fail<T> {
     const C: () = panic!(); //~ERROR evaluation of `Fail::<i32>::C` failed
 }
 
-// This function is not actually called, but it is mentioned in dead code in a function that is
-// called. Make sure we still find this error.
-// This relies on mono-item collection checking `required_consts` in functions that syntactically
-// are called in collected functions (even inside dead code).
+// This function is not actually called, but it is mentioned in a closure that is coerced to a
+// function pointer in dead code in a function that is called. Make sure we still find this error.
 #[inline(never)]
 fn not_called<T>() {
     if false {
@@ -23,7 +21,7 @@ fn not_called<T>() {
 #[inline(never)]
 fn called<T>() {
     if false {
-        not_called::<T>();
+        let _closure: fn() = || not_called::<T>();
     }
 }
 

@@ -4,19 +4,21 @@
 //@[opt] compile-flags: -O
 //! This fails without optimizations, so it should also fail with optimizations.
 
-struct Fail<T>(T);
-impl<T> Fail<T> {
-    const C: () = panic!(); //~ERROR evaluation of `Fail::<i32>::C` failed
+struct Late<T>(T);
+impl<T> Late<T> {
+    const FAIL: () = panic!(); //~ERROR evaluation of `Late::<i32>::FAIL` failed
+    const FNPTR: fn() = || Self::FAIL;
 }
 
 // This function is not actually called, but it is mentioned in dead code in a function that is
-// called. Make sure we still find this error.
-// This relies on mono-item collection checking `required_consts` in functions that syntactically
-// are called in collected functions (even inside dead code).
+// called. The function then mentions a const that evaluates to a fnptr that points to a function
+// that used a const that fails to evaluate.
+// This tests that when processing mentioned items, we also check the fnptrs in the final values
+// of consts that we encounter.
 #[inline(never)]
 fn not_called<T>() {
     if false {
-        let _ = Fail::<T>::C;
+        let _ = Late::<T>::FNPTR;
     }
 }
 
