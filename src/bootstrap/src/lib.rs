@@ -1389,6 +1389,13 @@ impl Build {
         if let Some(path) = finder.maybe_have("wasmtime") {
             if let Ok(mut path) = path.into_os_string().into_string() {
                 path.push_str(" run -C cache=n --dir .");
+                // Make sure that tests have access to RUSTC_BOOTSTRAP. This (for example) is
+                // required for libtest to work on beta/stable channels.
+                //
+                // NB: with Wasmtime 20 this can change to `-S inherit-env` to
+                // inherit the entire environment rather than just this single
+                // environment variable.
+                path.push_str(" --env RUSTC_BOOTSTRAP");
                 return Some(path);
             }
         }
