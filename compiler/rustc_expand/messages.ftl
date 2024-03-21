@@ -33,6 +33,9 @@ expand_duplicate_matcher_binding = duplicate matcher binding
 expand_expected_comma_in_list =
     expected token: `,`
 
+expand_expected_paren_or_brace =
+    expected `(` or `{"{"}`, found `{$token}`
+
 expand_explain_doc_comment_inner =
     inner doc comments expand to `#![doc = "..."]`, which is what this macro attempted to match
 
