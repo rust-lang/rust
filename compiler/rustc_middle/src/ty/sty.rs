@@ -2318,9 +2318,9 @@ impl<'tcx> Ty<'tcx> {
     pub fn async_destructor_ty(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Ty<'tcx> {
         match *self.kind() {
             ty::Array(elem_ty, _) | ty::Slice(elem_ty) => tcx
-                .type_of(tcx.require_lang_item(hir::LangItem::AsyncDropSlice, None))
+                .fn_sig(tcx.require_lang_item(hir::LangItem::AsyncDropSlice, None))
+                .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
                 .instantiate(tcx, &[elem_ty.into()]),
-
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::AsyncDestruct, None),
@@ -2331,8 +2331,11 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(adt_def, args) if adt_def.is_struct() => {
                 if adt_def.is_manually_drop() {
                     return tcx
-                        .type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
-                        .instantiate_identity();
+                        .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                        .instantiate_identity()
+                        .output()
+                        .no_bound_vars()
+                        .unwrap();
                 }
 
                 Self::chain_async_destructor_ty(
@@ -2349,20 +2352,28 @@ impl<'tcx> Ty<'tcx> {
                 .type_of(tcx.require_lang_item(LangItem::AsyncDropNever, None))
                 .instantiate_identity(),
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
-                let into_async_destructor =
-                    tcx.type_of(tcx.require_lang_item(LangItem::IntoAsyncDestructor, None));
-                let into_chain =
-                    tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropIntoChain, None));
                 if adt_def.variants().is_empty() {
                     return tcx
                         .type_of(tcx.require_lang_item(LangItem::AsyncDropNever, None))
                         .instantiate_identity();
                 }
 
+                let into_async_destructor = tcx
+                    .fn_sig(tcx.require_lang_item(LangItem::IntoAsyncDestructor, None))
+                    .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
+                let into_chain = tcx
+                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropIntoChain, None))
+                    .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
+
                 let nop = tcx
-                    .type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
-                    .instantiate_identity();
-                let either = tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropEither, None));
+                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                    .instantiate_identity()
+                    .output()
+                    .no_bound_vars()
+                    .unwrap();
+                let either = tcx
+                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropEither, None))
+                    .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
 
                 let variants_dtor = adt_def
                     .variants()
@@ -2393,7 +2404,8 @@ impl<'tcx> Ty<'tcx> {
                         [ty::GenericArg::from(self), tcx.lifetimes.re_static.into()],
                     );
 
-                    tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropChain, None))
+                    tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropChain, None))
+                        .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
                         .instantiate(tcx, &[dropper_ty.into(), variants_dtor.into()])
                 } else {
                     variants_dtor
@@ -2411,12 +2423,18 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Infer(IntVar(_) | FloatVar(_)) => tcx
-                .type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
-                .instantiate_identity(),
+                .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                .instantiate_identity()
+                .output()
+                .no_bound_vars()
+                .unwrap(),
 
             ty::Adt(adt_def, _) if adt_def.is_union() => tcx
-                .type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
-                .instantiate_identity(),
+                .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                .instantiate_identity()
+                .output()
+                .no_bound_vars()
+                .unwrap(),
 
             ty::Dynamic(..)
             | ty::CoroutineClosure(..)
@@ -2442,11 +2460,15 @@ impl<'tcx> Ty<'tcx> {
                         [ty::GenericArg::from(self), tcx.lifetimes.re_static.into()],
                     );
 
-                    tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
+                    tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
+                        .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
                         .instantiate(tcx, &[dropper_ty.into()])
                 } else {
-                    tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                    tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
                         .instantiate_identity()
+                        .output()
+                        .no_bound_vars()
+                        .unwrap()
                 }
             }
 
@@ -2484,10 +2506,14 @@ impl<'tcx> Ty<'tcx> {
         if tys.len() == 0 {
             return match surface_drop {
                 None => tcx
-                    .type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
-                    .instantiate_identity(),
+                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                    .instantiate_identity()
+                    .output()
+                    .no_bound_vars()
+                    .unwrap(),
                 Some(surface_drop) => tcx
-                    .type_of(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
+                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
+                    .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
                     .instantiate(tcx, &[surface_drop.into()]),
             };
         }
@@ -2501,9 +2527,12 @@ impl<'tcx> Ty<'tcx> {
             )
         });
 
-        let chain = tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropChain, None));
-        let into_async_destructor =
-            tcx.type_of(tcx.require_lang_item(LangItem::IntoAsyncDestructor, None));
+        let chain = tcx
+            .fn_sig(tcx.require_lang_item(LangItem::AsyncDropChain, None))
+            .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
+        let into_async_destructor = tcx
+            .fn_sig(tcx.require_lang_item(LangItem::IntoAsyncDestructor, None))
+            .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
         tys.fold(first_drop, |dtor, ty| {
             chain.instantiate(
                 tcx,

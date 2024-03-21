@@ -121,12 +121,11 @@ unsafe fn surface_async_drop_in_place<T: AsyncDrop>(
 /// wrapped future completes by returning `Poll::Ready(())` on poll. This
 /// is useful for constructing async destructors to guarantee this
 /// "fuse" property
-#[lang = "async_drop_fuse"]
 struct Fuse<T> {
     inner: Option<T>,
 }
 
-#[lang = "async_drop_fuse_ctor"]
+#[lang = "async_drop_fuse"]
 fn fuse<T>(inner: T) -> Fuse<T> {
     Fuse { inner: Some(inner) }
 }
@@ -151,14 +150,13 @@ where
 }
 
 /// Async destructor for arrays and slices
-#[lang = "async_drop_slice"]
 struct Slice<T> {
     left_slice: ptr::NonNull<[T]>,
     elem_dtor: Option<<T as AsyncDestruct>::AsyncDestructor>,
     _pinned: PhantomPinned,
 }
 
-#[lang = "async_drop_slice_ctor"]
+#[lang = "async_drop_slice"]
 unsafe fn slice<T>(inner: *mut [T]) -> Slice<T> {
     Slice {
         // SAFETY: We call this funtion from async drop
@@ -201,14 +199,13 @@ impl<T> Future for Slice<T> {
 }
 
 /// Awaits the `F` future and then awaits `G::IntoFuture`.
-#[lang = "async_drop_chain"]
 enum Chain<F, G: IntoFuture> {
     First(F, Option<G>),
     Last(G::IntoFuture),
 }
 
 /// Construct async drop chain
-#[lang = "async_drop_chain_ctor"]
+#[lang = "async_drop_chain"]
 fn chain<F, G: IntoFuture>(first: F, last: G) -> Chain<F, G> {
     Chain::First(first, Some(last))
 }
@@ -241,13 +238,12 @@ where
 }
 
 #[derive(Clone, Copy)]
-#[lang = "async_drop_into_chain"]
 struct IntoChain<F, G> {
     first: F,
     last: G,
 }
 
-#[lang = "async_drop_into_chain_ctor"]
+#[lang = "async_drop_into_chain"]
 fn into_chain<F, G>(first: F, last: G) -> IntoChain<F, G> {
     IntoChain { first, last }
 }
@@ -266,10 +262,9 @@ where
     }
 }
 
-#[lang = "into_async_destructor"]
 struct IntoAsyncDestructor<T: ?Sized>(ptr::NonNull<T>, PhantomPinned);
 
-#[lang = "into_async_destructor_ctor"]
+#[lang = "into_async_destructor"]
 unsafe fn into_async_destructor<T: ?Sized>(to_drop: *mut T) -> IntoAsyncDestructor<T> {
     // SAFETY: same safety requirements as `async_drop_in_place`
     IntoAsyncDestructor(unsafe { ptr::NonNull::new_unchecked(to_drop) }, PhantomPinned)
@@ -296,7 +291,6 @@ impl<T: ?Sized> IntoFuture for IntoAsyncDestructor<T> {
 
 /// If `T`'s discriminant is equal to the stored one then awaits `M`
 /// otherwise awaits the `O`.
-#[lang = "async_drop_either"]
 enum Either<O: IntoFuture, M: IntoFuture, T> {
     Unresumed {
         this_enum: ptr::NonNull<T>,
@@ -314,7 +308,7 @@ enum Either<O: IntoFuture, M: IntoFuture, T> {
 /// # Safety
 ///
 /// `last` will be passed into `async_drop_in_place`
-#[lang = "async_drop_either_ctor"]
+#[lang = "async_drop_either"]
 unsafe fn either<O: IntoFuture, M: IntoFuture, T>(
     other: O,
     matched: M,
@@ -372,10 +366,9 @@ where
 /// because it panics after its second poll, which could be potentially
 /// bad if that would happen during the cleanup.
 #[derive(Clone, Copy)]
-#[lang = "async_drop_nop"]
 struct Nop;
 
-#[lang = "async_drop_nop_ctor"]
+#[lang = "async_drop_nop"]
 fn nop() -> Nop {
     Nop
 }

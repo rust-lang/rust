@@ -1339,7 +1339,7 @@ let has_surface_async_drop = self_ty.is_async_drop(tcx, defer_param_env());     
 
     /// Puts `nop: async_drop::Nop` on top of the stack
     fn put_nop(&mut self) -> Ty<'tcx> {
-        self.apply_combinator(0, LangItem::AsyncDropNopCtor, &[])
+        self.apply_combinator(0, LangItem::AsyncDropNop, &[])
     }
 
     fn combine_surface(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -1351,29 +1351,29 @@ let has_surface_async_drop = self_ty.is_async_drop(tcx, defer_param_env());     
     }
 
     fn combine_fuse(&mut self, inner_future_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::AsyncDropFuseCtor, &[inner_future_ty.into()])
+        self.apply_combinator(1, LangItem::AsyncDropFuse, &[inner_future_ty.into()])
     }
 
     fn combine_slice(&mut self, elem_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::AsyncDropSliceCtor, &[elem_ty.into()])
+        self.apply_combinator(1, LangItem::AsyncDropSlice, &[elem_ty.into()])
     }
 
     fn combine_into_async_destructor(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::IntoAsyncDestructorCtor, &[to_drop_ty.into()])
+        self.apply_combinator(1, LangItem::IntoAsyncDestructor, &[to_drop_ty.into()])
     }
 
     fn combine_chain(&mut self, first: Ty<'tcx>, second: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(2, LangItem::AsyncDropChainCtor, &[first.into(), second.into()])
+        self.apply_combinator(2, LangItem::AsyncDropChain, &[first.into(), second.into()])
     }
 
     fn combine_into_chain(&mut self, first: Ty<'tcx>, second: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(2, LangItem::AsyncDropIntoChainCtor, &[first.into(), second.into()])
+        self.apply_combinator(2, LangItem::AsyncDropIntoChain, &[first.into(), second.into()])
     }
 
     fn combine_either(&mut self, other: Ty<'tcx>, matched: Ty<'tcx>) -> Ty<'tcx> {
         self.apply_combinator(
             4,
-            LangItem::AsyncDropEitherCtor,
+            LangItem::AsyncDropEither,
             &[other.into(), matched.into(), self.self_ty.into()],
         )
     }

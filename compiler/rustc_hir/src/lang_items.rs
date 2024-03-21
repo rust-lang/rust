@@ -166,21 +166,14 @@ language_item_table! {
     AsyncDestruct,           sym::async_destruct,      async_destruct_trait,       Target::Trait,          GenericRequirement::Exact(0);
     AsyncDropInPlace,        sym::async_drop_in_place, async_drop_in_place_fn,     Target::Fn,             GenericRequirement::Exact(1);
     SurfaceAsyncDropInPlace, sym::surface_async_drop_in_place, surface_async_drop_in_place_fn, Target::Fn, GenericRequirement::Exact(1);
-    AsyncDropSlice,          sym::async_drop_slice,    async_drop_slice_ty,        Target::Struct,         GenericRequirement::Exact(1);
-    AsyncDropSliceCtor,      sym::async_drop_slice_ctor, async_drop_slice_fn,      Target::Fn,             GenericRequirement::Exact(1);
-    AsyncDropChain,          sym::async_drop_chain,    async_drop_chain_type,      Target::Enum,           GenericRequirement::Exact(2);
-    AsyncDropChainCtor,      sym::async_drop_chain_ctor, async_drop_chain_fn,      Target::Fn,             GenericRequirement::Exact(2);
-    AsyncDropIntoChain,      sym::async_drop_into_chain, async_drop_into_chain_type, Target::Struct,       GenericRequirement::Exact(2);
-    AsyncDropIntoChainCtor,  sym::async_drop_into_chain_ctor, async_drop_into_chain_fn, Target::Fn,        GenericRequirement::Exact(2);
+    AsyncDropSlice,          sym::async_drop_slice,    async_drop_slice_fn,        Target::Fn,             GenericRequirement::Exact(1);
+    AsyncDropChain,          sym::async_drop_chain,    async_drop_chain_fn,        Target::Fn,             GenericRequirement::Exact(2);
+    AsyncDropIntoChain,      sym::async_drop_into_chain, async_drop_into_chain_fn, Target::Fn,             GenericRequirement::Exact(2);
     AsyncDropNever,          sym::async_drop_never,    async_drop_never_type,      Target::Enum,           GenericRequirement::Exact(0);
-    AsyncDropNop,            sym::async_drop_nop,      async_drop_nop_type,        Target::Struct,         GenericRequirement::Exact(0);
-    AsyncDropNopCtor,        sym::async_drop_nop_ctor, async_drop_nop_fn,          Target::Fn,             GenericRequirement::Exact(0);
-    AsyncDropFuse,           sym::async_drop_fuse,     async_drop_fuse_type,       Target::Struct,         GenericRequirement::Exact(1);
-    AsyncDropFuseCtor,       sym::async_drop_fuse_ctor, async_drop_fuse_fn,        Target::Fn,             GenericRequirement::Exact(1);
-    IntoAsyncDestructor,     sym::into_async_destructor, into_async_destructor_type, Target::Struct,       GenericRequirement::Exact(1);
-    IntoAsyncDestructorCtor, sym::into_async_destructor_ctor, into_async_destructor_fn, Target::Fn,        GenericRequirement::Exact(1);
-    AsyncDropEither,         sym::async_drop_either,   async_drop_either_type,     Target::Enum,           GenericRequirement::Exact(3);
-    AsyncDropEitherCtor,     sym::async_drop_either_ctor, async_drop_either_fn,    Target::Fn,             GenericRequirement::Exact(3);
+    AsyncDropNop,            sym::async_drop_nop,      async_drop_nop_fn,          Target::Fn,             GenericRequirement::Exact(0);
+    AsyncDropFuse,           sym::async_drop_fuse,     async_drop_fuse_fn,         Target::Fn,             GenericRequirement::Exact(1);
+    IntoAsyncDestructor,     sym::into_async_destructor, into_async_destructor_fn, Target::Fn,             GenericRequirement::Exact(1);
+    AsyncDropEither,         sym::async_drop_either,   async_drop_either_fn,       Target::Fn,             GenericRequirement::Exact(3);
 
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);
