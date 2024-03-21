@@ -139,12 +139,6 @@ LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
                HEX_DUMP
            }
 
-note: erroneous constant encountered
-  --> $DIR/ub-wide-ptr.rs:86:40
-   |
-LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
-   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-wide-ptr.rs:93:1
    |
@@ -156,12 +150,6 @@ LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3
                HEX_DUMP
            }
 
-note: erroneous constant encountered
-  --> $DIR/ub-wide-ptr.rs:93:42
-   |
-LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-wide-ptr.rs:97:1
    |
@@ -172,12 +160,6 @@ LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::tran
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
-
-note: erroneous constant encountered
-  --> $DIR/ub-wide-ptr.rs:97:42
-   |
-LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/ub-wide-ptr.rs:105:1

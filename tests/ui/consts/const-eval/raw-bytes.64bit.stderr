@@ -337,15 +337,9 @@ LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered 0x03, but expected a boolean
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC_ID╼                         │ ╾──────╼
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               ╾ALLOC_ID╼ 01 00 00 00 00 00 00 00 │ ╾──────╼........
            }
-
-note: erroneous constant encountered
-  --> $DIR/raw-bytes.rs:162:40
-   |
-LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
-   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:168:1
@@ -354,15 +348,9 @@ LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.0: encountered 0x03, but expected a boolean
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC_ID╼                         │ ╾──────╼
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               ╾ALLOC_ID╼ 01 00 00 00 00 00 00 00 │ ╾──────╼........
            }
-
-note: erroneous constant encountered
-  --> $DIR/raw-bytes.rs:168:42
-   |
-LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:172:1
@@ -371,15 +359,9 @@ LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::tran
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.1[0]: encountered 0x03, but expected a boolean
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC_ID╼                         │ ╾──────╼
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               ╾ALLOC_ID╼ 01 00 00 00 00 00 00 00 │ ╾──────╼........
            }
-
-note: erroneous constant encountered
-  --> $DIR/raw-bytes.rs:172:42
-   |
-LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:177:1

@@ -11,6 +11,7 @@
 //! This pass assumes that every use is dominated by an
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
+#![allow(unused)]
 
 use either::{Left, Right};
 use rustc_data_structures::fx::FxHashSet;
@@ -657,33 +658,8 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
         }
 
-        // Ideally, we'd stop here and reject the rest.
-        // But for backward compatibility, we have to accept some promotion in const/static
-        // initializers. Inline consts are explicitly excluded, they are more recent so we have no
-        // backwards compatibility reason to allow more promotion inside of them.
-        let promote_all_fn = matches!(
-            self.const_kind,
-            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const { inline: false })
-        );
-        if !promote_all_fn {
-            return Err(Unpromotable);
-        }
-        // Make sure the callee is a `const fn`.
-        let is_const_fn = match *fn_ty.kind() {
-            ty::FnDef(def_id, _) => self.tcx.is_const_fn_raw(def_id),
-            _ => false,
-        };
-        if !is_const_fn {
-            return Err(Unpromotable);
-        }
-        // The problem is, this may promote calls to functions that panic.
-        // We don't want to introduce compilation errors if there's a panic in a call in dead code.
-        // So we ensure that this is not dead code.
-        if !self.is_promotion_safe_block(block) {
-            return Err(Unpromotable);
-        }
-        // This passed all checks, so let's accept.
-        Ok(())
+        // Ideally, we'd stop here and reject the rest. So let's do that.
+        return Err(Unpromotable);
     }
 }
 

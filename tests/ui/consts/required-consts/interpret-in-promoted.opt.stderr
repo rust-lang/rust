@@ -1,27 +1,13 @@
-error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/hint.rs:LL:COL
-   |
-   = note: entering unreachable code
-   |
-note: inside `unreachable_unchecked`
-  --> $SRC_DIR/core/src/hint.rs:LL:COL
-note: inside `ub`
-  --> $DIR/interpret-in-promoted.rs:6:5
-   |
-LL |     std::hint::unreachable_unchecked();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `FOO`
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/interpret-in-promoted.rs:12:28
    |
 LL |     let _x: &'static () = &ub();
-   |                            ^^^^
-
-note: erroneous constant encountered
-  --> $DIR/interpret-in-promoted.rs:12:27
-   |
-LL |     let _x: &'static () = &ub();
-   |                           ^^^^^
+   |             -----------    ^^^^ creates a temporary value which is freed while still in use
+   |             |
+   |             type annotation requires that borrow lasts for `'static`
+LL | };
+   | - temporary value is freed at the end of this statement
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0080`.
+For more information about this error, try `rustc --explain E0716`.

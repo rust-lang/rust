@@ -60,12 +60,6 @@ LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-note: erroneous constant encountered
-  --> $DIR/ub-ref-ptr.rs:36:38
-   |
-LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0080]: evaluation of constant value failed
   --> $DIR/ub-ref-ptr.rs:39:86
    |
@@ -74,12 +68,6 @@ LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[us
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
-
-note: erroneous constant encountered
-  --> $DIR/ub-ref-ptr.rs:39:85
-   |
-LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
-   |                                                                                     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-ref-ptr.rs:42:1
