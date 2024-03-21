@@ -10,7 +10,7 @@ use ide_db::{
             debug::{DebugQueryTable, TableEntry},
             Query, QueryTable,
         },
-        CrateData, FileId, FileTextQuery, ParseQuery, SourceDatabase, SourceRootId,
+        CompressedFileTextQuery, CrateData, FileId, ParseQuery, SourceDatabase, SourceRootId,
     },
     symbol_index::ModuleSymbolsQuery,
 };
@@ -38,7 +38,7 @@ use triomphe::Arc;
 pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
     let mut buf = String::new();
 
-    format_to!(buf, "{}\n", collect_query(FileTextQuery.in_db(db)));
+    format_to!(buf, "{}\n", collect_query(CompressedFileTextQuery.in_db(db)));
     format_to!(buf, "{}\n", collect_query(ParseQuery.in_db(db)));
     format_to!(buf, "{}\n", collect_query(ParseMacroExpansionQuery.in_db(db)));
     format_to!(buf, "{}\n", collect_query(LibrarySymbolsQuery.in_db(db)));
@@ -160,7 +160,7 @@ impl QueryCollect for ParseMacroExpansionQuery {
     type Collector = SyntaxTreeStats<true>;
 }
 
-impl QueryCollect for FileTextQuery {
+impl QueryCollect for CompressedFileTextQuery {
     type Collector = FilesStats;
 }
 
@@ -188,8 +188,8 @@ impl fmt::Display for FilesStats {
     }
 }
 
-impl StatCollect<FileId, Arc<str>> for FilesStats {
-    fn collect_entry(&mut self, _: FileId, value: Option<Arc<str>>) {
+impl StatCollect<FileId, Arc<[u8]>> for FilesStats {
+    fn collect_entry(&mut self, _: FileId, value: Option<Arc<[u8]>>) {
         self.total += 1;
         self.size += value.unwrap().len();
     }

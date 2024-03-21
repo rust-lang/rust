@@ -8,7 +8,7 @@ use intern::Interned;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
 use span::{Span, SyntaxContextId};
-use syntax::{ast, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
+use syntax::{ast, format_smolstr, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
 use triomphe::Arc;
 
 use crate::{
@@ -49,11 +49,18 @@ impl RawAttrs {
             Either::Left(attr) => {
                 attr.meta().and_then(|meta| Attr::from_src(db, meta, span_map, id))
             }
-            Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
-                id,
-                input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
-                path: Interned::new(ModPath::from(crate::name!(doc))),
-                ctxt: span_map.span_for_range(comment.syntax().text_range()).ctx,
+            Either::Right(comment) => comment.doc_comment().map(|doc| {
+                let span = span_map.span_for_range(comment.syntax().text_range());
+                Attr {
+                    id,
+                    input: Some(Interned::new(AttrInput::Literal(tt::Literal {
+                        // FIXME: Escape quotes from comment content
+                        text: SmolStr::new(format_smolstr!("\"{doc}\"",)),
+                        span,
+                    }))),
+                    path: Interned::new(ModPath::from(crate::name!(doc))),
+                    ctxt: span.ctx,
+                }
             }),
         });
         let entries: Arc<[Attr]> = Arc::from_iter(entries);
@@ -179,8 +186,7 @@ pub struct Attr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AttrInput {
     /// `#[attr = "string"]`
-    // FIXME: This is losing span
-    Literal(SmolStr),
+    Literal(tt::Literal),
     /// `#[attr(subtree)]`
     TokenTree(Box<tt::Subtree>),
 }
@@ -188,7 +194,7 @@ pub enum AttrInput {
 impl fmt::Display for AttrInput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AttrInput::Literal(lit) => write!(f, " = \"{}\"", lit.escape_debug()),
+            AttrInput::Literal(lit) => write!(f, " = {lit}"),
             AttrInput::TokenTree(tt) => tt.fmt(f),
         }
     }
@@ -208,11 +214,10 @@ impl Attr {
         })?);
         let span = span_map.span_for_range(range);
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
-            let value = match lit.kind() {
-                ast::LiteralKind::String(string) => string.value()?.into(),
-                _ => lit.syntax().first_token()?.text().trim_matches('"').into(),
-            };
-            Some(Interned::new(AttrInput::Literal(value)))
+            Some(Interned::new(AttrInput::Literal(tt::Literal {
+                text: lit.token().text().into(),
+                span,
+            })))
         } else if let Some(tt) = ast.token_tree() {
             let tree = syntax_node_to_token_tree(tt.syntax(), span_map, span);
             Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
@@ -245,9 +250,8 @@ impl Attr {
             }
             Some(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '=', .. }))) => {
                 let input = match input.get(1) {
-                    Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal { text, .. }))) => {
-                        //FIXME the trimming here isn't quite right, raw strings are not handled
-                        Some(Interned::new(AttrInput::Literal(text.trim_matches('"').into())))
+                    Some(tt::TokenTree::Leaf(tt::Leaf::Literal(lit))) => {
+                        Some(Interned::new(AttrInput::Literal(lit.clone())))
                     }
                     _ => None,
                 };
@@ -265,9 +269,14 @@ impl Attr {
 
 impl Attr {
     /// #[path = "string"]
-    pub fn string_value(&self) -> Option<&SmolStr> {
+    pub fn string_value(&self) -> Option<&str> {
         match self.input.as_deref()? {
-            AttrInput::Literal(it) => Some(it),
+            AttrInput::Literal(it) => match it.text.strip_prefix('r') {
+                Some(it) => it.trim_matches('#'),
+                None => it.text.as_str(),
+            }
+            .strip_prefix('"')?
+            .strip_suffix('"'),
             _ => None,
         }
     }
