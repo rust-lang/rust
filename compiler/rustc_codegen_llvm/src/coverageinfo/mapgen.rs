@@ -353,10 +353,11 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
 
         // To be eligible for "unused function" mappings, a definition must:
         // - Be function-like
-        // - Not participate directly in codegen
+        // - Not participate directly in codegen (or have lost all its coverage statements)
         // - Not have any coverage statements inlined into codegenned functions
         tcx.def_kind(def_id).is_fn_like()
-            && !usage.all_mono_items.contains(&def_id)
+            && (!usage.all_mono_items.contains(&def_id)
+                || usage.missing_own_coverage.contains(&def_id))
             && !usage.used_via_inlining.contains(&def_id)
     };
 
@@ -379,6 +380,7 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
 struct UsageSets<'tcx> {
     all_mono_items: &'tcx DefIdSet,
     used_via_inlining: FxHashSet<DefId>,
+    missing_own_coverage: FxHashSet<DefId>,
 }
 
 /// Prepare sets of definitions that are relevant to deciding whether something
@@ -406,8 +408,13 @@ fn prepare_usage_sets<'tcx>(tcx: TyCtxt<'tcx>) -> UsageSets<'tcx> {
 
     // Functions whose coverage statments were found inlined into other functions.
     let mut used_via_inlining = FxHashSet::default();
+    // Functions that were instrumented, but had all of their coverage statements
+    // removed by later MIR transforms (e.g. UnreachablePropagation).
+    let mut missing_own_coverage = FxHashSet::default();
 
-    for (_def_id, body) in def_and_mir_for_all_mono_fns {
+    for (def_id, body) in def_and_mir_for_all_mono_fns {
+        let mut saw_own_coverage = false;
+
         // Inspect every coverage statement in the function's MIR.
         for stmt in body
             .basic_blocks
@@ -418,11 +425,18 @@ fn prepare_usage_sets<'tcx>(tcx: TyCtxt<'tcx>) -> UsageSets<'tcx> {
             if let Some(inlined) = stmt.source_info.scope.inlined_instance(&body.source_scopes) {
                 // This coverage statement was inlined from another function.
                 used_via_inlining.insert(inlined.def_id());
+            } else {
+                // Non-inlined coverage statements belong to the enclosing function.
+                saw_own_coverage = true;
             }
+        }
+
+        if !saw_own_coverage && body.function_coverage_info.is_some() {
+            missing_own_coverage.insert(def_id);
         }
     }
 
-    UsageSets { all_mono_items, used_via_inlining }
+    UsageSets { all_mono_items, used_via_inlining, missing_own_coverage }
 }
 
 fn add_unused_function_coverage<'tcx>(
