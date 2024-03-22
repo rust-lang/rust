@@ -141,10 +141,8 @@ impl Step for Std {
             cargo.arg("-p").arg(krate);
         }
 
-        let _guard = builder.msg_clippy(
-            format_args!("library artifacts{}", crate_description(&self.crates)),
-            target,
-        );
+        let _guard =
+            builder.msg_clippy(format_args!("library{}", crate_description(&self.crates)), target);
 
         run_cargo(
             builder,
@@ -187,17 +185,8 @@ impl Step for Rustc {
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
         let target = self.target;
 
-        if compiler.stage != 0 {
-            // If we're not in stage 0, then we won't have a std from the beta
-            // compiler around. That means we need to make sure there's one in
-            // the sysroot for the compiler to find. Otherwise, we're going to
-            // fail when building crates that need to generate code (e.g., build
-            // scripts and their dependencies).
-            builder.ensure(compile::Std::new(compiler, compiler.host));
-            builder.ensure(compile::Std::new(compiler, target));
-        } else {
-            builder.ensure(check::Std::new(target));
-        }
+        builder.ensure(compile::Std::new(compiler, compiler.host));
+        builder.ensure(compile::Std::new(compiler, target));
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -217,10 +206,8 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate);
         }
 
-        let _guard = builder.msg_clippy(
-            format_args!("compiler artifacts{}", crate_description(&self.crates)),
-            target,
-        );
+        let _guard =
+            builder.msg_clippy(format_args!("compiler{}", crate_description(&self.crates)), target);
 
         run_cargo(
             builder,
