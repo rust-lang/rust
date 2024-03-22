@@ -4,12 +4,11 @@ use rustc_data_structures::{
     graph::{iterate::DepthFirstSearch, vec_graph::VecGraph},
     unord::{UnordBag, UnordMap, UnordSet},
 };
-use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::ty::{self, Ty};
-use rustc_span::sym;
 
-enum DivergingFallbackBehavior {
+#[derive(Copy, Clone)]
+pub enum DivergingFallbackBehavior {
     /// Always fallback to `()` (aka "always spontaneous decay")
     FallbackToUnit,
     /// Sometimes fallback to `!`, but mainly fallback to `()` so that most of the crates are not broken.
@@ -78,9 +77,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             return false;
         }
 
-        let diverging_behavior = self.diverging_fallback_behavior();
-        let diverging_fallback =
-            self.calculate_diverging_fallback(&unresolved_variables, diverging_behavior);
+        let diverging_fallback = self
+            .calculate_diverging_fallback(&unresolved_variables, self.diverging_fallback_behavior);
 
         // We do fallback in two passes, to try to generate
         // better error messages.
@@ -92,32 +90,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         }
 
         fallback_occurred
-    }
-
-    fn diverging_fallback_behavior(&self) -> DivergingFallbackBehavior {
-        let Some((mode, span)) = self
-            .tcx
-            .get_attr(CRATE_DEF_ID, sym::rustc_never_type_mode)
-            .map(|attr| (attr.value_str().unwrap(), attr.span))
-        else {
-            if self.tcx.features().never_type_fallback {
-                return DivergingFallbackBehavior::FallbackToNiko;
-            }
-
-            return DivergingFallbackBehavior::FallbackToUnit;
-        };
-
-        match mode {
-            sym::fallback_to_unit => DivergingFallbackBehavior::FallbackToUnit,
-            sym::fallback_to_niko => DivergingFallbackBehavior::FallbackToNiko,
-            sym::fallback_to_never => DivergingFallbackBehavior::FallbackToNever,
-            sym::no_fallback => DivergingFallbackBehavior::NoFallback,
-            _ => {
-                self.tcx.dcx().span_err(span, format!("unknown never type mode: `{mode}` (supported: `fallback_to_unit`, `fallback_to_niko`, `fallback_to_never` and `no_fallback`)"));
-
-                DivergingFallbackBehavior::FallbackToUnit
-            }
-        }
     }
 
     fn fallback_effects(&self) -> bool {

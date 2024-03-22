@@ -183,9 +183,10 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
         }
     });
 
-    // if an excluded file is renamed, it must be removed from this list
+    // if there are any file names remaining, they were moved on the fs.
+    // our data must remain up to date, so it must be removed from issues.txt
     // do this automatically on bless, otherwise issue a tidy error
-    if bless {
+    if bless && !remaining_issue_names.is_empty() {
         let issues_txt_header = r#"
 /*
 ============================================================

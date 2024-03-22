@@ -17,7 +17,7 @@ fn std_instead_of_core() {
     use ::core::hash::Hash;
     //~^ ERROR: used import from `std` instead of `core`
     // Don't lint on `env` macro
-    use core::env;
+    use std::env;
 
     // Multiple imports
     use core::fmt::{Debug, Result};

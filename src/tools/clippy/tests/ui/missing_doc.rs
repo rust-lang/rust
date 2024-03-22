@@ -1,5 +1,6 @@
 //@needs-asm-support
 //@aux-build: proc_macros.rs
+//@aux-build: proc_macro_attr.rs
 
 #![warn(clippy::missing_docs_in_private_items)]
 // When denying at the crate level, be sure to not get random warnings from the
@@ -8,6 +9,8 @@
 //! Some garbage docs for the crate here
 #![doc = "More garbage"]
 
+#[macro_use]
+extern crate proc_macro_attr;
 extern crate proc_macros;
 
 use proc_macros::with_span;
@@ -112,3 +115,12 @@ with_span!(span pub enum FooPm3 { A, B(u32), C { field: u32 }});
 with_span!(span pub fn foo_pm() {});
 with_span!(span pub static FOO_PM: u32 = 0;);
 with_span!(span pub const FOO2_PM: u32 = 0;);
+
+// issue #12197
+// Undocumented field originated inside of spanned proc-macro attribute
+/// Some dox for struct.
+#[rewrite_struct]
+pub struct Test {
+    /// Dox
+    a: u8,
+}
