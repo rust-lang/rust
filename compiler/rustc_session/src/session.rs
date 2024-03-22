@@ -29,7 +29,7 @@ use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FileLoader, FilePathMapping, RealFileLoader, SourceMap};
-use rustc_span::RealFileName;
+use rustc_span::{FileNameDisplayPreference, RealFileName};
 use rustc_span::{SourceFileHashAlgorithm, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
@@ -882,8 +882,19 @@ impl Session {
         self.opts.cg.link_dead_code.unwrap_or(false)
     }
 
-    pub fn should_prefer_remapped(&self, scope: RemapPathScopeComponents) -> bool {
-        self.opts.unstable_opts.remap_path_scope.contains(scope)
+    pub fn filename_display_preference(
+        &self,
+        scope: RemapPathScopeComponents,
+    ) -> FileNameDisplayPreference {
+        assert!(
+            scope.bits().count_ones() == 1,
+            "one and only one scope should be passed to `Session::filename_display_preference`"
+        );
+        if self.opts.unstable_opts.remap_path_scope.contains(scope) {
+            FileNameDisplayPreference::Remapped
+        } else {
+            FileNameDisplayPreference::Local
+        }
     }
 }
 

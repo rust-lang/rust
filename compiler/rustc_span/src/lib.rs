@@ -271,6 +271,18 @@ impl RealFileName {
         }
     }
 
+    /// Return the path remmapped or not depending on the [`FileNameDisplayPreference`].
+    ///
+    /// For the purpose of this function, local and short preference are equal.
+    pub fn to_path(&self, display_pref: FileNameDisplayPreference) -> &Path {
+        match display_pref {
+            FileNameDisplayPreference::Local | FileNameDisplayPreference::Short => {
+                self.local_path_if_available()
+            }
+            FileNameDisplayPreference::Remapped => self.remapped_path_if_available(),
+        }
+    }
+
     pub fn to_string_lossy(&self, display_pref: FileNameDisplayPreference) -> Cow<'_, str> {
         match display_pref {
             FileNameDisplayPreference::Local => self.local_path_if_available().to_string_lossy(),

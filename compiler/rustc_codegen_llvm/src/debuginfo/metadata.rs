@@ -554,13 +554,16 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
     ) -> &'ll DIFile {
         debug!(?source_file.name);
 
-        use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
+        let filename_display_preference =
+            cx.sess().filename_display_preference(RemapPathScopeComponents::DEBUGINFO);
+
+        use rustc_session::config::RemapPathScopeComponents;
         let (directory, file_name) = match &source_file.name {
             FileName::Real(filename) => {
                 let working_directory = &cx.sess().opts.working_dir;
                 debug!(?working_directory);
 
-                if cx.sess().should_prefer_remapped(RemapPathScopeComponents::DEBUGINFO) {
+                if filename_display_preference == FileNameDisplayPreference::Remapped {
                     let filename = cx
                         .sess()
                         .source_map()
@@ -623,13 +626,7 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
             }
             other => {
                 debug!(?other);
-                (
-                    "".into(),
-                    other
-                        .for_scope(cx.sess(), RemapPathScopeComponents::DEBUGINFO)
-                        .to_string_lossy()
-                        .into_owned(),
-                )
+                ("".into(), other.display(filename_display_preference).to_string())
             }
         };
 
