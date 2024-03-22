@@ -258,19 +258,17 @@ pub fn target_machine_factory(
     };
     let debuginfo_compression = SmallCStr::new(&debuginfo_compression);
 
-    let should_prefer_remapped_paths =
-        sess.should_prefer_remapped(RemapPathScopeComponents::DEBUGINFO);
+    let file_name_display_preference =
+        sess.filename_display_preference(RemapPathScopeComponents::DEBUGINFO);
 
     Arc::new(move |config: TargetMachineFactoryConfig| {
         let path_to_cstring_helper = |path: Option<PathBuf>| -> CString {
             let path = path.unwrap_or_default();
-            let path = path_mapping.to_real_filename(path);
-            let path = if should_prefer_remapped_paths {
-                path.remapped_path_if_available()
-            } else {
-                path.local_path_if_available()
-            };
-            CString::new(path.to_str().unwrap()).unwrap()
+            let path = path_mapping
+                .to_real_filename(path)
+                .to_string_lossy(file_name_display_preference)
+                .into_owned();
+            CString::new(path).unwrap()
         };
 
         let split_dwarf_file = path_to_cstring_helper(config.split_dwarf_file);
