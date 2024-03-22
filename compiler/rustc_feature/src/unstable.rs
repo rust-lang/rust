@@ -559,6 +559,8 @@ declare_features! (
     (unstable, offset_of_nested, "1.77.0", Some(120140)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
+    /// Allows postfix match `expr.match { ... }`
+    (unstable, postfix_match, "CURRENT_RUSTC_VERSION", Some(121618)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.

@@ -481,6 +481,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             // when the iterator is an uninhabited type. unreachable_code will trigger instead.
             hir::MatchSource::ForLoopDesugar if arms.len() == 1 => {}
             hir::MatchSource::ForLoopDesugar
+            | hir::MatchSource::Postfix
             | hir::MatchSource::Normal
             | hir::MatchSource::FormatArgs => report_arm_reachability(&cx, &report),
             // Unreachable patterns in try and await expressions occur when one of

@@ -564,6 +564,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(generic_const_items, "generic const items are experimental");
     gate_all!(unnamed_fields, "unnamed fields are not yet fully implemented");
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
+    gate_all!(postfix_match, "postfix match is experimental");
 
     if !visitor.features.never_patterns {
         if let Some(spans) = spans.get(&sym::never_patterns) {

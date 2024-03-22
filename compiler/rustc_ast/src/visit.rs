@@ -923,7 +923,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
             visit_opt!(visitor, visit_label, opt_label);
             try_visit!(visitor.visit_block(block));
         }
-        ExprKind::Match(subexpression, arms) => {
+        ExprKind::Match(subexpression, arms, _kind) => {
             try_visit!(visitor.visit_expr(subexpression));
             walk_list!(visitor, visit_arm, arms);
         }
