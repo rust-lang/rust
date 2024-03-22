@@ -1534,20 +1534,17 @@ macro_rules! uint_impl {
             let mut base = self;
             let mut acc: Self = 1;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     acc = try_opt!(acc.checked_mul(base));
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        return Some(acc);
+                    }
                 }
                 exp /= 2;
                 base = try_opt!(base.checked_mul(base));
             }
-
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-
-            acc.checked_mul(base)
         }
 
         /// Strict exponentiation. Computes `self.pow(exp)`, panicking if
@@ -1587,18 +1584,17 @@ macro_rules! uint_impl {
             let mut base = self;
             let mut acc: Self = 1;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     acc = acc.strict_mul(base);
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        return acc;
+                    }
                 }
                 exp /= 2;
                 base = base.strict_mul(base);
             }
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            acc.strict_mul(base)
         }
 
         /// Saturating integer addition. Computes `self + rhs`, saturating at
@@ -2059,19 +2055,17 @@ macro_rules! uint_impl {
             let mut base = self;
             let mut acc: Self = 1;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     acc = acc.wrapping_mul(base);
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        return acc;
+                    }
                 }
                 exp /= 2;
                 base = base.wrapping_mul(base);
             }
-
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            acc.wrapping_mul(base)
         }
 
         /// Calculates `self` + `rhs`
@@ -2516,9 +2510,14 @@ macro_rules! uint_impl {
             // Scratch space for storing results of overflowing_mul.
             let mut r;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     r = acc.overflowing_mul(base);
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        r.1 |= overflown;
+                        return r;
+                    }
                     acc = r.0;
                     overflown |= r.1;
                 }
@@ -2527,15 +2526,6 @@ macro_rules! uint_impl {
                 base = r.0;
                 overflown |= r.1;
             }
-
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            r = acc.overflowing_mul(base);
-            r.1 |= overflown;
-
-            r
         }
 
         /// Raises self to the power of `exp`, using exponentiation by squaring.
@@ -2560,19 +2550,17 @@ macro_rules! uint_impl {
             let mut base = self;
             let mut acc = 1;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     acc = acc * base;
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        return acc;
+                    }
                 }
                 exp /= 2;
                 base = base * base;
             }
-
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            acc * base
         }
 
         /// Returns the square root of the number, rounded down.
