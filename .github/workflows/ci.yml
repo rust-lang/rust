@@ -80,7 +80,14 @@ jobs:
         ./y.sh prepare --only-libcore
         ./y.sh build
         cargo test
-        ./y.sh clean all
+
+    - name: Run y.sh cargo build
+      run: |
+        ./y.sh cargo build --manifest-path tests/hello-world/Cargo.toml
+
+    - name: Clean
+      run: |
+        ./y.sh clean all      
 
     - name: Prepare dependencies
       run: |
