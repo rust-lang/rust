@@ -12,7 +12,9 @@ One-step normalization is implemented via `NormalizesTo` goals. Unlike other goa
 in the trait solver, `NormalizesTo` always expects the term to be an unconstrained
 inference variable[^opaques]. Think of it as a function, taking an alias as input
 and returning its underlying value. If the alias is rigid, `NormalizesTo` fails and
-returns `NoSolution`.
+returns `NoSolution`. This is the case for `<T as Trait>::Assoc` if there's a `T: Trait`
+where-bound and for opaque types with `Reveal::UserFacing` unless they are in the
+defining scope. We must not treat any aliases as rigid in coherence.
 
 The underlying value may itself be an unnormalized alias, e.g.
 `NormalizesTo(<<() as Id>::This as Id>::This)` only returns `<() as Id>::This`,
