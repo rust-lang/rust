@@ -1,92 +1,19 @@
-error: expected one of `:`, `@`, or `|`, found `)`
-  --> $DIR/ice-generics_of-no-entry-found-for-key-113017.rs:6:22
-   |
-LL | pub fn String<V>(elem)
-   |                      ^ expected one of `:`, `@`, or `|`
-   |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
-help: if this is a `self` type, give it a parameter name
-   |
-LL | pub fn String<V>(self: elem)
-   |                  +++++
-help: if this is a parameter name, give it a type
-   |
-LL | pub fn String<V>(elem: TypeName)
-   |                      ++++++++++
-help: if this is a type, explicitly ignore the parameter name
-   |
-LL | pub fn String<V>(_: elem)
-   |                  ++
-
-error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/ice-generics_of-no-entry-found-for-key-113017.rs:9:8
-   |
-LL |     V: 'a,
-   |        ^^ undeclared lifetime
-   |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
-help: consider making the bound lifetime-generic with a new `'a` lifetime
-   |
-LL |     for<'a> V: 'a,
-   |     +++++++
-help: consider introducing lifetime `'a` here
-   |
-LL | pub fn String<'a, V>(elem)
-   |               +++
-
-error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/ice-generics_of-no-entry-found-for-key-113017.rs:11:39
-   |
-LL |     for<const N: usize = { || {}}> V: 'a,
-   |                                       ^^ undeclared lifetime
-   |
-help: consider making the bound lifetime-generic with a new `'a` lifetime
-   |
-LL |     for<'a, const N: usize = { || {}}> V: 'a,
-   |         +++
-help: consider introducing lifetime `'a` here
-   |
-LL | pub fn String<'a, V>(elem)
-   |               +++
-
-error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/ice-generics_of-no-entry-found-for-key-113017.rs:15:26
-   |
-LL |     for<C2: , R2, R3: > <&str as IntoIterator>::Item: 'static,
-   |                          ^ explicit lifetime name needed here
-   |
-help: consider introducing a higher-ranked lifetime here
-   |
-LL |     for<'a> for<C2: , R2, R3: > <&'a str as IntoIterator>::Item: 'static,
-   |     +++++++                       ++
-
 error[E0658]: only lifetime parameters can be used in this context
-  --> $DIR/ice-generics_of-no-entry-found-for-key-113017.rs:11:15
+  --> $DIR/ice-generics_of-no-entry-found-for-key-113017.rs:8:15
    |
-LL |     for<const N: usize = { || {}}> V: 'a,
+LL |     for<const N: usize = { || {}; 1 }> ():,
    |               ^
    |
    = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: only lifetime parameters can be used in this context
-  --> $DIR/ice-generics_of-no-entry-found-for-key-113017.rs:15:9
-   |
-LL |     for<C2: , R2, R3: > <&str as IntoIterator>::Item: 'static,
-   |         ^^    ^^  ^^
-   |
-   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
-   = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error: defaults for generic parameters are not allowed in `for<...>` binders
-  --> $DIR/ice-generics_of-no-entry-found-for-key-113017.rs:11:9
+  --> $DIR/ice-generics_of-no-entry-found-for-key-113017.rs:8:9
    |
-LL |     for<const N: usize = { || {}}> V: 'a,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     for<const N: usize = { || {}; 1 }> ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0261, E0637, E0658.
-For more information about an error, try `rustc --explain E0261`.
+For more information about this error, try `rustc --explain E0658`.

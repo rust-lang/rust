@@ -40,7 +40,7 @@ impl<T> MyFrom<Phantom2<T>> for Phantom1<T> {
 }
 
 impl<T: MyFrom<Phantom2<DummyT<U>>>, U> MyIndex<DummyT<T>> for Scope<U> {
-    //~^ ERROR the type parameter `T` is not constrained by the impl trait, self type, or predicates
+    //~^ ERROR the type parameter `T` is not constrained by the impl
     type O = T;
     fn my_index(self) -> Self::O {
         MyFrom::my_from(self.0).ok().unwrap()
