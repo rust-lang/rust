@@ -13,7 +13,7 @@ use std::{
 pub use camino::*;
 
 /// Wrapper around an absolute [`Utf8PathBuf`].
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, Hash)]
 pub struct AbsPathBuf(Utf8PathBuf);
 
 impl From<AbsPathBuf> for Utf8PathBuf {
@@ -92,9 +92,9 @@ impl TryFrom<&str> for AbsPathBuf {
     }
 }
 
-impl PartialEq<AbsPath> for AbsPathBuf {
-    fn eq(&self, other: &AbsPath) -> bool {
-        self.as_path() == other
+impl<P: AsRef<Path> + ?Sized> PartialEq<P> for AbsPathBuf {
+    fn eq(&self, other: &P) -> bool {
+        self.0.as_std_path() == other.as_ref()
     }
 }
 
@@ -144,9 +144,15 @@ impl fmt::Display for AbsPathBuf {
 }
 
 /// Wrapper around an absolute [`Utf8Path`].
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Debug, Ord, PartialOrd, Eq, Hash)]
 #[repr(transparent)]
 pub struct AbsPath(Utf8Path);
+
+impl<P: AsRef<Path> + ?Sized> PartialEq<P> for AbsPath {
+    fn eq(&self, other: &P) -> bool {
+        self.0.as_std_path() == other.as_ref()
+    }
+}
 
 impl AsRef<Utf8Path> for AbsPath {
     fn as_ref(&self) -> &Utf8Path {
