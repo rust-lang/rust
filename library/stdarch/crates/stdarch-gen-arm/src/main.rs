@@ -1,3 +1,9 @@
+#![allow(
+    clippy::too_many_arguments,
+    clippy::type_complexity,
+    clippy::wrong_self_convention
+)]
+
 use self::Suffix::*;
 use self::TargetFeature::*;
 use std::env;
@@ -360,18 +366,14 @@ fn type_to_rot_suffix(c_name: &str, suf: &str) -> String {
 }
 
 fn type_to_signed(t: &str) -> String {
-    let s = t.replace("uint", "int");
-    let s = s.replace("poly", "int");
-    s
+    t.replace("uint", "int").replace("poly", "int")
 }
 
 fn type_to_unsigned(t: &str) -> String {
     if t.contains("uint") {
         return t.to_string();
     }
-    let s = t.replace("int", "uint");
-    let s = s.replace("poly", "uint");
-    s
+    t.replace("int", "uint").replace("poly", "uint")
 }
 
 fn type_to_double_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
@@ -431,6 +433,7 @@ fn type_to_noq_suffix(t: &str) -> &str {
     }
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy)]
 enum Suffix {
     Normal,
@@ -461,14 +464,14 @@ enum TargetFeature {
     ArmV7,
     Vfp4,
     FPArmV8,
-    AES,
-    FCMA,
+    Aes,
+    Fcma,
     Dotprod,
     I8MM,
-    SHA3,
-    RDM,
-    SM4,
-    FTTS,
+    Sha3,
+    Rdm,
+    Sm4,
+    Ftts,
 }
 
 impl TargetFeature {
@@ -481,14 +484,14 @@ impl TargetFeature {
             Self::Vfp4 => "neon",
             Self::FPArmV8 => "neon",
             // Optional features.
-            Self::AES => "neon,aes",
-            Self::FCMA => "neon,fcma",
+            Self::Aes => "neon,aes",
+            Self::Fcma => "neon,fcma",
             Self::Dotprod => "neon,dotprod",
             Self::I8MM => "neon,i8mm",
-            Self::SHA3 => "neon,sha3",
-            Self::RDM => "rdm",
-            Self::SM4 => "neon,sm4",
-            Self::FTTS => "neon,frintts",
+            Self::Sha3 => "neon,sha3",
+            Self::Rdm => "rdm",
+            Self::Sm4 => "neon,sm4",
+            Self::Ftts => "neon,frintts",
         }
     }
 
@@ -504,15 +507,15 @@ impl TargetFeature {
             Self::ArmV7 => "neon,v7",
             Self::Vfp4 => "neon,vfp4",
             Self::FPArmV8 => "neon,fp-armv8,v8",
-            Self::AES => "neon,v8,aes",
-            Self::FCMA => "neon,v8,fcma",
+            Self::Aes => "neon,v8,aes",
+            Self::Fcma => "neon,v8,fcma",
             Self::Dotprod => "neon,v8,dotprod",
             Self::I8MM => "neon,v8,i8mm",
             // Features not supported on 32-bit "arm".
-            Self::SHA3 => unimplemented!(),
-            Self::RDM => unimplemented!(),
-            Self::SM4 => unimplemented!(),
-            Self::FTTS => unimplemented!(),
+            Self::Sha3 => unimplemented!(),
+            Self::Rdm => unimplemented!(),
+            Self::Sm4 => unimplemented!(),
+            Self::Ftts => unimplemented!(),
         }
     }
 
@@ -523,16 +526,16 @@ impl TargetFeature {
             return "unstable(feature = \"stdarch_arm_neon_intrinsics\", issue = \"111800\")";
         }
         match *self {
-            Default | ArmV7 | Vfp4 | FPArmV8 | AES => {
+            Default | ArmV7 | Vfp4 | FPArmV8 | Aes => {
                 "stable(feature = \"neon_intrinsics\", since = \"1.59.0\")"
             }
-            FCMA => "unstable(feature = \"stdarch_neon_fcma\", issue = \"117222\")",
+            Fcma => "unstable(feature = \"stdarch_neon_fcma\", issue = \"117222\")",
             Dotprod => "unstable(feature = \"stdarch_neon_dotprod\", issue = \"117224\")",
             I8MM => "unstable(feature = \"stdarch_neon_i8mm\", issue = \"117223\")",
-            SHA3 => "unstable(feature = \"stdarch_neon_sha3\", issue = \"117225\")",
-            RDM => "stable(feature = \"rdm_intrinsics\", since = \"1.62.0\")",
-            SM4 => "unstable(feature = \"stdarch_neon_sm4\", issue = \"117226\")",
-            FTTS => "unstable(feature = \"stdarch_neon_ftts\", issue = \"117227\")",
+            Sha3 => "unstable(feature = \"stdarch_neon_sha3\", issue = \"117225\")",
+            Rdm => "stable(feature = \"rdm_intrinsics\", since = \"1.62.0\")",
+            Sm4 => "unstable(feature = \"stdarch_neon_sm4\", issue = \"117226\")",
+            Ftts => "unstable(feature = \"stdarch_neon_ftts\", issue = \"117227\")",
         }
     }
 
@@ -556,16 +559,16 @@ impl TargetFeature {
             Self::FPArmV8 => "neon,crc",
 
             // "v8" extensions.
-            Self::AES => "neon,aes",
-            Self::FCMA => "neon,fcma",
+            Self::Aes => "neon,aes",
+            Self::Fcma => "neon,fcma",
             Self::Dotprod => "neon,dotprod",
             Self::I8MM => "neon,i8mm",
 
             // Features not supported on 32-bit "arm".
-            Self::SHA3 => unimplemented!(),
-            Self::RDM => unimplemented!(),
-            Self::SM4 => unimplemented!(),
-            Self::FTTS => unimplemented!(),
+            Self::Sha3 => unimplemented!(),
+            Self::Rdm => unimplemented!(),
+            Self::Sm4 => unimplemented!(),
+            Self::Ftts => unimplemented!(),
         }
     }
 
@@ -827,9 +830,7 @@ fn type_to_half(t: &str) -> &str {
 
 fn type_with_merged_lanes(t: &str, elements_per_lane: usize) -> String {
     assert_eq!(type_len(t) % elements_per_lane, 0);
-    let prefix_len = t
-        .find(|c: char| c.is_ascii_digit())
-        .unwrap_or_else(|| t.len());
+    let prefix_len = t.find(|c: char| c.is_ascii_digit()).unwrap_or(t.len());
     format!(
         "{prefix}{bits}x{len}_t",
         prefix = &t[0..prefix_len],
@@ -847,7 +848,7 @@ fn asc(start: i32, len: usize) -> String {
         let n = start + i as i32;
         s.push_str(&n.to_string());
     }
-    s.push_str("]");
+    s.push(']');
     s
 }
 
@@ -1186,7 +1187,7 @@ fn type_to_ext(t: &str, v: bool, r: bool, pi8: bool) -> String {
             &type_len(&type_to_sub_type(t)).to_string(),
             native
         ),
-        _ if pi8 => format!(".p0i8"),
+        _ if pi8 => ".p0i8".to_string(),
         _ => format!(".p0{native}"),
     };
     let sub_type = match &native[0..1] {
@@ -1269,8 +1270,8 @@ fn gen_aarch64(
     suffix: Suffix,
     para_num: i32,
     target: TargetFeature,
-    fixed: &Vec<String>,
-    multi_fn: &Vec<String>,
+    fixed: &[String],
+    multi_fn: &[String],
     fn_type: Fntype,
 ) -> (String, String) {
     let name = match suffix {
@@ -1479,12 +1480,12 @@ fn gen_aarch64(
     };
     let multi_calls = if !multi_fn.is_empty() {
         let mut calls = String::new();
-        for i in 0..multi_fn.len() {
+        for (i, item) in multi_fn.iter().enumerate() {
             if i > 0 {
                 calls.push_str("\n    ");
             }
             calls.push_str(&get_call(
-                &multi_fn[i],
+                item,
                 current_name,
                 in_t,
                 out_t,
@@ -1681,13 +1682,13 @@ fn gen_load_test(
         let has_b = !b.is_empty();
         let has_n = n.is_some();
         let mut input = String::from("[");
-        for i in 0..type_len + 1 {
+        for (i, item) in a[..type_len + 1].iter().enumerate() {
             if i != 0 {
                 input.push_str(", ");
             }
-            input.push_str(&a[i])
+            input.push_str(item)
         }
-        input.push_str("]");
+        input.push(']');
         let output = |v: &Vec<String>| {
             let mut output = String::from("[");
             for i in 0..type_sub_len(out_t) {
@@ -1703,13 +1704,13 @@ fn gen_load_test(
                         }
                         sub_output.push_str(&v[i * sub_len + j]);
                     }
-                    sub_output.push_str(")");
+                    sub_output.push(')');
                     output.push_str(&sub_output);
                 } else {
                     output.push_str(&v[i]);
                 }
             }
-            output.push_str("]");
+            output.push(']');
             output
         };
         let input_b = if has_b {
@@ -1776,24 +1777,24 @@ fn gen_store_test(
         let a: Vec<String> = a.iter().take(type_len + 1).cloned().collect();
         let e: Vec<String> = e.iter().take(type_len).cloned().collect();
         let mut input = String::from("[");
-        for i in 0..type_len + 1 {
+        for (i, item) in a[..type_len + 1].iter().enumerate() {
             if i != 0 {
                 input.push_str(", ");
             }
-            input.push_str(&a[i])
+            input.push_str(item)
         }
-        input.push_str("]");
+        input.push(']');
         let mut output = String::from("[");
-        for i in 0..type_len {
+        for (i, item) in e.iter().enumerate() {
             if i != 0 {
                 output.push_str(", ");
             }
-            output.push_str(&e[i])
+            output.push_str(item)
         }
-        output.push_str("]");
+        output.push(']');
         let const_n = constn
             .as_deref()
-            .map_or(String::new(), |n| format!("::<{}>", n.to_string()));
+            .map_or(String::new(), |n| format!("::<{}>", n));
         let t = format!(
             r#"
         let a: [{}; {}] = {};
@@ -1929,8 +1930,8 @@ fn gen_arm(
     suffix: Suffix,
     para_num: i32,
     target: TargetFeature,
-    fixed: &Vec<String>,
-    multi_fn: &Vec<String>,
+    fixed: &[String],
+    multi_fn: &[String],
     fn_type: Fntype,
     separate: bool,
 ) -> (String, String) {
@@ -2193,7 +2194,10 @@ fn gen_arm(
                     String::new(),
                 )
             } else if is_vldx(&name) {
-                (format!("ptr: *const i8, size: i32"), format!(" -> {out_t}"))
+                (
+                    "ptr: *const i8, size: i32".to_string(),
+                    format!(" -> {out_t}"),
+                )
             } else {
                 (String::new(), String::new())
             }
@@ -2317,12 +2321,12 @@ fn gen_arm(
     };
     let multi_calls = if !multi_fn.is_empty() {
         let mut calls = String::new();
-        for i in 0..multi_fn.len() {
+        for (i, item) in multi_fn.iter().enumerate() {
             if i > 0 {
                 calls.push_str("\n    ");
             }
             calls.push_str(&get_call(
-                &multi_fn[i],
+                item,
                 current_name,
                 in_t,
                 out_t,
@@ -2392,14 +2396,14 @@ fn gen_arm(
                     } else {
                         let const_arm = const_arm.replace("ttn", &type_to_native_type(in_t[1]));
                         let mut cnt = String::from(in_t[1]);
-                        cnt.push_str("(");
+                        cnt.push('(');
                         for i in 0..type_len(in_t[1]) {
                             if i != 0 {
                                 cnt.push_str(", ");
                             }
                             cnt.push_str(&const_arm);
                         }
-                        cnt.push_str(")");
+                        cnt.push(')');
                         cnt
                     };
                     match para_num {
@@ -2466,14 +2470,14 @@ fn gen_arm(
                     } else if const_aarch64.contains("dup-in_len-N as ttn") {
                         let const_aarch64 = format!("N as {}", type_to_native_type(in_t[1]));
                         let mut cnt = String::from(in_t[1]);
-                        cnt.push_str("(");
+                        cnt.push('(');
                         for i in 0..type_len(in_t[1]) {
                             if i != 0 {
                                 cnt.push_str(", ");
                             }
                             cnt.push_str(&const_aarch64);
                         }
-                        cnt.push_str(")");
+                        cnt.push(')');
                         format!("{current_fn}(a, {cnt})")
                     } else {
                         match para_num {
@@ -2715,7 +2719,7 @@ fn get_call(
     current_name: &str,
     in_t: &[&str; 3],
     out_t: &str,
-    fixed: &Vec<String>,
+    fixed: &[String],
     n: Option<i32>,
     aarch64: bool,
 ) -> String {
@@ -2752,14 +2756,14 @@ fn get_call(
             "halflen" => type_len(in_t[1]) / 2,
             _ => 0,
         };
-        let mut s = format!("[");
+        let mut s = "[".to_string();
         for i in 0..len {
             if i != 0 {
                 s.push_str(", ");
             }
             s.push_str(&fn_format[2]);
         }
-        s.push_str("]");
+        s.push(']');
         return s;
     }
     if fn_name.starts_with("asc") {
@@ -2783,7 +2787,7 @@ fn get_call(
     if fn_name.starts_with("base") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
         assert_eq!(fn_format.len(), 3);
-        let mut s = format!("[");
+        let mut s = "[".to_string();
         let base_len = fn_format[1].parse::<usize>().unwrap();
         for i in 0..type_len(in_t[1]) / base_len {
             for j in 0..base_len {
@@ -2796,7 +2800,7 @@ fn get_call(
                 }
             }
         }
-        s.push_str("]");
+        s.push(']');
         return s;
     }
     if fn_name.starts_with("as") {
@@ -2823,18 +2827,18 @@ fn get_call(
             "in0_len" => type_len(in_t[0]),
             _ => 0,
         };
-        let mut s = format!("[");
+        let mut s = "[".to_string();
         for i in 0..len {
             if i != 0 {
                 s.push_str(", ");
             }
             if i == n as usize {
-                s.push_str(&format!("{} + {} as u32", offset.to_string(), fn_format[3]));
+                s.push_str(&format!("{} + {} as u32", offset, fn_format[3]));
             } else {
                 s.push_str(&i.to_string());
             }
         }
-        s.push_str("]");
+        s.push(']');
         return s;
     }
     if fn_name.starts_with("static_assert_imm") {
@@ -2914,11 +2918,11 @@ fn get_call(
         };
         let mut call = format!("match {} & 0b{} {{\n", &fn_format[2], "1".repeat(len));
         let mut sub_call = String::new();
-        for p in 1..params.len() {
+        for param in params[1..].iter() {
             if !sub_call.is_empty() {
                 sub_call.push_str(", ");
             }
-            sub_call.push_str(&params[p]);
+            sub_call.push_str(param);
         }
         for i in 0..(2u32.pow(len as u32) as usize) {
             let sub_match = format!(
@@ -2978,7 +2982,7 @@ fn get_call(
                 in_t,
                 out_t,
                 fixed,
-                n.clone(),
+                n,
                 aarch64,
             );
             if !param_str.is_empty() {
@@ -2988,7 +2992,7 @@ fn get_call(
         } else if s.contains(':') {
             let re_params: Vec<_> = s.split(':').map(|v| v.to_string()).collect();
             #[allow(clippy::if_same_then_else)]
-            if re_params[1] == "" {
+            if re_params[1].is_empty() {
                 re = Some((re_params[0].clone(), in_t[1].to_string()));
             } else if re_params[1] == "in_t" {
                 re = Some((re_params[0].clone(), in_t[1].to_string()));
@@ -3146,7 +3150,7 @@ fn get_call(
             fn_name.push_str(&fn_format[1]);
         };
         if fn_format[2] == "ext" {
-            fn_name.push_str("_");
+            fn_name.push('_');
         } else if fn_format[2] == "noext" {
         } else if fn_format[2].starts_with('<') {
             assert!(fn_format[2].ends_with('>'));
@@ -3171,9 +3175,8 @@ fn get_call(
         }
     }
     if param_str.is_empty() {
-        return fn_name.replace("out_t", out_t);
-    }
-    let fn_str = if let Some((re_name, re_type)) = re.clone() {
+        fn_name.replace("out_t", out_t)
+    } else if let Some((re_name, re_type)) = re.clone() {
         format!(
             r#"let {}: {} = {}({});"#,
             re_name, re_type, fn_name, param_str
@@ -3182,8 +3185,7 @@ fn get_call(
         format!(r#"{fn_name} = {param_str};"#)
     } else {
         format!(r#"{fn_name}({param_str})"#)
-    };
-    return fn_str;
+    }
 }
 
 fn main() -> io::Result<()> {
@@ -3388,14 +3390,14 @@ mod test {
                     "v7" => ArmV7,
                     "vfp4" => Vfp4,
                     "fp-armv8" => FPArmV8,
-                    "aes" => AES,
-                    "fcma" => FCMA,
+                    "aes" => Aes,
+                    "fcma" => Fcma,
                     "dotprod" => Dotprod,
                     "i8mm" => I8MM,
-                    "sha3" => SHA3,
-                    "rdm" => RDM,
-                    "sm4" => SM4,
-                    "frintts" => FTTS,
+                    "sha3" => Sha3,
+                    "rdm" => Rdm,
+                    "sm4" => Sm4,
+                    "frintts" => Ftts,
                     _ => Default,
                 },
                 _ => Default,
