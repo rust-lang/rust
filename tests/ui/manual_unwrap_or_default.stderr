@@ -52,5 +52,15 @@ LL | |         Vec::default()
 LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
-error: aborting due to 5 previous errors
+error: match can be simplified with `.unwrap_or_default()`
+  --> tests/ui/manual_unwrap_or_default.rs:46:20
+   |
+LL |           Some(_) => match *b {
+   |  ____________________^
+LL | |             Some(v) => v,
+LL | |             _ => 0,
+LL | |         },
+   | |_________^ help: replace it with: `(*b).unwrap_or_default()`
+
+error: aborting due to 6 previous errors
 
