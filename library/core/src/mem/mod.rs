@@ -731,38 +731,6 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
     unsafe { intrinsics::typed_swap(x, y) }
 }
 
-/// Same as [`swap`] semantically, but always uses the simple implementation.
-///
-/// Used elsewhere in `mem` and `ptr` at the bottom layer of calls.
-#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
-#[inline]
-pub(crate) const fn swap_simple<T>(x: &mut T, y: &mut T) {
-    // We arrange for this to typically be called with small types,
-    // so this reads-and-writes approach is actually better than using
-    // copy_nonoverlapping as it easily puts things in LLVM registers
-    // directly and doesn't end up inlining allocas.
-    // And LLVM actually optimizes it to 3×memcpy if called with
-    // a type larger than it's willing to keep in a register.
-    // Having typed reads and writes in MIR here is also good as
-    // it lets Miri and CTFE understand them better, including things
-    // like enforcing type validity for them.
-    // Importantly, read+copy_nonoverlapping+write introduces confusing
-    // asymmetry to the behaviour where one value went through read+write
-    // whereas the other was copied over by the intrinsic (see #94371).
-    // Furthermore, using only read+write here benefits limited backends
-    // such as SPIR-V that work on an underlying *typed* view of memory,
-    // and thus have trouble with Rust's untyped memory operations.
-
-    // SAFETY: exclusive references are always valid to read/write,
-    // including being aligned, and nothing here panics so it's drop-safe.
-    unsafe {
-        let a = ptr::read(x);
-        let b = ptr::read(y);
-        ptr::write(x, b);
-        ptr::write(y, a);
-    }
-}
-
 /// Replaces `dest` with the default value of `T`, returning the previous `dest` value.
 ///
 /// * If you want to replace the values of two variables, see [`swap`].

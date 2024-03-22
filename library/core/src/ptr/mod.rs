@@ -1062,11 +1062,26 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
     let mut i = 0;
     while i < count {
         // SAFETY: By precondition, `i` is in-bounds because it's below `n`
-        let x = unsafe { &mut *x.add(i) };
+        let x = unsafe { x.add(i) };
         // SAFETY: By precondition, `i` is in-bounds because it's below `n`
         // and it's distinct from `x` since the ranges are non-overlapping
-        let y = unsafe { &mut *y.add(i) };
-        mem::swap_simple::<MaybeUninit<T>>(x, y);
+        let y = unsafe { y.add(i) };
+
+        // If we end up here, it's because we're using a simple type -- like
+        // a small power-of-two-sized thing -- or a special type with particularly
+        // large alignment, particularly SIMD types.
+        // Thus we're fine just reading-and-writing it, as either it's small
+        // and that works well anyway or it's special and the type's author
+        // presumably wanted things to be done in the larger chunk.
+
+        // SAFETY: we're only ever given pointers that are valid to read/write,
+        // including being aligned, and nothing here panics so it's drop-safe.
+        unsafe {
+            let a: MaybeUninit<T> = read(x);
+            let b: MaybeUninit<T> = read(y);
+            write(x, b);
+            write(y, a);
+        }
 
         i += 1;
     }
