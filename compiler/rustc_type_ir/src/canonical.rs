@@ -63,28 +63,30 @@ impl<I: Interner, V: Eq> Eq for Canonical<I, V> {}
 
 impl<I: Interner, V: PartialEq> PartialEq for Canonical<I, V> {
     fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
-            && self.max_universe == other.max_universe
-            && self.variables == other.variables
+        let Self { value, max_universe, variables } = self;
+        *value == other.value
+            && *max_universe == other.max_universe
+            && *variables == other.variables
     }
 }
 
 impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { value, max_universe, variables } = self;
         write!(
             f,
-            "Canonical {{ value: {}, max_universe: {:?}, variables: {:?} }}",
-            self.value, self.max_universe, self.variables
+            "Canonical {{ value: {value}, max_universe: {max_universe:?}, variables: {variables:?} }}",
         )
     }
 }
 
 impl<I: Interner, V: fmt::Debug> fmt::Debug for Canonical<I, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { value, max_universe, variables } = self;
         f.debug_struct("Canonical")
-            .field("value", &self.value)
-            .field("max_universe", &self.max_universe)
-            .field("variables", &self.variables)
+            .field("value", &value)
+            .field("max_universe", &max_universe)
+            .field("variables", &variables)
             .finish()
     }
 }
@@ -109,9 +111,10 @@ where
     I::CanonicalVars: TypeVisitable<I>,
 {
     fn visit_with<F: TypeVisitor<I>>(&self, folder: &mut F) -> F::Result {
-        try_visit!(self.value.visit_with(folder));
-        try_visit!(self.max_universe.visit_with(folder));
-        self.variables.visit_with(folder)
+        let Self { value, max_universe, variables } = self;
+        try_visit!(value.visit_with(folder));
+        try_visit!(max_universe.visit_with(folder));
+        variables.visit_with(folder)
     }
 }
 
