@@ -2057,8 +2057,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Create a reference type with a fresh region variable.
     fn new_ref_ty(&self, span: Span, mutbl: hir::Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
         let region = self.next_region_var(infer::PatternRegion(span));
-        let mt = ty::TypeAndMut { ty, mutbl };
-        Ty::new_ref(self.tcx, region, mt)
+        Ty::new_ref(self.tcx, region, ty, mutbl)
     }
 
     fn try_resolve_slice_ty_to_array_ty(

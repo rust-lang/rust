@@ -128,7 +128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Float(_)
             | ty::Array(..)
             | ty::CoroutineWitness(..)
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
@@ -332,13 +332,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let mut sugg = None;
                 let mut sugg_mutref = false;
                 if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
-                    if let ty::RawPtr(TypeAndMut { ty: expr_ty, .. }) = *self.expr_ty.kind()
+                    if let ty::RawPtr(expr_ty, _) = *self.expr_ty.kind()
                         && fcx.can_coerce(
-                            Ty::new_ref(
-                                fcx.tcx,
-                                fcx.tcx.lifetimes.re_erased,
-                                TypeAndMut { ty: expr_ty, mutbl },
-                            ),
+                            Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, expr_ty, mutbl),
                             self.cast_ty,
                         )
                     {
@@ -346,14 +342,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind()
                         && expr_mutbl == Mutability::Not
                         && mutbl == Mutability::Mut
-                        && fcx.can_coerce(
-                            Ty::new_ref(
-                                fcx.tcx,
-                                expr_reg,
-                                TypeAndMut { ty: expr_ty, mutbl: Mutability::Mut },
-                            ),
-                            self.cast_ty,
-                        )
+                        && fcx.can_coerce(Ty::new_mut_ref(fcx.tcx, expr_reg, expr_ty), self.cast_ty)
                     {
                         sugg_mutref = true;
                     }
@@ -361,19 +350,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     if !sugg_mutref
                         && sugg == None
                         && fcx.can_coerce(
-                            Ty::new_ref(fcx.tcx, reg, TypeAndMut { ty: self.expr_ty, mutbl }),
+                            Ty::new_ref(fcx.tcx, reg, self.expr_ty, mutbl),
                             self.cast_ty,
                         )
                     {
                         sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                     }
-                } else if let ty::RawPtr(TypeAndMut { mutbl, .. }) = *self.cast_ty.kind()
+                } else if let ty::RawPtr(_, mutbl) = *self.cast_ty.kind()
                     && fcx.can_coerce(
-                        Ty::new_ref(
-                            fcx.tcx,
-                            fcx.tcx.lifetimes.re_erased,
-                            TypeAndMut { ty: self.expr_ty, mutbl },
-                        ),
+                        Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, self.expr_ty, mutbl),
                         self.cast_ty,
                     )
                 {
@@ -868,7 +853,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 // from a region pointer to a vector.
 
                 // Coerce to a raw pointer so that we generate AddressOf in MIR.
-                let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr);
+                let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr.ty, m_expr.mutbl);
                 fcx.coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
                     .unwrap_or_else(|_| {
                         bug!(

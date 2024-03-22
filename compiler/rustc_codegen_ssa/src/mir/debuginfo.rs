@@ -414,10 +414,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 calculate_debuginfo_offset(bx, var.projection, base);
 
             // Create a variable which will be a pointer to the actual value
-            let ptr_ty = Ty::new_ptr(
-                bx.tcx(),
-                ty::TypeAndMut { mutbl: mir::Mutability::Mut, ty: place.layout.ty },
-            );
+            let ptr_ty = Ty::new_mut_ptr(bx.tcx(), place.layout.ty);
             let ptr_layout = bx.layout_of(ptr_ty);
             let alloca = PlaceRef::alloca(bx, ptr_layout);
             bx.set_var_name(alloca.llval, &(var.name.to_string() + ".dbg.spill"));

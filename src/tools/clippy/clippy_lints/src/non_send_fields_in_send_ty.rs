@@ -219,7 +219,7 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
             }
         },
         // Raw pointers are `!Send` but allowed by the heuristic
-        ty::RawPtr(_) => true,
+        ty::RawPtr(_, _) => true,
         _ => false,
     }
 }
@@ -229,7 +229,7 @@ fn contains_pointer_like<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> b
     for ty_node in target_ty.walk() {
         if let GenericArgKind::Type(inner_ty) = ty_node.unpack() {
             match inner_ty.kind() {
-                ty::RawPtr(_) => {
+                ty::RawPtr(_, _) => {
                     return true;
                 },
                 ty::Adt(adt_def, _) => {

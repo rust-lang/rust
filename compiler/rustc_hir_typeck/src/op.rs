@@ -508,11 +508,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         suggest_deref_binop(&mut err, *lhs_deref_ty);
                     } else {
                         let lhs_inv_mutbl = mutbl.invert();
-                        let lhs_inv_mutbl_ty = Ty::new_ref(
-                            self.tcx,
-                            *region,
-                            ty::TypeAndMut { ty: *lhs_deref_ty, mutbl: lhs_inv_mutbl },
-                        );
+                        let lhs_inv_mutbl_ty =
+                            Ty::new_ref(self.tcx, *region, *lhs_deref_ty, lhs_inv_mutbl);
 
                         suggest_different_borrow(
                             &mut err,
@@ -524,11 +521,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         if let Ref(region, rhs_deref_ty, mutbl) = rhs_ty.kind() {
                             let rhs_inv_mutbl = mutbl.invert();
-                            let rhs_inv_mutbl_ty = Ty::new_ref(
-                                self.tcx,
-                                *region,
-                                ty::TypeAndMut { ty: *rhs_deref_ty, mutbl: rhs_inv_mutbl },
-                            );
+                            let rhs_inv_mutbl_ty =
+                                Ty::new_ref(self.tcx, *region, *rhs_deref_ty, rhs_inv_mutbl);
 
                             suggest_different_borrow(
                                 &mut err,

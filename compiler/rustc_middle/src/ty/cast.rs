@@ -69,7 +69,7 @@ impl<'tcx> CastTy<'tcx> {
             ty::Uint(u) => Some(CastTy::Int(IntTy::U(u))),
             ty::Float(_) => Some(CastTy::Float),
             ty::Adt(d, _) if d.is_enum() && d.is_payloadfree() => Some(CastTy::Int(IntTy::CEnum)),
-            ty::RawPtr(mt) => Some(CastTy::Ptr(mt)),
+            ty::RawPtr(ty, mutbl) => Some(CastTy::Ptr(ty::TypeAndMut { ty, mutbl })),
             ty::FnPtr(..) => Some(CastTy::FnPtr),
             ty::Dynamic(_, _, ty::DynStar) => Some(CastTy::DynStar),
             _ => None,

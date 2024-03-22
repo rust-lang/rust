@@ -1587,33 +1587,38 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn new_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
-        Ty::new(tcx, Ref(r, tm.ty, tm.mutbl))
+    pub fn new_ref(
+        tcx: TyCtxt<'tcx>,
+        r: Region<'tcx>,
+        ty: Ty<'tcx>,
+        mutbl: ty::Mutability,
+    ) -> Ty<'tcx> {
+        Ty::new(tcx, Ref(r, ty, mutbl))
     }
 
     #[inline]
     pub fn new_mut_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        Ty::new_ref(tcx, r, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
+        Ty::new_ref(tcx, r, ty, hir::Mutability::Mut)
     }
 
     #[inline]
     pub fn new_imm_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        Ty::new_ref(tcx, r, TypeAndMut { ty, mutbl: hir::Mutability::Not })
+        Ty::new_ref(tcx, r, ty, hir::Mutability::Not)
     }
 
     #[inline]
-    pub fn new_ptr(tcx: TyCtxt<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
-        Ty::new(tcx, RawPtr(tm))
+    pub fn new_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mutbl: ty::Mutability) -> Ty<'tcx> {
+        Ty::new(tcx, ty::RawPtr(ty, mutbl))
     }
 
     #[inline]
     pub fn new_mut_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
+        Ty::new_ptr(tcx, ty, hir::Mutability::Mut)
     }
 
     #[inline]
     pub fn new_imm_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: hir::Mutability::Not })
+        Ty::new_ptr(tcx, ty, hir::Mutability::Not)
     }
 
     #[inline]
@@ -1910,7 +1915,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_array_slice(self) -> bool {
         match self.kind() {
             Slice(_) => true,
-            RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => matches!(ty.kind(), Slice(_)),
+            ty::RawPtr(ty, _) | Ref(_, ty, _) => matches!(ty.kind(), Slice(_)),
             _ => false,
         }
     }
@@ -1964,11 +1969,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_mutable_ptr(self) -> bool {
-        matches!(
-            self.kind(),
-            RawPtr(TypeAndMut { mutbl: hir::Mutability::Mut, .. })
-                | Ref(_, _, hir::Mutability::Mut)
-        )
+        matches!(self.kind(), RawPtr(_, hir::Mutability::Mut) | Ref(_, _, hir::Mutability::Mut))
     }
 
     /// Get the mutability of the reference or `None` when not a reference
@@ -1982,7 +1983,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_unsafe_ptr(self) -> bool {
-        matches!(self.kind(), RawPtr(_))
+        matches!(self.kind(), RawPtr(_, _))
     }
 
     /// Tests if this is any kind of primitive pointer type (reference, raw pointer, fn pointer).
@@ -2038,7 +2039,7 @@ impl<'tcx> Ty<'tcx> {
                 | Uint(_)
                 | FnDef(..)
                 | FnPtr(_)
-                | RawPtr(_)
+                | RawPtr(_, _)
                 | Infer(IntVar(_) | FloatVar(_))
         )
     }
@@ -2174,7 +2175,7 @@ impl<'tcx> Ty<'tcx> {
                 Some(TypeAndMut { ty: self.boxed_ty(), mutbl: hir::Mutability::Not })
             }
             Ref(_, ty, mutbl) => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
-            RawPtr(mt) if explicit => Some(*mt),
+            RawPtr(ty, mutbl) if explicit => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
             _ => None,
         }
     }
@@ -2293,7 +2294,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Str
             | ty::Array(..)
             | ty::Slice(_)
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
@@ -2636,7 +2637,7 @@ impl<'tcx> Ty<'tcx> {
             | Str
             | Array(_, _)
             | Slice(_)
-            | RawPtr(_)
+            | RawPtr(_, _)
             | Ref(_, _, _)
             | FnDef(_, _)
             | FnPtr(_)

@@ -1483,7 +1483,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 v.normalize(bx.target_spec().pointer_width).bit_width().unwrap()
             ),
             ty::Float(v) => format!("v{}f{}", vec_len, v.bit_width()),
-            ty::RawPtr(_) => format!("v{}p0", vec_len),
+            ty::RawPtr(_, _) => format!("v{}p0", vec_len),
             _ => unreachable!(),
         }
     }
@@ -1493,7 +1493,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             ty::Int(v) => cx.type_int_from_ty(v),
             ty::Uint(v) => cx.type_uint_from_ty(v),
             ty::Float(v) => cx.type_float_from_ty(v),
-            ty::RawPtr(_) => cx.type_ptr(),
+            ty::RawPtr(_, _) => cx.type_ptr(),
             _ => unreachable!(),
         };
         cx.type_vector(elem_ty, vec_len)
@@ -1548,8 +1548,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         require!(
             matches!(
-                element_ty1.kind(),
-                ty::RawPtr(p) if p.ty == in_elem && p.ty.kind() == element_ty0.kind()
+                *element_ty1.kind(),
+                ty::RawPtr(p_ty, _) if p_ty == in_elem && p_ty.kind() == element_ty0.kind()
             ),
             InvalidMonomorphization::ExpectedElementType {
                 span,
@@ -1654,8 +1654,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         require!(
             matches!(
-                pointer_ty.kind(),
-                ty::RawPtr(p) if p.ty == values_elem && p.ty.kind() == values_elem.kind()
+                *pointer_ty.kind(),
+                ty::RawPtr(p_ty, _) if p_ty == values_elem && p_ty.kind() == values_elem.kind()
             ),
             InvalidMonomorphization::ExpectedElementType {
                 span,
@@ -1746,8 +1746,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // The second argument must be a mutable pointer type matching the element type
         require!(
             matches!(
-                pointer_ty.kind(),
-                ty::RawPtr(p) if p.ty == values_elem && p.ty.kind() == values_elem.kind() && p.mutbl.is_mut()
+                *pointer_ty.kind(),
+                ty::RawPtr(p_ty, p_mutbl) if p_ty == values_elem && p_ty.kind() == values_elem.kind() && p_mutbl.is_mut()
             ),
             InvalidMonomorphization::ExpectedElementType {
                 span,
@@ -1843,9 +1843,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         require!(
             matches!(
-                element_ty1.kind(),
-                ty::RawPtr(p)
-                    if p.ty == in_elem && p.mutbl.is_mut() && p.ty.kind() == element_ty0.kind()
+                *element_ty1.kind(),
+                ty::RawPtr(p_ty, p_mutbl)
+                    if p_ty == in_elem && p_mutbl.is_mut() && p_ty.kind() == element_ty0.kind()
             ),
             InvalidMonomorphization::ExpectedElementType {
                 span,
@@ -2074,8 +2074,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         match in_elem.kind() {
-            ty::RawPtr(p) => {
-                let metadata = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+            ty::RawPtr(p_ty, _) => {
+                let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
                 require!(
@@ -2088,8 +2088,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
         }
         match out_elem.kind() {
-            ty::RawPtr(p) => {
-                let metadata = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+            ty::RawPtr(p_ty, _) => {
+                let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
                 require!(
@@ -2120,7 +2120,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         match in_elem.kind() {
-            ty::RawPtr(_) => {}
+            ty::RawPtr(_, _) => {}
             _ => {
                 return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: in_elem })
             }
@@ -2152,7 +2152,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             _ => return_error!(InvalidMonomorphization::ExpectedUsize { span, name, ty: in_elem }),
         }
         match out_elem.kind() {
-            ty::RawPtr(_) => {}
+            ty::RawPtr(_, _) => {}
             _ => {
                 return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: out_elem })
             }

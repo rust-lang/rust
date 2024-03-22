@@ -121,7 +121,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
     fn is_fn_ref(ty: Ty<'tcx>) -> Option<(DefId, GenericArgsRef<'tcx>)> {
         let referent_ty = match ty.kind() {
             ty::Ref(_, referent_ty, _) => Some(referent_ty),
-            ty::RawPtr(ty_and_mut) => Some(&ty_and_mut.ty),
+            ty::RawPtr(referent_ty, _) => Some(referent_ty),
             _ => None,
         };
         referent_ty

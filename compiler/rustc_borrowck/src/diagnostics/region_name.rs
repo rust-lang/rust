@@ -555,8 +555,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     search_stack.push((*elem_ty, elem_hir_ty));
                 }
 
-                (ty::RawPtr(mut_ty), hir::TyKind::Ptr(mut_hir_ty)) => {
-                    search_stack.push((mut_ty.ty, &mut_hir_ty.ty));
+                (ty::RawPtr(mut_ty, _), hir::TyKind::Ptr(mut_hir_ty)) => {
+                    search_stack.push((*mut_ty, &mut_hir_ty.ty));
                 }
 
                 _ => {

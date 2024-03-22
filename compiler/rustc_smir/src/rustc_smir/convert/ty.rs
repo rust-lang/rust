@@ -331,7 +331,7 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
                 TyKind::RigidTy(RigidTy::Array(ty.stable(tables), constant.stable(tables)))
             }
             ty::Slice(ty) => TyKind::RigidTy(RigidTy::Slice(ty.stable(tables))),
-            ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
+            ty::RawPtr(ty, mutbl) => {
                 TyKind::RigidTy(RigidTy::RawPtr(ty.stable(tables), mutbl.stable(tables)))
             }
             ty::Ref(region, ty, mutbl) => TyKind::RigidTy(RigidTy::Ref(

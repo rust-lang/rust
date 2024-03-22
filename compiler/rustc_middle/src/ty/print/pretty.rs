@@ -667,15 +667,15 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Int(t) => p!(write("{}", t.name_str())),
             ty::Uint(t) => p!(write("{}", t.name_str())),
             ty::Float(t) => p!(write("{}", t.name_str())),
-            ty::RawPtr(ref tm) => {
+            ty::RawPtr(ty, mutbl) => {
                 p!(write(
                     "*{} ",
-                    match tm.mutbl {
+                    match mutbl {
                         hir::Mutability::Mut => "mut",
                         hir::Mutability::Not => "const",
                     }
                 ));
-                p!(print(tm.ty))
+                p!(print(ty))
             }
             ty::Ref(r, ty, mutbl) => {
                 p!("&");
@@ -1752,7 +1752,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(write("{:?}", char::try_from(int).unwrap()))
             }
             // Pointer types
-            ty::Ref(..) | ty::RawPtr(_) | ty::FnPtr(_) => {
+            ty::Ref(..) | ty::RawPtr(_, _) | ty::FnPtr(_) => {
                 let data = int.assert_bits(self.tcx().data_layout.pointer_size);
                 self.typed_value(
                     |this| {

@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
 ) -> bool {
     let mut triggered = false;
 
-    if let (ty::Ref(_, ty_from, from_mutbl), ty::Ref(_, ty_to, to_mutbl)) = (&from_ty.kind(), &to_ty.kind()) {
+    if let (ty::Ref(_, ty_from, from_mutbl), ty::Ref(_, ty_to, to_mutbl)) = (*from_ty.kind(), *to_ty.kind()) {
         if let ty::Slice(slice_ty) = *ty_from.kind()
             && ty_to.is_str()
             && let ty::Uint(ty::UintTy::U8) = slice_ty.kind()
@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
         {
             let Some(top_crate) = std_or_core(cx) else { return true };
 
-            let postfix = if *from_mutbl == Mutability::Mut { "_mut" } else { "" };
+            let postfix = if from_mutbl == Mutability::Mut { "_mut" } else { "" };
 
             let snippet = snippet(cx, arg.span, "..");
 
@@ -53,18 +53,10 @@ pub(super) fn check<'tcx>(
                 "transmute from a reference to a reference",
                 |diag| {
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
-                        let ty_from_and_mut = ty::TypeAndMut {
-                            ty: *ty_from,
-                            mutbl: *from_mutbl,
-                        };
-                        let ty_to_and_mut = ty::TypeAndMut {
-                            ty: *ty_to,
-                            mutbl: *to_mutbl,
-                        };
                         let sugg_paren = arg
-                            .as_ty(Ty::new_ptr(cx.tcx, ty_from_and_mut))
-                            .as_ty(Ty::new_ptr(cx.tcx, ty_to_and_mut));
-                        let sugg = if *to_mutbl == Mutability::Mut {
+                            .as_ty(Ty::new_ptr(cx.tcx, ty_from, from_mutbl))
+                            .as_ty(Ty::new_ptr(cx.tcx, ty_to, to_mutbl));
+                        let sugg = if to_mutbl == Mutability::Mut {
                             sugg_paren.mut_addr_deref()
                         } else {
                             sugg_paren.addr_deref()

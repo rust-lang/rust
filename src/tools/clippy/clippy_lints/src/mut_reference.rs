@@ -84,9 +84,7 @@ fn check_arguments<'tcx>(
             for (argument, parameter) in iter::zip(arguments, parameters) {
                 match parameter.kind() {
                     ty::Ref(_, _, Mutability::Not)
-                    | ty::RawPtr(ty::TypeAndMut {
-                        mutbl: Mutability::Not, ..
-                    }) => {
+                    | ty::RawPtr(_, Mutability::Not) => {
                         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) = argument.kind {
                             span_lint(
                                 cx,
