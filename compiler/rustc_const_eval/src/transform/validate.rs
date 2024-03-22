@@ -4,6 +4,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_infer::traits::Reveal;
+use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -345,11 +346,21 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(location, format!("explicit `{kind:?}` is forbidden"));
                 }
             }
+            StatementKind::Coverage(coverage) => {
+                let kind = &coverage.kind;
+                if self.mir_phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup)
+                    && let CoverageKind::BlockMarker { .. } | CoverageKind::SpanMarker { .. } = kind
+                {
+                    self.fail(
+                        location,
+                        format!("{kind:?} should have been removed after analysis"),
+                    );
+                }
+            }
             StatementKind::Assign(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Intrinsic(_)
-            | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
             | StatementKind::Nop => {}
