@@ -9,6 +9,9 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
     let tests_path = &root_path.join("tests");
 
     let allowed_makefiles = {
+        // We use `include!` here which includes the file as Rust syntax because we want to have
+        // a comment that discourages people from adding entries to
+        // `expected_run_make_makefiles.txt` unless *absolutely* necessary.
         let allowed_makefiles = include!("expected_run_make_makefiles.txt");
         let is_sorted = allowed_makefiles.windows(2).all(|w| w[0] < w[1]);
         if !is_sorted && !bless {
