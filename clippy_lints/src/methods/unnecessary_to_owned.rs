@@ -18,7 +18,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{
-    self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ImplPolarity, ParamTy, ProjectionPredicate,
+    self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate,
     TraitPredicate, Ty,
 };
 use rustc_span::{sym, Symbol};
@@ -666,7 +666,7 @@ fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         && let Some(borrow_id) = cx.tcx.get_diagnostic_item(sym::Borrow)
         && cx.tcx.predicates_of(method_def_id).predicates.iter().any(|(pred, _)| {
             if let ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
-                && trait_pred.polarity == ImplPolarity::Positive
+                && trait_pred.polarity == ty::PredicatePolarity::Positive
                 && trait_pred.trait_ref.def_id == borrow_id
             {
                 true

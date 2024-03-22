@@ -19,6 +19,7 @@ LL |     42
    |
    = note: expected type parameter `u32`
                         found type `{integer}`
+   = note: the caller chooses a type for `u32` which can be different from `i32`
 
 error: aborting due to 2 previous errors
 
