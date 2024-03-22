@@ -1,3 +1,4 @@
+use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, LangItem, MatchSource, Pat, PatKind, QPath};
@@ -124,7 +125,7 @@ fn handle_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
         // We now check the `None` arm is calling a method equivalent to `Default::default`.
         && let body_none = body_none.peel_blocks()
         && is_default_equivalent(cx, body_none)
-        && let Some(match_expr_snippet) = snippet_opt(cx, match_expr.span)
+        && let Some(receiver) = Sugg::hir_opt(cx, match_expr).map(Sugg::maybe_par)
     {
         span_lint_and_sugg(
             cx,
@@ -132,7 +133,7 @@ fn handle_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
             expr.span,
             "match can be simplified with `.unwrap_or_default()`",
             "replace it with",
-            format!("{match_expr_snippet}.unwrap_or_default()"),
+            format!("{receiver}.unwrap_or_default()"),
             Applicability::MachineApplicable,
         );
     }
