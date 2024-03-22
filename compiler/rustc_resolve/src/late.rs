@@ -2531,7 +2531,17 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             ItemKind::Delegation(ref delegation) => {
-                self.resolve_delegation(delegation);
+                let span = delegation.path.segments.last().unwrap().ident.span;
+                self.with_generic_param_rib(
+                    &[],
+                    RibKind::Item(HasGenericParams::Yes(span), def_kind),
+                    LifetimeRibKind::Generics {
+                        binder: item.id,
+                        kind: LifetimeBinderKind::Function,
+                        span,
+                    },
+                    |this| this.resolve_delegation(delegation),
+                );
             }
 
             ItemKind::ExternCrate(..) => {}
@@ -2819,7 +2829,16 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     walk_assoc_item(self, generics, LifetimeBinderKind::Function, item);
                 }
                 AssocItemKind::Delegation(delegation) => {
-                    self.resolve_delegation(delegation);
+                    self.with_generic_param_rib(
+                        &[],
+                        RibKind::AssocItem,
+                        LifetimeRibKind::Generics {
+                            binder: item.id,
+                            kind: LifetimeBinderKind::Function,
+                            span: delegation.path.segments.last().unwrap().ident.span,
+                        },
+                        |this| this.resolve_delegation(delegation),
+                    );
                 }
                 AssocItemKind::Type(box TyAlias { generics, .. }) => self
                     .with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
@@ -3069,16 +3088,28 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
             AssocItemKind::Delegation(box delegation) => {
                 debug!("resolve_implementation AssocItemKind::Delegation");
-                self.check_trait_item(
-                    item.id,
-                    item.ident,
-                    &item.kind,
-                    ValueNS,
-                    item.span,
-                    seen_trait_items,
-                    |i, s, c| MethodNotMemberOfTrait(i, s, c),
+                self.with_generic_param_rib(
+                    &[],
+                    RibKind::AssocItem,
+                    LifetimeRibKind::Generics {
+                        binder: item.id,
+                        kind: LifetimeBinderKind::Function,
+                        span: delegation.path.segments.last().unwrap().ident.span,
+                    },
+                    |this| {
+                        this.check_trait_item(
+                            item.id,
+                            item.ident,
+                            &item.kind,
+                            ValueNS,
+                            item.span,
+                            seen_trait_items,
+                            |i, s, c| MethodNotMemberOfTrait(i, s, c),
+                        );
+
+                        this.resolve_delegation(delegation)
+                    },
                 );
-                self.resolve_delegation(delegation);
             }
             AssocItemKind::MacCall(_) => {
                 panic!("unexpanded macro in resolve!")
