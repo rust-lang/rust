@@ -1617,21 +1617,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 _ => return ControlFlow::Continue(()),
             };
 
-            for bound in
-                self.tcx().item_bounds(alias_ty.def_id).instantiate(self.tcx(), alias_ty.args)
-            {
-                // HACK: On subsequent recursions, we only care about bounds that don't
-                // share the same type as `self_ty`. This is because for truly rigid
-                // projections, we will never be able to equate, e.g. `<T as Tr>::A`
-                // with `<<T as Tr>::A as Tr>::A`.
-                if in_parent_alias_type {
-                    match bound.kind().skip_binder() {
-                        ty::ClauseKind::Trait(tr) if tr.self_ty() == self_ty => continue,
-                        ty::ClauseKind::Projection(p) if p.self_ty() == self_ty => continue,
-                        _ => {}
-                    }
-                }
+            // HACK: On subsequent recursions, we only care about bounds that don't
+            // share the same type as `self_ty`. This is because for truly rigid
+            // projections, we will never be able to equate, e.g. `<T as Tr>::A`
+            // with `<<T as Tr>::A as Tr>::A`.
+            let relevant_bounds = if in_parent_alias_type {
+                self.tcx().item_non_self_assumptions(alias_ty.def_id)
+            } else {
+                self.tcx().item_super_predicates(alias_ty.def_id)
+            };
 
+            for bound in relevant_bounds.instantiate(self.tcx(), alias_ty.args) {
                 for_each(self, bound, idx)?;
                 idx += 1;
             }
@@ -2123,13 +2119,14 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ),
 
             ty::Adt(def, args) => {
-                let sized_crit = def.sized_constraint(self.tcx());
-                // (*) binder moved here
-                Where(
-                    obligation
-                        .predicate
-                        .rebind(sized_crit.iter_instantiated(self.tcx(), args).collect()),
-                )
+                if let Some(sized_crit) = def.sized_constraint(self.tcx()) {
+                    // (*) binder moved here
+                    Where(
+                        obligation.predicate.rebind(vec![sized_crit.instantiate(self.tcx(), args)]),
+                    )
+                } else {
+                    Where(ty::Binder::dummy(Vec::new()))
+                }
             }
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => None,
@@ -2259,6 +2256,20 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
+        }
+    }
+
+    fn fused_iterator_conditions(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+    ) -> BuiltinImplConditions<'tcx> {
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        if let ty::Coroutine(did, ..) = *self_ty.kind()
+            && self.tcx().coroutine_is_gen(did)
+        {
+            BuiltinImplConditions::Where(ty::Binder::dummy(Vec::new()))
+        } else {
+            BuiltinImplConditions::None
         }
     }
 

@@ -12,6 +12,7 @@ impl<'a, I: 'a + Iterable> Iterable for &'a I {
 
     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missing>> {}
     //~^ ERROR binding for associated type `Item` references lifetime `'missing`
+    //~| ERROR binding for associated type `Item` references lifetime `'missing`
     //~| ERROR `()` is not an iterator
 }
 

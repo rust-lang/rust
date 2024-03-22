@@ -483,7 +483,7 @@ impl<'tcx> CoroutineClosureSignature<'tcx> {
         self.to_coroutine(
             tcx,
             parent_args,
-            Ty::from_closure_kind(tcx, goal_kind),
+            Ty::from_coroutine_closure_kind(tcx, goal_kind),
             coroutine_def_id,
             tupled_upvars_ty,
         )
@@ -2456,6 +2456,25 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Like [`Ty::to_opt_closure_kind`], but it caps the "maximum" closure kind
+    /// to `FnMut`. This is because although we have three capability states,
+    /// `AsyncFn`/`AsyncFnMut`/`AsyncFnOnce`, we only need to distinguish two coroutine
+    /// bodies: by-ref and by-value.
+    ///
+    /// See the definition of `AsyncFn` and `AsyncFnMut` and the `CallRefFuture`
+    /// associated type for why we don't distinguish [`ty::ClosureKind::Fn`] and
+    /// [`ty::ClosureKind::FnMut`] for the purpose of the generated MIR bodies.
+    ///
+    /// This method should be used when constructing a `Coroutine` out of a
+    /// `CoroutineClosure`, when the `Coroutine`'s `kind` field is being populated
+    /// directly from the `CoroutineClosure`'s `kind`.
+    pub fn from_coroutine_closure_kind(tcx: TyCtxt<'tcx>, kind: ty::ClosureKind) -> Ty<'tcx> {
+        match kind {
+            ty::ClosureKind::Fn | ty::ClosureKind::FnMut => tcx.types.i16,
+            ty::ClosureKind::FnOnce => tcx.types.i32,
+        }
+    }
+
     /// Fast path helper for testing if a type is `Sized`.
     ///
     /// Returning true means the type is known to be sized. Returning
@@ -2484,13 +2503,16 @@ impl<'tcx> Ty<'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
-            | ty::Error(_) => true,
+            | ty::Error(_)
+            | ty::Dynamic(_, _, ty::DynStar) => true,
 
-            ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
+            ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => false,
 
-            ty::Tuple(tys) => tys.iter().all(|ty| ty.is_trivially_sized(tcx)),
+            ty::Tuple(tys) => tys.last().map_or(true, |ty| ty.is_trivially_sized(tcx)),
 
-            ty::Adt(def, _args) => def.sized_constraint(tcx).skip_binder().is_empty(),
+            ty::Adt(def, args) => def
+                .sized_constraint(tcx)
+                .map_or(true, |ty| ty.instantiate(tcx, args).is_trivially_sized(tcx)),
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
 

@@ -20,6 +20,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::{self, CoroutineDesugaring, CoroutineKind, ImplicitSelfKind};
 use rustc_hir::{self as hir, HirId};
 use rustc_session::Session;
+use rustc_span::source_map::Spanned;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use polonius_engine::Atom;
@@ -44,6 +45,7 @@ use std::ops::{Index, IndexMut};
 use std::{iter, mem};
 
 pub use self::query::*;
+use self::visit::TyContext;
 pub use basic_blocks::BasicBlocks;
 
 mod basic_blocks;
@@ -278,13 +280,6 @@ pub struct CoroutineInfo<'tcx> {
     /// using `run_passes`.
     pub by_move_body: Option<Body<'tcx>>,
 
-    /// The body of the coroutine, modified to take its upvars by mutable ref rather than by
-    /// immutable ref.
-    ///
-    /// FIXME(async_closures): This is literally the same body as the parent body. Find a better
-    /// way to represent the by-mut signature (or cap the closure-kind of the coroutine).
-    pub by_mut_body: Option<Body<'tcx>>,
-
     /// The layout of a coroutine. This field is populated after the state transform pass.
     pub coroutine_layout: Option<CoroutineLayout<'tcx>>,
 
@@ -305,11 +300,25 @@ impl<'tcx> CoroutineInfo<'tcx> {
             yield_ty: Some(yield_ty),
             resume_ty: Some(resume_ty),
             by_move_body: None,
-            by_mut_body: None,
             coroutine_drop: None,
             coroutine_layout: None,
         }
     }
+}
+
+/// Some item that needs to monomorphize successfully for a MIR body to be considered well-formed.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub enum MentionedItem<'tcx> {
+    /// A function that gets called. We don't necessarily know its precise type yet, since it can be
+    /// hidden behind a generic.
+    Fn(Ty<'tcx>),
+    /// A type that has its drop shim called.
+    Drop(Ty<'tcx>),
+    /// Unsizing casts might require vtables, so we have to record them.
+    UnsizeCast { source_ty: Ty<'tcx>, target_ty: Ty<'tcx> },
+    /// A closure that is coerced to a function pointer.
+    Closure(Ty<'tcx>),
 }
 
 /// The lowered representation of a single function.
@@ -375,7 +384,23 @@ pub struct Body<'tcx> {
 
     /// Constants that are required to evaluate successfully for this MIR to be well-formed.
     /// We hold in this field all the constants we are not able to evaluate yet.
+    ///
+    /// This is soundness-critical, we make a guarantee that all consts syntactically mentioned in a
+    /// function have successfully evaluated if the function ever gets executed at runtime.
     pub required_consts: Vec<ConstOperand<'tcx>>,
+
+    /// Further items that were mentioned in this function and hence *may* become monomorphized,
+    /// depending on optimizations. We use this to avoid optimization-dependent compile errors: the
+    /// collector recursively traverses all "mentioned" items and evaluates all their
+    /// `required_consts`.
+    ///
+    /// This is *not* soundness-critical and the contents of this list are *not* a stable guarantee.
+    /// All that's relevant is that this set is optimization-level-independent, and that it includes
+    /// everything that the collector would consider "used". (For example, we currently compute this
+    /// set after drop elaboration, so some drop calls that can never be reached are not considered
+    /// "mentioned".) See the documentation of `CollectionMode` in
+    /// `compiler/rustc_monomorphize/src/collector.rs` for more context.
+    pub mentioned_items: Vec<Spanned<MentionedItem<'tcx>>>,
 
     /// Does this body use generic parameters. This is used for the `ConstEvaluatable` check.
     ///
@@ -453,6 +478,7 @@ impl<'tcx> Body<'tcx> {
             var_debug_info,
             span,
             required_consts: Vec::new(),
+            mentioned_items: Vec::new(),
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors,
@@ -482,6 +508,7 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             span: DUMMY_SP,
             required_consts: Vec::new(),
+            mentioned_items: Vec::new(),
             var_debug_info: Vec::new(),
             is_polymorphic: false,
             injection_phase: None,
@@ -576,6 +603,17 @@ impl<'tcx> Body<'tcx> {
         }
     }
 
+    pub fn span_for_ty_context(&self, ty_context: TyContext) -> Span {
+        match ty_context {
+            TyContext::UserTy(span) => span,
+            TyContext::ReturnTy(source_info)
+            | TyContext::LocalDecl { source_info, .. }
+            | TyContext::YieldTy(source_info)
+            | TyContext::ResumeTy(source_info) => source_info.span,
+            TyContext::Location(loc) => self.source_info(loc).span,
+        }
+    }
+
     /// Returns the return type; it always return first element from `local_decls` array.
     #[inline]
     pub fn return_ty(&self) -> Ty<'tcx> {
@@ -626,10 +664,6 @@ impl<'tcx> Body<'tcx> {
 
     pub fn coroutine_by_move_body(&self) -> Option<&Body<'tcx>> {
         self.coroutine.as_ref()?.by_move_body.as_ref()
-    }
-
-    pub fn coroutine_by_mut_body(&self) -> Option<&Body<'tcx>> {
-        self.coroutine.as_ref()?.by_mut_body.as_ref()
     }
 
     #[inline]

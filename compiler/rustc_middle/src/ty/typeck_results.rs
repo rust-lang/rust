@@ -568,6 +568,11 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
         self.data.get_mut(&id.local_id)
     }
 
+    pub fn get(&mut self, id: hir::HirId) -> Option<&V> {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.data.get(&id.local_id)
+    }
+
     pub fn entry(&mut self, id: hir::HirId) -> Entry<'_, hir::ItemLocalId, V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.entry(id.local_id)

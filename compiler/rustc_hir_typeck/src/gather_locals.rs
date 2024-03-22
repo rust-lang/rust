@@ -29,7 +29,7 @@ impl<'a> DeclOrigin<'a> {
     }
 }
 
-/// A declaration is an abstraction of [hir::Local] and [hir::Let].
+/// A declaration is an abstraction of [hir::Local] and [hir::LetExpr].
 ///
 /// It must have a hir_id, as this is how we connect gather_locals to the check functions.
 pub(super) struct Declaration<'a> {
@@ -48,9 +48,9 @@ impl<'a> From<&'a hir::Local<'a>> for Declaration<'a> {
     }
 }
 
-impl<'a> From<(&'a hir::Let<'a>, hir::HirId)> for Declaration<'a> {
-    fn from((let_expr, hir_id): (&'a hir::Let<'a>, hir::HirId)) -> Self {
-        let hir::Let { pat, ty, span, init, is_recovered: _ } = *let_expr;
+impl<'a> From<(&'a hir::LetExpr<'a>, hir::HirId)> for Declaration<'a> {
+    fn from((let_expr, hir_id): (&'a hir::LetExpr<'a>, hir::HirId)) -> Self {
+        let hir::LetExpr { pat, ty, span, init, is_recovered: _ } = *let_expr;
         Declaration { hir_id, pat, ty, span, init: Some(init), origin: DeclOrigin::LetExpr }
     }
 }
@@ -93,7 +93,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     fn declare(&mut self, decl: Declaration<'tcx>) {
         let local_ty = match decl.ty {
             Some(ref ty) => {
-                let o_ty = self.fcx.to_ty(ty);
+                let o_ty = self.fcx.lower_ty(ty);
 
                 let c_ty =
                     self.fcx.inh.infcx.canonicalize_user_type_annotation(UserType::Ty(o_ty.raw));

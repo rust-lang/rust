@@ -1,4 +1,5 @@
 #![warn(clippy::mixed_attributes_style)]
+#![allow(clippy::duplicated_attributes)]
 
 #[allow(unused)] //~ ERROR: item has both inner and outer attributes
 fn foo1() {

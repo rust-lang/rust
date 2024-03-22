@@ -40,8 +40,8 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of whether
-    /// or not we have attributes
+    /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of
+    /// whether or not we have attributes.
     // Public for `cfg_eval` macro expansion.
     pub fn parse_stmt_without_recovery(
         &mut self,
@@ -51,18 +51,12 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
 
-        // Don't use `maybe_whole` so that we have precise control
-        // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtStmt(stmt) = &nt.0
-        {
-            let mut stmt = stmt.clone();
-            self.bump();
+        maybe_whole!(self, NtStmt, |stmt| {
             stmt.visit_attrs(|stmt_attrs| {
                 attrs.prepend_to_nt_inner(stmt_attrs);
             });
-            return Ok(Some(stmt.into_inner()));
-        }
+            Some(stmt.into_inner())
+        });
 
         if self.token.is_keyword(kw::Mut) && self.is_keyword_ahead(1, &[kw::Let]) {
             self.bump();
@@ -539,7 +533,7 @@ impl<'a> Parser<'a> {
         blk_mode: BlockCheckMode,
         can_be_struct_literal: bool,
     ) -> PResult<'a, (AttrVec, P<Block>)> {
-        maybe_whole!(self, NtBlock, |x| (AttrVec::new(), x));
+        maybe_whole!(self, NtBlock, |block| (AttrVec::new(), block));
 
         let maybe_ident = self.prev_token.clone();
         self.maybe_recover_unexpected_block_label();
@@ -643,7 +637,7 @@ impl<'a> Parser<'a> {
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, Option<Stmt>> {
         // Skip looking for a trailing semicolon when we have an interpolated statement.
-        maybe_whole!(self, NtStmt, |x| Some(x.into_inner()));
+        maybe_whole!(self, NtStmt, |stmt| Some(stmt.into_inner()));
 
         let Some(mut stmt) = self.parse_stmt_without_recovery(true, ForceCollect::No)? else {
             return Ok(None);

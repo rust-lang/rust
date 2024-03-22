@@ -453,7 +453,7 @@ impl Read for Stdin {
     }
 }
 
-#[stable(feature = "read_shared_stdin", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "read_shared_stdin", since = "1.78.0")]
 impl Read for &Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.lock().read(buf)

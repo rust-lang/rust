@@ -456,7 +456,7 @@ impl<'tcx> Const<'tcx> {
 }
 
 /// An unevaluated (potentially generic) constant used in MIR.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct UnevaluatedConst<'tcx> {
     pub def: DefId,

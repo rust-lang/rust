@@ -817,8 +817,8 @@ struct AnalyzeAttrState {
 #[inline]
 fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState) -> bool {
     let mut should_encode = false;
-    if rustc_feature::is_builtin_only_local(attr.name_or_empty()) {
-        // Attributes marked local-only don't need to be encoded for downstream crates.
+    if !rustc_feature::encode_cross_crate(attr.name_or_empty()) {
+        // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
     } else if attr.doc_str().is_some() {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
         // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
@@ -1067,14 +1067,11 @@ fn should_encode_mir(
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let generics = tcx.generics_of(def_id);
-            let mut opt = tcx.sess.opts.unstable_opts.always_encode_mir
+            let opt = tcx.sess.opts.unstable_opts.always_encode_mir
                 || (tcx.sess.opts.output_types.should_codegen()
                     && reachable_set.contains(&def_id)
                     && (generics.requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
-            if let Some(intrinsic) = tcx.intrinsic(def_id) {
-                opt &= !intrinsic.must_be_overridden;
-            }
             // The function has a `const` modifier or is in a `#[const_trait]`.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
                 || tcx.is_const_default_method(def_id.to_def_id());
@@ -1494,6 +1491,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::OpaqueTy = def_kind {
                 self.encode_explicit_item_bounds(def_id);
+                self.encode_explicit_item_super_predicates(def_id);
                 self.tables
                     .is_type_alias_impl_trait
                     .set(def_id.index, self.tcx.is_type_alias_impl_trait(def_id));
@@ -1602,6 +1600,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds);
     }
 
+    fn encode_explicit_item_super_predicates(&mut self, def_id: DefId) {
+        debug!("EncodeContext::encode_explicit_item_super_predicates({:?})", def_id);
+        let bounds = self.tcx.explicit_item_super_predicates(def_id).skip_binder();
+        record_defaulted_array!(self.tables.explicit_item_super_predicates[def_id] <- bounds);
+    }
+
     #[instrument(level = "debug", skip(self))]
     fn encode_info_for_assoc_item(&mut self, def_id: DefId) {
         let tcx = self.tcx;
@@ -1614,6 +1618,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             AssocItemContainer::TraitContainer => {
                 if let ty::AssocKind::Type = item.kind {
                     self.encode_explicit_item_bounds(def_id);
+                    self.encode_explicit_item_super_predicates(def_id);
                 }
             }
             AssocItemContainer::ImplContainer => {
@@ -2201,7 +2206,7 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
         let mmap = if len > 0 {
             let mut mmap = MmapMut::map_anon(len).unwrap();
             for _ in 0..len {
-                (&mut mmap[..]).write(&[d.read_u8()]).unwrap();
+                (&mut mmap[..]).write_all(&[d.read_u8()]).unwrap();
             }
             mmap.flush().unwrap();
             Some(mmap.make_read_only().unwrap())

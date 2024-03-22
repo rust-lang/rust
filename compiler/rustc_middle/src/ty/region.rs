@@ -251,6 +251,7 @@ impl<'tcx> Region<'tcx> {
             }
             ty::ReError(_) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_ERROR;
             }
         }
 
@@ -336,7 +337,9 @@ pub struct EarlyParamRegion {
 
 impl std::fmt::Debug for EarlyParamRegion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}, {}, {}", self.def_id, self.index, self.name)
+        // FIXME(BoxyUwU): self.def_id goes first because of `erased-regions-in-hidden-ty.rs` being impossible to write
+        // error annotations for otherwise. :). Ideally this would be `self.name, self.index, self.def_id`.
+        write!(f, "{:?}_{}/#{}", self.def_id, self.name, self.index)
     }
 }
 
@@ -381,11 +384,23 @@ pub enum BoundRegionKind {
     BrEnv,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
 #[derive(HashStable)]
 pub struct BoundRegion {
     pub var: BoundVar,
     pub kind: BoundRegionKind,
+}
+
+impl core::fmt::Debug for BoundRegion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.kind {
+            BoundRegionKind::BrAnon => write!(f, "{:?}", self.var),
+            BoundRegionKind::BrEnv => write!(f, "{:?}.Env", self.var),
+            BoundRegionKind::BrNamed(def, symbol) => {
+                write!(f, "{:?}.Named({:?}, {:?})", self.var, def, symbol)
+            }
+        }
+    }
 }
 
 impl BoundRegionKind {

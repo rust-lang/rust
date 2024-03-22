@@ -38,6 +38,9 @@ metadata_crate_dep_multiple =
     cannot satisfy dependencies so `{$crate_name}` only shows up once
     .help = having upstream crates all available in one format will likely make this go away
 
+metadata_crate_dep_not_static =
+    `{$crate_name}` was unavailable as a static crate, preventing fully static linking
+
 metadata_crate_location_unknown_type =
     extern location for {$crate_name} is of an unknown type: {$path}
 

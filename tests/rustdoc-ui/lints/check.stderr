@@ -4,7 +4,6 @@ warning: missing documentation for the crate
 LL | / #![feature(rustdoc_missing_doc_code_examples)]
 LL | |
 LL | |
-LL | |
 ...  |
 LL | |
 LL | | pub fn foo() {}
@@ -37,7 +36,6 @@ warning: missing code example in this documentation
   --> $DIR/check.rs:5:1
    |
 LL | / #![feature(rustdoc_missing_doc_code_examples)]
-LL | |
 LL | |
 LL | |
 ...  |

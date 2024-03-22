@@ -262,7 +262,7 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
             visitor.visit_impl_item(item)
         }
         hir::OwnerNode::Crate(_) => {}
-        hir::OwnerNode::AssocOpaqueTy(..) => unreachable!(),
+        hir::OwnerNode::Synthetic => unreachable!(),
     }
 
     let mut rl = ResolveBoundVars::default();
@@ -1917,18 +1917,18 @@ fn is_late_bound_map(
     ///
     /// If we conservatively considered `'a` unconstrained then we could break users who had written code before
     /// we started correctly handling aliases. If we considered `'a` constrained then it would become late bound
-    /// causing an error during astconv as the `'a` is not constrained by the input type `<() as Trait<'a>>::Assoc`
+    /// causing an error during HIR ty lowering as the `'a` is not constrained by the input type `<() as Trait<'a>>::Assoc`
     /// but appears in the output type `<() as Trait<'a>>::Assoc`.
     ///
     /// We must therefore "look into" the `Alias` to see whether we should consider `'a` constrained or not.
     ///
     /// See #100508 #85533 #47511 for additional context
-    struct ConstrainedCollectorPostAstConv {
+    struct ConstrainedCollectorPostHirTyLowering {
         arg_is_constrained: Box<[bool]>,
     }
 
     use ty::Ty;
-    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstrainedCollectorPostAstConv {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstrainedCollectorPostHirTyLowering {
         fn visit_ty(&mut self, t: Ty<'tcx>) {
             match t.kind() {
                 ty::Param(param_ty) => {
@@ -1970,10 +1970,10 @@ fn is_late_bound_map(
                     None,
                     hir::Path { res: Res::Def(DefKind::TyAlias, alias_def), segments, span },
                 )) => {
-                    // See comments on `ConstrainedCollectorPostAstConv` for why this arm does not just consider
-                    // args to be unconstrained.
+                    // See comments on `ConstrainedCollectorPostHirTyLowering` for why this arm does not
+                    // just consider args to be unconstrained.
                     let generics = self.tcx.generics_of(alias_def);
-                    let mut walker = ConstrainedCollectorPostAstConv {
+                    let mut walker = ConstrainedCollectorPostHirTyLowering {
                         arg_is_constrained: vec![false; generics.params.len()].into_boxed_slice(),
                     };
                     walker.visit_ty(self.tcx.type_of(alias_def).instantiate_identity());

@@ -121,7 +121,7 @@ impl<'a> State<'a> {
                 self.print_bounds(":", pred.bounds);
             }
             Node::ArrayLenInfer(_) => self.word("_"),
-            Node::AssocOpaqueTy(..) => unreachable!(),
+            Node::Synthetic => unreachable!(),
             Node::Err(_) => self.word("/*ERROR*/"),
         }
     }
@@ -1387,7 +1387,7 @@ impl<'a> State<'a> {
                 // Print `}`:
                 self.bclose_maybe_open(expr.span, true);
             }
-            hir::ExprKind::Let(&hir::Let { pat, ty, init, .. }) => {
+            hir::ExprKind::Let(&hir::LetExpr { pat, ty, init, .. }) => {
                 self.print_let(pat, ty, init);
             }
             hir::ExprKind::If(test, blk, elseopt) => {
@@ -1807,6 +1807,12 @@ impl<'a> State<'a> {
                 if is_range_inner {
                     self.pclose();
                 }
+            }
+            PatKind::Deref(inner) => {
+                self.word("deref!");
+                self.popen();
+                self.print_pat(inner);
+                self.pclose();
             }
             PatKind::Ref(inner, mutbl) => {
                 let is_range_inner = matches!(inner.kind, PatKind::Range(..));

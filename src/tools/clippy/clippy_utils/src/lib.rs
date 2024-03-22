@@ -1678,7 +1678,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
     match pat.kind {
         PatKind::Wild | PatKind::Never => false, // If `!` typechecked then the type is empty, so not refutable.
         PatKind::Binding(_, _, _, pat) => pat.map_or(false, |pat| is_refutable(cx, pat)),
-        PatKind::Box(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
+        PatKind::Box(pat) | PatKind::Deref(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
         PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
         PatKind::Or(pats) => {
             // TODO: should be the honest check, that pats is exhaustive set
@@ -2246,8 +2246,21 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
 
 /// Returns the `DefId` of the callee if the given expression is a function or method call.
 pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
+    fn_def_id_with_node_args(cx, expr).map(|(did, _)| did)
+}
+
+/// Returns the `DefId` of the callee if the given expression is a function or method call,
+/// as well as its node args.
+pub fn fn_def_id_with_node_args<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &Expr<'_>,
+) -> Option<(DefId, rustc_ty::GenericArgsRef<'tcx>)> {
+    let typeck = cx.typeck_results();
     match &expr.kind {
-        ExprKind::MethodCall(..) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
+        ExprKind::MethodCall(..) => Some((
+            typeck.type_dependent_def_id(expr.hir_id)?,
+            typeck.node_args(expr.hir_id),
+        )),
         ExprKind::Call(
             Expr {
                 kind: ExprKind::Path(qpath),
@@ -2259,9 +2272,9 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
             // Only return Fn-like DefIds, not the DefIds of statics/consts/etc that contain or
             // deref to fn pointers, dyn Fn, impl Fn - #8850
             if let Res::Def(DefKind::Fn | DefKind::Ctor(..) | DefKind::AssocFn, id) =
-                cx.typeck_results().qpath_res(qpath, *path_hir_id)
+                typeck.qpath_res(qpath, *path_hir_id)
             {
-                Some(id)
+                Some((id, typeck.node_args(*path_hir_id)))
             } else {
                 None
             }

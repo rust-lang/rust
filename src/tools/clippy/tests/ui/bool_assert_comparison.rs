@@ -1,4 +1,4 @@
-#![allow(unused, clippy::assertions_on_constants)]
+#![allow(unused, clippy::assertions_on_constants, clippy::const_is_empty)]
 #![warn(clippy::bool_assert_comparison)]
 
 use std::ops::Not;

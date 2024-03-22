@@ -831,7 +831,7 @@ fn create_and_seed_worklist(
         .collect::<Vec<_>>();
 
     let crate_items = tcx.hir_crate_items(());
-    for id in crate_items.items() {
+    for id in crate_items.free_items() {
         check_item(tcx, &mut worklist, &mut struct_constructors, &mut unsolved_impl_item, id);
     }
 
@@ -1084,7 +1084,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
 
     let module_items = tcx.hir_module_items(module);
 
-    for item in module_items.items() {
+    for item in module_items.free_items() {
         let def_kind = tcx.def_kind(item.owner_id);
 
         let mut dead_codes = Vec::new();

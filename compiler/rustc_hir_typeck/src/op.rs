@@ -601,8 +601,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             if let Some(output_def_id) = output_def_id
                                                 && let Some(trait_def_id) = trait_def_id
                                                 && self.tcx.parent(output_def_id) == trait_def_id
-                                                && let Some(output_ty) =
-                                                    output_ty.make_suggestable(self.tcx, false)
+                                                && let Some(output_ty) = output_ty
+                                                    .make_suggestable(self.tcx, false, None)
                                             {
                                                 Some(("Output", output_ty))
                                             } else {

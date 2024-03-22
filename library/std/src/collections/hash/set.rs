@@ -885,7 +885,7 @@ where
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push", "append")]
+    #[rustc_confusables("push", "append", "put")]
     pub fn insert(&mut self, value: T) -> bool {
         self.base.insert(value)
     }

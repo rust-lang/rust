@@ -13,6 +13,7 @@ trait C {
 trait D<T> {
     type CType: C<DType = Self>;
     //~^ ERROR missing generics for associated type
+    //~| ERROR missing generics for associated type
 }
 
 fn main() {}

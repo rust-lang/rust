@@ -128,7 +128,7 @@ pub(super) trait GoalKind<'tcx>:
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    /// A type is `Copy` or `Clone` if its components are `Sized`.
+    /// A type is `Sized` if its tail component is `Sized`.
     ///
     /// These components are given by built-in rules from
     /// [`structural_traits::instantiate_constituent_tys_for_sized_trait`].
@@ -211,6 +211,13 @@ pub(super) trait GoalKind<'tcx>:
     /// `Iterator<Item = O>`, where `O` is given by the generator's yield type
     /// that was computed during type-checking.
     fn consider_builtin_iterator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    /// A coroutine (that comes from a `gen` desugaring) is known to implement
+    /// `FusedIterator`
+    fn consider_builtin_fused_iterator_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
@@ -497,6 +504,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_future_candidate(self, goal)
         } else if lang_items.iterator_trait() == Some(trait_def_id) {
             G::consider_builtin_iterator_candidate(self, goal)
+        } else if lang_items.fused_iterator_trait() == Some(trait_def_id) {
+            G::consider_builtin_fused_iterator_candidate(self, goal)
         } else if lang_items.async_iterator_trait() == Some(trait_def_id) {
             G::consider_builtin_async_iterator_candidate(self, goal)
         } else if lang_items.coroutine_trait() == Some(trait_def_id) {

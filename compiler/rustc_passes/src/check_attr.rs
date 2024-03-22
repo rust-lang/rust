@@ -609,13 +609,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     && !self.tcx.sess.target.is_like_wasm
                     && !self.tcx.sess.opts.actually_rustdoc
                 {
-                    let hir::Node::Item(item) = self.tcx.hir_node(hir_id) else {
-                        unreachable!();
-                    };
-                    let hir::ItemKind::Fn(sig, _, _) = item.kind else {
-                        // target is `Fn`
-                        unreachable!();
-                    };
+                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
 
                     self.dcx().emit_err(errors::LangItemWithTargetFeature {
                         attr_span: attr.span,

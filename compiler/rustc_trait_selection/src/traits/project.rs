@@ -1726,7 +1726,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             let sig = args.coroutine_closure_sig().skip_binder();
 
             let term = match item_name {
-                sym::CallOnceFuture | sym::CallMutFuture | sym::CallFuture => {
+                sym::CallOnceFuture | sym::CallRefFuture => {
                     if let Some(closure_kind) = kind_ty.to_opt_closure_kind() {
                         if !closure_kind.extends(goal_kind) {
                             bug!("we should not be confirming if the closure kind is not met");
@@ -1787,7 +1787,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                     obligation.predicate.def_id,
                     [self_ty, sig.tupled_inputs_ty],
                 ),
-                sym::CallMutFuture | sym::CallFuture => ty::AliasTy::new(
+                sym::CallRefFuture => ty::AliasTy::new(
                     tcx,
                     obligation.predicate.def_id,
                     [ty::GenericArg::from(self_ty), sig.tupled_inputs_ty.into(), env_region.into()],
@@ -1803,7 +1803,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             let sig = bound_sig.skip_binder();
 
             let term = match item_name {
-                sym::CallOnceFuture | sym::CallMutFuture | sym::CallFuture => sig.output(),
+                sym::CallOnceFuture | sym::CallRefFuture => sig.output(),
                 sym::Output => {
                     let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
                     let future_output_def_id = tcx
@@ -1822,7 +1822,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                     obligation.predicate.def_id,
                     [self_ty, Ty::new_tup(tcx, sig.inputs())],
                 ),
-                sym::CallMutFuture | sym::CallFuture => ty::AliasTy::new(
+                sym::CallRefFuture => ty::AliasTy::new(
                     tcx,
                     obligation.predicate.def_id,
                     [
@@ -1842,7 +1842,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             let sig = bound_sig.skip_binder();
 
             let term = match item_name {
-                sym::CallOnceFuture | sym::CallMutFuture | sym::CallFuture => sig.output(),
+                sym::CallOnceFuture | sym::CallRefFuture => sig.output(),
                 sym::Output => {
                     let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
                     let future_output_def_id = tcx
@@ -1859,7 +1859,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 sym::CallOnceFuture | sym::Output => {
                     ty::AliasTy::new(tcx, obligation.predicate.def_id, [self_ty, sig.inputs()[0]])
                 }
-                sym::CallMutFuture | sym::CallFuture => ty::AliasTy::new(
+                sym::CallRefFuture => ty::AliasTy::new(
                     tcx,
                     obligation.predicate.def_id,
                     [ty::GenericArg::from(self_ty), sig.inputs()[0].into(), env_region.into()],

@@ -138,81 +138,11 @@ impl<Cx: PatCx> DeconstructedPat<Cx> {
 /// This is best effort and not good enough for a `Display` impl.
 impl<Cx: PatCx> fmt::Debug for DeconstructedPat<Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let pat = self;
-        let mut first = true;
-        let mut start_or_continue = |s| {
-            if first {
-                first = false;
-                ""
-            } else {
-                s
-            }
-        };
-        let mut start_or_comma = || start_or_continue(", ");
-
         let mut fields: Vec<_> = (0..self.arity).map(|_| PatOrWild::Wild).collect();
         for ipat in self.iter_fields() {
             fields[ipat.idx] = PatOrWild::Pat(&ipat.pat);
         }
-
-        match pat.ctor() {
-            Struct | Variant(_) | UnionField => {
-                Cx::write_variant_name(f, pat)?;
-                // Without `cx`, we can't know which field corresponds to which, so we can't
-                // get the names of the fields. Instead we just display everything as a tuple
-                // struct, which should be good enough.
-                write!(f, "(")?;
-                for p in fields {
-                    write!(f, "{}", start_or_comma())?;
-                    write!(f, "{p:?}")?;
-                }
-                write!(f, ")")
-            }
-            // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
-            // be careful to detect strings here. However a string literal pattern will never
-            // be reported as a non-exhaustiveness witness, so we can ignore this issue.
-            Ref => {
-                write!(f, "&{:?}", &fields[0])
-            }
-            Slice(slice) => {
-                write!(f, "[")?;
-                match slice.kind {
-                    SliceKind::FixedLen(_) => {
-                        for p in fields {
-                            write!(f, "{}{:?}", start_or_comma(), p)?;
-                        }
-                    }
-                    SliceKind::VarLen(prefix_len, _) => {
-                        for p in &fields[..prefix_len] {
-                            write!(f, "{}{:?}", start_or_comma(), p)?;
-                        }
-                        write!(f, "{}", start_or_comma())?;
-                        write!(f, "..")?;
-                        for p in &fields[prefix_len..] {
-                            write!(f, "{}{:?}", start_or_comma(), p)?;
-                        }
-                    }
-                }
-                write!(f, "]")
-            }
-            Bool(b) => write!(f, "{b}"),
-            // Best-effort, will render signed ranges incorrectly
-            IntRange(range) => write!(f, "{range:?}"),
-            F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
-            F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
-            Str(value) => write!(f, "{value:?}"),
-            Opaque(..) => write!(f, "<constant pattern>"),
-            Or => {
-                for pat in fields {
-                    write!(f, "{}{:?}", start_or_continue(" | "), pat)?;
-                }
-                Ok(())
-            }
-            Never => write!(f, "!"),
-            Wildcard | Missing | NonExhaustive | Hidden | PrivateUninhabited => {
-                write!(f, "_ : {:?}", pat.ty())
-            }
-        }
+        self.ctor().fmt_fields(f, self.ty(), fields.into_iter())
     }
 }
 
@@ -295,7 +225,6 @@ impl<'p, Cx: PatCx> fmt::Debug for PatOrWild<'p, Cx> {
 
 /// Same idea as `DeconstructedPat`, except this is a fictitious pattern built up for diagnostics
 /// purposes. As such they don't use interning and can be cloned.
-#[derive(Debug)]
 pub struct WitnessPat<Cx: PatCx> {
     ctor: Constructor<Cx>,
     pub(crate) fields: Vec<WitnessPat<Cx>>,
@@ -351,5 +280,12 @@ impl<Cx: PatCx> WitnessPat<Cx> {
 
     pub fn iter_fields(&self) -> impl Iterator<Item = &WitnessPat<Cx>> {
         self.fields.iter()
+    }
+}
+
+/// This is best effort and not good enough for a `Display` impl.
+impl<Cx: PatCx> fmt::Debug for WitnessPat<Cx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.ctor().fmt_fields(f, self.ty(), self.fields.iter())
     }
 }

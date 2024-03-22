@@ -184,16 +184,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: TypeVariableOriginKind::TypeInference,
                     span: callee_expr.span,
                 });
+                // We may actually receive a coroutine back whose kind is different
+                // from the closure that this dispatched from. This is because when
+                // we have no captures, we automatically implement `FnOnce`. This
+                // impl forces the closure kind to `FnOnce` i.e. `u8`.
+                let kind_ty = self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span: callee_expr.span,
+                });
                 let call_sig = self.tcx.mk_fn_sig(
                     [coroutine_closure_sig.tupled_inputs_ty],
                     coroutine_closure_sig.to_coroutine(
                         self.tcx,
                         closure_args.parent_args(),
-                        // Inherit the kind ty of the closure, since we're calling this
-                        // coroutine with the most relaxed `AsyncFn*` trait that we can.
-                        // We don't necessarily need to do this here, but it saves us
-                        // computing one more infer var that will get constrained later.
-                        closure_args.kind_ty(),
+                        kind_ty,
                         self.tcx.coroutine_for_closure(def_id),
                         tupled_upvars_ty,
                     ),

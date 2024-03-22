@@ -13,6 +13,7 @@ use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
 use rustc_data_structures::intern::Interned;
+use rustc_data_structures::unord::UnordSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -139,8 +140,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let mut var_data = self.construct_var_data();
 
         // Deduplicating constraints is shown to have a positive perf impact.
-        self.data.constraints.sort_by_key(|(constraint, _)| *constraint);
-        self.data.constraints.dedup_by_key(|(constraint, _)| *constraint);
+        let mut seen = UnordSet::default();
+        self.data.constraints.retain(|(constraint, _)| seen.insert(*constraint));
 
         if cfg!(debug_assertions) {
             self.dump_constraints();
@@ -888,12 +889,14 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     }
 
                     Constraint::RegSubVar(region, _) | Constraint::VarSubReg(_, region) => {
-                        let constraint_idx =
-                            this.constraints.binary_search_by(|(c, _)| c.cmp(&edge.data)).unwrap();
-                        state.result.push(RegionAndOrigin {
-                            region,
-                            origin: this.constraints[constraint_idx].1.clone(),
-                        });
+                        let origin = this
+                            .constraints
+                            .iter()
+                            .find(|(c, _)| *c == edge.data)
+                            .unwrap()
+                            .1
+                            .clone();
+                        state.result.push(RegionAndOrigin { region, origin });
                     }
 
                     Constraint::RegSubReg(..) => panic!(

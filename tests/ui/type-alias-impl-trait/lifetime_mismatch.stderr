@@ -1,0 +1,95 @@
+error: opaque type used twice with different lifetimes
+  --> $DIR/lifetime_mismatch.rs:6:5
+   |
+LL |     (x, y)
+   |     ^^^^^^
+   |     |
+   |     lifetime `'a` used here
+   |     lifetime `'b` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/lifetime_mismatch.rs:6:5
+   |
+LL |     (x, y)
+   |     ^^^^^^
+
+error: opaque type used twice with different lifetimes
+  --> $DIR/lifetime_mismatch.rs:6:5
+   |
+LL |     (x, y)
+   |     ^^^^^^
+   |     |
+   |     lifetime `'a` used here
+   |     lifetime `'b` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/lifetime_mismatch.rs:6:5
+   |
+LL |     (x, y)
+   |     ^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: opaque type used twice with different lifetimes
+  --> $DIR/lifetime_mismatch.rs:14:5
+   |
+LL |     (i, j)
+   |     ^^^^^^
+   |     |
+   |     lifetime `'x` used here
+   |     lifetime `'y` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/lifetime_mismatch.rs:14:5
+   |
+LL |     (i, j)
+   |     ^^^^^^
+
+error: opaque type used twice with different lifetimes
+  --> $DIR/lifetime_mismatch.rs:14:5
+   |
+LL |     (i, j)
+   |     ^^^^^^
+   |     |
+   |     lifetime `'y` used here
+   |     lifetime `'x` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/lifetime_mismatch.rs:14:5
+   |
+LL |     (i, j)
+   |     ^^^^^^
+
+error: opaque type used twice with different lifetimes
+  --> $DIR/lifetime_mismatch.rs:14:5
+   |
+LL |     (i, j)
+   |     ^^^^^^
+   |     |
+   |     lifetime `'x` used here
+   |     lifetime `'y` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/lifetime_mismatch.rs:14:5
+   |
+LL |     (i, j)
+   |     ^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: opaque type used twice with different lifetimes
+  --> $DIR/lifetime_mismatch.rs:14:5
+   |
+LL |     (i, j)
+   |     ^^^^^^
+   |     |
+   |     lifetime `'y` used here
+   |     lifetime `'x` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/lifetime_mismatch.rs:14:5
+   |
+LL |     (i, j)
+   |     ^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 6 previous errors
+

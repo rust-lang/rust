@@ -22,7 +22,7 @@ use rustc_span::{ErrorGuaranteed, ExpnId};
 #[derive(Debug, HashStable, Encodable, Decodable)]
 pub struct ModuleItems {
     submodules: Box<[OwnerId]>,
-    items: Box<[ItemId]>,
+    free_items: Box<[ItemId]>,
     trait_items: Box<[TraitItemId]>,
     impl_items: Box<[ImplItemId]>,
     foreign_items: Box<[ForeignItemId]>,
@@ -30,14 +30,22 @@ pub struct ModuleItems {
 }
 
 impl ModuleItems {
-    pub fn items(&self) -> impl Iterator<Item = ItemId> + '_ {
-        self.items.iter().copied()
+    /// Returns all non-associated locally defined items in all modules.
+    ///
+    /// Note that this does *not* include associated items of `impl` blocks! It also does not
+    /// include foreign items. If you want to e.g. get all functions, use `definitions()` below.
+    ///
+    /// However, this does include the `impl` blocks themselves.
+    pub fn free_items(&self) -> impl Iterator<Item = ItemId> + '_ {
+        self.free_items.iter().copied()
     }
 
     pub fn trait_items(&self) -> impl Iterator<Item = TraitItemId> + '_ {
         self.trait_items.iter().copied()
     }
 
+    /// Returns all items that are associated with some `impl` block (both inherent and trait impl
+    /// blocks).
     pub fn impl_items(&self) -> impl Iterator<Item = ImplItemId> + '_ {
         self.impl_items.iter().copied()
     }
@@ -47,7 +55,7 @@ impl ModuleItems {
     }
 
     pub fn owners(&self) -> impl Iterator<Item = OwnerId> + '_ {
-        self.items
+        self.free_items
             .iter()
             .map(|id| id.owner_id)
             .chain(self.trait_items.iter().map(|id| id.owner_id))
@@ -63,7 +71,7 @@ impl ModuleItems {
         &self,
         f: impl Fn(ItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.items[..], |&id| f(id))
+        try_par_for_each_in(&self.free_items[..], |&id| f(id))
     }
 
     pub fn par_trait_items(

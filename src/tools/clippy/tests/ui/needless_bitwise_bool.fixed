@@ -1,4 +1,5 @@
 #![warn(clippy::needless_bitwise_bool)]
+#![allow(clippy::const_is_empty)]
 
 fn returns_bool() -> bool {
     true

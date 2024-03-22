@@ -1,6 +1,6 @@
 //@aux-build:proc_macro_attr.rs
 #![warn(clippy::empty_line_after_outer_attr)]
-#![allow(clippy::assertions_on_constants)]
+#![allow(clippy::assertions_on_constants, clippy::duplicated_attributes)]
 #![feature(custom_inner_attributes)]
 #![rustfmt::skip]
 

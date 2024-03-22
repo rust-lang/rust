@@ -38,8 +38,8 @@ mod instantiate;
 pub mod query_response;
 
 impl<'tcx> InferCtxt<'tcx> {
-    /// Creates an instantiation S for the canonical value with fresh
-    /// inference variables and applies it to the canonical value.
+    /// Creates an instantiation S for the canonical value with fresh inference
+    /// variables and placeholders then applies it to the canonical value.
     /// Returns both the instantiated result *and* the instantiation S.
     ///
     /// This can be invoked as part of constructing an
@@ -50,7 +50,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// At the end of processing, the instantiation S (once
     /// canonicalized) then represents the values that you computed
     /// for each of the canonical inputs to your query.
-    pub fn instantiate_canonical_with_fresh_inference_vars<T>(
+    pub fn instantiate_canonical<T>(
         &self,
         span: Span,
         canonical: &Canonical<'tcx, T>,

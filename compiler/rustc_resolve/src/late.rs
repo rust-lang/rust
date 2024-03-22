@@ -22,7 +22,7 @@ use rustc_errors::{
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::{PrimTy, TraitCandidate};
+use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
@@ -44,9 +44,7 @@ type Res = def::Res<NodeId>;
 
 type IdentMap<T> = FxHashMap<Ident, T>;
 
-use diagnostics::{
-    ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime, MissingLifetimeKind,
-};
+use diagnostics::{ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime};
 
 #[derive(Copy, Clone, Debug)]
 struct BindingInfo {
@@ -1637,22 +1635,16 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn resolve_anonymous_lifetime(&mut self, lifetime: &Lifetime, elided: bool) {
         debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
 
-        let missing_lifetime = MissingLifetime {
-            id: lifetime.id,
-            span: lifetime.ident.span,
-            kind: if elided {
-                MissingLifetimeKind::Ampersand
-            } else {
-                MissingLifetimeKind::Underscore
-            },
-            count: 1,
-        };
+        let kind =
+            if elided { MissingLifetimeKind::Ampersand } else { MissingLifetimeKind::Underscore };
+        let missing_lifetime =
+            MissingLifetime { id: lifetime.id, span: lifetime.ident.span, kind, count: 1 };
         let elision_candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
         for (i, rib) in self.lifetime_ribs.iter().enumerate().rev() {
             debug!(?rib.kind);
             match rib.kind {
                 LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
-                    let res = self.create_fresh_lifetime(lifetime.ident, binder);
+                    let res = self.create_fresh_lifetime(lifetime.ident, binder, kind);
                     self.record_lifetime_res(lifetime.id, res, elision_candidate);
                     return;
                 }
@@ -1744,13 +1736,18 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn create_fresh_lifetime(&mut self, ident: Ident, binder: NodeId) -> LifetimeRes {
+    fn create_fresh_lifetime(
+        &mut self,
+        ident: Ident,
+        binder: NodeId,
+        kind: MissingLifetimeKind,
+    ) -> LifetimeRes {
         debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
         debug!(?ident.span);
 
         // Leave the responsibility to create the `LocalDefId` to lowering.
         let param = self.r.next_node_id();
-        let res = LifetimeRes::Fresh { param, binder };
+        let res = LifetimeRes::Fresh { param, binder, kind };
         self.record_lifetime_param(param, res);
 
         // Record the created lifetime parameter so lowering can pick it up and add it to HIR.
@@ -1844,14 +1841,15 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             };
             let ident = Ident::new(kw::UnderscoreLifetime, elided_lifetime_span);
 
+            let kind = if segment.has_generic_args {
+                MissingLifetimeKind::Comma
+            } else {
+                MissingLifetimeKind::Brackets
+            };
             let missing_lifetime = MissingLifetime {
                 id: node_ids.start,
                 span: elided_lifetime_span,
-                kind: if segment.has_generic_args {
-                    MissingLifetimeKind::Comma
-                } else {
-                    MissingLifetimeKind::Brackets
-                },
+                kind,
                 count: expected_lifetimes,
             };
             let mut should_lint = true;
@@ -1897,7 +1895,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         // Group all suggestions into the first record.
                         let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
                         for id in node_ids {
-                            let res = self.create_fresh_lifetime(ident, binder);
+                            let res = self.create_fresh_lifetime(ident, binder, kind);
                             self.record_lifetime_res(
                                 id,
                                 res,
@@ -4665,7 +4663,16 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     fn lint_unused_qualifications(&mut self, path: &[Segment], ns: Namespace, finalize: Finalize) {
-        if path.iter().any(|seg| seg.ident.span.from_expansion()) {
+        // Don't lint on global paths because the user explicitly wrote out the full path.
+        if let Some(seg) = path.first()
+            && seg.ident.name == kw::PathRoot
+        {
+            return;
+        }
+
+        if finalize.path_span.from_expansion()
+            || path.iter().any(|seg| seg.ident.span.from_expansion())
+        {
             return;
         }
 

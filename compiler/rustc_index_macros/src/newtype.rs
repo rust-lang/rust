@@ -156,32 +156,6 @@ impl Parse for Newtype {
             }
         };
 
-        let spec_partial_eq_impl = if let Lit::Int(max) = &max {
-            if let Ok(max_val) = max.base10_parse::<u32>() {
-                quote! {
-                    #gate_rustc_only
-                    impl core::option::SpecOptionPartialEq for #name {
-                        #[inline]
-                        fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
-                            if #max_val < u32::MAX {
-                                l.map(|i| i.as_u32()).unwrap_or(#max_val+1) == r.map(|i| i.as_u32()).unwrap_or(#max_val+1)
-                            } else {
-                                match (l, r) {
-                                    (Some(l), Some(r)) => r == l,
-                                    (None, None) => true,
-                                    _ => false
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                quote! {}
-            }
-        } else {
-            quote! {}
-        };
-
         Ok(Self(quote! {
             #(#attrs)*
             #[derive(Clone, Copy, PartialEq, Eq, Hash, #(#derive_paths),*)]
@@ -282,8 +256,6 @@ impl Parse for Newtype {
             }
 
             #step
-
-            #spec_partial_eq_impl
 
             impl From<#name> for u32 {
                 #[inline]

@@ -303,10 +303,6 @@ impl TraitBoundModifiers {
     };
 }
 
-/// The AST represents all type param bounds as types.
-/// `typeck::collect::compute_bounds` matches these against
-/// the "special" built-in traits (see `middle::lang_items`) and
-/// detects `Copy`, `Send` and `Sync`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum GenericBound {
     Trait(PolyTraitRef, TraitBoundModifiers),
@@ -621,7 +617,9 @@ impl Pat {
             | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
 
             // Trivial wrappers over inner patterns.
-            PatKind::Box(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => s.walk(it),
+            PatKind::Box(s) | PatKind::Deref(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => {
+                s.walk(it)
+            }
 
             // These patterns do not contain subpatterns, skip.
             PatKind::Wild
@@ -791,6 +789,9 @@ pub enum PatKind {
 
     /// A `box` pattern.
     Box(P<Pat>),
+
+    /// A `deref` pattern (currently `deref!()` macro-based syntax).
+    Deref(P<Pat>),
 
     /// A reference pattern (e.g., `&mut (a, b)`).
     Ref(P<Pat>, Mutability),
@@ -1436,7 +1437,7 @@ pub enum ExprKind {
     /// `'label: loop { block }`
     Loop(P<Block>, Option<Label>, Span),
     /// A `match` block.
-    Match(P<Expr>, ThinVec<Arm>),
+    Match(P<Expr>, ThinVec<Arm>, MatchKind),
     /// A closure (e.g., `move |a, b, c| a + b + c`).
     Closure(Box<Closure>),
     /// A block (`'label: { ... }`).
@@ -1759,6 +1760,15 @@ pub enum StrStyle {
     ///
     /// The value is the number of `#` symbols used.
     Raw(u8),
+}
+
+/// The kind of match expression
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq)]
+pub enum MatchKind {
+    /// match expr { ... }
+    Prefix,
+    /// expr.match { ... }
+    Postfix,
 }
 
 /// A literal in a meta item.

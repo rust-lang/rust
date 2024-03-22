@@ -20,7 +20,7 @@ pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{AttributesData, DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
@@ -93,12 +93,13 @@ pub enum TrailingToken {
 #[macro_export]
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
-        if let token::Interpolated(nt) = &$p.token.kind {
-            if let token::$constructor(x) = &nt.0 {
-                let $x = x.clone();
-                $p.bump();
-                return Ok($e);
-            }
+        if let token::Interpolated(nt) = &$p.token.kind
+            && let token::$constructor(x) = &nt.0
+        {
+            #[allow(unused_mut)]
+            let mut $x = x.clone();
+            $p.bump();
+            return Ok($e);
         }
     };
 }
@@ -467,13 +468,19 @@ impl<'a> Parser<'a> {
         matches!(self.recovery, Recovery::Allowed)
     }
 
-    pub fn unexpected<T>(&mut self) -> PResult<'a, T> {
+    /// Version of [`unexpected`](Parser::unexpected) that "returns" any type in the `Ok`
+    /// (both those functions never return "Ok", and so can lie like that in the type).
+    pub fn unexpected_any<T>(&mut self) -> PResult<'a, T> {
         match self.expect_one_of(&[], &[]) {
             Err(e) => Err(e),
             // We can get `Ok(true)` from `recover_closing_delimiter`
             // which is called in `expected_one_of_not_found`.
             Ok(_) => FatalError.raise(),
         }
+    }
+
+    pub fn unexpected(&mut self) -> PResult<'a, ()> {
+        self.unexpected_any()
     }
 
     /// Expects and consumes the token `t`. Signals an error if the next token is not `t`.
@@ -1291,7 +1298,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_delim_args(&mut self) -> PResult<'a, P<DelimArgs>> {
-        if let Some(args) = self.parse_delim_args_inner() { Ok(P(args)) } else { self.unexpected() }
+        if let Some(args) = self.parse_delim_args_inner() {
+            Ok(P(args))
+        } else {
+            self.unexpected_any()
+        }
     }
 
     fn parse_attr_args(&mut self) -> PResult<'a, AttrArgs> {
@@ -1397,7 +1408,7 @@ impl<'a> Parser<'a> {
     /// so emit a proper diagnostic.
     // Public for rustfmt usage.
     pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
-        maybe_whole!(self, NtVis, |x| x.into_inner());
+        maybe_whole!(self, NtVis, |vis| vis.into_inner());
 
         if !self.eat_keyword(kw::Pub) {
             // We need a span for our `Spanned<VisibilityKind>`, but there's inherently no
@@ -1574,8 +1585,21 @@ pub enum FlatToken {
     Empty,
 }
 
-#[derive(Debug)]
-pub enum ParseNtResult {
-    Nt(Nonterminal),
+// Metavar captures of various kinds.
+#[derive(Clone, Debug)]
+pub enum ParseNtResult<NtType> {
     Tt(TokenTree),
+    Nt(NtType),
+}
+
+impl<T> ParseNtResult<T> {
+    pub fn map_nt<F, U>(self, mut f: F) -> ParseNtResult<U>
+    where
+        F: FnMut(T) -> U,
+    {
+        match self {
+            ParseNtResult::Tt(tt) => ParseNtResult::Tt(tt),
+            ParseNtResult::Nt(nt) => ParseNtResult::Nt(f(nt)),
+        }
+    }
 }

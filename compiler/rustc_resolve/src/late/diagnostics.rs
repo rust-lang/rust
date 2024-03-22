@@ -24,7 +24,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
-use rustc_hir::PrimTy;
+use rustc_hir::{MissingLifetimeKind, PrimTy};
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -107,18 +107,6 @@ pub(super) struct MissingLifetime {
     pub kind: MissingLifetimeKind,
     /// Number of elided lifetimes, used for elision in path.
     pub count: usize,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub(super) enum MissingLifetimeKind {
-    /// An explicit `'_`.
-    Underscore,
-    /// An elided lifetime `&' ty`.
-    Ampersand,
-    /// An elided lifetime in brackets with written brackets.
-    Comma,
-    /// An elided lifetime with elided brackets.
-    Brackets,
 }
 
 /// Description of the lifetimes appearing in a function parameter.
@@ -1604,18 +1592,23 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
         match (res, source) {
             (
-                Res::Def(DefKind::Macro(MacroKind::Bang), _),
+                Res::Def(DefKind::Macro(MacroKind::Bang), def_id),
                 PathSource::Expr(Some(Expr {
                     kind: ExprKind::Index(..) | ExprKind::Call(..), ..
                 }))
                 | PathSource::Struct,
             ) => {
+                // Don't suggest macro if it's unstable.
+                let suggestable = def_id.is_local()
+                    || self.r.tcx.lookup_stability(def_id).map_or(true, |s| s.is_stable());
+
                 err.span_label(span, fallback_label.to_string());
 
                 // Don't suggest `!` for a macro invocation if there are generic args
                 if path
                     .last()
                     .is_some_and(|segment| !segment.has_generic_args && !segment.has_lifetime_args)
+                    && suggestable
                 {
                     err.span_suggestion_verbose(
                         span.shrink_to_hi(),

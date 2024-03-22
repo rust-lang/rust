@@ -1,6 +1,6 @@
 use crate::base::ExtCtxt;
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, PatKind, UnOp};
+use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp};
 use rustc_ast::{attr, token, util::literal};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -524,7 +524,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn expr_match(&self, span: Span, arg: P<ast::Expr>, arms: ThinVec<ast::Arm>) -> P<Expr> {
-        self.expr(span, ast::ExprKind::Match(arg, arms))
+        self.expr(span, ast::ExprKind::Match(arg, arms, MatchKind::Prefix))
     }
 
     pub fn expr_if(

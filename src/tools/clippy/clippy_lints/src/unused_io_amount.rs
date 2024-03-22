@@ -1,7 +1,7 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::{is_res_lang_ctor, is_trait_method, match_trait_method, paths, peel_blocks};
-use hir::{ExprKind, PatKind};
+use hir::{ExprKind, HirId, PatKind};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -131,26 +131,26 @@ fn non_consuming_ok_arm<'a>(cx: &LateContext<'a>, arm: &hir::Arm<'a>) -> bool {
 fn check_expr<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) {
     match expr.kind {
         hir::ExprKind::If(cond, _, _)
-            if let ExprKind::Let(hir::Let { pat, init, .. }) = cond.kind
+            if let ExprKind::Let(hir::LetExpr { pat, init, .. }) = cond.kind
                 && is_ok_wild_or_dotdot_pattern(cx, pat)
                 && let Some(op) = should_lint(cx, init) =>
         {
-            emit_lint(cx, cond.span, op, &[pat.span]);
+            emit_lint(cx, cond.span, cond.hir_id, op, &[pat.span]);
         },
         // we will capture only the case where the match is Ok( ) or Err( )
         // prefer to match the minimum possible, and expand later if needed
         // to avoid false positives on something as used as this
         hir::ExprKind::Match(expr, [arm1, arm2], hir::MatchSource::Normal) if let Some(op) = should_lint(cx, expr) => {
             if non_consuming_ok_arm(cx, arm1) && non_consuming_err_arm(cx, arm2) {
-                emit_lint(cx, expr.span, op, &[arm1.pat.span]);
+                emit_lint(cx, expr.span, expr.hir_id, op, &[arm1.pat.span]);
             }
             if non_consuming_ok_arm(cx, arm2) && non_consuming_err_arm(cx, arm1) {
-                emit_lint(cx, expr.span, op, &[arm2.pat.span]);
+                emit_lint(cx, expr.span, expr.hir_id, op, &[arm2.pat.span]);
             }
         },
         hir::ExprKind::Match(_, _, hir::MatchSource::Normal) => {},
         _ if let Some(op) = should_lint(cx, expr) => {
-            emit_lint(cx, expr.span, op, &[]);
+            emit_lint(cx, expr.span, expr.hir_id, op, &[]);
         },
         _ => {},
     };
@@ -279,7 +279,7 @@ fn check_io_mode(cx: &LateContext<'_>, call: &hir::Expr<'_>) -> Option<IoOp> {
     }
 }
 
-fn emit_lint(cx: &LateContext<'_>, span: Span, op: IoOp, wild_cards: &[Span]) {
+fn emit_lint(cx: &LateContext<'_>, span: Span, at: HirId, op: IoOp, wild_cards: &[Span]) {
     let (msg, help) = match op {
         IoOp::AsyncRead(false) => (
             "read amount is not handled",
@@ -301,7 +301,7 @@ fn emit_lint(cx: &LateContext<'_>, span: Span, op: IoOp, wild_cards: &[Span]) {
         IoOp::SyncWrite(true) | IoOp::AsyncWrite(true) => ("written amount is not handled", None),
     };
 
-    span_lint_and_then(cx, UNUSED_IO_AMOUNT, span, msg, |diag| {
+    span_lint_hir_and_then(cx, UNUSED_IO_AMOUNT, at, span, msg, |diag| {
         if let Some(help_str) = help {
             diag.help(help_str);
         }

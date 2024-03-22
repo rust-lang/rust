@@ -1621,6 +1621,7 @@ supported_targets! {
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
     ("riscv32im-risc0-zkvm-elf", riscv32im_risc0_zkvm_elf),
     ("riscv32im-unknown-none-elf", riscv32im_unknown_none_elf),
+    ("riscv32ima-unknown-none-elf", riscv32ima_unknown_none_elf),
     ("riscv32imc-unknown-none-elf", riscv32imc_unknown_none_elf),
     ("riscv32imc-esp-espidf", riscv32imc_esp_espidf),
     ("riscv32imac-esp-espidf", riscv32imac_esp_espidf),
@@ -2091,6 +2092,9 @@ pub struct TargetOptions {
     /// compiling `rustc` will be used instead (or llvm if it is not set).
     ///
     /// N.B. when *using* the compiler, backend can always be overridden with `-Zcodegen-backend`.
+    ///
+    /// This was added by WaffleLapkin in #116793. The motivation is a rustc fork that requires a
+    /// custom codegen backend for a particular target.
     pub default_codegen_backend: Option<StaticCow<str>>,
 
     /// Whether to generate trap instructions in places where optimization would

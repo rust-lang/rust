@@ -1,9 +1,5 @@
-//@no-rustfix
-
 #![warn(clippy::dbg_macro)]
-
-#[path = "auxiliary/submodule.rs"]
-mod submodule;
+#![allow(clippy::unnecessary_operation, clippy::no_effect)]
 
 fn foo(n: u32) -> u32 {
     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
@@ -25,11 +21,7 @@ fn factorial(n: u32) -> u32 {
 fn main() {
     dbg!(42);
     //~^ ERROR: the `dbg!` macro is intended as a debugging tool
-    dbg!(dbg!(dbg!(42)));
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
     foo(3) + dbg!(factorial(4));
-    //~^ ERROR: the `dbg!` macro is intended as a debugging tool
-    dbg!(1, 2, dbg!(3, 4));
     //~^ ERROR: the `dbg!` macro is intended as a debugging tool
     dbg!(1, 2, 3, 4, 5);
     //~^ ERROR: the `dbg!` macro is intended as a debugging tool
@@ -49,6 +41,7 @@ fn issue9914() {
     macro_rules! expand_to_dbg {
         () => {
             dbg!();
+            //~^ ERROR: the `dbg!` macro is intended as a debugging tool
         };
     }
 
@@ -104,6 +97,15 @@ fn foo2() {
 mod mod1 {
     fn func() {
         dbg!(1);
+        //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    }
+}
+
+mod issue12131 {
+    fn dbg_in_print(s: &str) {
+        println!("dbg: {:?}", dbg!(s));
+        //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+        print!("{}", dbg!(s));
         //~^ ERROR: the `dbg!` macro is intended as a debugging tool
     }
 }

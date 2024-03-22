@@ -84,7 +84,7 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
         super::__rust_foreign_exception();
     }
 
-    let was_caught = (*adjusted_ptr).caught.swap(true, Ordering::SeqCst);
+    let was_caught = (*adjusted_ptr).caught.swap(true, Ordering::Relaxed);
     if was_caught {
         // Since cleanup() isn't allowed to panic, we just abort instead.
         intrinsics::abort();

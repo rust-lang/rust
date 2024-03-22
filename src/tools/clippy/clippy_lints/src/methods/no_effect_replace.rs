@@ -25,6 +25,7 @@ pub(super) fn check<'tcx>(
         && param1 == param2.as_str()
     {
         span_lint(cx, NO_EFFECT_REPLACE, expr.span, "replacing text with itself");
+        return;
     }
 
     if SpanlessEq::new(cx).eq_expr(arg1, arg2) {

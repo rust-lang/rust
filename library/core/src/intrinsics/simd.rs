@@ -2,11 +2,7 @@
 //!
 //! In this module, a "vector" is any `repr(simd)` type.
 
-// Temporary macro while we switch the ABI from "platform-intrinsics" to "intrinsics".
-#[rustfmt::skip]
-macro_rules! declare_intrinsics {
-($abi:tt) => {
-extern $abi {
+extern "rust-intrinsic" {
     /// Insert an element into a vector, returning the updated vector.
     ///
     /// `T` must be a vector with element type `U`.
@@ -659,10 +655,3 @@ extern $abi {
     #[rustc_nounwind]
     pub fn simd_flog<T>(a: T) -> T;
 }
-}
-}
-
-#[cfg(bootstrap)]
-declare_intrinsics!("platform-intrinsic");
-#[cfg(not(bootstrap))]
-declare_intrinsics!("rust-intrinsic");

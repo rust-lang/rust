@@ -6,7 +6,8 @@
     clippy::redundant_clone,
     clippy::redundant_closure,
     clippy::useless_asref,
-    clippy::useless_vec
+    clippy::useless_vec,
+    clippy::empty_loop
 )]
 
 fn main() {
@@ -117,4 +118,17 @@ fn main() {
     let y = x.as_ref().map(|x| String::clone(x));
     let x: Result<String, ()> = Ok(String::new());
     let y = x.as_ref().map(|x| String::clone(x));
+
+    // Issue #12271
+    {
+        // Don't lint these
+        let x: Option<&u8> = None;
+        let y = x.map(|x| String::clone(loop {}));
+        let x: Option<&u8> = None;
+        let y = x.map(|x| u8::clone(loop {}));
+        let x: Vec<&u8> = vec![];
+        let y = x.into_iter().map(|x| String::clone(loop {}));
+        let x: Vec<&u8> = vec![];
+        let y = x.into_iter().map(|x| u8::clone(loop {}));
+    }
 }

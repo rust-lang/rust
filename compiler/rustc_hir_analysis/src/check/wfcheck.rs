@@ -196,7 +196,7 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) -> Result<(), ErrorG
         hir::OwnerNode::TraitItem(item) => check_trait_item(tcx, item),
         hir::OwnerNode::ImplItem(item) => check_impl_item(tcx, item),
         hir::OwnerNode::ForeignItem(item) => check_foreign_item(tcx, item),
-        hir::OwnerNode::AssocOpaqueTy(..) => unreachable!(),
+        hir::OwnerNode::Synthetic => unreachable!(),
     };
 
     if let Some(generics) = node.generics() {
@@ -272,7 +272,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                 }
                 Some(ty::ImplPolarity::Negative) => {
                     let ast::ImplPolarity::Negative(span) = impl_.polarity else {
-                        bug!("impl_polarity query disagrees with impl's polarity in AST");
+                        bug!("impl_polarity query disagrees with impl's polarity in HIR");
                     };
                     // FIXME(#27579): what amount of WF checking do we need for neg impls?
                     if let hir::Defaultness::Default { .. } = impl_.defaultness {
@@ -1866,7 +1866,7 @@ fn check_variances_for_type_defn<'tcx>(
             .iter()
             .filter_map(|predicate| match predicate {
                 hir::WherePredicate::BoundPredicate(predicate) => {
-                    match icx.to_ty(predicate.bounded_ty).kind() {
+                    match icx.lower_ty(predicate.bounded_ty).kind() {
                         ty::Param(data) => Some(Parameter(data.index)),
                         _ => None,
                     }

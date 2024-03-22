@@ -24,9 +24,9 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, Node, QPath};
-use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
+use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::structured_errors::StructuredDiag;
 use rustc_index::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
@@ -44,6 +44,29 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext}
 
 use std::iter;
 use std::mem;
+
+#[derive(Clone, Copy, Default)]
+pub enum DivergingBlockBehavior {
+    /// This is the current stable behavior:
+    ///
+    /// ```rust
+    /// {
+    ///     return;
+    /// } // block has type = !, even though we are supposedly dropping it with `;`
+    /// ```
+    #[default]
+    Never,
+
+    /// Alternative behavior:
+    ///
+    /// ```ignore (very-unstable-new-attribute)
+    /// #![rustc_never_type_options(diverging_block_default = "unit")]
+    /// {
+    ///     return;
+    /// } // block has type = (), since we are dropping `!` from `return` with `;`
+    /// ```
+    Unit,
+}
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&mut self) {
@@ -1710,7 +1733,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //
                 // #41425 -- label the implicit `()` as being the
                 // "found type" here, rather than the "expected type".
-                if !self.diverges.get().is_always() {
+                if !self.diverges.get().is_always()
+                    || matches!(self.diverging_block_behavior, DivergingBlockBehavior::Unit)
+                {
                     // #50009 -- Do not point at the entire fn block span, point at the return type
                     // span, as it is the cause of the requirement, and
                     // `consider_hint_about_removing_semicolon` will point at the last expression
@@ -1892,11 +1917,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx hir::Pat<'tcx>,
         ty: Ty<'tcx>,
     ) {
+        struct V<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            pat_hir_ids: Vec<hir::HirId>,
+        }
+
+        impl<'tcx> Visitor<'tcx> for V<'tcx> {
+            type NestedFilter = rustc_middle::hir::nested_filter::All;
+
+            fn nested_visit_map(&mut self) -> Self::Map {
+                self.tcx.hir()
+            }
+
+            fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
+                self.pat_hir_ids.push(p.hir_id);
+                hir::intravisit::walk_pat(self, p);
+            }
+        }
         if let Err(guar) = ty.error_reported() {
             // Override the types everywhere with `err()` to avoid knock on errors.
             let err = Ty::new_error(self.tcx, guar);
             self.write_ty(hir_id, err);
             self.write_ty(pat.hir_id, err);
+            let mut visitor = V { tcx: self.tcx, pat_hir_ids: vec![] };
+            hir::intravisit::walk_pat(&mut visitor, pat);
+            // Mark all the subpatterns as `{type error}` as well. This allows errors for specific
+            // subpatterns to be silenced.
+            for hir_id in visitor.pat_hir_ids {
+                self.write_ty(hir_id, err);
+            }
             self.locals.borrow_mut().insert(hir_id, err);
             self.locals.borrow_mut().insert(pat.hir_id, err);
         }
@@ -1912,16 +1961,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> (Res, LoweredTy<'tcx>) {
         match *qpath {
             QPath::Resolved(ref maybe_qself, path) => {
-                let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself).raw);
-                let ty = self.astconv().res_to_ty(self_ty, path, hir_id, true);
+                let self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself).raw);
+                let ty = self.lowerer().lower_path(self_ty, path, hir_id, true);
                 (path.res, LoweredTy::from_raw(self, path_span, ty))
             }
             QPath::TypeRelative(qself, segment) => {
-                let ty = self.to_ty(qself);
+                let ty = self.lower_ty(qself);
 
                 let result = self
-                    .astconv()
-                    .associated_path_to_ty(hir_id, path_span, ty.raw, qself, segment, true);
+                    .lowerer()
+                    .lower_assoc_path(hir_id, path_span, ty.raw, qself, segment, true);
                 let ty = result
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar));

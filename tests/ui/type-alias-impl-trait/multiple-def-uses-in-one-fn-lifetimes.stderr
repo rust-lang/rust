@@ -1,11 +1,64 @@
-error: concrete type differs from previous defining opaque type use
+error: opaque type used twice with different lifetimes
   --> $DIR/multiple-def-uses-in-one-fn-lifetimes.rs:6:5
    |
 LL |     (i, i)
    |     ^^^^^^
    |     |
-   |     expected `&'a i32`, got `&'b i32`
-   |     this expression supplies two conflicting concrete types for the same opaque type
+   |     lifetime `'x` used here
+   |     lifetime `'y` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/multiple-def-uses-in-one-fn-lifetimes.rs:6:5
+   |
+LL |     (i, i)
+   |     ^^^^^^
 
-error: aborting due to 1 previous error
+error: opaque type used twice with different lifetimes
+  --> $DIR/multiple-def-uses-in-one-fn-lifetimes.rs:6:5
+   |
+LL |     (i, i)
+   |     ^^^^^^
+   |     |
+   |     lifetime `'y` used here
+   |     lifetime `'x` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/multiple-def-uses-in-one-fn-lifetimes.rs:6:5
+   |
+LL |     (i, i)
+   |     ^^^^^^
+
+error: opaque type used twice with different lifetimes
+  --> $DIR/multiple-def-uses-in-one-fn-lifetimes.rs:6:5
+   |
+LL |     (i, i)
+   |     ^^^^^^
+   |     |
+   |     lifetime `'x` used here
+   |     lifetime `'y` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/multiple-def-uses-in-one-fn-lifetimes.rs:6:5
+   |
+LL |     (i, i)
+   |     ^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: opaque type used twice with different lifetimes
+  --> $DIR/multiple-def-uses-in-one-fn-lifetimes.rs:6:5
+   |
+LL |     (i, i)
+   |     ^^^^^^
+   |     |
+   |     lifetime `'y` used here
+   |     lifetime `'x` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/multiple-def-uses-in-one-fn-lifetimes.rs:6:5
+   |
+LL |     (i, i)
+   |     ^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
 

@@ -16,7 +16,6 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(never_type)]
 #![feature(negative_impls)]
 #![feature(stmt_expr_attributes)]

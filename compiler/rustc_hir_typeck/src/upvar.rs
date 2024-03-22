@@ -410,7 +410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_eqtype(
                 span,
                 coroutine_args.as_coroutine().kind_ty(),
-                Ty::from_closure_kind(self.tcx, closure_kind),
+                Ty::from_coroutine_closure_kind(self.tcx, closure_kind),
             );
         }
 
