@@ -5,6 +5,7 @@ use crate::builder::ShouldRun;
 use crate::core::builder;
 use crate::core::builder::crate_description;
 use crate::core::builder::Alias;
+use crate::core::builder::Kind;
 use crate::core::builder::RunConfig;
 use crate::core::builder::Step;
 use crate::Mode;
@@ -233,7 +234,7 @@ impl Step for Rustc {
 
 macro_rules! lint_any {
     ($(
-        $name:ident, $path:expr, $tool_name:expr
+        $name:ident, $path:expr, $readable_name:expr
         $(,is_external_tool = $external:expr)*
         $(,is_unstable_tool = $unstable:expr)*
         $(,allow_features = $allow_features:expr)?
@@ -274,6 +275,15 @@ macro_rules! lint_any {
                     $path,
                     SourceType::InTree,
                     &[],
+                );
+
+                let _guard = builder.msg_tool(
+                    Kind::Clippy,
+                    Mode::ToolRustc,
+                    $readable_name,
+                    compiler.stage,
+                    &compiler.host,
+                    &target,
                 );
 
                 run_cargo(
