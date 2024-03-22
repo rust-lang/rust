@@ -231,8 +231,12 @@ declare_clippy_lint! {
     /// used instead.
     ///
     /// ### Why is this bad?
-    /// When applicable, `filter_map()` is more clear since it shows that
-    /// `Option` is used to produce 0 or 1 items.
+    /// `filter_map()` is known to always produce 0 or 1 output items per input item,
+    /// rather than however many the inner iterator type produces.
+    /// Therefore, it maintains the upper bound in `Iterator::size_hint()`,
+    /// and communicates to the reader that the input items are not being expanded into
+    /// multiple output items without their having to notice that the mapping function
+    /// returns an `Option`.
     ///
     /// ### Example
     /// ```no_run
