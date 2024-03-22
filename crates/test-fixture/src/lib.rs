@@ -402,7 +402,7 @@ pub fn mirror(input: TokenStream) -> TokenStream {
             .into(),
             ProcMacro {
                 name: "mirror".into(),
-                kind: ProcMacroKind::FuncLike,
+                kind: ProcMacroKind::Bang,
                 expander: sync::Arc::new(MirrorProcMacroExpander),
                 disabled: false,
             },
@@ -417,7 +417,7 @@ pub fn shorten(input: TokenStream) -> TokenStream {
             .into(),
             ProcMacro {
                 name: "shorten".into(),
-                kind: ProcMacroKind::FuncLike,
+                kind: ProcMacroKind::Bang,
                 expander: sync::Arc::new(ShortenProcMacroExpander),
                 disabled: false,
             },

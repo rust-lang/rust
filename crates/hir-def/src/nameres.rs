@@ -737,7 +737,7 @@ impl MacroSubNs {
             MacroId::ProcMacroId(it) => {
                 return match it.lookup(db).kind {
                     ProcMacroKind::CustomDerive | ProcMacroKind::Attr => Self::Attr,
-                    ProcMacroKind::FuncLike => Self::Bang,
+                    ProcMacroKind::Bang => Self::Bang,
                 };
             }
         };

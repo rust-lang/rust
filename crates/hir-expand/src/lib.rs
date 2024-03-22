@@ -200,7 +200,7 @@ pub struct EagerCallInfo {
     /// Call id of the eager macro's input file (this is the macro file for its fully expanded input).
     arg_id: MacroCallId,
     error: Option<ExpandError>,
-    /// TODO: Doc
+    /// The call site span of the eager macro
     span: Span,
 }
 
@@ -211,7 +211,7 @@ pub enum MacroCallKind {
         expand_to: ExpandTo,
         /// Some if this is a macro call for an eager macro. Note that this is `None`
         /// for the eager input macro file.
-        // FIXME: This is being interned, subtrees can vary quickly differ just slightly causing
+        // FIXME: This is being interned, subtrees can vary quickly differing just slightly causing
         // leakage problems here
         eager: Option<Arc<EagerCallInfo>>,
     },
@@ -486,7 +486,7 @@ impl MacroDefId {
         matches!(
             self.kind,
             MacroDefKind::BuiltIn(..)
-                | MacroDefKind::ProcMacro(_, ProcMacroKind::FuncLike, _)
+                | MacroDefKind::ProcMacro(_, ProcMacroKind::Bang, _)
                 | MacroDefKind::BuiltInEager(..)
                 | MacroDefKind::Declarative(..)
         )
@@ -808,7 +808,8 @@ impl ExpansionInfo {
         let (parse, exp_map) = db.parse_macro_expansion(macro_file).value;
         let expanded = InMacroFile { file_id: macro_file, value: parse.syntax_node() };
 
-        let (macro_arg, _, _) = db.macro_arg(macro_file.macro_call_id);
+        let (macro_arg, _, _) =
+            db.macro_arg_considering_derives(macro_file.macro_call_id, &loc.kind);
 
         let def = loc.def.ast_id().left().and_then(|id| {
             let def_tt = match id.to_node(db) {
