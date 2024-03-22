@@ -140,6 +140,7 @@
         - [Proof trees](./solve/proof-trees.md)
         - [Normalization](./solve/normalization.md)
         - [Opaque types](./solve/opaque-types.md)
+        - [Significant changes and quirks](./solve/significant-changes.md)
     - [`Unsize` and `CoerceUnsized` traits](./traits/unsize.md)
 - [Type checking](./type-checking.md)
     - [Method Lookup](./method-lookup.md)
