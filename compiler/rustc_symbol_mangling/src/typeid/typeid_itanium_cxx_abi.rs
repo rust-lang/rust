@@ -525,8 +525,8 @@ fn encode_ty<'tcx>(
                 "{}",
                 &len.try_to_scalar()
                     .unwrap()
-                    .to_u64()
-                    .unwrap_or_else(|_| panic!("failed to convert length to u64"))
+                    .to_target_usize(&tcx.data_layout)
+                    .expect("Array lens are defined in usize")
             );
             s.push_str(&encode_ty(tcx, *ty0, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
