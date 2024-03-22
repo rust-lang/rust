@@ -209,7 +209,7 @@ impl<'tcx> FulfillmentError<'tcx> {
 }
 
 impl<'tcx> PolyTraitObligation<'tcx> {
-    pub fn polarity(&self) -> ty::ImplPolarity {
+    pub fn polarity(&self) -> ty::PredicatePolarity {
         self.predicate.skip_binder().polarity
     }
 
