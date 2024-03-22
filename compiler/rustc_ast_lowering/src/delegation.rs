@@ -29,11 +29,12 @@
 //! item id (`item_id`) in case of impl trait or path resolution id (`path_id`) otherwise.
 //!
 //! Since we do not have a proper way to obtain function type information by path resolution
-//! in AST, we mark each function parameter type as `InferDelegation` and inherit it in `AstConv`.
+//! in AST, we mark each function parameter type as `InferDelegation` and inherit it during
+//! HIR ty lowering.
 //!
 //! Similarly generics, predicates and header are set to the "default" values.
 //! In case of discrepancy with callee function the `NotSupportedDelegation` error will
-//! also be emitted in `AstConv`.
+//! also be emitted during HIR ty lowering.
 
 use crate::{ImplTraitPosition, ResolverAstLoweringExt};
 
@@ -129,7 +130,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> &'hir hir::FnDecl<'hir> {
         let args_count = if let Some(local_sig_id) = sig_id.as_local() {
             // Map may be filled incorrectly due to recursive delegation.
-            // Error will be emmited later in astconv.
+            // Error will be emitted later during HIR ty lowering.
             self.resolver.fn_parameter_counts.get(&local_sig_id).cloned().unwrap_or_default()
         } else {
             self.tcx.fn_arg_names(sig_id).len()

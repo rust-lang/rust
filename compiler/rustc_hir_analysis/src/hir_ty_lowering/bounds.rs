@@ -12,17 +12,19 @@ use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
 
-use crate::astconv::{AstConv, OnlySelfBounds, PredicateFilter};
 use crate::bounds::Bounds;
 use crate::errors;
+use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
 
-impl<'tcx> dyn AstConv<'tcx> + '_ {
-    /// Sets `implicitly_sized` to true on `Bounds` if necessary
-    pub(crate) fn add_implicitly_sized(
+impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
+    /// Add a `Sized` bound to the `bounds` if appropriate.
+    ///
+    /// Doesn't add the bound if the HIR bounds contain any of `Sized`, `?Sized` or `!Sized`.
+    pub(crate) fn add_sized_bound(
         &self,
         bounds: &mut Bounds<'tcx>,
         self_ty: Ty<'tcx>,
-        ast_bounds: &'tcx [hir::GenericBound<'tcx>],
+        hir_bounds: &'tcx [hir::GenericBound<'tcx>],
         self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
         span: Span,
     ) {
@@ -33,9 +35,9 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
         // Try to find an unbound in bounds.
         let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
-        let mut search_bounds = |ast_bounds: &'tcx [hir::GenericBound<'tcx>]| {
-            for ab in ast_bounds {
-                let hir::GenericBound::Trait(ptr, modifier) = ab else {
+        let mut search_bounds = |hir_bounds: &'tcx [hir::GenericBound<'tcx>]| {
+            for hir_bound in hir_bounds {
+                let hir::GenericBound::Trait(ptr, modifier) = hir_bound else {
                     continue;
                 };
                 match modifier {
@@ -58,7 +60,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 }
             }
         };
-        search_bounds(ast_bounds);
+        search_bounds(hir_bounds);
         if let Some((self_ty, where_clause)) = self_ty_where_predicates {
             for clause in where_clause {
                 if let hir::WherePredicate::BoundPredicate(pred) = clause
@@ -101,34 +103,40 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
     }
 
-    /// This helper takes a *converted* parameter type (`param_ty`)
-    /// and an *unconverted* list of bounds:
+    /// Lower HIR bounds into `bounds` given the self type `param_ty` and the overarching late-bound vars if any.
     ///
-    /// ```text
-    /// fn foo<T: Debug>
-    ///        ^  ^^^^^ `ast_bounds` parameter, in HIR form
-    ///        |
-    ///        `param_ty`, in ty form
+    /// ### Examples
+    ///
+    /// ```ignore (illustrative)
+    /// fn foo<T>() where for<'a> T: Trait<'a> + Copy {}
+    /// //                ^^^^^^^ ^  ^^^^^^^^^^^^^^^^ `hir_bounds`, in HIR form
+    /// //                |       |
+    /// //                |       `param_ty`, in ty form
+    /// //                `bound_vars`, in ty form
+    ///
+    /// fn bar<T>() where T: for<'a> Trait<'a> + Copy {} // no overarching `bound_vars` here!
+    /// //                ^  ^^^^^^^^^^^^^^^^^^^^^^^^ `hir_bounds`, in HIR form
+    /// //                |
+    /// //                `param_ty`, in ty form
     /// ```
     ///
-    /// It adds these `ast_bounds` into the `bounds` structure.
+    /// ### A Note on Binders
     ///
-    /// **A note on binders:** there is an implied binder around
-    /// `param_ty` and `ast_bounds`. See `instantiate_poly_trait_ref`
-    /// for more details.
-    #[instrument(level = "debug", skip(self, ast_bounds, bounds))]
-    pub(crate) fn add_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'tcx>>>(
+    /// There is an implied binder around `param_ty` and `hir_bounds`.
+    /// See `lower_poly_trait_ref` for more details.
+    #[instrument(level = "debug", skip(self, hir_bounds, bounds))]
+    pub(crate) fn lower_poly_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'tcx>>>(
         &self,
         param_ty: Ty<'tcx>,
-        ast_bounds: I,
+        hir_bounds: I,
         bounds: &mut Bounds<'tcx>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
         only_self_bounds: OnlySelfBounds,
     ) where
         'tcx: 'hir,
     {
-        for ast_bound in ast_bounds {
-            match ast_bound {
+        for hir_bound in hir_bounds {
+            match hir_bound {
                 hir::GenericBound::Trait(poly_trait_ref, modifier) => {
                     let (constness, polarity) = match modifier {
                         hir::TraitBoundModifier::Const => {
@@ -145,7 +153,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         }
                         hir::TraitBoundModifier::Maybe => continue,
                     };
-                    let _ = self.instantiate_poly_trait_ref(
+                    let _ = self.lower_poly_trait_ref(
                         &poly_trait_ref.trait_ref,
                         poly_trait_ref.span,
                         constness,
@@ -156,7 +164,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
-                    let region = self.ast_region_to_region(lifetime, None);
+                    let region = self.lower_lifetime(lifetime, None);
                     bounds.push_region_bound(
                         self.tcx(),
                         ty::Binder::bind_with_vars(
@@ -170,26 +178,19 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
     }
 
-    /// Translates a list of bounds from the HIR into the `Bounds` data structure.
-    /// The self-type for the bounds is given by `param_ty`.
+    /// Lower HIR bounds into `bounds` given the self type `param_ty` and *no* overarching late-bound vars.
     ///
-    /// Example:
+    /// ### Example
     ///
     /// ```ignore (illustrative)
     /// fn foo<T: Bar + Baz>() { }
-    /// //     ^  ^^^^^^^^^ ast_bounds
+    /// //     ^  ^^^^^^^^^ hir_bounds
     /// //     param_ty
     /// ```
-    ///
-    /// The `sized_by_default` parameter indicates if, in this context, the `param_ty` should be
-    /// considered `Sized` unless there is an explicit `?Sized` bound. This would be true in the
-    /// example above, but is not true in supertrait listings like `trait Foo: Bar + Baz`.
-    ///
-    /// `span` should be the declaration size of the parameter.
-    pub(crate) fn compute_bounds(
+    pub(crate) fn lower_mono_bounds(
         &self,
         param_ty: Ty<'tcx>,
-        ast_bounds: &[hir::GenericBound<'tcx>],
+        hir_bounds: &[hir::GenericBound<'tcx>],
         filter: PredicateFilter,
     ) -> Bounds<'tcx> {
         let mut bounds = Bounds::default();
@@ -201,9 +202,9 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => OnlySelfBounds(true),
         };
 
-        self.add_bounds(
+        self.lower_poly_bounds(
             param_ty,
-            ast_bounds.iter().filter(|bound| match filter {
+            hir_bounds.iter().filter(|bound| match filter {
                 PredicateFilter::All
                 | PredicateFilter::SelfOnly
                 | PredicateFilter::SelfAndAssociatedTypeBounds => true,
@@ -227,14 +228,16 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         bounds
     }
 
-    /// Given an HIR binding like `Item = Foo` or `Item: Foo`, pushes the corresponding predicates
-    /// onto `bounds`.
+    /// Lower an associated item binding from HIR into `bounds`.
     ///
-    /// **A note on binders:** given something like `T: for<'a> Iterator<Item = &'a u32>`, the
-    /// `trait_ref` here will be `for<'a> T: Iterator`. The `binding` data however is from *inside*
-    /// the binder (e.g., `&'a u32`) and hence may reference bound regions.
+    /// ### A Note on Binders
+    ///
+    /// Given something like `T: for<'a> Iterator<Item = &'a u32>`,
+    /// the `trait_ref` here will be `for<'a> T: Iterator`.
+    /// The `binding` data however is from *inside* the binder
+    /// (e.g., `&'a u32`) and hence may reference bound regions.
     #[instrument(level = "debug", skip(self, bounds, dup_bindings, path_span))]
-    pub(super) fn add_predicates_for_ast_type_binding(
+    pub(super) fn lower_assoc_item_binding(
         &self,
         hir_ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
@@ -244,22 +247,6 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         path_span: Span,
         only_self_bounds: OnlySelfBounds,
     ) -> Result<(), ErrorGuaranteed> {
-        // Given something like `U: SomeTrait<T = X>`, we want to produce a
-        // predicate like `<U as SomeTrait>::T = X`. This is somewhat
-        // subtle in the event that `T` is defined in a supertrait of
-        // `SomeTrait`, because in that case we need to upcast.
-        //
-        // That is, consider this case:
-        //
-        // ```
-        // trait SubTrait: SuperTrait<i32> { }
-        // trait SuperTrait<A> { type T; }
-        //
-        // ... B: SubTrait<T = foo> ...
-        // ```
-        //
-        // We want to produce `<B as SuperTrait<i32>>::T == foo`.
-
         let tcx = self.tcx();
 
         let assoc_kind = if binding.gen_args.parenthesized
@@ -272,7 +259,15 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             ty::AssocKind::Type
         };
 
-        let candidate = if self.trait_defines_associated_item_named(
+        // Given something like `U: Trait<T = X>`, we want to produce a predicate like
+        // `<U as Trait>::T = X`.
+        // This is somewhat subtle in the event that `T` is defined in a supertrait of `Trait`,
+        // because in that case we need to upcast. I.e., we want to produce
+        // `<B as SuperTrait<i32>>::T == X` for `B: SubTrait<T = X>` where
+        //
+        //     trait SubTrait: SuperTrait<i32> {}
+        //     trait SuperTrait<A> { type T; }
+        let candidate = if self.probe_trait_that_defines_assoc_item(
             trait_ref.def_id(),
             assoc_kind,
             binding.ident,
@@ -282,7 +277,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         } else {
             // Otherwise, we have to walk through the supertraits to find
             // one that does define it.
-            self.one_bound_for_assoc_item(
+            self.probe_single_bound_for_assoc_item(
                 || traits::supertraits(tcx, trait_ref),
                 trait_ref.skip_binder().print_only_trait_name(),
                 None,
@@ -417,7 +412,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     infer_args: false,
                 };
 
-                let alias_args = self.create_args_for_associated_item(
+                let alias_args = self.lower_generic_args_of_assoc_item(
                     path_span,
                     assoc_item.def_id,
                     &item_segment,
@@ -449,9 +444,11 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     span: binding.span,
                 }));
             }
+            // Lower an equality constraint like `Item = u32` as found in HIR bound `T: Iterator<Item = u32>`
+            // to a projection predicate: `<T as Iterator>::Item = u32`.
             hir::TypeBindingKind::Equality { term } => {
                 let term = match term {
-                    hir::Term::Ty(ty) => self.ast_ty_to_ty(ty).into(),
+                    hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                     hir::Term::Const(ct) => ty::Const::from_anon_const(tcx, ct.def_id).into(),
                 };
 
@@ -490,10 +487,6 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     },
                 );
 
-                // "Desugar" a constraint like `T: Iterator<Item = u32>` this to
-                // the "projection predicate" for:
-                //
-                // `<T as Iterator>::Item = u32`
                 bounds.push_projection_bound(
                     tcx,
                     projection_ty
@@ -501,22 +494,18 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     binding.span,
                 );
             }
-            hir::TypeBindingKind::Constraint { bounds: ast_bounds } => {
-                // "Desugar" a constraint like `T: Iterator<Item: Debug>` to
-                //
-                // `<T as Iterator>::Item: Debug`
-                //
-                // Calling `skip_binder` is okay, because `add_bounds` expects the `param_ty`
-                // parameter to have a skipped binder.
-                //
-                // NOTE: If `only_self_bounds` is true, do NOT expand this associated
-                // type bound into a trait predicate, since we only want to add predicates
-                // for the `Self` type.
+            // Lower a constraint like `Item: Debug` as found in HIR bound `T: Iterator<Item: Debug>`
+            // to a bound involving a projection: `<T as Iterator>::Item: Debug`.
+            hir::TypeBindingKind::Constraint { bounds: hir_bounds } => {
+                // NOTE: If `only_self_bounds` is true, do NOT expand this associated type bound into
+                // a trait predicate, since we only want to add predicates for the `Self` type.
                 if !only_self_bounds.0 {
+                    // Calling `skip_binder` is okay, because `lower_bounds` expects the `param_ty`
+                    // parameter to have a skipped binder.
                     let param_ty = Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());
-                    self.add_bounds(
+                    self.lower_poly_bounds(
                         param_ty,
-                        ast_bounds.iter(),
+                        hir_bounds.iter(),
                         bounds,
                         projection_ty.bound_vars(),
                         only_self_bounds,

@@ -1,6 +1,17 @@
-//! Conversion from AST representation of types to the `ty.rs` representation.
-//! The main routine here is `ast_ty_to_ty()`; each use is parameterized by an
-//! instance of `AstConv`.
+//! HIR ty lowering: Lowers type-system entities[^1] from the [HIR][hir] to
+//! the [`rustc_middle::ty`] representation.
+//!
+//! Not to be confused with *AST lowering* which lowers AST constructs to HIR ones
+//! or with *THIR* / *MIR* *lowering* / *building* which lowers HIR *bodies*
+//! (i.e., “executable code”) to THIR / MIR.
+//!
+//! Most lowering routines are defined on [`dyn HirTyLowerer`](HirTyLowerer) directly,
+//! like the main routine of this module, `lower_ty`.
+//!
+//! This module used to be called `astconv`.
+//!
+//! [^1]: This includes types, lifetimes / regions, constants in type positions,
+//! trait references and bounds.
 
 mod bounds;
 mod errors;
@@ -8,11 +19,11 @@ pub mod generics;
 mod lint;
 mod object_safety;
 
-use crate::astconv::errors::prohibit_assoc_ty_binding;
-use crate::astconv::generics::{check_generic_arg_count, create_args_for_parent_generic_args};
 use crate::bounds::Bounds;
 use crate::collect::HirPlaceholderCollector;
 use crate::errors::AmbiguousLifetimeBound;
+use crate::hir_ty_lowering::errors::prohibit_assoc_item_binding;
+use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
@@ -43,8 +54,9 @@ use rustc_trait_selection::traits::{self, ObligationCtxt};
 use std::fmt::Display;
 use std::slice;
 
+/// A path segment that is semantically allowed to have generic arguments.
 #[derive(Debug)]
-pub struct PathSeg(pub DefId, pub usize);
+pub struct GenericPathSegment(pub DefId, pub usize);
 
 #[derive(Copy, Clone, Debug)]
 pub struct OnlySelfBounds(pub bool);
@@ -67,39 +79,25 @@ pub enum PredicateFilter {
     SelfAndAssociatedTypeBounds,
 }
 
-pub trait AstConv<'tcx> {
+/// A context which can lower type-system entities from the [HIR][hir] to
+/// the [`rustc_middle::ty`] representation.
+///
+/// This trait used to be called `AstConv`.
+pub trait HirTyLowerer<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
+    /// Returns the [`DefId`] of the overarching item whose constituents get lowered.
     fn item_def_id(&self) -> DefId;
 
-    /// Returns predicates in scope of the form `X: Foo<T>`, where `X`
-    /// is a type parameter `X` with the given id `def_id` and T
-    /// matches `assoc_name`. This is a subset of the full set of
-    /// predicates.
-    ///
-    /// This is used for one specific purpose: resolving "short-hand"
-    /// associated type references like `T::Item`. In principle, we
-    /// would do that by first getting the full set of predicates in
-    /// scope and then filtering down to find those that apply to `T`,
-    /// but this can lead to cycle errors. The problem is that we have
-    /// to do this resolution *in order to create the predicates in
-    /// the first place*. Hence, we have this "special pass".
-    fn get_type_parameter_bounds(
-        &self,
-        span: Span,
-        def_id: LocalDefId,
-        assoc_name: Ident,
-    ) -> ty::GenericPredicates<'tcx>;
+    /// Returns `true` if the current context allows the use of inference variables.
+    fn allow_infer(&self) -> bool;
 
-    /// Returns the lifetime to use when a lifetime is omitted (and not elided).
+    /// Returns the region to use when a lifetime is omitted (and not elided).
     fn re_infer(&self, param: Option<&ty::GenericParamDef>, span: Span)
     -> Option<ty::Region<'tcx>>;
 
     /// Returns the type to use when a type is omitted.
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;
-
-    /// Returns `true` if `_` is allowed in type signatures in the current context.
-    fn allow_ty_infer(&self) -> bool;
 
     /// Returns the const to use when a const is omitted.
     fn ct_infer(
@@ -109,14 +107,40 @@ pub trait AstConv<'tcx> {
         span: Span,
     ) -> Const<'tcx>;
 
-    /// Projecting an associated type from a (potentially)
-    /// higher-ranked trait reference is more complicated, because of
-    /// the possibility of late-bound regions appearing in the
-    /// associated type binding. This is not legal in function
-    /// signatures for that reason. In a function body, we can always
-    /// handle it because we can use inference variables to remove the
-    /// late-bound regions.
-    fn projected_ty_from_poly_trait_ref(
+    /// Probe bounds in scope where the bounded type coincides with the given type parameter.
+    ///
+    /// Rephrased, this returns bounds of the form `T: Trait`, where `T` is a type parameter
+    /// with the given `def_id`. This is a subset of the full set of bounds.
+    ///
+    /// This method may use the given `assoc_name` to disregard bounds whose trait reference
+    /// doesn't define an associated item with the provided name.
+    ///
+    /// This is used for one specific purpose: Resolving “short-hand” associated type references
+    /// like `T::Item` where `T` is a type parameter. In principle, we would do that by first
+    /// getting the full set of predicates in scope and then filtering down to find those that
+    /// apply to `T`, but this can lead to cycle errors. The problem is that we have to do this
+    /// resolution *in order to create the predicates in the first place*.
+    /// Hence, we have this “special pass”.
+    fn probe_ty_param_bounds(
+        &self,
+        span: Span,
+        def_id: LocalDefId,
+        assoc_name: Ident,
+    ) -> ty::GenericPredicates<'tcx>;
+
+    /// Lower an associated type to a projection.
+    ///
+    /// This method has to be defined by the concrete lowering context because
+    /// dealing with higher-ranked trait references depends on its capabilities:
+    ///
+    /// If the context can make use of type inference, it can simply instantiate
+    /// any late-bound vars bound by the trait reference with inference variables.
+    /// If it doesn't support type inference, there is nothing reasonable it can
+    /// do except reject the associated type.
+    ///
+    /// The canonical example of this is associated type `T::P` where `T` is a type
+    /// param constrained by `T: for<'a> Trait<'a>` and where `Trait` defines `P`.
+    fn lower_assoc_ty(
         &self,
         span: Span,
         item_def_id: DefId,
@@ -125,28 +149,35 @@ pub trait AstConv<'tcx> {
     ) -> Ty<'tcx>;
 
     /// Returns `AdtDef` if `ty` is an ADT.
-    /// Note that `ty` might be a projection type that needs normalization.
+    ///
+    /// Note that `ty` might be a alias type that needs normalization.
     /// This used to get the enum variants in scope of the type.
     /// For example, `Self::A` could refer to an associated type
     /// or to an enum variant depending on the result of this function.
     fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>>;
 
-    /// Invoked when we encounter an error from some prior pass
-    /// (e.g., resolve) that is translated into a ty-error. This is
-    /// used to help suppress derived errors typeck might otherwise
-    /// report.
-    fn set_tainted_by_errors(&self, e: ErrorGuaranteed);
-
+    /// Record the lowered type of a HIR node in this context.
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span);
 
-    fn astconv(&self) -> &dyn AstConv<'tcx>
+    /// The inference context of the lowering context if applicable.
+    fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
+
+    /// Taint the context with errors.
+    ///
+    /// Invoke this when you encounter an error from some prior pass like name resolution.
+    /// This is used to help suppress derived errors typeck might otherwise report.
+    fn set_tainted_by_errors(&self, e: ErrorGuaranteed);
+
+    /// Convenience method for coercing the lowering context into a trait object type.
+    ///
+    /// Most lowering routines are defined on the trait object type directly
+    /// necessitating a coercion step from the concrete lowering context.
+    fn lowerer(&self) -> &dyn HirTyLowerer<'tcx>
     where
         Self: Sized,
     {
         self
     }
-
-    fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
 }
 
 /// New-typed boolean indicating whether explicit late-bound lifetimes
@@ -197,7 +228,11 @@ pub struct GenericArgCountResult {
     pub correct: Result<(), GenericArgCountMismatch>,
 }
 
-pub trait CreateInstantiationsForGenericArgsCtxt<'a, 'tcx> {
+/// A context which can lower HIR's [`GenericArg`] to `rustc_middle`'s [`ty::GenericArg`].
+///
+/// Its only consumer is [`generics::lower_generic_args`].
+/// Read its documentation to learn more.
+pub trait GenericArgsLowerer<'a, 'tcx> {
     fn args_for_def_id(&mut self, def_id: DefId) -> (Option<&'a GenericArgs<'tcx>>, bool);
 
     fn provided_kind(
@@ -214,9 +249,10 @@ pub trait CreateInstantiationsForGenericArgsCtxt<'a, 'tcx> {
     ) -> ty::GenericArg<'tcx>;
 }
 
-impl<'tcx> dyn AstConv<'tcx> + '_ {
+impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
+    /// Lower a lifetime from the HIR to our internal notion of a lifetime called a *region*.
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn ast_region_to_region(
+    pub fn lower_lifetime(
         &self,
         lifetime: &hir::Lifetime,
         def: Option<&ty::GenericParamDef>,
@@ -271,15 +307,13 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
     }
 
-    /// Given a path `path` that refers to an item `I` with the declared generics `decl_generics`,
-    /// returns an appropriate set of generic arguments for this particular reference to `I`.
-    pub fn ast_path_args_for_ty(
+    pub fn lower_generic_args_of_path_segment(
         &self,
         span: Span,
         def_id: DefId,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> GenericArgsRef<'tcx> {
-        let (args, _) = self.create_args_for_ast_path(
+        let (args, _) = self.lower_generic_args_of_path(
             span,
             def_id,
             &[],
@@ -288,20 +322,19 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             ty::BoundConstness::NotConst,
         );
         if let Some(b) = item_segment.args().bindings.first() {
-            prohibit_assoc_ty_binding(self.tcx(), b.span, Some((item_segment, span)));
+            prohibit_assoc_item_binding(self.tcx(), b.span, Some((item_segment, span)));
         }
-
         args
     }
 
-    /// Given the type/lifetime/const arguments provided to some path (along with
-    /// an implicit `Self`, if this is a trait reference), returns the complete
-    /// set of generic arguments. This may involve applying defaulted type parameters.
+    /// Lower the generic arguments provided to some path.
     ///
-    /// Constraints on associated types are not converted here but
-    /// separately in `add_predicates_for_ast_type_binding`.
+    /// If this is a trait reference, you also need to pass the self type `self_ty`.
+    /// The lowering process may involve applying defaulted type parameters.
     ///
-    /// Example:
+    /// Associated item bindings are not handled here!
+    ///
+    /// ### Example
     ///
     /// ```ignore (illustrative)
     ///    T: std::ops::Index<usize, Output = u32>
@@ -328,7 +361,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// type itself: `['a]`. The returned `GenericArgsRef` concatenates these two
     /// lists: `[Vec<u8>, u8, 'a]`.
     #[instrument(level = "debug", skip(self, span), ret)]
-    fn create_args_for_ast_path(
+    fn lower_generic_args_of_path(
         &self,
         span: Span,
         def_id: DefId,
@@ -343,7 +376,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
         let tcx = self.tcx();
         let generics = tcx.generics_of(def_id);
-        debug!("generics: {:?}", generics);
+        debug!(?generics);
 
         if generics.has_self {
             if generics.parent.is_some() {
@@ -381,8 +414,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             return (tcx.mk_args(parent_args), arg_count);
         }
 
-        struct InstantiationsForAstPathCtxt<'a, 'tcx> {
-            astconv: &'a dyn AstConv<'tcx>,
+        struct GenericArgsCtxt<'a, 'tcx> {
+            lowerer: &'a dyn HirTyLowerer<'tcx>,
             def_id: DefId,
             generic_args: &'a GenericArgs<'tcx>,
             span: Span,
@@ -390,9 +423,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             infer_args: bool,
         }
 
-        impl<'a, 'tcx> CreateInstantiationsForGenericArgsCtxt<'a, 'tcx>
-            for InstantiationsForAstPathCtxt<'a, 'tcx>
-        {
+        impl<'a, 'tcx> GenericArgsLowerer<'a, 'tcx> for GenericArgsCtxt<'a, 'tcx> {
             fn args_for_def_id(&mut self, did: DefId) -> (Option<&'a GenericArgs<'tcx>>, bool) {
                 if did == self.def_id {
                     (Some(self.generic_args), self.infer_args)
@@ -407,7 +438,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
-                let tcx = self.astconv.tcx();
+                let tcx = self.lowerer.tcx();
 
                 let mut handle_ty_args = |has_default, ty: &hir::Ty<'tcx>| {
                     if has_default {
@@ -426,17 +457,17 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                             },
                         );
                     }
-                    if let (hir::TyKind::Infer, false) = (&ty.kind, self.astconv.allow_ty_infer()) {
+                    if let (hir::TyKind::Infer, false) = (&ty.kind, self.lowerer.allow_infer()) {
                         self.inferred_params.push(ty.span);
                         Ty::new_misc_error(tcx).into()
                     } else {
-                        self.astconv.ast_ty_to_ty(ty).into()
+                        self.lowerer.lower_ty(ty).into()
                     }
                 };
 
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        self.astconv.ast_region_to_region(lt, Some(param)).into()
+                        self.lowerer.lower_lifetime(lt, Some(param)).into()
                     }
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
                         handle_ty_args(has_default, ty)
@@ -455,8 +486,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                             .type_of(param.def_id)
                             .no_bound_vars()
                             .expect("const parameter types cannot be generic");
-                        if self.astconv.allow_ty_infer() {
-                            self.astconv.ct_infer(ty, Some(param), inf.span).into()
+                        if self.lowerer.allow_infer() {
+                            self.lowerer.ct_infer(ty, Some(param), inf.span).into()
                         } else {
                             self.inferred_params.push(inf.span);
                             ty::Const::new_misc_error(tcx, ty).into()
@@ -475,10 +506,10 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 param: &ty::GenericParamDef,
                 infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
-                let tcx = self.astconv.tcx();
+                let tcx = self.lowerer.tcx();
                 match param.kind {
                     GenericParamDefKind::Lifetime => self
-                        .astconv
+                        .lowerer
                         .re_infer(Some(param), self.span)
                         .unwrap_or_else(|| {
                             debug!(?param, "unelided lifetime in signature");
@@ -504,7 +535,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                             }
                             tcx.at(self.span).type_of(param.def_id).instantiate(tcx, args).into()
                         } else if infer_args {
-                            self.astconv.ty_infer(Some(param), self.span).into()
+                            self.lowerer.ty_infer(Some(param), self.span).into()
                         } else {
                             // We've already errored above about the mismatch.
                             Ty::new_misc_error(tcx).into()
@@ -526,7 +557,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                                 .into()
                         } else {
                             if infer_args {
-                                self.astconv.ct_infer(ty, Some(param), self.span).into()
+                                self.lowerer.ct_infer(ty, Some(param), self.span).into()
                             } else {
                                 // We've already errored above about the mismatch.
                                 ty::Const::new_misc_error(tcx, ty).into()
@@ -537,8 +568,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             }
         }
 
-        let mut args_ctx = InstantiationsForAstPathCtxt {
-            astconv: self,
+        let mut args_ctx = GenericArgsCtxt {
+            lowerer: self,
             def_id,
             span,
             generic_args: segment.args(),
@@ -557,7 +588,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             arg_count.correct =
                 Err(GenericArgCountMismatch { reported: Some(e), invalid_args: vec![] });
         }
-        let args = create_args_for_parent_generic_args(
+        let args = lower_generic_args(
             tcx,
             def_id,
             parent_args,
@@ -570,18 +601,16 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         (args, arg_count)
     }
 
-    pub fn create_args_for_associated_item(
+    #[instrument(level = "debug", skip_all)]
+    pub fn lower_generic_args_of_assoc_item(
         &self,
         span: Span,
         item_def_id: DefId,
         item_segment: &hir::PathSegment<'tcx>,
         parent_args: GenericArgsRef<'tcx>,
     ) -> GenericArgsRef<'tcx> {
-        debug!(
-            "create_args_for_associated_item(span: {:?}, item_def_id: {:?}, item_segment: {:?}",
-            span, item_def_id, item_segment
-        );
-        let (args, _) = self.create_args_for_ast_path(
+        debug!(?span, ?item_def_id, ?item_segment);
+        let (args, _) = self.lower_generic_args_of_path(
             span,
             item_def_id,
             parent_args,
@@ -589,28 +618,23 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             None,
             ty::BoundConstness::NotConst,
         );
-
         if let Some(b) = item_segment.args().bindings.first() {
-            prohibit_assoc_ty_binding(self.tcx(), b.span, Some((item_segment, span)));
+            prohibit_assoc_item_binding(self.tcx(), b.span, Some((item_segment, span)));
         }
-
         args
     }
 
-    /// Instantiates the path for the given trait reference, assuming that it's
-    /// bound to a valid trait type. Returns the `DefId` of the defining trait.
-    /// The type _cannot_ be a type other than a trait type.
+    /// Lower a trait reference as found in an impl header as the implementee.
     ///
-    /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T = X>`
-    /// are disallowed. Otherwise, they are pushed onto the vector given.
-    pub fn instantiate_mono_trait_ref(
+    /// The self type `self_ty` is the implementer of the trait.
+    pub fn lower_impl_trait_ref(
         &self,
         trait_ref: &hir::TraitRef<'tcx>,
         self_ty: Ty<'tcx>,
     ) -> ty::TraitRef<'tcx> {
-        self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
+        self.prohibit_generic_args(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
 
-        self.ast_path_to_mono_trait_ref(
+        self.lower_mono_trait_ref(
             trait_ref.path.span,
             trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise()),
             self_ty,
@@ -620,27 +644,31 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         )
     }
 
-    /// Given a trait bound like `Debug`, applies that trait bound the given self-type to construct
-    /// a full trait reference. The resulting trait reference is returned. This may also generate
-    /// auxiliary bounds, which are added to `bounds`.
+    /// Lower a polymorphic trait reference given a self type into `bounds`.
     ///
-    /// Example:
+    /// *Polymorphic* in the sense that it may bind late-bound vars.
     ///
-    /// ```ignore (illustrative)
-    /// poly_trait_ref = Iterator<Item = u32>
-    /// self_ty = Foo
-    /// ```
+    /// This may generate auxiliary bounds if the trait reference contains associated item bindings.
     ///
-    /// this would return `Foo: Iterator` and add `<Foo as Iterator>::Item = u32` into `bounds`.
+    /// ### Example
     ///
-    /// **A note on binders:** against our usual convention, there is an implied binder around
-    /// the `self_ty` and `poly_trait_ref` parameters here. So they may reference bound regions.
+    /// Given the trait ref `Iterator<Item = u32>` and the self type `Ty`, this will add the
+    ///
+    /// 1. *trait predicate* `<Ty as Iterator>` (known as `Foo: Iterator` in surface syntax) and the
+    /// 2. *projection predicate* `<Ty as Iterator>::Item = u32`
+    ///
+    /// to `bounds`.
+    ///
+    /// ### A Note on Binders
+    ///
+    /// Against our usual convention, there is an implied binder around the `self_ty` and the
+    /// `trait_ref` here. So they may reference late-bound vars.
+    ///
     /// If for example you had `for<'a> Foo<'a>: Bar<'a>`, then the `self_ty` would be `Foo<'a>`
-    /// where `'a` is a bound region at depth 0. Similarly, the `poly_trait_ref` would be
-    /// `Bar<'a>`. The returned poly-trait-ref will have this binder instantiated explicitly,
-    /// however.
+    /// where `'a` is a bound region at depth 0. Similarly, the `trait_ref` would be `Bar<'a>`.
+    /// The lowered poly-trait-ref will track this binder explicitly, however.
     #[instrument(level = "debug", skip(self, span, constness, bounds))]
-    pub(crate) fn instantiate_poly_trait_ref(
+    pub(crate) fn lower_poly_trait_ref(
         &self,
         trait_ref: &hir::TraitRef<'tcx>,
         span: Span,
@@ -653,10 +681,10 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
         let trait_segment = trait_ref.path.segments.last().unwrap();
 
-        self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
+        self.prohibit_generic_args(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
         self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, false);
 
-        let (generic_args, arg_count) = self.create_args_for_ast_path(
+        let (generic_args, arg_count) = self.lower_generic_args_of_path(
             trait_ref.path.span,
             trait_def_id,
             &[],
@@ -691,7 +719,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             }
 
             // Specify type to assert that error was already reported in `Err` case.
-            let _: Result<_, ErrorGuaranteed> = self.add_predicates_for_ast_type_binding(
+            let _: Result<_, ErrorGuaranteed> = self.lower_assoc_item_binding(
                 trait_ref.hir_ref_id,
                 poly_trait_ref,
                 binding,
@@ -706,19 +734,22 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         arg_count
     }
 
-    fn ast_path_to_mono_trait_ref(
+    /// Lower a monomorphic trait reference given a self type while prohibiting associated item bindings.
+    ///
+    /// *Monomorphic* in the sense that it doesn't bind any late-bound vars.
+    fn lower_mono_trait_ref(
         &self,
         span: Span,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         trait_segment: &hir::PathSegment<'tcx>,
         is_impl: bool,
-        // FIXME(effects) move all host param things in astconv to hir lowering
+        // FIXME(effects): Move all host param things in HIR ty lowering to AST lowering.
         constness: ty::BoundConstness,
     ) -> ty::TraitRef<'tcx> {
         self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
 
-        let (generic_args, _) = self.create_args_for_ast_path(
+        let (generic_args, _) = self.lower_generic_args_of_path(
             span,
             trait_def_id,
             &[],
@@ -727,12 +758,12 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             constness,
         );
         if let Some(b) = trait_segment.args().bindings.first() {
-            prohibit_assoc_ty_binding(self.tcx(), b.span, Some((trait_segment, span)));
+            prohibit_assoc_item_binding(self.tcx(), b.span, Some((trait_segment, span)));
         }
         ty::TraitRef::new(self.tcx(), trait_def_id, generic_args)
     }
 
-    fn trait_defines_associated_item_named(
+    fn probe_trait_that_defines_assoc_item(
         &self,
         trait_def_id: DefId,
         assoc_kind: ty::AssocKind,
@@ -744,14 +775,14 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             .is_some()
     }
 
-    fn ast_path_to_ty(
+    fn lower_path_segment(
         &self,
         span: Span,
         did: DefId,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
-        let args = self.ast_path_args_for_ty(span, did, item_segment);
+        let args = self.lower_generic_args_of_path_segment(span, did, item_segment);
 
         if let DefKind::TyAlias = tcx.def_kind(did)
             && tcx.type_alias_is_lazy(did)
@@ -766,30 +797,27 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
     }
 
-    // Search for a bound on a type parameter which includes the associated item
-    // given by `assoc_name`. `ty_param_def_id` is the `DefId` of the type parameter
-    // This function will fail if there are no suitable bounds or there is
-    // any ambiguity.
-    fn find_bound_for_assoc_item(
+    /// Search for a trait bound on a type parameter whose trait defines the associated type given by `assoc_name`.
+    ///
+    /// This fails if there is no such bound in the list of candidates or if there are multiple
+    /// candidates in which case it reports ambiguity.
+    ///
+    /// `ty_param_def_id` is the `LocalDefId` of the type parameter.
+    #[instrument(level = "debug", skip_all, ret)]
+    fn probe_single_ty_param_bound_for_assoc_ty(
         &self,
         ty_param_def_id: LocalDefId,
         assoc_name: Ident,
         span: Span,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed> {
+        debug!(?ty_param_def_id, ?assoc_name, ?span);
         let tcx = self.tcx();
 
-        debug!(
-            "find_bound_for_assoc_item(ty_param_def_id={:?}, assoc_name={:?}, span={:?})",
-            ty_param_def_id, assoc_name, span,
-        );
-
-        let predicates =
-            &self.get_type_parameter_bounds(span, ty_param_def_id, assoc_name).predicates;
-
-        debug!("find_bound_for_assoc_item: predicates={:#?}", predicates);
+        let predicates = &self.probe_ty_param_bounds(span, ty_param_def_id, assoc_name).predicates;
+        debug!("predicates={:#?}", predicates);
 
         let param_name = tcx.hir().ty_param_name(ty_param_def_id);
-        self.one_bound_for_assoc_item(
+        self.probe_single_bound_for_assoc_item(
             || {
                 traits::transitive_bounds_that_define_assoc_item(
                     tcx,
@@ -808,10 +836,12 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         )
     }
 
-    // Checks that `bounds` contains exactly one element and reports appropriate
-    // errors otherwise.
+    /// Search for a single trait bound whose trait defines the associated item given by `assoc_name`.
+    ///
+    /// This fails if there is no such bound in the list of candidates or if there are multiple
+    /// candidates in which case it reports ambiguity.
     #[instrument(level = "debug", skip(self, all_candidates, ty_param_name, binding), ret)]
-    fn one_bound_for_assoc_item<I>(
+    fn probe_single_bound_for_assoc_item<I>(
         &self,
         all_candidates: impl Fn() -> I,
         ty_param_name: impl Display,
@@ -827,7 +857,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         let tcx = self.tcx();
 
         let mut matching_candidates = all_candidates().filter(|r| {
-            self.trait_defines_associated_item_named(r.def_id(), assoc_kind, assoc_name)
+            self.probe_trait_that_defines_assoc_item(r.def_id(), assoc_kind, assoc_name)
         });
 
         let Some(bound) = matching_candidates.next() else {
@@ -886,7 +916,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         match binding.kind {
                             hir::TypeBindingKind::Equality { term } => {
                                 let term: ty::Term<'_> = match term {
-                                    hir::Term::Ty(ty) => self.ast_ty_to_ty(ty).into(),
+                                    hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                                     hir::Term::Const(ct) => {
                                         ty::Const::from_anon_const(tcx, ct.def_id).into()
                                     }
@@ -932,16 +962,35 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         Ok(bound)
     }
 
-    // Create a type from a path to an associated type or to an enum variant.
-    // For a path `A::B::C::D`, `qself_ty` and `qself_def` are the type and def for `A::B::C`
-    // and item_segment is the path segment for `D`. We return a type and a def for
-    // the whole path.
-    // Will fail except for `T::A` and `Self::A`; i.e., if `qself_ty`/`qself_def` are not a type
-    // parameter or `Self`.
+    /// Lower a [type-relative] path referring to an associated type or to an enum variant.
+    ///
+    /// If the path refers to an enum variant and `permit_variants` holds,
+    /// the returned type is simply the provided self type `qself_ty`.
+    ///
+    /// A path like `A::B::C::D` is understood as `<A::B::C>::D`. I.e.,
+    /// `qself_ty` / `qself` is `A::B::C` and `assoc_segment` is `D`.
+    /// We return the lowered type and the `DefId` for the whole path.
+    ///
+    /// We only support associated type paths whose self type is a type parameter or a `Self`
+    /// type alias (in a trait impl) like `T::Ty` (where `T` is a ty param) or `Self::Ty`.
+    /// We **don't** support paths whose self type is an arbitrary type like `Struct::Ty` where
+    /// struct `Struct` impls an in-scope trait that defines an associated type called `Ty`.
+    /// For the latter case, we report ambiguity.
+    /// While desirable to support, the implemention would be non-trivial. Tracked in [#22519].
+    ///
+    /// At the time of writing, *inherent associated types* are also resolved here. This however
+    /// is [problematic][iat]. A proper implementation would be as non-trivial as the one
+    /// described in the previous paragraph and their modeling of projections would likely be
+    /// very similar in nature.
+    ///
+    /// [type-relative]: hir::QPath::TypeRelative
+    /// [#22519]: https://github.com/rust-lang/rust/issues/22519
+    /// [iat]: https://github.com/rust-lang/rust/issues/8995#issuecomment-1569208403
+    //
     // NOTE: When this function starts resolving `Trait::AssocTy` successfully
     // it should also start reporting the `BARE_TRAIT_OBJECTS` lint.
-    #[instrument(level = "debug", skip(self, hir_ref_id, span, qself, assoc_segment), fields(assoc_ident=?assoc_segment.ident), ret)]
-    pub fn associated_path_to_ty(
+    #[instrument(level = "debug", skip_all, ret)]
+    pub fn lower_assoc_path(
         &self,
         hir_ref_id: hir::HirId,
         span: Span,
@@ -950,7 +999,9 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         assoc_segment: &hir::PathSegment<'tcx>,
         permit_variants: bool,
     ) -> Result<(Ty<'tcx>, DefKind, DefId), ErrorGuaranteed> {
+        debug!(%qself_ty, ?assoc_segment.ident);
         let tcx = self.tcx();
+
         let assoc_ident = assoc_segment.ident;
         let qself_res = if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &qself.kind {
             path.res
@@ -969,7 +1020,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 if let Some(variant_def) = variant_def {
                     if permit_variants {
                         tcx.check_stability(variant_def.def_id, Some(hir_ref_id), span, None);
-                        self.prohibit_generics(slice::from_ref(assoc_segment).iter(), |err| {
+                        self.prohibit_generic_args(slice::from_ref(assoc_segment).iter(), |err| {
                             err.note("enum variants can't have type parameters");
                             let type_name = tcx.item_name(adt_def.did());
                             let msg = format!(
@@ -1069,7 +1120,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 }
             }
 
-            if let Some((ty, did)) = self.lookup_inherent_assoc_ty(
+            // FIXME(inherent_associated_types, #106719): Support self types other than ADTs.
+            if let Some((ty, did)) = self.probe_inherent_assoc_ty(
                 assoc_ident,
                 assoc_segment,
                 adt_def.did(),
@@ -1092,7 +1144,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     tcx.dcx().span_bug(span, "expected cycle error");
                 };
 
-                self.one_bound_for_assoc_item(
+                self.probe_single_bound_for_assoc_item(
                     || {
                         traits::supertraits(
                             tcx,
@@ -1110,7 +1162,11 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             (
                 &ty::Param(_),
                 Res::SelfTyParam { trait_: param_did } | Res::Def(DefKind::TyParam, param_did),
-            ) => self.find_bound_for_assoc_item(param_did.expect_local(), assoc_ident, span)?,
+            ) => self.probe_single_ty_param_bound_for_assoc_ty(
+                param_did.expect_local(),
+                assoc_ident,
+                span,
+            )?,
             _ => {
                 let reported = if variant_resolution.is_some() {
                     // Variant in type position
@@ -1172,7 +1228,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         self.probe_traits_that_match_assoc_ty(qself_ty, assoc_ident);
 
                     // Don't print `ty::Error` to the user.
-                    self.report_ambiguous_associated_type(
+                    self.report_ambiguous_assoc_ty(
                         span,
                         &[qself_ty.to_string()],
                         &traits,
@@ -1185,8 +1241,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         };
 
         let trait_did = bound.def_id();
-        let assoc_ty_did = self.lookup_assoc_ty(assoc_ident, hir_ref_id, span, trait_did).unwrap();
-        let ty = self.projected_ty_from_poly_trait_ref(span, assoc_ty_did, assoc_segment, bound);
+        let assoc_ty_did = self.probe_assoc_ty(assoc_ident, hir_ref_id, span, trait_did).unwrap();
+        let ty = self.lower_assoc_ty(span, assoc_ty_did, assoc_segment, bound);
 
         if let Some(variant_def_id) = variant_resolution {
             tcx.node_span_lint(
@@ -1220,7 +1276,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         Ok((ty, DefKind::AssocTy, assoc_ty_did))
     }
 
-    fn lookup_inherent_assoc_ty(
+    fn probe_inherent_assoc_ty(
         &self,
         name: Ident,
         segment: &hir::PathSegment<'tcx>,
@@ -1234,8 +1290,9 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         // Don't attempt to look up inherent associated types when the feature is not enabled.
         // Theoretically it'd be fine to do so since we feature-gate their definition site.
         // However, due to current limitations of the implementation (caused by us performing
-        // selection in AstConv), IATs can lead to cycle errors (#108491, #110106) which mask the
-        // feature-gate error, needlessly confusing users that use IATs by accident (#113265).
+        // selection during HIR ty lowering instead of in the trait solver), IATs can lead to cycle
+        // errors (#108491) which mask the feature-gate error, needlessly confusing users
+        // who use IATs by accident (#113265).
         if !tcx.features().inherent_associated_types {
             return Ok(None);
         }
@@ -1243,7 +1300,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         let candidates: Vec<_> = tcx
             .inherent_impls(adt_did)?
             .iter()
-            .filter_map(|&impl_| Some((impl_, self.lookup_assoc_ty_unchecked(name, block, impl_)?)))
+            .filter_map(|&impl_| Some((impl_, self.probe_assoc_ty_unchecked(name, block, impl_)?)))
             .collect();
 
         if candidates.is_empty() {
@@ -1290,10 +1347,10 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         self.check_assoc_ty(assoc_item, name, def_scope, block, span);
 
         // FIXME(fmease): Currently creating throwaway `parent_args` to please
-        // `create_args_for_associated_item`. Modify the latter instead (or sth. similar) to
+        // `lower_generic_args_of_assoc_item`. Modify the latter instead (or sth. similar) to
         // not require the parent args logic.
         let parent_args = ty::GenericArgs::identity_for_item(tcx, impl_);
-        let args = self.create_args_for_associated_item(span, assoc_item, segment, parent_args);
+        let args = self.lower_generic_args_of_assoc_item(span, assoc_item, segment, parent_args);
         let args = tcx.mk_args_from_iter(
             std::iter::once(ty::GenericArg::from(self_ty))
                 .chain(args.into_iter().skip(parent_args.len())),
@@ -1356,7 +1413,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             .collect();
 
         match &applicable_candidates[..] {
-            &[] => Err(self.complain_about_inherent_assoc_type_not_found(
+            &[] => Err(self.complain_about_inherent_assoc_ty_not_found(
                 name,
                 self_ty,
                 candidates,
@@ -1366,7 +1423,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
             &[applicable_candidate] => Ok(applicable_candidate),
 
-            &[_, ..] => Err(self.complain_about_ambiguous_inherent_assoc_type(
+            &[_, ..] => Err(self.complain_about_ambiguous_inherent_assoc_ty(
                 name,
                 applicable_candidates.into_iter().map(|(_, (candidate, _))| candidate).collect(),
                 span,
@@ -1374,19 +1431,19 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
     }
 
-    fn lookup_assoc_ty(
+    fn probe_assoc_ty(
         &self,
         name: Ident,
         block: hir::HirId,
         span: Span,
         scope: DefId,
     ) -> Option<DefId> {
-        let (item, def_scope) = self.lookup_assoc_ty_unchecked(name, block, scope)?;
+        let (item, def_scope) = self.probe_assoc_ty_unchecked(name, block, scope)?;
         self.check_assoc_ty(item, name, def_scope, block, span);
         Some(item)
     }
 
-    fn lookup_assoc_ty_unchecked(
+    fn probe_assoc_ty_unchecked(
         &self,
         name: Ident,
         block: hir::HirId,
@@ -1491,7 +1548,9 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             .collect()
     }
 
-    fn qpath_to_ty(
+    /// Lower a qualified path to a type.
+    #[instrument(level = "debug", skip_all)]
+    fn lower_qpath(
         &self,
         span: Span,
         opt_self_ty: Option<Ty<'tcx>>,
@@ -1503,22 +1562,19 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         let tcx = self.tcx();
 
         let trait_def_id = tcx.parent(item_def_id);
-
-        debug!("qpath_to_ty: trait_def_id={:?}", trait_def_id);
+        debug!(?trait_def_id);
 
         let Some(self_ty) = opt_self_ty else {
             let path_str = tcx.def_path_str(trait_def_id);
 
             let def_id = self.item_def_id();
-
-            debug!("qpath_to_ty: self.item_def_id()={:?}", def_id);
+            debug!(item_def_id = ?def_id);
 
             let parent_def_id = def_id
                 .as_local()
                 .map(|def_id| tcx.local_def_id_to_hir_id(def_id))
                 .map(|hir_id| tcx.hir().get_parent_item(hir_id).to_def_id());
-
-            debug!("qpath_to_ty: parent_def_id={:?}", parent_def_id);
+            debug!(?parent_def_id);
 
             // If the trait in segment is the same as the trait defining the item,
             // use the `<Self as ..>` syntax in the error.
@@ -1545,7 +1601,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             // FIXME: also look at `tcx.generics_of(self.item_def_id()).params` any that
             // references the trait. Relevant for the first case in
             // `src/test/ui/associated-types/associated-types-in-ambiguous-context.rs`
-            let reported = self.report_ambiguous_associated_type(
+            let reported = self.report_ambiguous_assoc_ty(
                 span,
                 &type_names,
                 &[path_str],
@@ -1553,27 +1609,19 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             );
             return Ty::new_error(tcx, reported);
         };
+        debug!(?self_ty);
 
-        debug!("qpath_to_ty: self_type={:?}", self_ty);
-
-        let trait_ref = self.ast_path_to_mono_trait_ref(
-            span,
-            trait_def_id,
-            self_ty,
-            trait_segment,
-            false,
-            constness,
-        );
+        let trait_ref =
+            self.lower_mono_trait_ref(span, trait_def_id, self_ty, trait_segment, false, constness);
+        debug!(?trait_ref);
 
         let item_args =
-            self.create_args_for_associated_item(span, item_def_id, item_segment, trait_ref.args);
-
-        debug!("qpath_to_ty: trait_ref={:?}", trait_ref);
+            self.lower_generic_args_of_assoc_item(span, item_def_id, item_segment, trait_ref.args);
 
         Ty::new_projection(tcx, item_def_id, item_args)
     }
 
-    pub fn prohibit_generics<'a>(
+    pub fn prohibit_generic_args<'a>(
         &self,
         segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
         extend: impl Fn(&mut Diag<'_>),
@@ -1676,25 +1724,41 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         for segment in segments {
             // Only emit the first error to avoid overloading the user with error messages.
             if let Some(b) = segment.args().bindings.first() {
-                prohibit_assoc_ty_binding(self.tcx(), b.span, None);
+                prohibit_assoc_item_binding(self.tcx(), b.span, None);
                 return true;
             }
         }
         emitted
     }
 
+    /// Probe path segments that are semantically allowed to have generic arguments.
+    ///
+    /// ### Example
+    ///
+    /// ```ignore (illustrative)
+    ///    Option::None::<()>
+    /// //         ^^^^ permitted to have generic args
+    ///
+    /// // ==> [GenericPathSegment(Option_def_id, 1)]
+    ///
+    ///    Option::<()>::None
+    /// // ^^^^^^        ^^^^ *not* permitted to have generic args
+    /// // permitted to have generic args
+    ///
+    /// // ==> [GenericPathSegment(Option_def_id, 0)]
+    /// ```
     // FIXME(eddyb, varkor) handle type paths here too, not just value ones.
-    pub fn def_ids_for_value_path_segments(
+    pub fn probe_generic_path_segments(
         &self,
         segments: &[hir::PathSegment<'_>],
         self_ty: Option<Ty<'tcx>>,
         kind: DefKind,
         def_id: DefId,
         span: Span,
-    ) -> Vec<PathSeg> {
-        // We need to extract the type parameters supplied by the user in
+    ) -> Vec<GenericPathSegment> {
+        // We need to extract the generic arguments supplied by the user in
         // the path `path`. Due to the current setup, this is a bit of a
-        // tricky-process; the problem is that resolve only tells us the
+        // tricky process; the problem is that resolve only tells us the
         // end-point of the path resolution, and not the intermediate steps.
         // Luckily, we can (at least for now) deduce the intermediate steps
         // just from the end-point.
@@ -1705,35 +1769,35 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         //
         //        struct Foo<T>(...)
         //
-        //    In this case, the parameters are declared in the type space.
+        //    In this case, the generic arguments are declared in the type space.
         //
         // 2. Reference to a constructor of an enum variant:
         //
         //        enum E<T> { Foo(...) }
         //
-        //    In this case, the parameters are defined in the type space,
+        //    In this case, the generic arguments are defined in the type space,
         //    but may be specified either on the type or the variant.
         //
-        // 3. Reference to a fn item or a free constant:
+        // 3. Reference to a free function or constant:
         //
-        //        fn foo<T>() { }
+        //        fn foo<T>() {}
         //
         //    In this case, the path will again always have the form
-        //    `a::b::foo::<T>` where only the final segment should have
-        //    type parameters. However, in this case, those parameters are
-        //    declared on a value, and hence are in the `FnSpace`.
+        //    `a::b::foo::<T>` where only the final segment should have generic
+        //    arguments. However, in this case, those arguments are declared on
+        //    a value, and hence are in the value space.
         //
-        // 4. Reference to a method or an associated constant:
+        // 4. Reference to an associated function or constant:
         //
         //        impl<A> SomeStruct<A> {
-        //            fn foo<B>(...)
+        //            fn foo<B>(...) {}
         //        }
         //
-        //    Here we can have a path like
-        //    `a::b::SomeStruct::<A>::foo::<B>`, in which case parameters
-        //    may appear in two places. The penultimate segment,
-        //    `SomeStruct::<A>`, contains parameters in TypeSpace, and the
-        //    final segment, `foo::<B>` contains parameters in fn space.
+        //    Here we can have a path like `a::b::SomeStruct::<A>::foo::<B>`,
+        //    in which case generic arguments may appear in two places. The
+        //    penultimate segment, `SomeStruct::<A>`, contains generic arguments
+        //    in the type space, and the final segment, `foo::<B>` contains
+        //    generic arguments in value space.
         //
         // The first step then is to categorize the segments appropriately.
 
@@ -1742,7 +1806,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         assert!(!segments.is_empty());
         let last = segments.len() - 1;
 
-        let mut path_segs = vec![];
+        let mut generic_segments = vec![];
 
         match kind {
             // Case 1. Reference to a struct constructor.
@@ -1753,7 +1817,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 // Variant and struct constructors use the
                 // generics of their parent type definition.
                 let generics_def_id = generics.parent.unwrap_or(def_id);
-                path_segs.push(PathSeg(generics_def_id, last));
+                generic_segments.push(GenericPathSegment(generics_def_id, last));
             }
 
             // Case 2. Reference to a variant constructor.
@@ -1786,45 +1850,42 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     // generics of their parent type definition.
                     (generics.parent.unwrap_or(def_id), last)
                 };
-                path_segs.push(PathSeg(generics_def_id, index));
+                generic_segments.push(GenericPathSegment(generics_def_id, index));
             }
 
             // Case 3. Reference to a top-level value.
             DefKind::Fn | DefKind::Const | DefKind::ConstParam | DefKind::Static { .. } => {
-                path_segs.push(PathSeg(def_id, last));
+                generic_segments.push(GenericPathSegment(def_id, last));
             }
 
             // Case 4. Reference to a method or associated const.
             DefKind::AssocFn | DefKind::AssocConst => {
                 if segments.len() >= 2 {
                     let generics = tcx.generics_of(def_id);
-                    path_segs.push(PathSeg(generics.parent.unwrap(), last - 1));
+                    generic_segments.push(GenericPathSegment(generics.parent.unwrap(), last - 1));
                 }
-                path_segs.push(PathSeg(def_id, last));
+                generic_segments.push(GenericPathSegment(def_id, last));
             }
 
             kind => bug!("unexpected definition kind {:?} for {:?}", kind, def_id),
         }
 
-        debug!("path_segs = {:?}", path_segs);
+        debug!(?generic_segments);
 
-        path_segs
+        generic_segments
     }
 
-    /// Check a type `Path` and convert it to a `Ty`.
-    pub fn res_to_ty(
+    /// Lower a type `Path` to a type.
+    #[instrument(level = "debug", skip_all)]
+    pub fn lower_path(
         &self,
         opt_self_ty: Option<Ty<'tcx>>,
         path: &hir::Path<'tcx>,
         hir_id: hir::HirId,
         permit_variants: bool,
     ) -> Ty<'tcx> {
+        debug!(?path.res, ?opt_self_ty, ?path.segments);
         let tcx = self.tcx();
-
-        debug!(
-            "res_to_ty(res={:?}, opt_self_ty={:?}, path_segments={:?})",
-            path.res, opt_self_ty, path.segments
-        );
 
         let span = path.span;
         match path.res {
@@ -1832,10 +1893,10 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 // Check for desugared `impl Trait`.
                 assert!(tcx.is_type_alias_impl_trait(did));
                 let item_segment = path.segments.split_last().unwrap();
-                self.prohibit_generics(item_segment.1.iter(), |err| {
+                self.prohibit_generic_args(item_segment.1.iter(), |err| {
                     err.note("`impl Trait` types can't have type parameters");
                 });
-                let args = self.ast_path_args_for_ty(span, did, item_segment.0);
+                let args = self.lower_generic_args_of_path_segment(span, did, item_segment.0);
                 Ty::new_opaque(tcx, did, args)
             }
             Res::Def(
@@ -1847,44 +1908,44 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 did,
             ) => {
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_generics(path.segments.split_last().unwrap().1.iter(), |_| {});
-                self.ast_path_to_ty(span, did, path.segments.last().unwrap())
+                self.prohibit_generic_args(path.segments.split_last().unwrap().1.iter(), |_| {});
+                self.lower_path_segment(span, did, path.segments.last().unwrap())
             }
             Res::Def(kind @ DefKind::Variant, def_id) if permit_variants => {
-                // Convert "variant type" as if it were a real type.
+                // Lower "variant type" as if it were a real type.
                 // The resulting `Ty` is type of the variant's enum for now.
                 assert_eq!(opt_self_ty, None);
 
-                let path_segs =
-                    self.def_ids_for_value_path_segments(path.segments, None, kind, def_id, span);
-                let generic_segs: FxHashSet<_> =
-                    path_segs.iter().map(|PathSeg(_, index)| index).collect();
-                self.prohibit_generics(
+                let generic_segments =
+                    self.probe_generic_path_segments(path.segments, None, kind, def_id, span);
+                let indices: FxHashSet<_> =
+                    generic_segments.iter().map(|GenericPathSegment(_, index)| index).collect();
+                self.prohibit_generic_args(
                     path.segments.iter().enumerate().filter_map(|(index, seg)| {
-                        if !generic_segs.contains(&index) { Some(seg) } else { None }
+                        if !indices.contains(&index) { Some(seg) } else { None }
                     }),
                     |err| {
                         err.note("enum variants can't have type parameters");
                     },
                 );
 
-                let PathSeg(def_id, index) = path_segs.last().unwrap();
-                self.ast_path_to_ty(span, *def_id, &path.segments[*index])
+                let GenericPathSegment(def_id, index) = generic_segments.last().unwrap();
+                self.lower_path_segment(span, *def_id, &path.segments[*index])
             }
             Res::Def(DefKind::TyParam, def_id) => {
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_generics(path.segments.iter(), |err| {
+                self.prohibit_generic_args(path.segments.iter(), |err| {
                     if let Some(span) = tcx.def_ident_span(def_id) {
                         let name = tcx.item_name(def_id);
                         err.span_note(span, format!("type parameter `{name}` defined here"));
                     }
                 });
-                self.hir_id_to_bound_ty(hir_id)
+                self.lower_ty_param(hir_id)
             }
             Res::SelfTyParam { .. } => {
                 // `Self` in trait or type alias.
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_generics(path.segments.iter(), |err| {
+                self.prohibit_generic_args(path.segments.iter(), |err| {
                     if let [hir::PathSegment { args: Some(args), ident, .. }] = &path.segments {
                         err.span_suggestion_verbose(
                             ident.span.shrink_to_hi().to(args.span_ext),
@@ -1902,7 +1963,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 // Try to evaluate any array length constants.
                 let ty = tcx.at(span).type_of(def_id).instantiate_identity();
                 let span_of_impl = tcx.span_of_impl(def_id);
-                self.prohibit_generics(path.segments.iter(), |err| {
+                self.prohibit_generic_args(path.segments.iter(), |err| {
                     let def_id = match *ty.kind() {
                         ty::Adt(self_def, _) => self_def.did(),
                         _ => return,
@@ -2000,14 +2061,14 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             }
             Res::Def(DefKind::AssocTy, def_id) => {
                 debug_assert!(path.segments.len() >= 2);
-                self.prohibit_generics(path.segments[..path.segments.len() - 2].iter(), |_| {});
+                self.prohibit_generic_args(path.segments[..path.segments.len() - 2].iter(), |_| {});
                 // HACK: until we support `<Type as ~const Trait>`, assume all of them are.
                 let constness = if tcx.has_attr(tcx.parent(def_id), sym::const_trait) {
                     ty::BoundConstness::ConstIfConst
                 } else {
                     ty::BoundConstness::NotConst
                 };
-                self.qpath_to_ty(
+                self.lower_qpath(
                     span,
                     opt_self_ty,
                     def_id,
@@ -2018,7 +2079,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             }
             Res::PrimTy(prim_ty) => {
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_generics(path.segments.iter(), |err| {
+                self.prohibit_generic_args(path.segments.iter(), |err| {
                     let name = prim_ty.name_str();
                     for segment in path.segments {
                         if let Some(args) = segment.args {
@@ -2052,9 +2113,11 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
     }
 
-    // Converts a hir id corresponding to a type parameter to
-    // a early-bound `ty::Param` or late-bound `ty::Bound`.
-    pub(crate) fn hir_id_to_bound_ty(&self, hir_id: hir::HirId) -> Ty<'tcx> {
+    /// Lower a type parameter from the HIR to our internal notion of a type.
+    ///
+    /// Early-bound type parameters get lowered to [`ty::Param`]
+    /// and late-bound ones to [`ty::Bound`].
+    pub(crate) fn lower_ty_param(&self, hir_id: hir::HirId) -> Ty<'tcx> {
         let tcx = self.tcx();
         match tcx.named_bound_var(hir_id) {
             Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
@@ -2077,13 +2140,11 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
     }
 
-    // Converts a hir id corresponding to a const parameter to
-    // a early-bound `ConstKind::Param` or late-bound `ConstKind::Bound`.
-    pub(crate) fn hir_id_to_bound_const(
-        &self,
-        hir_id: hir::HirId,
-        param_ty: Ty<'tcx>,
-    ) -> Const<'tcx> {
+    /// Lower a const parameter from the HIR to our internal notion of a constant.
+    ///
+    /// Early-bound const parameters get lowered to [`ty::ConstKind::Param`]
+    /// and late-bound ones to [`ty::ConstKind::Bound`].
+    pub(crate) fn lower_const_param(&self, hir_id: hir::HirId, param_ty: Ty<'tcx>) -> Const<'tcx> {
         let tcx = self.tcx();
         match tcx.named_bound_var(hir_id) {
             Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
@@ -2103,16 +2164,14 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
     }
 
-    /// Parses the programmer's textual representation of a type into our
-    /// internal notion of a type.
-    pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
-        self.ast_ty_to_ty_inner(ast_ty, false, false)
+    /// Lower a type from the HIR to our internal notion of a type.
+    pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+        self.lower_ty_common(hir_ty, false, false)
     }
 
-    /// Parses the programmer's textual representation of a type into our
-    /// internal notion of a type. This is meant to be used within a path.
-    pub fn ast_ty_to_ty_in_path(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
-        self.ast_ty_to_ty_inner(ast_ty, false, true)
+    /// Lower a type inside of a path from the HIR to our internal notion of a type.
+    pub fn lower_ty_in_path(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+        self.lower_ty_common(hir_ty, false, true)
     }
 
     fn check_delegation_constraints(&self, sig_id: DefId, span: Span, emit: bool) -> bool {
@@ -2179,7 +2238,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         error_occured
     }
 
-    fn ty_from_delegation(
+    fn lower_delegation_ty(
         &self,
         sig_id: DefId,
         idx: hir::InferDelegationKind,
@@ -2213,8 +2272,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             sig.instantiate_identity()
         };
 
-        // Bound vars are also inherited from `sig_id`. They will be
-        // rebinded later in `ty_of_fn`.
+        // Bound vars are also inherited from `sig_id`.
+        // They will be rebound later in `lower_fn_ty`.
         let sig = sig.skip_binder();
 
         match idx {
@@ -2223,66 +2282,74 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
     }
 
-    /// Turns a `hir::Ty` into a `Ty`. For diagnostics' purposes we keep track of whether trait
-    /// objects are borrowed like `&dyn Trait` to avoid emitting redundant errors.
+    /// Lower a type from the HIR to our internal notion of a type given some extra data for diagnostics.
+    ///
+    /// Extra diagnostic data:
+    ///
+    /// 1. `borrowed`: Whether trait object types are borrowed like in `&dyn Trait`.
+    ///    Used to avoid emitting redundant errors.
+    /// 2. `in_path`: Whether the type appears inside of a path.
+    ///    Used to provide correct diagnostics for bare trait object types.
     #[instrument(level = "debug", skip(self), ret)]
-    fn ast_ty_to_ty_inner(
-        &self,
-        ast_ty: &hir::Ty<'tcx>,
-        borrowed: bool,
-        in_path: bool,
-    ) -> Ty<'tcx> {
+    fn lower_ty_common(&self, hir_ty: &hir::Ty<'tcx>, borrowed: bool, in_path: bool) -> Ty<'tcx> {
         let tcx = self.tcx();
 
-        let result_ty = match &ast_ty.kind {
+        let result_ty = match &hir_ty.kind {
             hir::TyKind::InferDelegation(sig_id, idx) => {
-                self.ty_from_delegation(*sig_id, *idx, ast_ty.span)
+                self.lower_delegation_ty(*sig_id, *idx, hir_ty.span)
             }
-            hir::TyKind::Slice(ty) => Ty::new_slice(tcx, self.ast_ty_to_ty(ty)),
+            hir::TyKind::Slice(ty) => Ty::new_slice(tcx, self.lower_ty(ty)),
             hir::TyKind::Ptr(mt) => {
-                Ty::new_ptr(tcx, ty::TypeAndMut { ty: self.ast_ty_to_ty(mt.ty), mutbl: mt.mutbl })
+                Ty::new_ptr(tcx, ty::TypeAndMut { ty: self.lower_ty(mt.ty), mutbl: mt.mutbl })
             }
             hir::TyKind::Ref(region, mt) => {
-                let r = self.ast_region_to_region(region, None);
+                let r = self.lower_lifetime(region, None);
                 debug!(?r);
-                let t = self.ast_ty_to_ty_inner(mt.ty, true, false);
+                let t = self.lower_ty_common(mt.ty, true, false);
                 Ty::new_ref(tcx, r, ty::TypeAndMut { ty: t, mutbl: mt.mutbl })
             }
             hir::TyKind::Never => tcx.types.never,
             hir::TyKind::Tup(fields) => {
-                Ty::new_tup_from_iter(tcx, fields.iter().map(|t| self.ast_ty_to_ty(t)))
+                Ty::new_tup_from_iter(tcx, fields.iter().map(|t| self.lower_ty(t)))
             }
             hir::TyKind::AnonAdt(item_id) => {
+                let _guard = debug_span!("AnonAdt");
+
                 let did = item_id.owner_id.def_id;
                 let adt_def = tcx.adt_def(did);
-                let generics = tcx.generics_of(did);
 
-                debug!("ast_ty_to_ty_inner(AnonAdt): generics={:?}", generics);
                 let args = ty::GenericArgs::for_item(tcx, did.to_def_id(), |param, _| {
                     tcx.mk_param_from_def(param)
                 });
-                debug!("ast_ty_to_ty_inner(AnonAdt): args={:?}", args);
+                debug!(?args);
 
                 Ty::new_adt(tcx, adt_def, tcx.mk_args(args))
             }
             hir::TyKind::BareFn(bf) => {
-                require_c_abi_if_c_variadic(tcx, bf.decl, bf.abi, ast_ty.span);
+                require_c_abi_if_c_variadic(tcx, bf.decl, bf.abi, hir_ty.span);
 
                 Ty::new_fn_ptr(
                     tcx,
-                    self.ty_of_fn(ast_ty.hir_id, bf.unsafety, bf.abi, bf.decl, None, Some(ast_ty)),
+                    self.lower_fn_ty(
+                        hir_ty.hir_id,
+                        bf.unsafety,
+                        bf.abi,
+                        bf.decl,
+                        None,
+                        Some(hir_ty),
+                    ),
                 )
             }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
-                self.maybe_lint_bare_trait(ast_ty, in_path);
+                self.maybe_lint_bare_trait(hir_ty, in_path);
                 let repr = match repr {
                     TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
                     TraitObjectSyntax::DynStar => ty::DynStar,
                 };
 
-                self.conv_object_ty_poly_trait_ref(
-                    ast_ty.span,
-                    ast_ty.hir_id,
+                self.lower_trait_object_ty(
+                    hir_ty.span,
+                    hir_ty.hir_id,
                     bounds,
                     lifetime,
                     borrowed,
@@ -2291,8 +2358,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             }
             hir::TyKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
                 debug!(?maybe_qself, ?path);
-                let opt_self_ty = maybe_qself.as_ref().map(|qself| self.ast_ty_to_ty(qself));
-                self.res_to_ty(opt_self_ty, path, ast_ty.hir_id, false)
+                let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
+                self.lower_path(opt_self_ty, path, hir_ty.hir_id, false)
             }
             &hir::TyKind::OpaqueDef(item_id, lifetimes, in_trait) => {
                 let opaque_ty = tcx.hir().item(item_id);
@@ -2308,21 +2375,21 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         } else {
                             local_def_id.to_def_id()
                         };
-                        self.impl_trait_ty_to_ty(def_id, lifetimes, in_trait)
+                        self.lower_opaque_ty(def_id, lifetimes, in_trait)
                     }
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 }
             }
             hir::TyKind::Path(hir::QPath::TypeRelative(qself, segment)) => {
                 debug!(?qself, ?segment);
-                let ty = self.ast_ty_to_ty_inner(qself, false, true);
-                self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, qself, segment, false)
+                let ty = self.lower_ty_common(qself, false, true);
+                self.lower_assoc_path(hir_ty.hir_id, hir_ty.span, ty, qself, segment, false)
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
             }
             &hir::TyKind::Path(hir::QPath::LangItem(lang_item, span)) => {
                 let def_id = tcx.require_lang_item(lang_item, Some(span));
-                let (args, _) = self.create_args_for_ast_path(
+                let (args, _) = self.lower_generic_args_of_path(
                     span,
                     def_id,
                     &[],
@@ -2340,7 +2407,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     }
                 };
 
-                Ty::new_array_with_const_len(tcx, self.ast_ty_to_ty(ty), length)
+                Ty::new_array_with_const_len(tcx, self.lower_ty(ty), length)
             }
             hir::TyKind::Typeof(e) => tcx.type_of(e.def_id).instantiate_identity(),
             hir::TyKind::Infer => {
@@ -2348,28 +2415,29 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 // values in an ExprKind::Closure, or as
                 // the type of local variables. Both of these cases are
                 // handled specially and will not descend into this routine.
-                self.ty_infer(None, ast_ty.span)
+                self.ty_infer(None, hir_ty.span)
             }
             hir::TyKind::Err(guar) => Ty::new_error(tcx, *guar),
         };
 
-        self.record_ty(ast_ty.hir_id, result_ty, ast_ty.span);
+        self.record_ty(hir_ty.hir_id, result_ty, hir_ty.span);
         result_ty
     }
 
-    #[instrument(level = "debug", skip(self), ret)]
-    fn impl_trait_ty_to_ty(
+    /// Lower an opaque type (i.e., an existential impl-Trait type) from the HIR.
+    #[instrument(level = "debug", skip_all, ret)]
+    fn lower_opaque_ty(
         &self,
         def_id: DefId,
         lifetimes: &[hir::GenericArg<'_>],
         in_trait: bool,
     ) -> Ty<'tcx> {
-        debug!("impl_trait_ty_to_ty(def_id={:?}, lifetimes={:?})", def_id, lifetimes);
+        debug!(?def_id, ?lifetimes);
         let tcx = self.tcx();
 
         let generics = tcx.generics_of(def_id);
+        debug!(?generics);
 
-        debug!("impl_trait_ty_to_ty: generics={:?}", generics);
         let args = ty::GenericArgs::for_item(tcx, def_id, |param, _| {
             // We use `generics.count() - lifetimes.len()` here instead of `generics.parent_count`
             // since return-position impl trait in trait squashes all of the generics from its source fn
@@ -2390,12 +2458,12 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         &lifetimes[i]
                     )
                 };
-                self.ast_region_to_region(lifetime, None).into()
+                self.lower_lifetime(lifetime, None).into()
             } else {
                 tcx.mk_param_from_def(param)
             }
         });
-        debug!("impl_trait_ty_to_ty: args={:?}", args);
+        debug!(?args);
 
         if in_trait {
             Ty::new_projection(tcx, def_id, args)
@@ -2404,18 +2472,19 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
     }
 
-    pub fn ty_of_arg(&self, ty: &hir::Ty<'tcx>, expected_ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
+    pub fn lower_arg_ty(&self, ty: &hir::Ty<'tcx>, expected_ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
         match ty.kind {
             hir::TyKind::Infer if let Some(expected_ty) = expected_ty => {
                 self.record_ty(ty.hir_id, expected_ty, ty.span);
                 expected_ty
             }
-            _ => self.ast_ty_to_ty(ty),
+            _ => self.lower_ty(ty),
         }
     }
 
+    /// Lower a function type from the HIR to our internal notion of a function signature.
     #[instrument(level = "debug", skip(self, hir_id, unsafety, abi, decl, generics, hir_ty), ret)]
-    pub fn ty_of_fn(
+    pub fn lower_fn_ty(
         &self,
         hir_id: hir::HirId,
         unsafety: hir::Unsafety,
@@ -2448,7 +2517,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             .enumerate()
             .map(|(i, a)| {
                 if let hir::TyKind::Infer = a.kind
-                    && !self.allow_ty_infer()
+                    && !self.allow_infer()
                 {
                     if let Some(suggested_ty) =
                         self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
@@ -2464,14 +2533,14 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
                 // Only visit the type looking for `_` if we didn't fix the type above
                 visitor.visit_ty(a);
-                self.ty_of_arg(a, None)
+                self.lower_arg_ty(a, None)
             })
             .collect();
 
         let output_ty = match decl.output {
             hir::FnRetTy::Return(output) => {
                 if let hir::TyKind::Infer = output.kind
-                    && !self.allow_ty_infer()
+                    && !self.allow_infer()
                     && let Some(suggested_ty) =
                         self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, None)
                 {
@@ -2479,7 +2548,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     Ty::new_error_with_message(self.tcx(), output.span, suggested_ty.to_string())
                 } else {
                     visitor.visit_ty(output);
-                    self.ast_ty_to_ty(output)
+                    self.lower_ty(output)
                 }
             }
             hir::FnRetTy::DefaultReturn(..) => Ty::new_unit(tcx),
@@ -2490,10 +2559,10 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi);
         let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
-        if !self.allow_ty_infer() && !(visitor.0.is_empty() && infer_replacements.is_empty()) {
+        if !self.allow_infer() && !(visitor.0.is_empty() && infer_replacements.is_empty()) {
             // We always collect the spans for placeholder types when evaluating `fn`s, but we
             // only want to emit an error complaining about them if infer types (`_`) are not
-            // allowed. `allow_ty_infer` gates this behavior. We check for the presence of
+            // allowed. `allow_infer` gates this behavior. We check for the presence of
             // `ident_span` to not emit an error twice when we have `fn foo(_: fn() -> _)`.
 
             let mut diag = crate::collect::placeholder_type_error_diag(
@@ -2562,8 +2631,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         };
         let i = tcx.parent_hir_node(fn_hir_id).expect_item().expect_impl();
 
-        let trait_ref =
-            self.instantiate_mono_trait_ref(i.of_trait.as_ref()?, self.ast_ty_to_ty(i.self_ty));
+        let trait_ref = self.lower_impl_trait_ref(i.of_trait.as_ref()?, self.lower_ty(i.self_ty));
 
         let assoc = tcx.associated_items(trait_ref.def_id).find_by_name_and_kind(
             tcx,
@@ -2620,7 +2688,9 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     }
 
     /// Given the bounds on an object, determines what single region bound (if any) we can
-    /// use to summarize this type. The basic idea is that we will use the bound the user
+    /// use to summarize this type.
+    ///
+    /// The basic idea is that we will use the bound the user
     /// provided, if they provided one, and otherwise search the supertypes of trait bounds
     /// for region bounds. It may be that we can derive no bound at all, in which case
     /// we return `None`.

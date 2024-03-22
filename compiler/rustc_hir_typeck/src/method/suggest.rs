@@ -3264,8 +3264,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Colon,
                                 Nothing,
                             }
-                            let ast_generics = hir.get_generics(id.owner.def_id).unwrap();
-                            let trait_def_ids: DefIdSet = ast_generics
+                            let hir_generics = hir.get_generics(id.owner.def_id).unwrap();
+                            let trait_def_ids: DefIdSet = hir_generics
                                 .bounds_for_param(def_id)
                                 .flat_map(|bp| bp.bounds.iter())
                                 .filter_map(|bound| bound.trait_ref()?.trait_def_id())
@@ -3277,7 +3277,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 "restrict type parameter `{}` with",
                                 param.name.ident(),
                             ));
-                            let bounds_span = ast_generics.bounds_span_for_suggestions(def_id);
+                            let bounds_span = hir_generics.bounds_span_for_suggestions(def_id);
                             if rcvr_ty.is_ref() && param.is_impl_trait() && bounds_span.is_some() {
                                 err.multipart_suggestions(
                                     msg,

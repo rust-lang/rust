@@ -40,9 +40,9 @@ use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
 
-use crate::astconv::AstConv;
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
+use crate::hir_ty_lowering::HirTyLowerer;
 pub use type_of::test_opaque_hidden_types;
 
 mod generics_of;
@@ -88,13 +88,12 @@ pub fn provide(providers: &mut Providers) {
 
 ///////////////////////////////////////////////////////////////////////////
 
-/// Context specific to some particular item. This is what implements
-/// [`AstConv`].
+/// Context specific to some particular item. This is what implements [`HirTyLowerer`].
 ///
 /// # `ItemCtxt` vs `FnCtxt`
 ///
 /// `ItemCtxt` is primarily used to type-check item signatures and lower them
-/// from HIR to their [`ty::Ty`] representation, which is exposed using [`AstConv`].
+/// from HIR to their [`ty::Ty`] representation, which is exposed using [`HirTyLowerer`].
 /// It's also used for the bodies of items like structs where the body (the fields)
 /// are just signatures.
 ///
@@ -111,11 +110,11 @@ pub fn provide(providers: &mut Providers) {
 /// `ItemCtxt` has information about the predicates that are defined
 /// on the trait. Unfortunately, this predicate information is
 /// available in various different forms at various points in the
-/// process. So we can't just store a pointer to e.g., the AST or the
+/// process. So we can't just store a pointer to e.g., the HIR or the
 /// parsed ty form, we have to be more flexible. To this end, the
 /// `ItemCtxt` is parameterized by a `DefId` that it uses to satisfy
-/// `get_type_parameter_bounds` requests, drawing the information from
-/// the AST (`hir::Generics`), recursively.
+/// `probe_ty_param_bounds` requests, drawing the information from
+/// the HIR (`hir::Generics`), recursively.
 pub struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
@@ -277,7 +276,7 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        convert_item(self.tcx, item.item_id());
+        lower_item(self.tcx, item.item_id());
         reject_placeholder_type_signatures_in_item(self.tcx, item);
         intravisit::walk_item(self, item);
     }
@@ -315,12 +314,12 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        convert_trait_item(self.tcx, trait_item.trait_item_id());
+        lower_trait_item(self.tcx, trait_item.trait_item_id());
         intravisit::walk_trait_item(self, trait_item);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        convert_impl_item(self.tcx, impl_item.impl_item_id());
+        lower_impl_item(self.tcx, impl_item.impl_item_id());
         intravisit::walk_impl_item(self, impl_item);
     }
 }
@@ -344,8 +343,8 @@ impl<'tcx> ItemCtxt<'tcx> {
         ItemCtxt { tcx, item_def_id, tainted_by_errors: Cell::new(None) }
     }
 
-    pub fn to_ty(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
-        self.astconv().ast_ty_to_ty(ast_ty)
+    pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+        self.lowerer().lower_ty(hir_ty)
     }
 
     pub fn hir_id(&self) -> hir::HirId {
@@ -364,7 +363,7 @@ impl<'tcx> ItemCtxt<'tcx> {
     }
 }
 
-impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
+impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -373,21 +372,12 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         self.item_def_id.to_def_id()
     }
 
-    fn get_type_parameter_bounds(
-        &self,
-        span: Span,
-        def_id: LocalDefId,
-        assoc_name: Ident,
-    ) -> ty::GenericPredicates<'tcx> {
-        self.tcx.at(span).type_param_predicates((self.item_def_id, def_id, assoc_name))
+    fn allow_infer(&self) -> bool {
+        false
     }
 
     fn re_infer(&self, _: Option<&ty::GenericParamDef>, _: Span) -> Option<ty::Region<'tcx>> {
         None
-    }
-
-    fn allow_ty_infer(&self) -> bool {
-        false
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
@@ -404,7 +394,16 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         ty::Const::new_error_with_message(self.tcx(), ty, span, "bad placeholder constant")
     }
 
-    fn projected_ty_from_poly_trait_ref(
+    fn probe_ty_param_bounds(
+        &self,
+        span: Span,
+        def_id: LocalDefId,
+        assoc_name: Ident,
+    ) -> ty::GenericPredicates<'tcx> {
+        self.tcx.at(span).type_param_predicates((self.item_def_id, def_id, assoc_name))
+    }
+
+    fn lower_assoc_ty(
         &self,
         span: Span,
         item_def_id: DefId,
@@ -412,7 +411,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
-            let item_args = self.astconv().create_args_for_associated_item(
+            let item_args = self.lowerer().lower_generic_args_of_assoc_item(
                 span,
                 item_def_id,
                 item_segment,
@@ -497,16 +496,16 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         ty.ty_adt_def()
     }
 
-    fn set_tainted_by_errors(&self, err: ErrorGuaranteed) {
-        self.tainted_by_errors.set(Some(err));
-    }
-
     fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
         // There's no place to record types from signatures?
     }
 
     fn infcx(&self) -> Option<&InferCtxt<'tcx>> {
         None
+    }
+
+    fn set_tainted_by_errors(&self, err: ErrorGuaranteed) {
+        self.tainted_by_errors.set(Some(err));
     }
 }
 
@@ -547,9 +546,10 @@ fn get_new_lifetime_name<'tcx>(
     (1..).flat_map(a_to_z_repeat_n).find(|lt| !existing_lifetimes.contains(lt.as_str())).unwrap()
 }
 
-fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
+#[instrument(level = "debug", skip_all)]
+fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
     let it = tcx.hir().item(item_id);
-    debug!("convert: item {} with id {}", it.ident, it.hir_id());
+    debug!(item = %it.ident, id = %it.hir_id());
     let def_id = item_id.owner_id.def_id;
 
     match &it.kind {
@@ -591,7 +591,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().predicates_of(def_id);
-            convert_enum_variant_types(tcx, def_id.to_def_id());
+            lower_enum_variant_types(tcx, def_id.to_def_id());
         }
         hir::ItemKind::Impl { .. } => {
             tcx.ensure().generics_of(def_id);
@@ -625,7 +625,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             }
 
             if let Some(ctor_def_id) = struct_def.ctor_def_id() {
-                convert_variant_ctor(tcx, ctor_def_id);
+                lower_variant_ctor(tcx, ctor_def_id);
             }
         }
 
@@ -668,7 +668,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
     }
 }
 
-fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
+fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
     let trait_item = tcx.hir().trait_item(trait_item_id);
     let def_id = trait_item_id.owner_id;
     tcx.ensure().generics_of(def_id);
@@ -717,7 +717,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
     tcx.ensure().predicates_of(def_id);
 }
 
-fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
+fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
     let def_id = impl_item_id.owner_id;
     tcx.ensure().generics_of(def_id);
     tcx.ensure().type_of(def_id);
@@ -746,13 +746,13 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
     }
 }
 
-fn convert_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     tcx.ensure().generics_of(def_id);
     tcx.ensure().type_of(def_id);
     tcx.ensure().predicates_of(def_id);
 }
 
-fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
+fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr().discr_type();
     let initial = repr_type.initial_discriminant(tcx);
@@ -785,10 +785,9 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
             tcx.ensure().predicates_of(f.did);
         }
 
-        // Convert the ctor, if any. This also registers the variant as
-        // an item.
+        // Lower the ctor, if any. This also registers the variant as an item.
         if let Some(ctor_def_id) = variant.ctor_def_id() {
-            convert_variant_ctor(tcx, ctor_def_id.expect_local());
+            lower_variant_ctor(tcx, ctor_def_id.expect_local());
         }
     }
 }
@@ -975,7 +974,7 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
     }
 }
 
-fn convert_variant(
+fn lower_variant(
     tcx: TyCtxt<'_>,
     variant_did: Option<LocalDefId>,
     ident: Ident,
@@ -1060,7 +1059,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
                     };
                     distance_from_explicit += 1;
 
-                    convert_variant(
+                    lower_variant(
                         tcx,
                         Some(v.def_id),
                         v.ident,
@@ -1080,7 +1079,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
                 ItemKind::Struct(..) => AdtKind::Struct,
                 _ => AdtKind::Union,
             };
-            let variants = std::iter::once(convert_variant(
+            let variants = std::iter::once(lower_variant(
                 tcx,
                 None,
                 item.ident,
@@ -1284,7 +1283,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
             if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) = tcx.parent_hir_node(hir_id)
                 && i.of_trait.is_some()
             {
-                icx.astconv().ty_of_fn(
+                icx.lowerer().lower_fn_ty(
                     hir_id,
                     sig.header.unsafety,
                     sig.header.abi,
@@ -1301,9 +1300,14 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
             kind: TraitItemKind::Fn(FnSig { header, decl, span: _ }, _),
             generics,
             ..
-        }) => {
-            icx.astconv().ty_of_fn(hir_id, header.unsafety, header.abi, decl, Some(generics), None)
-        }
+        }) => icx.lowerer().lower_fn_ty(
+            hir_id,
+            header.unsafety,
+            header.abi,
+            decl,
+            Some(generics),
+            None,
+        ),
 
         ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
@@ -1411,7 +1415,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                 ))
             }
         }
-        None => icx.astconv().ty_of_fn(
+        None => icx.lowerer().lower_fn_ty(
             hir_id,
             sig.header.unsafety,
             sig.header.abi,
@@ -1529,19 +1533,19 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
     impl_
         .of_trait
         .as_ref()
-        .map(|ast_trait_ref| {
-            let selfty = tcx.type_of(def_id).instantiate_identity();
+        .map(|hir_trait_ref| {
+            let self_ty = tcx.type_of(def_id).instantiate_identity();
 
             let trait_ref = if let Some(ErrorGuaranteed { .. }) = check_impl_constness(
                 tcx,
                 tcx.is_const_trait_impl_raw(def_id.to_def_id()),
-                ast_trait_ref,
+                hir_trait_ref,
             ) {
                 // we have a const impl, but for a trait without `#[const_trait]`, so
                 // without the host param. If we continue with the HIR trait ref, we get
                 // ICEs for generic arg count mismatch. We do a little HIR editing to
-                // make astconv happy.
-                let mut path_segments = ast_trait_ref.path.segments.to_vec();
+                // make HIR ty lowering happy.
+                let mut path_segments = hir_trait_ref.path.segments.to_vec();
                 let last_segment = path_segments.len() - 1;
                 let mut args = *path_segments[last_segment].args();
                 let last_arg = args.args.len() - 1;
@@ -1549,19 +1553,19 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
                 args.args = &args.args[..args.args.len() - 1];
                 path_segments[last_segment].args = Some(tcx.hir_arena.alloc(args));
                 let path = hir::Path {
-                    span: ast_trait_ref.path.span,
-                    res: ast_trait_ref.path.res,
+                    span: hir_trait_ref.path.span,
+                    res: hir_trait_ref.path.res,
                     segments: tcx.hir_arena.alloc_slice(&path_segments),
                 };
-                let trait_ref = tcx.hir_arena.alloc(hir::TraitRef { path: tcx.hir_arena.alloc(path), hir_ref_id: ast_trait_ref.hir_ref_id });
-                icx.astconv().instantiate_mono_trait_ref(trait_ref, selfty)
+                let trait_ref = tcx.hir_arena.alloc(hir::TraitRef { path: tcx.hir_arena.alloc(path), hir_ref_id: hir_trait_ref.hir_ref_id });
+                icx.lowerer().lower_impl_trait_ref(trait_ref, self_ty)
             } else {
-                icx.astconv().instantiate_mono_trait_ref(ast_trait_ref, selfty)
+                icx.lowerer().lower_impl_trait_ref(hir_trait_ref, self_ty)
             };
             ty::ImplTraitHeader {
                 trait_ref: ty::EarlyBinder::bind(trait_ref),
                 unsafety: impl_.unsafety,
-                polarity: polarity_of_impl(tcx, def_id,  impl_, item.span)
+                polarity: polarity_of_impl(tcx, def_id, impl_, item.span)
             }
         })
 }
@@ -1569,20 +1573,20 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
 fn check_impl_constness(
     tcx: TyCtxt<'_>,
     is_const: bool,
-    ast_trait_ref: &hir::TraitRef<'_>,
+    hir_trait_ref: &hir::TraitRef<'_>,
 ) -> Option<ErrorGuaranteed> {
     if !is_const {
         return None;
     }
 
-    let trait_def_id = ast_trait_ref.trait_def_id()?;
+    let trait_def_id = hir_trait_ref.trait_def_id()?;
     if tcx.has_attr(trait_def_id, sym::const_trait) {
         return None;
     }
 
     let trait_name = tcx.item_name(trait_def_id).to_string();
     Some(tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
-        trait_ref_span: ast_trait_ref.path.span,
+        trait_ref_span: hir_trait_ref.path.span,
         trait_name,
         local_trait_span:
             trait_def_id.as_local().map(|_| tcx.def_span(trait_def_id).shrink_to_lo()),
@@ -1678,19 +1682,19 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     };
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let fty =
-        ItemCtxt::new(tcx, def_id).astconv().ty_of_fn(hir_id, unsafety, abi, decl, None, None);
+        ItemCtxt::new(tcx, def_id).lowerer().lower_fn_ty(hir_id, unsafety, abi, decl, None, None);
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw
     if abi != abi::Abi::RustIntrinsic && !tcx.features().simd_ffi {
-        let check = |ast_ty: &hir::Ty<'_>, ty: Ty<'_>| {
+        let check = |hir_ty: &hir::Ty<'_>, ty: Ty<'_>| {
             if ty.is_simd() {
                 let snip = tcx
                     .sess
                     .source_map()
-                    .span_to_snippet(ast_ty.span)
+                    .span_to_snippet(hir_ty.span)
                     .map_or_else(|_| String::new(), |s| format!(" `{s}`"));
-                tcx.dcx().emit_err(errors::SIMDFFIHighlyExperimental { span: ast_ty.span, snip });
+                tcx.dcx().emit_err(errors::SIMDFFIHighlyExperimental { span: hir_ty.span, snip });
             }
         };
         for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {

@@ -1427,8 +1427,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Error if `?Trait` bounds in where clauses don't refer directly to type parameters.
         // Note: we used to clone these bounds directly onto the type parameter (and avoid lowering
         // these into hir when we lower thee where clauses), but this makes it quite difficult to
-        // keep track of the Span info. Now, `add_implicitly_sized` in `AstConv` checks both param bounds and
-        // where clauses for `?Sized`.
+        // keep track of the Span info. Now, `<dyn HirTyLowerer>::add_implicit_sized_bound`
+        // checks both param bounds and where clauses for `?Sized`.
         for pred in &generics.where_clause.predicates {
             let WherePredicate::BoundPredicate(bound_pred) = pred else {
                 continue;

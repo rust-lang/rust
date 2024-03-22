@@ -1,6 +1,6 @@
-use crate::astconv::{GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds};
 use crate::bounds::Bounds;
 use crate::errors::TraitObjectDeclaredWithNoTraits;
+use crate::hir_ty_lowering::{GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
@@ -11,14 +11,16 @@ use rustc_middle::ty::{self, Ty};
 use rustc_middle::ty::{DynKind, ToPredicate};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
-use rustc_trait_selection::traits::{self, astconv_object_safety_violations};
+use rustc_trait_selection::traits::{self, hir_ty_lowering_object_safety_violations};
 
 use smallvec::{smallvec, SmallVec};
 
-use super::AstConv;
+use super::HirTyLowerer;
 
-impl<'tcx> dyn AstConv<'tcx> + '_ {
-    pub(super) fn conv_object_ty_poly_trait_ref(
+impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
+    /// Lower a trait object type from the HIR to our internal notion of a type.
+    #[instrument(level = "debug", skip_all, ret)]
+    pub(super) fn lower_trait_object_ty(
         &self,
         span: Span,
         hir_id: hir::HirId,
@@ -37,7 +39,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 correct:
                     Err(GenericArgCountMismatch { invalid_args: cur_potential_assoc_types, .. }),
                 ..
-            } = self.instantiate_poly_trait_ref(
+            } = self.lower_poly_trait_ref(
                 &trait_bound.trait_ref,
                 trait_bound.span,
                 ty::BoundConstness::NotConst,
@@ -133,7 +135,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         // to avoid ICEs.
         for item in &regular_traits {
             let object_safety_violations =
-                astconv_object_safety_violations(tcx, item.trait_ref().def_id());
+                hir_ty_lowering_object_safety_violations(tcx, item.trait_ref().def_id());
             if !object_safety_violations.is_empty() {
                 let reported = report_object_safety_error(
                     tcx,
@@ -156,7 +158,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         for (base_trait_ref, span) in regular_traits_refs_spans {
             let base_pred: ty::Predicate<'tcx> = base_trait_ref.to_predicate(tcx);
             for pred in traits::elaborate(tcx, [base_pred]).filter_only_self() {
-                debug!("conv_object_ty_poly_trait_ref: observing object predicate `{:?}`", pred);
+                debug!("observing object predicate `{pred:?}`");
 
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
@@ -231,7 +233,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             def_ids.retain(|def_id| !tcx.generics_require_sized_self(def_id));
         }
 
-        self.complain_about_missing_associated_types(
+        self.complain_about_missing_assoc_tys(
             associated_types,
             potential_assoc_types,
             hir_trait_bounds,
@@ -243,8 +245,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         // the bounds
         let mut duplicates = FxHashSet::default();
         auto_traits.retain(|i| duplicates.insert(i.trait_ref().def_id()));
-        debug!("regular_traits: {:?}", regular_traits);
-        debug!("auto_traits: {:?}", auto_traits);
+        debug!(?regular_traits);
+        debug!(?auto_traits);
 
         // Erase the `dummy_self` (`trait_object_dummy_self`) used above.
         let existential_trait_refs = regular_traits.iter().map(|i| {
@@ -362,11 +364,11 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
         // Use explicitly-specified region bound.
         let region_bound = if !lifetime.is_elided() {
-            self.ast_region_to_region(lifetime, None)
+            self.lower_lifetime(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
                 if tcx.named_bound_var(lifetime.hir_id).is_some() {
-                    self.ast_region_to_region(lifetime, None)
+                    self.lower_lifetime(lifetime, None)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
                         let err = struct_span_code_err!(
@@ -389,10 +391,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 }
             })
         };
-        debug!("region_bound: {:?}", region_bound);
+        debug!(?region_bound);
 
-        let ty = Ty::new_dynamic(tcx, existential_predicates, region_bound, representation);
-        debug!("trait_object_type: {:?}", ty);
-        ty
+        Ty::new_dynamic(tcx, existential_predicates, region_bound, representation)
     }
 }

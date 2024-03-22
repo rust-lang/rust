@@ -1264,7 +1264,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Extract `TailField<T>` and `TailField<U>` from `Struct<T>` and `Struct<U>`,
                 // normalizing in the process, since `type_of` returns something directly from
-                // astconv (which means it's un-normalized).
+                // HIR ty lowering (which means it's un-normalized).
                 let source_tail = normalize_with_depth_to(
                     self,
                     obligation.param_env,

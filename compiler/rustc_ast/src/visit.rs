@@ -480,7 +480,7 @@ pub fn walk_use_tree<'a, V: Visitor<'a>>(
     try_visit!(visitor.visit_path(&use_tree.prefix, id));
     match use_tree.kind {
         UseTreeKind::Simple(rename) => {
-            // The extra IDs are handled during HIR lowering.
+            // The extra IDs are handled during AST lowering.
             visit_opt!(visitor, visit_ident, rename);
         }
         UseTreeKind::Glob => {}

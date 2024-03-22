@@ -12,7 +12,7 @@ use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir_analysis::astconv::AstConv;
+use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer;
 use rustc_infer::infer::error_reporting::sub_relations::SubRelations;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
@@ -212,7 +212,7 @@ impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -221,31 +221,8 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         self.body_id.to_def_id()
     }
 
-    fn get_type_parameter_bounds(
-        &self,
-        _: Span,
-        def_id: LocalDefId,
-        _: Ident,
-    ) -> ty::GenericPredicates<'tcx> {
-        let tcx = self.tcx;
-        let item_def_id = tcx.hir().ty_param_owner(def_id);
-        let generics = tcx.generics_of(item_def_id);
-        let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-        // HACK(eddyb) should get the original `Span`.
-        let span = tcx.def_span(def_id);
-        ty::GenericPredicates {
-            parent: None,
-            predicates: tcx.arena.alloc_from_iter(
-                self.param_env.caller_bounds().iter().filter_map(|predicate| {
-                    match predicate.kind().skip_binder() {
-                        ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
-                            Some((predicate, span))
-                        }
-                        _ => None,
-                    }
-                }),
-            ),
-        }
+    fn allow_infer(&self) -> bool {
+        true
     }
 
     fn re_infer(&self, def: Option<&ty::GenericParamDef>, span: Span) -> Option<ty::Region<'tcx>> {
@@ -254,10 +231,6 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             None => infer::MiscVariable(span),
         };
         Some(self.next_region_var(v))
-    }
-
-    fn allow_ty_infer(&self) -> bool {
-        true
     }
 
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
@@ -292,7 +265,34 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn projected_ty_from_poly_trait_ref(
+    fn probe_ty_param_bounds(
+        &self,
+        _: Span,
+        def_id: LocalDefId,
+        _: Ident,
+    ) -> ty::GenericPredicates<'tcx> {
+        let tcx = self.tcx;
+        let item_def_id = tcx.hir().ty_param_owner(def_id);
+        let generics = tcx.generics_of(item_def_id);
+        let index = generics.param_def_id_to_index[&def_id.to_def_id()];
+        // HACK(eddyb) should get the original `Span`.
+        let span = tcx.def_span(def_id);
+        ty::GenericPredicates {
+            parent: None,
+            predicates: tcx.arena.alloc_from_iter(
+                self.param_env.caller_bounds().iter().filter_map(|predicate| {
+                    match predicate.kind().skip_binder() {
+                        ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
+                            Some((predicate, span))
+                        }
+                        _ => None,
+                    }
+                }),
+            ),
+        }
+    }
+
+    fn lower_assoc_ty(
         &self,
         span: Span,
         item_def_id: DefId,
@@ -305,7 +305,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             poly_trait_ref,
         );
 
-        let item_args = self.astconv().create_args_for_associated_item(
+        let item_args = self.lowerer().lower_generic_args_of_assoc_item(
             span,
             item_def_id,
             item_segment,
@@ -326,10 +326,6 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             }
             _ => None,
         }
-    }
-
-    fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
-        self.infcx.set_tainted_by_errors(e)
     }
 
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span) {
@@ -355,13 +351,17 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     fn infcx(&self) -> Option<&infer::InferCtxt<'tcx>> {
         Some(&self.infcx)
     }
+
+    fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
+        self.infcx.set_tainted_by_errors(e)
+    }
 }
 
 /// The `ty` representation of a user-provided type. Depending on the use-site
 /// we want to either use the unnormalized or the normalized form of this type.
 ///
-/// This is a bridge between the interface of `AstConv`, which outputs a raw `Ty`,
-/// and the API in this module, which expect `Ty` to be fully normalized.
+/// This is a bridge between the interface of HIR ty lowering, which outputs a raw
+/// `Ty`, and the API in this module, which expect `Ty` to be fully normalized.
 #[derive(Clone, Copy, Debug)]
 pub struct LoweredTy<'tcx> {
     /// The unnormalized type provided by the user.

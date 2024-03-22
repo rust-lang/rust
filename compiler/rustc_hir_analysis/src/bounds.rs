@@ -1,5 +1,5 @@
-//! Bounds are restrictions applied to some types after they've been converted into the
-//! `ty` form from the HIR.
+//! Bounds are restrictions applied to some types after they've been lowered from the HIR to the
+//! [`rustc_middle::ty`] form.
 
 use rustc_hir::LangItem;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};

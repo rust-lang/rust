@@ -7,7 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_body, walk_expr, FnKind, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Node, QPath, TyKind};
-use rustc_hir_analysis::hir_ty_to_ty;
+use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
@@ -74,7 +74,7 @@ fn get_hir_ty_def_id<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: rustc_hir::Ty<'tcx>) -> Op
     match qpath {
         QPath::Resolved(_, path) => path.res.opt_def_id(),
         QPath::TypeRelative(_, _) => {
-            let ty = hir_ty_to_ty(tcx, &hir_ty);
+            let ty = lower_ty(tcx, &hir_ty);
 
             match ty.kind() {
                 ty::Alias(ty::Projection, proj) => {

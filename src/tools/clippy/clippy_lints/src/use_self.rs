@@ -11,7 +11,7 @@ use rustc_hir::{
     self as hir, Expr, ExprKind, FnRetTy, FnSig, GenericArgsParentheses, GenericParam, GenericParamKind, HirId, Impl,
     ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
 };
-use rustc_hir_analysis::hir_ty_to_ty;
+use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty as MiddleTy;
 use rustc_session::impl_lint_pass;
@@ -193,7 +193,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     }
 
     fn check_body(&mut self, _: &LateContext<'_>, _: &hir::Body<'_>) {
-        // `hir_ty_to_ty` cannot be called in `Body`s or it will panic (sometimes). But in bodies
+        // `lower_ty` cannot be called in `Body`s or it will panic (sometimes). But in bodies
         // we can use `cx.typeck_results.node_type(..)` to get the `ty::Ty` from a `hir::Ty`.
         // However the `node_type()` method can *only* be called in bodies.
         if let Some(&mut StackItem::Check { ref mut in_body, .. }) = self.stack.last_mut() {
@@ -224,7 +224,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && let ty = if in_body > 0 {
                 cx.typeck_results().node_type(hir_ty.hir_id)
             } else {
-                hir_ty_to_ty(cx.tcx, hir_ty)
+                lower_ty(cx.tcx, hir_ty)
             }
             && let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity()
             && same_type_and_consts(ty, impl_ty)
