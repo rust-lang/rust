@@ -3757,7 +3757,7 @@ impl<'hir> Node<'hir> {
         expect_pat_field,     &'hir PatField<'hir>,     Node::PatField(n),     n;
         expect_arm,           &'hir Arm<'hir>,          Node::Arm(n),          n;
         expect_block,         &'hir Block<'hir>,        Node::Block(n),        n;
-        expect_local,         &'hir LetStmt<'hir>,      Node::Local(n),        n;
+        expect_let_stmt,      &'hir LetStmt<'hir>,      Node::Local(n),        n;
         expect_ctor,          &'hir VariantData<'hir>,  Node::Ctor(n),         n;
         expect_lifetime,      &'hir Lifetime,           Node::Lifetime(n),     n;
         expect_generic_param, &'hir GenericParam<'hir>, Node::GenericParam(n), n;
