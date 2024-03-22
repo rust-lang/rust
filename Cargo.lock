@@ -214,7 +214,7 @@ version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9792d37ca5173d7e7f4fe453739a0671d0557915a030a383d6b866476bbc3e71"
 dependencies = [
- "object",
+ "object 0.32.2",
 ]
 
 [[package]]
@@ -281,7 +281,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "miniz_oxide",
- "object",
+ "object 0.32.2",
  "rustc-demangle",
 ]
 
@@ -2636,8 +2636,19 @@ dependencies = [
  "memchr",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
- "ruzstd",
+ "ruzstd 0.5.0",
  "wasmparser",
+]
+
+[[package]]
+name = "object"
+version = "0.34.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7090bae93f8585aad99e595b7073c5de9ba89fbd6b4e9f0cdd7a10177273ac8"
+dependencies = [
+ "flate2",
+ "memchr",
+ "ruzstd 0.6.0",
 ]
 
 [[package]]
@@ -3323,6 +3334,7 @@ dependencies = [
 name = "run_make_support"
 version = "0.0.0"
 dependencies = [
+ "object 0.34.0",
  "wasmparser",
 ]
 
@@ -3634,7 +3646,7 @@ dependencies = [
  "itertools 0.12.1",
  "libc",
  "measureme",
- "object",
+ "object 0.32.2",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3670,7 +3682,7 @@ dependencies = [
  "itertools 0.12.1",
  "jobserver",
  "libc",
- "object",
+ "object 0.32.2",
  "pathdiff",
  "regex",
  "rustc_arena",
@@ -3686,6 +3698,7 @@ dependencies = [
  "rustc_macros",
  "rustc_metadata",
  "rustc_middle",
+ "rustc_monomorphize",
  "rustc_query_system",
  "rustc_serialize",
  "rustc_session",
@@ -4630,7 +4643,7 @@ name = "rustc_target"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.4.2",
- "object",
+ "object 0.32.2",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_feature",
@@ -4891,6 +4904,17 @@ name = "ruzstd"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58c4eb8a81997cf040a091d1f7e1938aeab6749d3a0dfa73af43cdc32393483d"
+dependencies = [
+ "byteorder",
+ "derive_more",
+ "twox-hash",
+]
+
+[[package]]
+name = "ruzstd"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5174a470eeb535a721ae9fdd6e291c2411a906b96592182d05217591d5c5cf7b"
 dependencies = [
  "byteorder",
  "derive_more",
@@ -5200,7 +5224,7 @@ dependencies = [
  "hermit-abi",
  "libc",
  "miniz_oxide",
- "object",
+ "object 0.32.2",
  "panic_abort",
  "panic_unwind",
  "profiler_builtins",
@@ -5517,7 +5541,7 @@ checksum = "4db52ee8fec06e119b692ef3dd2c4cf621a99204c1b8c47407870ed050305b9b"
 dependencies = [
  "gimli",
  "hashbrown",
- "object",
+ "object 0.32.2",
  "tracing",
 ]
 
