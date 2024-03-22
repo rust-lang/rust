@@ -6,7 +6,7 @@ use rustc_hir::{def_id::DefId, Movability, Mutability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::{
-    self, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
 };
 use rustc_span::sym;
 
@@ -73,8 +73,8 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
 
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .tcx()
-            .coroutine_hidden_types(def_id)
-            .map(|bty| replace_erased_lifetimes_with_bound_vars(tcx, bty.instantiate(tcx, args)))
+            .bound_coroutine_hidden_types(def_id)
+            .map(|bty| bty.instantiate(tcx, args))
             .collect()),
 
         // For `PhantomData<T>`, we pass `T`.
@@ -91,27 +91,6 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
             Ok(vec![ty::Binder::dummy(tcx.type_of(def_id).instantiate(tcx, args))])
         }
     }
-}
-
-pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
-) -> ty::Binder<'tcx, Ty<'tcx>> {
-    debug_assert!(!ty.has_bound_regions());
-    let mut counter = 0;
-    let ty = tcx.fold_regions(ty, |r, current_depth| match r.kind() {
-        ty::ReErased => {
-            let br = ty::BoundRegion { var: ty::BoundVar::from_u32(counter), kind: ty::BrAnon };
-            counter += 1;
-            ty::Region::new_bound(tcx, current_depth, br)
-        }
-        // All free regions should be erased here.
-        r => bug!("unexpected region: {r:?}"),
-    });
-    let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-        (0..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon)),
-    );
-    ty::Binder::bind_with_vars(ty, bound_vars)
 }
 
 #[instrument(level = "debug", skip(ecx), ret)]
@@ -154,13 +133,25 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
             bug!("unexpected type `{ty}`")
         }
 
-        // impl Sized for (T1, T2, .., Tn) where T1: Sized, T2: Sized, .. Tn: Sized
-        ty::Tuple(tys) => Ok(tys.iter().map(ty::Binder::dummy).collect()),
+        // impl Sized for ()
+        // impl Sized for (T1, T2, .., Tn) where Tn: Sized if n >= 1
+        ty::Tuple(tys) => Ok(tys.last().map_or_else(Vec::new, |&ty| vec![ty::Binder::dummy(ty)])),
 
-        // impl Sized for Adt where T: Sized forall T in field types
+        // impl Sized for Adt<Args...> where sized_constraint(Adt)<Args...>: Sized
+        //   `sized_constraint(Adt)` is the deepest struct trail that can be determined
+        //   by the definition of `Adt`, independent of the generic args.
+        // impl Sized for Adt<Args...> if sized_constraint(Adt) == None
+        //   As a performance optimization, `sized_constraint(Adt)` can return `None`
+        //   if the ADTs definition implies that it is sized by for all possible args.
+        //   In this case, the builtin impl will have no nested subgoals. This is a
+        //   "best effort" optimization and `sized_constraint` may return `Some`, even
+        //   if the ADT is sized for all possible args.
         ty::Adt(def, args) => {
-            let sized_crit = def.sized_constraint(ecx.tcx());
-            Ok(sized_crit.iter_instantiated(ecx.tcx(), args).map(ty::Binder::dummy).collect())
+            if let Some(sized_crit) = def.sized_constraint(ecx.tcx()) {
+                Ok(vec![ty::Binder::dummy(sized_crit.instantiate(ecx.tcx(), args))])
+            } else {
+                Ok(vec![])
+            }
         }
     }
 }
@@ -229,13 +220,8 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         // impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .tcx()
-            .coroutine_hidden_types(def_id)
-            .map(|bty| {
-                replace_erased_lifetimes_with_bound_vars(
-                    ecx.tcx(),
-                    bty.instantiate(ecx.tcx(), args),
-                )
-            })
+            .bound_coroutine_hidden_types(def_id)
+            .map(|bty| bty.instantiate(ecx.tcx(), args))
             .collect()),
     }
 }

@@ -1062,7 +1062,7 @@ pub enum ExpnKind {
     Macro(MacroKind, Symbol),
     /// Transform done by the compiler on the AST.
     AstPass(AstPass),
-    /// Desugaring done by the compiler during HIR lowering.
+    /// Desugaring done by the compiler during AST lowering.
     Desugaring(DesugaringKind),
 }
 

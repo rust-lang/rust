@@ -229,7 +229,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         scrutinee_span: Span,
     ) -> BlockAnd<()> {
-        let scrutinee_span = scrutinee_span;
         let scrutinee_place =
             unpack!(block = self.lower_scrutinee(block, scrutinee_id, scrutinee_span));
 
@@ -878,6 +877,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::Deref { ref subpattern } => {
                 self.visit_primary_bindings(subpattern, pattern_user_ty.deref(), f);
+            }
+
+            PatKind::DerefPattern { ref subpattern } => {
+                self.visit_primary_bindings(subpattern, UserTypeProjections::none(), f);
             }
 
             PatKind::AscribeUserType {

@@ -214,7 +214,7 @@ declare_features! (
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (internal, omit_gdb_pretty_printer_section, "1.5.0", None),
     /// Set the maximum pattern complexity allowed (not limited by default).
-    (internal, pattern_complexity, "CURRENT_RUSTC_VERSION", None),
+    (internal, pattern_complexity, "1.78.0", None),
     /// Allows using `#[prelude_import]` on glob `use` items.
     (internal, prelude_import, "1.2.0", None),
     /// Used to identify crates that contain the profiler runtime.
@@ -301,11 +301,11 @@ declare_features! (
     (unstable, csky_target_feature, "1.73.0", Some(44839)),
     (unstable, ermsb_target_feature, "1.49.0", Some(44839)),
     (unstable, hexagon_target_feature, "1.27.0", Some(44839)),
-    (unstable, lahfsahf_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
+    (unstable, lahfsahf_target_feature, "1.78.0", Some(44839)),
     (unstable, loongarch_target_feature, "1.73.0", Some(44839)),
     (unstable, mips_target_feature, "1.27.0", Some(44839)),
     (unstable, powerpc_target_feature, "1.27.0", Some(44839)),
-    (unstable, prfchw_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
+    (unstable, prfchw_target_feature, "1.78.0", Some(44839)),
     (unstable, riscv_target_feature, "1.45.0", Some(44839)),
     (unstable, rtm_target_feature, "1.35.0", Some(44839)),
     (unstable, sse4a_target_feature, "1.27.0", Some(44839)),
@@ -346,7 +346,7 @@ declare_features! (
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Allows using `label` operands in inline assembly.
-    (unstable, asm_goto, "CURRENT_RUSTC_VERSION", Some(119364)),
+    (unstable, asm_goto, "1.78.0", Some(119364)),
     /// Allows the `may_unwind` option in inline assembly.
     (unstable, asm_unwind, "1.58.0", Some(93334)),
     /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
@@ -410,7 +410,7 @@ declare_features! (
     /// Allows references to types with interior mutability within constants
     (unstable, const_refs_to_cell, "1.51.0", Some(80384)),
     /// Allows creating pointers and references to `static` items in constants.
-    (unstable, const_refs_to_static, "CURRENT_RUSTC_VERSION", Some(119618)),
+    (unstable, const_refs_to_static, "1.78.0", Some(119618)),
     /// Allows `impl const Trait for T` syntax.
     (unstable, const_trait_impl, "1.42.0", Some(67792)),
     /// Allows the `?` operator in const contexts.
@@ -436,6 +436,8 @@ declare_features! (
     (unstable, deprecated_safe, "1.61.0", Some(94978)),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (unstable, deprecated_suggestion, "1.61.0", Some(94785)),
+    /// Allows deref patterns.
+    (incomplete, deref_patterns, "CURRENT_RUSTC_VERSION", Some(87121)),
     /// Controls errors in trait implementations.
     (unstable, do_not_recommend, "1.67.0", Some(51992)),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
@@ -462,9 +464,9 @@ declare_features! (
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467)),
     /// Allow using 128-bit (quad precision) floating point numbers.
-    (unstable, f128, "CURRENT_RUSTC_VERSION", Some(116909)),
+    (unstable, f128, "1.78.0", Some(116909)),
     /// Allow using 16-bit (half precision) floating point numbers.
-    (unstable, f16, "CURRENT_RUSTC_VERSION", Some(116909)),
+    (unstable, f16, "1.78.0", Some(116909)),
     /// Allows the use of `#[ffi_const]` on foreign functions.
     (unstable, ffi_const, "1.45.0", Some(58328)),
     /// Allows the use of `#[ffi_pure]` on foreign functions.
@@ -474,7 +476,7 @@ declare_features! (
     /// Support delegating implementation of functions to other already implemented functions.
     (incomplete, fn_delegation, "1.76.0", Some(118212)),
     /// Allows impls for the Freeze trait.
-    (internal, freeze_impls, "CURRENT_RUSTC_VERSION", Some(121675)),
+    (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078)),
     /// Infer generic args for both consts and types.
@@ -557,6 +559,8 @@ declare_features! (
     (unstable, offset_of_nested, "1.77.0", Some(120140)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
+    /// Allows postfix match `expr.match { ... }`
+    (unstable, postfix_match, "CURRENT_RUSTC_VERSION", Some(121618)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.

@@ -13,8 +13,8 @@ use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, Subdiagnosti
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
-    self as hir, GenericBound, GenericParamKind, Item, ItemKind, Lifetime, LifetimeName, Node,
-    TyKind,
+    self as hir, GenericBound, GenericParam, GenericParamKind, Item, ItemKind, Lifetime,
+    LifetimeName, LifetimeParamKind, MissingLifetimeKind, Node, TyKind,
 };
 use rustc_middle::ty::{
     self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
@@ -355,20 +355,8 @@ pub fn suggest_new_region_bound(
                     // introducing a new lifetime `'a` or making use of one from existing named lifetimes if any
                     if let Some(id) = scope_def_id
                         && let Some(generics) = tcx.hir().get_generics(id)
-                        && let mut spans_suggs = generics
-                            .params
-                            .iter()
-                            .filter(|p| p.is_elided_lifetime())
-                            .map(|p| {
-                                if p.span.hi() - p.span.lo() == rustc_span::BytePos(1) {
-                                    // Ampersand (elided without '_)
-                                    (p.span.shrink_to_hi(), format!("{name} "))
-                                } else {
-                                    // Underscore (elided with '_)
-                                    (p.span, name.to_string())
-                                }
-                            })
-                            .collect::<Vec<_>>()
+                        && let mut spans_suggs =
+                            make_elided_region_spans_suggs(name, generics.params.iter())
                         && spans_suggs.len() > 1
                     {
                         let use_lt = if existing_lt_name == None {
@@ -428,6 +416,57 @@ pub fn suggest_new_region_bound(
             _ => {}
         }
     }
+}
+
+fn make_elided_region_spans_suggs<'a>(
+    name: &str,
+    generic_params: impl Iterator<Item = &'a GenericParam<'a>>,
+) -> Vec<(Span, String)> {
+    let mut spans_suggs = Vec::new();
+    let mut bracket_span = None;
+    let mut consecutive_brackets = 0;
+
+    let mut process_consecutive_brackets =
+        |span: Option<Span>, spans_suggs: &mut Vec<(Span, String)>| {
+            if span
+                .is_some_and(|span| bracket_span.map_or(true, |bracket_span| span == bracket_span))
+            {
+                consecutive_brackets += 1;
+            } else if let Some(bracket_span) = bracket_span.take() {
+                let sugg = std::iter::once("<")
+                    .chain(std::iter::repeat(name).take(consecutive_brackets).intersperse(", "))
+                    .chain([">"])
+                    .collect();
+                spans_suggs.push((bracket_span.shrink_to_hi(), sugg));
+                consecutive_brackets = 0;
+            }
+            bracket_span = span;
+        };
+
+    for p in generic_params {
+        if let GenericParamKind::Lifetime { kind: LifetimeParamKind::Elided(kind) } = p.kind {
+            match kind {
+                MissingLifetimeKind::Underscore => {
+                    process_consecutive_brackets(None, &mut spans_suggs);
+                    spans_suggs.push((p.span, name.to_string()))
+                }
+                MissingLifetimeKind::Ampersand => {
+                    process_consecutive_brackets(None, &mut spans_suggs);
+                    spans_suggs.push((p.span.shrink_to_hi(), format!("{name} ")));
+                }
+                MissingLifetimeKind::Comma => {
+                    process_consecutive_brackets(None, &mut spans_suggs);
+                    spans_suggs.push((p.span.shrink_to_hi(), format!("{name}, ")));
+                }
+                MissingLifetimeKind::Brackets => {
+                    process_consecutive_brackets(Some(p.span), &mut spans_suggs);
+                }
+            }
+        }
+    }
+    process_consecutive_brackets(None, &mut spans_suggs);
+
+    spans_suggs
 }
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {

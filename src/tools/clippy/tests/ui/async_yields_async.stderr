@@ -81,8 +81,7 @@ LL |       let _m = async || {
    |  _______________________-
 LL | |         println!("I'm bored");
 LL | |         // Some more stuff
-LL | |
-LL | |         // Finally something to await
+...  |
 LL | |         CustomFutureType
    | |         ^^^^^^^^^^^^^^^^
    | |         |

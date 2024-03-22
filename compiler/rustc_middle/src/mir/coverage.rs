@@ -88,14 +88,13 @@ pub enum CoverageKind {
     /// Marks a span that might otherwise not be represented in MIR, so that
     /// coverage instrumentation can associate it with its enclosing block/BCB.
     ///
-    /// Only used by the `InstrumentCoverage` pass, and has no effect during
-    /// codegen.
+    /// Should be erased before codegen (at some point after `InstrumentCoverage`).
     SpanMarker,
 
     /// Marks its enclosing basic block with an ID that can be referred to by
     /// side data in [`BranchInfo`].
     ///
-    /// Has no effect during codegen.
+    /// Should be erased before codegen (at some point after `InstrumentCoverage`).
     BlockMarker { id: BlockMarkerId },
 
     /// Marks the point in MIR control flow represented by a coverage counter.

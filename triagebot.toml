@@ -499,6 +499,10 @@ of `ObligationCtxt`.
 """
 cc = ["@lcnr", "@compiler-errors"]
 
+[mentions."compiler/rustc_hir_analysis/src/hir_ty_lowering"]
+message = "HIR ty lowering was modified"
+cc = ["@fmease"]
+
 [mentions."compiler/rustc_error_codes/src/lib.rs"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]

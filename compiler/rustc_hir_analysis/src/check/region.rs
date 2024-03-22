@@ -668,7 +668,7 @@ fn resolve_local<'tcx>(
             | PatKind::TupleStruct(_, subpats, _)
             | PatKind::Tuple(subpats, _) => subpats.iter().any(|p| is_binding_pat(p)),
 
-            PatKind::Box(subpat) => is_binding_pat(subpat),
+            PatKind::Box(subpat) | PatKind::Deref(subpat) => is_binding_pat(subpat),
 
             PatKind::Ref(_, _)
             | PatKind::Binding(hir::BindingAnnotation(hir::ByRef::No, _), ..)
@@ -760,7 +760,7 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
 
     fn enter_node_scope_with_dtor(&mut self, id: hir::ItemLocalId) {
         // If node was previously marked as a terminating scope during the
-        // recursive visit of its parent node in the AST, then we need to
+        // recursive visit of its parent node in the HIR, then we need to
         // account for the destruction scope representing the scope of
         // the destructors that run immediately after it completes.
         if self.terminating_scopes.contains(&id) {

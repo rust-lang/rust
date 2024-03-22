@@ -12,6 +12,11 @@ env:
   NO_FMT_TEST: 1
   CARGO_INCREMENTAL: 0
 
+concurrency:
+  # For a given workflow, if we push to the same branch, cancel all previous builds on that branch.
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
 defaults:
   run:
     shell: bash
@@ -21,10 +26,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-      with:
-        github_token: "${{ secrets.github_token }}"
-
     - name: Checkout
       uses: actions/checkout@v4
       with:
@@ -67,10 +68,6 @@ jobs:
     # NOTE: If you modify this job, make sure you copy the changes to clippy.yml
     steps:
     # Setup
-    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-      with:
-        github_token: "${{ secrets.github_token }}"
-
     - name: Checkout
       uses: actions/checkout@v4
 
@@ -131,10 +128,6 @@ jobs:
 
     steps:
      # Setup
-    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-      with:
-        github_token: "${{ secrets.github_token }}"
-
     - name: Checkout
       uses: actions/checkout@v4
 
@@ -155,10 +148,6 @@ jobs:
 
     steps:
     # Setup
-    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-      with:
-        github_token: "${{ secrets.github_token }}"
-
     - name: Checkout
       uses: actions/checkout@v4
 
@@ -211,10 +200,6 @@ jobs:
 
     steps:
     # Setup
-    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-      with:
-        github_token: "${{ secrets.github_token }}"
-
     - name: Checkout
       uses: actions/checkout@v4
 

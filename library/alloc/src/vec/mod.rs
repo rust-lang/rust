@@ -1541,6 +1541,9 @@ impl<T, A: Allocator> Vec<T, A> {
         }
 
         let len = self.len();
+        if index > len {
+            assert_failed(index, len);
+        }
 
         // space for the new element
         if len == self.buf.capacity() {
@@ -1556,10 +1559,6 @@ impl<T, A: Allocator> Vec<T, A> {
                     // Shift everything over to make space. (Duplicating the
                     // `index`th element into two consecutive places.)
                     ptr::copy(p, p.add(1), len - index);
-                } else if index == len {
-                    // No elements need shifting.
-                } else {
-                    assert_failed(index, len);
                 }
                 // Write it in, overwriting the first copy of the `index`th
                 // element.

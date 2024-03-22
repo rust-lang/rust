@@ -435,7 +435,7 @@ impl<'a> Parser<'a> {
         syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, P<Pat>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
-        maybe_whole!(self, NtPat, |x| x);
+        maybe_whole!(self, NtPat, |pat| pat);
 
         let mut lo = self.token.span;
 
@@ -498,11 +498,14 @@ impl<'a> Parser<'a> {
             } else {
                 PatKind::Lit(const_expr)
             }
+        } else if self.is_builtin() {
+            self.parse_pat_builtin()?
+        }
         // Don't eagerly error on semantically invalid tokens when matching
         // declarative macros, as the input to those doesn't have to be
         // semantically valid. For attribute/derive proc macros this is not the
         // case, so doing the recovery for them is fine.
-        } else if self.can_be_ident_pat()
+        else if self.can_be_ident_pat()
             || (self.is_lit_bad_ident().is_some() && self.may_recover())
         {
             // Parse `ident @ pat`
@@ -1117,6 +1120,21 @@ impl<'a> Parser<'a> {
             token::CloseDelim(Delimiter::Parenthesis),
         ]
         .contains(&self.token.kind)
+    }
+
+    fn parse_pat_builtin(&mut self) -> PResult<'a, PatKind> {
+        self.parse_builtin(|self_, _lo, ident| {
+            Ok(match ident.name {
+                // builtin#deref(PAT)
+                sym::deref => Some(ast::PatKind::Deref(self_.parse_pat_allow_top_alt(
+                    None,
+                    RecoverComma::Yes,
+                    RecoverColon::Yes,
+                    CommaRecoveryMode::LikelyTuple,
+                )?)),
+                _ => None,
+            })
+        })
     }
 
     /// Parses `box pat`

@@ -3,7 +3,6 @@
 #![feature(link_cfg)]
 #![feature(staged_api)]
 #![feature(c_unwind)]
-#![cfg_attr(bootstrap, feature(cfg_target_abi))]
 #![feature(strict_provenance)]
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 #![cfg_attr(

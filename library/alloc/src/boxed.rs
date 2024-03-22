@@ -2042,18 +2042,16 @@ impl<Args: Tuple, F: AsyncFnOnce<Args> + ?Sized, A: Allocator> AsyncFnOnce<Args>
 
 #[unstable(feature = "async_fn_traits", issue = "none")]
 impl<Args: Tuple, F: AsyncFnMut<Args> + ?Sized, A: Allocator> AsyncFnMut<Args> for Box<F, A> {
-    type CallMutFuture<'a> = F::CallMutFuture<'a> where Self: 'a;
+    type CallRefFuture<'a> = F::CallRefFuture<'a> where Self: 'a;
 
-    extern "rust-call" fn async_call_mut(&mut self, args: Args) -> Self::CallMutFuture<'_> {
+    extern "rust-call" fn async_call_mut(&mut self, args: Args) -> Self::CallRefFuture<'_> {
         F::async_call_mut(self, args)
     }
 }
 
 #[unstable(feature = "async_fn_traits", issue = "none")]
 impl<Args: Tuple, F: AsyncFn<Args> + ?Sized, A: Allocator> AsyncFn<Args> for Box<F, A> {
-    type CallFuture<'a> = F::CallFuture<'a> where Self: 'a;
-
-    extern "rust-call" fn async_call(&self, args: Args) -> Self::CallFuture<'_> {
+    extern "rust-call" fn async_call(&self, args: Args) -> Self::CallRefFuture<'_> {
         F::async_call(self, args)
     }
 }

@@ -403,8 +403,10 @@ impl<'tcx> InferCtxt<'tcx> {
         let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
         let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
 
-        self.tcx.explicit_item_bounds(def_id).iter_instantiated_copied(self.tcx, args).find_map(
-            |(predicate, _)| {
+        self.tcx
+            .explicit_item_super_predicates(def_id)
+            .iter_instantiated_copied(self.tcx, args)
+            .find_map(|(predicate, _)| {
                 predicate
                     .kind()
                     .map_bound(|kind| match kind {
@@ -417,8 +419,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     })
                     .no_bound_vars()
                     .flatten()
-            },
-        )
+            })
     }
 }
 
@@ -2553,7 +2554,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             hir::OwnerNode::ImplItem(i) => visitor.visit_impl_item(i),
             hir::OwnerNode::TraitItem(i) => visitor.visit_trait_item(i),
             hir::OwnerNode::Crate(_) => bug!("OwnerNode::Crate doesn't not have generics"),
-            hir::OwnerNode::AssocOpaqueTy(..) => unreachable!(),
+            hir::OwnerNode::Synthetic => unreachable!(),
         }
 
         let ast_generics = self.tcx.hir().get_generics(lifetime_scope).unwrap();

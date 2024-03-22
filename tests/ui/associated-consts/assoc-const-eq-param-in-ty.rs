@@ -37,8 +37,10 @@ fn take2<P: Project<SELF = {}>>(_: P) {}
 
 trait Iface<'r> {
     //~^ NOTE the lifetime parameter `'r` is defined here
+    //~| NOTE the lifetime parameter `'r` is defined here
     type Assoc<const Q: usize>: Trait<'r, Self, Q, K = { loop {} }>
     //~^ ERROR the type of the associated constant `K` must not depend on generic parameters
+    //~| ERROR the type of the associated constant `K` must not depend on generic parameters
     //~| NOTE its type must not depend on the lifetime parameter `'r`
     //~| NOTE `K` has type `&'r [Self; Q]`
     //~| ERROR the type of the associated constant `K` must not depend on `Self`
@@ -48,6 +50,18 @@ trait Iface<'r> {
     //~| NOTE its type must not depend on the const parameter `Q`
     //~| NOTE the const parameter `Q` is defined here
     //~| NOTE `K` has type `&'r [Self; Q]`
+    //~| NOTE its type must not depend on the lifetime parameter `'r`
+    //~| NOTE `K` has type `&'r [Self; Q]`
+    //~| ERROR the type of the associated constant `K` must not depend on `Self`
+    //~| NOTE its type must not depend on `Self`
+    //~| NOTE `K` has type `&'r [Self; Q]`
+    //~| ERROR the type of the associated constant `K` must not depend on generic parameters
+    //~| NOTE its type must not depend on the const parameter `Q`
+    //~| NOTE the const parameter `Q` is defined here
+    //~| NOTE `K` has type `&'r [Self; Q]`
+    //~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+    //~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+    //~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
     where
         Self: Sized + 'r;
 }

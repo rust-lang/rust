@@ -647,6 +647,7 @@ impl<'tcx> Pat<'tcx> {
             AscribeUserType { subpattern, .. }
             | Binding { subpattern: Some(subpattern), .. }
             | Deref { subpattern }
+            | DerefPattern { subpattern }
             | InlineConstant { subpattern, .. } => subpattern.walk_(it),
             Leaf { subpatterns } | Variant { subpatterns, .. } => {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
@@ -759,6 +760,11 @@ pub enum PatKind<'tcx> {
 
     /// `box P`, `&P`, `&mut P`, etc.
     Deref {
+        subpattern: Box<Pat<'tcx>>,
+    },
+
+    /// Deref pattern, written `box P` for now.
+    DerefPattern {
         subpattern: Box<Pat<'tcx>>,
     },
 
@@ -1171,6 +1177,9 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                     _ => bug!("{} is a bad Deref pattern type", self.ty),
                 }
                 write!(f, "{subpattern}")
+            }
+            PatKind::DerefPattern { ref subpattern } => {
+                write!(f, "deref!({subpattern})")
             }
             PatKind::Constant { value } => write!(f, "{value}"),
             PatKind::InlineConstant { def: _, ref subpattern } => {

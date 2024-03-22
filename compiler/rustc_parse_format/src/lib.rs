@@ -907,25 +907,47 @@ impl<'a> Parser<'a> {
             let byte_pos = self.to_span_index(end);
             let start = InnerOffset(byte_pos.0 + 1);
             let field = self.argument(start);
-            // We can only parse `foo.bar` field access, any deeper nesting,
-            // or another type of expression, like method calls, are not supported
+            // We can only parse simple `foo.bar` field access or `foo.0` tuple index access, any
+            // deeper nesting, or another type of expression, like method calls, are not supported
             if !self.consume('}') {
                 return;
             }
             if let ArgumentNamed(_) = arg.position {
-                if let ArgumentNamed(_) = field.position {
-                    self.errors.insert(
-                        0,
-                        ParseError {
-                            description: "field access isn't supported".to_string(),
-                            note: None,
-                            label: "not supported".to_string(),
-                            span: InnerSpan::new(arg.position_span.start, field.position_span.end),
-                            secondary_label: None,
-                            suggestion: Suggestion::UsePositional,
-                        },
-                    );
-                }
+                match field.position {
+                    ArgumentNamed(_) => {
+                        self.errors.insert(
+                            0,
+                            ParseError {
+                                description: "field access isn't supported".to_string(),
+                                note: None,
+                                label: "not supported".to_string(),
+                                span: InnerSpan::new(
+                                    arg.position_span.start,
+                                    field.position_span.end,
+                                ),
+                                secondary_label: None,
+                                suggestion: Suggestion::UsePositional,
+                            },
+                        );
+                    }
+                    ArgumentIs(_) => {
+                        self.errors.insert(
+                            0,
+                            ParseError {
+                                description: "tuple index access isn't supported".to_string(),
+                                note: None,
+                                label: "not supported".to_string(),
+                                span: InnerSpan::new(
+                                    arg.position_span.start,
+                                    field.position_span.end,
+                                ),
+                                secondary_label: None,
+                                suggestion: Suggestion::UsePositional,
+                            },
+                        );
+                    }
+                    _ => {}
+                };
             }
         }
     }

@@ -11,7 +11,7 @@ use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{noop_visit_expr, MutVisitor};
 use ast::token::IdentIsRaw;
-use ast::{CoroutineKind, ForLoopKind, GenBlockKind, Pat, Path, PathSegment};
+use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment};
 use core::mem;
 use core::ops::ControlFlow;
 use rustc_ast::ptr::P;
@@ -943,7 +943,10 @@ impl<'a> Parser<'a> {
         // Stitch the list of outer attributes onto the return value.
         // A little bit ugly, but the best way given the current code
         // structure
-        let res = self.parse_expr_dot_or_call_with_(e0, lo);
+        let res = ensure_sufficient_stack(
+            // this expr demonstrates the recursion it guards against
+            || self.parse_expr_dot_or_call_with_(e0, lo),
+        );
         if attrs.is_empty() {
             res
         } else {
@@ -1374,6 +1377,13 @@ impl<'a> Parser<'a> {
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         if self.token.uninterpolated_span().at_least_rust_2018() && self.eat_keyword(kw::Await) {
             return Ok(self.mk_await_expr(self_arg, lo));
+        }
+
+        // Post-fix match
+        if self.eat_keyword(kw::Match) {
+            let match_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::postfix_match, match_span);
+            return self.parse_match_block(lo, match_span, self_arg, MatchKind::Postfix);
         }
 
         let fn_span_lo = self.token.span;
@@ -1936,11 +1946,11 @@ impl<'a> Parser<'a> {
     /// Parse `builtin # ident(args,*)`.
     fn parse_expr_builtin(&mut self) -> PResult<'a, P<Expr>> {
         self.parse_builtin(|this, lo, ident| {
-            if ident.name == sym::offset_of {
-                return Ok(Some(this.parse_expr_offset_of(lo)?));
-            }
-
-            Ok(None)
+            Ok(match ident.name {
+                sym::offset_of => Some(this.parse_expr_offset_of(lo)?),
+                sym::type_ascribe => Some(this.parse_expr_type_ascribe(lo)?),
+                _ => None,
+            })
         })
     }
 
@@ -1975,6 +1985,7 @@ impl<'a> Parser<'a> {
         ret
     }
 
+    /// Built-in macro for `offset_of!` expressions.
     pub(crate) fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, P<Expr>> {
         let container = self.parse_ty()?;
         self.expect(&TokenKind::Comma)?;
@@ -2002,6 +2013,15 @@ impl<'a> Parser<'a> {
 
         let span = lo.to(self.token.span);
         Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields)))
+    }
+
+    /// Built-in macro for type ascription expressions.
+    pub(crate) fn parse_expr_type_ascribe(&mut self, lo: Span) -> PResult<'a, P<Expr>> {
+        let expr = self.parse_expr()?;
+        self.expect(&token::Comma)?;
+        let ty = self.parse_ty()?;
+        let span = lo.to(self.token.span);
+        Ok(self.mk_expr(span, ExprKind::Type(expr, ty)))
     }
 
     /// Returns a string literal if the next token is a string literal.
@@ -2040,16 +2060,6 @@ impl<'a> Parser<'a> {
         &mut self,
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
     ) -> PResult<'a, L> {
-        if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtExpr(e) | token::NtLiteral(e) = &nt.0
-            && matches!(e.kind, ExprKind::Err(_))
-        {
-            let mut err = self
-                .dcx()
-                .create_err(errors::InvalidInterpolatedExpression { span: self.token.span });
-            err.downgrade_to_delayed_bug();
-            return Err(err);
-        }
         let token = self.token.clone();
         let err = |self_: &Self| {
             let msg = format!("unexpected token: {}", super::token_descr(&token));
@@ -2891,8 +2901,20 @@ impl<'a> Parser<'a> {
     /// Parses a `match ... { ... }` expression (`match` token already eaten).
     fn parse_expr_match(&mut self) -> PResult<'a, P<Expr>> {
         let match_span = self.prev_token.span;
-        let lo = self.prev_token.span;
         let scrutinee = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+
+        self.parse_match_block(match_span, match_span, scrutinee, MatchKind::Prefix)
+    }
+
+    /// Parses the block of a `match expr { ... }` or a `expr.match { ... }`
+    /// expression. This is after the match token and scrutinee are eaten
+    fn parse_match_block(
+        &mut self,
+        lo: Span,
+        match_span: Span,
+        scrutinee: P<Expr>,
+        match_kind: MatchKind,
+    ) -> PResult<'a, P<Expr>> {
         if let Err(mut e) = self.expect(&token::OpenDelim(Delimiter::Brace)) {
             if self.token == token::Semi {
                 e.span_suggestion_short(
@@ -2935,7 +2957,7 @@ impl<'a> Parser<'a> {
                     });
                     return Ok(self.mk_expr_with_attrs(
                         span,
-                        ExprKind::Match(scrutinee, arms),
+                        ExprKind::Match(scrutinee, arms, match_kind),
                         attrs,
                     ));
                 }
@@ -2943,7 +2965,7 @@ impl<'a> Parser<'a> {
         }
         let hi = self.token.span;
         self.bump();
-        Ok(self.mk_expr_with_attrs(lo.to(hi), ExprKind::Match(scrutinee, arms), attrs))
+        Ok(self.mk_expr_with_attrs(lo.to(hi), ExprKind::Match(scrutinee, arms, match_kind), attrs))
     }
 
     /// Attempt to recover from match arm body with statements and no surrounding braces.
@@ -3952,7 +3974,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::While(_, _, _)
             | ExprKind::ForLoop { .. }
             | ExprKind::Loop(_, _, _)
-            | ExprKind::Match(_, _)
+            | ExprKind::Match(_, _, _)
             | ExprKind::Closure(_)
             | ExprKind::Block(_, _)
             | ExprKind::Gen(_, _, _)

@@ -1,5 +1,5 @@
 warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/unify-fixpoint.rs:2:12
+  --> $DIR/unify-fixpoint.rs:7:12
    |
 LL | #![feature(generic_const_exprs)]
    |            ^^^^^^^^^^^^^^^^^^^

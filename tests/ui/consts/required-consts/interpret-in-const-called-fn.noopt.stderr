@@ -1,13 +1,13 @@
 error[E0080]: evaluation of `Fail::<i32>::C` failed
-  --> $DIR/interpret-in-const-called-fn.rs:7:19
+  --> $DIR/interpret-in-const-called-fn.rs:8:19
    |
 LL |     const C: () = panic!();
-   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/interpret-in-const-called-fn.rs:7:19
+   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/interpret-in-const-called-fn.rs:8:19
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant encountered
-  --> $DIR/interpret-in-const-called-fn.rs:16:9
+  --> $DIR/interpret-in-const-called-fn.rs:17:9
    |
 LL |         Fail::<T>::C;
    |         ^^^^^^^^^^^^

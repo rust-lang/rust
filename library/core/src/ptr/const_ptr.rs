@@ -48,12 +48,8 @@ impl<T: ?Sized> *const T {
             }
         }
 
-        // on bootstrap bump, remove unsafe block
-        #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
-        // SAFETY: The two versions are equivalent at runtime.
-        unsafe {
-            const_eval_select((self as *const u8,), const_impl, runtime_impl)
-        }
+        #[allow(unused_unsafe)]
+        const_eval_select((self as *const u8,), const_impl, runtime_impl)
     }
 
     /// Casts to a pointer of another type.
@@ -818,13 +814,8 @@ impl<T: ?Sized> *const T {
                 true
             }
 
-            #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
-            // on bootstrap bump, remove unsafe block
-            // SAFETY: This function is only used to provide the same check that the const eval
-            // interpreter does at runtime.
-            unsafe {
-                intrinsics::const_eval_select((this, origin), comptime, runtime)
-            }
+            #[allow(unused_unsafe)]
+            intrinsics::const_eval_select((this, origin), comptime, runtime)
         }
 
         assert_unsafe_precondition!(
@@ -1648,11 +1639,7 @@ impl<T: ?Sized> *const T {
         // The cast to `()` is used to
         //   1. deal with fat pointers; and
         //   2. ensure that `align_offset` (in `const_impl`) doesn't actually try to compute an offset.
-        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
-        // SAFETY: The two versions are equivalent at runtime.
-        unsafe {
-            const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl)
-        }
+        const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl)
     }
 }
 

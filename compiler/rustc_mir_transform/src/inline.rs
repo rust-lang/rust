@@ -565,7 +565,8 @@ impl<'tcx> Inliner<'tcx> {
         mut callee_body: Body<'tcx>,
     ) {
         let terminator = caller_body[callsite.block].terminator.take().unwrap();
-        let TerminatorKind::Call { args, destination, unwind, target, .. } = terminator.kind else {
+        let TerminatorKind::Call { func, args, destination, unwind, target, .. } = terminator.kind
+        else {
             bug!("unexpected terminator kind {:?}", terminator.kind);
         };
 
@@ -717,6 +718,24 @@ impl<'tcx> Inliner<'tcx> {
                 Const::Val(..) | Const::Unevaluated(..) => true,
             },
         ));
+        // Now that we incorporated the callee's `required_consts`, we can remove the callee from
+        // `mentioned_items` -- but we have to take their `mentioned_items` in return. This does
+        // some extra work here to save the monomorphization collector work later. It helps a lot,
+        // since monomorphization can avoid a lot of work when the "mentioned items" are similar to
+        // the actually used items. By doing this we can entirely avoid visiting the callee!
+        // We need to reconstruct the `required_item` for the callee so that we can find and
+        // remove it.
+        let callee_item = MentionedItem::Fn(func.ty(caller_body, self.tcx));
+        if let Some(idx) =
+            caller_body.mentioned_items.iter().position(|item| item.node == callee_item)
+        {
+            // We found the callee, so remove it and add its items instead.
+            caller_body.mentioned_items.remove(idx);
+            caller_body.mentioned_items.extend(callee_body.mentioned_items);
+        } else {
+            // If we can't find the callee, there's no point in adding its items.
+            // Probably it already got removed by being inlined elsewhere in the same function.
+        }
     }
 
     fn make_call_args(

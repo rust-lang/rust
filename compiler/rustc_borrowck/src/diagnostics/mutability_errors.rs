@@ -2,7 +2,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use core::ops::ControlFlow;
-use hir::ExprKind;
+use hir::{ExprKind, Param};
 use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
@@ -725,25 +725,26 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             _ => local_decl.source_info.span,
         };
 
-        let def_id = self.body.source.def_id();
-        let hir_id = if let Some(local_def_id) = def_id.as_local()
-            && let Some(body_id) = self.infcx.tcx.hir().maybe_body_owned_by(local_def_id)
-        {
-            let body = self.infcx.tcx.hir().body(body_id);
-            BindingFinder { span: pat_span }.visit_body(body).break_value()
-        } else {
-            None
-        };
-
         // With ref-binding patterns, the mutability suggestion has to apply to
         // the binding, not the reference (which would be a type error):
         //
         // `let &b = a;` -> `let &(mut b) = a;`
-        if let Some(hir_id) = hir_id
+        // or
+        // `fn foo(&x: &i32)` -> `fn foo(&(mut x): &i32)`
+        let def_id = self.body.source.def_id();
+        if let Some(local_def_id) = def_id.as_local()
+            && let Some(body_id) = self.infcx.tcx.hir().maybe_body_owned_by(local_def_id)
+            && let body = self.infcx.tcx.hir().body(body_id)
+            && let Some(hir_id) = (BindingFinder { span: pat_span }).visit_body(body).break_value()
+            && let node = self.infcx.tcx.hir_node(hir_id)
             && let hir::Node::Local(hir::Local {
                 pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
                 ..
-            }) = self.infcx.tcx.hir_node(hir_id)
+            })
+            | hir::Node::Param(Param {
+                pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
+                ..
+            }) = node
             && let Ok(name) =
                 self.infcx.tcx.sess.source_map().span_to_snippet(local_decl.source_info.span)
         {
@@ -1308,6 +1309,16 @@ impl<'tcx> Visitor<'tcx> for BindingFinder {
             ControlFlow::Break(local.hir_id)
         } else {
             hir::intravisit::walk_stmt(self, s)
+        }
+    }
+
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) -> Self::Result {
+        if let hir::Pat { kind: hir::PatKind::Ref(_, _), span, .. } = param.pat
+            && *span == self.span
+        {
+            ControlFlow::Break(param.hir_id)
+        } else {
+            ControlFlow::Continue(())
         }
     }
 }

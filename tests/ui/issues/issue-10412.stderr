@@ -29,13 +29,13 @@ LL | impl<'self> Serializable<str> for &'self str {
    |                                    ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:12:24
+  --> $DIR/issue-10412.rs:11:24
    |
 LL |     fn serialize(val: &'self str) -> Vec<u8> {
    |                        ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:16:37
+  --> $DIR/issue-10412.rs:15:37
    |
 LL |     fn deserialize(repr: &[u8]) -> &'self str {
    |                                     ^^^^^
@@ -51,24 +51,6 @@ help: indicate the anonymous lifetime
 LL | impl<'self> Serializable<'_, str> for &'self str {
    |                          +++
 
-error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/issue-10412.rs:7:13
-   |
-LL | impl<'self> Serializable<str> for &'self str {
-   |             ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `str`
-note: required by an implicit `Sized` bound in `Serializable`
-  --> $DIR/issue-10412.rs:1:27
-   |
-LL | trait Serializable<'self, T> {
-   |                           ^ required by the implicit `Sized` requirement on this type parameter in `Serializable`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | trait Serializable<'self, T: ?Sized> {
-   |                            ++++++++
+error: aborting due to 8 previous errors
 
-error: aborting due to 9 previous errors
-
-Some errors have detailed explanations: E0277, E0726.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0726`.

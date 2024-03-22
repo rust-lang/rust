@@ -60,7 +60,7 @@ impl AliasKind {
 /// Defines the kinds of types used by the type system.
 ///
 /// Types written by the user start out as `hir::TyKind` and get
-/// converted to this representation using `AstConv::ast_ty_to_ty`.
+/// converted to this representation using `<dyn HirTyLowerer>::lower_ty`.
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "IrTyKind")]
 #[derive(derivative::Derivative)]
 #[derivative(

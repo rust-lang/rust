@@ -810,6 +810,8 @@ pub enum LifetimeRes {
         param: NodeId,
         /// Id of the introducing place. See `Param`.
         binder: NodeId,
+        /// Kind of elided lifetime
+        kind: hir::MissingLifetimeKind,
     },
     /// This variant is used for anonymous lifetimes that we did not resolve during
     /// late resolution. Those lifetimes will be inferred by typechecking.

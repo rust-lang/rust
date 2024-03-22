@@ -746,7 +746,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     // We may not collect all RPITITs that we see in the HIR for a trait signature
     // because an RPITIT was located within a missing item. Like if we have a sig
-    // returning `-> Missing<impl Sized>`, that gets converted to `-> [type error]`,
+    // returning `-> Missing<impl Sized>`, that gets converted to `-> {type error}`,
     // and when walking through the signature we end up never collecting the def id
     // of the `impl Sized`. Insert that here, so we don't ICE later.
     for assoc_item in tcx.associated_types_for_impl_traits_in_associated_fn(trait_m.def_id) {
@@ -1305,7 +1305,7 @@ fn compare_number_of_generics<'tcx>(
                     .iter()
                     .filter(|p| match p.kind {
                         hir::GenericParamKind::Lifetime {
-                            kind: hir::LifetimeParamKind::Elided,
+                            kind: hir::LifetimeParamKind::Elided(_),
                         } => {
                             // A fn can have an arbitrary number of extra elided lifetimes for the
                             // same signature.

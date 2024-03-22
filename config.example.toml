@@ -915,6 +915,6 @@
 # Available options: fast, balanced, best
 #compression-profile = "fast"
 
-# Copy the linker, DLLs, and various libraries from MinGW into the rustc toolchain.
+# Copy the linker, DLLs, and various libraries from MinGW into the Rust toolchain.
 # Only applies when the host or target is pc-windows-gnu.
 #include-mingw-linker = true

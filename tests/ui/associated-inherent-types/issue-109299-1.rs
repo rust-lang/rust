@@ -7,7 +7,9 @@ impl Lexer<i32> {
     type Cursor = ();
 }
 
-type X = impl for<T> Fn() -> Lexer<T>::Cursor; //~ ERROR associated type `Cursor` not found for `Lexer<T>` in the current scope
-//~^ ERROR: unconstrained opaque type
+type X = impl for<T> Fn() -> Lexer<T>::Cursor;
+//~^ ERROR associated type `Cursor` not found for `Lexer<T>` in the current scope
+//~| ERROR associated type `Cursor` not found for `Lexer<T>` in the current scope
+//~| ERROR: unconstrained opaque type
 
 fn main() {}

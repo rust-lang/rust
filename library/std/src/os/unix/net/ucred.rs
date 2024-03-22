@@ -30,7 +30,8 @@ pub(super) use self::impl_linux::peer_cred;
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "openbsd",
-    target_os = "netbsd"
+    target_os = "netbsd",
+    target_os = "nto"
 ))]
 pub(super) use self::impl_bsd::peer_cred;
 

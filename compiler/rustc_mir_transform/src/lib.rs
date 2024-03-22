@@ -8,7 +8,6 @@
 #![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
-#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(never_type)]
 #![feature(option_get_or_insert_default)]
 #![feature(round_char_boundary)]
@@ -89,6 +88,7 @@ mod lint;
 mod lower_intrinsics;
 mod lower_slice_len;
 mod match_branches;
+mod mentioned_items;
 mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
@@ -566,6 +566,10 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         tcx,
         body,
         &[
+            // Before doing anything, remember which items are being mentioned so that the set of items
+            // visited does not depend on the optimization level.
+            &mentioned_items::MentionedItems,
+            // Add some UB checks before any UB gets optimized away.
             &check_alignment::CheckAlignment,
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
@@ -633,12 +637,6 @@ fn optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> &Body<'_> {
 }
 
 fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
-    if tcx.intrinsic(did).is_some_and(|i| i.must_be_overridden) {
-        span_bug!(
-            tcx.def_span(did),
-            "this intrinsic must be overridden by the codegen backend, it has no meaningful body",
-        )
-    }
     if tcx.is_constructor(did.to_def_id()) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const

@@ -13,7 +13,6 @@ use self::spans::{BcbMapping, BcbMappingKind, CoverageSpans};
 
 use crate::MirPass;
 
-use rustc_middle::hir;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{
     self, BasicBlock, BasicBlockData, Coverage, SourceInfo, Statement, StatementKind, Terminator,
@@ -368,8 +367,7 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
     // to HIR for it.
 
     let hir_node = tcx.hir_node_by_def_id(def_id);
-    let (_, fn_body_id) =
-        hir::map::associated_body(hir_node).expect("HIR node is a function with body");
+    let fn_body_id = hir_node.body_id().expect("HIR node is a function with body");
     let hir_body = tcx.hir().body(fn_body_id);
 
     let maybe_fn_sig = hir_node.fn_sig();

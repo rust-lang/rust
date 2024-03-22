@@ -28,18 +28,7 @@ use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
 use std::{cmp, fmt, iter};
 
-/// When the main Rust parser encounters a syntax-extension invocation, it
-/// parses the arguments to the invocation as a token tree. This is a very
-/// loose structure, such that all sorts of different AST fragments can
-/// be passed to syntax extensions using a uniform type.
-///
-/// If the syntax extension is an MBE macro, it will attempt to match its
-/// LHS token tree against the provided token tree, and if it finds a
-/// match, will transcribe the RHS token tree, splicing in any captured
-/// `macro_parser::matched_nonterminals` into the `SubstNt`s it finds.
-///
-/// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
-/// Nothing special happens to misnamed or misplaced `SubstNt`s.
+/// Part of a `TokenStream`.
 #[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum TokenTree {
     /// A single token. Should never be `OpenDelim` or `CloseDelim`, because

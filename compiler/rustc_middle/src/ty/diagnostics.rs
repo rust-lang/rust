@@ -91,7 +91,12 @@ pub trait IsSuggestable<'tcx>: Sized {
     /// inference variables to be suggestable.
     fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool;
 
-    fn make_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> Option<Self>;
+    fn make_suggestable(
+        self,
+        tcx: TyCtxt<'tcx>,
+        infer_suggestable: bool,
+        placeholder: Option<Ty<'tcx>>,
+    ) -> Option<Self>;
 }
 
 impl<'tcx, T> IsSuggestable<'tcx> for T
@@ -103,8 +108,13 @@ where
         self.visit_with(&mut IsSuggestableVisitor { tcx, infer_suggestable }).is_continue()
     }
 
-    fn make_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> Option<T> {
-        self.try_fold_with(&mut MakeSuggestableFolder { tcx, infer_suggestable }).ok()
+    fn make_suggestable(
+        self,
+        tcx: TyCtxt<'tcx>,
+        infer_suggestable: bool,
+        placeholder: Option<Ty<'tcx>>,
+    ) -> Option<T> {
+        self.try_fold_with(&mut MakeSuggestableFolder { tcx, infer_suggestable, placeholder }).ok()
     }
 }
 
@@ -559,6 +569,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
 pub struct MakeSuggestableFolder<'tcx> {
     tcx: TyCtxt<'tcx>,
     infer_suggestable: bool,
+    placeholder: Option<Ty<'tcx>>,
 }
 
 impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
@@ -572,19 +583,24 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
         let t = match *t.kind() {
             Infer(InferTy::TyVar(_)) if self.infer_suggestable => t,
 
-            FnDef(def_id, args) => {
+            FnDef(def_id, args) if self.placeholder.is_none() => {
                 Ty::new_fn_ptr(self.tcx, self.tcx.fn_sig(def_id).instantiate(self.tcx, args))
             }
 
-            // FIXME(compiler-errors): We could replace these with infer, I guess.
             Closure(..)
+            | FnDef(..)
             | Infer(..)
             | Coroutine(..)
             | CoroutineWitness(..)
             | Bound(_, _)
             | Placeholder(_)
             | Error(_) => {
-                return Err(());
+                if let Some(placeholder) = self.placeholder {
+                    // We replace these with infer (which is passed in from an infcx).
+                    placeholder
+                } else {
+                    return Err(());
+                }
             }
 
             Alias(Opaque, AliasTy { def_id, .. }) => {

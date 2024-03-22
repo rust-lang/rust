@@ -5,7 +5,6 @@
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![feature(box_patterns)]
-#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(control_flow_enum)]
 
 #[macro_use]
@@ -58,8 +57,8 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirIdMap, Node};
-use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::check_abi;
+use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::query::Providers;
@@ -95,29 +94,7 @@ macro_rules! type_error_struct {
 fn primary_body_of(
     node: Node<'_>,
 ) -> Option<(hir::BodyId, Option<&hir::Ty<'_>>, Option<&hir::FnSig<'_>>)> {
-    match node {
-        Node::Item(item) => match item.kind {
-            hir::ItemKind::Const(ty, _, body) | hir::ItemKind::Static(ty, _, body) => {
-                Some((body, Some(ty), None))
-            }
-            hir::ItemKind::Fn(ref sig, .., body) => Some((body, None, Some(sig))),
-            _ => None,
-        },
-        Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Const(ty, Some(body)) => Some((body, Some(ty), None)),
-            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                Some((body, None, Some(sig)))
-            }
-            _ => None,
-        },
-        Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Const(ty, body) => Some((body, Some(ty), None)),
-            hir::ImplItemKind::Fn(ref sig, body) => Some((body, None, Some(sig))),
-            _ => None,
-        },
-        Node::AnonConst(constant) => Some((constant.body, None, None)),
-        _ => None,
-    }
+    Some((node.body_id()?, node.ty(), node.fn_sig()))
 }
 
 fn has_typeck_results(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
@@ -201,7 +178,7 @@ fn typeck_with_fallback<'tcx>(
 
     if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
         let fn_sig = if decl.output.get_infer_ret_ty().is_some() {
-            fcx.astconv().ty_of_fn(id, header.unsafety, header.abi, decl, None, None)
+            fcx.lowerer().lower_fn_ty(id, header.unsafety, header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
         };

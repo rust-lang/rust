@@ -564,6 +564,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(generic_const_items, "generic const items are experimental");
     gate_all!(unnamed_fields, "unnamed fields are not yet fully implemented");
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
+    gate_all!(postfix_match, "postfix match is experimental");
 
     if !visitor.features.never_patterns {
         if let Some(spans) = spans.get(&sym::never_patterns) {
@@ -607,13 +608,13 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         };
     }
 
+    gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
     gate_all_legacy_dont_use!(trait_alias, "trait aliases are experimental");
     // Despite being a new feature, `where T: Trait<Assoc(): Sized>`, which is RTN syntax now,
     // used to be gated under associated_type_bounds, which are right above, so RTN needs to
     // be too.
     gate_all_legacy_dont_use!(return_type_notation, "return type notation is experimental");
     gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
-    gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
     gate_all_legacy_dont_use!(
         exclusive_range_pattern,
         "exclusive range pattern syntax is experimental"

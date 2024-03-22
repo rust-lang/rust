@@ -84,9 +84,6 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     unsafe { crate::ptr::drop_in_place(to_drop) }
 }
 
-#[cfg(bootstrap)]
-pub use self::r#try as catch_unwind;
-
 extern "rust-intrinsic" {
     // N.B., these intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
@@ -965,8 +962,7 @@ extern "rust-intrinsic" {
 #[rustc_const_stable(feature = "const_assume", since = "1.77.0")]
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
-#[cfg_attr(bootstrap, inline)]
+#[rustc_intrinsic]
 pub const unsafe fn assume(b: bool) {
     if !b {
         // SAFETY: the caller must guarantee the argument is never `false`
@@ -987,9 +983,8 @@ pub const unsafe fn assume(b: bool) {
 /// This intrinsic does not have a stable counterpart.
 #[rustc_const_unstable(feature = "const_likely", issue = "none")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg_attr(bootstrap, inline)]
 pub const fn likely(b: bool) -> bool {
     b
 }
@@ -1007,9 +1002,8 @@ pub const fn likely(b: bool) -> bool {
 /// This intrinsic does not have a stable counterpart.
 #[rustc_const_unstable(feature = "const_likely", issue = "none")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg_attr(bootstrap, inline)]
 pub const fn unlikely(b: bool) -> bool {
     b
 }
@@ -1919,7 +1913,6 @@ extern "rust-intrinsic" {
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
     #[rustc_safe_intrinsic]
-    #[cfg(not(bootstrap))]
     pub fn fadd_algebraic<T: Copy>(a: T, b: T) -> T;
 
     /// Float subtraction that allows optimizations based on algebraic rules.
@@ -1927,7 +1920,6 @@ extern "rust-intrinsic" {
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
     #[rustc_safe_intrinsic]
-    #[cfg(not(bootstrap))]
     pub fn fsub_algebraic<T: Copy>(a: T, b: T) -> T;
 
     /// Float multiplication that allows optimizations based on algebraic rules.
@@ -1935,7 +1927,6 @@ extern "rust-intrinsic" {
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
     #[rustc_safe_intrinsic]
-    #[cfg(not(bootstrap))]
     pub fn fmul_algebraic<T: Copy>(a: T, b: T) -> T;
 
     /// Float division that allows optimizations based on algebraic rules.
@@ -1943,7 +1934,6 @@ extern "rust-intrinsic" {
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
     #[rustc_safe_intrinsic]
-    #[cfg(not(bootstrap))]
     pub fn fdiv_algebraic<T: Copy>(a: T, b: T) -> T;
 
     /// Float remainder that allows optimizations based on algebraic rules.
@@ -1951,7 +1941,6 @@ extern "rust-intrinsic" {
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
     #[rustc_safe_intrinsic]
-    #[cfg(not(bootstrap))]
     pub fn frem_algebraic<T: Copy>(a: T, b: T) -> T;
 
     /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
@@ -2407,13 +2396,7 @@ extern "rust-intrinsic" {
     ///
     /// The stable version of this intrinsic is `std::panic::catch_unwind`.
     #[rustc_nounwind]
-    #[cfg(not(bootstrap))]
     pub fn catch_unwind(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
-
-    /// For bootstrap only, see `catch_unwind`.
-    #[rustc_nounwind]
-    #[cfg(bootstrap)]
-    pub fn r#try(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
 
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.
@@ -2434,20 +2417,29 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
 
-    /// See documentation of `<*const T>::guaranteed_eq` for details.
-    /// Returns `2` if the result is unknown.
-    /// Returns `1` if the pointers are guaranteed equal
-    /// Returns `0` if the pointers are guaranteed inequal
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
+    #[cfg(bootstrap)]
     pub fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8;
+}
 
+/// See documentation of `<*const T>::guaranteed_eq` for details.
+/// Returns `2` if the result is unknown.
+/// Returns `1` if the pointers are guaranteed equal
+/// Returns `0` if the pointers are guaranteed inequal
+#[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+#[cfg(not(bootstrap))]
+#[rustc_nounwind]
+#[rustc_do_not_const_check]
+#[inline]
+pub const fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8 {
+    (ptr == other) as u8
+}
+
+extern "rust-intrinsic" {
     /// Determines whether the raw bytes of the two values are equal.
     ///
     /// This is particularly handy for arrays, since it allows things like just
@@ -2506,66 +2498,12 @@ extern "rust-intrinsic" {
     /// `ptr` must point to a vtable.
     /// The intrinsic will return the alignment stored in that vtable.
     #[rustc_nounwind]
+    #[cfg(bootstrap)]
     pub fn vtable_align(ptr: *const ()) -> usize;
 
-    /// Selects which function to call depending on the context.
-    ///
-    /// If this function is evaluated at compile-time, then a call to this
-    /// intrinsic will be replaced with a call to `called_in_const`. It gets
-    /// replaced with a call to `called_at_rt` otherwise.
-    ///
-    /// This function is safe to call, but note the stability concerns below.
-    ///
-    /// # Type Requirements
-    ///
-    /// The two functions must be both function items. They cannot be function
-    /// pointers or closures. The first function must be a `const fn`.
-    ///
-    /// `arg` will be the tupled arguments that will be passed to either one of
-    /// the two functions, therefore, both functions must accept the same type of
-    /// arguments. Both functions must return RET.
-    ///
-    /// # Stability concerns
-    ///
-    /// Rust has not yet decided that `const fn` are allowed to tell whether
-    /// they run at compile-time or at runtime. Therefore, when using this
-    /// intrinsic anywhere that can be reached from stable, it is crucial that
-    /// the end-to-end behavior of the stable `const fn` is the same for both
-    /// modes of execution. (Here, Undefined Behavior is considered "the same"
-    /// as any other behavior, so if the function exhibits UB at runtime then
-    /// it may do whatever it wants at compile-time.)
-    ///
-    /// Here is an example of how this could cause a problem:
-    /// ```no_run
-    /// #![feature(const_eval_select)]
-    /// #![feature(core_intrinsics)]
-    /// # #![allow(internal_features)]
-    /// # #![cfg_attr(bootstrap, allow(unused))]
-    /// use std::intrinsics::const_eval_select;
-    ///
-    /// // Standard library
-    /// # #[cfg(not(bootstrap))]
-    /// pub const fn inconsistent() -> i32 {
-    ///     fn runtime() -> i32 { 1 }
-    ///     const fn compiletime() -> i32 { 2 }
-    ///
-    //      // ⚠ This code violates the required equivalence of `compiletime`
-    ///     // and `runtime`.
-    ///     const_eval_select((), compiletime, runtime)
-    /// }
-    /// # #[cfg(bootstrap)]
-    /// # pub const fn inconsistent() -> i32 { 0 }
-    ///
-    /// // User Crate
-    /// const X: i32 = inconsistent();
-    /// let x = inconsistent();
-    /// assert_eq!(x, X);
-    /// ```
-    ///
-    /// Currently such an assertion would always succeed; until Rust decides
-    /// otherwise, that principle should not be violated.
     #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
+    #[cfg(bootstrap)]
     pub fn const_eval_select<ARG: Tuple, F, G, RET>(
         arg: ARG,
         called_in_const: F,
@@ -2574,6 +2512,79 @@ extern "rust-intrinsic" {
     where
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
+}
+
+/// Selects which function to call depending on the context.
+///
+/// If this function is evaluated at compile-time, then a call to this
+/// intrinsic will be replaced with a call to `called_in_const`. It gets
+/// replaced with a call to `called_at_rt` otherwise.
+///
+/// This function is safe to call, but note the stability concerns below.
+///
+/// # Type Requirements
+///
+/// The two functions must be both function items. They cannot be function
+/// pointers or closures. The first function must be a `const fn`.
+///
+/// `arg` will be the tupled arguments that will be passed to either one of
+/// the two functions, therefore, both functions must accept the same type of
+/// arguments. Both functions must return RET.
+///
+/// # Stability concerns
+///
+/// Rust has not yet decided that `const fn` are allowed to tell whether
+/// they run at compile-time or at runtime. Therefore, when using this
+/// intrinsic anywhere that can be reached from stable, it is crucial that
+/// the end-to-end behavior of the stable `const fn` is the same for both
+/// modes of execution. (Here, Undefined Behavior is considered "the same"
+/// as any other behavior, so if the function exhibits UB at runtime then
+/// it may do whatever it wants at compile-time.)
+///
+/// Here is an example of how this could cause a problem:
+/// ```no_run
+/// #![feature(const_eval_select)]
+/// #![feature(core_intrinsics)]
+/// # #![allow(internal_features)]
+/// # #![cfg_attr(bootstrap, allow(unused))]
+/// use std::intrinsics::const_eval_select;
+///
+/// // Standard library
+/// # #[cfg(not(bootstrap))]
+/// pub const fn inconsistent() -> i32 {
+///     fn runtime() -> i32 { 1 }
+///     const fn compiletime() -> i32 { 2 }
+///
+//      // ⚠ This code violates the required equivalence of `compiletime`
+///     // and `runtime`.
+///     const_eval_select((), compiletime, runtime)
+/// }
+/// # #[cfg(bootstrap)]
+/// # pub const fn inconsistent() -> i32 { 0 }
+///
+/// // User Crate
+/// const X: i32 = inconsistent();
+/// let x = inconsistent();
+/// assert_eq!(x, X);
+/// ```
+///
+/// Currently such an assertion would always succeed; until Rust decides
+/// otherwise, that principle should not be violated.
+#[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg(not(bootstrap))]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn const_eval_select<ARG: Tuple, F, G, RET>(
+    _arg: ARG,
+    _called_in_const: F,
+    _called_at_rt: G,
+) -> RET
+where
+    G: FnOnce<ARG, Output = RET>,
+    F: FnOnce<ARG, Output = RET>,
+{
+    unreachable!()
 }
 
 /// Returns whether the argument's value is statically known at
@@ -2622,8 +2633,7 @@ extern "rust-intrinsic" {
 #[rustc_const_unstable(feature = "is_val_statically_known", issue = "none")]
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
-#[cfg_attr(bootstrap, inline)]
+#[rustc_intrinsic]
 pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
     false
 }
@@ -2642,7 +2652,7 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 #[rustc_const_unstable(feature = "ub_checks", issue = "none")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[inline(always)]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub(crate) const fn check_library_ub() -> bool {
     cfg!(debug_assertions)
 }
@@ -2658,7 +2668,7 @@ pub(crate) const fn check_library_ub() -> bool {
 #[rustc_const_unstable(feature = "ub_checks", issue = "none")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[inline(always)]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub(crate) const fn check_language_ub() -> bool {
     cfg!(debug_assertions)
 }
@@ -2674,8 +2684,7 @@ pub(crate) const fn check_language_ub() -> bool {
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
-#[cfg_attr(bootstrap, inline)]
+#[rustc_intrinsic]
 pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
     // const eval overrides this function, but runtime code should always just return null pointers.
     crate::ptr::null_mut()
@@ -2694,18 +2703,28 @@ pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
-#[cfg_attr(bootstrap, inline)]
+#[rustc_intrinsic]
 pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
 
 /// `ptr` must point to a vtable.
 /// The intrinsic will return the size stored in that vtable.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
-#[cfg_attr(not(bootstrap), rustc_intrinsic_must_be_overridden)]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
 #[cfg(not(bootstrap))]
 pub unsafe fn vtable_size(_ptr: *const ()) -> usize {
+    unreachable!()
+}
+
+/// `ptr` must point to a vtable.
+/// The intrinsic will return the alignment stored in that vtable.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[cfg(not(bootstrap))]
+pub unsafe fn vtable_align(_ptr: *const ()) -> usize {
     unreachable!()
 }
 
@@ -2760,15 +2779,6 @@ pub unsafe fn vtable_size(_ptr: *const ()) -> usize {
 macro_rules! assert_unsafe_precondition {
     ($kind:ident, $message:expr, ($($name:ident:$ty:ty = $arg:expr),*$(,)?) => $e:expr $(,)?) => {
         {
-            // #[cfg(bootstrap)] (this comment)
-            // When the standard library is compiled with debug assertions, we want the check to inline for better performance.
-            // This is important when working on the compiler, which is compiled with debug assertions locally.
-            // When not compiled with debug assertions (so the precompiled std) we outline the check to minimize the compile
-            // time impact when debug assertions are disabled.
-            // The proper solution to this is the `#[rustc_no_mir_inline]` below, but we still want decent performance for cfg(bootstrap).
-            #[cfg_attr(all(debug_assertions, bootstrap), inline(always))]
-            #[cfg_attr(all(not(debug_assertions), bootstrap), inline(never))]
-
             // This check is inlineable, but not by the MIR inliner.
             // The reason for this is that the MIR inliner is in an exceptionally bad position
             // to think about whether or not to inline this. In MIR, this call is gated behind `debug_assertions`,
@@ -2777,8 +2787,8 @@ macro_rules! assert_unsafe_precondition {
             //
             // LLVM on the other hand sees the constant branch, so if it's `false`, it can immediately delete it without
             // inlining the check. If it's `true`, it can inline it and get significantly better performance.
-            #[cfg_attr(not(bootstrap), rustc_no_mir_inline)]
-            #[cfg_attr(not(bootstrap), inline)]
+            #[rustc_no_mir_inline]
+            #[inline]
             #[rustc_nounwind]
             #[rustc_const_unstable(feature = "ub_checks", issue = "none")]
             const fn precondition_check($($name:$ty),*) {
@@ -2846,13 +2856,7 @@ pub(crate) const fn is_nonoverlapping(
         true
     }
 
-    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
-    // SAFETY: This function's precondition is equivalent to that of `const_eval_select`.
-    // Programs which do not execute UB will only see this function return `true`, which makes the
-    // const and runtime implementation indistinguishable.
-    unsafe {
-        const_eval_select((src, dst, size, count), comptime, runtime)
-    }
+    const_eval_select((src, dst, size, count), comptime, runtime)
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -3169,9 +3173,5 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
 
     const fn compiletime(_ptr: *const (), _align: usize) {}
 
-    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
-    // SAFETY: the extra behavior at runtime is for UB checks only.
-    unsafe {
-        const_eval_select((ptr, align), compiletime, runtime);
-    }
+    const_eval_select((ptr, align), compiletime, runtime);
 }

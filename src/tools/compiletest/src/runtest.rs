@@ -82,21 +82,21 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
 }
 
 /// The platform-specific library name
-pub fn get_lib_name(lib: &str, dylib: bool) -> String {
-    // In some casess (e.g. MUSL), we build a static
-    // library, rather than a dynamic library.
-    // In this case, the only path we can pass
-    // with '--extern-meta' is the '.lib' file
-    if !dylib {
-        return format!("lib{}.rlib", lib);
-    }
-
-    if cfg!(windows) {
-        format!("{}.dll", lib)
-    } else if cfg!(target_os = "macos") {
-        format!("lib{}.dylib", lib)
-    } else {
-        format!("lib{}.so", lib)
+fn get_lib_name(lib: &str, aux_type: AuxType) -> Option<String> {
+    match aux_type {
+        AuxType::Bin => None,
+        // In some cases (e.g. MUSL), we build a static
+        // library, rather than a dynamic library.
+        // In this case, the only path we can pass
+        // with '--extern-meta' is the '.rlib' file
+        AuxType::Lib => Some(format!("lib{}.rlib", lib)),
+        AuxType::Dylib => Some(if cfg!(windows) {
+            format!("{}.dll", lib)
+        } else if cfg!(target_os = "macos") {
+            format!("lib{}.dylib", lib)
+        } else {
+            format!("lib{}.so", lib)
+        }),
     }
 }
 
@@ -196,6 +196,11 @@ pub fn compute_stamp_hash(config: &Config) -> String {
     }
 
     format!("{:x}", hash.finish())
+}
+
+fn remove_and_create_dir_all(path: &Path) {
+    let _ = fs::remove_dir_all(path);
+    fs::create_dir_all(path).unwrap();
 }
 
 #[derive(Copy, Clone)]
@@ -998,8 +1003,7 @@ impl<'test> TestCx<'test> {
         let mut rustc = Command::new(&self.config.rustc_path);
 
         let out_dir = self.output_base_name().with_extension("pretty-out");
-        let _ = fs::remove_dir_all(&out_dir);
-        create_dir_all(&out_dir).unwrap();
+        remove_and_create_dir_all(&out_dir);
 
         let target = if self.props.force_host { &*self.config.host } else { &*self.config.target };
 
@@ -2094,8 +2098,12 @@ impl<'test> TestCx<'test> {
         let aux_dir = self.aux_output_dir_name();
 
         if !self.props.aux_builds.is_empty() {
-            let _ = fs::remove_dir_all(&aux_dir);
-            create_dir_all(&aux_dir).unwrap();
+            remove_and_create_dir_all(&aux_dir);
+        }
+
+        if !self.props.aux_bins.is_empty() {
+            let aux_bin_dir = self.aux_bin_output_dir_name();
+            remove_and_create_dir_all(&aux_bin_dir);
         }
 
         aux_dir
@@ -2103,14 +2111,25 @@ impl<'test> TestCx<'test> {
 
     fn build_all_auxiliary(&self, of: &TestPaths, aux_dir: &Path, rustc: &mut Command) {
         for rel_ab in &self.props.aux_builds {
-            self.build_auxiliary(of, rel_ab, &aux_dir);
+            self.build_auxiliary(of, rel_ab, &aux_dir, false /* is_bin */);
+        }
+
+        for rel_ab in &self.props.aux_bins {
+            self.build_auxiliary(of, rel_ab, &aux_dir, true /* is_bin */);
         }
 
         for (aux_name, aux_path) in &self.props.aux_crates {
-            let is_dylib = self.build_auxiliary(of, &aux_path, &aux_dir);
+            let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir, false /* is_bin */);
             let lib_name =
-                get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), is_dylib);
-            rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir.display(), lib_name));
+                get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), aux_type);
+            if let Some(lib_name) = lib_name {
+                rustc.arg("--extern").arg(format!(
+                    "{}={}/{}",
+                    aux_name,
+                    aux_dir.display(),
+                    lib_name
+                ));
+            }
         }
     }
 
@@ -2129,12 +2148,23 @@ impl<'test> TestCx<'test> {
     }
 
     /// Builds an aux dependency.
-    ///
-    /// Returns whether or not it is a dylib.
-    fn build_auxiliary(&self, of: &TestPaths, source_path: &str, aux_dir: &Path) -> bool {
+    fn build_auxiliary(
+        &self,
+        of: &TestPaths,
+        source_path: &str,
+        aux_dir: &Path,
+        is_bin: bool,
+    ) -> AuxType {
         let aux_testpaths = self.compute_aux_test_paths(of, source_path);
         let aux_props = self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
-        let aux_output = TargetLocation::ThisDirectory(aux_dir.to_path_buf());
+        let mut aux_dir = aux_dir.to_path_buf();
+        if is_bin {
+            // On unix, the binary of `auxiliary/foo.rs` will be named
+            // `auxiliary/foo` which clashes with the _dir_ `auxiliary/foo`, so
+            // put bins in a `bin` subfolder.
+            aux_dir.push("bin");
+        }
+        let aux_output = TargetLocation::ThisDirectory(aux_dir.clone());
         let aux_cx = TestCx {
             config: self.config,
             props: &aux_props,
@@ -2152,15 +2182,17 @@ impl<'test> TestCx<'test> {
             LinkToAux::No,
             Vec::new(),
         );
-        aux_cx.build_all_auxiliary(of, aux_dir, &mut aux_rustc);
+        aux_cx.build_all_auxiliary(of, &aux_dir, &mut aux_rustc);
 
         for key in &aux_props.unset_rustc_env {
             aux_rustc.env_remove(key);
         }
         aux_rustc.envs(aux_props.rustc_env.clone());
 
-        let (dylib, crate_type) = if aux_props.no_prefer_dynamic {
-            (true, None)
+        let (aux_type, crate_type) = if is_bin {
+            (AuxType::Bin, Some("bin"))
+        } else if aux_props.no_prefer_dynamic {
+            (AuxType::Dylib, None)
         } else if self.config.target.contains("emscripten")
             || (self.config.target.contains("musl")
                 && !aux_props.force_host
@@ -2185,9 +2217,9 @@ impl<'test> TestCx<'test> {
             // Coverage tests want static linking by default so that coverage
             // mappings in auxiliary libraries can be merged into the final
             // executable.
-            (false, Some("lib"))
+            (AuxType::Lib, Some("lib"))
         } else {
-            (true, Some("dylib"))
+            (AuxType::Dylib, Some("dylib"))
         };
 
         if let Some(crate_type) = crate_type {
@@ -2211,7 +2243,7 @@ impl<'test> TestCx<'test> {
                 &auxres,
             );
         }
-        dylib
+        aux_type
     }
 
     fn read2_abbreviated(&self, child: Child) -> (Output, Truncated) {
@@ -2439,8 +2471,7 @@ impl<'test> TestCx<'test> {
                 }
 
                 let mir_dump_dir = self.get_mir_dump_dir();
-                let _ = fs::remove_dir_all(&mir_dump_dir);
-                create_dir_all(mir_dump_dir.as_path()).unwrap();
+                remove_and_create_dir_all(&mir_dump_dir);
                 let mut dir_opt = "-Zdump-mir-dir=".to_string();
                 dir_opt.push_str(mir_dump_dir.to_str().unwrap());
                 debug!("dir_opt: {:?}", dir_opt);
@@ -2675,6 +2706,12 @@ impl<'test> TestCx<'test> {
         self.output_base_dir()
             .join("auxiliary")
             .with_extra_extension(self.config.mode.aux_dir_disambiguator())
+    }
+
+    /// Gets the directory where auxiliary binaries are written.
+    /// E.g., `/.../testname.revision.mode/auxiliary/bin`.
+    fn aux_bin_output_dir_name(&self) -> PathBuf {
+        self.aux_output_dir_name().join("bin")
     }
 
     /// Generates a unique name for the test, such as `testname.revision.mode`.
@@ -2915,8 +2952,7 @@ impl<'test> TestCx<'test> {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
         let out_dir = self.output_base_dir();
-        let _ = fs::remove_dir_all(&out_dir);
-        create_dir_all(&out_dir).unwrap();
+        remove_and_create_dir_all(&out_dir);
 
         let proc_res = self.document(&out_dir);
         if !proc_res.status.success() {
@@ -2950,9 +2986,7 @@ impl<'test> TestCx<'test> {
         let suffix =
             self.safe_revision().map_or("nightly".into(), |path| path.to_owned() + "-nightly");
         let compare_dir = output_base_dir(self.config, self.testpaths, Some(&suffix));
-        // Don't give an error if the directory didn't already exist
-        let _ = fs::remove_dir_all(&compare_dir);
-        create_dir_all(&compare_dir).unwrap();
+        remove_and_create_dir_all(&compare_dir);
 
         // We need to create a new struct for the lifetimes on `config` to work.
         let new_rustdoc = TestCx {
@@ -3101,8 +3135,7 @@ impl<'test> TestCx<'test> {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
         let out_dir = self.output_base_dir();
-        let _ = fs::remove_dir_all(&out_dir);
-        create_dir_all(&out_dir).unwrap();
+        remove_and_create_dir_all(&out_dir);
 
         let proc_res = self.document(&out_dir);
         if !proc_res.status.success() {
@@ -3946,6 +3979,10 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn force_color_svg(&self) -> bool {
+        self.props.compile_flags.iter().any(|s| s.contains("--color=always"))
+    }
+
     fn load_compare_outputs(
         &self,
         proc_res: &ProcRes,
@@ -3953,10 +3990,9 @@ impl<'test> TestCx<'test> {
         explicit_format: bool,
     ) -> usize {
         let stderr_bits = format!("{}bit.stderr", self.config.get_pointer_width());
-        let force_color_svg = self.props.compile_flags.iter().any(|s| s.contains("--color=always"));
         let (stderr_kind, stdout_kind) = match output_kind {
             TestOutput::Compile => (
-                if force_color_svg {
+                if self.force_color_svg() {
                     if self.config.target.contains("windows") {
                         // We single out Windows here because some of the CLI coloring is
                         // specifically changed for Windows.
@@ -4003,7 +4039,7 @@ impl<'test> TestCx<'test> {
             _ => {}
         };
 
-        let stderr = if force_color_svg {
+        let stderr = if self.force_color_svg() {
             anstyle_svg::Term::new().render_svg(&proc_res.stderr)
         } else if explicit_format {
             proc_res.stderr.clone()
@@ -4616,7 +4652,13 @@ impl<'test> TestCx<'test> {
     }
 
     fn compare_output(&self, kind: &str, actual: &str, expected: &str) -> usize {
-        if actual == expected {
+        let are_different = match (self.force_color_svg(), expected.find('\n'), actual.find('\n')) {
+            // FIXME: We ignore the first line of SVG files
+            // because the width parameter is non-deterministic.
+            (true, Some(nl_e), Some(nl_a)) => expected[nl_e..] != actual[nl_a..],
+            _ => expected != actual,
+        };
+        if !are_different {
             return 0;
         }
 
@@ -4825,4 +4867,10 @@ enum AllowUnused {
 enum LinkToAux {
     Yes,
     No,
+}
+
+enum AuxType {
+    Bin,
+    Lib,
+    Dylib,
 }

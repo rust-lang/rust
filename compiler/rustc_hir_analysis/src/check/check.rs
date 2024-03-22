@@ -382,8 +382,8 @@ fn check_opaque_meets_bounds<'tcx>(
         Ok(()) => {}
         Err(ty_err) => {
             // Some types may be left "stranded" if they can't be reached
-            // from an astconv'd bound but they're mentioned in the HIR. This
-            // will happen, e.g., when a nested opaque is inside of a non-
+            // from a lowered rustc_middle bound but they're mentioned in the HIR.
+            // This will happen, e.g., when a nested opaque is inside of a non-
             // existent associated type, like `impl Trait<Missing = impl Trait>`.
             // See <tests/ui/impl-trait/stranded-opaque.rs>.
             let ty_err = ty_err.to_string(tcx);

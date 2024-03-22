@@ -13,6 +13,7 @@ impl<const N: usize> Marker<N> for Example<N> {}
 
 fn make_marker() -> impl Marker<gimme_a_const!(marker)> {
   //~^ ERROR: type provided when a constant was expected
+  //~| ERROR: type provided when a constant was expected
   Example::<gimme_a_const!(marker)>
   //~^ ERROR: type provided when a constant was expected
 }

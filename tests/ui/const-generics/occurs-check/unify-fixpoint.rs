@@ -1,3 +1,8 @@
+// -Zunstable-options added as test for ICE #97725 (left == right)`
+// left: `Binder(<[u8; _] as std::default::Default>, [])`,
+// right: `Binder(<[u8; 4] as std::default::Default>, [])
+
+//@ compile-flags: -Zunstable-options
 //@ check-pass
 #![feature(generic_const_exprs)] //~ WARN the feature `generic_const_exprs` is incomplete
 

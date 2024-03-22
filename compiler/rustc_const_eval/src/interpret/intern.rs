@@ -111,6 +111,8 @@ fn intern_as_new_static<'tcx>(
     feed.generics_of(tcx.generics_of(static_id).clone());
     feed.def_ident_span(tcx.def_ident_span(static_id));
     feed.explicit_predicates_of(tcx.explicit_predicates_of(static_id));
+
+    feed.feed_hir()
 }
 
 /// How a constant value should be interned.
@@ -291,7 +293,9 @@ pub fn intern_const_alloc_for_constprop<
         return Ok(());
     }
     // Move allocation to `tcx`.
-    for _ in intern_shallow(ecx, alloc_id, Mutability::Not).map_err(|()| err_ub!(DeadLocal))? {
+    if let Some(_) =
+        (intern_shallow(ecx, alloc_id, Mutability::Not).map_err(|()| err_ub!(DeadLocal))?).next()
+    {
         // We are not doing recursive interning, so we don't currently support provenance.
         // (If this assertion ever triggers, we should just implement a
         // proper recursive interning loop -- or just call `intern_const_alloc_recursive`.

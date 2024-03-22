@@ -10,15 +10,9 @@ use crate::marker::Tuple;
 #[must_use = "async closures are lazy and do nothing unless called"]
 #[lang = "async_fn"]
 pub trait AsyncFn<Args: Tuple>: AsyncFnMut<Args> {
-    /// Future returned by [`AsyncFn::async_call`].
-    #[unstable(feature = "async_fn_traits", issue = "none")]
-    type CallFuture<'a>: Future<Output = Self::Output>
-    where
-        Self: 'a;
-
     /// Call the [`AsyncFn`], returning a future which may borrow from the called closure.
     #[unstable(feature = "async_fn_traits", issue = "none")]
-    extern "rust-call" fn async_call(&self, args: Args) -> Self::CallFuture<'_>;
+    extern "rust-call" fn async_call(&self, args: Args) -> Self::CallRefFuture<'_>;
 }
 
 /// An async-aware version of the [`FnMut`](crate::ops::FnMut) trait.
@@ -30,15 +24,15 @@ pub trait AsyncFn<Args: Tuple>: AsyncFnMut<Args> {
 #[must_use = "async closures are lazy and do nothing unless called"]
 #[lang = "async_fn_mut"]
 pub trait AsyncFnMut<Args: Tuple>: AsyncFnOnce<Args> {
-    /// Future returned by [`AsyncFnMut::async_call_mut`].
+    /// Future returned by [`AsyncFnMut::async_call_mut`] and [`AsyncFn::async_call`].
     #[unstable(feature = "async_fn_traits", issue = "none")]
-    type CallMutFuture<'a>: Future<Output = Self::Output>
+    type CallRefFuture<'a>: Future<Output = Self::Output>
     where
         Self: 'a;
 
     /// Call the [`AsyncFnMut`], returning a future which may borrow from the called closure.
     #[unstable(feature = "async_fn_traits", issue = "none")]
-    extern "rust-call" fn async_call_mut(&mut self, args: Args) -> Self::CallMutFuture<'_>;
+    extern "rust-call" fn async_call_mut(&mut self, args: Args) -> Self::CallRefFuture<'_>;
 }
 
 /// An async-aware version of the [`FnOnce`](crate::ops::FnOnce) trait.
@@ -72,9 +66,7 @@ mod impls {
     where
         F: AsyncFn<A>,
     {
-        type CallFuture<'a> = F::CallFuture<'a> where Self: 'a;
-
-        extern "rust-call" fn async_call(&self, args: A) -> Self::CallFuture<'_> {
+        extern "rust-call" fn async_call(&self, args: A) -> Self::CallRefFuture<'_> {
             F::async_call(*self, args)
         }
     }
@@ -84,9 +76,9 @@ mod impls {
     where
         F: AsyncFn<A>,
     {
-        type CallMutFuture<'a> = F::CallFuture<'a> where Self: 'a;
+        type CallRefFuture<'a> = F::CallRefFuture<'a> where Self: 'a;
 
-        extern "rust-call" fn async_call_mut(&mut self, args: A) -> Self::CallMutFuture<'_> {
+        extern "rust-call" fn async_call_mut(&mut self, args: A) -> Self::CallRefFuture<'_> {
             F::async_call(*self, args)
         }
     }
@@ -97,7 +89,7 @@ mod impls {
         F: AsyncFn<A>,
     {
         type Output = F::Output;
-        type CallOnceFuture = F::CallFuture<'a>;
+        type CallOnceFuture = F::CallRefFuture<'a>;
 
         extern "rust-call" fn async_call_once(self, args: A) -> Self::CallOnceFuture {
             F::async_call(self, args)
@@ -109,9 +101,9 @@ mod impls {
     where
         F: AsyncFnMut<A>,
     {
-        type CallMutFuture<'a> = F::CallMutFuture<'a> where Self: 'a;
+        type CallRefFuture<'a> = F::CallRefFuture<'a> where Self: 'a;
 
-        extern "rust-call" fn async_call_mut(&mut self, args: A) -> Self::CallMutFuture<'_> {
+        extern "rust-call" fn async_call_mut(&mut self, args: A) -> Self::CallRefFuture<'_> {
             F::async_call_mut(*self, args)
         }
     }
@@ -122,7 +114,7 @@ mod impls {
         F: AsyncFnMut<A>,
     {
         type Output = F::Output;
-        type CallOnceFuture = F::CallMutFuture<'a>;
+        type CallOnceFuture = F::CallRefFuture<'a>;
 
         extern "rust-call" fn async_call_once(self, args: A) -> Self::CallOnceFuture {
             F::async_call_mut(self, args)
@@ -140,7 +132,7 @@ mod internal_implementation_detail {
     /// and thus either `?0` or `i8`/`i16`/`i32` (see docs for `ClosureKind`
     /// for an explanation of that). The `GoalKind` is also the same type, but
     /// representing the kind of the trait that the closure is being called with.
-    #[cfg_attr(not(bootstrap), lang = "async_fn_kind_helper")]
+    #[lang = "async_fn_kind_helper"]
     trait AsyncFnKindHelper<GoalKind> {
         // Projects a set of closure inputs (arguments), a region, and a set of upvars
         // (by move and by ref) to the upvars that we expect the coroutine to have

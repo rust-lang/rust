@@ -414,7 +414,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                             ),
                             output_coroutine_ty.into(),
                         ),
-                        sym::CallMutFuture | sym::CallFuture => (
+                        sym::CallRefFuture => (
                             ty::AliasTy::new(
                                 tcx,
                                 goal.predicate.def_id(),
@@ -645,6 +645,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             // but that's already proven by the generator being WF.
             [],
         )
+    }
+
+    fn consider_builtin_fused_iterator_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`FusedIterator` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_async_iterator_candidate(

@@ -242,6 +242,8 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
             |k| matches!(k, Box(_)),
             |k| always_pat!(k, Box(p) => p),
         ),
+        // FIXME(deref_patterns): Should we merge patterns here?
+        Deref(_) => false,
         // Transform `&mut x | ... | &mut y` into `&mut (x | y)`.
         Ref(target, Mutability::Mut) => extend_with_matching(
             target, start, alternatives,

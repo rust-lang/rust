@@ -14,7 +14,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
-    TraitPredicate, Ty, TyCtxt, TypeVisitableExt,
+    TraitPredicate, Ty, TyCtxt,
 };
 use rustc_span::def_id::DefId;
 
@@ -267,6 +267,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.copy_clone_conditions(obligation)
             } else if Some(trait_def) == lang_items.clone_trait() {
                 self.copy_clone_conditions(obligation)
+            } else if Some(trait_def) == lang_items.fused_iterator_trait() {
+                self.fused_iterator_conditions(obligation)
             } else {
                 bug!("unexpected builtin trait {:?}", trait_def)
             };
@@ -1262,7 +1264,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Extract `TailField<T>` and `TailField<U>` from `Struct<T>` and `Struct<U>`,
                 // normalizing in the process, since `type_of` returns something directly from
-                // astconv (which means it's un-normalized).
+                // HIR ty lowering (which means it's un-normalized).
                 let source_tail = normalize_with_depth_to(
                     self,
                     obligation.param_env,
@@ -1438,10 +1440,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::CoroutineWitness(def_id, args) => {
                     let tcx = self.tcx();
-                    stack.extend(tcx.coroutine_hidden_types(def_id).map(|bty| {
-                        let ty = bty.instantiate(tcx, args);
-                        debug_assert!(!ty.has_bound_regions());
-                        ty
+                    stack.extend(tcx.bound_coroutine_hidden_types(def_id).map(|bty| {
+                        self.infcx.enter_forall_and_leak_universe(bty.instantiate(tcx, args))
                     }))
                 }
 

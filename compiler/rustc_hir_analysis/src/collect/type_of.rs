@@ -47,7 +47,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             let ty = tcx.fold_regions(ty, |r, _| {
                 if r.is_erased() { ty::Region::new_error_misc(tcx) } else { r }
             });
-            let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false) {
+            let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                 (ty, Some((span, Applicability::MachineApplicable)))
             } else {
                 (ty, None)
@@ -97,10 +97,10 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         // I believe this match arm is only needed for GAT but I am not 100% sure - BoxyUwU
         Node::Ty(hir_ty @ hir::Ty { kind: TyKind::Path(QPath::TypeRelative(_, segment)), .. }) => {
             // Find the Item containing the associated type so we can create an ItemCtxt.
-            // Using the ItemCtxt convert the HIR for the unresolved assoc type into a
+            // Using the ItemCtxt lower the HIR for the unresolved assoc type into a
             // ty which is a fully resolved projection.
-            // For the code example above, this would mean converting Self::Assoc<3>
-            // into a ty::Alias(ty::Projection, <Self as Foo>::Assoc<3>)
+            // For the code example above, this would mean lowering `Self::Assoc<3>`
+            // to a ty::Alias(ty::Projection, `<Self as Foo>::Assoc<3>`).
             let item_def_id = tcx
                 .hir()
                 .parent_owner_iter(hir_id)
@@ -108,7 +108,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 .unwrap()
                 .0
                 .def_id;
-            let ty = ItemCtxt::new(tcx, item_def_id).to_ty(hir_ty);
+            let ty = ItemCtxt::new(tcx, item_def_id).lower_ty(hir_ty);
 
             // Iterate through the generics of the projection to find the one that corresponds to
             // the def_id that this query was called with. We filter to only type and const args here
@@ -369,8 +369,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                         )
                     })
                 })
-                .unwrap_or_else(|| icx.to_ty(ty)),
-            TraitItemKind::Type(_, Some(ty)) => icx.to_ty(ty),
+                .unwrap_or_else(|| icx.lower_ty(ty)),
+            TraitItemKind::Type(_, Some(ty)) => icx.lower_ty(ty),
             TraitItemKind::Type(_, None) => {
                 span_bug!(item.span, "associated type missing default");
             }
@@ -392,7 +392,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                         "associated constant",
                     )
                 } else {
-                    icx.to_ty(ty)
+                    icx.lower_ty(ty)
                 }
             }
             ImplItemKind::Type(ty) => {
@@ -400,7 +400,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                     check_feature_inherent_assoc_ty(tcx, item.span);
                 }
 
-                icx.to_ty(ty)
+                icx.lower_ty(ty)
             }
         },
 
@@ -416,17 +416,17 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                         "static variable",
                     )
                 } else {
-                    icx.to_ty(ty)
+                    icx.lower_ty(ty)
                 }
             }
             ItemKind::Const(ty, _, body_id) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant")
                 } else {
-                    icx.to_ty(ty)
+                    icx.lower_ty(ty)
                 }
             }
-            ItemKind::TyAlias(self_ty, _) => icx.to_ty(self_ty),
+            ItemKind::TyAlias(self_ty, _) => icx.lower_ty(self_ty),
             ItemKind::Impl(hir::Impl { self_ty, .. }) => match self_ty.find_self_aliases() {
                 spans if spans.len() > 0 => {
                     let guar = tcx
@@ -434,7 +434,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                         .emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
                     Ty::new_error(tcx, guar)
                 }
-                _ => icx.to_ty(*self_ty),
+                _ => icx.lower_ty(*self_ty),
             },
             ItemKind::Fn(..) => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
@@ -466,7 +466,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            ForeignItemKind::Static(t, _) => icx.to_ty(t),
+            ForeignItemKind::Static(t, _) => icx.lower_ty(t),
             ForeignItemKind::Type => Ty::new_foreign(tcx, def_id.to_def_id()),
         },
 
@@ -480,7 +480,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             }
         },
 
-        Node::Field(field) => icx.to_ty(field.ty),
+        Node::Field(field) => icx.lower_ty(field.ty),
 
         Node::Expr(&Expr { kind: ExprKind::Closure { .. }, .. }) => {
             tcx.typeck(def_id).node_type(hir_id)
@@ -495,7 +495,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
 
         Node::GenericParam(param) => match &param.kind {
             GenericParamKind::Type { default: Some(ty), .. }
-            | GenericParamKind::Const { ty, .. } => icx.to_ty(ty),
+            | GenericParamKind::Const { ty, .. } => icx.lower_ty(ty),
             x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
         },
 
@@ -587,7 +587,7 @@ fn infer_placeholder_type<'a>(
                     suggestions.clear();
                 }
 
-                if let Some(ty) = ty.make_suggestable(tcx, false) {
+                if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                     err.span_suggestion(
                         span,
                         format!("provide a type for the {kind}"),
@@ -606,7 +606,7 @@ fn infer_placeholder_type<'a>(
             let mut diag = bad_placeholder(tcx, vec![span], kind);
 
             if !ty.references_error() {
-                if let Some(ty) = ty.make_suggestable(tcx, false) {
+                if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                     diag.span_suggestion(
                         span,
                         "replace with the correct type",

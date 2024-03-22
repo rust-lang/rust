@@ -245,7 +245,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 }
             }
 
-            hir::ExprKind::Let(hir::Let { pat, init, .. }) => {
+            hir::ExprKind::Let(hir::LetExpr { pat, init, .. }) => {
                 self.walk_local(init, pat, None, |t| t.borrow_expr(init, ty::ImmBorrow))
             }
 
@@ -463,6 +463,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     }
                     PatKind::Or(_)
                     | PatKind::Box(_)
+                    | PatKind::Deref(_)
                     | PatKind::Ref(..)
                     | PatKind::Wild
                     | PatKind::Err(_) => {

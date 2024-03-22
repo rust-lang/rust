@@ -671,11 +671,11 @@ pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, i
     // So we do not read exactly 16 bytes into the u128, just the "payload".
     let uint = match endianness {
         Endian::Little => {
-            source.read(&mut buf)?;
+            source.read_exact(&mut buf[..source.len()])?;
             Ok(u128::from_le_bytes(buf))
         }
         Endian::Big => {
-            source.read(&mut buf[16 - source.len()..])?;
+            source.read_exact(&mut buf[16 - source.len()..])?;
             Ok(u128::from_be_bytes(buf))
         }
     };
