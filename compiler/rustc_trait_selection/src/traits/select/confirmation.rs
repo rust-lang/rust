@@ -267,6 +267,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.copy_clone_conditions(obligation)
             } else if Some(trait_def) == lang_items.clone_trait() {
                 self.copy_clone_conditions(obligation)
+            } else if Some(trait_def) == lang_items.fused_iterator_trait() {
+                self.fused_iterator_conditions(obligation)
             } else {
                 bug!("unexpected builtin trait {:?}", trait_def)
             };

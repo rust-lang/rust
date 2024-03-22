@@ -2259,6 +2259,20 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
     }
 
+    fn fused_iterator_conditions(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+    ) -> BuiltinImplConditions<'tcx> {
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        if let ty::Coroutine(did, ..) = *self_ty.kind()
+            && self.tcx().coroutine_is_gen(did)
+        {
+            BuiltinImplConditions::Where(ty::Binder::dummy(Vec::new()))
+        } else {
+            BuiltinImplConditions::None
+        }
+    }
+
     /// For default impls, we need to break apart a type into its
     /// "constituent types" -- meaning, the types that it contains.
     ///
