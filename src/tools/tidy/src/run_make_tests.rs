@@ -5,9 +5,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
-    let tests_path = &root_path.join("tests");
-
+pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
     let allowed_makefiles = {
         // We use `include!` here which includes the file as Rust syntax because we want to have
         // a comment that discourages people from adding entries to
@@ -76,7 +74,7 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
 */
 [
 "#;
-        let tidy_src = root_path.join("src").join("tools").join("tidy").join("src");
+        let tidy_src = src_path.join("tools").join("tidy").join("src");
         let org_file_path = tidy_src.join("expected_run_make_makefiles.txt");
         let temp_file_path = tidy_src.join("blessed_expected_run_make_makefiles.txt");
         let mut temp_file = t!(File::create_new(&temp_file_path));
