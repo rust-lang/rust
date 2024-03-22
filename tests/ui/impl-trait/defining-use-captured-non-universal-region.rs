@@ -8,8 +8,7 @@
 fn foo<'a>() -> impl Sized + 'a {
     #[cfg(statik)]
     let i: i32 = foo::<'static>();
-    //[statik]~^ ERROR opaque type used twice with different lifetimes
-    //[statik]~| ERROR opaque type used twice with different lifetimes
+    //[statik]~^ ERROR expected generic lifetime parameter, found `'static`
 
     #[cfg(infer)]
     let i: i32 = foo::<'_>();

@@ -1,17 +1,8 @@
-error: opaque type used twice with different lifetimes
+error[E0792]: expected generic lifetime parameter, found `'static`
   --> $DIR/non-defining-use-lifetimes.rs:14:16
    |
-LL |       fn foo<'a>(_: Lt<'a>) -> impl Sized + 'a {
-   |  ______________________________________________-
-LL | |         let _: () = foo(Lt::<'static>::None);
-   | |                ^^ lifetime `'static` used here
-LL | |
-LL | |     }
-   | |_____- lifetime `'a` previously used here
-   |
-note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
-  --> $DIR/non-defining-use-lifetimes.rs:14:16
-   |
+LL |     fn foo<'a>(_: Lt<'a>) -> impl Sized + 'a {
+   |                                           -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
 LL |         let _: () = foo(Lt::<'static>::None);
    |                ^^
 
@@ -23,22 +14,17 @@ LL |     fn foo<'a>(_: Lt<'a>) -> impl Sized + 'a {
 LL |         let _: () = foo(Lt::<'_>::None);
    |                ^^
 
-error: opaque type used twice with different lifetimes
-  --> $DIR/non-defining-use-lifetimes.rs:33:16
-   |
-LL |       fn foo<'a, 'b>(_: Lt<'a>, _: Lt<'b>) -> impl Sized + 'a + 'b {
-   |  __________________________________________________________________-
-LL | |         let _: () = foo(Lt::<'a>::None, Lt::<'a>::None);
-   | |                ^^ lifetime `'a` used here
-LL | |
-LL | |     }
-   | |_____- lifetime `'b` previously used here
-   |
-note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+error: non-defining opaque type use in defining scope
   --> $DIR/non-defining-use-lifetimes.rs:33:16
    |
 LL |         let _: () = foo(Lt::<'a>::None, Lt::<'a>::None);
    |                ^^
+   |
+note: lifetime used multiple times
+  --> $DIR/non-defining-use-lifetimes.rs:32:58
+   |
+LL |     fn foo<'a, 'b>(_: Lt<'a>, _: Lt<'b>) -> impl Sized + 'a + 'b {
+   |                                                          ^^   ^^
 
 error: aborting due to 3 previous errors
 

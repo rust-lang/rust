@@ -12,7 +12,7 @@ mod statik {
     // invalid defining use: Opaque<'static> := ()
     fn foo<'a>(_: Lt<'a>) -> impl Sized + 'a {
         let _: () = foo(Lt::<'static>::None);
-        //~^ ERROR opaque type used twice with different lifetimes
+        //~^ ERROR expected generic lifetime parameter, found `'static`
     }
 }
 
@@ -31,7 +31,7 @@ mod equal {
     // because of the use of equal lifetimes in args
     fn foo<'a, 'b>(_: Lt<'a>, _: Lt<'b>) -> impl Sized + 'a + 'b {
         let _: () = foo(Lt::<'a>::None, Lt::<'a>::None);
-        //~^ ERROR opaque type used twice with different lifetimes
+        //~^ ERROR non-defining opaque type use in defining scope
     }
 }
 
