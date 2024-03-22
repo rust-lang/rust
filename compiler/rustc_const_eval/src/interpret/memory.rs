@@ -1159,11 +1159,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         // Side-step AllocRef and directly access the underlying bytes more efficiently.
-        // (We are staying inside the bounds here so all is good.)
+        // (We are staying inside the bounds here and all bytes do get overwritten so all is good.)
         let alloc_id = alloc_ref.alloc_id;
         let bytes = alloc_ref
             .alloc
-            .get_bytes_mut(&alloc_ref.tcx, alloc_ref.range)
+            .get_bytes_unchecked_for_overwrite(&alloc_ref.tcx, alloc_ref.range)
             .map_err(move |e| e.to_interp_error(alloc_id))?;
         // `zip` would stop when the first iterator ends; we want to definitely
         // cover all of `bytes`.
@@ -1184,6 +1184,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.mem_copy_repeatedly(src, dest, size, 1, nonoverlapping)
     }
 
+    /// Performs `num_copies` many copies of `size` many bytes from `src` to `dest + i*size` (where
+    /// `i` is the index of the copy).
+    ///
+    /// Either `nonoverlapping` must be true or `num_copies` must be 1; doing repeated copies that
+    /// may overlap is not supported.
     pub fn mem_copy_repeatedly(
         &mut self,
         src: Pointer<Option<M::Provenance>>,
@@ -1245,8 +1250,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             (dest_alloc_id, dest_prov),
             dest_range,
         )?;
+        // Yes we do overwrite all bytes in `dest_bytes`.
         let dest_bytes = dest_alloc
-            .get_bytes_mut_ptr(&tcx, dest_range)
+            .get_bytes_unchecked_for_overwrite_ptr(&tcx, dest_range)
             .map_err(|e| e.to_interp_error(dest_alloc_id))?
             .as_mut_ptr();
 
@@ -1280,6 +1286,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 }
             }
+            if num_copies > 1 {
+                assert!(nonoverlapping, "multi-copy only supported in non-overlapping mode");
+            }
 
             let size_in_bytes = size.bytes_usize();
             // For particularly large arrays (where this is perf-sensitive) it's common that
@@ -1292,6 +1301,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             } else if src_alloc_id == dest_alloc_id {
                 let mut dest_ptr = dest_bytes;
                 for _ in 0..num_copies {
+                    // Here we rely on `src` and `dest` being non-overlapping if there is more than
+                    // one copy.
                     ptr::copy(src_bytes, dest_ptr, size_in_bytes);
                     dest_ptr = dest_ptr.add(size_in_bytes);
                 }
