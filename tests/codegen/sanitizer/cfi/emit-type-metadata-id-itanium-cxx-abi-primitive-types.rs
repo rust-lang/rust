@@ -12,9 +12,9 @@ use core::ffi::*;
 pub fn foo1(_: ()) { }
 // CHECK: define{{.*}}4foo1{{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo2(_: (), _: c_void) { }
-// CHECK: define{{.*}}4foo2{{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+// CHECK: define{{.*}}4foo2{{.*}}!type ![[TYPE2:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo3(_: (), _: c_void, _: c_void) { }
-// CHECK: define{{.*}}4foo3{{.*}}!type ![[TYPE2:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+// CHECK: define{{.*}}4foo3{{.*}}!type ![[TYPE3:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo4(_: *mut ()) { }
 // CHECK: define{{.*}}4foo4{{.*}}!type ![[TYPE4:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo5(_: *mut (), _: *mut c_void) { }
@@ -131,6 +131,8 @@ pub fn foo60(_: &str, _: &str, _: &str) { }
 // CHECK: define{{.*}}5foo60{{.*}}!type ![[TYPE60:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 
 // CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvvE"}
+// CHECK: ![[TYPE2]] = !{i64 0, !"_ZTSFvvvE"}
+// CHECK: ![[TYPE3]] = !{i64 0, !"_ZTSFvvvvE"}
 // CHECK: ![[TYPE4]] = !{i64 0, !"_ZTSFvPvE"}
 // CHECK: ![[TYPE5]] = !{i64 0, !"_ZTSFvPvS_E"}
 // CHECK: ![[TYPE6]] = !{i64 0, !"_ZTSFvPvS_S_E"}
