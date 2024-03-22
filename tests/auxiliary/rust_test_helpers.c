@@ -427,3 +427,18 @@ uint16_t issue_97463_leak_uninit_data(uint32_t a, uint32_t b, uint32_t c) {
 
     return data->b; /* leak data */
 }
+
+// Used for testing backtrace line_tables_only
+typedef void (*line_tables_only_callback) (void *data);
+
+void line_tables_only_baz(line_tables_only_callback cb, void *data) {
+    cb(data);
+}
+
+void line_tables_only_bar(line_tables_only_callback cb, void *data) {
+    line_tables_only_baz(cb, data);
+}
+
+void line_tables_only_foo(line_tables_only_callback cb, void *data) {
+    line_tables_only_bar(cb, data);
+}
