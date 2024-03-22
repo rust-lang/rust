@@ -4,6 +4,7 @@ use crate::simd::{
     ptr::{SimdConstPtr, SimdMutPtr},
     LaneCount, Mask, MaskElement, SupportedLaneCount, Swizzle,
 };
+use core::convert::{TryFrom, TryInto};
 
 /// A SIMD vector with the shape of `[T; N]` but the operations of `T`.
 ///
