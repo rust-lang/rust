@@ -221,31 +221,8 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
         self.body_id.to_def_id()
     }
 
-    fn probe_ty_param_bounds(
-        &self,
-        _: Span,
-        def_id: LocalDefId,
-        _: Ident,
-    ) -> ty::GenericPredicates<'tcx> {
-        let tcx = self.tcx;
-        let item_def_id = tcx.hir().ty_param_owner(def_id);
-        let generics = tcx.generics_of(item_def_id);
-        let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-        // HACK(eddyb) should get the original `Span`.
-        let span = tcx.def_span(def_id);
-        ty::GenericPredicates {
-            parent: None,
-            predicates: tcx.arena.alloc_from_iter(
-                self.param_env.caller_bounds().iter().filter_map(|predicate| {
-                    match predicate.kind().skip_binder() {
-                        ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
-                            Some((predicate, span))
-                        }
-                        _ => None,
-                    }
-                }),
-            ),
-        }
+    fn allow_infer(&self) -> bool {
+        true
     }
 
     fn re_infer(&self, def: Option<&ty::GenericParamDef>, span: Span) -> Option<ty::Region<'tcx>> {
@@ -254,10 +231,6 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
             None => infer::MiscVariable(span),
         };
         Some(self.next_region_var(v))
-    }
-
-    fn allow_infer(&self) -> bool {
-        true
     }
 
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
@@ -288,6 +261,33 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
             None => self.next_const_var(
                 ty,
                 ConstVariableOrigin { kind: ConstVariableOriginKind::ConstInference, span },
+            ),
+        }
+    }
+
+    fn probe_ty_param_bounds(
+        &self,
+        _: Span,
+        def_id: LocalDefId,
+        _: Ident,
+    ) -> ty::GenericPredicates<'tcx> {
+        let tcx = self.tcx;
+        let item_def_id = tcx.hir().ty_param_owner(def_id);
+        let generics = tcx.generics_of(item_def_id);
+        let index = generics.param_def_id_to_index[&def_id.to_def_id()];
+        // HACK(eddyb) should get the original `Span`.
+        let span = tcx.def_span(def_id);
+        ty::GenericPredicates {
+            parent: None,
+            predicates: tcx.arena.alloc_from_iter(
+                self.param_env.caller_bounds().iter().filter_map(|predicate| {
+                    match predicate.kind().skip_binder() {
+                        ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
+                            Some((predicate, span))
+                        }
+                        _ => None,
+                    }
+                }),
             ),
         }
     }
@@ -328,10 +328,6 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
-        self.infcx.set_tainted_by_errors(e)
-    }
-
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span) {
         // FIXME: normalization and escaping regions
         let ty = if !ty.has_escaping_bound_vars() {
@@ -354,6 +350,10 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn infcx(&self) -> Option<&infer::InferCtxt<'tcx>> {
         Some(&self.infcx)
+    }
+
+    fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
+        self.infcx.set_tainted_by_errors(e)
     }
 }
 

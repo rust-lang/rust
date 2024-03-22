@@ -89,6 +89,24 @@ pub trait HirTyLowerer<'tcx> {
     /// Returns the [`DefId`] of the overarching item whose constituents get lowered.
     fn item_def_id(&self) -> DefId;
 
+    /// Returns `true` if the current context allows the use of inference variables.
+    fn allow_infer(&self) -> bool;
+
+    /// Returns the region to use when a lifetime is omitted (and not elided).
+    fn re_infer(&self, param: Option<&ty::GenericParamDef>, span: Span)
+    -> Option<ty::Region<'tcx>>;
+
+    /// Returns the type to use when a type is omitted.
+    fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;
+
+    /// Returns the const to use when a const is omitted.
+    fn ct_infer(
+        &self,
+        ty: Ty<'tcx>,
+        param: Option<&ty::GenericParamDef>,
+        span: Span,
+    ) -> Const<'tcx>;
+
     /// Probe bounds in scope where the bounded type coincides with the given type parameter.
     ///
     /// Rephrased, this returns bounds of the form `T: Trait`, where `T` is a type parameter
@@ -109,24 +127,6 @@ pub trait HirTyLowerer<'tcx> {
         def_id: LocalDefId,
         assoc_name: Ident,
     ) -> ty::GenericPredicates<'tcx>;
-
-    /// Returns the region to use when a lifetime is omitted (and not elided).
-    fn re_infer(&self, param: Option<&ty::GenericParamDef>, span: Span)
-    -> Option<ty::Region<'tcx>>;
-
-    /// Returns the type to use when a type is omitted.
-    fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;
-
-    /// Returns `true` if the current context allows the use of inference variables.
-    fn allow_infer(&self) -> bool;
-
-    /// Returns the const to use when a const is omitted.
-    fn ct_infer(
-        &self,
-        ty: Ty<'tcx>,
-        param: Option<&ty::GenericParamDef>,
-        span: Span,
-    ) -> Const<'tcx>;
 
     /// Lower an associated type to a projection.
     ///
@@ -156,14 +156,17 @@ pub trait HirTyLowerer<'tcx> {
     /// or to an enum variant depending on the result of this function.
     fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>>;
 
+    /// Record the lowered type of a HIR node in this context.
+    fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span);
+
+    /// The inference context of the lowering context if applicable.
+    fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
+
     /// Taint the context with errors.
     ///
     /// Invoke this when you encounter an error from some prior pass like name resolution.
     /// This is used to help suppress derived errors typeck might otherwise report.
     fn set_tainted_by_errors(&self, e: ErrorGuaranteed);
-
-    /// Record the lowered type of a HIR node in this context.
-    fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span);
 
     /// Convenience method for coercing the lowering context into a trait object type.
     ///
@@ -175,9 +178,6 @@ pub trait HirTyLowerer<'tcx> {
     {
         self
     }
-
-    /// The inference context of the lowering context if applicable.
-    fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
 }
 
 /// New-typed boolean indicating whether explicit late-bound lifetimes

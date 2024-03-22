@@ -372,21 +372,12 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         self.item_def_id.to_def_id()
     }
 
-    fn probe_ty_param_bounds(
-        &self,
-        span: Span,
-        def_id: LocalDefId,
-        assoc_name: Ident,
-    ) -> ty::GenericPredicates<'tcx> {
-        self.tcx.at(span).type_param_predicates((self.item_def_id, def_id, assoc_name))
+    fn allow_infer(&self) -> bool {
+        false
     }
 
     fn re_infer(&self, _: Option<&ty::GenericParamDef>, _: Span) -> Option<ty::Region<'tcx>> {
         None
-    }
-
-    fn allow_infer(&self) -> bool {
-        false
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
@@ -401,6 +392,15 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
             r => bug!("unexpected region: {r:?}"),
         });
         ty::Const::new_error_with_message(self.tcx(), ty, span, "bad placeholder constant")
+    }
+
+    fn probe_ty_param_bounds(
+        &self,
+        span: Span,
+        def_id: LocalDefId,
+        assoc_name: Ident,
+    ) -> ty::GenericPredicates<'tcx> {
+        self.tcx.at(span).type_param_predicates((self.item_def_id, def_id, assoc_name))
     }
 
     fn lower_assoc_ty(
@@ -496,16 +496,16 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         ty.ty_adt_def()
     }
 
-    fn set_tainted_by_errors(&self, err: ErrorGuaranteed) {
-        self.tainted_by_errors.set(Some(err));
-    }
-
     fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
         // There's no place to record types from signatures?
     }
 
     fn infcx(&self) -> Option<&InferCtxt<'tcx>> {
         None
+    }
+
+    fn set_tainted_by_errors(&self, err: ErrorGuaranteed) {
+        self.tainted_by_errors.set(Some(err));
     }
 }
 
