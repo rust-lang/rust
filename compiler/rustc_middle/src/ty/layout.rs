@@ -345,11 +345,16 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ty::Array(inner, len)
                 if len.ty() == tcx.types.usize && tcx.features().transmute_generic_consts =>
             {
+                let len_eval = len.try_eval_target_usize(tcx, param_env);
+                if len_eval == Some(0) {
+                    return Ok(SizeSkeleton::Known(Size::from_bytes(0)));
+                }
+
                 match SizeSkeleton::compute(inner, tcx, param_env)? {
                     // This may succeed because the multiplication of two types may overflow
                     // but a single size of a nested array will not.
                     SizeSkeleton::Known(s) => {
-                        if let Some(c) = len.try_eval_target_usize(tcx, param_env) {
+                        if let Some(c) = len_eval {
                             let size = s
                                 .bytes()
                                 .checked_mul(c)
