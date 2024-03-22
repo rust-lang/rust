@@ -187,7 +187,7 @@
 //! Although there were other reason as well, this issue of expensive composition is the key thing
 //! that drove Rust towards adopting a different model. It is particularly a problem
 //! when one considers, for exapmle, the implications of composing together the [`Future`]s which
-//! will eventaully make up an asynchronous task (including address-sensitive `async fn` state
+//! will eventually make up an asynchronous task (including address-sensitive `async fn` state
 //! machines). It is plausible that there could be many layers of [`Future`]s composed together,
 //! including multiple layers of `async fn`s handling different parts of a task. It was deemed
 //! unacceptable to force indirection and allocation for each layer of composition in this case.
