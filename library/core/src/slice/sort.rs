@@ -1018,6 +1018,11 @@ where
     }
 }
 
+type ElemAllocF<T> = fn(usize) -> *mut T;
+type ElemDeallocF<T> = fn(*mut T, usize);
+type RunAllocF = fn(usize) -> *mut TimSortRun;
+type RunDeallocF = fn(*mut TimSortRun, usize);
+
 /// This merge sort borrows some (but not all) ideas from TimSort, which used to be described in
 /// detail [here](https://github.com/python/cpython/blob/main/Objects/listsort.txt). However Python
 /// has switched to a Powersort based implementation.
@@ -1031,19 +1036,15 @@ where
 /// 2. for every `i` in `2..runs.len()`: `runs[i - 2].len > runs[i - 1].len + runs[i].len`
 ///
 /// The invariants ensure that the total running time is *O*(*n* \* log(*n*)) worst-case.
-pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
+pub fn merge_sort<T, CmpF>(
     v: &mut [T],
     is_less: &mut CmpF,
-    elem_alloc_fn: ElemAllocF,
-    elem_dealloc_fn: ElemDeallocF,
+    elem_alloc_fn: ElemAllocF<T>,
+    elem_dealloc_fn: ElemDeallocF<T>,
     run_alloc_fn: RunAllocF,
     run_dealloc_fn: RunDeallocF,
 ) where
     CmpF: FnMut(&T, &T) -> bool,
-    ElemAllocF: Fn(usize) -> *mut T,
-    ElemDeallocF: Fn(*mut T, usize),
-    RunAllocF: Fn(usize) -> *mut TimSortRun,
-    RunDeallocF: Fn(*mut TimSortRun, usize),
 {
     // Slices of up to this length get sorted using insertion sort.
     const MAX_INSERTION: usize = 20;
@@ -1141,27 +1142,14 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
     // Extremely basic versions of Vec.
     // Their use is super limited and by having the code here, it allows reuse between the sort
     // implementations.
-    struct BufGuard<T, ElemDeallocF>
-    where
-        ElemDeallocF: Fn(*mut T, usize),
-    {
+    struct BufGuard<T> {
         buf_ptr: ptr::NonNull<T>,
         capacity: usize,
-        elem_dealloc_fn: ElemDeallocF,
+        elem_dealloc_fn: ElemDeallocF<T>,
     }
 
-    impl<T, ElemDeallocF> BufGuard<T, ElemDeallocF>
-    where
-        ElemDeallocF: Fn(*mut T, usize),
-    {
-        fn new<ElemAllocF>(
-            len: usize,
-            elem_alloc_fn: ElemAllocF,
-            elem_dealloc_fn: ElemDeallocF,
-        ) -> Self
-        where
-            ElemAllocF: Fn(usize) -> *mut T,
-        {
+    impl<T> BufGuard<T> {
+        fn new(len: usize, elem_alloc_fn: ElemAllocF<T>, elem_dealloc_fn: ElemDeallocF<T>) -> Self {
             Self {
                 buf_ptr: ptr::NonNull::new(elem_alloc_fn(len)).unwrap(),
                 capacity: len,
@@ -1170,20 +1158,13 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
         }
     }
 
-    impl<T, ElemDeallocF> Drop for BufGuard<T, ElemDeallocF>
-    where
-        ElemDeallocF: Fn(*mut T, usize),
-    {
+    impl<T> Drop for BufGuard<T> {
         fn drop(&mut self) {
             (self.elem_dealloc_fn)(self.buf_ptr.as_ptr(), self.capacity);
         }
     }
 
-    struct RunVec<RunAllocF, RunDeallocF>
-    where
-        RunAllocF: Fn(usize) -> *mut TimSortRun,
-        RunDeallocF: Fn(*mut TimSortRun, usize),
-    {
+    struct RunVec {
         buf_ptr: ptr::NonNull<TimSortRun>,
         capacity: usize,
         len: usize,
@@ -1191,11 +1172,7 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
         run_dealloc_fn: RunDeallocF,
     }
 
-    impl<RunAllocF, RunDeallocF> RunVec<RunAllocF, RunDeallocF>
-    where
-        RunAllocF: Fn(usize) -> *mut TimSortRun,
-        RunDeallocF: Fn(*mut TimSortRun, usize),
-    {
+    impl RunVec {
         fn new(run_alloc_fn: RunAllocF, run_dealloc_fn: RunDeallocF) -> Self {
             // Most slices can be sorted with at most 16 runs in-flight.
             const START_RUN_CAPACITY: usize = 16;
@@ -1259,11 +1236,7 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
         }
     }
 
-    impl<RunAllocF, RunDeallocF> core::ops::Index<usize> for RunVec<RunAllocF, RunDeallocF>
-    where
-        RunAllocF: Fn(usize) -> *mut TimSortRun,
-        RunDeallocF: Fn(*mut TimSortRun, usize),
-    {
+    impl core::ops::Index<usize> for RunVec {
         type Output = TimSortRun;
 
         fn index(&self, index: usize) -> &Self::Output {
@@ -1278,11 +1251,7 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
         }
     }
 
-    impl<RunAllocF, RunDeallocF> core::ops::IndexMut<usize> for RunVec<RunAllocF, RunDeallocF>
-    where
-        RunAllocF: Fn(usize) -> *mut TimSortRun,
-        RunDeallocF: Fn(*mut TimSortRun, usize),
-    {
+    impl core::ops::IndexMut<usize> for RunVec {
         fn index_mut(&mut self, index: usize) -> &mut Self::Output {
             if index < self.len {
                 // SAFETY: buf_ptr and len invariant must be upheld.
@@ -1295,11 +1264,7 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
         }
     }
 
-    impl<RunAllocF, RunDeallocF> Drop for RunVec<RunAllocF, RunDeallocF>
-    where
-        RunAllocF: Fn(usize) -> *mut TimSortRun,
-        RunDeallocF: Fn(*mut TimSortRun, usize),
-    {
+    impl Drop for RunVec {
         fn drop(&mut self) {
             // As long as TimSortRun is Copy we don't need to drop them individually but just the
             // whole allocation.
