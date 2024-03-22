@@ -134,16 +134,11 @@ impl Step for Std {
 
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
-        if matches!(builder.config.cmd, Subcommand::Fix { .. }) {
-            // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
-            cargo.arg("--lib");
-        }
-
         for krate in &*self.crates {
             cargo.arg("-p").arg(krate);
         }
 
-        let _guard = builder.msg_check(
+        let _guard = builder.msg_clippy(
             format_args!("library artifacts{}", crate_description(&self.crates)),
             target,
         );
@@ -213,13 +208,13 @@ impl Step for Rustc {
         rustc_cargo(builder, &mut cargo, target, compiler.stage);
 
         // Explicitly pass -p for all compiler crates -- this will force cargo
-        // to also check the tests/benches/examples for these crates, rather
+        // to also lint the tests/benches/examples for these crates, rather
         // than just the leaf crate.
         for krate in &*self.crates {
             cargo.arg("-p").arg(krate);
         }
 
-        let _guard = builder.msg_check(
+        let _guard = builder.msg_clippy(
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
             target,
         );
