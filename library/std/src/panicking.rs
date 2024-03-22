@@ -25,11 +25,11 @@ use crate::sys_common::thread_info;
 use crate::thread;
 
 #[cfg(not(test))]
-use crate::io::set_output_capture;
+use crate::io::try_set_output_capture;
 // make sure to use the stderr output configured
 // by libtest in the real copy of std
 #[cfg(test)]
-use realstd::io::set_output_capture;
+use realstd::io::try_set_output_capture;
 
 // Binary interface to the panic runtime that the standard library depends on.
 //
@@ -285,9 +285,9 @@ fn default_hook(info: &PanicInfo<'_>) {
         }
     };
 
-    if let Some(local) = set_output_capture(None) {
+    if let Ok(Some(local)) = try_set_output_capture(None) {
         write(&mut *local.lock().unwrap_or_else(|e| e.into_inner()));
-        set_output_capture(Some(local));
+        try_set_output_capture(Some(local)).ok();
     } else if let Some(mut out) = panic_output() {
         write(&mut out);
     }

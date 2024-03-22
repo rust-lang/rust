@@ -311,14 +311,14 @@ pub use self::buffered::WriterPanicked;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use self::error::RawOsError;
 pub(crate) use self::stdio::attempt_print_to_stderr;
-#[unstable(feature = "internal_output_capture", issue = "none")]
-#[doc(no_inline, hidden)]
-pub use self::stdio::set_output_capture;
 #[stable(feature = "is_terminal", since = "1.70.0")]
 pub use self::stdio::IsTerminal;
 #[unstable(feature = "print_internals", issue = "none")]
 #[doc(hidden)]
 pub use self::stdio::{_eprint, _print};
+#[unstable(feature = "internal_output_capture", issue = "none")]
+#[doc(no_inline, hidden)]
+pub use self::stdio::{set_output_capture, try_set_output_capture};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{
     buffered::{BufReader, BufWriter, IntoInnerError, LineWriter},
