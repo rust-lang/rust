@@ -102,7 +102,7 @@ fn expr_needs_inferred_result<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -
         return false;
     }
     while let Some(id) = locals_to_check.pop() {
-        if let Node::Local(l) = cx.tcx.parent_hir_node(id) {
+        if let Node::LetStmt(l) = cx.tcx.parent_hir_node(id) {
             if !l.ty.map_or(true, |ty| matches!(ty.kind, TyKind::Infer)) {
                 return false;
             }

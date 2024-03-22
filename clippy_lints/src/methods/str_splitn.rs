@@ -128,7 +128,7 @@ fn check_manual_split_once_indirect(
 ) -> Option<()> {
     let ctxt = expr.span.ctxt();
     let mut parents = cx.tcx.hir().parent_iter(expr.hir_id);
-    if let (_, Node::Local(local)) = parents.next()?
+    if let (_, Node::LetStmt(local)) = parents.next()?
         && let PatKind::Binding(BindingAnnotation::MUT, iter_binding_id, iter_ident, None) = local.pat.kind
         && let (iter_stmt_id, Node::Stmt(_)) = parents.next()?
         && let (_, Node::Block(enclosing_block)) = parents.next()?

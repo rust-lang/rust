@@ -139,7 +139,7 @@ impl<'tcx> Visitor<'tcx> for InferVisitor {
 
 fn given_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match cx.tcx.parent_hir_node(expr.hir_id) {
-        Node::Local(LetStmt { ty: Some(ty), .. }) => {
+        Node::LetStmt(LetStmt { ty: Some(ty), .. }) => {
             let mut v = InferVisitor::default();
             v.visit_ty(ty);
             !v.0

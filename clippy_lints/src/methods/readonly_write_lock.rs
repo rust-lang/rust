@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, receiver
         && let Node::Expr(unwrap_call_expr) = cx.tcx.parent_hir_node(expr.hir_id)
         && is_unwrap_call(cx, unwrap_call_expr)
         && let parent = cx.tcx.parent_hir_node(unwrap_call_expr.hir_id)
-        && let Node::Local(local) = parent
+        && let Node::LetStmt(local) = parent
         && let Some(mir) = enclosing_mir(cx.tcx, expr.hir_id)
         && let Some((local, _)) = mir
             .local_decls
