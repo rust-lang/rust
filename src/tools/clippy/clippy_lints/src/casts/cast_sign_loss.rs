@@ -118,7 +118,7 @@ enum Sign {
     Uncertain,
 }
 
-fn expr_sign<'cx>(cx: &LateContext<'cx>, expr: &Expr<'_>, ty: impl Into<Option<Ty<'cx>>>) -> Sign {
+fn expr_sign<'cx, 'tcx>(cx: &LateContext<'cx>, mut expr: &'tcx Expr<'tcx>, ty: impl Into<Option<Ty<'cx>>>) -> Sign {
     // Try evaluate this expr first to see if it's positive
     if let Some(val) = get_const_signed_int_eval(cx, expr, ty) {
         return if val >= 0 { Sign::ZeroOrPositive } else { Sign::Negative };
@@ -134,11 +134,12 @@ fn expr_sign<'cx>(cx: &LateContext<'cx>, expr: &Expr<'_>, ty: impl Into<Option<T
         // Peel unwrap(), expect(), etc.
         while let Some(&found_name) = METHODS_UNWRAP.iter().find(|&name| &method_name == name)
             && let Some(arglist) = method_chain_args(expr, &[found_name])
-            && let ExprKind::MethodCall(inner_path, ..) = &arglist[0].0.kind
+            && let ExprKind::MethodCall(inner_path, recv, ..) = &arglist[0].0.kind
         {
             // The original type has changed, but we can't use `ty` here anyway, because it has been
             // moved.
             method_name = inner_path.ident.name.as_str();
+            expr = recv;
         }
 
         if METHODS_POW.iter().any(|&name| method_name == name)
