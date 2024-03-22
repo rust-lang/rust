@@ -159,6 +159,16 @@ pub fn get_type_diagnostic_name(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<Symb
     }
 }
 
+/// Returns true if `ty` is a type on which calling `Clone` through a function instead of
+/// as a method, such as `Arc::clone()` is considered idiomatic. Lints should avoid suggesting to
+/// replace instances of `ty::Clone()` by `.clone()` for objects of those types.
+pub fn should_call_clone_as_function(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+    matches!(
+        get_type_diagnostic_name(cx, ty),
+        Some(sym::Arc | sym::ArcWeak | sym::Rc | sym::RcWeak)
+    )
+}
+
 /// Returns true if ty has `iter` or `iter_mut` methods
 pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<Symbol> {
     // FIXME: instead of this hard-coded list, we should check if `<adt>::iter`

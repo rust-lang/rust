@@ -1,7 +1,7 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
+use clippy_utils::ty::{is_copy, is_type_diagnostic_item, should_call_clone_as_function};
 use clippy_utils::{is_diag_trait_item, match_def_path, paths, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -124,11 +124,7 @@ fn handle_path(
             && let ty::Ref(_, ty, Mutability::Not) = ty.kind()
             && let ty::FnDef(_, lst) = cx.typeck_results().expr_ty(arg).kind()
             && lst.iter().all(|l| l.as_type() == Some(*ty))
-            && !matches!(
-                ty.ty_adt_def()
-                    .and_then(|adt_def| cx.tcx.get_diagnostic_name(adt_def.did())),
-                Some(sym::Arc | sym::ArcWeak | sym::Rc | sym::RcWeak)
-            )
+            && !should_call_clone_as_function(cx, *ty)
         {
             lint_path(cx, e.span, recv.span, is_copy(cx, ty.peel_refs()));
         }
