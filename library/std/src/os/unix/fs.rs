@@ -119,8 +119,7 @@ pub trait FileExt {
             match self.read_at(buf, offset) {
                 Ok(0) => break,
                 Ok(n) => {
-                    let tmp = buf;
-                    buf = &mut tmp[n..];
+                    buf = &mut buf[n..];
                     offset += n as u64;
                 }
                 Err(ref e) if e.is_interrupted() => {}
@@ -132,6 +131,38 @@ pub trait FileExt {
         } else {
             Ok(())
         }
+    }
+
+    #[unstable(feature = "read_buf", issue = "78485")]
+    fn read_buf_at(&self, mut cursor: io::BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+        let n = self.read_at(cursor.ensure_init().init_mut(), offset)?;
+        cursor.advance(n);
+        Ok(())
+    }
+
+    #[unstable(feature = "read_buf", issue = "78485")]
+    fn read_buf_exact_at(
+        &self,
+        mut cursor: io::BorrowedCursor<'_>,
+        mut offset: u64,
+    ) -> io::Result<()> {
+        while cursor.capacity() > 0 {
+            let prev_written = cursor.written();
+            match self.read_buf_at(cursor.reborrow(), offset) {
+                Ok(()) => offset += cursor.written() - prev_written,
+                Err(e) if e.is_interrupted() => continue,
+                Err(e) => return Err(e),
+            }
+
+            if cursor.written() == prev_written {
+                return Err(error::const_io_error!(
+                    ErrorKind::UnexpectedEof,
+                    "failed to fill whole buffer"
+                ));
+            }
+        }
+
+        Ok(())
     }
 
     /// Writes a number of bytes starting from a given offset.
@@ -270,6 +301,9 @@ pub trait FileExt {
 impl FileExt for fs::File {
     fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.as_inner().read_at(buf, offset)
+    }
+    fn read_buf_at(&self, cursor: io::BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+        self.as_inner().read_buf_at(cursor, offset)
     }
     fn read_vectored_at(&self, bufs: &mut [io::IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().read_vectored_at(bufs, offset)
