@@ -13,9 +13,9 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
-use crate::core::build_steps::{clippy, llvm};
 use crate::core::build_steps::tool::{self, SourceType};
 use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, setup, test};
+use crate::core::build_steps::{clippy, llvm};
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::prepare_behaviour_dump_dir;
@@ -713,6 +713,7 @@ impl Kind {
             Kind::Doc => "Documenting",
             Kind::Run => "Running",
             Kind::Suggest => "Suggesting",
+            Kind::Clippy => "Linting",
             _ => {
                 let title_letter = self.as_str()[0..1].to_ascii_uppercase();
                 return format!("{title_letter}{}ing", &self.as_str()[1..]);

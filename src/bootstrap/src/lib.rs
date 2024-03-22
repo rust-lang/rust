@@ -1069,6 +1069,16 @@ impl Build {
 
     #[must_use = "Groups should not be dropped until the Step finishes running"]
     #[track_caller]
+    fn msg_clippy(
+        &self,
+        what: impl Display,
+        target: impl Into<Option<TargetSelection>>,
+    ) -> Option<gha::Group> {
+        self.msg(Kind::Clippy, self.config.stage, what, self.config.build, target)
+    }
+
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg_check(
         &self,
         what: impl Display,
