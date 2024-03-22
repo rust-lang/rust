@@ -16,9 +16,7 @@ fn args() -> Result<Option<Vec<String>>, String> {
     }
     let args = std::env::args().skip(2).collect::<Vec<_>>();
     if args.is_empty() {
-        return Err(
-            "Expected at least one argument for `cargo` subcommand, found none".to_string(),
-        );
+        return Err("Expected at least one argument for `cargo` subcommand, found none".to_string());
     }
     Ok(Some(args))
 }
@@ -48,17 +46,10 @@ pub fn run() -> Result<(), String> {
     let current_exe = std::env::current_exe()
         .and_then(|path| path.canonicalize())
         .map_err(|error| format!("Failed to get current exe path: {:?}", error))?;
-    let mut parent_dir = current_exe
-        .components()
-        .map(|comp| comp.as_os_str())
-        .collect::<Vec<_>>();
+    let mut parent_dir = current_exe.components().map(|comp| comp.as_os_str()).collect::<Vec<_>>();
     // We run this script from "build_system/target/release/y", so we need to remove these elements.
     for to_remove in &["y", "release", "target", "build_system"] {
-        if parent_dir
-            .last()
-            .map(|part| part == to_remove)
-            .unwrap_or(false)
-        {
+        if parent_dir.last().map(|part| part == to_remove).unwrap_or(false) {
             parent_dir.pop();
         } else {
             return Err(format!(
@@ -69,11 +60,7 @@ pub fn run() -> Result<(), String> {
     }
     let parent_dir = PathBuf::from(parent_dir.join(&OsStr::new("/")));
     std::env::set_current_dir(&parent_dir).map_err(|error| {
-        format!(
-            "Failed to go to `{}` folder: {:?}",
-            parent_dir.display(),
-            error
-        )
+        format!("Failed to go to `{}` folder: {:?}", parent_dir.display(), error)
     })?;
 
     let mut env: HashMap<String, String> = std::env::vars().collect();
@@ -92,11 +79,7 @@ pub fn run() -> Result<(), String> {
 
     // We go back to the original folder since we now have set up everything we needed.
     std::env::set_current_dir(&current_dir).map_err(|error| {
-        format!(
-            "Failed to go back to `{}` folder: {:?}",
-            current_dir.display(),
-            error
-        )
+        format!("Failed to go back to `{}` folder: {:?}", current_dir.display(), error)
     })?;
 
     let rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();

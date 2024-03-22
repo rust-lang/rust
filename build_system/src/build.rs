@@ -1,5 +1,7 @@
 use crate::config::{Channel, ConfigInfo};
-use crate::utils::{run_command, run_command_with_output_and_env, walk_dir};
+use crate::utils::{
+    copy_file, create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, walk_dir,
+};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -55,8 +57,7 @@ impl BuildArg {
     }
 }
 
-pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
-    let start_dir = Path::new("build_sysroot");
+fn cleanup_sysroot_previous_build(start_dir: &Path) {
     // Cleanup for previous run
     // Clean target dir except for build scripts and incremental cache
     let _ = walk_dir(
@@ -100,6 +101,26 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     let _ = fs::remove_file(start_dir.join("Cargo.lock"));
     let _ = fs::remove_file(start_dir.join("test_target/Cargo.lock"));
     let _ = fs::remove_dir_all(start_dir.join("sysroot"));
+}
+
+pub fn create_build_sysroot_content(start_dir: &Path) -> Result<(), String> {
+    if !start_dir.is_dir() {
+        create_dir(start_dir)?;
+    }
+    copy_file("build_system/build_sysroot/Cargo.toml", &start_dir.join("Cargo.toml"))?;
+
+    let src_dir = start_dir.join("src");
+    if !src_dir.is_dir() {
+        create_dir(&src_dir)?;
+    }
+    copy_file("build_system/build_sysroot/lib.rs", &start_dir.join("src/lib.rs"))
+}
+
+pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
+    let start_dir = get_sysroot_dir();
+
+    cleanup_sysroot_previous_build(&start_dir);
+    create_build_sysroot_content(&start_dir)?;
 
     // Builds libs
     let mut rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
@@ -110,7 +131,6 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     if config.no_default_features {
         rustflags.push_str(" -Csymbol-mangling-version=v0");
     }
-    let mut env = env.clone();
 
     let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"build", &"--target", &config.target];
 
@@ -127,18 +147,13 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         "debug"
     };
 
+    let mut env = env.clone();
     env.insert("RUSTFLAGS".to_string(), rustflags);
-    run_command_with_output_and_env(&args, Some(start_dir), Some(&env))?;
+    run_command_with_output_and_env(&args, Some(&start_dir), Some(&env))?;
 
     // Copy files to sysroot
     let sysroot_path = start_dir.join(format!("sysroot/lib/rustlib/{}/lib/", config.target_triple));
-    fs::create_dir_all(&sysroot_path).map_err(|error| {
-        format!(
-            "Failed to create directory `{}`: {:?}",
-            sysroot_path.display(),
-            error
-        )
-    })?;
+    create_dir(&sysroot_path)?;
     let copier = |dir_to_copy: &Path| {
         // FIXME: should not use shell command!
         run_command(&[&"cp", &"-r", &dir_to_copy, &sysroot_path], None).map(|_| ())
@@ -151,22 +166,8 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 
     // Copy the source files to the sysroot (Rust for Linux needs this).
     let sysroot_src_path = start_dir.join("sysroot/lib/rustlib/src/rust");
-    fs::create_dir_all(&sysroot_src_path).map_err(|error| {
-        format!(
-            "Failed to create directory `{}`: {:?}",
-            sysroot_src_path.display(),
-            error
-        )
-    })?;
-    run_command(
-        &[
-            &"cp",
-            &"-r",
-            &start_dir.join("sysroot_src/library/"),
-            &sysroot_src_path,
-        ],
-        None,
-    )?;
+    create_dir(&sysroot_src_path)?;
+    run_command(&[&"cp", &"-r", &start_dir.join("sysroot_src/library/"), &sysroot_src_path], None)?;
 
     Ok(())
 }
@@ -174,20 +175,11 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     let mut env = HashMap::new();
 
-    env.insert(
-        "LD_LIBRARY_PATH".to_string(),
-        args.config_info.gcc_path.clone(),
-    );
-    env.insert(
-        "LIBRARY_PATH".to_string(),
-        args.config_info.gcc_path.clone(),
-    );
+    env.insert("LD_LIBRARY_PATH".to_string(), args.config_info.gcc_path.clone());
+    env.insert("LIBRARY_PATH".to_string(), args.config_info.gcc_path.clone());
 
     if args.config_info.no_default_features {
-        env.insert(
-            "RUSTFLAGS".to_string(),
-            "-Csymbol-mangling-version=v0".to_string(),
-        );
+        env.insert("RUSTFLAGS".to_string(), "-Csymbol-mangling-version=v0".to_string());
     }
 
     let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"rustc"];
@@ -212,12 +204,7 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     // We voluntarily ignore the error.
     let _ = fs::remove_dir_all("target/out");
     let gccjit_target = "target/out/gccjit";
-    fs::create_dir_all(gccjit_target).map_err(|error| {
-        format!(
-            "Failed to create directory `{}`: {:?}",
-            gccjit_target, error
-        )
-    })?;
+    create_dir(gccjit_target)?;
 
     println!("[BUILD] sysroot");
     build_sysroot(&env, &args.config_info)?;

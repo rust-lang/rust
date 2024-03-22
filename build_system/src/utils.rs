@@ -37,13 +37,8 @@ fn check_exit_status(
     }
     let mut error = format!(
         "Command `{}`{} exited with status {:?}",
-        input
-            .iter()
-            .map(|s| s.as_ref().to_str().unwrap())
-            .collect::<Vec<_>>()
-            .join(" "),
-        cwd.map(|cwd| format!(" (running in folder `{}`)", cwd.display()))
-            .unwrap_or_default(),
+        input.iter().map(|s| s.as_ref().to_str().unwrap()).collect::<Vec<_>>().join(" "),
+        cwd.map(|cwd| format!(" (running in folder `{}`)", cwd.display())).unwrap_or_default(),
         exit_status.code()
     );
     let input = input.iter().map(|i| i.as_ref()).collect::<Vec<&OsStr>>();
@@ -68,11 +63,7 @@ fn check_exit_status(
 fn command_error<D: Debug>(input: &[&dyn AsRef<OsStr>], cwd: &Option<&Path>, error: D) -> String {
     format!(
         "Command `{}`{} failed to run: {error:?}",
-        input
-            .iter()
-            .map(|s| s.as_ref().to_str().unwrap())
-            .collect::<Vec<_>>()
-            .join(" "),
+        input.iter().map(|s| s.as_ref().to_str().unwrap()).collect::<Vec<_>>().join(" "),
         cwd.as_ref()
             .map(|cwd| format!(" (running in folder `{}`)", cwd.display(),))
             .unwrap_or_default(),
@@ -88,9 +79,8 @@ pub fn run_command_with_env(
     cwd: Option<&Path>,
     env: Option<&HashMap<String, String>>,
 ) -> Result<Output, String> {
-    let output = get_command_inner(input, cwd, env)
-        .output()
-        .map_err(|e| command_error(input, &cwd, e))?;
+    let output =
+        get_command_inner(input, cwd, env).output().map_err(|e| command_error(input, &cwd, e))?;
     check_exit_status(input, cwd, output.status, Some(&output), true)?;
     Ok(output)
 }
@@ -164,10 +154,7 @@ pub fn cargo_install(to_install: &str) -> Result<(), String> {
 
 pub fn get_os_name() -> Result<String, String> {
     let output = run_command(&[&"uname"], None)?;
-    let name = std::str::from_utf8(&output.stdout)
-        .unwrap_or("")
-        .trim()
-        .to_string();
+    let name = std::str::from_utf8(&output.stdout).unwrap_or("").trim().to_string();
     if !name.is_empty() {
         Ok(name)
     } else {
@@ -274,11 +261,7 @@ fn git_clone_inner(
         command.push(&"1");
     }
     run_command_with_output(&command, None)?;
-    Ok(CloneResult {
-        ran_clone: true,
-        repo_name,
-        repo_dir: dest.display().to_string(),
-    })
+    Ok(CloneResult { ran_clone: true, repo_name, repo_dir: dest.display().to_string() })
 }
 
 fn get_repo_name(url: &str) -> String {
@@ -307,6 +290,25 @@ pub fn git_clone(
     git_clone_inner(to_clone, dest, shallow_clone, repo_name)
 }
 
+pub fn create_dir<P: AsRef<Path>>(path: P) -> Result<(), String> {
+    fs::create_dir_all(&path).map_err(|error| {
+        format!("Failed to create directory `{}`: {:?}", path.as_ref().display(), error)
+    })
+}
+
+pub fn copy_file<F: AsRef<Path>, T: AsRef<Path>>(from: F, to: T) -> Result<(), String> {
+    fs::copy(&from, &to)
+        .map_err(|error| {
+            format!(
+                "Failed to copy file `{}` into `{}`: {:?}",
+                from.as_ref().display(),
+                to.as_ref().display(),
+                error
+            )
+        })
+        .map(|_| ())
+}
+
 /// This function differs from `git_clone` in how it handles *where* the repository will be cloned.
 /// In `git_clone`, it is cloned in the provided path. In this function, the path you provide is
 /// the parent folder. So if you pass "a" as folder and try to clone "b.git", it will be cloned into
@@ -318,12 +320,7 @@ pub fn git_clone_root_dir(
 ) -> Result<CloneResult, String> {
     let repo_name = get_repo_name(to_clone);
 
-    git_clone_inner(
-        to_clone,
-        &dest_parent_dir.join(&repo_name),
-        shallow_clone,
-        repo_name,
-    )
+    git_clone_inner(to_clone, &dest_parent_dir.join(&repo_name), shallow_clone, repo_name)
 }
 
 pub fn walk_dir<P, D, F>(dir: P, mut dir_cb: D, mut file_cb: F) -> Result<(), String>
@@ -383,11 +380,7 @@ pub fn split_args(args: &str) -> Result<Vec<String>, String> {
                 }
             }
             if !found_end {
-                return Err(format!(
-                    "Didn't find `{}` at the end of `{}`",
-                    end,
-                    &args[start..]
-                ));
+                return Err(format!("Didn't find `{}` at the end of `{}`", end, &args[start..]));
             }
         } else if c == '\\' {
             // We skip the escaped character.
@@ -403,11 +396,7 @@ pub fn split_args(args: &str) -> Result<Vec<String>, String> {
 
 pub fn remove_file<P: AsRef<Path> + ?Sized>(file_path: &P) -> Result<(), String> {
     std::fs::remove_file(file_path).map_err(|error| {
-        format!(
-            "Failed to remove `{}`: {:?}",
-            file_path.as_ref().display(),
-            error
-        )
+        format!("Failed to remove `{}`: {:?}", file_path.as_ref().display(), error)
     })
 }
 
@@ -425,6 +414,10 @@ pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> R
             err,
         )
     })
+}
+
+pub fn get_sysroot_dir() -> PathBuf {
+    Path::new(crate::BUILD_DIR).join("build_sysroot")
 }
 
 #[cfg(test)]

@@ -103,7 +103,10 @@ jobs:
         ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }}
 
     - name: Check formatting
-      run: cargo fmt -- --check
+      run: |
+        cargo fmt -- --check
+        cd build_system
+        cargo fmt -- --check
 
     - name: clippy
       run: |

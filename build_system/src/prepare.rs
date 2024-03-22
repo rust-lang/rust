@@ -1,6 +1,7 @@
 use crate::rustc_info::get_rustc_path;
 use crate::utils::{
-    cargo_install, git_clone_root_dir, remove_file, run_command, run_command_with_output, walk_dir,
+    cargo_install, create_dir, get_sysroot_dir, git_clone_root_dir, remove_file, run_command,
+    run_command_with_output, walk_dir,
 };
 
 use std::fs;
@@ -32,27 +33,14 @@ fn prepare_libcore(
     let sysroot_dir = sysroot_path.join("sysroot_src");
     if sysroot_dir.is_dir() {
         if let Err(error) = fs::remove_dir_all(&sysroot_dir) {
-            return Err(format!(
-                "Failed to remove `{}`: {:?}",
-                sysroot_dir.display(),
-                error,
-            ));
+            return Err(format!("Failed to remove `{}`: {:?}", sysroot_dir.display(), error,));
         }
     }
 
     let sysroot_library_dir = sysroot_dir.join("library");
-    fs::create_dir_all(&sysroot_library_dir).map_err(|error| {
-        format!(
-            "Failed to create folder `{}`: {:?}",
-            sysroot_library_dir.display(),
-            error,
-        )
-    })?;
+    create_dir(&sysroot_library_dir)?;
 
-    run_command(
-        &[&"cp", &"-r", &rustlib_dir.join("library"), &sysroot_dir],
-        None,
-    )?;
+    run_command(&[&"cp", &"-r", &rustlib_dir.join("library"), &sysroot_dir], None)?;
 
     println!("[GIT] init (cwd): `{}`", sysroot_dir.display());
     run_command(&[&"git", &"init"], Some(&sysroot_dir))?;
@@ -63,26 +51,11 @@ fn prepare_libcore(
     // This is needed on systems where nothing is configured.
     // git really needs something here, or it will fail.
     // Even using --author is not enough.
-    run_command(
-        &[&"git", &"config", &"user.email", &"none@example.com"],
-        Some(&sysroot_dir),
-    )?;
-    run_command(
-        &[&"git", &"config", &"user.name", &"None"],
-        Some(&sysroot_dir),
-    )?;
-    run_command(
-        &[&"git", &"config", &"core.autocrlf", &"false"],
-        Some(&sysroot_dir),
-    )?;
-    run_command(
-        &[&"git", &"config", &"commit.gpgSign", &"false"],
-        Some(&sysroot_dir),
-    )?;
-    run_command(
-        &[&"git", &"commit", &"-m", &"Initial commit", &"-q"],
-        Some(&sysroot_dir),
-    )?;
+    run_command(&[&"git", &"config", &"user.email", &"none@example.com"], Some(&sysroot_dir))?;
+    run_command(&[&"git", &"config", &"user.name", &"None"], Some(&sysroot_dir))?;
+    run_command(&[&"git", &"config", &"core.autocrlf", &"false"], Some(&sysroot_dir))?;
+    run_command(&[&"git", &"config", &"commit.gpgSign", &"false"], Some(&sysroot_dir))?;
+    run_command(&[&"git", &"commit", &"-m", &"Initial commit", &"-q"], Some(&sysroot_dir))?;
 
     let mut patches = Vec::new();
     walk_dir(
@@ -116,17 +89,11 @@ fn prepare_libcore(
     patches.sort();
     for file_path in patches {
         println!("[GIT] apply `{}`", file_path.display());
-        let path = Path::new("../..").join(file_path);
+        let path = Path::new("../../..").join(file_path);
         run_command_with_output(&[&"git", &"apply", &path], Some(&sysroot_dir))?;
         run_command_with_output(&[&"git", &"add", &"-A"], Some(&sysroot_dir))?;
         run_command_with_output(
-            &[
-                &"git",
-                &"commit",
-                &"--no-gpg-sign",
-                &"-m",
-                &format!("Patch {}", path.display()),
-            ],
+            &[&"git", &"commit", &"--no-gpg-sign", &"-m", &format!("Patch {}", path.display())],
             Some(&sysroot_dir),
         )?;
     }
@@ -145,13 +112,7 @@ fn prepare_rand() -> Result<(), String> {
     run_command_with_output(&[&"git", &"apply", &path], Some(rand_dir))?;
     run_command_with_output(&[&"git", &"add", &"-A"], Some(rand_dir))?;
     run_command_with_output(
-        &[
-            &"git",
-            &"commit",
-            &"--no-gpg-sign",
-            &"-m",
-            &format!("Patch {}", path.display()),
-        ],
+        &[&"git", &"commit", &"--no-gpg-sign", &"-m", &format!("Patch {}", path.display())],
         Some(rand_dir),
     )?;
 
@@ -165,10 +126,7 @@ fn build_raytracer(repo_dir: &Path) -> Result<(), String> {
     if mv_target.is_file() {
         remove_file(&mv_target)?;
     }
-    run_command(
-        &[&"mv", &"target/debug/main", &"raytracer_cg_llvm"],
-        Some(repo_dir),
-    )?;
+    run_command(&[&"mv", &"target/debug/main", &"raytracer_cg_llvm"], Some(repo_dir))?;
     Ok(())
 }
 
@@ -213,11 +171,7 @@ impl PrepareArg {
                 a => return Err(format!("Unknown argument `{a}`")),
             }
         }
-        Ok(Some(Self {
-            cross_compile,
-            only_libcore,
-            libgccjit12_patches,
-        }))
+        Ok(Some(Self { cross_compile, only_libcore, libgccjit12_patches }))
     }
 
     fn usage() {
@@ -238,8 +192,8 @@ pub fn run() -> Result<(), String> {
         Some(a) => a,
         None => return Ok(()),
     };
-    let sysroot_path = Path::new("build_sysroot");
-    prepare_libcore(sysroot_path, args.libgccjit12_patches, args.cross_compile)?;
+    let sysroot_path = get_sysroot_dir();
+    prepare_libcore(&sysroot_path, args.libgccjit12_patches, args.cross_compile)?;
 
     if !args.only_libcore {
         cargo_install("hyperfine")?;
