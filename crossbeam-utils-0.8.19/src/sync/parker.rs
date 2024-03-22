@@ -370,7 +370,7 @@ impl Inner {
                         match self.state.swap(EMPTY, SeqCst) {
                             NOTIFIED | PARKED => return,
                             n => panic!("inconsistent park_timeout state: {}", n),
-                        };
+                        }
                     }
                 }
             };

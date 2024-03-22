@@ -911,7 +911,7 @@ impl<'c> ExecNoSync<'c> {
                     continue;
                 }
                 Quit => return Some(Quit),
-            };
+            }
         }
         Some(NoMatch(text.len()))
     }

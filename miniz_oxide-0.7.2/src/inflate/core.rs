@@ -1739,7 +1739,7 @@ pub fn decompress(
             // BadTotalSymbols | BadCodeSizeDistPrevLookup | BadCodeSizeSum | InvalidLitlen |
             // InvalidDist | InvalidCodeLen
             _ => break TINFLStatus::Failed,
-        };
+        }
     };
 
     let in_undo = if status != TINFLStatus::NeedsMoreInput
