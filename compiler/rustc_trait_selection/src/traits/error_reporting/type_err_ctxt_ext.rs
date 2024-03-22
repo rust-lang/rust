@@ -46,7 +46,7 @@ use rustc_session::config::DumpSolverProofTree;
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
-use rustc_span::{BytePos, ExpnKind, Span, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
 use std::iter;
@@ -125,15 +125,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         });
 
         for (index, error) in errors.iter().enumerate() {
-            // We want to ignore desugarings here: spans are equivalent even
-            // if one is the result of a desugaring and the other is not.
-            let mut span = error.obligation.cause.span;
-            let expn_data = span.ctxt().outer_expn_data();
-            if let ExpnKind::Desugaring(_) = expn_data.kind {
-                span = expn_data.call_site;
-            }
-
-            error_map.entry(span).or_default().push(ErrorDescriptor {
+            error_map.entry(error.span()).or_default().push(ErrorDescriptor {
                 predicate: error.obligation.predicate,
                 index: Some(index),
             });
@@ -177,16 +169,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
                     let guar = self.report_fulfillment_error(error);
                     reported = Some(guar);
-                    // We want to ignore desugarings here: spans are equivalent even
-                    // if one is the result of a desugaring and the other is not.
-                    let mut span = error.obligation.cause.span;
-                    let expn_data = span.ctxt().outer_expn_data();
-                    if let ExpnKind::Desugaring(_) = expn_data.kind {
-                        span = expn_data.call_site;
-                    }
                     self.reported_trait_errors
                         .borrow_mut()
-                        .entry(span)
+                        .entry(error.span())
                         .or_insert_with(|| (vec![], guar))
                         .0
                         .push(error.obligation.predicate);
@@ -363,6 +348,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         mut obligation: PredicateObligation<'tcx>,
         root_obligation: &PredicateObligation<'tcx>,
         error: &SelectionError<'tcx>,
+        mut span: Span,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx;
 
@@ -371,8 +357,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         {
             dump_proof_tree(root_obligation, self.infcx);
         }
-
-        let mut span = obligation.cause.span;
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
@@ -1506,6 +1490,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     error.obligation.clone(),
                     &error.root_obligation,
                     selection_error,
+                    error.span(),
                 ),
             FulfillmentErrorCode::ProjectionError(ref e) => {
                 self.report_projection_error(&error.obligation, e)

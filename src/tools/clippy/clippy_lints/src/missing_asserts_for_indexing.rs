@@ -137,7 +137,6 @@ fn assert_len_expr<'hir>(
     if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr)
         && let ExprKind::Unary(UnOp::Not, condition) = &cond.kind
         && let ExprKind::Binary(bin_op, left, right) = &condition.kind
-
         && let Some((cmp, asserted_len, slice_len)) = len_comparison(*bin_op, left, right)
         && let ExprKind::MethodCall(method, recv, ..) = &slice_len.kind
         && cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_slice()
