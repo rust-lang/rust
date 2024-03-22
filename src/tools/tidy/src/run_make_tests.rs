@@ -9,13 +9,13 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
     let allowed_makefiles = {
         // We use `include!` here which includes the file as Rust syntax because we want to have
         // a comment that discourages people from adding entries to
-        // `expected_run_make_makefiles.txt` unless *absolutely* necessary.
-        let allowed_makefiles = include!("expected_run_make_makefiles.txt");
+        // `allowed_run_make_makefiles.txt` unless *absolutely* necessary.
+        let allowed_makefiles = include!("allowed_run_make_makefiles.txt");
         let is_sorted = allowed_makefiles.windows(2).all(|w| w[0] < w[1]);
         if !is_sorted && !bless {
             tidy_error!(
                 bad,
-                "`src/tools/tidy/src/expected_run_make_makefiles.txt` is not in order, likely \
+                "`src/tools/tidy/src/allowed_run_make_makefiles.txt` is not in order, likely \
                 because you modified it manually, please only update it with command \
                 `x test tidy --bless`"
             );
@@ -25,7 +25,7 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
         if allowed_makefiles_unique.len() != allowed_makefiles.len() {
             tidy_error!(
                 bad,
-                "`src/tools/tidy/src/expected_run_make_makefiles.txt` contains duplicate entries, \
+                "`src/tools/tidy/src/allowed_run_make_makefiles.txt` contains duplicate entries, \
                 likely because you modified it manually, please only update it with command \
                 `x test tidy --bless`"
             );
@@ -54,7 +54,7 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
                 tidy_error!(
                     bad,
                     "found run-make Makefile not permitted in \
-                `src/tools/tidy/src/expected_run_make_makefiles.txt`, please write new run-make \
+                `src/tools/tidy/src/allowed_run_make_makefiles.txt`, please write new run-make \
                 tests with `rmake.rs` instead: {}",
                     entry.path().display()
                 );
@@ -64,7 +64,7 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
 
     // If there are any expected Makefiles remaining, they were moved or deleted.
     // Our data must remain up to date, so they must be removed from
-    // `src/tools/tidy/src/expected_run_make_makefiles.txt`.
+    // `src/tools/tidy/src/allowed_run_make_makefiles.txt`.
     // This can be done automatically on --bless, or else a tidy error will be issued.
     if bless && !remaining_makefiles.is_empty() {
         let header = r#"/*
@@ -75,8 +75,8 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
 [
 "#;
         let tidy_src = src_path.join("tools").join("tidy").join("src");
-        let org_file_path = tidy_src.join("expected_run_make_makefiles.txt");
-        let temp_file_path = tidy_src.join("blessed_expected_run_make_makefiles.txt");
+        let org_file_path = tidy_src.join("allowed_run_make_makefiles.txt");
+        let temp_file_path = tidy_src.join("blessed_allowed_run_make_makefiles.txt");
         let mut temp_file = t!(File::create_new(&temp_file_path));
         t!(write!(temp_file, "{}", header));
         for file in allowed_makefiles.difference(&remaining_makefiles) {
@@ -91,7 +91,7 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
             tidy_error!(
                 bad,
                 "Makefile `{}` no longer exists and should be removed from the exclusions in \
-                `src/tools/tidy/src/expected_run_make_makefiles.txt`",
+                `src/tools/tidy/src/allowed_run_make_makefiles.txt`",
                 p.display()
             );
         }
