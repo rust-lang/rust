@@ -1435,6 +1435,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Trait = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
                 record!(self.tables.super_predicates_of[def_id] <- self.tcx.super_predicates_of(def_id));
+                record!(self.tables.implied_predicates_of[def_id] <- self.tcx.implied_predicates_of(def_id));
 
                 let module_children = self.tcx.module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
