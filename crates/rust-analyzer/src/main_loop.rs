@@ -412,7 +412,7 @@ impl GlobalState {
                 // See https://github.com/rust-lang/rust-analyzer/issues/13130
                 let patch_empty = |message: &mut String| {
                     if message.is_empty() {
-                        *message = " ".to_owned();
+                        " ".clone_into(message);
                     }
                 };
 

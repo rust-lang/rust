@@ -235,7 +235,7 @@ impl WorkspaceBuildScripts {
             },
             progress,
         )?;
-        res.iter_mut().for_each(|it| it.error = errors.clone());
+        res.iter_mut().for_each(|it| it.error.clone_from(&errors));
         collisions.into_iter().for_each(|(id, workspace, package)| {
             if let Some(&(p, w)) = by_id.get(id) {
                 res[workspace].outputs[package] = res[w].outputs[p].clone();

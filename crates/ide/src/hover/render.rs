@@ -101,7 +101,7 @@ pub(super) fn try_expr(
                 if let Some((inner, body)) = error_type_args {
                     inner_ty = inner;
                     body_ty = body;
-                    s = "Try Error".to_owned();
+                    "Try Error".clone_into(&mut s);
                 }
             }
         }
@@ -634,7 +634,7 @@ fn closure_ty(
         })
         .join("\n");
     if captures_rendered.trim().is_empty() {
-        captures_rendered = "This closure captures nothing".to_owned();
+        "This closure captures nothing".clone_into(&mut captures_rendered);
     }
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
     let mut push_new_def = |item: hir::ModuleDef| {
