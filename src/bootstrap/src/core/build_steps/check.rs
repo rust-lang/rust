@@ -13,7 +13,9 @@ use std::path::{Path, PathBuf};
 
 pub fn cargo_subcommand(kind: Kind) -> &'static str {
     match kind {
-        Kind::Check | Kind::Clippy => "check",
+        Kind::Check
+        // We ensure check steps for both std and rustc from build_steps/clippy, so handle `Kind::Clippy` as well.
+        | Kind::Clippy => "check",
         Kind::Fix => "fix",
         _ => unreachable!(),
     }
