@@ -56,11 +56,11 @@ pub(crate) unsafe fn codegen(
                     .generic_activity_with_arg("GCC_module_codegen_emit_bitcode", &*module.name);
                 context.add_command_line_option("-flto=auto");
                 context.add_command_line_option("-flto-partition=one");
+                context
+                    .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
                 if config.json_artifact_notifications {
                     dcx.emit_artifact_notification(&bc_out, "llvm-bc");
                 }
-                context
-                    .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
             }
 
             if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
@@ -73,12 +73,12 @@ pub(crate) unsafe fn codegen(
                 context.add_command_line_option("-flto=auto");
                 context.add_command_line_option("-flto-partition=one");
                 context.add_command_line_option("-ffat-lto-objects");
-                if config.json_artifact_notifications {
-                    dcx.emit_artifact_notification(&bc_out, "llvm-bc");
-                }
                 // TODO(antoyo): Send -plugin/usr/lib/gcc/x86_64-pc-linux-gnu/11.1.0/liblto_plugin.so to linker (this should be done when specifying the appropriate rustc cli argument).
                 context
                     .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
+                if config.json_artifact_notifications {
+                    dcx.emit_artifact_notification(&bc_out, "llvm-bc");
+                }
             }
         }
 
@@ -125,9 +125,6 @@ pub(crate) unsafe fn codegen(
                     context.set_debug_info(true);
                     context.dump_to_file(path, true);
                 }
-                if config.json_artifact_notifications {
-                    dcx.emit_artifact_notification(&obj_out, "obj");
-                }
                 if should_combine_object_files && fat_lto {
                     context.add_command_line_option("-flto=auto");
                     context.add_command_line_option("-flto-partition=one");
@@ -150,6 +147,9 @@ pub(crate) unsafe fn codegen(
                         OutputKind::ObjectFile,
                         obj_out.to_str().expect("path to str"),
                     );
+                }
+                if config.json_artifact_notifications {
+                    dcx.emit_artifact_notification(&obj_out, "obj");
                 }
             }
 
