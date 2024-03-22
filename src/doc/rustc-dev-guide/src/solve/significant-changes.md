@@ -65,7 +65,7 @@ us to merge more candidates in the future.
 
 ### Nested goals are evaluated until reaching a fixpoint
 
-The new implementation always evaluates goals in a loop until reachin a fixpoint.
+The new implementation always evaluates goals in a loop until reaching a fixpoint.
 The old implementation only does so in *fulfillment*, but not in *evaluation*.
 Always doing so strengthens inference and is reduces the order dependence of
 the trait solver. See [trait-system-refactor-initiative#102].
