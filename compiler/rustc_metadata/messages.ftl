@@ -41,6 +41,9 @@ metadata_crate_dep_multiple =
 metadata_crate_dep_not_static =
     `{$crate_name}` was unavailable as a static crate, preventing fully static linking
 
+metadata_crate_dep_rustc_driver =
+    `feature(rustc_private)` is needed to link to the compiler's `rustc_driver` library
+
 metadata_crate_location_unknown_type =
     extern location for {$crate_name} is of an unknown type: {$path}
 

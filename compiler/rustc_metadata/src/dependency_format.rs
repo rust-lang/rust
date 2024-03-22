@@ -54,7 +54,8 @@
 use crate::creader::CStore;
 use crate::errors::{
     BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy, LibRequired,
-    NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
+    NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcDriverHelp, RustcLibRequired,
+    TwoPanicRuntimes,
 };
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -64,6 +65,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::CrateDepKind;
 use rustc_session::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
+use rustc_span::sym;
 
 pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
     tcx.crate_types()
@@ -290,12 +292,15 @@ fn add_library(
             // This error is probably a little obscure, but I imagine that it
             // can be refined over time.
             if link2 != link || link == RequireStatic {
+                let linking_to_rustc_driver = tcx.sess.psess.unstable_features.is_nightly_build()
+                    && tcx.crates(()).iter().any(|&cnum| tcx.crate_name(cnum) == sym::rustc_driver);
                 tcx.dcx().emit_err(CrateDepMultiple {
                     crate_name: tcx.crate_name(cnum),
                     non_static_deps: unavailable_as_static
                         .drain(..)
                         .map(|cnum| NonStaticCrateDep { crate_name: tcx.crate_name(cnum) })
                         .collect(),
+                    rustc_driver_help: linking_to_rustc_driver.then_some(RustcDriverHelp),
                 });
             }
         }
