@@ -11,7 +11,6 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
-use std::rc::Rc;
 
 use rustc_ast as ast;
 use rustc_attr::{ConstStability, StabilityLevel};
@@ -29,6 +28,7 @@ use rustc_span::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
 use itertools::Itertools;
+use thin_vec::ThinVec;
 
 use crate::clean::{
     self, types::ExternalLocation, utils::find_nearest_parent_module, ExternalCrate, PrimitiveType,
@@ -181,6 +181,165 @@ pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
         }
         Ok(())
     })
+}
+
+#[derive(Clone)]
+struct PathView<'a> {
+    path: &'a clean::Path,
+    suffix_len: usize,
+}
+
+impl<'a> PathView<'a> {
+    fn make_longer(self) -> Self {
+        let Self { path, suffix_len } = self;
+        assert!(suffix_len < path.segments.len());
+        Self { path, suffix_len: suffix_len + 1 }
+    }
+
+    fn iter_from_end(&self) -> impl Iterator<Item = &'a Symbol> {
+        self.path.segments.iter().map(|seg| &seg.name).rev().take(self.suffix_len)
+    }
+}
+
+impl<'a> Eq for PathView<'a> {}
+impl<'a> PartialEq for PathView<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        if self.suffix_len != other.suffix_len {
+            return false;
+        }
+        let self_suffix = self.iter_from_end();
+        let other_suffix = self.iter_from_end();
+        self_suffix.zip(other_suffix).all(|(s, o)| s.eq(o))
+    }
+}
+
+impl<'a> std::hash::Hash for PathView<'a> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        for sym in self.iter_from_end() {
+            sym.hash(state)
+        }
+    }
+}
+
+struct AmbiguityTable<'a> {
+    inner: FxHashMap<DefId, PathView<'a>>,
+}
+
+impl<'a> AmbiguityTable<'a> {
+    fn build() -> AmbiguityTableBuilder<'a> {
+        AmbiguityTableBuilder { inner: FxHashMap::default() }
+    }
+}
+
+enum AmbiguityTableBuilderEntry {
+    MapsToOne(DefId),
+    IsAmbiguous,
+}
+
+struct AmbiguityTableBuilder<'a> {
+    inner: FxHashMap<PathView<'a>, AmbiguityTableBuilderEntry>,
+}
+
+impl<'a> AmbiguityTableBuilder<'a> {
+    // Invariant: must start with length 1 path view
+    fn add_path_view(&mut self, p: PathView<'a>, did: DefId) {
+        use std::collections::hash_map::Entry::*;
+        // TODO: clone
+        match self.inner.entry(p.clone()) {
+            Occupied(entry) => {
+                let v =
+                    std::mem::replace(entry.into_mut(), AmbiguityTableBuilderEntry::IsAmbiguous);
+                let p = p.make_longer();
+                match v {
+                    AmbiguityTableBuilderEntry::MapsToOne(other_did) => {
+                        self.add_path_view(p.clone(), other_did)
+                    }
+                    AmbiguityTableBuilderEntry::IsAmbiguous => (),
+                }
+                self.add_path_view(p.clone(), did)
+            }
+            Vacant(entry) => {
+                entry.insert(AmbiguityTableBuilderEntry::MapsToOne(did));
+            }
+        }
+    }
+
+    fn add_path(&mut self, path: &'a clean::Path) {
+        let pv = PathView { path, suffix_len: 1 };
+        self.add_path_view(pv, path.def_id())
+    }
+
+    fn add_generic_bound(&mut self, generic_bound: &'a clean::GenericBound) {
+        match generic_bound {
+            clean::GenericBound::TraitBound(poly_trait, _) => self.add_poly_trait(poly_trait),
+            clean::GenericBound::Outlives(_) => (),
+        }
+    }
+
+    fn add_poly_trait(&mut self, poly_trait: &'a clean::PolyTrait) {
+        // TODO: also add potential bounds on trait parameters
+        self.add_path(&poly_trait.trait_);
+        for gen_param in &poly_trait.generic_params {
+            use clean::GenericParamDefKind::*;
+            match &gen_param.kind {
+                Type { bounds, .. } => {
+                    for bnd in bounds {
+                        self.add_generic_bound(bnd)
+                    }
+                }
+                Lifetime { .. } | Const { .. } => (),
+            }
+        }
+    }
+
+    fn add_type(&mut self, ty: &'a clean::Type) {
+        match ty {
+            clean::Type::Path { path } => self.add_path(path),
+            clean::Type::Tuple(tys) => {
+                for ty in tys {
+                    self.add_type(ty)
+                }
+            }
+            clean::Type::RawPointer(_, ty)
+            | clean::Type::Slice(ty)
+            | clean::Type::BorrowedRef { type_: ty, .. }
+            | clean::Type::Array(ty, _) => self.add_type(ty),
+
+            clean::Type::DynTrait(poly_trait, _) => {
+                for trai in poly_trait {
+                    self.add_poly_trait(trai)
+                }
+            }
+
+            clean::Type::BareFunction(bare_func_decl) => {
+                let clean::FnDecl { output, inputs, .. } = &bare_func_decl.decl;
+                self.add_type(output);
+                for inpt in &inputs.values {
+                    self.add_type(&inpt.type_)
+                }
+            }
+            clean::Type::ImplTrait(bnds) => {
+                for bnd in bnds {
+                    self.add_generic_bound(bnd)
+                }
+            }
+            clean::Type::Infer
+            | clean::Type::QPath(_)
+            | clean::Type::Primitive(_)
+            | clean::Type::Generic(_) => (),
+        }
+    }
+
+    fn finnish(self) -> AmbiguityTable<'a> {
+        let mut inner = FxHashMap::default();
+        for (path_view, did) in self.inner {
+            if let AmbiguityTableBuilderEntry::MapsToOne(did) = did {
+                let hopefully_none = inner.insert(did, path_view);
+                assert!(hopefully_none.is_none());
+            }
+        }
+        AmbiguityTable { inner }
+    }
 }
 
 impl clean::GenericParamDef {
@@ -991,6 +1150,7 @@ fn fmt_type<'cx>(
     t: &clean::Type,
     f: &mut fmt::Formatter<'_>,
     use_absolute: bool,
+    ambiguity_table: &AmbiguityTable<'_>,
     cx: &'cx Context<'_>,
 ) -> fmt::Result {
     trace!("fmt_type(t = {t:?})");
@@ -1000,11 +1160,11 @@ fn fmt_type<'cx>(
         clean::Type::Path { ref path } => {
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             let did = path.def_id();
-            resolved_path(f, did, path, path.is_assoc_ty(), use_absolute, cx)
+            resolved_path(f, did, path, path.is_assoc_ty(), use_absolute, ambiguity_table, cx)
         }
         clean::DynTrait(ref bounds, ref lt) => {
             f.write_str("dyn ")?;
-            tybounds(bounds, lt, cx).fmt(f)
+            tybounds(bounds, lt, ambiguity_table, cx).fmt(f)
         }
         clean::Infer => write!(f, "_"),
         clean::Primitive(clean::PrimitiveType::Never) => {
@@ -1022,7 +1182,7 @@ fn fmt_type<'cx>(
             } else {
                 primitive_link(f, PrimitiveType::Fn, format_args!("fn"), cx)?;
             }
-            decl.decl.print(cx).fmt(f)
+            decl.decl.print(ambiguity_table, cx).fmt(f)
         }
         clean::Tuple(ref typs) => match &typs[..] {
             &[] => primitive_link(f, PrimitiveType::Unit, format_args!("()"), cx),
@@ -1031,7 +1191,7 @@ fn fmt_type<'cx>(
                     primitive_link(f, PrimitiveType::Tuple, format_args!("({name},)"), cx)
                 } else {
                     write!(f, "(")?;
-                    one.print(cx).fmt(f)?;
+                    one.print(ambiguity_table, cx).fmt(f)?;
                     write!(f, ",)")
                 }
             }
@@ -1420,52 +1580,52 @@ impl clean::FnDecl {
         })
     }
 
-    fn ambiguities<'a>(
-        types: impl Iterator<Item = &'a clean::Type>,
-    ) -> FxHashMap<DefId, Rc<Cell<bool>>> {
-        fn inner(
-            ty: &clean::Type,
-            res_map: &mut FxHashMap<DefId, Rc<Cell<bool>>>,
-            conflict_map: &mut FxHashMap<Symbol, Rc<Cell<bool>>>,
-        ) {
-            match ty {
-                clean::Type::Path { path } => {
-                    res_map.entry(path.def_id()).or_insert_with(|| {
-                        let last = path.last();
-                        conflict_map
-                            .entry(last)
-                            .and_modify(|b| {
-                                b.replace(true);
-                            })
-                            .or_insert_with(|| Rc::new(Cell::new(false)))
-                            .clone()
-                    });
-                }
-                clean::Type::Tuple(types) => {
-                    for ty in types {
-                        inner(ty, res_map, conflict_map)
-                    }
-                }
-                clean::Type::Slice(ty)
-                | clean::Type::Array(ty, _)
-                | clean::Type::RawPointer(_, ty)
-                | clean::Type::BorrowedRef { type_: ty, .. } => inner(ty, res_map, conflict_map),
-                clean::Type::QPath(_)
-                | clean::Type::Infer
-                | clean::Type::ImplTrait(_)
-                | clean::Type::BareFunction(_)
-                | clean::Type::Primitive(_)
-                | clean::Type::Generic(_)
-                | clean::Type::DynTrait(_, _) => (),
-            }
-        }
-        let mut res_map = FxHashMap::default();
-        let mut conflict_map = FxHashMap::default();
-        for ty in types {
-            inner(ty, &mut res_map, &mut conflict_map)
-        }
-        res_map
-    }
+    // fn ambiguities<'a>(
+    //     types: impl Iterator<Item = &'a clean::Type>,
+    // ) -> FxHashMap<DefId, Rc<Cell<bool>>> {
+    //     fn inner(
+    //         ty: &clean::Type,
+    //         res_map: &mut FxHashMap<DefId, Rc<Cell<bool>>>,
+    //         conflict_map: &mut FxHashMap<Symbol, Rc<Cell<bool>>>,
+    //     ) {
+    //         match ty {
+    //             clean::Type::Path { path } => {
+    //                 res_map.entry(path.def_id()).or_insert_with(|| {
+    //                     let last = path.last();
+    //                     conflict_map
+    //                         .entry(last)
+    //                         .and_modify(|b| {
+    //                             b.replace(true);
+    //                         })
+    //                         .or_insert_with(|| Rc::new(Cell::new(false)))
+    //                         .clone()
+    //                 });
+    //             }
+    //             clean::Type::Tuple(types) => {
+    //                 for ty in types {
+    //                     inner(ty, res_map, conflict_map)
+    //                 }
+    //             }
+    //             clean::Type::Slice(ty)
+    //             | clean::Type::Array(ty, _)
+    //             | clean::Type::RawPointer(_, ty)
+    //             | clean::Type::BorrowedRef { type_: ty, .. } => inner(ty, res_map, conflict_map),
+    //             clean::Type::QPath(_)
+    //             | clean::Type::Infer
+    //             | clean::Type::ImplTrait(_)
+    //             | clean::Type::BareFunction(_)
+    //             | clean::Type::Primitive(_)
+    //             | clean::Type::Generic(_)
+    //             | clean::Type::DynTrait(_, _) => (),
+    //         }
+    //     }
+    //     let mut res_map = FxHashMap::default();
+    //     let mut conflict_map = FxHashMap::default();
+    //     for ty in types {
+    //         inner(ty, &mut res_map, &mut conflict_map)
+    //     }
+    //     res_map
+    // }
 
     fn inner_full_print(
         &self,
@@ -1483,7 +1643,11 @@ impl clean::FnDecl {
         {
             write!(f, "\n{}", Indent(n + 4))?;
         }
-        let ambiguities = Self::ambiguities(self.inputs.values.iter().map(|inpt| &inpt.type_));
+        let mut ambiguity_table_builder = AmbiguityTable::build();
+        for inpt in &self.inputs.values {
+            ambiguity_table_builder.add_type(&inpt.type_)
+        }
+        let ambiguity_table = ambiguity_table_builder.finnish();
         for (i, input) in self.inputs.values.iter().enumerate() {
             if i > 0 {
                 match line_wrapping_indent {
