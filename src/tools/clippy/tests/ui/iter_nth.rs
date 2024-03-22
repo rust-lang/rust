@@ -48,6 +48,9 @@ fn iter_nth() {
         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
     }
 
+    let vec_ref = &Vec::<String>::new();
+    vec_ref.iter().nth(3);
+
     // Make sure we don't lint for non-relevant types.
     let false_positive = HasIter;
     let ok = false_positive.iter().nth(3);

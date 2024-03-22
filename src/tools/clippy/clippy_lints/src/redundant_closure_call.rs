@@ -1,5 +1,5 @@
 use crate::rustc_lint::LintContext;
-use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir};
 use clippy_utils::get_parent_expr;
 use clippy_utils::sugg::Sugg;
 use hir::Param;
@@ -273,9 +273,10 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                 && ident == path.segments[0].ident
                 && count_closure_usage(cx, block, path) == 1
             {
-                span_lint(
+                span_lint_hir(
                     cx,
                     REDUNDANT_CLOSURE_CALL,
+                    second.hir_id,
                     second.span,
                     "closure called just once immediately after it was declared",
                 );

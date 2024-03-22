@@ -223,7 +223,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
                     None
                 }
             },
-            Res::Def(DefKind::Static(_), def_id) => read_mir_alloc_def_path(
+            Res::Def(DefKind::Static { .. }, def_id) => read_mir_alloc_def_path(
                 cx,
                 cx.tcx.eval_static_initializer(def_id).ok()?.inner(),
                 cx.tcx.type_of(def_id).instantiate_identity(),

@@ -1,5 +1,11 @@
 #![warn(clippy::len_zero)]
-#![allow(dead_code, unused, clippy::needless_if, clippy::len_without_is_empty)]
+#![allow(
+    dead_code,
+    unused,
+    clippy::needless_if,
+    clippy::len_without_is_empty,
+    clippy::const_is_empty
+)]
 
 extern crate core;
 use core::ops::Deref;

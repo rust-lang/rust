@@ -11,8 +11,8 @@ use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::token::Star;
 use syn::{
-    parse_macro_input, parse_quote, FnArg, ImplItem, ItemFn, ItemImpl, ItemTrait, Lifetime, Pat, PatIdent, PatType,
-    Signature, TraitItem, Type,
+    parse_macro_input, parse_quote, FnArg, ImplItem, ItemFn, ItemImpl, ItemStruct, ItemTrait, Lifetime, Pat, PatIdent,
+    PatType, Signature, TraitItem, Type, Visibility,
 };
 
 #[proc_macro_attribute]
@@ -101,9 +101,7 @@ pub fn fake_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut item = parse_macro_input!(item as ItemFn);
     let span = item.block.brace_token.span;
 
-    if item.sig.asyncness.is_some() {
-        item.sig.asyncness = None;
-    }
+    item.sig.asyncness = None;
 
     let crate_name = quote! { fake_crate };
     let block = item.block;
@@ -128,7 +126,7 @@ pub fn fake_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn fake_desugar_await(_args: TokenStream, input: TokenStream) -> TokenStream {
-    let mut async_fn = syn::parse_macro_input!(input as syn::ItemFn);
+    let mut async_fn = parse_macro_input!(input as syn::ItemFn);
 
     for stmt in &mut async_fn.block.stmts {
         if let syn::Stmt::Expr(syn::Expr::Match(syn::ExprMatch { expr: scrutinee, .. }), _) = stmt {
@@ -144,4 +142,37 @@ pub fn fake_desugar_await(_args: TokenStream, input: TokenStream) -> TokenStream
     }
 
     quote!(#async_fn).into()
+}
+
+#[proc_macro_attribute]
+pub fn rewrite_struct(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let mut item_struct = parse_macro_input!(input as syn::ItemStruct);
+    // remove struct attributes including doc comments.
+    item_struct.attrs = vec![];
+    if let Visibility::Public(token) = item_struct.vis {
+        // set vis to `pub(crate)` to trigger `missing_docs_in_private_items` lint.
+        let new_vis: Visibility = syn::parse_quote_spanned!(token.span() => pub(crate));
+        item_struct.vis = new_vis;
+    }
+    if let syn::Fields::Named(fields) = &mut item_struct.fields {
+        for field in &mut fields.named {
+            // remove all attributes from fields as well.
+            field.attrs = vec![];
+        }
+    }
+
+    quote!(#item_struct).into()
+}
+
+#[proc_macro_attribute]
+pub fn with_empty_docs(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(input as syn::Item);
+    let attrs: Vec<syn::Attribute> = vec![];
+    let doc_comment = "";
+    quote! {
+        #(#attrs)*
+        #[doc = #doc_comment]
+        #item
+    }
+    .into()
 }

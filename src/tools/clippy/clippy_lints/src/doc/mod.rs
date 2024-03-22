@@ -7,14 +7,14 @@ use clippy_utils::{is_entrypoint_fn, method_chain_args};
 use pulldown_cmark::Event::{
     Code, End, FootnoteReference, HardBreak, Html, Rule, SoftBreak, Start, TaskListMarker, Text,
 };
-use pulldown_cmark::Tag::{CodeBlock, Heading, Item, Link, Paragraph};
+use pulldown_cmark::Tag::{BlockQuote, CodeBlock, Heading, Item, Link, Paragraph};
 use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options};
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Expr};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
@@ -538,7 +538,16 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
 
     suspicious_doc_comments::check(cx, attrs);
 
-    let (fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
+    let (fragments, _) = attrs_to_doc_fragments(
+        attrs.iter().filter_map(|attr| {
+            if in_external_macro(cx.sess(), attr.span) {
+                None
+            } else {
+                Some((attr, None))
+            }
+        }),
+        true,
+    );
     let mut doc = fragments.iter().fold(String::new(), |mut acc, fragment| {
         add_doc_fragment(&mut acc, fragment);
         acc
@@ -602,6 +611,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut text_to_check: Vec<(CowStr<'_>, Range<usize>, isize)> = Vec::new();
     let mut paragraph_range = 0..0;
     let mut code_level = 0;
+    let mut blockquote_level = 0;
 
     for (event, range) in events {
         match event {
@@ -610,8 +620,14 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     code_level += 1;
                 } else if tag.starts_with("</code") {
                     code_level -= 1;
+                } else if tag.starts_with("<blockquote") || tag.starts_with("<q") {
+                    blockquote_level += 1;
+                } else if tag.starts_with("</blockquote") || tag.starts_with("</q") {
+                    blockquote_level -= 1;
                 }
             },
+            Start(BlockQuote) => blockquote_level += 1,
+            End(BlockQuote) => blockquote_level -= 1,
             Start(CodeBlock(ref kind)) => {
                 in_code = true;
                 if let CodeBlockKind::Fenced(lang) = kind {
@@ -663,7 +679,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 } else {
                     for (text, range, assoc_code_level) in text_to_check {
                         if let Some(span) = fragments.span(cx, range) {
-                            markdown::check(cx, valid_idents, &text, span, assoc_code_level);
+                            markdown::check(cx, valid_idents, &text, span, assoc_code_level, blockquote_level);
                         }
                     }
                 }
