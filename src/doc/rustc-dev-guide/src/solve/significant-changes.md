@@ -44,7 +44,7 @@ new solver to stall equality until it is able to normalize the related aliases.
 The behavior of the old solver is incomplete and relies on eager normalization
 which replaces ambiguous aliases with inference variables. As this is not
 not possible for aliases containing bound variables, the old implementation does
-nto handle aliases inside of binders correctly, e.g. [#102048]. See the chapter on
+not handle aliases inside of binders correctly, e.g. [#102048]. See the chapter on
 [normalization] for more details.
 
 [#102048]: https://github.com/rust-lang/rust/issues/102048
