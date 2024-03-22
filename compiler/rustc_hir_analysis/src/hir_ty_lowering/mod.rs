@@ -2494,13 +2494,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_ty: Option<&hir::Ty<'_>>,
     ) -> ty::PolyFnSig<'tcx> {
         let tcx = self.tcx();
-        let bound_vars = if let hir::FnRetTy::Return(ret_ty) = decl.output
-            && let hir::TyKind::InferDelegation(sig_id, _) = ret_ty.kind
-        {
-            tcx.fn_sig(sig_id).skip_binder().bound_vars()
-        } else {
-            tcx.late_bound_vars(hir_id)
-        };
+        let bound_vars = tcx.late_bound_vars(hir_id);
         debug!(?bound_vars);
 
         // We proactively collect all the inferred type params to emit a single error per fn def.
