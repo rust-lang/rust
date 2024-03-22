@@ -2166,7 +2166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         match (filename, parent_node) {
                             (
                                 FileName::Real(_),
-                                Node::Local(hir::LetStmt {
+                                Node::LetStmt(hir::LetStmt {
                                     source: hir::LocalSource::Normal,
                                     ty,
                                     ..

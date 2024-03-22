@@ -800,7 +800,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         for (_, node) in tcx.hir().parent_iter(expr.hir_id) {
             let e = match node {
                 hir::Node::Expr(e) => e,
-                hir::Node::Local(hir::LetStmt { els: Some(els), .. }) => {
+                hir::Node::LetStmt(hir::LetStmt { els: Some(els), .. }) => {
                     let mut finder = BreakFinder { found_breaks: vec![], found_continues: vec![] };
                     finder.visit_block(els);
                     if !finder.found_breaks.is_empty() {

@@ -3529,7 +3529,7 @@ pub enum Node<'hir> {
     PatField(&'hir PatField<'hir>),
     Arm(&'hir Arm<'hir>),
     Block(&'hir Block<'hir>),
-    Local(&'hir LetStmt<'hir>),
+    LetStmt(&'hir LetStmt<'hir>),
     /// `Ctor` refers to the constructor of an enum variant or struct. Only tuple or unit variants
     /// with synthesized constructors.
     Ctor(&'hir VariantData<'hir>),
@@ -3585,7 +3585,7 @@ impl<'hir> Node<'hir> {
             | Node::Ctor(..)
             | Node::Pat(..)
             | Node::Arm(..)
-            | Node::Local(..)
+            | Node::LetStmt(..)
             | Node::Crate(..)
             | Node::Ty(..)
             | Node::TraitRef(..)
@@ -3757,7 +3757,7 @@ impl<'hir> Node<'hir> {
         expect_pat_field,     &'hir PatField<'hir>,     Node::PatField(n),     n;
         expect_arm,           &'hir Arm<'hir>,          Node::Arm(n),          n;
         expect_block,         &'hir Block<'hir>,        Node::Block(n),        n;
-        expect_let_stmt,      &'hir LetStmt<'hir>,      Node::Local(n),        n;
+        expect_let_stmt,      &'hir LetStmt<'hir>,      Node::LetStmt(n),      n;
         expect_ctor,          &'hir VariantData<'hir>,  Node::Ctor(n),         n;
         expect_lifetime,      &'hir Lifetime,           Node::Lifetime(n),     n;
         expect_generic_param, &'hir GenericParam<'hir>, Node::GenericParam(n), n;

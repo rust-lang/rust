@@ -408,7 +408,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        if let hir::Node::Local(hir::LetStmt { ty: Some(_), pat, .. }) = node {
+        if let hir::Node::LetStmt(hir::LetStmt { ty: Some(_), pat, .. }) = node {
             return Some((pat.span, "expected because of this assignment".to_string()));
         }
         None

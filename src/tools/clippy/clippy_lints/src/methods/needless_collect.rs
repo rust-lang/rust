@@ -85,7 +85,7 @@ pub(super) fn check<'tcx>(
                 );
             }
         },
-        Node::Local(l) => {
+        Node::LetStmt(l) => {
             if let PatKind::Binding(BindingAnnotation::NONE | BindingAnnotation::MUT, id, _, None) = l.pat.kind
                 && let ty = cx.typeck_results().expr_ty(collect_expr)
                 && [sym::Vec, sym::VecDeque, sym::BinaryHeap, sym::LinkedList]

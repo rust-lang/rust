@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
         match cx.tcx.parent_hir_node(expr.hir_id) {
             // search for `let foo = vec![_]` expressions where all uses of `foo`
             // adjust to slices or call a method that exist on slices (e.g. len)
-            Node::Local(LetStmt {
+            Node::LetStmt(LetStmt {
                 ty: None,
                 pat:
                     Pat {
@@ -93,7 +93,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                 }
             },
             // if the local pattern has a specified type, do not lint.
-            Node::Local(LetStmt { ty: Some(_), .. }) if higher::VecArgs::hir(cx, expr).is_some() => {
+            Node::LetStmt(LetStmt { ty: Some(_), .. }) if higher::VecArgs::hir(cx, expr).is_some() => {
                 self.span_to_lint_map.insert(callsite, None);
             },
             // search for `for _ in vec![...]`

@@ -299,8 +299,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
         let (init_ty_hir_id, init) = match self.tcx.parent_hir_node(pat.hir_id) {
-            hir::Node::Local(hir::LetStmt { ty: Some(ty), init, .. }) => (ty.hir_id, *init),
-            hir::Node::Local(hir::LetStmt { init: Some(init), .. }) => (init.hir_id, Some(*init)),
+            hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), init, .. }) => (ty.hir_id, *init),
+            hir::Node::LetStmt(hir::LetStmt { init: Some(init), .. }) => (init.hir_id, Some(*init)),
             _ => return false,
         };
         let Some(init_ty) = self.node_ty_opt(init_ty_hir_id) else {
@@ -678,7 +678,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: Option<TypeError<'tcx>>,
     ) {
         match (self.tcx.parent_hir_node(expr.hir_id), error) {
-            (hir::Node::Local(hir::LetStmt { ty: Some(ty), init: Some(init), .. }), _)
+            (hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), init: Some(init), .. }), _)
                 if init.hir_id == expr.hir_id =>
             {
                 // Point at `let` assignment type.
@@ -724,11 +724,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             primary_span = pat.span;
                             secondary_span = pat.span;
                             match self.tcx.parent_hir_node(pat.hir_id) {
-                                hir::Node::Local(hir::LetStmt { ty: Some(ty), .. }) => {
+                                hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }) => {
                                     primary_span = ty.span;
                                     post_message = " type";
                                 }
-                                hir::Node::Local(hir::LetStmt { init: Some(init), .. }) => {
+                                hir::Node::LetStmt(hir::LetStmt { init: Some(init), .. }) => {
                                     primary_span = init.span;
                                     post_message = " value";
                                 }

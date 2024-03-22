@@ -113,7 +113,7 @@ impl<'a> State<'a> {
             // `hir_map` to reconstruct their full structure for pretty
             // printing.
             Node::Ctor(..) => panic!("cannot print isolated Ctor"),
-            Node::Local(a) => self.print_local_decl(a),
+            Node::LetStmt(a) => self.print_local_decl(a),
             Node::Crate(..) => panic!("cannot print Crate"),
             Node::WhereBoundPredicate(pred) => {
                 self.print_formal_generic_params(pred.bound_generic_params);

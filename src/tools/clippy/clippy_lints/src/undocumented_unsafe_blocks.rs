@@ -342,7 +342,7 @@ fn block_parents_have_safety_comment(
 ) -> bool {
     let (span, hir_id) = match cx.tcx.parent_hir_node(id) {
         Node::Expr(expr) => match cx.tcx.parent_hir_node(expr.hir_id) {
-            Node::Local(hir::LetStmt { span, hir_id, .. }) => (*span, *hir_id),
+            Node::LetStmt(hir::LetStmt { span, hir_id, .. }) => (*span, *hir_id),
             Node::Item(hir::Item {
                 kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
                 span,
@@ -363,7 +363,7 @@ fn block_parents_have_safety_comment(
                 | hir::StmtKind::Semi(hir::Expr { span, hir_id, .. }),
             ..
         })
-        | Node::Local(hir::LetStmt { span, hir_id, .. }) => (*span, *hir_id),
+        | Node::LetStmt(hir::LetStmt { span, hir_id, .. }) => (*span, *hir_id),
         Node::Item(hir::Item {
             kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
             span,
@@ -603,7 +603,7 @@ fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
     for (_, node) in map.parent_iter(body.hir_id) {
         match node {
             Node::Expr(e) => span = e.span,
-            Node::Block(_) | Node::Arm(_) | Node::Stmt(_) | Node::Local(_) => (),
+            Node::Block(_) | Node::Arm(_) | Node::Stmt(_) | Node::LetStmt(_) => (),
             Node::Item(hir::Item {
                 kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
                 ..

@@ -768,7 +768,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             // Different to previous arm because one is `&hir::Local` and the other
             // is `P<hir::Local>`.
-            hir::Node::Local(local) => get_name(err, &local.pat.kind),
+            hir::Node::LetStmt(local) => get_name(err, &local.pat.kind),
             _ => None,
         }
     }
@@ -930,7 +930,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let hir::Node::Pat(pat) = self.tcx.hir_node(hir_id) else {
             return;
         };
-        let hir::Node::Local(hir::LetStmt { ty: None, init: Some(init), .. }) =
+        let hir::Node::LetStmt(hir::LetStmt { ty: None, init: Some(init), .. }) =
             self.tcx.parent_hir_node(pat.hir_id)
         else {
             return;
@@ -1562,7 +1562,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let Res::Local(hir_id) = path.res
                 && let hir::Node::Pat(binding) = self.tcx.hir_node(hir_id)
-                && let hir::Node::Local(local) = self.tcx.parent_hir_node(binding.hir_id)
+                && let hir::Node::LetStmt(local) = self.tcx.parent_hir_node(binding.hir_id)
                 && let None = local.ty
                 && let Some(binding_expr) = local.init
             {
@@ -2966,7 +2966,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     err.downgrade_to_delayed_bug();
                 }
                 match tcx.parent_hir_node(hir_id) {
-                    Node::Local(hir::LetStmt { ty: Some(ty), .. }) => {
+                    Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }) => {
                         err.span_suggestion_verbose(
                             ty.span.shrink_to_lo(),
                             "consider borrowing here",
@@ -2975,7 +2975,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         );
                         err.note("all local variables must have a statically known size");
                     }
-                    Node::Local(hir::LetStmt {
+                    Node::LetStmt(hir::LetStmt {
                         init: Some(hir::Expr { kind: hir::ExprKind::Index(..), span, .. }),
                         ..
                     }) => {
@@ -3867,7 +3867,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let hir::Path { res: Res::Local(hir_id), .. } = path
                 && let hir::Node::Pat(binding) = self.tcx.hir_node(*hir_id)
-                && let hir::Node::Local(local) = self.tcx.parent_hir_node(binding.hir_id)
+                && let hir::Node::LetStmt(local) = self.tcx.parent_hir_node(binding.hir_id)
                 && let Some(binding_expr) = local.init
             {
                 // If the expression we're calling on is a binding, we want to point at the
@@ -4128,7 +4128,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             {
                 let parent = self.tcx.parent_hir_node(binding.hir_id);
                 // We've reached the root of the method call chain...
-                if let hir::Node::Local(local) = parent
+                if let hir::Node::LetStmt(local) = parent
                     && let Some(binding_expr) = local.init
                 {
                     // ...and it is a binding. Get the binding creation and continue the chain.

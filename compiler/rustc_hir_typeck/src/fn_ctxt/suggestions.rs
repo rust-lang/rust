@@ -318,7 +318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                             expr_id = parent_id;
                         }
-                        Node::Local(local) => {
+                        Node::LetStmt(local) => {
                             if let Some(mut ty) = local.ty {
                                 while let Some(index) = tuple_indexes.pop() {
                                     match ty.kind {
@@ -1331,7 +1331,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //                     ++++++++++
         // since the user probably just misunderstood how `let else`
         // and `&&` work together.
-        if let Some((_, hir::Node::Local(local))) = cond_parent
+        if let Some((_, hir::Node::LetStmt(local))) = cond_parent
             && let hir::PatKind::Path(qpath) | hir::PatKind::TupleStruct(qpath, _, _) =
                 &local.pat.kind
             && let hir::QPath::Resolved(None, path) = qpath
@@ -1731,7 +1731,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 match self.tcx.parent_hir_node(*hir_id) {
                     // foo.clone()
-                    hir::Node::Local(hir::LetStmt { init: Some(init), .. }) => {
+                    hir::Node::LetStmt(hir::LetStmt { init: Some(init), .. }) => {
                         self.note_type_is_not_clone_inner_expr(init)
                     }
                     // When `expr` is more complex like a tuple
@@ -1740,7 +1740,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         kind: hir::PatKind::Tuple(pats, ..),
                         ..
                     }) => {
-                        let hir::Node::Local(hir::LetStmt { init: Some(init), .. }) =
+                        let hir::Node::LetStmt(hir::LetStmt { init: Some(init), .. }) =
                             self.tcx.parent_hir_node(*pat_hir_id)
                         else {
                             return expr;
@@ -1774,7 +1774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let hir::Path { segments: [_], res: crate::Res::Local(binding), .. } =
                         call_expr_path
                     && let hir::Node::Pat(hir::Pat { hir_id, .. }) = self.tcx.hir_node(*binding)
-                    && let hir::Node::Local(hir::LetStmt { init: Some(init), .. }) =
+                    && let hir::Node::LetStmt(hir::LetStmt { init: Some(init), .. }) =
                         self.tcx.parent_hir_node(*hir_id)
                     && let Expr {
                         kind: hir::ExprKind::Closure(hir::Closure { body: body_id, .. }),
@@ -3134,7 +3134,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::Node::Pat(pat) = self.tcx.hir_node(hir_id) else {
             return;
         };
-        let hir::Node::Local(hir::LetStmt { ty: None, init: Some(init), .. }) =
+        let hir::Node::LetStmt(hir::LetStmt { ty: None, init: Some(init), .. }) =
             self.tcx.parent_hir_node(pat.hir_id)
         else {
             return;

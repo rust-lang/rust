@@ -321,7 +321,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             && let Some(expr) = block.expr
             && let hir::ExprKind::Path(QPath::Resolved(_, Path { res, .. })) = expr.kind
             && let Res::Local(local) = res
-            && let Node::Local(LetStmt { init: Some(init), .. }) = self.tcx.parent_hir_node(*local)
+            && let Node::LetStmt(LetStmt { init: Some(init), .. }) =
+                self.tcx.parent_hir_node(*local)
         {
             fn collect_blocks<'hir>(expr: &hir::Expr<'hir>, blocks: &mut Vec<&hir::Block<'hir>>) {
                 match expr.kind {

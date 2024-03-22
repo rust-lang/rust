@@ -190,7 +190,7 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
                             },
                         }
                     },
-                    Node::Local(LetStmt { init: Some(init), .. }) => {
+                    Node::LetStmt(LetStmt { init: Some(init), .. }) => {
                         if arg_is_mut_peekable(self.cx, init) {
                             self.found_peek_call = true;
                         }
