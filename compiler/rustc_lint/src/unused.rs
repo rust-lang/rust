@@ -865,7 +865,7 @@ trait UnusedDelimLint {
                 (iter, UnusedDelimsCtx::ForIterExpr, true, None, Some(body.span.lo()), true)
             }
 
-            Match(ref head, _) if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX => {
+            Match(ref head, ..) if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX => {
                 let left = e.span.lo() + rustc_span::BytePos(5);
                 (head, UnusedDelimsCtx::MatchScrutineeExpr, true, Some(left), None, true)
             }
@@ -1133,7 +1133,7 @@ impl EarlyLintPass for UnusedParens {
                 }
                 return;
             }
-            ExprKind::Match(ref _expr, ref arm) => {
+            ExprKind::Match(ref _expr, ref arm, _) => {
                 for a in arm {
                     if let Some(body) = &a.body {
                         self.check_unused_delims_expr(

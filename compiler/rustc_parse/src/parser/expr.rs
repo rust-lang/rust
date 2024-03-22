@@ -11,7 +11,7 @@ use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{noop_visit_expr, MutVisitor};
 use ast::token::IdentIsRaw;
-use ast::{CoroutineKind, ForLoopKind, GenBlockKind, Pat, Path, PathSegment};
+use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment};
 use core::mem;
 use core::ops::ControlFlow;
 use rustc_ast::ptr::P;
@@ -1377,6 +1377,13 @@ impl<'a> Parser<'a> {
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         if self.token.uninterpolated_span().at_least_rust_2018() && self.eat_keyword(kw::Await) {
             return Ok(self.mk_await_expr(self_arg, lo));
+        }
+
+        // Post-fix match
+        if self.eat_keyword(kw::Match) {
+            let match_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::postfix_match, match_span);
+            return self.parse_match_block(lo, match_span, self_arg, MatchKind::Postfix);
         }
 
         let fn_span_lo = self.token.span;
@@ -2894,8 +2901,20 @@ impl<'a> Parser<'a> {
     /// Parses a `match ... { ... }` expression (`match` token already eaten).
     fn parse_expr_match(&mut self) -> PResult<'a, P<Expr>> {
         let match_span = self.prev_token.span;
-        let lo = self.prev_token.span;
         let scrutinee = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+
+        self.parse_match_block(match_span, match_span, scrutinee, MatchKind::Prefix)
+    }
+
+    /// Parses the block of a `match expr { ... }` or a `expr.match { ... }`
+    /// expression. This is after the match token and scrutinee are eaten
+    fn parse_match_block(
+        &mut self,
+        lo: Span,
+        match_span: Span,
+        scrutinee: P<Expr>,
+        match_kind: MatchKind,
+    ) -> PResult<'a, P<Expr>> {
         if let Err(mut e) = self.expect(&token::OpenDelim(Delimiter::Brace)) {
             if self.token == token::Semi {
                 e.span_suggestion_short(
@@ -2938,7 +2957,7 @@ impl<'a> Parser<'a> {
                     });
                     return Ok(self.mk_expr_with_attrs(
                         span,
-                        ExprKind::Match(scrutinee, arms),
+                        ExprKind::Match(scrutinee, arms, match_kind),
                         attrs,
                     ));
                 }
@@ -2946,7 +2965,7 @@ impl<'a> Parser<'a> {
         }
         let hi = self.token.span;
         self.bump();
-        Ok(self.mk_expr_with_attrs(lo.to(hi), ExprKind::Match(scrutinee, arms), attrs))
+        Ok(self.mk_expr_with_attrs(lo.to(hi), ExprKind::Match(scrutinee, arms, match_kind), attrs))
     }
 
     /// Attempt to recover from match arm body with statements and no surrounding braces.
@@ -3955,7 +3974,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::While(_, _, _)
             | ExprKind::ForLoop { .. }
             | ExprKind::Loop(_, _, _)
-            | ExprKind::Match(_, _)
+            | ExprKind::Match(_, _, _)
             | ExprKind::Closure(_)
             | ExprKind::Block(_, _)
             | ExprKind::Gen(_, _, _)
