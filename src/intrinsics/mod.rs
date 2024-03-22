@@ -728,8 +728,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
         | sym::variant_count => {
             intrinsic_args!(fx, args => (); intrinsic);
 
-            let const_val =
-                fx.tcx.const_eval_instance(ParamEnv::reveal_all(), instance, None).unwrap();
+            let const_val = fx
+                .tcx
+                .const_eval_instance(ParamEnv::reveal_all(), instance, source_info.span)
+                .unwrap();
             let val = crate::constant::codegen_const_value(fx, const_val, ret.layout().ty);
             ret.write_cvalue(fx, val);
         }
@@ -753,13 +755,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 CValue::by_val(fx.bcx.ins().sdiv_imm(diff_bytes, pointee_size as i64), isize_layout)
             };
             ret.write_cvalue(fx, val);
-        }
-
-        sym::ptr_guaranteed_cmp => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-
-            let val = crate::num::codegen_ptr_binop(fx, BinOp::Eq, a, b).load_scalar(fx);
-            ret.write_cvalue(fx, CValue::by_val(val, fx.layout_of(fx.tcx.types.u8)));
         }
 
         sym::caller_location => {
