@@ -325,7 +325,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, Mask};
+    /// # use simd::Simd;
     /// let vec: Vec<i32> = vec![10, 11];
     ///
     /// let result = Simd::<i32, 4>::load_or_default(&vec);
@@ -348,7 +348,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, Mask};
+    /// # use simd::Simd;
     /// let vec: Vec<i32> = vec![10, 11];
     /// let or = Simd::from_array([-5, -4, -3, -2]);
     ///
@@ -695,7 +695,7 @@ where
     ///
     /// # Safety
     ///
-    /// Memory addresses for element are calculated [`core::ptr::wrapping_offset`] and
+    /// Memory addresses for element are calculated [`pointer::wrapping_offset`] and
     /// each enabled element must satisfy the same conditions as [`core::ptr::write`].
     #[inline]
     pub unsafe fn store_select_ptr(self, ptr: *mut T, enable: Mask<<T as SimdElement>::Mask, N>) {
