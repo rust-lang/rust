@@ -1,3 +1,5 @@
+//! Implementation of running clippy on the compiler, standard library and various tools.
+
 use std::path::Path;
 
 use crate::builder::Builder;
