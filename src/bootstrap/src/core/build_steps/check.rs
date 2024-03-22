@@ -11,6 +11,14 @@ use crate::core::config::TargetSelection;
 use crate::{Compiler, Mode, Subcommand};
 use std::path::{Path, PathBuf};
 
+pub fn cargo_subcommand(kind: Kind) -> &'static str {
+    match kind {
+        Kind::Check | Kind::Clippy => "check",
+        Kind::Fix => "fix",
+        _ => unreachable!(),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
     pub target: TargetSelection,
@@ -20,97 +28,6 @@ pub struct Std {
     ///
     /// [`compile::Rustc`]: crate::core::build_steps::compile::Rustc
     crates: Vec<String>,
-}
-
-/// Returns args for the subcommand itself (not for cargo)
-fn args(builder: &Builder<'_>) -> Vec<String> {
-    fn strings<'a>(arr: &'a [&str]) -> impl Iterator<Item = String> + 'a {
-        arr.iter().copied().map(String::from)
-    }
-
-    if let Subcommand::Clippy { fix, allow_dirty, allow_staged, allow, deny, warn, forbid } =
-        &builder.config.cmd
-    {
-        // disable the most spammy clippy lints
-        let ignored_lints = [
-            "many_single_char_names", // there are a lot in stdarch
-            "collapsible_if",
-            "type_complexity",
-            "missing_safety_doc", // almost 3K warnings
-            "too_many_arguments",
-            "needless_lifetimes", // people want to keep the lifetimes
-            "wrong_self_convention",
-        ];
-        let mut args = vec![];
-        if *fix {
-            #[rustfmt::skip]
-            args.extend(strings(&[
-                "--fix", "-Zunstable-options",
-                // FIXME: currently, `--fix` gives an error while checking tests for libtest,
-                // possibly because libtest is not yet built in the sysroot.
-                // As a workaround, avoid checking tests and benches when passed --fix.
-                "--lib", "--bins", "--examples",
-            ]));
-
-            if *allow_dirty {
-                args.push("--allow-dirty".to_owned());
-            }
-
-            if *allow_staged {
-                args.push("--allow-staged".to_owned());
-            }
-        }
-
-        args.extend(strings(&["--"]));
-
-        if deny.is_empty() && forbid.is_empty() {
-            args.extend(strings(&["--cap-lints", "warn"]));
-        }
-
-        let all_args = std::env::args().collect::<Vec<_>>();
-        args.extend(get_clippy_rules_in_order(&all_args, allow, deny, warn, forbid));
-
-        args.extend(ignored_lints.iter().map(|lint| format!("-Aclippy::{}", lint)));
-        args.extend(builder.config.free_args.clone());
-        args
-    } else {
-        builder.config.free_args.clone()
-    }
-}
-
-/// We need to keep the order of the given clippy lint rules before passing them.
-/// Since clap doesn't offer any useful interface for this purpose out of the box,
-/// we have to handle it manually.
-pub(crate) fn get_clippy_rules_in_order(
-    all_args: &[String],
-    allow_rules: &[String],
-    deny_rules: &[String],
-    warn_rules: &[String],
-    forbid_rules: &[String],
-) -> Vec<String> {
-    let mut result = vec![];
-
-    for (prefix, item) in
-        [("-A", allow_rules), ("-D", deny_rules), ("-W", warn_rules), ("-F", forbid_rules)]
-    {
-        item.iter().for_each(|v| {
-            let rule = format!("{prefix}{v}");
-            let position = all_args.iter().position(|t| t == &rule).unwrap();
-            result.push((position, rule));
-        });
-    }
-
-    result.sort_by_key(|&(position, _)| position);
-    result.into_iter().map(|v| v.1).collect()
-}
-
-fn cargo_subcommand(kind: Kind) -> &'static str {
-    match kind {
-        Kind::Check => "check",
-        Kind::Clippy => "clippy",
-        Kind::Fix => "fix",
-        _ => unreachable!(),
-    }
 }
 
 impl Std {
@@ -164,7 +81,7 @@ impl Step for Std {
         run_cargo(
             builder,
             cargo,
-            args(builder),
+            builder.config.free_args.clone(),
             &libstd_stamp(builder, compiler, target),
             vec![],
             true,
@@ -221,7 +138,7 @@ impl Step for Std {
         run_cargo(
             builder,
             cargo,
-            args(builder),
+            builder.config.free_args.clone(),
             &libstd_test_stamp(builder, compiler, target),
             vec![],
             true,
@@ -318,7 +235,7 @@ impl Step for Rustc {
         run_cargo(
             builder,
             cargo,
-            args(builder),
+            builder.config.free_args.clone(),
             &librustc_stamp(builder, compiler, target),
             vec![],
             true,
@@ -384,7 +301,7 @@ impl Step for CodegenBackend {
         run_cargo(
             builder,
             cargo,
-            args(builder),
+            builder.config.free_args.clone(),
             &codegen_backend_stamp(builder, compiler, target, backend),
             vec![],
             true,
@@ -450,7 +367,7 @@ impl Step for RustAnalyzer {
         run_cargo(
             builder,
             cargo,
-            args(builder),
+            builder.config.free_args.clone(),
             &stamp(builder, compiler, target),
             vec![],
             true,
@@ -513,7 +430,7 @@ macro_rules! tool_check_step {
                 run_cargo(
                     builder,
                     cargo,
-                    args(builder),
+                    builder.config.free_args.clone(),
                     &stamp(builder, compiler, target),
                     vec![],
                     true,
