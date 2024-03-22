@@ -16,6 +16,7 @@ bitflags! {
         const GENERALIZE_POINTERS = 1;
         const GENERALIZE_REPR_C = 2;
         const NORMALIZE_INTEGERS = 4;
+        const NO_TYPE_ERASURE = 8;
     }
 }
 

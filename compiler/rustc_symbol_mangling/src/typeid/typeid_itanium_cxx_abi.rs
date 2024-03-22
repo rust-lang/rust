@@ -1045,28 +1045,34 @@ pub fn transform_fnabi<'tcx>(
                     && !fn_abi.args.is_empty()
                     && fn_abi.args[0].layout.ty.is_ref()
                 {
-                    // Replace the concrete self by a reference to a trait object (i.e., perform
-                    // type erasure).
-                    let self_ty = if fn_abi.args[0].layout.ty.is_mutable_ptr() {
-                        Ty::new_mut_ref(
-                            tcx,
-                            tcx.lifetimes.re_erased,
-                            new_dynamic_trait(
-                                tcx,
-                                trait_ref.skip_binder().def_id,
-                                trait_ref.skip_binder().args,
-                            ),
-                        )
+                    let self_ty = if options.contains(EncodeTyOptions::NO_TYPE_ERASURE) {
+                        // Do not perform type erasure for assigning a secondary type id to methods
+                        // with their concrete self so they can be used as function pointers.
+                        return fn_abi.clone();
                     } else {
-                        Ty::new_imm_ref(
-                            tcx,
-                            tcx.lifetimes.re_erased,
-                            new_dynamic_trait(
+                        // Replace the concrete self by a reference to a trait object (i.e., perform
+                        // type erasure).
+                        if fn_abi.args[0].layout.ty.is_mutable_ptr() {
+                            Ty::new_mut_ref(
                                 tcx,
-                                trait_ref.skip_binder().def_id,
-                                trait_ref.skip_binder().args,
-                            ),
-                        )
+                                tcx.lifetimes.re_erased,
+                                new_dynamic_trait(
+                                    tcx,
+                                    trait_ref.skip_binder().def_id,
+                                    trait_ref.skip_binder().args,
+                                ),
+                            )
+                        } else {
+                            Ty::new_imm_ref(
+                                tcx,
+                                tcx.lifetimes.re_erased,
+                                new_dynamic_trait(
+                                    tcx,
+                                    trait_ref.skip_binder().def_id,
+                                    trait_ref.skip_binder().args,
+                                ),
+                            )
+                        }
                     };
                     let mut fn_abi = fn_abi.clone();
                     // HACK(rcvalle): It is okay to not replace or update the entire ArgAbi here
