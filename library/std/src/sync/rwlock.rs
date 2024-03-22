@@ -439,7 +439,7 @@ impl<T: ?Sized> RwLock<T> {
         self.poison.get()
     }
 
-    /// Clear the poisoned state from a lock
+    /// Clear the poisoned state from a lock.
     ///
     /// If the lock is poisoned, it will remain poisoned until this function is called. This allows
     /// recovering from a poisoned state and marking that it has recovered. For example, if the
