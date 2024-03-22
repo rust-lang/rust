@@ -6,9 +6,8 @@ use crate::llvm;
 
 use itertools::Itertools as _;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir;
@@ -335,16 +334,9 @@ fn save_function_record(
     );
 }
 
-/// When finalizing the coverage map, `FunctionCoverage` only has the `CodeRegion`s and counters for
-/// the functions that went through codegen; such as public functions and "used" functions
-/// (functions referenced by other "used" or public items). Any other functions considered unused,
-/// or "Unreachable", were still parsed and processed through the MIR stage, but were not
-/// codegenned. (Note that `-Clink-dead-code` can force some unused code to be codegenned, but
-/// that flag is known to cause other errors, when combined with `-C instrument-coverage`; and
-/// `-Clink-dead-code` will not generate code for unused generic functions.)
-///
-/// We can find the unused functions (including generic functions) by the set difference of all MIR
-/// `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s (`codegenned_and_inlined_items`).
+/// Each CGU will normally only emit coverage metadata for the functions that it actually generates.
+/// But since we don't want unused functions to disappear from coverage reports, we also scan for
+/// functions that were instrumented but are not participating in codegen.
 ///
 /// These unused functions don't need to be codegenned, but we do need to add them to the function
 /// coverage map (in a single designated CGU) so that we still emit coverage mappings for them.
@@ -354,78 +346,92 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
     assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
     let tcx = cx.tcx;
+    let usage = prepare_usage_sets(tcx);
 
-    let eligible_def_ids = tcx.mir_keys(()).iter().filter_map(|local_def_id| {
-        let def_id = local_def_id.to_def_id();
-        let kind = tcx.def_kind(def_id);
-        // `mir_keys` will give us `DefId`s for all kinds of things, not
-        // just "functions", like consts, statics, etc. Filter those out.
-        if !matches!(kind, DefKind::Fn | DefKind::AssocFn | DefKind::Closure) {
-            return None;
-        }
+    let is_unused_fn = |def_id: LocalDefId| -> bool {
+        let def_id = def_id.to_def_id();
+
+        // To be eligible for "unused function" mappings, a definition must:
+        // - Be function-like
+        // - Not participate directly in codegen
+        // - Not have any coverage statements inlined into codegenned functions
+        tcx.def_kind(def_id).is_fn_like()
+            && !usage.all_mono_items.contains(&def_id)
+            && !usage.used_via_inlining.contains(&def_id)
+    };
+
+    // Scan for unused functions that were instrumented for coverage.
+    for def_id in tcx.mir_keys(()).iter().copied().filter(|&def_id| is_unused_fn(def_id)) {
+        // Get the coverage info from MIR, skipping functions that were never instrumented.
+        let body = tcx.optimized_mir(def_id);
+        let Some(function_coverage_info) = body.function_coverage_info.as_deref() else { continue };
 
         // FIXME(79651): Consider trying to filter out dummy instantiations of
         // unused generic functions from library crates, because they can produce
         // "unused instantiation" in coverage reports even when they are actually
         // used by some downstream crate in the same binary.
 
-        Some(local_def_id.to_def_id())
-    });
-
-    let codegenned_def_ids = codegenned_and_inlined_items(tcx);
-
-    // For each `DefId` that should have coverage instrumentation but wasn't
-    // codegenned, add it to the function coverage map as an unused function.
-    for def_id in eligible_def_ids.filter(|id| !codegenned_def_ids.contains(id)) {
-        // Skip any function that didn't have coverage data added to it by the
-        // coverage instrumentor.
-        let body = tcx.instance_mir(ty::InstanceDef::Item(def_id));
-        let Some(function_coverage_info) = body.function_coverage_info.as_deref() else {
-            continue;
-        };
-
         debug!("generating unused fn: {def_id:?}");
         add_unused_function_coverage(cx, def_id, function_coverage_info);
     }
 }
 
-/// All items participating in code generation together with (instrumented)
-/// items inlined into them.
-fn codegenned_and_inlined_items(tcx: TyCtxt<'_>) -> DefIdSet {
-    let (items, cgus) = tcx.collect_and_partition_mono_items(());
-    let mut visited = DefIdSet::default();
-    let mut result = items.clone();
+struct UsageSets<'tcx> {
+    all_mono_items: &'tcx DefIdSet,
+    used_via_inlining: FxHashSet<DefId>,
+}
 
-    for cgu in cgus {
-        for item in cgu.items().keys() {
-            if let mir::mono::MonoItem::Fn(ref instance) = item {
-                let did = instance.def_id();
-                if !visited.insert(did) {
-                    continue;
-                }
-                let body = tcx.instance_mir(instance.def);
-                for block in body.basic_blocks.iter() {
-                    for statement in &block.statements {
-                        let mir::StatementKind::Coverage(_) = statement.kind else { continue };
-                        let scope = statement.source_info.scope;
-                        if let Some(inlined) = scope.inlined_instance(&body.source_scopes) {
-                            result.insert(inlined.def_id());
-                        }
-                    }
-                }
+/// Prepare sets of definitions that are relevant to deciding whether something
+/// is an "unused function" for coverage purposes.
+fn prepare_usage_sets<'tcx>(tcx: TyCtxt<'tcx>) -> UsageSets<'tcx> {
+    let (all_mono_items, cgus) = tcx.collect_and_partition_mono_items(());
+
+    // Obtain a MIR body for each function participating in codegen, via an
+    // arbitrary instance.
+    let mut def_ids_seen = FxHashSet::default();
+    let def_and_mir_for_all_mono_fns = cgus
+        .iter()
+        .flat_map(|cgu| cgu.items().keys())
+        .filter_map(|item| match item {
+            mir::mono::MonoItem::Fn(instance) => Some(instance),
+            mir::mono::MonoItem::Static(_) | mir::mono::MonoItem::GlobalAsm(_) => None,
+        })
+        // We only need one arbitrary instance per definition.
+        .filter(move |instance| def_ids_seen.insert(instance.def_id()))
+        .map(|instance| {
+            // We don't care about the instance, just its underlying MIR.
+            let body = tcx.instance_mir(instance.def);
+            (instance.def_id(), body)
+        });
+
+    // Functions whose coverage statments were found inlined into other functions.
+    let mut used_via_inlining = FxHashSet::default();
+
+    for (_def_id, body) in def_and_mir_for_all_mono_fns {
+        // Inspect every coverage statement in the function's MIR.
+        for stmt in body
+            .basic_blocks
+            .iter()
+            .flat_map(|block| &block.statements)
+            .filter(|stmt| matches!(stmt.kind, mir::StatementKind::Coverage(_)))
+        {
+            if let Some(inlined) = stmt.source_info.scope.inlined_instance(&body.source_scopes) {
+                // This coverage statement was inlined from another function.
+                used_via_inlining.insert(inlined.def_id());
             }
         }
     }
 
-    result
+    UsageSets { all_mono_items, used_via_inlining }
 }
 
 fn add_unused_function_coverage<'tcx>(
     cx: &CodegenCx<'_, 'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
     function_coverage_info: &'tcx mir::coverage::FunctionCoverageInfo,
 ) {
     let tcx = cx.tcx;
+    let def_id = def_id.to_def_id();
 
     // Make a dummy instance that fills in all generics with placeholders.
     let instance = ty::Instance::new(
