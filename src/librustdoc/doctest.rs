@@ -379,26 +379,26 @@ fn run_test(
     test: &str,
     crate_name: &str,
     line: usize,
-    rustdoc_options: RustdocOptions,
+    rustdoc_options: RustdocTestOptions,
     mut lang_string: LangString,
     no_run: bool,
-    runtool: Option<String>,
-    runtool_args: Vec<String>,
-    target: TargetTriple,
     opts: &GlobalTestOptions,
     edition: Edition,
-    outdir: DirState,
     path: PathBuf,
-    test_id: &str,
     report_unused_externs: impl Fn(UnusedExterns),
-    arg_file: PathBuf,
 ) -> Result<(), TestFailure> {
-    let (test, line_offset, supports_color) =
-        make_test(test, Some(crate_name), lang_string.test_harness, opts, edition, Some(test_id));
+    let (test, line_offset, supports_color) = make_test(
+        test,
+        Some(crate_name),
+        lang_string.test_harness,
+        opts,
+        edition,
+        Some(&rustdoc_options.test_id),
+    );
 
     // Make sure we emit well-formed executable names for our target.
-    let rust_out = add_exe_suffix("rust_out".to_owned(), &target);
-    let output_file = outdir.path().join(rust_out);
+    let rust_out = add_exe_suffix("rust_out".to_owned(), &rustdoc_options.target);
+    let output_file = rustdoc_options.outdir.path().join(rust_out);
 
     let rustc_binary = rustdoc_options
         .test_builder
@@ -406,7 +406,7 @@ fn run_test(
         .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
     let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
 
-    compiler.arg(&format!("@{}", arg_file.display()));
+    compiler.arg(&format!("@{}", rustdoc_options.arg_file.display()));
 
     compiler.arg("--edition").arg(&edition.to_string());
     compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", path);
@@ -415,17 +415,17 @@ fn run_test(
     if lang_string.test_harness {
         compiler.arg("--test");
     }
-    if rustdoc_options.json_unused_externs.is_enabled() && !lang_string.compile_fail {
+    if rustdoc_options.is_json_unused_externs_enabled && !lang_string.compile_fail {
         compiler.arg("--error-format=json");
         compiler.arg("--json").arg("unused-externs");
         compiler.arg("-W").arg("unused_crate_dependencies");
         compiler.arg("-Z").arg("unstable-options");
     }
 
-    if no_run && !lang_string.compile_fail && rustdoc_options.persist_doctests.is_none() {
+    if no_run && !lang_string.compile_fail && rustdoc_options.should_persist_doctests {
         compiler.arg("--emit=metadata");
     }
-    compiler.arg("--target").arg(match target {
+    compiler.arg("--target").arg(match rustdoc_options.target {
         TargetTriple::TargetTriple(s) => s,
         TargetTriple::TargetJson { path_for_rustdoc, .. } => {
             path_for_rustdoc.to_str().expect("target path must be valid unicode").to_string()
@@ -521,10 +521,10 @@ fn run_test(
     let mut cmd;
 
     let output_file = make_maybe_absolute_path(output_file);
-    if let Some(tool) = runtool {
+    if let Some(tool) = rustdoc_options.runtool {
         let tool = make_maybe_absolute_path(tool.into());
         cmd = Command::new(tool);
-        cmd.args(runtool_args);
+        cmd.args(rustdoc_options.runtool_args);
         cmd.arg(output_file);
     } else {
         cmd = Command::new(output_file);
@@ -933,6 +933,61 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
     (before, after, crates)
 }
 
+pub(crate) struct RustdocTestOptions {
+    test_builder: Option<PathBuf>,
+    test_builder_wrappers: Vec<PathBuf>,
+    is_json_unused_externs_enabled: bool,
+    should_persist_doctests: bool,
+    error_format: ErrorOutputType,
+    test_run_directory: Option<PathBuf>,
+    nocapture: bool,
+    arg_file: PathBuf,
+    outdir: DirState,
+    runtool: Option<String>,
+    runtool_args: Vec<String>,
+    target: TargetTriple,
+    test_id: String,
+}
+
+impl RustdocTestOptions {
+    fn new(options: &RustdocOptions, arg_file: &Path, test_id: String) -> Self {
+        let outdir = if let Some(ref path) = options.persist_doctests {
+            let mut path = path.clone();
+            path.push(&test_id);
+
+            if let Err(err) = std::fs::create_dir_all(&path) {
+                eprintln!("Couldn't create directory for doctest executables: {err}");
+                panic::resume_unwind(Box::new(()));
+            }
+
+            DirState::Perm(path)
+        } else {
+            DirState::Temp(
+                TempFileBuilder::new()
+                    .prefix("rustdoctest")
+                    .tempdir()
+                    .expect("rustdoc needs a tempdir"),
+            )
+        };
+
+        Self {
+            test_builder: options.test_builder.clone(),
+            test_builder_wrappers: options.test_builder_wrappers.clone(),
+            is_json_unused_externs_enabled: options.json_unused_externs.is_enabled(),
+            should_persist_doctests: options.persist_doctests.is_none(),
+            error_format: options.error_format,
+            test_run_directory: options.test_run_directory.clone(),
+            nocapture: options.nocapture,
+            arg_file: arg_file.into(),
+            outdir,
+            runtool: options.runtool.clone(),
+            runtool_args: options.runtool_args.clone(),
+            target: options.target.clone(),
+            test_id,
+        }
+    }
+}
+
 pub(crate) trait Tester {
     fn add_test(&mut self, test: String, config: LangString, line: usize);
     fn get_line(&self) -> usize {
@@ -1048,13 +1103,9 @@ impl Tester for Collector {
         let crate_name = self.crate_name.clone();
         let opts = self.opts.clone();
         let edition = config.edition.unwrap_or(self.rustdoc_options.edition);
-        let rustdoc_options = self.rustdoc_options.clone();
-        let runtool = self.rustdoc_options.runtool.clone();
-        let runtool_args = self.rustdoc_options.runtool_args.clone();
-        let target = self.rustdoc_options.target.clone();
-        let target_str = target.to_string();
+        let target_str = self.rustdoc_options.target.to_string();
         let unused_externs = self.unused_extern_reports.clone();
-        let no_run = config.no_run || rustdoc_options.no_run;
+        let no_run = config.no_run || self.rustdoc_options.no_run;
         if !config.compile_fail {
             self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
         }
@@ -1088,25 +1139,9 @@ impl Tester for Collector {
                 self.visited_tests.entry((file.clone(), line)).and_modify(|v| *v += 1).or_insert(0)
             },
         );
-        let outdir = if let Some(mut path) = rustdoc_options.persist_doctests.clone() {
-            path.push(&test_id);
 
-            if let Err(err) = std::fs::create_dir_all(&path) {
-                eprintln!("Couldn't create directory for doctest executables: {err}");
-                panic::resume_unwind(Box::new(()));
-            }
-
-            DirState::Perm(path)
-        } else {
-            DirState::Temp(
-                TempFileBuilder::new()
-                    .prefix("rustdoctest")
-                    .tempdir()
-                    .expect("rustdoc needs a tempdir"),
-            )
-        };
-
-        let arg_file = self.arg_file.clone();
+        let rustdoc_test_options =
+            RustdocTestOptions::new(&self.rustdoc_options, &self.arg_file, test_id);
 
         debug!("creating test {name}: {test}");
         self.tests.push(test::TestDescAndFn {
@@ -1137,19 +1172,13 @@ impl Tester for Collector {
                     &test,
                     &crate_name,
                     line,
-                    rustdoc_options,
+                    rustdoc_test_options,
                     config,
                     no_run,
-                    runtool,
-                    runtool_args,
-                    target,
                     &opts,
                     edition,
-                    outdir,
                     path,
-                    &test_id,
                     report_unused_externs,
-                    arg_file,
                 );
 
                 if let Err(err) = res {
