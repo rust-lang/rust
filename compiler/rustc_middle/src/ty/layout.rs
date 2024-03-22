@@ -2,7 +2,7 @@ use crate::error::UnsupportedFnAbi;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, ConstKind, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxt, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
@@ -356,21 +356,10 @@ impl<'tcx> SizeSkeleton<'tcx> {
                                 .ok_or_else(|| &*tcx.arena.alloc(LayoutError::SizeOverflow(ty)))?;
                             return Ok(SizeSkeleton::Known(Size::from_bytes(size)));
                         }
-                        let len = tcx.expand_abstract_consts(len);
-                        let prev = ty::Const::from_target_usize(tcx, s.bytes());
-                        let Some(gen_size) = mul_sorted_consts(tcx, param_env, len, prev) else {
-                            return Err(tcx.arena.alloc(LayoutError::SizeOverflow(ty)));
-                        };
-                        Ok(SizeSkeleton::Generic(gen_size))
+                        Err(tcx.arena.alloc(LayoutError::Unknown(ty)))
                     }
                     SizeSkeleton::Pointer { .. } => Err(err),
-                    SizeSkeleton::Generic(g) => {
-                        let len = tcx.expand_abstract_consts(len);
-                        let Some(gen_size) = mul_sorted_consts(tcx, param_env, len, g) else {
-                            return Err(tcx.arena.alloc(LayoutError::SizeOverflow(ty)));
-                        };
-                        Ok(SizeSkeleton::Generic(gen_size))
-                    }
+                    SizeSkeleton::Generic(_) => Err(tcx.arena.alloc(LayoutError::Unknown(ty))),
                 }
             }
 
@@ -466,56 +455,6 @@ impl<'tcx> SizeSkeleton<'tcx> {
             _ => false,
         }
     }
-}
-
-/// When creating the layout for types with abstract consts in their size (i.e. [usize; 4 * N]),
-/// to ensure that they have a canonical order and can be compared directly we combine all
-/// constants, and sort the other terms. This allows comparison of expressions of sizes,
-/// allowing for things like transmuting between types that depend on generic consts.
-/// This returns `None` if multiplication of constants overflows.
-fn mul_sorted_consts<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    a: ty::Const<'tcx>,
-    b: ty::Const<'tcx>,
-) -> Option<ty::Const<'tcx>> {
-    use crate::mir::BinOp::Mul;
-
-    let mut work = vec![a, b];
-    let mut done = vec![];
-    while let Some(n) = work.pop() {
-        if let ConstKind::Expr(ty::Expr::Binop(Mul, l, r)) = n.kind() {
-            work.push(l);
-            work.push(r)
-        } else {
-            done.push(n);
-        }
-    }
-    let mut k = 1;
-    let mut overflow = false;
-    done.retain(|c| {
-        let Some(c) = c.try_eval_target_usize(tcx, param_env) else {
-            return true;
-        };
-        let Some(next) = c.checked_mul(k) else {
-            overflow = true;
-            return false;
-        };
-        k = next;
-        false
-    });
-    if overflow {
-        return None;
-    }
-    if k != 1 {
-        done.push(ty::Const::from_target_usize(tcx, k));
-    } else if k == 0 {
-        return Some(ty::Const::from_target_usize(tcx, 0));
-    }
-    done.sort_unstable();
-
-    // create a single tree from the buffer
-    done.into_iter().reduce(|acc, n| ty::Const::new_expr(tcx, ty::Expr::Binop(Mul, n, acc), n.ty()))
 }
 
 pub trait HasTyCtxt<'tcx>: HasDataLayout {

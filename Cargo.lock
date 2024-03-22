@@ -4236,6 +4236,7 @@ name = "rustc_middle"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.4.2",
+ "derivative",
  "either",
  "field-offset",
  "gsgdt",
