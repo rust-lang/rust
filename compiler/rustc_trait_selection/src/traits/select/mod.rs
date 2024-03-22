@@ -1418,10 +1418,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         for candidate in candidates {
             if let ImplCandidate(def_id) = candidate {
-                if ty::ImplPolarity::Reservation == tcx.impl_polarity(def_id)
-                    || obligation.polarity() == tcx.impl_polarity(def_id)
-                {
-                    result.push(candidate);
+                match (tcx.impl_polarity(def_id), obligation.polarity()) {
+                    (ty::ImplPolarity::Reservation, _)
+                    | (ty::ImplPolarity::Positive, ty::PredicatePolarity::Positive)
+                    | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Negative) => {
+                        result.push(candidate);
+                    }
+                    _ => {}
                 }
             } else {
                 result.push(candidate);

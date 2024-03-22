@@ -1332,7 +1332,7 @@ pub enum AliasRelationDirection {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitPredicate {
     pub trait_ref: TraitRef,
-    pub polarity: ImplPolarity,
+    pub polarity: PredicatePolarity,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1352,6 +1352,12 @@ pub enum ImplPolarity {
     Positive,
     Negative,
     Reservation,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PredicatePolarity {
+    Positive,
+    Negative,
 }
 
 pub trait IndexedVal {

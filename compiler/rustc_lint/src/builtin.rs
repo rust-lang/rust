@@ -726,7 +726,7 @@ fn type_implements_negative_copy_modulo_regions<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> bool {
     let trait_ref = ty::TraitRef::new(tcx, tcx.require_lang_item(hir::LangItem::Copy, None), [ty]);
-    let pred = ty::TraitPredicate { trait_ref, polarity: ty::ImplPolarity::Negative };
+    let pred = ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Negative };
     let obligation = traits::Obligation {
         cause: traits::ObligationCause::dummy(),
         param_env,

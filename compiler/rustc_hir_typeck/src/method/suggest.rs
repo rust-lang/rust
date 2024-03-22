@@ -872,7 +872,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 match pred.kind().skip_binder() {
                                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
                                         Some(pred.def_id()) == self.tcx.lang_items().sized_trait()
-                                            && pred.polarity == ty::ImplPolarity::Positive
+                                            && pred.polarity == ty::PredicatePolarity::Positive
                                     }
                                     _ => false,
                                 }
@@ -3364,7 +3364,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 "inherent impls can't be candidates, only trait impls can be",
                             )
                         })
-                        .filter(|header| header.polarity == ty::ImplPolarity::Negative)
+                        .filter(|header| header.polarity != ty::ImplPolarity::Positive)
                         .any(|header| {
                             let imp = header.trait_ref.instantiate_identity();
                             let imp_simp =

@@ -624,7 +624,7 @@ pub(super) fn implied_predicates_with_filter(
             for &(pred, span) in implied_bounds {
                 debug!("superbound: {:?}", pred);
                 if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
-                    && bound.polarity == ty::ImplPolarity::Positive
+                    && bound.polarity == ty::PredicatePolarity::Positive
                 {
                     tcx.at(span).super_predicates_of(bound.def_id());
                 }
@@ -634,7 +634,7 @@ pub(super) fn implied_predicates_with_filter(
             for &(pred, span) in implied_bounds {
                 debug!("superbound: {:?}", pred);
                 if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
-                    && bound.polarity == ty::ImplPolarity::Positive
+                    && bound.polarity == ty::PredicatePolarity::Positive
                 {
                     tcx.at(span).implied_predicates_of(bound.def_id());
                 }

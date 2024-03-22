@@ -3099,7 +3099,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     cause.clone().derived_cause(
                         ty::Binder::dummy(ty::TraitPredicate {
                             trait_ref: impl_trait_ref,
-                            polarity: ty::ImplPolarity::Positive,
+                            polarity: ty::PredicatePolarity::Positive,
                         }),
                         |derived| {
                             traits::ImplDerivedObligation(Box::new(
