@@ -385,8 +385,7 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
         };
 
         debug!("generating unused fn: {def_id:?}");
-        let instance = declare_unused_fn(tcx, def_id);
-        add_unused_function_coverage(cx, instance, function_coverage_info);
+        add_unused_function_coverage(cx, def_id, function_coverage_info);
     }
 }
 
@@ -421,8 +420,15 @@ fn codegenned_and_inlined_items(tcx: TyCtxt<'_>) -> DefIdSet {
     result
 }
 
-fn declare_unused_fn<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::Instance<'tcx> {
-    ty::Instance::new(
+fn add_unused_function_coverage<'tcx>(
+    cx: &CodegenCx<'_, 'tcx>,
+    def_id: DefId,
+    function_coverage_info: &'tcx mir::coverage::FunctionCoverageInfo,
+) {
+    let tcx = cx.tcx;
+
+    // Make a dummy instance that fills in all generics with placeholders.
+    let instance = ty::Instance::new(
         def_id,
         ty::GenericArgs::for_item(tcx, def_id, |param, _| {
             if let ty::GenericParamDefKind::Lifetime = param.kind {
@@ -431,14 +437,8 @@ fn declare_unused_fn<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::Instance<'tc
                 tcx.mk_param_from_def(param)
             }
         }),
-    )
-}
+    );
 
-fn add_unused_function_coverage<'tcx>(
-    cx: &CodegenCx<'_, 'tcx>,
-    instance: ty::Instance<'tcx>,
-    function_coverage_info: &'tcx mir::coverage::FunctionCoverageInfo,
-) {
     // An unused function's mappings will automatically be rewritten to map to
     // zero, because none of its counters/expressions are marked as seen.
     let function_coverage = FunctionCoverageCollector::unused(instance, function_coverage_info);
