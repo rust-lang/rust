@@ -166,6 +166,36 @@ impl FileDesc {
         Ok(())
     }
 
+    pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+        #[cfg(not(any(
+            all(target_os = "linux", not(target_env = "musl")),
+            target_os = "android",
+            target_os = "hurd"
+        )))]
+        use libc::pread as pread64;
+        #[cfg(any(
+            all(target_os = "linux", not(target_env = "musl")),
+            target_os = "android",
+            target_os = "hurd"
+        ))]
+        use libc::pread64;
+
+        let ret = cvt(unsafe {
+            pread64(
+                self.as_raw_fd(),
+                cursor.as_mut().as_mut_ptr() as *mut libc::c_void,
+                cmp::min(cursor.capacity(), READ_LIMIT),
+                offset as off64_t,
+            )
+        })?;
+
+        // Safety: `ret` bytes were written to the initialized portion of the buffer
+        unsafe {
+            cursor.advance_unchecked(ret as usize);
+        }
+        Ok(())
+    }
+
     #[cfg(any(
         target_os = "emscripten",
         target_os = "freebsd",
