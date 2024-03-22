@@ -26,7 +26,7 @@ mod mod3 {
     #[cfg(rpass2)]
     use Trait2;
 
-    #[rustc_clean(except="typeck", cfg="rpass2")]
+    #[rustc_clean(except="typeck,optimized_mir", cfg="rpass2")]
     fn bar() {
         ().method();
     }

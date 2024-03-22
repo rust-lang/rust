@@ -62,9 +62,9 @@ mod change_callee_indirectly_function {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::callee2 as callee;
 
-    #[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="cfail2")]
+    #[rustc_clean(except="opt_hir_owner_nodes,typeck,optimized_mir", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="cfail5")]
+    #[rustc_clean(except="opt_hir_owner_nodes,typeck,optimized_mir", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     pub fn change_callee_indirectly_function() {
         callee(1, 2)
