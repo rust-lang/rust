@@ -13,7 +13,7 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
-use crate::core::build_steps::llvm;
+use crate::core::build_steps::{clippy, llvm};
 use crate::core::build_steps::tool::{self, SourceType};
 use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, setup, test};
 use crate::core::config::flags::{Color, Subcommand};
@@ -767,7 +767,17 @@ impl<'a> Builder<'a> {
                 tool::CoverageDump,
                 tool::LlvmBitcodeLinker
             ),
-            Kind::Check | Kind::Clippy | Kind::Fix => describe!(
+            Kind::Clippy => describe!(
+                clippy::Std,
+                clippy::Rustc,
+                clippy::Bootstrap,
+                clippy::BuildHelper,
+                clippy::CoverageDump,
+                clippy::Tidy,
+                clippy::RemoteTestServer,
+                clippy::RemoteTestClient,
+            ),
+            Kind::Check | Kind::Fix => describe!(
                 check::Std,
                 check::Rustc,
                 check::Rustdoc,
