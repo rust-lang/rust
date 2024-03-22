@@ -1,5 +1,5 @@
 // ICE size_and_align_of::<[closure@test.rs:15:5: 17:7]> not supported #88212
-
+// issue: rust-lang/rust#88212
 #![feature(unsized_locals)]
 //~^ WARN the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
 

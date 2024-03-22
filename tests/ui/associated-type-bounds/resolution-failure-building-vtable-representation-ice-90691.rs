@@ -1,5 +1,6 @@
 // ICE #90691 Encountered error `Unimplemented` selecting  ...
 //@ build-pass
+// issue: rust-lang/rust#90691
 
 trait TError: std::fmt::Debug {}
 impl TError for () {}
