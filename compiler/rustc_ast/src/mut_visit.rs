@@ -1425,7 +1425,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             visit_opt(label, |label| vis.visit_label(label));
             vis.visit_span(span);
         }
-        ExprKind::Match(expr, arms) => {
+        ExprKind::Match(expr, arms, _kind) => {
             vis.visit_expr(expr);
             arms.flat_map_in_place(|arm| vis.flat_map_arm(arm));
         }
