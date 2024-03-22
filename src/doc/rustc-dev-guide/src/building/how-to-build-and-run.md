@@ -51,7 +51,7 @@ compiler and standard library.
 This chapter focuses on the basics to be productive, but
 if you want to learn more about `x.py`, [read this chapter][bootstrap].
 
-[bootstrap]: ./bootstrapping.md
+[bootstrap]: ./bootstrapping/intro.md
 
 Also, using `x` rather than `x.py` is recommended as:
 
