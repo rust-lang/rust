@@ -551,7 +551,7 @@ fn infringing_fields_error(
                     }
                     if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
                         trait_ref,
-                        polarity: ty::ImplPolarity::Positive,
+                        polarity: ty::PredicatePolarity::Positive,
                         ..
                     })) = error_predicate.kind().skip_binder()
                     {

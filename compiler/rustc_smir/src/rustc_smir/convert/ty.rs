@@ -719,6 +719,18 @@ impl<'tcx> Stable<'tcx> for ty::ImplPolarity {
     }
 }
 
+impl<'tcx> Stable<'tcx> for ty::PredicatePolarity {
+    type T = stable_mir::ty::PredicatePolarity;
+
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        use rustc_middle::ty::PredicatePolarity::*;
+        match self {
+            Positive => stable_mir::ty::PredicatePolarity::Positive,
+            Negative => stable_mir::ty::PredicatePolarity::Negative,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for ty::Region<'tcx> {
     type T = stable_mir::ty::Region;
 

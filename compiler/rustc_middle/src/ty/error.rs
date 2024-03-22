@@ -32,7 +32,7 @@ impl<T> ExpectedFound<T> {
 pub enum TypeError<'tcx> {
     Mismatch,
     ConstnessMismatch(ExpectedFound<ty::BoundConstness>),
-    PolarityMismatch(ExpectedFound<ty::ImplPolarity>),
+    PolarityMismatch(ExpectedFound<ty::PredicatePolarity>),
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,

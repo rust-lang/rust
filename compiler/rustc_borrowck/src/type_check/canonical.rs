@@ -82,7 +82,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) {
         self.prove_predicate(
             ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::Trait(
-                ty::TraitPredicate { trait_ref, polarity: ty::ImplPolarity::Positive },
+                ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Positive },
             ))),
             locations,
             category,

@@ -43,7 +43,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 &trait_bound.trait_ref,
                 trait_bound.span,
                 ty::BoundConstness::NotConst,
-                ty::ImplPolarity::Positive,
+                ty::PredicatePolarity::Positive,
                 dummy_self,
                 &mut bounds,
                 // True so we don't populate `bounds` with associated type bounds, even
@@ -60,7 +60,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let bound_pred = pred.kind();
             match bound_pred.skip_binder() {
                 ty::ClauseKind::Trait(trait_pred) => {
-                    assert_eq!(trait_pred.polarity, ty::ImplPolarity::Positive);
+                    assert_eq!(trait_pred.polarity, ty::PredicatePolarity::Positive);
                     trait_bounds.push((bound_pred.rebind(trait_pred.trait_ref), span));
                 }
                 ty::ClauseKind::Projection(proj) => {
