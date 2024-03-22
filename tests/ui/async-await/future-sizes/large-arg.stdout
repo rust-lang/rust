@@ -2,7 +2,7 @@ print-type-size type: `{async fn body@$DIR/large-arg.rs:6:21: 8:2}`: 3076 bytes,
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 0 bytes
 print-type-size     variant `Suspend0`: 3075 bytes
-print-type-size         local `.__awaitee`: 3075 bytes
+print-type-size         local `.__awaitee`: 3075 bytes, type: {async fn body@$DIR/large-arg.rs:10:30: 12:2}
 print-type-size     variant `Returned`: 0 bytes
 print-type-size     variant `Panicked`: 0 bytes
 print-type-size type: `std::mem::ManuallyDrop<{async fn body@$DIR/large-arg.rs:10:30: 12:2}>`: 3075 bytes, alignment: 1 bytes
@@ -17,7 +17,7 @@ print-type-size     variant `Unresumed`: 1024 bytes
 print-type-size         upvar `.t`: 1024 bytes
 print-type-size     variant `Suspend0`: 3074 bytes
 print-type-size         upvar `.t`: 1024 bytes
-print-type-size         local `.__awaitee`: 2050 bytes
+print-type-size         local `.__awaitee`: 2050 bytes, type: {async fn body@$DIR/large-arg.rs:13:26: 15:2}
 print-type-size     variant `Returned`: 1024 bytes
 print-type-size         upvar `.t`: 1024 bytes
 print-type-size     variant `Panicked`: 1024 bytes
@@ -34,7 +34,7 @@ print-type-size     variant `Unresumed`: 1024 bytes
 print-type-size         upvar `.t`: 1024 bytes
 print-type-size     variant `Suspend0`: 2049 bytes
 print-type-size         upvar `.t`: 1024 bytes
-print-type-size         local `.__awaitee`: 1025 bytes
+print-type-size         local `.__awaitee`: 1025 bytes, type: {async fn body@$DIR/large-arg.rs:16:26: 18:2}
 print-type-size     variant `Returned`: 1024 bytes
 print-type-size         upvar `.t`: 1024 bytes
 print-type-size     variant `Panicked`: 1024 bytes
