@@ -2015,7 +2015,7 @@ pub fn run_cargo(
         crate::exit!(1);
     }
 
-    if builder.config.dry_run() || builder.kind == Kind::Clippy {
+    if builder.config.dry_run() {
         return Vec::new();
     }
 

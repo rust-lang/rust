@@ -185,8 +185,17 @@ impl Step for Rustc {
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
         let target = self.target;
 
-        builder.ensure(compile::Std::new(compiler, compiler.host));
-        builder.ensure(compile::Std::new(compiler, target));
+        if compiler.stage != 0 {
+            // If we're not in stage 0, then we won't have a std from the beta
+            // compiler around. That means we need to make sure there's one in
+            // the sysroot for the compiler to find. Otherwise, we're going to
+            // fail when building crates that need to generate code (e.g., build
+            // scripts and their dependencies).
+            builder.ensure(compile::Std::new(compiler, compiler.host));
+            builder.ensure(compile::Std::new(compiler, target));
+        } else {
+            builder.ensure(check::Std::new(target));
+        }
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -224,9 +233,7 @@ impl Step for Rustc {
 macro_rules! lint_any {
     ($(
         $name:ident, $path:expr, $readable_name:expr
-        $(,is_external_tool = $external:expr)*
-        $(,is_unstable_tool = $unstable:expr)*
-        $(,allow_features = $allow_features:expr)?
+        $(,lint_by_default = $lint_by_default:expr)*
         ;
     )+) => {
         $(
@@ -238,6 +245,7 @@ macro_rules! lint_any {
 
         impl Step for $name {
             type Output = ();
+            const DEFAULT: bool = if false $(|| $lint_by_default)* { true } else { false };
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.path($path)
@@ -275,11 +283,15 @@ macro_rules! lint_any {
                     &target,
                 );
 
+                let stamp = builder
+                    .cargo_out(compiler, Mode::ToolRustc, target)
+                    .join(format!(".{}-check.stamp", stringify!($name).to_lowercase()));
+
                 run_cargo(
                     builder,
                     cargo,
                     lint_args(builder, &[]),
-                    &libstd_stamp(builder, compiler, target),
+                    &stamp,
                     vec![],
                     true,
                     false,
@@ -293,9 +305,26 @@ macro_rules! lint_any {
 lint_any!(
     Bootstrap, "src/bootstrap", "bootstrap";
     BuildHelper, "src/tools/build_helper", "build_helper";
-    CoverageDump, "src/tools/coverage-dump", "coverage-dump";
-    Tidy, "src/tools/tidy", "tidy";
+    BuildManifest, "src/tools/build-manifest", "build-manifest";
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri";
+    Clippy, "src/tools/clippy", "clippy";
+    CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
     Compiletest, "src/tools/compiletest", "compiletest";
-    RemoteTestServer, "src/tools/remote-test-server", "remote-test-server";
+    CoverageDump, "src/tools/coverage-dump", "coverage-dump";
+    Jsondocck, "src/tools/jsondocck", "jsondocck";
+    Jsondoclint, "src/tools/jsondoclint", "jsondoclint";
+    LintDocs, "src/tools/lint-docs", "lint-docs";
+    LlvmBitcodeLinker, "src/tools/llvm-bitcode-linker", "llvm-bitcode-linker";
+    Miri, "src/tools/miri", "miri";
+    MiroptTestTools, "src/tools/miropt-test-tools", "miropt-test-tools";
+    OptDist, "src/tools/opt-dist", "opt-dist";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
+    RemoteTestServer, "src/tools/remote-test-server", "remote-test-server";
+    Rls, "src/tools/rls", "rls";
+    RustAnalyzer, "src/tools/rust-analyzer", "rust-analyzer";
+    RustDemangler, "src/tools/rust-demangler", "rust-demangler";
+    Rustdoc, "src/tools/rustdoc", "clippy";
+    Rustfmt, "src/tools/rustfmt", "rustfmt";
+    RustInstaller, "src/tools/rust-installer", "rust-installer";
+    Tidy, "src/tools/tidy", "tidy";
 );
