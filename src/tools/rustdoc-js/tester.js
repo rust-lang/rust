@@ -559,8 +559,3 @@ process.on("beforeExit", () => {
     console.log("process did not complete");
     process.exit(1);
 });
-
-/*process.on("uncaughtException", (err) => {
-    console.log(`Uncaught Exception: ${err.message}`);
-    process.exit(1);
-});*/

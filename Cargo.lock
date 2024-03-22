@@ -4741,6 +4741,8 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "askama",
+ "base64",
+ "byteorder",
  "expect-test",
  "indexmap",
  "itertools 0.12.1",

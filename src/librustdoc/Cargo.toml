@@ -9,6 +9,8 @@ path = "lib.rs"
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
 askama = { version = "0.12", default-features = false, features = ["config"] }
+base64 = "0.21.7"
+byteorder = "1.5"
 itertools = "0.12"
 indexmap = "2"
 minifier = "0.3.0"

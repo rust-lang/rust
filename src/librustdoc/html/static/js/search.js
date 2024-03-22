@@ -243,6 +243,14 @@ function initSearch(rawSearchIndex) {
      */
     let searchIndex;
     /**
+     * @type {Map<String, RoaringBitmap>}
+     */
+    let searchIndexDeprecated;
+    /**
+     * @type {Map<String, RoaringBitmap>}
+     */
+    let searchIndexEmptyDesc;
+    /**
      *  @type {Uint32Array}
      */
     let functionTypeFingerprint;
@@ -1326,7 +1334,6 @@ function initSearch(rawSearchIndex) {
                     duplicates.add(obj.fullPath);
 
                     obj.href = res[1];
-                    obj.desc = result.desc;
                     out.push(obj);
                     if (out.length >= MAX_RESULTS) {
                         break;
@@ -1352,12 +1359,6 @@ function initSearch(rawSearchIndex) {
                 result.item = searchIndex[result.id];
                 result.word = searchIndex[result.id].word;
                 result_list.push(result);
-            }
-            for (const result of result_list) {
-                result.desc = searchState.loadDesc(result.item);
-            }
-            for (const result of result_list) {
-                result.desc = await result.desc;
             }
 
             result_list.sort((aaa, bbb) => {
@@ -1401,8 +1402,8 @@ function initSearch(rawSearchIndex) {
                 }
 
                 // sort deprecated items later
-                a = aaa.item.deprecated;
-                b = bbb.item.deprecated;
+                a = searchIndexDeprecated.get(aaa.item.crate).contains(aaa.item.bitIndex);
+                b = searchIndexDeprecated.get(bbb.item.crate).contains(bbb.item.bitIndex);
                 if (a !== b) {
                     return a - b;
                 }
@@ -1429,8 +1430,8 @@ function initSearch(rawSearchIndex) {
                 }
 
                 // sort by description (no description goes later)
-                a = (aaa.desc === "");
-                b = (bbb.desc === "");
+                a = searchIndexEmptyDesc.get(aaa.item.crate).contains(aaa.item.bitIndex);
+                b = searchIndexEmptyDesc.get(bbb.item.crate).contains(bbb.item.bitIndex);
                 if (a !== b) {
                     return a - b;
                 }
@@ -1453,7 +1454,16 @@ function initSearch(rawSearchIndex) {
                 return 0;
             });
 
-            return transformResults(result_list);
+            const transformed = transformResults(result_list);
+            for (const result of transformed) {
+                result.desc = searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
+                    "" :
+                    searchState.loadDesc(result);
+            }
+            for (const result of transformed) {
+                result.desc = await result.desc;
+            }
+            return transformed;
         }
 
         /**
@@ -2079,7 +2089,7 @@ function initSearch(rawSearchIndex) {
                 parent: item.parent,
                 type: item.type,
                 is_alias: true,
-                deprecated: item.deprecated,
+                bitIndex: item.bitIndex,
                 implDisambiguator: item.implDisambiguator,
             };
         }
@@ -2712,9 +2722,11 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
         currentResults = results.query.userQuery;
 
-        const ret_others = await addTab(results.others, results.query, true);
-        const ret_in_args = await addTab(results.in_args, results.query, false);
-        const ret_returned = await addTab(results.returned, results.query, false);
+        const [ret_others, ret_in_args, ret_returned] = await Promise.all([
+            addTab(results.others, results.query, true),
+            addTab(results.in_args, results.query, false),
+            addTab(results.returned, results.query, false),
+        ]);
 
         // Navigate to the relevant tab if the current tab is empty, like in case users search
         // for "-> String". If they had selected another tab previously, they have to click on
@@ -3267,6 +3279,123 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             return result;
         }
     }
+    class RoaringBitmap {
+        constructor(str) {
+            const strdecoded = atob(str);
+            const u8array = new Uint8Array(strdecoded.length);
+            for (let j = 0; j < strdecoded.length; ++j) {
+                u8array[j] = strdecoded.charCodeAt(j);
+            }
+            const has_runs = u8array[0] === 0x3b;
+            const size = has_runs ?
+                ((u8array[2] | (u8array[3] << 8)) + 1) :
+                ((u8array[4] | (u8array[5] << 8) | (u8array[6] << 16) | (u8array[7] << 24)));
+            let i = has_runs ? 4 : 8;
+            let is_run;
+            if (has_runs) {
+                const is_run_len = Math.floor((size + 7) / 8);
+                is_run = u8array.slice(i, i + is_run_len);
+                i += is_run_len;
+            } else {
+                is_run = new Uint8Array();
+            }
+            this.keys = [];
+            this.cardinalities = [];
+            for (let j = 0; j < size; ++j) {
+                this.keys.push(u8array[i] | (u8array[i + 1] << 8));
+                i += 2;
+                this.cardinalities.push((u8array[i] | (u8array[i + 1] << 8)) + 1);
+                i += 2;
+            }
+            this.containers = [];
+            let offsets = null;
+            if (!has_runs || this.keys.length >= 4) {
+                offsets = [];
+                for (let j = 0; j < size; ++j) {
+                    offsets.push(u8array[i] | (u8array[i + 1] << 8) | (u8array[i + 2] << 16) |
+                        (u8array[i + 3] << 24));
+                    i += 4;
+                }
+            }
+            for (let j = 0; j < size; ++j) {
+                if (offsets && offsets[j] !== i) {
+                    console.log(this.containers);
+                    throw new Error(`corrupt bitmap ${j}: ${i} / ${offsets[j]}`);
+                }
+                if (is_run[j >> 3] & (1 << (j & 0x7))) {
+                    const runcount = (u8array[i] | (u8array[i + 1] << 8));
+                    i += 2;
+                    this.containers.push(new RoaringBitmapRun(
+                        runcount,
+                        u8array.slice(i, i + (runcount * 4)),
+                    ));
+                    i += runcount * 4;
+                } else if (this.cardinalities[j] >= 4096) {
+                    this.containers.push(new RoaringBitmapBits(u8array.slice(i, i + 8192)));
+                    i += 8192;
+                } else {
+                    const end = this.cardinalities[j] * 2;
+                    this.containers.push(new RoaringBitmapArray(
+                        this.cardinalities[j],
+                        u8array.slice(i, i + end),
+                    ));
+                    i += end;
+                }
+            }
+        }
+        contains(keyvalue) {
+            const key = keyvalue >> 16;
+            const value = keyvalue & 0xFFFF;
+            for (let i = 0; i < this.keys.length; ++i) {
+                if (this.keys[i] === key) {
+                    return this.containers[i].contains(value);
+                }
+            }
+            return false;
+        }
+    }
+
+    class RoaringBitmapRun {
+        constructor(runcount, array) {
+            this.runcount = runcount;
+            this.array = array;
+        }
+        contains(value) {
+            const l = this.runcount * 4;
+            for (let i = 0; i < l; i += 4) {
+                const start = this.array[i] | (this.array[i + 1] << 8);
+                const lenm1 = this.array[i + 2] | (this.array[i + 3] << 8);
+                if (value >= start && value <= (start + lenm1)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    class RoaringBitmapArray {
+        constructor(cardinality, array) {
+            this.cardinality = cardinality;
+            this.array = array;
+        }
+        contains(value) {
+            const l = this.cardinality * 2;
+            for (let i = 0; i < l; i += 2) {
+                const start = this.array[i] | (this.array[i + 1] << 8);
+                if (value === start) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    class RoaringBitmapBits {
+        constructor(array) {
+            this.array = array;
+        }
+        contains(value) {
+            return !!(this.array[value >> 3] & (1 << (value & 7)));
+        }
+    }
 
     /**
      * Convert raw search index into in-memory search index.
@@ -3275,6 +3404,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      */
     function buildIndex(rawSearchIndex) {
         searchIndex = [];
+        searchIndexDeprecated = new Map();
+        searchIndexEmptyDesc = new Map();
         const charA = "A".charCodeAt(0);
         let currentIndex = 0;
         let id = 0;
@@ -3307,6 +3438,11 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             };
             const descShardList = [ descShard ];
 
+            // Deprecated items and items with no description
+            searchIndexDeprecated.set(crate, new RoaringBitmap(crateCorpus.c));
+            searchIndexEmptyDesc.set(crate, new RoaringBitmap(crateCorpus.e));
+            let descIndex = 0;
+
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
             // https://mathiasbynens.be/notes/shapes-ics
@@ -3316,18 +3452,21 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 name: crate,
                 path: "",
                 descShard,
-                descIndex: 0,
+                descIndex,
                 parent: undefined,
                 type: null,
                 id,
                 word: crate,
                 normalizedName: crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, ""),
-                deprecated: null,
+                bitIndex: 0,
                 implDisambiguator: null,
             };
             id += 1;
             searchIndex.push(crateRow);
             currentIndex += 1;
+            if (!searchIndexEmptyDesc.get(crate).contains(0)) {
+                descIndex += 1;
+            }
 
             // a String of one character item type codes
             const itemTypes = crateCorpus.t;
@@ -3341,9 +3480,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             const itemPaths = new Map(crateCorpus.q);
             // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
             const itemParentIdxs = crateCorpus.i;
-            // an array of (Number) indices for the deprecated items
-            const deprecatedItems = new Set(crateCorpus.c);
-            // an array of (Number) indices for the deprecated items
+            // a map Number, string for impl disambiguators
             const implDisambiguator = new Map(crateCorpus.b);
             // an array of [(Number) item type,
             //              (String) name]
@@ -3388,9 +3525,10 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // faster analysis operations
             lastPath = "";
             len = itemTypes.length;
-            let descIndex = 1;
             for (let i = 0; i < len; ++i) {
-                if (descIndex >= descShard.len) {
+                const bitIndex = i + 1;
+                if (descIndex >= descShard.len &&
+                    !searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
                     descShard = {
                         crate,
                         shard: descShard.shard + 1,
@@ -3439,13 +3577,15 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     id,
                     word,
                     normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
-                    deprecated: deprecatedItems.has(i),
+                    bitIndex,
                     implDisambiguator: implDisambiguator.has(i) ? implDisambiguator.get(i) : null,
                 };
                 id += 1;
                 searchIndex.push(row);
                 lastPath = row.path;
-                descIndex += 1;
+                if (!searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
+                    descIndex += 1;
+                }
             }
 
             if (aliases) {
