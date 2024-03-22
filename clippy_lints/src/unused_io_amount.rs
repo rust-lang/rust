@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
         if let Some(exp) = block.expr
             && matches!(
                 exp.kind,
-                hir::ExprKind::If(_, _, _) | hir::ExprKind::Match(_, _, hir::MatchSource::Normal)
+                ExprKind::If(_, _, _) | ExprKind::Match(_, _, hir::MatchSource::Normal)
             )
         {
             check_expr(cx, exp);
@@ -130,7 +130,7 @@ fn non_consuming_ok_arm<'a>(cx: &LateContext<'a>, arm: &hir::Arm<'a>) -> bool {
 
 fn check_expr<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) {
     match expr.kind {
-        hir::ExprKind::If(cond, _, _)
+        ExprKind::If(cond, _, _)
             if let ExprKind::Let(hir::Let { pat, init, .. }) = cond.kind
                 && is_ok_wild_or_dotdot_pattern(cx, pat)
                 && let Some(op) = should_lint(cx, init) =>
@@ -140,7 +140,7 @@ fn check_expr<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) {
         // we will capture only the case where the match is Ok( ) or Err( )
         // prefer to match the minimum possible, and expand later if needed
         // to avoid false positives on something as used as this
-        hir::ExprKind::Match(expr, [arm1, arm2], hir::MatchSource::Normal) if let Some(op) = should_lint(cx, expr) => {
+        ExprKind::Match(expr, [arm1, arm2], hir::MatchSource::Normal) if let Some(op) = should_lint(cx, expr) => {
             if non_consuming_ok_arm(cx, arm1) && non_consuming_err_arm(cx, arm2) {
                 emit_lint(cx, expr.span, expr.hir_id, op, &[arm1.pat.span]);
             }
@@ -148,7 +148,7 @@ fn check_expr<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) {
                 emit_lint(cx, expr.span, expr.hir_id, op, &[arm2.pat.span]);
             }
         },
-        hir::ExprKind::Match(_, _, hir::MatchSource::Normal) => {},
+        ExprKind::Match(_, _, hir::MatchSource::Normal) => {},
         _ if let Some(op) = should_lint(cx, expr) => {
             emit_lint(cx, expr.span, expr.hir_id, op, &[]);
         },
@@ -201,7 +201,7 @@ fn is_unreachable_or_panic(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
 }
 
 fn unpack_call_chain<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
-    while let hir::ExprKind::MethodCall(path, receiver, ..) = expr.kind {
+    while let ExprKind::MethodCall(path, receiver, ..) = expr.kind {
         if matches!(
             path.ident.as_str(),
             "unwrap" | "expect" | "unwrap_or" | "unwrap_or_else" | "ok" | "is_ok" | "is_err" | "or_else" | "or"
@@ -215,10 +215,10 @@ fn unpack_call_chain<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
 }
 
 fn unpack_try<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
-    while let hir::ExprKind::Call(func, [ref arg_0, ..]) = expr.kind
+    while let ExprKind::Call(func, [ref arg_0, ..]) = expr.kind
         && matches!(
             func.kind,
-            hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryTraitBranch, ..))
+            ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryTraitBranch, ..))
         )
     {
         expr = arg_0;
@@ -227,7 +227,7 @@ fn unpack_try<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
 }
 
 fn unpack_match<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
-    while let hir::ExprKind::Match(res, _, _) = expr.kind {
+    while let ExprKind::Match(res, _, _) = expr.kind {
         expr = res;
     }
     expr
@@ -236,11 +236,11 @@ fn unpack_match<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
 /// If `expr` is an (e).await, return the inner expression "e" that's being
 /// waited on.  Otherwise return None.
 fn unpack_await<'a>(expr: &'a hir::Expr<'a>) -> &hir::Expr<'a> {
-    if let hir::ExprKind::Match(expr, _, hir::MatchSource::AwaitDesugar) = expr.kind {
-        if let hir::ExprKind::Call(func, [ref arg_0, ..]) = expr.kind {
+    if let ExprKind::Match(expr, _, hir::MatchSource::AwaitDesugar) = expr.kind {
+        if let ExprKind::Call(func, [ref arg_0, ..]) = expr.kind {
             if matches!(
                 func.kind,
-                hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::IntoFutureIntoFuture, ..))
+                ExprKind::Path(hir::QPath::LangItem(hir::LangItem::IntoFutureIntoFuture, ..))
             ) {
                 return arg_0;
             }
@@ -251,7 +251,7 @@ fn unpack_await<'a>(expr: &'a hir::Expr<'a>) -> &hir::Expr<'a> {
 
 /// Check whether the current expr is a function call for an IO operation
 fn check_io_mode(cx: &LateContext<'_>, call: &hir::Expr<'_>) -> Option<IoOp> {
-    let hir::ExprKind::MethodCall(path, ..) = call.kind else {
+    let ExprKind::MethodCall(path, ..) = call.kind else {
         return None;
     };
 

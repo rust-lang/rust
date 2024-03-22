@@ -92,8 +92,8 @@ impl<'tcx> LateLintPass<'tcx> for Mutex {
                          behavior and not the internal type, consider using `Mutex<()>`"
                     );
                     match *mutex_param.kind() {
-                        ty::Uint(t) if t != ty::UintTy::Usize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
-                        ty::Int(t) if t != ty::IntTy::Isize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        ty::Uint(t) if t != UintTy::Usize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        ty::Int(t) if t != IntTy::Isize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
                         _ => span_lint(cx, MUTEX_ATOMIC, expr.span, &msg),
                     };
                 }

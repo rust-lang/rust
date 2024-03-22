@@ -16,20 +16,18 @@ use std::borrow::Cow;
 
 use super::{MANUAL_FILTER_MAP, MANUAL_FIND_MAP, OPTION_FILTER_MAP, RESULT_FILTER_MAP};
 
-fn is_method(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Symbol) -> bool {
+fn is_method(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol) -> bool {
     match &expr.kind {
-        hir::ExprKind::Path(QPath::TypeRelative(_, mname)) => mname.ident.name == method_name,
-        hir::ExprKind::Path(QPath::Resolved(_, segments)) => {
-            segments.segments.last().unwrap().ident.name == method_name
-        },
-        hir::ExprKind::MethodCall(segment, _, _, _) => segment.ident.name == method_name,
-        hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
+        ExprKind::Path(QPath::TypeRelative(_, mname)) => mname.ident.name == method_name,
+        ExprKind::Path(QPath::Resolved(_, segments)) => segments.segments.last().unwrap().ident.name == method_name,
+        ExprKind::MethodCall(segment, _, _, _) => segment.ident.name == method_name,
+        ExprKind::Closure(&Closure { body, .. }) => {
             let body = cx.tcx.hir().body(body);
             let closure_expr = peel_blocks(body.value);
             match closure_expr.kind {
-                hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, receiver, ..) => {
+                ExprKind::MethodCall(PathSegment { ident, .. }, receiver, ..) => {
                     if ident.name == method_name
-                        && let hir::ExprKind::Path(path) = &receiver.kind
+                        && let ExprKind::Path(path) = &receiver.kind
                         && let Res::Local(ref local) = cx.qpath_res(path, receiver.hir_id)
                         && !body.params.is_empty()
                     {
@@ -45,10 +43,10 @@ fn is_method(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Symbol) ->
     }
 }
 
-fn is_option_filter_map(cx: &LateContext<'_>, filter_arg: &hir::Expr<'_>, map_arg: &hir::Expr<'_>) -> bool {
+fn is_option_filter_map(cx: &LateContext<'_>, filter_arg: &Expr<'_>, map_arg: &Expr<'_>) -> bool {
     is_method(cx, map_arg, sym::unwrap) && is_method(cx, filter_arg, sym!(is_some))
 }
-fn is_ok_filter_map(cx: &LateContext<'_>, filter_arg: &hir::Expr<'_>, map_arg: &hir::Expr<'_>) -> bool {
+fn is_ok_filter_map(cx: &LateContext<'_>, filter_arg: &Expr<'_>, map_arg: &Expr<'_>) -> bool {
     is_method(cx, map_arg, sym::unwrap) && is_method(cx, filter_arg, sym!(is_ok))
 }
 
@@ -267,10 +265,10 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
 /// is `filter(|x| x.is_some()).map(|x| x.unwrap())`
 fn is_filter_some_map_unwrap(
     cx: &LateContext<'_>,
-    expr: &hir::Expr<'_>,
-    filter_recv: &hir::Expr<'_>,
-    filter_arg: &hir::Expr<'_>,
-    map_arg: &hir::Expr<'_>,
+    expr: &Expr<'_>,
+    filter_recv: &Expr<'_>,
+    filter_arg: &Expr<'_>,
+    map_arg: &Expr<'_>,
 ) -> bool {
     let iterator = is_trait_method(cx, expr, sym::Iterator);
     let option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(filter_recv), sym::Option);
@@ -279,12 +277,7 @@ fn is_filter_some_map_unwrap(
 }
 
 /// is `filter(|x| x.is_ok()).map(|x| x.unwrap())`
-fn is_filter_ok_map_unwrap(
-    cx: &LateContext<'_>,
-    expr: &hir::Expr<'_>,
-    filter_arg: &hir::Expr<'_>,
-    map_arg: &hir::Expr<'_>,
-) -> bool {
+fn is_filter_ok_map_unwrap(cx: &LateContext<'_>, expr: &Expr<'_>, filter_arg: &Expr<'_>, map_arg: &Expr<'_>) -> bool {
     // result has no filter, so we only check for iterators
     let iterator = is_trait_method(cx, expr, sym::Iterator);
     iterator && is_ok_filter_map(cx, filter_arg, map_arg)
@@ -294,12 +287,12 @@ fn is_filter_ok_map_unwrap(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn check(
     cx: &LateContext<'_>,
-    expr: &hir::Expr<'_>,
-    filter_recv: &hir::Expr<'_>,
-    filter_arg: &hir::Expr<'_>,
+    expr: &Expr<'_>,
+    filter_recv: &Expr<'_>,
+    filter_arg: &Expr<'_>,
     filter_span: Span,
-    map_recv: &hir::Expr<'_>,
-    map_arg: &hir::Expr<'_>,
+    map_recv: &Expr<'_>,
+    map_arg: &Expr<'_>,
     map_span: Span,
     is_find: bool,
 ) {
@@ -405,9 +398,9 @@ pub(super) fn check(
 
 fn is_find_or_filter<'a>(
     cx: &LateContext<'a>,
-    map_recv: &hir::Expr<'_>,
-    filter_arg: &hir::Expr<'_>,
-    map_arg: &hir::Expr<'_>,
+    map_recv: &Expr<'_>,
+    filter_arg: &Expr<'_>,
+    map_arg: &Expr<'_>,
 ) -> Option<(Ident, CheckResult<'a>)> {
     if is_trait_method(cx, map_recv, sym::Iterator)
         // filter(|x| ...is_some())...

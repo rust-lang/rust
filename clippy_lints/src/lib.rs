@@ -16,11 +16,14 @@
     rustc::diagnostic_outside_of_impl,
     rustc::untranslatable_diagnostic
 )]
-#![warn(trivial_casts, trivial_numeric_casts)]
-// warn on lints, that are included in `rust-lang/rust`s bootstrap
-#![warn(rust_2018_idioms, unused_lifetimes)]
-// warn on rustc internal lints
-#![warn(rustc::internal)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    rust_2018_idioms,
+    unused_lifetimes,
+    unused_qualifications,
+    rustc::internal
+)]
 // Disable this rustc lint for now, as it was also done in rustc
 #![allow(rustc::potential_query_instability)]
 

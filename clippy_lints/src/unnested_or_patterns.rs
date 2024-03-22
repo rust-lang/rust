@@ -215,7 +215,7 @@ macro_rules! always_pat {
 /// in `alternatives[focus_idx + 1..]`.
 fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: usize) -> bool {
     // Extract the kind; we'll need to make some changes in it.
-    let mut focus_kind = mem::replace(&mut alternatives[focus_idx].kind, PatKind::Wild);
+    let mut focus_kind = mem::replace(&mut alternatives[focus_idx].kind, Wild);
     // We'll focus on `alternatives[focus_idx]`,
     // so we're draining from `alternatives[focus_idx + 1..]`.
     let start = focus_idx + 1;

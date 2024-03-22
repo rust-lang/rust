@@ -747,7 +747,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 }
 
-fn has_attr(cx: &LateContext<'_>, hir_id: hir::HirId) -> bool {
+fn has_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     let attrs = cx.tcx.hir().attrs(hir_id);
     get_attr(cx.sess(), attrs, "author").count() > 0
 }
@@ -764,7 +764,7 @@ fn path_to_string(path: &QPath<'_>) -> Result<String, ()> {
                 }
             },
             QPath::TypeRelative(ty, segment) => match &ty.kind {
-                hir::TyKind::Path(inner_path) => {
+                TyKind::Path(inner_path) => {
                     inner(s, inner_path)?;
                     *s += ", ";
                     write!(s, "{:?}", segment.ident.as_str()).unwrap();

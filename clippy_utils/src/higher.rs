@@ -16,11 +16,11 @@ use rustc_span::{sym, symbol, Span};
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Returns `(pat, arg, body, span)`.
 pub struct ForLoop<'tcx> {
     /// `for` loop item
-    pub pat: &'tcx hir::Pat<'tcx>,
+    pub pat: &'tcx Pat<'tcx>,
     /// `IntoIterator` argument
-    pub arg: &'tcx hir::Expr<'tcx>,
+    pub arg: &'tcx Expr<'tcx>,
     /// `for` loop body
-    pub body: &'tcx hir::Expr<'tcx>,
+    pub body: &'tcx Expr<'tcx>,
     /// Compare this against `hir::Destination.target`
     pub loop_id: HirId,
     /// entire `for` loop span
@@ -30,13 +30,13 @@ pub struct ForLoop<'tcx> {
 impl<'tcx> ForLoop<'tcx> {
     /// Parses a desugared `for` loop
     pub fn hir(expr: &Expr<'tcx>) -> Option<Self> {
-        if let hir::ExprKind::DropTemps(e) = expr.kind
-            && let hir::ExprKind::Match(iterexpr, [arm], hir::MatchSource::ForLoopDesugar) = e.kind
-            && let hir::ExprKind::Call(_, [arg]) = iterexpr.kind
-            && let hir::ExprKind::Loop(block, ..) = arm.body.kind
+        if let ExprKind::DropTemps(e) = expr.kind
+            && let ExprKind::Match(iterexpr, [arm], MatchSource::ForLoopDesugar) = e.kind
+            && let ExprKind::Call(_, [arg]) = iterexpr.kind
+            && let ExprKind::Loop(block, ..) = arm.body.kind
             && let [stmt] = block.stmts
             && let hir::StmtKind::Expr(e) = stmt.kind
-            && let hir::ExprKind::Match(_, [_, some_arm], _) = e.kind
+            && let ExprKind::Match(_, [_, some_arm], _) = e.kind
             && let hir::PatKind::Struct(_, [field], _) = some_arm.pat.kind
         {
             return Some(Self {
@@ -209,28 +209,28 @@ impl<'hir> IfOrIfLet<'hir> {
 #[derive(Debug, Copy, Clone)]
 pub struct Range<'a> {
     /// The lower bound of the range, or `None` for ranges such as `..X`.
-    pub start: Option<&'a hir::Expr<'a>>,
+    pub start: Option<&'a Expr<'a>>,
     /// The upper bound of the range, or `None` for ranges such as `X..`.
-    pub end: Option<&'a hir::Expr<'a>>,
+    pub end: Option<&'a Expr<'a>>,
     /// Whether the interval is open or closed.
     pub limits: ast::RangeLimits,
 }
 
 impl<'a> Range<'a> {
     /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
-    pub fn hir(expr: &'a hir::Expr<'_>) -> Option<Range<'a>> {
+    pub fn hir(expr: &'a Expr<'_>) -> Option<Range<'a>> {
         /// Finds the field named `name` in the field. Always return `Some` for
         /// convenience.
-        fn get_field<'c>(name: &str, fields: &'c [hir::ExprField<'_>]) -> Option<&'c hir::Expr<'c>> {
+        fn get_field<'c>(name: &str, fields: &'c [hir::ExprField<'_>]) -> Option<&'c Expr<'c>> {
             let expr = &fields.iter().find(|field| field.ident.name.as_str() == name)?.expr;
             Some(expr)
         }
 
         match expr.kind {
-            hir::ExprKind::Call(path, args)
+            ExprKind::Call(path, args)
                 if matches!(
                     path.kind,
-                    hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, ..))
+                    ExprKind::Path(QPath::LangItem(hir::LangItem::RangeInclusiveNew, ..))
                 ) =>
             {
                 Some(Range {
@@ -239,28 +239,28 @@ impl<'a> Range<'a> {
                     limits: ast::RangeLimits::Closed,
                 })
             },
-            hir::ExprKind::Struct(path, fields, None) => match &path {
-                hir::QPath::LangItem(hir::LangItem::RangeFull, ..) => Some(Range {
+            ExprKind::Struct(path, fields, None) => match &path {
+                QPath::LangItem(hir::LangItem::RangeFull, ..) => Some(Range {
                     start: None,
                     end: None,
                     limits: ast::RangeLimits::HalfOpen,
                 }),
-                hir::QPath::LangItem(hir::LangItem::RangeFrom, ..) => Some(Range {
+                QPath::LangItem(hir::LangItem::RangeFrom, ..) => Some(Range {
                     start: Some(get_field("start", fields)?),
                     end: None,
                     limits: ast::RangeLimits::HalfOpen,
                 }),
-                hir::QPath::LangItem(hir::LangItem::Range, ..) => Some(Range {
+                QPath::LangItem(hir::LangItem::Range, ..) => Some(Range {
                     start: Some(get_field("start", fields)?),
                     end: Some(get_field("end", fields)?),
                     limits: ast::RangeLimits::HalfOpen,
                 }),
-                hir::QPath::LangItem(hir::LangItem::RangeToInclusive, ..) => Some(Range {
+                QPath::LangItem(hir::LangItem::RangeToInclusive, ..) => Some(Range {
                     start: None,
                     end: Some(get_field("end", fields)?),
                     limits: ast::RangeLimits::Closed,
                 }),
-                hir::QPath::LangItem(hir::LangItem::RangeTo, ..) => Some(Range {
+                QPath::LangItem(hir::LangItem::RangeTo, ..) => Some(Range {
                     start: None,
                     end: Some(get_field("end", fields)?),
                     limits: ast::RangeLimits::HalfOpen,
@@ -275,17 +275,17 @@ impl<'a> Range<'a> {
 /// Represents the pre-expansion arguments of a `vec!` invocation.
 pub enum VecArgs<'a> {
     /// `vec![elem; len]`
-    Repeat(&'a hir::Expr<'a>, &'a hir::Expr<'a>),
+    Repeat(&'a Expr<'a>, &'a Expr<'a>),
     /// `vec![a, b, c]`
-    Vec(&'a [hir::Expr<'a>]),
+    Vec(&'a [Expr<'a>]),
 }
 
 impl<'a> VecArgs<'a> {
     /// Returns the arguments of the `vec!` macro if this expression was expanded
     /// from `vec!`.
-    pub fn hir(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> Option<VecArgs<'a>> {
-        if let hir::ExprKind::Call(fun, args) = expr.kind
-            && let hir::ExprKind::Path(ref qpath) = fun.kind
+    pub fn hir(cx: &LateContext<'_>, expr: &'a Expr<'_>) -> Option<VecArgs<'a>> {
+        if let ExprKind::Call(fun, args) = expr.kind
+            && let ExprKind::Path(ref qpath) = fun.kind
             && is_expn_of(fun.span, "vec").is_some()
             && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
         {
@@ -294,8 +294,8 @@ impl<'a> VecArgs<'a> {
                 Some(VecArgs::Repeat(&args[0], &args[1]))
             } else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
                 // `vec![a, b, c]` case
-                if let hir::ExprKind::Call(_, [arg]) = &args[0].kind
-                    && let hir::ExprKind::Array(args) = arg.kind
+                if let ExprKind::Call(_, [arg]) = &args[0].kind
+                    && let ExprKind::Array(args) = arg.kind
                 {
                     Some(VecArgs::Vec(args))
                 } else {

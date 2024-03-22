@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultIterEmpty {
 
 fn make_sugg(
     cx: &LateContext<'_>,
-    ty_path: &rustc_hir::QPath<'_>,
+    ty_path: &QPath<'_>,
     ctxt: SyntaxContext,
     applicability: &mut Applicability,
     path: &str,

@@ -91,7 +91,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                     return true;
                 }
 
-                if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *inner_ty.kind() {
+                if let ty::Alias(ty::Opaque, AliasTy { def_id, .. }) = *inner_ty.kind() {
                     if !seen.insert(def_id) {
                         return false;
                     }
@@ -301,7 +301,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         cause: ObligationCause::dummy(),
         param_env,
         recursion_depth: 0,
-        predicate: ty::Binder::dummy(trait_ref).to_predicate(tcx),
+        predicate: Binder::dummy(trait_ref).to_predicate(tcx),
     };
     infcx
         .evaluate_obligation(&obligation)
@@ -327,7 +327,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             is_must_use_ty(cx, *ty)
         },
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
+        ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(def_id).skip_binder() {
                 if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
                     if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
@@ -356,13 +356,13 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 // not succeed
 /// Checks if `Ty` is normalizable. This function is useful
 /// to avoid crashes on `layout_of`.
-pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
     is_normalizable_helper(cx, param_env, ty, &mut FxHashMap::default())
 }
 
 fn is_normalizable_helper<'tcx>(
     cx: &LateContext<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    param_env: ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     cache: &mut FxHashMap<Ty<'tcx>, bool>,
 ) -> bool {
@@ -372,7 +372,7 @@ fn is_normalizable_helper<'tcx>(
     // prevent recursive loops, false-negative is better than endless loop leading to stack overflow
     cache.insert(ty, false);
     let infcx = cx.tcx.infer_ctxt().build();
-    let cause = rustc_middle::traits::ObligationCause::dummy();
+    let cause = ObligationCause::dummy();
     let result = if infcx.at(&cause, param_env).query_normalize(ty).is_ok() {
         match ty.kind() {
             ty::Adt(def, args) => def.variants().iter().all(|variant| {
@@ -446,7 +446,7 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symb
 /// Checks if the type is equal to a lang item.
 ///
 /// Returns `false` if the `LangItem` is not defined.
-pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangItem) -> bool {
+pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: LangItem) -> bool {
     match ty.kind() {
         ty::Adt(adt, _) => cx.tcx.lang_items().get(lang_item) == Some(adt.did()),
         _ => false,
@@ -726,7 +726,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).instantiate(cx.tcx, subs), Some(id))),
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => sig_from_bounds(
+        ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) => sig_from_bounds(
             cx,
             ty,
             cx.tcx.item_bounds(def_id).iter_instantiated(cx.tcx, args),
@@ -899,7 +899,7 @@ pub fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     if let ty::Adt(adt, _) = ty.kind()
         && let &[krate, .., name] = &*cx.get_def_path(adt.did())
         && let sym::libc | sym::core | sym::std = krate
-        && name == rustc_span::sym::c_void
+        && name == sym::c_void
     {
         true
     } else {
@@ -1134,7 +1134,7 @@ pub fn make_projection<'tcx>(
         #[cfg(debug_assertions)]
         assert_generic_args_match(tcx, assoc_item.def_id, args);
 
-        Some(ty::AliasTy::new(tcx, assoc_item.def_id, args))
+        Some(AliasTy::new(tcx, assoc_item.def_id, args))
     }
     helper(
         tcx,
@@ -1251,7 +1251,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
             );
             return None;
         }
-        let cause = rustc_middle::traits::ObligationCause::dummy();
+        let cause = ObligationCause::dummy();
         match tcx
             .infer_ctxt()
             .build()
@@ -1269,7 +1269,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
 }
 
 pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let cause = rustc_middle::traits::ObligationCause::dummy();
+    let cause = ObligationCause::dummy();
     match tcx.infer_ctxt().build().at(&cause, param_env).query_normalize(ty) {
         Ok(ty) => ty.value,
         Err(_) => ty,

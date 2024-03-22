@@ -55,7 +55,7 @@ fn is_method(
         }
     }
     match expr.kind {
-        hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, recv, ..) => {
+        ExprKind::MethodCall(hir::PathSegment { ident, .. }, recv, ..) => {
             // compare the identifier of the receiver to the parameter
             // we are in a filter => closure has a single parameter and a single, non-block
             // expression, this means that the parameter shadows all outside variables with
@@ -73,7 +73,7 @@ fn is_method(
         // This is used to check for complete paths via `|a| std::option::Option::is_some(a)`
         // this then unwraps to a path with `QPath::TypeRelative`
         // we pass the params as they've been passed to the current call through the closure
-        hir::ExprKind::Call(expr, [param]) => {
+        ExprKind::Call(expr, [param]) => {
             // this will hit the `QPath::TypeRelative` case and check that the method name is correct
             if is_method(cx, expr, type_symbol, method_name, params)
                 // we then check that this is indeed passing the parameter of the closure
@@ -85,7 +85,7 @@ fn is_method(
             }
             false
         },
-        hir::ExprKind::Path(QPath::TypeRelative(ty, mname)) => {
+        ExprKind::Path(QPath::TypeRelative(ty, mname)) => {
             let ty = cx.typeck_results().node_type(ty.hir_id);
             if let Some(did) = cx.tcx.get_diagnostic_item(type_symbol)
                 && ty.ty_adt_def() == cx.tcx.type_of(did).skip_binder().ty_adt_def()
@@ -94,7 +94,7 @@ fn is_method(
             }
             false
         },
-        hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
+        ExprKind::Closure(&hir::Closure { body, .. }) => {
             let body = cx.tcx.hir().body(body);
             let closure_expr = peel_blocks(body.value);
             let params = body.params.iter().map(|param| param.pat).collect::<Vec<_>>();
@@ -107,8 +107,8 @@ fn is_method(
 fn parent_is_map(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     if let Some(expr) = get_parent_expr(cx, expr)
         && is_trait_method(cx, expr, sym::Iterator)
-        && let hir::ExprKind::MethodCall(path, _, _, _) = expr.kind
-        && path.ident.name == rustc_span::sym::map
+        && let ExprKind::MethodCall(path, _, _, _) = expr.kind
+        && path.ident.name == sym::map
     {
         return true;
     }
@@ -148,7 +148,7 @@ fn expression_type(
     {
         return None;
     }
-    if let hir::ExprKind::MethodCall(_, receiver, _, _) = expr.kind
+    if let ExprKind::MethodCall(_, receiver, _, _) = expr.kind
         && let receiver_ty = cx.typeck_results().expr_ty(receiver)
         && let Some(iter_item_ty) = get_iterator_item_ty(cx, receiver_ty)
     {

@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {
     }
 }
 
-fn match_acceptable_type(cx: &LateContext<'_>, local: &Local<'_>, collections: &[rustc_span::Symbol]) -> bool {
+fn match_acceptable_type(cx: &LateContext<'_>, local: &Local<'_>, collections: &[Symbol]) -> bool {
     let ty = cx.typeck_results().pat_ty(local.pat);
     collections.iter().any(|&sym| is_type_diagnostic_item(cx, ty, sym))
     // String type is a lang item but not a diagnostic item for now so we need a separate check

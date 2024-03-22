@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, Block, Expr, ExprKind, MatchSource, Node, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, MatchSource, Node, StmtKind};
 use rustc_lint::LateContext;
 
 use super::{utils, UNIT_ARG};
@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
     if is_questionmark_desugar_marked_call(expr) {
         return;
     }
-    if let hir::Node::Expr(parent_expr) = cx.tcx.parent_hir_node(expr.hir_id)
+    if let Node::Expr(parent_expr) = cx.tcx.parent_hir_node(expr.hir_id)
         && is_questionmark_desugar_marked_call(parent_expr)
     {
         return;

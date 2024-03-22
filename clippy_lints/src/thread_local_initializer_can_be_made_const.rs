@@ -59,7 +59,7 @@ impl_lint_pass!(ThreadLocalInitializerCanBeMadeConst => [THREAD_LOCAL_INITIALIZE
 #[inline]
 fn is_thread_local_initializer(
     cx: &LateContext<'_>,
-    fn_kind: rustc_hir::intravisit::FnKind<'_>,
+    fn_kind: intravisit::FnKind<'_>,
     span: rustc_span::Span,
 ) -> Option<bool> {
     let macro_def_id = span.source_callee()?.macro_def_id?;
@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for ThreadLocalInitializerCanBeMadeConst {
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
-        fn_kind: rustc_hir::intravisit::FnKind<'tcx>,
+        fn_kind: intravisit::FnKind<'tcx>,
         _: &'tcx rustc_hir::FnDecl<'tcx>,
         body: &'tcx rustc_hir::Body<'tcx>,
         span: rustc_span::Span,

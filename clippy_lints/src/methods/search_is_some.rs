@@ -39,7 +39,7 @@ pub(super) fn check<'tcx>(
                 && let closure_body = cx.tcx.hir().body(body)
                 && let Some(closure_arg) = closure_body.params.first()
             {
-                if let hir::PatKind::Ref(..) = closure_arg.pat.kind {
+                if let PatKind::Ref(..) = closure_arg.pat.kind {
                     Some(search_snippet.replacen('&', "", 1))
                 } else if let PatKind::Binding(..) = strip_pat_refs(closure_arg.pat).kind {
                     // `find()` provides a reference to the item, but `any` does not,

@@ -50,7 +50,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                 let closure_body = cx.tcx.hir().body(body);
                 let closure_expr = peel_blocks(closure_body.value);
                 match closure_body.params[0].pat.kind {
-                    hir::PatKind::Ref(inner, hir::Mutability::Not) => {
+                    hir::PatKind::Ref(inner, Mutability::Not) => {
                         if let hir::PatKind::Binding(hir::BindingAnnotation::NONE, .., name, None) = inner.kind {
                             if ident_eq(name, closure_expr) {
                                 lint_explicit_closure(cx, e.span, recv.span, true, msrv);
