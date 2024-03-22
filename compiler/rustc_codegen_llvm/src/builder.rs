@@ -1136,12 +1136,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         order: rustc_codegen_ssa::common::AtomicOrdering,
     ) -> &'ll Value {
         // The only RMW operation that LLVM supports on pointers is compare-exchange.
-        if self.val_ty(src) == self.type_ptr()
-            && op != rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicXchg
-        {
+        let requires_cast_to_int = self.val_ty(src) == self.type_ptr()
+            && op != rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicXchg;
+        if requires_cast_to_int {
             src = self.ptrtoint(src, self.type_isize());
         }
-        unsafe {
+        let mut res = unsafe {
             llvm::LLVMBuildAtomicRMW(
                 self.llbuilder,
                 AtomicRmwBinOp::from_generic(op),
@@ -1150,7 +1150,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 AtomicOrdering::from_generic(order),
                 llvm::False, // SingleThreaded
             )
+        };
+        if requires_cast_to_int {
+            res = self.inttoptr(res, self.type_ptr());
         }
+        res
     }
 
     fn atomic_fence(
