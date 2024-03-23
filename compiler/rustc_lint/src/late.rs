@@ -238,7 +238,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         }
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, l: &'tcx hir::LetStmt<'tcx>) {
         self.with_lint_attrs(l.hir_id, |cx| {
             lint_callback!(cx, check_local, l);
             hir_visit::walk_local(cx, l);

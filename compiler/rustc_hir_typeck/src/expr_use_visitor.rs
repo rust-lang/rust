@@ -371,7 +371,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     fn walk_stmt(&mut self, stmt: &hir::Stmt<'_>) {
         match stmt.kind {
-            hir::StmtKind::Let(hir::Local { pat, init: Some(expr), els, .. }) => {
+            hir::StmtKind::Let(hir::LetStmt { pat, init: Some(expr), els, .. }) => {
                 self.walk_local(expr, pat, *els, |_| {})
             }
 

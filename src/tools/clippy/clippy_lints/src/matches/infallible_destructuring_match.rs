@@ -2,12 +2,12 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{path_to_local_id, peel_blocks, strip_pat_refs};
 use rustc_errors::Applicability;
-use rustc_hir::{ByRef, ExprKind, Local, MatchSource, PatKind, QPath};
+use rustc_hir::{ByRef, ExprKind, LetStmt, MatchSource, PatKind, QPath};
 use rustc_lint::LateContext;
 
 use super::INFALLIBLE_DESTRUCTURING_MATCH;
 
-pub(crate) fn check(cx: &LateContext<'_>, local: &Local<'_>) -> bool {
+pub(crate) fn check(cx: &LateContext<'_>, local: &LetStmt<'_>) -> bool {
     if !local.span.from_expansion()
         && let Some(expr) = local.init
         && let ExprKind::Match(target, arms, MatchSource::Normal) = expr.kind

@@ -1220,7 +1220,7 @@ pub struct Stmt<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum StmtKind<'hir> {
     /// A local (`let`) binding.
-    Let(&'hir Local<'hir>),
+    Let(&'hir LetStmt<'hir>),
 
     /// An item binding.
     Item(ItemId),
@@ -1234,7 +1234,7 @@ pub enum StmtKind<'hir> {
 
 /// Represents a `let` statement (i.e., `let <pat>:<ty> = <init>;`).
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct Local<'hir> {
+pub struct LetStmt<'hir> {
     pub pat: &'hir Pat<'hir>,
     /// Type annotation, if any (otherwise the type will be inferred).
     pub ty: Option<&'hir Ty<'hir>>,
@@ -1264,7 +1264,7 @@ pub struct Arm<'hir> {
     pub body: &'hir Expr<'hir>,
 }
 
-/// Represents a `let <pat>[: <ty>] = <expr>` expression (not a [`Local`]), occurring in an `if-let`
+/// Represents a `let <pat>[: <ty>] = <expr>` expression (not a [`LetStmt`]), occurring in an `if-let`
 /// or `let-else`, evaluating to a boolean. Typically the pattern is refutable.
 ///
 /// In an `if let`, imagine it as `if (let <pat> = <expr>) { ... }`; in a let-else, it is part of
@@ -1861,7 +1861,7 @@ pub enum ExprKind<'hir> {
     DropTemps(&'hir Expr<'hir>),
     /// A `let $pat = $expr` expression.
     ///
-    /// These are not `Local` and only occur as expressions.
+    /// These are not [`LetStmt`] and only occur as expressions.
     /// The `let Some(x) = foo()` in `if let Some(x) = foo()` is an example of `Let(..)`.
     Let(&'hir LetExpr<'hir>),
     /// An `if` block, with an optional else block.
@@ -3529,7 +3529,7 @@ pub enum Node<'hir> {
     PatField(&'hir PatField<'hir>),
     Arm(&'hir Arm<'hir>),
     Block(&'hir Block<'hir>),
-    Local(&'hir Local<'hir>),
+    LetStmt(&'hir LetStmt<'hir>),
     /// `Ctor` refers to the constructor of an enum variant or struct. Only tuple or unit variants
     /// with synthesized constructors.
     Ctor(&'hir VariantData<'hir>),
@@ -3585,7 +3585,7 @@ impl<'hir> Node<'hir> {
             | Node::Ctor(..)
             | Node::Pat(..)
             | Node::Arm(..)
-            | Node::Local(..)
+            | Node::LetStmt(..)
             | Node::Crate(..)
             | Node::Ty(..)
             | Node::TraitRef(..)
@@ -3757,7 +3757,7 @@ impl<'hir> Node<'hir> {
         expect_pat_field,     &'hir PatField<'hir>,     Node::PatField(n),     n;
         expect_arm,           &'hir Arm<'hir>,          Node::Arm(n),          n;
         expect_block,         &'hir Block<'hir>,        Node::Block(n),        n;
-        expect_local,         &'hir Local<'hir>,        Node::Local(n),        n;
+        expect_let_stmt,      &'hir LetStmt<'hir>,      Node::LetStmt(n),      n;
         expect_ctor,          &'hir VariantData<'hir>,  Node::Ctor(n),         n;
         expect_lifetime,      &'hir Lifetime,           Node::Lifetime(n),     n;
         expect_generic_param, &'hir GenericParam<'hir>, Node::GenericParam(n), n;
@@ -3787,7 +3787,7 @@ mod size_asserts {
     static_assert_size!(ImplItemKind<'_>, 40);
     static_assert_size!(Item<'_>, 88);
     static_assert_size!(ItemKind<'_>, 56);
-    static_assert_size!(Local<'_>, 64);
+    static_assert_size!(LetStmt<'_>, 64);
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 72);
     static_assert_size!(Path<'_>, 40);

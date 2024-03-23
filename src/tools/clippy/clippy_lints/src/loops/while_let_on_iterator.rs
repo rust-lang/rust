@@ -6,7 +6,7 @@ use clippy_utils::{get_enclosing_loop_or_multi_call_closure, higher, is_refutabl
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{Closure, Expr, ExprKind, HirId, LangItem, Local, Mutability, PatKind, UnOp};
+use rustc_hir::{Closure, Expr, ExprKind, HirId, LangItem, LetStmt, Mutability, PatKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::ty::adjustment::Adjust;
@@ -286,7 +286,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
             self.cx.tcx.hir()
         }
 
-        fn visit_local(&mut self, l: &'tcx Local<'_>) {
+        fn visit_local(&mut self, l: &'tcx LetStmt<'_>) {
             if !self.after_loop {
                 l.pat.each_binding_or_first(&mut |_, id, _, _| {
                     if id == self.local_id {
