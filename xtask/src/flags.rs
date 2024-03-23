@@ -2,7 +2,7 @@
 
 use std::str::FromStr;
 
-use crate::install::{ClientOpt, Malloc, ServerOpt};
+use crate::install::{ClientOpt, ServerOpt};
 
 xflags::xflags! {
     src "./src/flags.rs"
@@ -36,6 +36,10 @@ xflags::xflags! {
             optional --dry-run
         }
         cmd dist {
+            /// Use mimalloc allocator for server
+            optional --mimalloc
+            /// Use jemalloc allocator for server
+            optional --jemalloc
             optional --client-patch-version version: String
         }
         /// Read a changelog AsciiDoc file and update the GitHub Releases entry in Markdown.
@@ -106,6 +110,8 @@ pub struct Promote {
 
 #[derive(Debug)]
 pub struct Dist {
+    pub mimalloc: bool,
+    pub jemalloc: bool,
     pub client_patch_version: Option<String>,
 }
 
@@ -215,6 +221,23 @@ impl AsRef<str> for MeasurementType {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Malloc {
+    System,
+    Mimalloc,
+    Jemalloc,
+}
+
+impl Malloc {
+    pub(crate) fn to_features(self) -> &'static [&'static str] {
+        match self {
+            Malloc::System => &[][..],
+            Malloc::Mimalloc => &["--features", "mimalloc"],
+            Malloc::Jemalloc => &["--features", "jemalloc"],
+        }
+    }
+}
+
 impl Install {
     pub(crate) fn server(&self) -> Option<ServerOpt> {
         if self.client && !self.server {
@@ -234,5 +257,17 @@ impl Install {
             return None;
         }
         Some(ClientOpt { code_bin: self.code_bin.clone() })
+    }
+}
+
+impl Dist {
+    pub(crate) fn allocator(&self) -> Malloc {
+        if self.mimalloc {
+            Malloc::Mimalloc
+        } else if self.jemalloc {
+            Malloc::Jemalloc
+        } else {
+            Malloc::System
+        }
     }
 }
