@@ -2133,7 +2133,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(bx.ptrtoint(args[0].immediate(), llret_ty));
     }
 
-    if name == sym::simd_from_exposed_addr {
+    if name == sym::simd_with_exposed_provenance {
         let (out_len, out_elem) = require_simd!(ret_ty, SimdReturn);
         require!(
             in_len == out_len,

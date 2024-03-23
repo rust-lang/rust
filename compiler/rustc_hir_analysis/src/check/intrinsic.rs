@@ -623,7 +623,7 @@ pub fn check_intrinsic_type(
             | sym::simd_as
             | sym::simd_cast_ptr
             | sym::simd_expose_addr
-            | sym::simd_from_exposed_addr => (2, 0, vec![param(0)], param(1)),
+            | sym::simd_with_exposed_provenance => (2, 0, vec![param(0)], param(1)),
             sym::simd_bitmask => (2, 0, vec![param(0)], param(1)),
             sym::simd_select | sym::simd_select_bitmask => {
                 (2, 0, vec![param(0), param(1), param(1)], param(1))
