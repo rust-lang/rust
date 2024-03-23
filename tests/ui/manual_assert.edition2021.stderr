@@ -82,5 +82,14 @@ help: try instead
 LL |     assert!(!(a > 2), "panic with comment");
    |
 
-error: aborting due to 9 previous errors
+error: only a `panic!` in `if`-then statement
+  --> tests/ui/manual_assert.rs:91:25
+   |
+LL |           const BAR: () = if N == 0 {
+   |  _________________________^
+LL | |             panic!()
+LL | |         };
+   | |_________^ help: try instead: `assert!(!(N == 0), )`
+
+error: aborting due to 10 previous errors
 
