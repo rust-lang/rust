@@ -2967,7 +2967,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("aarch64", "watchos") if llvm_target.ends_with("-simulator") => "watchsimulator",
         ("aarch64", "watchos") => "watchos",
         ("aarch64", "visionos") if llvm_target.ends_with("-simulator") => "xrsimulator",
-        ("aarch64", "visionos") => "visionos",
+        ("aarch64", "visionos") => "xros",
         ("arm", "watchos") => "watchos",
         (_, "macos") => "macosx",
         _ => {
@@ -3025,10 +3025,10 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootErro
             "watchsimulator"
                 if sdkroot.contains("WatchOS.platform") || sdkroot.contains("MacOSX.platform") => {}
             "visionos"
-                if sdkroot.contains("visionos.platform") || sdkroot.contains("MacOSX.platform") => {
+                if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {
             }
             "visionossimulator"
-                if sdkroot.contains("visionos.platform") || sdkroot.contains("MacOSX.platform") => {
+                if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {
             }
             // Ignore `SDKROOT` if it's not a valid path.
             _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}

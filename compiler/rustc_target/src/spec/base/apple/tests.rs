@@ -37,7 +37,7 @@ fn macos_link_environment_unmodified() {
             crate::spec::cvs![
                 "IPHONEOS_DEPLOYMENT_TARGET",
                 "TVOS_DEPLOYMENT_TARGET",
-                "VISIONOS_DEPLOYMENT_TARGET"
+                "XROS_DEPLOYMENT_TARGET"
             ],
         );
     }
