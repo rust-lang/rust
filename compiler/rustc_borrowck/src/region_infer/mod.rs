@@ -2065,7 +2065,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 from_closure: constraint.from_closure,
                 cause: ObligationCause::new(constraint.span, CRATE_DEF_ID, cause_code.clone()),
                 variance_info: constraint.variance_info,
-                outlives_constraint: *constraint,
             })
             .collect();
         debug!("categorized_path={:#?}", categorized_path);
@@ -2294,5 +2293,4 @@ pub struct BlameConstraint<'tcx> {
     pub from_closure: bool,
     pub cause: ObligationCause<'tcx>,
     pub variance_info: ty::VarianceDiagInfo<'tcx>,
-    pub outlives_constraint: OutlivesConstraint<'tcx>,
 }

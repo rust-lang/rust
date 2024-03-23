@@ -131,7 +131,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         |local, value, location| {
             let value = match value {
                 // We do not know anything of this assigned value.
-                AssignedValue::Arg | AssignedValue::Terminator(_) => None,
+                AssignedValue::Arg | AssignedValue::Terminator => None,
                 // Try to get some insight.
                 AssignedValue::Rvalue(rvalue) => {
                     let value = state.simplify_rvalue(rvalue, location);

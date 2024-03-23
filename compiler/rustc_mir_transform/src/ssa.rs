@@ -29,7 +29,7 @@ pub struct SsaLocals {
 pub enum AssignedValue<'a, 'tcx> {
     Arg,
     Rvalue(&'a mut Rvalue<'tcx>),
-    Terminator(&'a mut TerminatorKind<'tcx>),
+    Terminator,
 }
 
 impl SsaLocals {
@@ -149,8 +149,7 @@ impl SsaLocals {
                 Set1::One(DefLocation::CallReturn { call, .. }) => {
                     let bb = &mut basic_blocks[call];
                     let loc = Location { block: call, statement_index: bb.statements.len() };
-                    let term = bb.terminator_mut();
-                    f(local, AssignedValue::Terminator(&mut term.kind), loc)
+                    f(local, AssignedValue::Terminator, loc)
                 }
                 _ => {}
             }

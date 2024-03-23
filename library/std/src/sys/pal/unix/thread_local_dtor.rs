@@ -35,7 +35,7 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     #[cfg(not(sanitizer_cfi_normalize_integers))]
     #[cfi_encoding = "i"]
     #[repr(transparent)]
-    pub struct c_int(pub libc::c_int);
+    pub struct c_int(#[allow(dead_code)] pub libc::c_int);
 
     extern "C" {
         #[linkage = "extern_weak"]
