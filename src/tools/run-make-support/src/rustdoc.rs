@@ -4,32 +4,32 @@ use std::process::{Command, Output};
 
 use crate::{add_host_rpath_env, handle_failed_output};
 
-pub fn rustdoc() -> RustdocInvocationBuilder {
-    RustdocInvocationBuilder::new()
+pub fn rustdoc() -> Rustdoc {
+    Rustdoc::new()
 }
 
 #[derive(Debug)]
-pub struct RustdocInvocationBuilder {
+pub struct Rustdoc {
     cmd: Command,
 }
 
-impl RustdocInvocationBuilder {
+impl Rustdoc {
     fn new() -> Self {
         let cmd = setup_common_rustdoc_build_cmd();
         Self { cmd }
     }
 
-    pub fn arg(&mut self, arg: &str) -> &mut RustdocInvocationBuilder {
+    pub fn arg(&mut self, arg: &str) -> &mut Rustdoc {
         self.cmd.arg(arg);
         self
     }
 
-    pub fn arg_file(&mut self, arg: &Path) -> &mut RustdocInvocationBuilder {
-        self.cmd.arg(arg);
+    pub fn arg_file<P: AsRef<Path>>(&mut self, arg: P) -> &mut Rustdoc {
+        self.cmd.arg(arg.as_ref());
         self
     }
 
-    pub fn env(&mut self, key: &str, value: &str) -> &mut RustdocInvocationBuilder {
+    pub fn env(&mut self, key: &str, value: &str) -> &mut Rustdoc {
         self.cmd.env(key, value);
         self
     }
