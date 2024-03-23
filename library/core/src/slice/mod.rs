@@ -2728,7 +2728,7 @@ impl<T> [T] {
     /// ```
     /// let mut s = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     /// let num = 42;
-    /// let idx = s.partition_point(|&x| x < num);
+    /// let idx = s.partition_point(|&x| x <= num);
     /// // The above is equivalent to `let idx = s.binary_search(&num).unwrap_or_else(|x| x);`
     /// s.insert(idx, num);
     /// assert_eq!(s, [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
@@ -4179,7 +4179,7 @@ impl<T> [T] {
     /// ```
     /// let mut s = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     /// let num = 42;
-    /// let idx = s.partition_point(|&x| x < num);
+    /// let idx = s.partition_point(|&x| x <= num);
     /// s.insert(idx, num);
     /// assert_eq!(s, [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
