@@ -15,7 +15,7 @@ use crate::MirPass;
 
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{
-    self, BasicBlock, BasicBlockData, Coverage, SourceInfo, Statement, StatementKind, Terminator,
+    self, BasicBlock, BasicBlockData, SourceInfo, Statement, StatementKind, Terminator,
     TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
@@ -230,10 +230,7 @@ fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb
     debug!("  injecting statement {counter_kind:?} for {bb:?}");
     let data = &mut mir_body[bb];
     let source_info = data.terminator().source_info;
-    let statement = Statement {
-        source_info,
-        kind: StatementKind::Coverage(Box::new(Coverage { kind: counter_kind })),
-    };
+    let statement = Statement { source_info, kind: StatementKind::Coverage(counter_kind) };
     data.statements.insert(0, statement);
 }
 

@@ -156,10 +156,10 @@ macro_rules! make_mir_visitor {
 
             fn visit_coverage(
                 &mut self,
-                coverage: & $($mutability)? Coverage,
+                kind: & $($mutability)? coverage::CoverageKind,
                 location: Location,
             ) {
-                self.super_coverage(coverage, location);
+                self.super_coverage(kind, location);
             }
 
             fn visit_retag(
@@ -803,7 +803,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_coverage(&mut self,
-                              _coverage: & $($mutability)? Coverage,
+                              _kind: & $($mutability)? coverage::CoverageKind,
                               _location: Location) {
             }
 
