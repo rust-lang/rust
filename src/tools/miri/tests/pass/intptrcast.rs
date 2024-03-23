@@ -149,6 +149,31 @@ fn functions() {
     }
 }
 
+/// Example that should be UB but due to wildcard pointers being too permissive
+/// we don't notice.
+fn should_be_ub() {
+    let alloc1 = 1u8;
+    let alloc2 = 2u8;
+    // Expose both allocations
+    let addr1: usize = &alloc1 as *const u8 as usize;
+    let addr2: usize = &alloc2 as *const u8 as usize;
+
+    // Cast addr1 back to a pointer. In Miri, this gives it Wildcard provenance.
+    let wildcard = addr1 as *const u8;
+    unsafe {
+        // Read through the wildcard
+        assert_eq!(*wildcard, 1);
+        // Offset the pointer to another allocation.
+        // Note that we are doing this arithmetic that does not require we stay within bounds of the allocation.
+        let wildcard = wildcard.wrapping_offset(addr2 as isize - addr1 as isize);
+        // This should report UB:
+        assert_eq!(*wildcard, 2);
+        // ... but it doesn't. A pointer's provenance specifies a single allocation that it is allowed to read from.
+        // And wrapping_offset only modifies the address, not the provenance.
+        // So which allocation is wildcard allowed to access? It cannot be both.
+    }
+}
+
 fn main() {
     cast();
     cast_dangling();
@@ -162,4 +187,5 @@ fn main() {
     ptr_eq_integer();
     zst_deref_of_dangling();
     functions();
+    should_be_ub();
 }

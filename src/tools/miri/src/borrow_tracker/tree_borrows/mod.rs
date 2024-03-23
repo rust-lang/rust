@@ -9,8 +9,11 @@ use rustc_middle::{
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Abi, Size};
 
-use crate::borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind};
 use crate::*;
+use crate::{
+    borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind},
+    concurrency::data_race::NaReadType,
+};
 
 pub mod diagnostics;
 mod perms;
@@ -312,7 +315,13 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         // Also inform the data race model (but only if any bytes are actually affected).
         if range.size.bytes() > 0 {
             if let Some(data_race) = alloc_extra.data_race.as_ref() {
-                data_race.read(alloc_id, range, &this.machine)?;
+                data_race.read(
+                    alloc_id,
+                    range,
+                    NaReadType::Retag,
+                    Some(place.layout.ty),
+                    &this.machine,
+                )?;
             }
         }
 

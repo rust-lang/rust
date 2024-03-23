@@ -179,6 +179,26 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
             });
         }
     }
+
+    fn after_analysis<'tcx>(
+        &mut self,
+        _: &rustc_interface::interface::Compiler,
+        queries: &'tcx rustc_interface::Queries<'tcx>,
+    ) -> Compilation {
+        queries.global_ctxt().unwrap().enter(|tcx| {
+            if self.target_crate {
+                // cargo-miri has patched the compiler flags to make these into check-only builds,
+                // but we are still emulating regular rustc builds, which would perform post-mono
+                // const-eval during collection. So let's also do that here, even if we might be
+                // running with `--emit=metadata`. In particular this is needed to make
+                // `compile_fail` doc tests trigger post-mono errors.
+                // In general `collect_and_partition_mono_items` is not safe to call in check-only
+                // builds, but we are setting `-Zalways-encode-mir` which avoids those issues.
+                let _ = tcx.collect_and_partition_mono_items(());
+            }
+        });
+        Compilation::Continue
+    }
 }
 
 fn show_error(msg: &impl std::fmt::Display) -> ! {
