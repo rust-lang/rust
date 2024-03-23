@@ -818,7 +818,7 @@ impl<T: ?Sized> *const T {
             intrinsics::const_eval_select((this, origin), comptime, runtime)
         }
 
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::sub_ptr requires `self >= origin`",
             (

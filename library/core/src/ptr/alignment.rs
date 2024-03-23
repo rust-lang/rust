@@ -1,7 +1,7 @@
 use crate::convert::{TryFrom, TryInto};
-#[cfg(debug_assertions)]
-use crate::intrinsics::assert_unsafe_precondition;
 use crate::num::NonZero;
+#[cfg(debug_assertions)]
+use crate::ub_checks::assert_unsafe_precondition;
 use crate::{cmp, fmt, hash, mem, num};
 
 /// A type storing a `usize` which is a power of two, and thus

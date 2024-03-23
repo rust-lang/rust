@@ -15,6 +15,10 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
                 let _4: ();
                 scope 5 {
                 }
+                scope 6 (inlined core::ub_checks::check_language_ub) {
+                    scope 7 (inlined core::ub_checks::check_language_ub::runtime) {
+                    }
+                }
             }
         }
     }
@@ -27,7 +31,7 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
 
     bb1: {
         StorageLive(_3);
-        _3 = UbCheck(LanguageUb);
+        _3 = UbChecks();
         assume(_3);
         _4 = unreachable_unchecked::precondition_check() -> [return: bb3, unwind unreachable];
     }

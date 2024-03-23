@@ -680,8 +680,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let val = layout.offset_of_subfield(bx.cx(), fields.iter()).bytes();
                         bx.cx().const_usize(val)
                     }
-                    mir::NullOp::UbCheck(_) => {
-                        // In codegen, we want to check for language UB and library UB
+                    mir::NullOp::UbChecks => {
                         let val = bx.tcx().sess.opts.debug_assertions;
                         bx.cx().const_bool(val)
                     }
