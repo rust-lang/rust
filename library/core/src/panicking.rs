@@ -327,7 +327,7 @@ pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
         // SAFETY: This is only evaluated at compile time, which reliably
         // handles this UB (in case this branch turns out to be reachable
         // somehow).
-        unsafe { crate::hint::unreachable_unchecked() };
+        unsafe { crate::hint::unreachable_unchecked() }
     }
 }
 
