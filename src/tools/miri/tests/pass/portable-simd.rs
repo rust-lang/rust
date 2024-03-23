@@ -526,6 +526,23 @@ fn simd_intrinsics() {
     }
 }
 
+fn simd_float_intrinsics() {
+    use intrinsics::*;
+
+    // These are just smoke tests to ensure the intrinsics can be called.
+    unsafe {
+        let a = f32x4::splat(10.0);
+        simd_fsqrt(a);
+        simd_fsin(a);
+        simd_fcos(a);
+        simd_fexp(a);
+        simd_fexp2(a);
+        simd_flog(a);
+        simd_flog2(a);
+        simd_flog10(a);
+    }
+}
+
 fn simd_masked_loadstore() {
     // The buffer is deliberarely too short, so reading the last element would be UB.
     let buf = [3i32; 3];
@@ -559,5 +576,6 @@ fn main() {
     simd_gather_scatter();
     simd_round();
     simd_intrinsics();
+    simd_float_intrinsics();
     simd_masked_loadstore();
 }
