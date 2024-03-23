@@ -872,6 +872,8 @@ struct Foo$0 where u32: Copy { field: u32 }
             ```rust
             // size = 4, align = 4
             struct Foo
+            where
+                u32: Copy,
             ```
         "#]],
     );

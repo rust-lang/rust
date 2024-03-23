@@ -185,8 +185,8 @@ impl HirDisplay for Struct {
                 write_where_clause(def_id, f)?;
             }
             StructKind::Record => {
+                let has_where_clause = write_where_clause(def_id, f)?;
                 if let Some(limit) = f.entity_limit {
-                    let has_where_clause = write_where_clause(def_id, f)?;
                     let fields = self.fields(f.db);
                     let count = fields.len().min(limit);
                     f.write_char(if !has_where_clause { ' ' } else { '\n' })?;
