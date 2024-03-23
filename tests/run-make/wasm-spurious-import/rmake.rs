@@ -1,8 +1,7 @@
 extern crate run_make_support;
 
-use run_make_support::{out_dir, rustc, wasmparser};
+use run_make_support::{out_dir, wasmparser, rustc};
 use std::collections::HashMap;
-use wasmparser::TypeRef::Func;
 
 fn main() {
     if std::env::var("TARGET").unwrap() != "wasm32-wasip1" {
@@ -10,9 +9,9 @@ fn main() {
     }
 
     rustc()
-        .arg("main.rs")
-        .arg("--target=wasm32-wasip1")
-        .arg("-Coverflow-checks=yes")
+        .input("main.rs")
+        .target("wasm32-wasip1")
+        .arg("-Coverflow-checks")
         .arg("-Cpanic=abort")
         .arg("-Clto")
         .arg("-Copt-level=z")
