@@ -4,8 +4,10 @@ use smallvec::SmallVec;
 use std::{
     cmp::Ordering,
     fmt::Debug,
-    ops::{Index, IndexMut},
+    ops::{Index, IndexMut, Shr},
 };
+
+use super::data_race::NaReadType;
 
 /// A vector clock index, this is associated with a thread id
 /// but in some cases one vector index may be shared with
@@ -50,13 +52,51 @@ const SMALL_VECTOR: usize = 4;
 /// so that diagnostics can report what code was responsible for an operation.
 #[derive(Clone, Copy, Debug)]
 pub struct VTimestamp {
-    time: u32,
+    /// The lowest bit indicates read type, the rest is the time.
+    /// `1` indicates a retag read, `0` a regular read.
+    time_and_read_type: u32,
     pub span: Span,
 }
 
 impl VTimestamp {
-    pub const ZERO: VTimestamp = VTimestamp { time: 0, span: DUMMY_SP };
+    pub const ZERO: VTimestamp = VTimestamp::new(0, NaReadType::Read, DUMMY_SP);
 
+    #[inline]
+    const fn encode_time_and_read_type(time: u32, read_type: NaReadType) -> u32 {
+        let read_type_bit = match read_type {
+            NaReadType::Read => 0,
+            NaReadType::Retag => 1,
+        };
+        // Put the `read_type` in the lowest bit and `time` in the rest
+        read_type_bit | time.checked_mul(2).expect("Vector clock overflow")
+    }
+
+    #[inline]
+    const fn new(time: u32, read_type: NaReadType, span: Span) -> Self {
+        Self { time_and_read_type: Self::encode_time_and_read_type(time, read_type), span }
+    }
+
+    #[inline]
+    fn time(&self) -> u32 {
+        self.time_and_read_type.shr(1)
+    }
+
+    #[inline]
+    fn set_time(&mut self, time: u32) {
+        self.time_and_read_type = Self::encode_time_and_read_type(time, self.read_type());
+    }
+
+    #[inline]
+    pub fn read_type(&self) -> NaReadType {
+        if self.time_and_read_type & 1 == 0 { NaReadType::Read } else { NaReadType::Retag }
+    }
+
+    #[inline]
+    pub fn set_read_type(&mut self, read_type: NaReadType) {
+        self.time_and_read_type = Self::encode_time_and_read_type(self.time(), read_type);
+    }
+
+    #[inline]
     pub fn span_data(&self) -> SpanData {
         self.span.data()
     }
@@ -64,7 +104,7 @@ impl VTimestamp {
 
 impl PartialEq for VTimestamp {
     fn eq(&self, other: &Self) -> bool {
-        self.time == other.time
+        self.time() == other.time()
     }
 }
 
@@ -78,7 +118,7 @@ impl PartialOrd for VTimestamp {
 
 impl Ord for VTimestamp {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.time.cmp(&other.time)
+        self.time().cmp(&other.time())
     }
 }
 
@@ -130,7 +170,7 @@ impl VClock {
         let idx = idx.index();
         let mut_slice = self.get_mut_with_min_len(idx + 1);
         let idx_ref = &mut mut_slice[idx];
-        idx_ref.time = idx_ref.time.checked_add(1).expect("Vector clock overflow");
+        idx_ref.set_time(idx_ref.time().checked_add(1).expect("Vector clock overflow"));
         if !current_span.is_dummy() {
             idx_ref.span = current_span;
         }
@@ -379,8 +419,8 @@ impl IndexMut<VectorIdx> for VClock {
 ///  test suite
 #[cfg(test)]
 mod tests {
-
     use super::{VClock, VTimestamp, VectorIdx};
+    use crate::concurrency::data_race::NaReadType;
     use rustc_span::DUMMY_SP;
     use std::cmp::Ordering;
 
@@ -448,7 +488,13 @@ mod tests {
         while let Some(0) = slice.last() {
             slice = &slice[..slice.len() - 1]
         }
-        VClock(slice.iter().copied().map(|time| VTimestamp { time, span: DUMMY_SP }).collect())
+        VClock(
+            slice
+                .iter()
+                .copied()
+                .map(|time| VTimestamp::new(time, NaReadType::Read, DUMMY_SP))
+                .collect(),
+        )
     }
 
     fn assert_order(l: &[u32], r: &[u32], o: Option<Ordering>) {
