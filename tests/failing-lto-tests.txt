@@ -30,3 +30,4 @@ tests/ui/macros/rfc-2011-nicer-assert-messages/feature-gate-generic_assert.rs
 tests/ui/macros/stringify.rs
 tests/ui/reexport-test-harness-main.rs
 tests/ui/rfcs/rfc-1937-termination-trait/termination-trait-in-test.rs
+tests/ui/binding/fn-arg-incomplete-pattern-drop-order.rs
