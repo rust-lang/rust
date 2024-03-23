@@ -224,11 +224,11 @@ use rustc_data_structures::owned_slice::{OwnedSlice, slice_owned};
 use rustc_data_structures::svh::Svh;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_fs_util::try_canonicalize;
-use rustc_session::Session;
 use rustc_session::cstore::CrateSource;
 use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::CanonicalizedPath;
+use rustc_session::{Session, config};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{Target, TargetTuple};
 use tempfile::Builder as TempFileBuilder;
@@ -251,11 +251,11 @@ pub(crate) struct CrateLocator<'a> {
     exact_paths: Vec<CanonicalizedPath>,
     pub hash: Option<Svh>,
     extra_filename: Option<&'a str>,
-    pub target: &'a Target,
-    pub tuple: TargetTuple,
-    pub filesearch: &'a FileSearch,
-    pub is_proc_macro: bool,
-    pub path_kind: PathKind,
+    target: &'a Target,
+    tuple: TargetTuple,
+    filesearch: &'a FileSearch,
+    is_proc_macro: bool,
+    path_kind: PathKind,
 }
 
 #[derive(Clone, Debug)]
@@ -344,6 +344,22 @@ impl<'a> CrateLocator<'a> {
             path_kind,
             is_proc_macro: false,
         }
+    }
+
+    pub(crate) fn for_proc_macro(&mut self, sess: &'a Session, path_kind: PathKind) {
+        self.is_proc_macro = true;
+        self.target = &sess.host;
+        self.tuple = TargetTuple::from_tuple(config::host_tuple());
+        self.filesearch = sess.host_filesearch();
+        self.path_kind = path_kind;
+    }
+
+    pub(crate) fn for_target_proc_macro(&mut self, sess: &'a Session, path_kind: PathKind) {
+        self.is_proc_macro = true;
+        self.target = &sess.target;
+        self.tuple = sess.opts.target_triple.clone();
+        self.filesearch = sess.target_filesearch();
+        self.path_kind = path_kind;
     }
 
     pub(crate) fn maybe_load_library_crate(
