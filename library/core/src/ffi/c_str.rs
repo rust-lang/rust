@@ -88,6 +88,7 @@ use crate::str;
 /// [str]: prim@str "str"
 #[derive(Hash)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
+#[rustc_diagnostic_item = "cstr_type"]
 #[rustc_has_incoherent_inherent_impls]
 #[lang = "CStr"]
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
