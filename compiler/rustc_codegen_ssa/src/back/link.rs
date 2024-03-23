@@ -3025,11 +3025,9 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootErro
             "watchsimulator"
                 if sdkroot.contains("WatchOS.platform") || sdkroot.contains("MacOSX.platform") => {}
             "visionos"
-                if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {
-            }
+                if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {}
             "visionossimulator"
-                if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {
-            }
+                if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {}
             // Ignore `SDKROOT` if it's not a valid path.
             _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}
             _ => return Ok(sdkroot),
