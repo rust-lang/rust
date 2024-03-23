@@ -1,3 +1,6 @@
+//@ revisions: WIN LIN
+//@ [WIN] only-windows
+//@ [LIN] only-linux
 //@ only-x86_64
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -O
