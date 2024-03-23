@@ -20,7 +20,6 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use rustc_target::spec::{Target, TargetTriple};
-use tempfile::Builder as TempFileBuilder;
 
 use std::env;
 use std::fs::File;
@@ -32,7 +31,7 @@ use std::str;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-use tempfile::tempdir;
+use tempfile::{Builder as TempFileBuilder, TempDir};
 
 use crate::clean::{types::AttributesExt, Attributes};
 use crate::config::Options as RustdocOptions;
@@ -90,6 +89,10 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
     file.write(content.as_bytes())
         .map_err(|error| format!("failed to write arguments to temporary file: {error:?}"))?;
     Ok(())
+}
+
+fn get_doctest_dir() -> io::Result<TempDir> {
+    TempFileBuilder::new().prefix("rustdoctest").tempdir()
 }
 
 pub(crate) fn run(
@@ -165,7 +168,7 @@ pub(crate) fn run(
     let externs = options.externs.clone();
     let json_unused_externs = options.json_unused_externs;
 
-    let temp_dir = match tempdir()
+    let temp_dir = match get_doctest_dir()
         .map_err(|error| format!("failed to create temporary directory: {error:?}"))
     {
         Ok(temp_dir) => temp_dir,
@@ -962,12 +965,7 @@ impl RustdocTestOptions {
 
             DirState::Perm(path)
         } else {
-            DirState::Temp(
-                TempFileBuilder::new()
-                    .prefix("rustdoctest")
-                    .tempdir()
-                    .expect("rustdoc needs a tempdir"),
-            )
+            DirState::Temp(get_doctest_dir().expect("rustdoc needs a tempdir"))
         };
 
         Self {
