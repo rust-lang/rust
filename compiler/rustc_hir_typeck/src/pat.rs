@@ -744,7 +744,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let ident_kind = match binding_parent {
                     hir::Node::Param(_) => "parameter",
-                    hir::Node::Local(_) => "variable",
+                    hir::Node::LetStmt(_) => "variable",
                     hir::Node::Arm(_) => "binding",
 
                     // Provide diagnostics only if the parent pattern is struct-like,

@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Arm, Block, Expr, Local, Pat, PatKind, Stmt};
+use rustc_hir::{Arm, Block, Expr, LetStmt, Pat, PatKind, Stmt};
 use rustc_index::Idx;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::TyCtxt;
@@ -123,7 +123,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
 
         for (i, statement) in blk.stmts.iter().enumerate() {
             match statement.kind {
-                hir::StmtKind::Let(hir::Local { els: Some(els), .. }) => {
+                hir::StmtKind::Let(LetStmt { els: Some(els), .. }) => {
                     // Let-else has a special lexical structure for variables.
                     // First we take a checkpoint of the current scope context here.
                     let mut prev_cx = visitor.cx;
@@ -855,7 +855,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         resolve_expr(self, ex);
     }
-    fn visit_local(&mut self, l: &'tcx Local<'tcx>) {
+    fn visit_local(&mut self, l: &'tcx LetStmt<'tcx>) {
         resolve_local(self, Some(l.pat), l.init)
     }
 }

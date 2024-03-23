@@ -190,7 +190,6 @@
 #![feature(ptr_metadata)]
 #![feature(set_ptr_value)]
 #![feature(slice_ptr_get)]
-#![feature(slice_split_at_unchecked)]
 #![feature(split_at_checked)]
 #![feature(str_internals)]
 #![feature(str_split_inclusive_remainder)]

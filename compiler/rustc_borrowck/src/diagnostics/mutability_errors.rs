@@ -558,7 +558,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     hir::intravisit::walk_stmt(self, stmt);
                     let expr = match stmt.kind {
                         hir::StmtKind::Semi(expr) | hir::StmtKind::Expr(expr) => expr,
-                        hir::StmtKind::Let(hir::Local { init: Some(expr), .. }) => expr,
+                        hir::StmtKind::Let(hir::LetStmt { init: Some(expr), .. }) => expr,
                         _ => {
                             return;
                         }
@@ -737,7 +737,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             && let body = self.infcx.tcx.hir().body(body_id)
             && let Some(hir_id) = (BindingFinder { span: pat_span }).visit_body(body).break_value()
             && let node = self.infcx.tcx.hir_node(hir_id)
-            && let hir::Node::Local(hir::Local {
+            && let hir::Node::LetStmt(hir::LetStmt {
                 pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
                 ..
             })
@@ -1170,7 +1170,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
 
                 if let Some(hir_id) = hir_id
-                    && let hir::Node::Local(local) = self.infcx.tcx.hir_node(hir_id)
+                    && let hir::Node::LetStmt(local) = self.infcx.tcx.hir_node(hir_id)
                 {
                     let tables = self.infcx.tcx.typeck(def_id.as_local().unwrap());
                     if let Some(clone_trait) = self.infcx.tcx.lang_items().clone_trait()

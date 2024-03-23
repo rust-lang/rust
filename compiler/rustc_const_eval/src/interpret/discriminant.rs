@@ -38,7 +38,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             None => {
                 // No need to write the tag here, because an untagged variant is
-                // implicitly encoded. For `Niche`-optimized enums, it's by
+                // implicitly encoded. For `Niche`-optimized enums, this works by
                 // simply by having a value that is outside the niche variants.
                 // But what if the data stored here does not actually encode
                 // this variant? That would be bad! So let's double-check...
@@ -227,8 +227,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(ImmTy::from_scalar(discr_value, discr_layout))
     }
 
-    /// Computes the tag value and its field number (if any) of a given variant
-    /// of type `ty`.
+    /// Computes how to write the tag of a given variant of enum `ty`:
+    /// - `None` means that nothing needs to be done as the variant is encoded implicitly
+    /// - `Some((val, field_idx))` means that the given integer value needs to be stored at the
+    ///   given field index.
     pub(crate) fn tag_for_variant(
         &self,
         ty: Ty<'tcx>,

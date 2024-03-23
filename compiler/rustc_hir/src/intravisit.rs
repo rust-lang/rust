@@ -320,7 +320,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_foreign_item(&mut self, i: &'v ForeignItem<'v>) -> Self::Result {
         walk_foreign_item(self, i)
     }
-    fn visit_local(&mut self, l: &'v Local<'v>) -> Self::Result {
+    fn visit_local(&mut self, l: &'v LetStmt<'v>) -> Self::Result {
         walk_local(self, l)
     }
     fn visit_block(&mut self, b: &'v Block<'v>) -> Self::Result {
@@ -606,7 +606,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(
     V::Result::output()
 }
 
-pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local<'v>) -> V::Result {
+pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v LetStmt<'v>) -> V::Result {
     // Intentionally visiting the expr first - the initialization expr
     // dominates the local's definition.
     visit_opt!(visitor, visit_expr, local.init);

@@ -10,6 +10,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AdtDef, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
+use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::*;
 
@@ -1007,6 +1008,7 @@ fn variant_info_for_adt<'tcx>(
                     offset: offset.bytes(),
                     size: field_layout.size.bytes(),
                     align: field_layout.align.abi.bytes(),
+                    type_name: None,
                 }
             })
             .collect();
@@ -1090,6 +1092,7 @@ fn variant_info_for_coroutine<'tcx>(
                 offset: offset.bytes(),
                 size: field_layout.size.bytes(),
                 align: field_layout.align.abi.bytes(),
+                type_name: None,
             }
         })
         .collect();
@@ -1104,19 +1107,24 @@ fn variant_info_for_coroutine<'tcx>(
                 .iter()
                 .enumerate()
                 .map(|(field_idx, local)| {
+                    let field_name = coroutine.field_names[*local];
                     let field_layout = variant_layout.field(cx, field_idx);
                     let offset = variant_layout.fields.offset(field_idx);
                     // The struct is as large as the last field's end
                     variant_size = variant_size.max(offset + field_layout.size);
                     FieldInfo {
                         kind: FieldKind::CoroutineLocal,
-                        name: coroutine.field_names[*local].unwrap_or(Symbol::intern(&format!(
+                        name: field_name.unwrap_or(Symbol::intern(&format!(
                             ".coroutine_field{}",
                             local.as_usize()
                         ))),
                         offset: offset.bytes(),
                         size: field_layout.size.bytes(),
                         align: field_layout.align.abi.bytes(),
+                        // Include the type name if there is no field name, or if the name is the
+                        // __awaitee placeholder symbol which means a child future being `.await`ed.
+                        type_name: (field_name.is_none() || field_name == Some(sym::__awaitee))
+                            .then(|| Symbol::intern(&field_layout.ty.to_string())),
                     }
                 })
                 .chain(upvar_fields.iter().copied())

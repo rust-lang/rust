@@ -567,7 +567,7 @@ impl<'hir> Map<'hir> {
                 }
                 // Ignore `return`s on the first iteration
                 Node::Expr(Expr { kind: ExprKind::Loop(..) | ExprKind::Ret(..), .. })
-                | Node::Local(_) => {
+                | Node::LetStmt(_) => {
                     return None;
                 }
                 _ => {}
@@ -906,7 +906,7 @@ impl<'hir> Map<'hir> {
             Node::Lifetime(lifetime) => lifetime.ident.span,
             Node::GenericParam(param) => param.span,
             Node::Infer(i) => i.span,
-            Node::Local(local) => local.span,
+            Node::LetStmt(local) => local.span,
             Node::Crate(item) => item.spans.inner_span,
             Node::WhereBoundPredicate(pred) => pred.span,
             Node::ArrayLenInfer(inf) => inf.span,
@@ -1163,7 +1163,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Node::Arm(_) => node_str("arm"),
         Node::Block(_) => node_str("block"),
         Node::Infer(_) => node_str("infer"),
-        Node::Local(_) => node_str("local"),
+        Node::LetStmt(_) => node_str("local"),
         Node::Ctor(ctor) => format!(
             "{id} (ctor {})",
             ctor.ctor_def_id().map_or("<missing path>".into(), |def_id| path_str(def_id)),

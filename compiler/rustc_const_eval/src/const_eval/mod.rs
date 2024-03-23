@@ -2,10 +2,11 @@
 
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::InterpErrorInfo;
-use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::query::{Key, TyCtxtAt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_target::abi::VariantIdx;
 
-use crate::interpret::format_interp_error;
+use crate::interpret::{format_interp_error, InterpCx};
 
 mod dummy_machine;
 mod error;
@@ -76,4 +77,22 @@ pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
     let fields = tcx.arena.alloc_from_iter(fields_iter);
 
     Some(mir::DestructuredConstant { variant, fields })
+}
+
+/// Computes the tag (if any) for a given type and variant.
+#[instrument(skip(tcx), level = "debug")]
+pub fn tag_for_variant_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (ty, variant_index): (Ty<'tcx>, VariantIdx),
+) -> Option<ty::ScalarInt> {
+    assert!(ty.is_enum());
+
+    let ecx = InterpCx::new(
+        tcx,
+        ty.default_span(tcx),
+        ty::ParamEnv::reveal_all(),
+        crate::const_eval::DummyMachine,
+    );
+
+    ecx.tag_for_variant(ty, variant_index).unwrap().map(|(tag, _tag_field)| tag)
 }

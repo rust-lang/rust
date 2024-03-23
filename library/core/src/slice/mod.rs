@@ -1944,8 +1944,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_split_at_unchecked)]
-    ///
     /// let v = [1, 2, 3, 4, 5, 6];
     ///
     /// unsafe {
@@ -1966,7 +1964,7 @@ impl<T> [T] {
     ///     assert_eq!(right, []);
     /// }
     /// ```
-    #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[stable(feature = "slice_split_at_unchecked", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_stable(feature = "const_slice_split_at_unchecked", since = "1.77.0")]
     #[inline]
     #[must_use]
@@ -2008,8 +2006,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_split_at_unchecked)]
-    ///
     /// let mut v = [1, 0, 3, 0, 5, 6];
     /// // scoped to restrict the lifetime of the borrows
     /// unsafe {
@@ -2021,7 +2017,7 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
-    #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[stable(feature = "slice_split_at_unchecked", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
     #[inline]
     #[must_use]

@@ -29,7 +29,7 @@ impl<'a> DeclOrigin<'a> {
     }
 }
 
-/// A declaration is an abstraction of [hir::Local] and [hir::LetExpr].
+/// A declaration is an abstraction of [hir::LetStmt] and [hir::LetExpr].
 ///
 /// It must have a hir_id, as this is how we connect gather_locals to the check functions.
 pub(super) struct Declaration<'a> {
@@ -41,9 +41,9 @@ pub(super) struct Declaration<'a> {
     pub origin: DeclOrigin<'a>,
 }
 
-impl<'a> From<&'a hir::Local<'a>> for Declaration<'a> {
-    fn from(local: &'a hir::Local<'a>) -> Self {
-        let hir::Local { hir_id, pat, ty, span, init, els, source: _ } = *local;
+impl<'a> From<&'a hir::LetStmt<'a>> for Declaration<'a> {
+    fn from(local: &'a hir::LetStmt<'a>) -> Self {
+        let hir::LetStmt { hir_id, pat, ty, span, init, els, source: _ } = *local;
         Declaration { hir_id, pat, ty, span, init, origin: DeclOrigin::LocalDecl { els } }
     }
 }
@@ -120,7 +120,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     // Add explicitly-declared locals.
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) {
         self.declare(local.into());
         intravisit::walk_local(self, local)
     }
