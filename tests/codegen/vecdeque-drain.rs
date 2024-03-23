@@ -43,6 +43,8 @@ pub fn truncate(v: &mut VecDeque<i32>, n: usize) {
 // CHECK-NOT: call
 // CHECK: br
 // CHECK-NOT: call
+// CHECK: call void @llvm.assume
+// CHECK-NOT: call
 // CHECK: br
 // CHECK-NOT: call
 // CHECK: br

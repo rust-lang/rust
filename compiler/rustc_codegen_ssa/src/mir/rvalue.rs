@@ -753,7 +753,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
         // use common size calculation for non zero-sized types
         let cg_value = self.codegen_place(bx, place.as_ref());
-        cg_value.len(bx.cx())
+        let length = cg_value.len(bx.cx());
+
+        if bx.sess().opts.optimize != OptLevel::No {
+            let elem_ty = cg_value.layout.field(bx, 0);
+            if let Some(elem_bytes) = std::num::NonZeroU64::new(elem_ty.size.bytes()) {
+                let isize_max = (1_u64 << (bx.sess().target.pointer_width - 1)) - 1;
+                let len_max = isize_max / elem_bytes;
+                let limit = bx.icmp(IntPredicate::IntULE, length, bx.const_usize(len_max));
+                bx.assume(limit);
+            }
+        }
+
+        length
     }
 
     /// Codegen an `Rvalue::AddressOf` or `Rvalue::Ref`

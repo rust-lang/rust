@@ -15,7 +15,7 @@ use std::num::NonZero;
 // CHECK-LABEL: @is_zero_slice_long
 #[no_mangle]
 pub fn is_zero_slice_long(data: &[u8; 456]) -> bool {
-    // CHECK: %[[BCMP:.+]] = tail call i32 @{{bcmp|memcmp}}({{.+}})
+    // CHECK: %[[BCMP:.+]] = tail call i32 @{{bcmp|memcmp}}({{.+}} 456)
     // CHECK-NEXT: %[[EQ:.+]] = icmp eq i32 %[[BCMP]], 0
     // CHECK-NEXT: ret i1 %[[EQ]]
     &data[..] == [0; 456]
@@ -48,7 +48,7 @@ pub fn is_zero_array(data: &[u8; 4]) -> bool {
 #[no_mangle]
 fn eq_slice_of_nested_u8(x: &[[u8; 3]], y: &[[u8; 3]]) -> bool {
     // CHECK: icmp eq [[USIZE]] %1, %3
-    // CHECK: %[[BYTES:.+]] = mul nsw [[USIZE]] %1, 3
+    // CHECK: %[[BYTES:.+]] = mul nuw nsw [[USIZE]] %1, 3
     // CHECK: tail call{{( noundef)?}} i32 @{{bcmp|memcmp}}(ptr
     // CHECK-SAME: , [[USIZE]]{{( noundef)?}} %[[BYTES]])
     x == y
@@ -60,7 +60,7 @@ fn eq_slice_of_nested_u8(x: &[[u8; 3]], y: &[[u8; 3]]) -> bool {
 #[no_mangle]
 fn eq_slice_of_i32(x: &[i32], y: &[i32]) -> bool {
     // CHECK: icmp eq [[USIZE]] %1, %3
-    // CHECK: %[[BYTES:.+]] = shl nsw [[USIZE]] %1, 2
+    // CHECK: %[[BYTES:.+]] = shl nuw nsw [[USIZE]] %1, 2
     // CHECK: tail call{{( noundef)?}} i32 @{{bcmp|memcmp}}(ptr
     // CHECK-SAME: , [[USIZE]]{{( noundef)?}} %[[BYTES]])
     x == y
@@ -72,7 +72,7 @@ fn eq_slice_of_i32(x: &[i32], y: &[i32]) -> bool {
 #[no_mangle]
 fn eq_slice_of_nonzero(x: &[NonZero<i32>], y: &[NonZero<i32>]) -> bool {
     // CHECK: icmp eq [[USIZE]] %1, %3
-    // CHECK: %[[BYTES:.+]] = shl nsw [[USIZE]] %1, 2
+    // CHECK: %[[BYTES:.+]] = shl nuw nsw [[USIZE]] %1, 2
     // CHECK: tail call{{( noundef)?}} i32 @{{bcmp|memcmp}}(ptr
     // CHECK-SAME: , [[USIZE]]{{( noundef)?}} %[[BYTES]])
     x == y
@@ -84,7 +84,7 @@ fn eq_slice_of_nonzero(x: &[NonZero<i32>], y: &[NonZero<i32>]) -> bool {
 #[no_mangle]
 fn eq_slice_of_option_of_nonzero(x: &[Option<NonZero<i16>>], y: &[Option<NonZero<i16>>]) -> bool {
     // CHECK: icmp eq [[USIZE]] %1, %3
-    // CHECK: %[[BYTES:.+]] = shl nsw [[USIZE]] %1, 1
+    // CHECK: %[[BYTES:.+]] = shl nuw nsw [[USIZE]] %1, 1
     // CHECK: tail call{{( noundef)?}} i32 @{{bcmp|memcmp}}(ptr
     // CHECK-SAME: , [[USIZE]]{{( noundef)?}} %[[BYTES]])
     x == y
