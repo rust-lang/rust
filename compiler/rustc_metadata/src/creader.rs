@@ -691,58 +691,73 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     where
         'a: 'b,
     {
-        // Use a new crate locator and crate rejections so trying to load a proc macro doesn't
-        // affect the error message we emit
-        let mut proc_macro_locator = locator.clone();
-        let mut proc_macro_crate_rejections = CrateRejections::default();
+        if self.sess.opts.unstable_opts.dual_proc_macros {
+            // Use a new crate locator and crate rejections so trying to load a proc macro doesn't
+            // affect the error message we emit
+            let mut proc_macro_locator = locator.clone();
 
-        // Try to load a proc macro
-        proc_macro_locator.is_proc_macro = true;
+            // Try to load a proc macro
+            proc_macro_locator.is_proc_macro = true;
 
-        // Load the proc macro crate for the target
-        let (locator, crate_rejections, target_result) =
-            if self.sess.opts.unstable_opts.dual_proc_macros {
-                let result =
-                    match self.load(&mut proc_macro_locator, &mut proc_macro_crate_rejections)? {
-                        Some(LoadResult::Previous(cnum)) => {
-                            return Ok(Some((LoadResult::Previous(cnum), None)));
-                        }
-                        Some(LoadResult::Loaded(library)) => Some(LoadResult::Loaded(library)),
-                        None => return Ok(None),
-                    };
-                locator.hash = host_hash;
-                // Use the locator when looking for the host proc macro crate, as that is required
-                // so we want it to affect the error message
-                (locator, crate_rejections, result)
-            } else {
-                (&mut proc_macro_locator, &mut proc_macro_crate_rejections, None)
+            // Load the proc macro crate for the target
+            let target_result =
+                match self.load(&mut proc_macro_locator, &mut CrateRejections::default())? {
+                    Some(LoadResult::Previous(cnum)) => {
+                        return Ok(Some((LoadResult::Previous(cnum), None)));
+                    }
+                    Some(LoadResult::Loaded(library)) => Some(LoadResult::Loaded(library)),
+                    None => return Ok(None),
+                };
+
+            // Load the proc macro crate for the host
+
+            // Use the existing crate_rejections as we want the error message to be affected by
+            // loading the host proc macro.
+            *crate_rejections = CrateRejections::default();
+            // FIXME use a separate CrateLocator for the host rather than mutating the target CrateLocator
+            locator.is_proc_macro = true;
+            locator.target = &self.sess.host;
+            locator.tuple = TargetTuple::from_tuple(config::host_tuple());
+            locator.filesearch = self.sess.host_filesearch();
+            locator.path_kind = path_kind;
+
+            locator.hash = host_hash;
+
+            let Some(host_result) = self.load(locator, crate_rejections)? else {
+                return Ok(None);
             };
 
-        // Load the proc macro crate for the host
-
-        *crate_rejections = CrateRejections::default();
-        // FIXME use a separate CrateLocator for the host rather than mutating the target CrateLocator
-        locator.is_proc_macro = true;
-        locator.target = &self.sess.host;
-        locator.tuple = TargetTuple::from_tuple(config::host_tuple());
-        locator.filesearch = self.sess.host_filesearch();
-        locator.path_kind = path_kind;
-
-        let Some(host_result) = self.load(locator, crate_rejections)? else {
-            return Ok(None);
-        };
-
-        Ok(Some(if self.sess.opts.unstable_opts.dual_proc_macros {
             let host_result = match host_result {
                 LoadResult::Previous(..) => {
                     panic!("host and target proc macros must be loaded in lock-step")
                 }
                 LoadResult::Loaded(library) => library,
             };
-            (target_result.unwrap(), Some(host_result))
+            Ok(Some((target_result.unwrap(), Some(host_result))))
         } else {
-            (host_result, None)
-        }))
+            // Use a new crate locator and crate rejections so trying to load a proc macro doesn't
+            // affect the error message we emit
+            let mut proc_macro_locator = locator.clone();
+
+            // Try to load a proc macro
+            proc_macro_locator.is_proc_macro = true;
+
+            // Load the proc macro crate for the host
+
+            // FIXME use a separate CrateLocator for the host rather than mutating the target CrateLocator
+            proc_macro_locator.target = &self.sess.host;
+            proc_macro_locator.tuple = TargetTuple::from_tuple(config::host_tuple());
+            proc_macro_locator.filesearch = self.sess.host_filesearch();
+            proc_macro_locator.path_kind = path_kind;
+
+            let Some(host_result) =
+                self.load(&mut proc_macro_locator, &mut CrateRejections::default())?
+            else {
+                return Ok(None);
+            };
+
+            Ok(Some((host_result, None)))
+        }
     }
 
     fn resolve_crate(
