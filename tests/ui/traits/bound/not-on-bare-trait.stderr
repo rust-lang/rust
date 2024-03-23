@@ -12,6 +12,71 @@ help: if this is an object-safe trait, use `dyn`
 LL | fn foo(_x: dyn Foo + Send) {
    |            +++
 
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/not-on-bare-trait.rs:15:12
+   |
+LL | fn bat(x: &Foo) -> Foo {
+   |            ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: if this is an object-safe trait, use `dyn`
+   |
+LL | fn bat(x: &dyn Foo) -> Foo {
+   |            +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/not-on-bare-trait.rs:15:20
+   |
+LL | fn bat(x: &Foo) -> Foo {
+   |                    ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: if this is an object-safe trait, use `dyn`
+   |
+LL | fn bat(x: &Foo) -> dyn Foo {
+   |                    +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/not-on-bare-trait.rs:25:12
+   |
+LL | fn bae(x: &Foo) -> &Foo {
+   |            ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: if this is an object-safe trait, use `dyn`
+   |
+LL | fn bae(x: &dyn Foo) -> &Foo {
+   |            +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/not-on-bare-trait.rs:25:21
+   |
+LL | fn bae(x: &Foo) -> &Foo {
+   |                     ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: if this is an object-safe trait, use `dyn`
+   |
+LL | fn bae(x: &Foo) -> &dyn Foo {
+   |                     +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/not-on-bare-trait.rs:32:13
+   |
+LL | fn qux() -> Foo {
+   |             ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: if this is an object-safe trait, use `dyn`
+   |
+LL | fn qux() -> dyn Foo {
+   |             +++
+
 error[E0277]: the size for values of type `(dyn Foo + Send + 'static)` cannot be known at compilation time
   --> $DIR/not-on-bare-trait.rs:7:12
    |
@@ -46,6 +111,63 @@ help: function arguments must have a statically known size, borrowed types alway
 LL | fn bar(_x: (&(dyn Foo + Send))) {
    |             ++              +
 
-error: aborting due to 2 previous errors; 1 warning emitted
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/not-on-bare-trait.rs:15:20
+   |
+LL | fn bat(x: &Foo) -> Foo {
+   |                    ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: if this is an object-safe trait, use `dyn`
+   |
+LL | fn bat(x: &Foo) -> dyn Foo {
+   |                    +++
 
-For more information about this error, try `rustc --explain E0277`.
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/not-on-bare-trait.rs:15:20
+   |
+LL | fn bat(x: &Foo) -> Foo {
+   |                    ^^^ doesn't have a size known at compile-time
+   |
+help: return an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn bat(x: &Foo) -> impl Foo {
+   |                    ++++
+help: alternatively, box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn bat(x: &Foo) -> Box<dyn Foo> {
+LL |
+ ...
+LL |
+LL ~     Box::new(x)
+   |
+help: finally, you might be able to borrow from the function's argument
+   |
+LL | fn bat(x: &Foo) -> &dyn Foo {
+   |                    ++++
+
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/not-on-bare-trait.rs:32:13
+   |
+LL | fn qux() -> Foo {
+   |             ^^^ doesn't have a size known at compile-time
+   |
+help: return an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn qux() -> impl Foo {
+   |             ++++
+help: alternatively, box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn qux() -> Box<dyn Foo> {
+LL |
+LL |
+LL |
+LL ~     Box::new(todo!())
+   |
+
+error: aborting due to 4 previous errors; 7 warnings emitted
+
+Some errors have detailed explanations: E0277, E0746.
+For more information about an error, try `rustc --explain E0277`.

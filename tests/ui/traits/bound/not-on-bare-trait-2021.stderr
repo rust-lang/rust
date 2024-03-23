@@ -16,7 +16,7 @@ LL | fn foo(_x: &(dyn Foo + Send)) {
    |            +++++           +
 
 error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
-  --> $DIR/not-on-bare-trait-2021.rs:12:11
+  --> $DIR/not-on-bare-trait-2021.rs:11:11
    |
 LL | fn bar(x: Foo) -> Foo {
    |           ^^^ doesn't have a size known at compile-time
@@ -32,60 +32,79 @@ help: function arguments must have a statically known size, borrowed types alway
 LL | fn bar(x: &dyn Foo) -> Foo {
    |           ++++
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/not-on-bare-trait-2021.rs:8:12
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/not-on-bare-trait-2021.rs:15:20
    |
-LL | fn foo(_x: Foo + Send) {
-   |            ^^^^^^^^^^
+LL | fn bat(x: &Foo) -> Foo {
+   |                    ^^^ doesn't have a size known at compile-time
    |
-help: use a new generic type parameter, constrained by `Foo + Send`
+help: return an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn foo<T: Foo + Send>(_x: T) {
-   |       +++++++++++++++     ~
-help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+LL | fn bat(x: &Foo) -> impl Foo {
+   |                    ++++
+help: alternatively, box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
    |
-LL | fn foo(_x: impl Foo + Send) {
-   |            ++++
-help: alternatively, use a trait object to accept any type that implements `Foo + Send`, accessing its methods at runtime using dynamic dispatch
+LL ~ fn bat(x: &Foo) -> Box<dyn Foo> {
+LL |
+LL |
+LL ~     Box::new(x)
    |
-LL | fn foo(_x: &(dyn Foo + Send)) {
-   |            +++++           +
+help: finally, you might be able to borrow from the function's argument
+   |
+LL | fn bat(x: &Foo) -> &dyn Foo {
+   |                    ++++
+
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/not-on-bare-trait-2021.rs:25:13
+   |
+LL | fn qux() -> Foo {
+   |             ^^^ doesn't have a size known at compile-time
+   |
+help: return an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn qux() -> impl Foo {
+   |             ++++
+help: alternatively, box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn qux() -> Box<dyn Foo> {
+LL |
+LL ~     Box::new(todo!())
+   |
 
 error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/not-on-bare-trait-2021.rs:12:11
+  --> $DIR/not-on-bare-trait-2021.rs:15:12
    |
-LL | fn bar(x: Foo) -> Foo {
-   |           ^^^
+LL | fn bat(x: &Foo) -> Foo {
+   |            ^^^
    |
-help: use a new generic type parameter, constrained by `Foo`
+help: add `dyn` keyword before this trait
    |
-LL | fn bar<T: Foo>(x: T) -> Foo {
-   |       ++++++++    ~
-help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
-   |
-LL | fn bar(x: impl Foo) -> Foo {
-   |           ++++
-help: alternatively, use a trait object to accept any type that implements `Foo`, accessing its methods at runtime using dynamic dispatch
-   |
-LL | fn bar(x: &dyn Foo) -> Foo {
-   |           ++++
+LL | fn bat(x: &dyn Foo) -> Foo {
+   |            +++
 
 error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/not-on-bare-trait-2021.rs:12:19
+  --> $DIR/not-on-bare-trait-2021.rs:20:12
    |
-LL | fn bar(x: Foo) -> Foo {
-   |                   ^^^
+LL | fn bae(x: &Foo) -> &Foo {
+   |            ^^^
    |
-help: use `impl Foo` to return an opaque type, as long as you return a single underlying type
+help: add `dyn` keyword before this trait
    |
-LL | fn bar(x: Foo) -> impl Foo {
-   |                   ++++
-help: alternatively, you can return a boxed trait object
-   |
-LL | fn bar(x: Foo) -> Box<dyn Foo> {
-   |                   +++++++    +
+LL | fn bae(x: &dyn Foo) -> &Foo {
+   |            +++
 
-error: aborting due to 5 previous errors
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/not-on-bare-trait-2021.rs:20:21
+   |
+LL | fn bae(x: &Foo) -> &Foo {
+   |                     ^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL | fn bae(x: &Foo) -> &dyn Foo {
+   |                     +++
 
-Some errors have detailed explanations: E0277, E0782.
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0277, E0746, E0782.
 For more information about an error, try `rustc --explain E0277`.
