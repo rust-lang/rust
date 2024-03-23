@@ -639,10 +639,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         }
     }
 
-    if !unnormalized_trait_sig.output().references_error() {
-        debug_assert!(
-            !collector.types.is_empty(),
-            "expect >0 RPITITs in call to `collect_return_position_impl_trait_in_trait_tys`"
+    if !unnormalized_trait_sig.output().references_error() && collector.types.is_empty() {
+        tcx.dcx().delayed_bug(
+            "expect >0 RPITITs in call to `collect_return_position_impl_trait_in_trait_tys`",
         );
     }
 
