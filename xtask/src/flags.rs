@@ -82,35 +82,6 @@ pub enum XtaskCmd {
 }
 
 #[derive(Debug)]
-pub struct Codegen {
-    pub check: bool,
-    pub codegen_type: Option<CodegenType>,
-}
-
-#[derive(Debug, Default)]
-pub enum CodegenType {
-    #[default]
-    All,
-    Grammar,
-    AssistsDocTests,
-    DiagnosticsDocs,
-    LintDefinitions,
-}
-
-impl FromStr for CodegenType {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "all" => Ok(Self::All),
-            "grammar" => Ok(Self::Grammar),
-            "assists-doc-tests" => Ok(Self::AssistsDocTests),
-            "diagnostics-docs" => Ok(Self::DiagnosticsDocs),
-            "lints-definitions" => Ok(Self::LintDefinitions),
-            _ => Err("Invalid option".to_owned()),
-        }
-    }
-}
-#[derive(Debug)]
 pub struct Install {
     pub client: bool,
     pub code_bin: Option<String>,
@@ -143,6 +114,65 @@ pub struct PublishReleaseNotes {
     pub changelog: String,
 
     pub dry_run: bool,
+}
+
+#[derive(Debug)]
+pub struct Metrics {
+    pub measurement_type: Option<MeasurementType>,
+}
+
+#[derive(Debug)]
+pub struct Bb {
+    pub suffix: String,
+}
+
+#[derive(Debug)]
+pub struct Codegen {
+    pub codegen_type: Option<CodegenType>,
+
+    pub check: bool,
+}
+
+impl Xtask {
+    #[allow(dead_code)]
+    pub fn from_env_or_exit() -> Self {
+        Self::from_env_or_exit_()
+    }
+
+    #[allow(dead_code)]
+    pub fn from_env() -> xflags::Result<Self> {
+        Self::from_env_()
+    }
+
+    #[allow(dead_code)]
+    pub fn from_vec(args: Vec<std::ffi::OsString>) -> xflags::Result<Self> {
+        Self::from_vec_(args)
+    }
+}
+// generated end
+
+#[derive(Debug, Default)]
+pub enum CodegenType {
+    #[default]
+    All,
+    Grammar,
+    AssistsDocTests,
+    DiagnosticsDocs,
+    LintDefinitions,
+}
+
+impl FromStr for CodegenType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "all" => Ok(Self::All),
+            "grammar" => Ok(Self::Grammar),
+            "assists-doc-tests" => Ok(Self::AssistsDocTests),
+            "diagnostics-docs" => Ok(Self::DiagnosticsDocs),
+            "lints-definitions" => Ok(Self::LintDefinitions),
+            _ => Err("Invalid option".to_owned()),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -184,34 +214,6 @@ impl AsRef<str> for MeasurementType {
         }
     }
 }
-
-#[derive(Debug)]
-pub struct Metrics {
-    pub measurement_type: Option<MeasurementType>,
-}
-
-#[derive(Debug)]
-pub struct Bb {
-    pub suffix: String,
-}
-
-impl Xtask {
-    #[allow(dead_code)]
-    pub fn from_env_or_exit() -> Self {
-        Self::from_env_or_exit_()
-    }
-
-    #[allow(dead_code)]
-    pub fn from_env() -> xflags::Result<Self> {
-        Self::from_env_()
-    }
-
-    #[allow(dead_code)]
-    pub fn from_vec(args: Vec<std::ffi::OsString>) -> xflags::Result<Self> {
-        Self::from_vec_(args)
-    }
-}
-// generated end
 
 impl Install {
     pub(crate) fn server(&self) -> Option<ServerOpt> {
