@@ -4,14 +4,14 @@ use clippy_utils::visitors::{for_each_local_assignment, for_each_value_source};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Expr, ExprKind, HirId, HirIdSet, Local, MatchSource, Node, PatKind, QPath, TyKind};
+use rustc_hir::{Expr, ExprKind, HirId, HirIdSet, LetStmt, MatchSource, Node, PatKind, QPath, TyKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::{in_external_macro, is_from_async_await};
 use rustc_middle::ty;
 
 use super::LET_UNIT_VALUE;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx LetStmt<'_>) {
     // skip `let () = { ... }`
     if let PatKind::Tuple(fields, ..) = local.pat.kind
         && fields.is_empty()
@@ -102,7 +102,7 @@ fn expr_needs_inferred_result<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -
         return false;
     }
     while let Some(id) = locals_to_check.pop() {
-        if let Node::Local(l) = cx.tcx.parent_hir_node(id) {
+        if let Node::LetStmt(l) = cx.tcx.parent_hir_node(id) {
             if !l.ty.map_or(true, |ty| matches!(ty.kind, TyKind::Infer)) {
                 return false;
             }

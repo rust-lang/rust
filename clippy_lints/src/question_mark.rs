@@ -14,7 +14,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    BindingAnnotation, Block, ByRef, Expr, ExprKind, Local, Node, PatKind, PathSegment, QPath, Stmt, StmtKind,
+    BindingAnnotation, Block, ByRef, Expr, ExprKind, LetStmt, Node, PatKind, PathSegment, QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
@@ -109,7 +109,7 @@ fn find_let_else_ret_expression<'hir>(block: &'hir Block<'hir>) -> Option<&'hir 
 }
 
 fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
-    if let StmtKind::Let(Local {
+    if let StmtKind::Let(LetStmt {
         pat,
         init: Some(init_expr),
         els: Some(els),

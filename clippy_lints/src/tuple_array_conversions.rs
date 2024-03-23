@@ -159,7 +159,7 @@ fn all_bindings_are_for_conv<'tcx>(
         .iter()
         .map(|node| match node {
             Node::Pat(pat) => kind.eq(&pat.kind).then_some(pat.hir_id),
-            Node::Local(l) => Some(l.hir_id),
+            Node::LetStmt(l) => Some(l.hir_id),
             _ => None,
         })
         .all_equal()
@@ -170,7 +170,7 @@ fn all_bindings_are_for_conv<'tcx>(
         && local_parents.first().is_some_and(|node| {
             let Some(ty) = match node {
                 Node::Pat(pat) => Some(pat.hir_id),
-                Node::Local(l) => Some(l.hir_id),
+                Node::LetStmt(l) => Some(l.hir_id),
                 _ => None,
             }
             .map(|hir_id| cx.typeck_results().node_type(hir_id)) else {
