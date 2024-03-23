@@ -66,7 +66,7 @@ pub(super) fn check<'tcx>(
         && let QPath::Resolved(None, Path { res, .. }) = qpath
         && let Res::Local(hir_id) = res
         && let parent = cx.tcx.parent_hir_node(*hir_id)
-        && let Node::Local(local) = parent
+        && let Node::LetStmt(local) = parent
     {
         if let Some(ty) = local.ty
             && let TyKind::Path(qpath) = ty.kind
@@ -275,7 +275,7 @@ fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx
                 }
             // Local usage
             } else if let Res::Local(hir_id) = res
-                && let Node::Local(l) = cx.tcx.parent_hir_node(hir_id)
+                && let Node::LetStmt(l) = cx.tcx.parent_hir_node(hir_id)
             {
                 if let Some(e) = l.init
                     && is_cast_from_ty_alias(cx, e, cast_from)
