@@ -358,6 +358,13 @@ impl<'a> Sugg<'a> {
             },
         }
     }
+
+    pub fn into_string(self) -> String {
+        match self {
+            Sugg::NonParen(p) | Sugg::MaybeParen(p) => p.into_owned(),
+            Sugg::BinOp(b, l, r) => binop_to_string(b, &l, &r),
+        }
+    }
 }
 
 /// Generates a string from the operator and both sides.
