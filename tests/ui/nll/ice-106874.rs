@@ -7,15 +7,15 @@ use std::rc::Rc;
 pub fn func<V, F: Fn(&mut V)>(f: F) -> A<impl X> {
     A(B(C::new(D::new(move |st| f(st)))))
     //~^ ERROR implementation of `FnOnce` is not general enough
-    //~^^ ERROR implementation of `Fn` is not general enough
-    //~^^^ ERROR implementation of `FnOnce` is not general enough
-    //~^^^^ ERROR implementation of `FnOnce` is not general enough
-    //~^^^^^ ERROR implementation of `Fn` is not general enough
-    //~^^^^^^ ERROR implementation of `FnOnce` is not general enough
-    //~^^^^^^^ ERROR implementation of `Fn` is not general enough
-    //~^^^^^^^^ ERROR implementation of `FnOnce` is not general enough
-    //~^^^^^^^^^ ERROR higher-ranked subtype error
-    //~^^^^^^^^^^ ERROR higher-ranked subtype error
+    //~| ERROR implementation of `Fn` is not general enough
+    //~| ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `Fn` is not general enough
+    //~| ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `Fn` is not general enough
+    //~| ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR higher-ranked subtype error
+    //~| ERROR higher-ranked subtype error
 }
 
 trait X {}
