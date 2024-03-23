@@ -1,0 +1,2 @@
+panicked at $DIR/panic-in-message-fmt.rs:18:9:
+thread panicked while processing panic. aborting.
