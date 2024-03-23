@@ -4,6 +4,7 @@ use std::ffi::OsString;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
+use ui_test::color_eyre::eyre::Context;
 use ui_test::{color_eyre::Result, Config, Match, Mode, OutputConflictHandling};
 use ui_test::{status_emitter, CommandBuilder, Format, RustfixMode};
 
@@ -231,6 +232,7 @@ fn ui(
         WithoutDependencies => false,
     };
     run_tests(mode, path, target, with_dependencies, tmpdir)
+        .with_context(|| format!("ui tests in {path} for {target} failed"))
 }
 
 fn get_target() -> String {
