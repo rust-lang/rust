@@ -643,6 +643,10 @@ another matching engine with fixed memory requirements.
 #![deny(missing_docs)]
 #![cfg_attr(feature = "pattern", feature(pattern))]
 #![warn(missing_debug_implementations)]
+#![allow(unused_imports)]
+#![allow(elided_lifetimes_in_paths)]
+#![allow(rustc::default_hash_types)]
+#![allow(rustc::potential_query_instability)]
 
 #[cfg(not(feature = "std"))]
 compile_error!("`std` feature is currently required to build this crate");
@@ -756,6 +760,7 @@ enabled.
 In general, one should expect performance on `&[u8]` to be roughly similar to
 performance on `&str`.
 */
+
 #[cfg(feature = "std")]
 pub mod bytes {
     pub use crate::re_builder::bytes::*;

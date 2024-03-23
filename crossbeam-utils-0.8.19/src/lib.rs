@@ -26,18 +26,14 @@
 
 #![doc(test(
     no_crate_inject,
-    attr(
-        deny(warnings, rust_2018_idioms),
-        allow(dead_code, unused_assignments, unused_variables)
-    )
+    attr(deny(warnings, rust_2018_idioms), allow(dead_code, unused_assignments, unused_variables))
 ))]
-#![warn(
-    missing_docs,
-    missing_debug_implementations,
-    rust_2018_idioms,
-    unreachable_pub
-)]
+#![warn(missing_docs, missing_debug_implementations, rust_2018_idioms, unreachable_pub)]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(unexpected_cfgs)]
+#![allow(rustc::default_hash_types)]
+#![allow(unused_imports)]
+#![allow(elided_lifetimes_in_paths)]
 
 #[cfg(crossbeam_loom)]
 #[allow(unused_imports)]

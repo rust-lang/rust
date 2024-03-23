@@ -22,6 +22,9 @@ fn roundtrip(data: &[u8]) {
 # roundtrip(b"Test_data test data lalalal blabla");
 "##
 )]
+#![allow(elided_lifetimes_in_paths)]
+#![allow(unexpected_cfgs)]
+#![allow(unused_imports)]
 #![forbid(unsafe_code)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -158,11 +161,7 @@ pub enum DataFormat {
 
 impl DataFormat {
     pub fn from_window_bits(window_bits: i32) -> DataFormat {
-        if window_bits > 0 {
-            DataFormat::Zlib
-        } else {
-            DataFormat::Raw
-        }
+        if window_bits > 0 { DataFormat::Zlib } else { DataFormat::Raw }
     }
 
     pub fn to_window_bits(self) -> i32 {
@@ -190,11 +189,7 @@ pub struct StreamResult {
 impl StreamResult {
     #[inline]
     pub const fn error(error: MZError) -> StreamResult {
-        StreamResult {
-            bytes_consumed: 0,
-            bytes_written: 0,
-            status: Err(error),
-        }
+        StreamResult { bytes_consumed: 0, bytes_written: 0, status: Err(error) }
     }
 }
 
