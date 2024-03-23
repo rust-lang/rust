@@ -2,10 +2,7 @@ error[E0277]: the size for values of type `impl Iterator<Item = i32> + ?Sized` c
   --> $DIR/apit-unsized.rs:1:11
    |
 LL | fn foo(_: impl Iterator<Item = i32> + ?Sized) {}
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |           |
-   |           doesn't have a size known at compile-time
-   |           this type parameter needs to be `Sized`
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: unsized fn params are gated as an unstable feature
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -22,10 +19,7 @@ error[E0277]: the size for values of type `impl ?Sized` cannot be known at compi
   --> $DIR/apit-unsized.rs:2:11
    |
 LL | fn bar(_: impl ?Sized) {}
-   |           ^^^^^^^^^^^
-   |           |
-   |           doesn't have a size known at compile-time
-   |           this type parameter needs to be `Sized`
+   |           ^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: unsized fn params are gated as an unstable feature
 help: consider replacing `?Sized` with `Sized`
