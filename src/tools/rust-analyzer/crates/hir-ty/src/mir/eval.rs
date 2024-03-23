@@ -1396,7 +1396,7 @@ impl Evaluator<'_> {
                 },
                 CastKind::DynStar => not_supported!("dyn star cast"),
                 CastKind::IntToInt
-                | CastKind::PointerExposeAddress
+                | CastKind::PointerExpose
                 | CastKind::PointerFromExposedAddress => {
                     let current_ty = self.operand_ty(operand, locals)?;
                     let is_signed = matches!(

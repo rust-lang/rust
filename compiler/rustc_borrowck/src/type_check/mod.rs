@@ -2245,7 +2245,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::PointerExposeAddress => {
+                    CastKind::PointerExpose => {
                         let ty_from = op.ty(body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
@@ -2255,7 +2255,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 span_mirbug!(
                                     self,
                                     rvalue,
-                                    "Invalid PointerExposeAddress cast {:?} -> {:?}",
+                                    "Invalid PointerExpose cast {:?} -> {:?}",
                                     ty_from,
                                     ty
                                 )

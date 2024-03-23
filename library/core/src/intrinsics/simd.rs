@@ -540,6 +540,10 @@ extern "rust-intrinsic" {
     /// `T` must be a vector of pointers.
     ///
     /// `U` must be a vector of `usize` with the same length as `T`.
+    #[cfg(not(bootstrap))]
+    #[rustc_nounwind]
+    pub fn simd_expose<T, U>(ptr: T) -> U;
+    #[cfg(bootstrap)]
     #[rustc_nounwind]
     pub fn simd_expose_addr<T, U>(ptr: T) -> U;
 
@@ -655,3 +659,6 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_flog<T>(a: T) -> T;
 }
+
+#[cfg(bootstrap)]
+pub use simd_expose_addr as simd_expose;

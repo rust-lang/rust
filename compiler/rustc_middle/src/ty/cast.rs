@@ -83,7 +83,7 @@ pub fn mir_cast_kind<'tcx>(from_ty: Ty<'tcx>, cast_ty: Ty<'tcx>) -> mir::CastKin
     let cast = CastTy::from_ty(cast_ty);
     let cast_kind = match (from, cast) {
         (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
-            mir::CastKind::PointerExposeAddress
+            mir::CastKind::PointerExpose
         }
         (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => mir::CastKind::PointerFromExposedAddress,
         (_, Some(CastTy::DynStar)) => mir::CastKind::DynStar,

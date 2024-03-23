@@ -340,8 +340,8 @@
 //! clear where a satisfying unambiguous semantics can be defined for Exposed Provenance.
 //! Furthermore, Exposed Provenance will not work (well) with tools like [Miri] and [CHERI].
 //!
-//! Exposed Provenance is provided by the [`expose_addr`] and [`from_exposed_addr`] methods, which
-//! are meant to replace `as` casts between pointers and integers. [`expose_addr`] is a lot like
+//! Exposed Provenance is provided by the [`expose`] and [`from_exposed_addr`] methods, which
+//! are meant to replace `as` casts between pointers and integers. [`expose`] is a lot like
 //! [`addr`], but additionally adds the provenance of the pointer to a global list of 'exposed'
 //! provenances. (This list is purely conceptual, it exists for the purpose of specifying Rust but
 //! is not materialized in actual executions, except in tools like [Miri].) [`from_exposed_addr`]
@@ -355,9 +355,9 @@
 //! there is *no* previously 'exposed' provenance that justifies the way the returned pointer will
 //! be used, the program has undefined behavior.
 //!
-//! Using [`expose_addr`] or [`from_exposed_addr`] (or the `as` casts) means that code is
+//! Using [`expose`] or [`from_exposed_addr`] (or the `as` casts) means that code is
 //! *not* following Strict Provenance rules. The goal of the Strict Provenance experiment is to
-//! determine how far one can get in Rust without the use of [`expose_addr`] and
+//! determine how far one can get in Rust without the use of [`expose`] and
 //! [`from_exposed_addr`], and to encourage code to be written with Strict Provenance APIs only.
 //! Maximizing the amount of such code is a major win for avoiding specification complexity and to
 //! facilitate adoption of tools like [CHERI] and [Miri] that can be a big help in increasing the
@@ -374,7 +374,7 @@
 //! [`map_addr`]: pointer::map_addr
 //! [`addr`]: pointer::addr
 //! [`ptr::dangling`]: core::ptr::dangling
-//! [`expose_addr`]: pointer::expose_addr
+//! [`expose`]: pointer::expose
 //! [`from_exposed_addr`]: from_exposed_addr
 //! [Miri]: https://github.com/rust-lang/miri
 //! [CHERI]: https://www.cl.cam.ac.uk/research/security/ctsrd/cheri/
@@ -664,7 +664,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 ///
 /// This is a more rigorously specified alternative to `addr as *const T`. The provenance of the
 /// returned pointer is that of *any* pointer that was previously exposed by passing it to
-/// [`expose_addr`][pointer::expose_addr], or a `ptr as usize` cast. In addition, memory which is
+/// [`expose`][pointer::expose], or a `ptr as usize` cast. In addition, memory which is
 /// outside the control of the Rust abstract machine (MMIO registers, for example) is always
 /// considered to be exposed, so long as this memory is disjoint from memory that will be used by
 /// the abstract machine such as the stack, heap, and statics.
@@ -712,7 +712,7 @@ where
 ///
 /// This is a more rigorously specified alternative to `addr as *mut T`. The provenance of the
 /// returned pointer is that of *any* pointer that was previously passed to
-/// [`expose_addr`][pointer::expose_addr] or a `ptr as usize` cast. If there is no previously
+/// [`expose`][pointer::expose] or a `ptr as usize` cast. If there is no previously
 /// 'exposed' provenance that justifies the way this pointer will be used, the program has undefined
 /// behavior. Note that there is no algorithm that decides which provenance will be used. You can
 /// think of this as "guessing" the right provenance, and the guess will be "maximally in your

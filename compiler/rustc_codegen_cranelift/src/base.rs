@@ -641,7 +641,7 @@ fn codegen_stmt<'tcx>(
                     | CastKind::IntToFloat
                     | CastKind::FnPtrToPtr
                     | CastKind::PtrToPtr
-                    | CastKind::PointerExposeAddress
+                    | CastKind::PointerExpose
                     | CastKind::PointerFromExposedAddress,
                     ref operand,
                     to_ty,

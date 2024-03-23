@@ -1985,7 +1985,7 @@ fn cast_kind(source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
             (_, _) => CastKind::IntToInt,
         },
         (TyKind::Scalar(_), TyKind::Raw(..)) => CastKind::PointerFromExposedAddress,
-        (TyKind::Raw(..), TyKind::Scalar(_)) => CastKind::PointerExposeAddress,
+        (TyKind::Raw(..), TyKind::Scalar(_)) => CastKind::PointerExpose,
         (TyKind::Raw(_, a) | TyKind::Ref(_, _, a), TyKind::Raw(_, b) | TyKind::Ref(_, _, b)) => {
             CastKind::Pointer(if a == b {
                 PointerCast::MutToConstPointer
