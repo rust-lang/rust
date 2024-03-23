@@ -552,8 +552,7 @@ Supported values for this option are:
   binary or separate files depending on the target (e.g. `.pdb` files in case
   of MSVC).
 - `debuginfo` - debuginfo sections and debuginfo symbols from the symbol table
-  section are stripped at link time and are not copied to the produced binary
-  or separate files.
+  section are stripped at link time and are not copied to the produced binary.
 - `symbols` - same as `debuginfo`, but the rest of the symbol table section is
   stripped as well if the linker supports it.
 

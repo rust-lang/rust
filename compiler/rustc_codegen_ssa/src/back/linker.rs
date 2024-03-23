@@ -924,7 +924,7 @@ impl<'a> Linker for MsvcLinker<'a> {
 
     fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]) {
         match strip {
-            Strip::None => {
+            Strip::None | Strip::Debuginfo => {
                 // This will cause the Microsoft linker to generate a PDB file
                 // from the CodeView line tables in the object files.
                 self.cmd.arg("/DEBUG");
@@ -965,7 +965,7 @@ impl<'a> Linker for MsvcLinker<'a> {
                     self.cmd.arg(arg);
                 }
             }
-            Strip::Debuginfo | Strip::Symbols => {
+            Strip::Symbols => {
                 self.cmd.arg("/DEBUG:NONE");
             }
         }
