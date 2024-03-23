@@ -10,7 +10,7 @@ use rustc_ast::{LitKind, RangeLimits};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::{BinOp, Block, Body, Expr, ExprKind, UnOp};
+use rustc_hir::{BinOp, Block, Body, Expr, ExprKind, UnOp, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
@@ -136,6 +136,10 @@ fn assert_len_expr<'hir>(
 ) -> Option<(LengthComparison, usize, &'hir Expr<'hir>)> {
     if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr)
         && let ExprKind::Unary(UnOp::Not, condition) = &cond.kind
+        && let ExprKind::Block(block, None) = condition.kind 
+        && let [local] = block.stmts
+        && let StmtKind::Let(local) = local.kind
+        && let Some(condition) = local.init
         && let ExprKind::Binary(bin_op, left, right) = &condition.kind
 
         && let Some((cmp, asserted_len, slice_len)) = len_comparison(*bin_op, left, right)

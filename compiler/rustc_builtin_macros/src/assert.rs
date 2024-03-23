@@ -3,14 +3,15 @@ mod context;
 use crate::edition_panic::use_panic_2021;
 use crate::errors;
 use rustc_ast::ptr::P;
-use rustc_ast::token;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
+use rustc_ast::{self as ast, token};
 use rustc_ast::{DelimArgs, Expr, ExprKind, MacCall, Path, PathSegment, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_parse::parser::Parser;
+use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use thin_vec::thin_vec;
@@ -20,7 +21,7 @@ pub fn expand_assert<'cx>(
     span: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
-    let Assert { cond_expr, custom_message } = match parse_assert(cx, span, tts) {
+    let Assert { cond_expr, inner_cond_expr, custom_message } = match parse_assert(cx, span, tts) {
         Ok(assert) => assert,
         Err(err) => {
             let guar = err.emit();
@@ -70,7 +71,9 @@ pub fn expand_assert<'cx>(
     //
     // FIXME(c410-f3r) See https://github.com/rust-lang/rust/issues/96949
     else if cx.ecfg.features.generic_assert {
-        context::Context::new(cx, call_site_span).build(cond_expr, panic_path())
+        // FIXME(estebank): we use the condition the user passed without coercing to `bool` when
+        // `generic_assert` is enabled, but we could use `cond_expr` instead.
+        context::Context::new(cx, call_site_span).build(inner_cond_expr, panic_path())
     }
     // If `generic_assert` is not enabled, only outputs a literal "assertion failed: ..."
     // string
@@ -85,7 +88,7 @@ pub fn expand_assert<'cx>(
                 DUMMY_SP,
                 Symbol::intern(&format!(
                     "assertion failed: {}",
-                    pprust::expr_to_string(&cond_expr)
+                    pprust::expr_to_string(&inner_cond_expr)
                 )),
             )],
         );
@@ -95,8 +98,12 @@ pub fn expand_assert<'cx>(
     ExpandResult::Ready(MacEager::expr(expr))
 }
 
+// `assert!($cond_expr, $custom_message)`
 struct Assert {
+    // `{ let assert_macro: bool = $cond_expr; assert_macro }`
     cond_expr: P<Expr>,
+    // We keep the condition without the `bool` coercion for the panic message.
+    inner_cond_expr: P<Expr>,
     custom_message: Option<TokenStream>,
 }
 
@@ -118,7 +125,7 @@ fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PRes
         return Err(cx.dcx().create_err(errors::AssertRequiresBoolean { span: sp }));
     }
 
-    let cond_expr = parser.parse_expr()?;
+    let inner_cond_expr = parser.parse_expr()?;
 
     // Some crates use the `assert!` macro in the following form (note extra semicolon):
     //
@@ -154,10 +161,66 @@ fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PRes
         parser.unexpected()?;
     }
 
-    Ok(Assert { cond_expr, custom_message })
+    let cond_expr = expand_cond(cx, parser, inner_cond_expr.clone());
+    Ok(Assert { cond_expr, inner_cond_expr, custom_message })
+}
+
+fn expand_cond(cx: &ExtCtxt<'_>, parser: Parser<'_>, cond_expr: P<Expr>) -> P<Expr> {
+    let span = cx.with_call_site_ctxt(cond_expr.span);
+    // Coerce the expression to `bool` for more accurate errors. If `assert!` is passed an
+    // expression that isn't `bool`, the type error will point at only the expression and not the
+    // entire macro call. If a non-`bool` is passed that doesn't implement `trait Not`, we won't
+    // talk about traits, we'll just state the appropriate type error.
+    // `let assert_macro: bool = $expr;`
+    let ident = Ident::new(sym::assert_macro, DUMMY_SP);
+
+    let expr = if use_assert_2024(span) {
+        // `{ let assert_macro: bool = $expr; assert_macro }`
+        cond_expr
+    } else {
+        // In <=2021, we allow anything that can be negated to `bool`, not just `bool`s. We use the
+        // "double not" trick to coerce the expression to `bool`. We still assign it to a new `bool`
+        // binding so that in the case of a type that implements `Not` but doesn't return `bool`,
+        // like `i32`, we still point at the condition and not at the whole macro.
+        // `{ let assert_macro: bool = !!$expr; assert_macro }`
+        let not = |expr| parser.mk_expr(span, ast::ExprKind::Unary(ast::UnOp::Not, expr));
+        not(not(cond_expr))
+    };
+    let block = thin_vec![
+        cx.stmt_let_ty(
+            DUMMY_SP,
+            false,
+            ident,
+            Some(cx.ty_ident(span, Ident::new(sym::bool, DUMMY_SP))),
+            expr,
+        ),
+        parser.mk_stmt(
+            span,
+            ast::StmtKind::Expr(
+                parser.mk_expr(span, ast::ExprKind::Path(None, ast::Path::from_ident(ident)))
+            ),
+        ),
+    ];
+    parser.mk_expr(
+        span,
+        ast::ExprKind::Block(parser.mk_block(block, ast::BlockCheckMode::Default, span), None),
+    )
 }
 
 fn parse_custom_message(parser: &mut Parser<'_>) -> Option<TokenStream> {
     let ts = parser.parse_tokens();
     if !ts.is_empty() { Some(ts) } else { None }
+}
+
+pub fn use_assert_2024(mut span: Span) -> bool {
+    // To determine the edition, we check the first span up the expansion
+    // stack that isn't internal.
+    loop {
+        let expn = span.ctxt().outer_expn_data();
+        if let Some(_features) = expn.allow_internal_unstable {
+            span = expn.call_site;
+            continue;
+        }
+        break expn.edition >= Edition::Edition2024;
+    }
 }
