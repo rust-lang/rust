@@ -77,7 +77,7 @@ pub(crate) fn report_type_error(
             },
             ty_name
         )
-    );
+    )
 }
 
 /// Reports an error if the field's type does not match `path`.
@@ -88,7 +88,7 @@ fn report_error_if_not_applied_to_ty(
     ty_name: &str,
 ) -> Result<(), DiagnosticDeriveError> {
     if !type_matches_path(info.ty.inner_type(), path) {
-        report_type_error(attr, ty_name)?;
+        report_type_error(attr, ty_name)?
     }
 
     Ok(())
@@ -115,7 +115,7 @@ pub(crate) fn report_error_if_not_applied_to_span(
     if !type_matches_path(info.ty.inner_type(), &["rustc_span", "Span"])
         && !type_matches_path(info.ty.inner_type(), &["rustc_errors", "MultiSpan"])
     {
-        report_type_error(attr, "`Span` or `MultiSpan`")?;
+        report_type_error(attr, "`Span` or `MultiSpan`")?
     }
 
     Ok(())
@@ -662,7 +662,7 @@ impl SubdiagnosticVariant {
                         applicability: None,
                     }
                 } else {
-                    throw_invalid_attr!(attr);
+                    throw_invalid_attr!(attr)
                 }
             }
         };

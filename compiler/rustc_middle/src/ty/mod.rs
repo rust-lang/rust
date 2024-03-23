@@ -1631,9 +1631,8 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// [`opt_item_name`]: Self::opt_item_name
     pub fn item_name(self, id: DefId) -> Symbol {
-        self.opt_item_name(id).unwrap_or_else(|| {
-            bug!("item_name: no name for {:?}", self.def_path(id));
-        })
+        self.opt_item_name(id)
+            .unwrap_or_else(|| bug!("item_name: no name for {:?}", self.def_path(id)))
     }
 
     /// Look up the name and span of a definition.

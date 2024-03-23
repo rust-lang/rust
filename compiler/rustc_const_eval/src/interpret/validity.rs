@@ -476,7 +476,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                             Some(CtfeValidationMode::Const { .. }) => {
                                 // We can't recursively validate `extern static`, so we better reject them.
                                 if self.ecx.tcx.is_foreign_item(did) {
-                                    throw_validation_failure!(self.path, ConstRefToExtern);
+                                    throw_validation_failure!(self.path, ConstRefToExtern)
                                 }
                             }
                             None => {}
@@ -518,14 +518,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     if ptr_expected_mutbl == Mutability::Mut
                         && alloc_actual_mutbl == Mutability::Not
                     {
-                        throw_validation_failure!(self.path, MutableRefToImmutable);
+                        throw_validation_failure!(self.path, MutableRefToImmutable)
                     }
                     // In a const, everything must be completely immutable.
                     if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. })) {
                         if ptr_expected_mutbl == Mutability::Mut
                             || alloc_actual_mutbl == Mutability::Mut
                         {
-                            throw_validation_failure!(self.path, ConstRefToMutable);
+                            throw_validation_failure!(self.path, ConstRefToMutable)
                         }
                     }
                 }
@@ -621,7 +621,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 } else {
                     // Otherwise (for standalone Miri), we have to still check it to be non-null.
                     if self.ecx.scalar_may_be_null(value)? {
-                        throw_validation_failure!(self.path, NullFnPtr);
+                        throw_validation_failure!(self.path, NullFnPtr)
                     }
                 }
                 Ok(true)
@@ -786,7 +786,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         if self.ctfe_mode.is_some_and(|c| !c.allow_immutable_unsafe_cell()) {
             if !op.layout.is_zst() && !op.layout.ty.is_freeze(*self.ecx.tcx, self.ecx.param_env) {
                 if !self.in_mutable_memory(op) {
-                    throw_validation_failure!(self.path, UnsafeCellInImmutable);
+                    throw_validation_failure!(self.path, UnsafeCellInImmutable)
                 }
             }
         }
@@ -819,7 +819,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 && def.is_unsafe_cell()
             {
                 if !self.in_mutable_memory(op) {
-                    throw_validation_failure!(self.path, UnsafeCellInImmutable);
+                    throw_validation_failure!(self.path, UnsafeCellInImmutable)
                 }
             }
         }
@@ -934,7 +934,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         match op.layout.abi {
             Abi::Uninhabited => {
                 let ty = op.layout.ty;
-                throw_validation_failure!(self.path, UninhabitedVal { ty });
+                throw_validation_failure!(self.path, UninhabitedVal { ty })
             }
             Abi::Scalar(scalar_layout) => {
                 if !scalar_layout.is_uninit_valid() {

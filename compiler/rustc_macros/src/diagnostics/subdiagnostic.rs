@@ -205,7 +205,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     format!(
                         "diagnostic slug must be first argument of a `#[{name}(...)]` attribute"
                     )
-                );
+                )
             };
 
             kind_slugs.push((kind, slug, no_span));
@@ -327,7 +327,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                             } else {
                                 diag
                             }
-                        });
+                        })
                     }
 
                     self.span_field.set_once(binding, span);
@@ -489,7 +489,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 throw_span_err!(
                     self.variant.ast().ident.span().unwrap(),
                     "subdiagnostic kind not specified"
-                );
+                )
             }
         };
 

@@ -152,7 +152,7 @@ impl DiagnosticDeriveVariantBuilder {
 
         if let SubdiagnosticKind::MultipartSuggestion { .. } = subdiag.kind {
             throw_invalid_attr!(attr, |diag| diag
-                .help("consider creating a `Subdiagnostic` instead"));
+                .help("consider creating a `Subdiagnostic` instead"))
         }
 
         let slug = subdiag.slug.unwrap_or_else(|| match subdiag.kind {
@@ -238,7 +238,7 @@ impl DiagnosticDeriveVariantBuilder {
             }
             SubdiagnosticKind::Label | SubdiagnosticKind::Suggestion { .. } => {
                 throw_invalid_attr!(attr, |diag| diag
-                    .help("`#[label]` and `#[suggestion]` can only be applied to fields"));
+                    .help("`#[label]` and `#[suggestion]` can only be applied to fields"))
             }
             SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
         }
@@ -373,7 +373,7 @@ impl DiagnosticDeriveVariantBuilder {
                         .note("`#[suggestion(...)]` applied to `Vec` field is ambiguous")
                         .help("to show a suggestion consisting of multiple parts, use a `Subdiagnostic` annotated with `#[multipart_suggestion(...)]`")
                         .help("to show a variable set of suggestions, use a `Vec` of `Subdiagnostic`s annotated with `#[suggestion(...)]`")
-                    });
+                    })
                 }
 
                 let (span_field, mut applicability) = self.span_and_applicability_of_ty(info)?;
@@ -458,15 +458,13 @@ impl DiagnosticDeriveVariantBuilder {
                     } else if type_matches_path(elem, &["rustc_errors", "Applicability"]) {
                         applicability_idx.set_once(syn::Index::from(idx), elem.span().unwrap());
                     } else {
-                        type_err(&elem.span())?;
+                        type_err(&elem.span())?
                     }
                 }
 
-                let Some((span_idx, _)) = span_idx else {
-                    type_err(&tup.span())?;
-                };
+                let Some((span_idx, _)) = span_idx else { type_err(&tup.span())? };
                 let Some((applicability_idx, applicability_span)) = applicability_idx else {
-                    type_err(&tup.span())?;
+                    type_err(&tup.span())?
                 };
                 let binding = &info.binding.binding;
                 let span = quote!(#binding.#span_idx);

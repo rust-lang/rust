@@ -548,7 +548,7 @@ fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: hir::HirId) {
             tcx.hir().node_to_string(hir_id),
             hir_owner
         )
-    });
+    })
 }
 
 pub struct LocalTableInContext<'a, V> {

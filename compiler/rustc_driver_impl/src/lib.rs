@@ -643,21 +643,19 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
         });
         let (codegen_results, outputs) = match CodegenResults::deserialize_rlink(sess, rlink_data) {
             Ok((codegen, outputs)) => (codegen, outputs),
-            Err(err) => {
-                match err {
-                    CodegenErrors::WrongFileType => dcx.emit_fatal(RLinkWrongFileType),
-                    CodegenErrors::EmptyVersionNumber => dcx.emit_fatal(RLinkEmptyVersionNumber),
-                    CodegenErrors::EncodingVersionMismatch { version_array, rlink_version } => sess
-                        .dcx()
-                        .emit_fatal(RLinkEncodingVersionMismatch { version_array, rlink_version }),
-                    CodegenErrors::RustcVersionMismatch { rustc_version } => {
-                        dcx.emit_fatal(RLinkRustcVersionMismatch {
-                            rustc_version,
-                            current_version: sess.cfg_version,
-                        })
-                    }
-                };
-            }
+            Err(err) => match err {
+                CodegenErrors::WrongFileType => dcx.emit_fatal(RLinkWrongFileType),
+                CodegenErrors::EmptyVersionNumber => dcx.emit_fatal(RLinkEmptyVersionNumber),
+                CodegenErrors::EncodingVersionMismatch { version_array, rlink_version } => sess
+                    .dcx()
+                    .emit_fatal(RLinkEncodingVersionMismatch { version_array, rlink_version }),
+                CodegenErrors::RustcVersionMismatch { rustc_version } => {
+                    dcx.emit_fatal(RLinkRustcVersionMismatch {
+                        rustc_version,
+                        current_version: sess.cfg_version,
+                    })
+                }
+            },
         };
         if compiler.codegen_backend.link(sess, codegen_results, &outputs).is_err() {
             FatalError.raise();

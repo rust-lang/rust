@@ -264,9 +264,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     // Catch such calls and evaluate them instead of trying to load a constant's MIR.
     if let ty::InstanceDef::Intrinsic(def_id) = key.value.instance.def {
         let ty = key.value.instance.ty(tcx, key.param_env);
-        let ty::FnDef(_, args) = ty.kind() else {
-            bug!("intrinsic with type {:?}", ty);
-        };
+        let ty::FnDef(_, args) = ty.kind() else { bug!("intrinsic with type {:?}", ty) };
         return eval_nullary_intrinsic(tcx, key.param_env, def_id, args).map_err(|error| {
             let span = tcx.def_span(def_id);
 
