@@ -7,7 +7,6 @@ use crate::hir::is_range_literal;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use crate::rustc_middle::ty::Article;
-use crate::ty::TypeAndMut;
 use core::cmp::min;
 use core::iter;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
@@ -889,7 +888,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.dcx(),
                             errors::ExpectedReturnTypeLabel::Other { span: hir_ty.span, expected },
                         );
-                        self.try_suggest_return_impl_trait(err, expected, ty, fn_id);
+                        self.try_suggest_return_impl_trait(err, expected, found, fn_id);
+                        self.note_caller_chooses_ty_for_ty_param(err, expected, found);
                         return true;
                     }
                 }
@@ -897,6 +897,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => {}
         }
         false
+    }
+
+    fn note_caller_chooses_ty_for_ty_param(
+        &self,
+        diag: &mut Diag<'_>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        if let ty::Param(expected_ty_as_param) = expected.kind() {
+            diag.subdiagnostic(
+                self.dcx(),
+                errors::NoteCallerChoosesTyForTyParam {
+                    ty_param_name: expected_ty_as_param.name,
+                    found_ty: found,
+                },
+            );
+        }
     }
 
     /// check whether the return type is a generic type with a trait bound
@@ -1479,7 +1496,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
     ) -> bool {
         // Expected type needs to be a raw pointer.
-        let ty::RawPtr(ty::TypeAndMut { mutbl, .. }) = expected_ty.kind() else {
+        let ty::RawPtr(_, mutbl) = expected_ty.kind() else {
             return false;
         };
 
@@ -2509,11 +2526,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return make_sugg(sp, expr.span.lo());
                 }
             }
-            (
-                _,
-                &ty::RawPtr(TypeAndMut { ty: ty_b, mutbl: mutbl_b }),
-                &ty::Ref(_, ty_a, mutbl_a),
-            ) => {
+            (_, &ty::RawPtr(ty_b, mutbl_b), &ty::Ref(_, ty_a, mutbl_a)) => {
                 if let Some(steps) = self.deref_steps(ty_a, ty_b)
                     // Only suggest valid if dereferencing needed.
                     && steps > 0

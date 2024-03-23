@@ -18,7 +18,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{
-    self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ImplPolarity, ParamTy, ProjectionPredicate,
+    self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate,
     TraitPredicate, Ty,
 };
 use rustc_span::{sym, Symbol};
@@ -336,12 +336,9 @@ fn check_other_call_arg<'tcx>(
         && let Some((n_refs, receiver_ty)) = if n_refs > 0 || is_copy(cx, receiver_ty) {
             Some((n_refs, receiver_ty))
         } else if trait_predicate.def_id() != deref_trait_id {
-            Some((1, Ty::new_ref(cx.tcx,
+            Some((1, Ty::new_imm_ref(cx.tcx,
                 cx.tcx.lifetimes.re_erased,
-                ty::TypeAndMut {
-                    ty: receiver_ty,
-                    mutbl: Mutability::Not,
-                },
+                receiver_ty,
             )))
         } else {
             None
@@ -669,7 +666,7 @@ fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         && let Some(borrow_id) = cx.tcx.get_diagnostic_item(sym::Borrow)
         && cx.tcx.predicates_of(method_def_id).predicates.iter().any(|(pred, _)| {
             if let ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
-                && trait_pred.polarity == ImplPolarity::Positive
+                && trait_pred.polarity == ty::PredicatePolarity::Positive
                 && trait_pred.trait_ref.def_id == borrow_id
             {
                 true

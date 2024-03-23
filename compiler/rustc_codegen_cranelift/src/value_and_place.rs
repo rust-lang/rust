@@ -865,15 +865,10 @@ pub(crate) fn assert_assignable<'tcx>(
         return;
     }
     match (from_ty.kind(), to_ty.kind()) {
-        (ty::Ref(_, a, _), ty::Ref(_, b, _))
-        | (
-            ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }),
-            ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }),
-        ) => {
+        (ty::Ref(_, a, _), ty::Ref(_, b, _)) | (ty::RawPtr(a, _), ty::RawPtr(b, _)) => {
             assert_assignable(fx, *a, *b, limit - 1);
         }
-        (ty::Ref(_, a, _), ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }))
-        | (ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }), ty::Ref(_, b, _)) => {
+        (ty::Ref(_, a, _), ty::RawPtr(b, _)) | (ty::RawPtr(a, _), ty::Ref(_, b, _)) => {
             assert_assignable(fx, *a, *b, limit - 1);
         }
         (ty::FnPtr(_), ty::FnPtr(_)) => {

@@ -138,7 +138,7 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push(')');
             }
         }
-        ty::RawPtr(ty::TypeAndMut { ty: inner_type, mutbl }) => {
+        ty::RawPtr(inner_type, mutbl) => {
             if cpp_like_debuginfo {
                 match mutbl {
                     Mutability::Not => output.push_str("ptr_const$<"),

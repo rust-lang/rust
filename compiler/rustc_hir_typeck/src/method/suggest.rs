@@ -304,11 +304,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind() {
                     if needs_mut {
-                        let trait_type = Ty::new_ref(
-                            self.tcx,
-                            *region,
-                            ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() },
-                        );
+                        let trait_type =
+                            Ty::new_ref(self.tcx, *region, *t_type, mutability.invert());
                         let msg = format!("you need `{trait_type}` instead of `{rcvr_ty}`");
                         let mut kind = &self_expr.kind;
                         while let hir::ExprKind::AddrOf(_, _, expr)
@@ -533,7 +530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
         }
-        if let ty::RawPtr(_) = &rcvr_ty.kind() {
+        if let ty::RawPtr(_, _) = &rcvr_ty.kind() {
             err.note(
                 "try using `<*const T>::as_ref()` to get a reference to the \
                  type behind the pointer: https://doc.rust-lang.org/std/\
@@ -875,7 +872,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 match pred.kind().skip_binder() {
                                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
                                         Some(pred.def_id()) == self.tcx.lang_items().sized_trait()
-                                            && pred.polarity == ty::ImplPolarity::Positive
+                                            && pred.polarity == ty::PredicatePolarity::Positive
                                     }
                                     _ => false,
                                 }
@@ -3367,7 +3364,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 "inherent impls can't be candidates, only trait impls can be",
                             )
                         })
-                        .filter(|header| header.polarity == ty::ImplPolarity::Negative)
+                        .filter(|header| header.polarity != ty::ImplPolarity::Positive)
                         .any(|header| {
                             let imp = header.trait_ref.instantiate_identity();
                             let imp_simp =

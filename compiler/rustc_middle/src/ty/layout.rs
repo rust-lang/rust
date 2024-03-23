@@ -328,7 +328,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         };
 
         match *ty.kind() {
-            ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
+            ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                 let non_zero = !ty.is_unsafe_ptr();
                 let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
                 match tail.kind() {
@@ -345,11 +345,16 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ty::Array(inner, len)
                 if len.ty() == tcx.types.usize && tcx.features().transmute_generic_consts =>
             {
+                let len_eval = len.try_eval_target_usize(tcx, param_env);
+                if len_eval == Some(0) {
+                    return Ok(SizeSkeleton::Known(Size::from_bytes(0)));
+                }
+
                 match SizeSkeleton::compute(inner, tcx, param_env)? {
                     // This may succeed because the multiplication of two types may overflow
                     // but a single size of a nested array will not.
                     SizeSkeleton::Known(s) => {
-                        if let Some(c) = len.try_eval_target_usize(tcx, param_env) {
+                        if let Some(c) = len_eval {
                             let size = s
                                 .bytes()
                                 .checked_mul(c)
@@ -742,7 +747,7 @@ where
                 }
 
                 // Potentially-fat pointers.
-                ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
+                ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                     assert!(i < this.fields.count());
 
                     // Reuse the fat `*T` type as its own thin pointer data field.
@@ -920,8 +925,8 @@ where
         let param_env = cx.param_env();
 
         let pointee_info = match *this.ty.kind() {
-            ty::RawPtr(mt) if offset.bytes() == 0 => {
-                tcx.layout_of(param_env.and(mt.ty)).ok().map(|layout| PointeeInfo {
+            ty::RawPtr(p_ty, _) if offset.bytes() == 0 => {
+                tcx.layout_of(param_env.and(p_ty)).ok().map(|layout| PointeeInfo {
                     size: layout.size,
                     align: layout.align.abi,
                     safe: None,

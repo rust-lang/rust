@@ -475,7 +475,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             NewPermission::from_ref_ty(pointee, mutability, self.kind, self.ecx);
                         self.retag_ptr_inplace(place, new_perm)?;
                     }
-                    ty::RawPtr(_) => {
+                    ty::RawPtr(_, _) => {
                         // We definitely do *not* want to recurse into raw pointers -- wide raw
                         // pointers have fields, and for dyn Trait pointees those can have reference
                         // type!

@@ -10,7 +10,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, EarlyBinder, Ty, TypeAndMut};
+use rustc_middle::ty::{self, EarlyBinder, Ty};
 use rustc_span::sym;
 
 pub(super) fn check(
@@ -160,7 +160,7 @@ fn is_ref_iterable<'tcx>(
                 let self_ty = if mutbl.is_mut() {
                     self_ty
                 } else {
-                    Ty::new_ref(cx.tcx, region, TypeAndMut { ty, mutbl })
+                    Ty::new_ref(cx.tcx, region, ty, mutbl)
                 };
                 if implements_trait(cx, self_ty, trait_id, &[])
                     && let Some(ty) =
@@ -175,7 +175,7 @@ fn is_ref_iterable<'tcx>(
             && !self_ty.is_ref()
         {
             // Attempt to borrow
-            let self_ty = Ty::new_ref(cx.tcx, cx.tcx.lifetimes.re_erased, TypeAndMut { ty: self_ty, mutbl });
+            let self_ty = Ty::new_ref(cx.tcx, cx.tcx.lifetimes.re_erased, self_ty, mutbl);
             if implements_trait(cx, self_ty, trait_id, &[])
                 && let Some(ty) = make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [self_ty])
                 && ty == res_ty

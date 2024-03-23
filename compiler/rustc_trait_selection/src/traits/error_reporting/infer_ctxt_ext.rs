@@ -206,7 +206,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         ty: ty::Binder<'tcx, Ty<'tcx>>,
-        polarity: ty::ImplPolarity,
+        polarity: ty::PredicatePolarity,
     ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()> {
         self.commit_if_ok(|_| {
             for trait_def_id in [

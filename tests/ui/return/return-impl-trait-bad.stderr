@@ -10,6 +10,7 @@ LL |     "this should not suggest impl Trait"
    |
    = note: expected type parameter `T`
                    found reference `&'static str`
+   = note: the caller chooses a type for `T` which can be different from `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/return-impl-trait-bad.rs:9:5
@@ -23,6 +24,7 @@ LL |     "this will not suggest it, because that would probably be wrong"
    |
    = note: expected type parameter `T`
                    found reference `&'static str`
+   = note: the caller chooses a type for `T` which can be different from `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/return-impl-trait-bad.rs:17:5
@@ -37,6 +39,7 @@ LL |     "don't suggest this, because Option<T> places additional constraints"
    |
    = note: expected type parameter `T`
                    found reference `&'static str`
+   = note: the caller chooses a type for `T` which can be different from `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/return-impl-trait-bad.rs:28:5
@@ -53,6 +56,7 @@ LL |     "don't suggest this, because the generic param is used in the bound."
    |
    = note: expected type parameter `T`
                    found reference `&'static str`
+   = note: the caller chooses a type for `T` which can be different from `&'static str`
 
 error: aborting due to 4 previous errors
 

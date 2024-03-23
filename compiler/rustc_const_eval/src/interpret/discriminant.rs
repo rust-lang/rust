@@ -2,7 +2,7 @@
 
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, ScalarInt, Ty};
 use rustc_target::abi::{self, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
@@ -28,78 +28,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             throw_ub!(UninhabitedEnumVariantWritten(variant_index))
         }
 
-        match dest.layout().variants {
-            abi::Variants::Single { index } => {
-                assert_eq!(index, variant_index);
-            }
-            abi::Variants::Multiple {
-                tag_encoding: TagEncoding::Direct,
-                tag: tag_layout,
-                tag_field,
-                ..
-            } => {
+        match self.tag_for_variant(dest.layout().ty, variant_index)? {
+            Some((tag, tag_field)) => {
                 // No need to validate that the discriminant here because the
-                // `TyAndLayout::for_variant()` call earlier already checks the variant is valid.
-
-                let discr_val = dest
-                    .layout()
-                    .ty
-                    .discriminant_for_variant(*self.tcx, variant_index)
-                    .unwrap()
-                    .val;
-
-                // raw discriminants for enums are isize or bigger during
-                // their computation, but the in-memory tag is the smallest possible
-                // representation
-                let size = tag_layout.size(self);
-                let tag_val = size.truncate(discr_val);
-
+                // `TyAndLayout::for_variant()` call earlier already checks the
+                // variant is valid.
                 let tag_dest = self.project_field(dest, tag_field)?;
-                self.write_scalar(Scalar::from_uint(tag_val, size), &tag_dest)?;
+                self.write_scalar(tag, &tag_dest)
             }
-            abi::Variants::Multiple {
-                tag_encoding:
-                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
-                tag: tag_layout,
-                tag_field,
-                ..
-            } => {
-                // No need to validate that the discriminant here because the
-                // `TyAndLayout::for_variant()` call earlier already checks the variant is valid.
-
-                if variant_index != untagged_variant {
-                    let variants_start = niche_variants.start().as_u32();
-                    let variant_index_relative = variant_index
-                        .as_u32()
-                        .checked_sub(variants_start)
-                        .expect("overflow computing relative variant idx");
-                    // We need to use machine arithmetic when taking into account `niche_start`:
-                    // tag_val = variant_index_relative + niche_start_val
-                    let tag_layout = self.layout_of(tag_layout.primitive().to_int_ty(*self.tcx))?;
-                    let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
-                    let variant_index_relative_val =
-                        ImmTy::from_uint(variant_index_relative, tag_layout);
-                    let tag_val = self.wrapping_binary_op(
-                        mir::BinOp::Add,
-                        &variant_index_relative_val,
-                        &niche_start_val,
-                    )?;
-                    // Write result.
-                    let niche_dest = self.project_field(dest, tag_field)?;
-                    self.write_immediate(*tag_val, &niche_dest)?;
-                } else {
-                    // The untagged variant is implicitly encoded simply by having a value that is
-                    // outside the niche variants. But what if the data stored here does not
-                    // actually encode this variant? That would be bad! So let's double-check...
-                    let actual_variant = self.read_discriminant(&dest.to_op(self)?)?;
-                    if actual_variant != variant_index {
-                        throw_ub!(InvalidNichedEnumVariantWritten { enum_ty: dest.layout().ty });
-                    }
+            None => {
+                // No need to write the tag here, because an untagged variant is
+                // implicitly encoded. For `Niche`-optimized enums, it's by
+                // simply by having a value that is outside the niche variants.
+                // But what if the data stored here does not actually encode
+                // this variant? That would be bad! So let's double-check...
+                let actual_variant = self.read_discriminant(&dest.to_op(self)?)?;
+                if actual_variant != variant_index {
+                    throw_ub!(InvalidNichedEnumVariantWritten { enum_ty: dest.layout().ty });
                 }
+                Ok(())
             }
         }
-
-        Ok(())
     }
 
     /// Read discriminant, return the runtime value as well as the variant index.
@@ -276,5 +225,78 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
         Ok(ImmTy::from_scalar(discr_value, discr_layout))
+    }
+
+    /// Computes the tag value and its field number (if any) of a given variant
+    /// of type `ty`.
+    pub(crate) fn tag_for_variant(
+        &self,
+        ty: Ty<'tcx>,
+        variant_index: VariantIdx,
+    ) -> InterpResult<'tcx, Option<(ScalarInt, usize)>> {
+        match self.layout_of(ty)?.variants {
+            abi::Variants::Single { index } => {
+                assert_eq!(index, variant_index);
+                Ok(None)
+            }
+
+            abi::Variants::Multiple {
+                tag_encoding: TagEncoding::Direct,
+                tag: tag_layout,
+                tag_field,
+                ..
+            } => {
+                // raw discriminants for enums are isize or bigger during
+                // their computation, but the in-memory tag is the smallest possible
+                // representation
+                let discr = self.discriminant_for_variant(ty, variant_index)?;
+                let discr_size = discr.layout.size;
+                let discr_val = discr.to_scalar().to_bits(discr_size)?;
+                let tag_size = tag_layout.size(self);
+                let tag_val = tag_size.truncate(discr_val);
+                let tag = ScalarInt::try_from_uint(tag_val, tag_size).unwrap();
+                Ok(Some((tag, tag_field)))
+            }
+
+            abi::Variants::Multiple {
+                tag_encoding: TagEncoding::Niche { untagged_variant, .. },
+                ..
+            } if untagged_variant == variant_index => {
+                // The untagged variant is implicitly encoded simply by having a
+                // value that is outside the niche variants.
+                Ok(None)
+            }
+
+            abi::Variants::Multiple {
+                tag_encoding:
+                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
+                tag: tag_layout,
+                tag_field,
+                ..
+            } => {
+                assert!(variant_index != untagged_variant);
+                let variants_start = niche_variants.start().as_u32();
+                let variant_index_relative = variant_index
+                    .as_u32()
+                    .checked_sub(variants_start)
+                    .expect("overflow computing relative variant idx");
+                // We need to use machine arithmetic when taking into account `niche_start`:
+                // tag_val = variant_index_relative + niche_start_val
+                let tag_layout = self.layout_of(tag_layout.primitive().to_int_ty(*self.tcx))?;
+                let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
+                let variant_index_relative_val =
+                    ImmTy::from_uint(variant_index_relative, tag_layout);
+                let tag = self
+                    .wrapping_binary_op(
+                        mir::BinOp::Add,
+                        &variant_index_relative_val,
+                        &niche_start_val,
+                    )?
+                    .to_scalar()
+                    .try_to_int()
+                    .unwrap();
+                Ok(Some((tag, tag_field)))
+            }
+        }
     }
 }

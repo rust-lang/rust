@@ -188,7 +188,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 // Type we're wrapping in a reference, used later for unsizing
                 let base_ty = target;
 
-                target = Ty::new_ref(self.tcx, region, ty::TypeAndMut { mutbl, ty: target });
+                target = Ty::new_ref(self.tcx, region, target, mutbl);
 
                 // Method call receivers are the primary use case
                 // for two-phase borrows.
@@ -208,11 +208,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                             base_ty
                         )
                     };
-                    target = Ty::new_ref(
-                        self.tcx,
-                        region,
-                        ty::TypeAndMut { mutbl: mutbl.into(), ty: unsized_ty },
-                    );
+                    target = Ty::new_ref(self.tcx, region, unsized_ty, mutbl.into());
                     adjustments.push(Adjustment {
                         kind: Adjust::Pointer(PointerCoercion::Unsize),
                         target,
@@ -221,9 +217,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
                 target = match target.kind() {
-                    &ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
+                    &ty::RawPtr(ty, mutbl) => {
                         assert!(mutbl.is_mut());
-                        Ty::new_ptr(self.tcx, ty::TypeAndMut { mutbl: hir::Mutability::Not, ty })
+                        Ty::new_imm_ptr(self.tcx, ty)
                     }
                     other => panic!("Cannot adjust receiver type {other:?} to const ptr"),
                 };

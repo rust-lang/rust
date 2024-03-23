@@ -375,7 +375,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // We cannot use `builtin_deref` here since we need to reject `Box<T, MyAlloc>`.
             Ok(Some(match ty.kind() {
                 ty::Ref(_, ty, _) => *ty,
-                ty::RawPtr(mt) => mt.ty,
+                ty::RawPtr(ty, _) => *ty,
                 // We only accept `Box` with the default allocator.
                 _ if ty.is_box_global(*self.tcx) => ty.boxed_ty(),
                 _ => return Ok(None),

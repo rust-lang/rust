@@ -310,10 +310,10 @@ pub enum SubstructureFields<'a> {
     /// variants has any fields).
     AllFieldlessEnum(&'a ast::EnumDef),
 
-    /// Matching variants of the enum: variant index, variant count, ast::Variant,
+    /// Matching variants of the enum: variant index, ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
     /// variant.
-    EnumMatching(usize, usize, &'a ast::Variant, Vec<FieldInfo>),
+    EnumMatching(usize, &'a ast::Variant, Vec<FieldInfo>),
 
     /// The tag of an enum. The first field is a `FieldInfo` for the tags, as
     /// if they were fields. The second field is the expression to combine the
@@ -1272,7 +1272,7 @@ impl<'a> MethodDef<'a> {
                     trait_,
                     type_ident,
                     nonselflike_args,
-                    &EnumMatching(0, 1, &variants[0], Vec::new()),
+                    &EnumMatching(0, &variants[0], Vec::new()),
                 );
             }
         }
@@ -1318,7 +1318,7 @@ impl<'a> MethodDef<'a> {
                 // expressions for referencing every field of every
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
-                let substructure = EnumMatching(index, variants.len(), variant, fields);
+                let substructure = EnumMatching(index, variant, fields);
                 let arm_expr = self
                     .call_substructure_method(
                         cx,
@@ -1346,7 +1346,7 @@ impl<'a> MethodDef<'a> {
                         trait_,
                         type_ident,
                         nonselflike_args,
-                        &EnumMatching(0, variants.len(), v, Vec::new()),
+                        &EnumMatching(0, v, Vec::new()),
                     )
                     .into_expr(cx, span),
                 )

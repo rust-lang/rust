@@ -21,9 +21,11 @@ pub struct Epoll {
 /// <https://man7.org/linux/man-pages/man2/epoll_ctl.2.html>
 #[derive(Clone, Debug)]
 pub struct EpollEvent {
+    #[allow(dead_code)]
     pub events: u32,
     /// `Scalar<Provenance>` is used to represent the
     /// `epoll_data` type union.
+    #[allow(dead_code)]
     pub data: Scalar<Provenance>,
 }
 

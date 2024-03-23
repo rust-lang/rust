@@ -1,6 +1,6 @@
 use std::{
     env,
-    ffi::{OsStr, OsString},
+    ffi::OsString,
     fs::{self, File},
     io::{BufRead, BufReader, BufWriter, ErrorKind, Write},
     path::{Path, PathBuf},
@@ -183,7 +183,7 @@ impl Config {
             entries
         };
         patchelf.args(&[OsString::from("--set-rpath"), rpath_entries]);
-        if !fname.extension().map_or(false, |ext| ext == "so") {
+        if !path_is_dylib(fname) {
             // Finally, set the correct .interp for binaries
             let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
             // FIXME: can we support utf8 here? `args` doesn't accept Vec<u8>, only OsString ...
@@ -440,7 +440,7 @@ impl Config {
             let lib_dir = bin_root.join("lib");
             for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
                 let lib = t!(lib);
-                if lib.path().extension() == Some(OsStr::new("so")) {
+                if path_is_dylib(&lib.path()) {
                     self.fix_bin_or_dylib(&lib.path());
                 }
             }
@@ -545,7 +545,7 @@ impl Config {
                 let lib_dir = bin_root.join("lib");
                 for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
                     let lib = t!(lib);
-                    if lib.path().extension() == Some(OsStr::new("so")) {
+                    if path_is_dylib(&lib.path()) {
                         self.fix_bin_or_dylib(&lib.path());
                     }
                 }
@@ -697,7 +697,7 @@ download-rustc = false
                 let llvm_lib = llvm_root.join("lib");
                 for entry in t!(fs::read_dir(llvm_lib)) {
                     let lib = t!(entry).path();
-                    if lib.extension().map_or(false, |ext| ext == "so") {
+                    if path_is_dylib(&lib) {
                         self.fix_bin_or_dylib(&lib);
                     }
                 }
@@ -742,4 +742,9 @@ download-rustc = false
         let llvm_root = self.ci_llvm_root();
         self.unpack(&tarball, &llvm_root, "rust-dev");
     }
+}
+
+fn path_is_dylib(path: &Path) -> bool {
+    // The .so is not necessarily the extension, it might be libLLVM.so.18.1
+    path.to_str().map_or(false, |path| path.contains(".so"))
 }

@@ -2140,18 +2140,9 @@ pub struct CargoTarget<'a> {
 #[derive(Deserialize)]
 #[serde(tag = "reason", rename_all = "kebab-case")]
 pub enum CargoMessage<'a> {
-    CompilerArtifact {
-        package_id: Cow<'a, str>,
-        features: Vec<Cow<'a, str>>,
-        filenames: Vec<Cow<'a, str>>,
-        target: CargoTarget<'a>,
-    },
-    BuildScriptExecuted {
-        package_id: Cow<'a, str>,
-    },
-    BuildFinished {
-        success: bool,
-    },
+    CompilerArtifact { filenames: Vec<Cow<'a, str>>, target: CargoTarget<'a> },
+    BuildScriptExecuted,
+    BuildFinished,
 }
 
 pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) {

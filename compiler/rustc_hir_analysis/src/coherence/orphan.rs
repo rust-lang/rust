@@ -323,7 +323,7 @@ fn emit_orphan_check_error<'tcx>(
                 let is_foreign =
                     !trait_ref.def_id.is_local() && matches!(is_target_ty, IsFirstInputType::No);
 
-                match &ty.kind() {
+                match *ty.kind() {
                     ty::Slice(_) => {
                         push_to_foreign_or_name(
                             is_foreign,
@@ -354,14 +354,14 @@ fn emit_orphan_check_error<'tcx>(
                     ty::Alias(ty::Opaque, ..) => {
                         opaque.push(errors::OnlyCurrentTraitsOpaque { span })
                     }
-                    ty::RawPtr(ptr_ty) => {
+                    ty::RawPtr(ptr_ty, mutbl) => {
                         if !self_ty.has_param() {
-                            let mut_key = ptr_ty.mutbl.prefix_str();
+                            let mut_key = mutbl.prefix_str();
                             sugg = Some(errors::OnlyCurrentTraitsPointerSugg {
                                 wrapper_span: self_ty_span,
                                 struct_span: full_impl_span.shrink_to_lo(),
                                 mut_key,
-                                ptr_ty: ptr_ty.ty,
+                                ptr_ty,
                             });
                         }
                         pointer.push(errors::OnlyCurrentTraitsPointer { span, pointer: ty });
