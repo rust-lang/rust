@@ -174,7 +174,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
                 cx,
                 LARGE_STACK_FRAMES,
                 fn_span,
-                &format!("this function may allocate {frame_size} on the stack"),
+                format!("this function may allocate {frame_size} on the stack"),
                 |diag| {
                     // Point out the largest individual contribution to this size, because
                     // it is the most likely to be unintentionally large.

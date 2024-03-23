@@ -161,7 +161,7 @@ fn lint_path(cx: &LateContext<'_>, replace: Span, root: Span, is_copy: bool) {
         MAP_CLONE,
         replace,
         "you are explicitly cloning with `.map()`",
-        &format!("consider calling the dedicated `{replacement}` method"),
+        format!("consider calling the dedicated `{replacement}` method"),
         format!(
             "{}.{replacement}()",
             snippet_with_applicability(cx, root, "..", &mut applicability),
@@ -184,7 +184,7 @@ fn lint_explicit_closure(cx: &LateContext<'_>, replace: Span, root: Span, is_cop
         MAP_CLONE,
         replace,
         message,
-        &format!("consider calling the dedicated `{sugg_method}` method"),
+        format!("consider calling the dedicated `{sugg_method}` method"),
         format!(
             "{}.{sugg_method}()",
             snippet_with_applicability(cx, root, "..", &mut applicability),

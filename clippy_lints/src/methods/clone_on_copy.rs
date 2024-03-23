@@ -94,7 +94,7 @@ pub(super) fn check(
             cx,
             CLONE_ON_COPY,
             expr.span,
-            &with_forced_trimmed_paths!(format!(
+            with_forced_trimmed_paths!(format!(
                 "using `clone` on type `{ty}` which implements the `Copy` trait"
             )),
             help,

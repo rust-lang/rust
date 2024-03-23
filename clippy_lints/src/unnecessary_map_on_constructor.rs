@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
                     cx,
                     UNNECESSARY_MAP_ON_CONSTRUCTOR,
                     expr.span,
-                    &format!(
+                    format!(
                         "unnecessary {} on constructor {constructor_snippet}(_)",
                         path.ident.name
                     ),

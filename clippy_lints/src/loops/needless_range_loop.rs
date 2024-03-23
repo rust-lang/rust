@@ -143,7 +143,7 @@ pub(super) fn check<'tcx>(
                         cx,
                         NEEDLESS_RANGE_LOOP,
                         arg.span,
-                        &format!("the loop variable `{}` is used to index `{indexed}`", ident.name),
+                        format!("the loop variable `{}` is used to index `{indexed}`", ident.name),
                         |diag| {
                             multispan_sugg(
                                 diag,
@@ -169,7 +169,7 @@ pub(super) fn check<'tcx>(
                         cx,
                         NEEDLESS_RANGE_LOOP,
                         arg.span,
-                        &format!("the loop variable `{}` is only used to index `{indexed}`", ident.name),
+                        format!("the loop variable `{}` is only used to index `{indexed}`", ident.name),
                         |diag| {
                             multispan_sugg(
                                 diag,

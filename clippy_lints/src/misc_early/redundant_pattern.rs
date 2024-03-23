@@ -12,7 +12,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, pat: &Pat) {
                 cx,
                 REDUNDANT_PATTERN,
                 pat.span,
-                &format!(
+                format!(
                     "the `{} @ _` pattern can be written as just `{}`",
                     ident.name, ident.name,
                 ),

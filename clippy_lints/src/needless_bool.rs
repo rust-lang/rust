@@ -317,11 +317,11 @@ fn one_side_is_unary_not<'tcx>(left_side: &'tcx Expr<'_>, right_side: &'tcx Expr
 fn check_comparison<'a, 'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx Expr<'_>,
-    left_true: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
-    left_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
-    right_true: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
-    right_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
-    no_literal: Option<(impl FnOnce(Sugg<'a>, Sugg<'a>) -> Sugg<'a>, &str)>,
+    left_true: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &'static str)>,
+    left_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &'static str)>,
+    right_true: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &'static str)>,
+    right_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &'static str)>,
+    no_literal: Option<(impl FnOnce(Sugg<'a>, Sugg<'a>) -> Sugg<'a>, &'static str)>,
 ) {
     if let ExprKind::Binary(op, left_side, right_side) = e.kind {
         let (l_ty, r_ty) = (
@@ -391,7 +391,7 @@ fn check_comparison<'a, 'tcx>(
                         binop_span,
                         m,
                         "try simplifying it as shown",
-                        h(left_side, right_side).to_string(),
+                        h(left_side, right_side).into_string(),
                         applicability,
                     );
                 }),
@@ -406,7 +406,7 @@ fn suggest_bool_comparison<'a, 'tcx>(
     span: Span,
     expr: &Expr<'_>,
     mut app: Applicability,
-    message: &str,
+    message: &'static str,
     conv_hint: impl FnOnce(Sugg<'a>) -> Sugg<'a>,
 ) {
     let hint = Sugg::hir_with_context(cx, expr, span.ctxt(), "..", &mut app);
@@ -416,7 +416,7 @@ fn suggest_bool_comparison<'a, 'tcx>(
         span,
         message,
         "try simplifying it as shown",
-        conv_hint(hint).to_string(),
+        conv_hint(hint).into_string(),
         app,
     );
 }

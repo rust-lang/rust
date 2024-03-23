@@ -97,7 +97,7 @@ pub(super) fn check<'tcx>(
         } else {
             "map_or(<a>, <f>)"
         };
-        let msg = &format!("called `map(<f>).unwrap_or({arg})` on an `Option` value");
+        let msg = format!("called `map(<f>).unwrap_or({arg})` on an `Option` value");
 
         span_lint_and_then(cx, MAP_UNWRAP_OR, expr.span, msg, |diag| {
             let map_arg_span = map_arg.span;

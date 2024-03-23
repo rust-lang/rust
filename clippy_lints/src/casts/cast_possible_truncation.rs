@@ -142,7 +142,7 @@ pub(super) fn check(
                     cx,
                     CAST_ENUM_TRUNCATION,
                     expr.span,
-                    &format!(
+                    format!(
                         "casting `{cast_from}::{}` to `{cast_to}` will truncate the value{suffix}",
                         variant.name,
                     ),
@@ -163,7 +163,7 @@ pub(super) fn check(
         _ => return,
     };
 
-    span_lint_and_then(cx, CAST_POSSIBLE_TRUNCATION, expr.span, &msg, |diag| {
+    span_lint_and_then(cx, CAST_POSSIBLE_TRUNCATION, expr.span, msg, |diag| {
         diag.help("if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...");
         if !cast_from.is_floating_point() {
             offer_suggestion(cx, expr, cast_expr, cast_to_span, diag);

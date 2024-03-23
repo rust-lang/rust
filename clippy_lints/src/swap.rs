@@ -103,7 +103,7 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
                     cx,
                     MANUAL_SWAP,
                     span,
-                    &format!("this looks like you are swapping elements of `{slice}` manually"),
+                    format!("this looks like you are swapping elements of `{slice}` manually"),
                     "try",
                     format!(
                         "{}.swap({}, {});",
@@ -126,7 +126,7 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
         cx,
         MANUAL_SWAP,
         span,
-        &format!("this looks like you are swapping `{first}` and `{second}` manually"),
+        format!("this looks like you are swapping `{first}` and `{second}` manually"),
         |diag| {
             diag.span_suggestion(
                 span,
@@ -201,7 +201,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
                 cx,
                 ALMOST_SWAPPED,
                 span,
-                &format!("this looks like you are trying to swap `{lhs_sugg}` and `{rhs_sugg}`"),
+                format!("this looks like you are trying to swap `{lhs_sugg}` and `{rhs_sugg}`"),
                 |diag| {
                     diag.span_suggestion(
                         span,

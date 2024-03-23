@@ -266,7 +266,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
                 cx,
                 LEN_WITHOUT_IS_EMPTY,
                 visited_trait.span,
-                &format!(
+                format!(
                     "trait `{}` has a `len` method but no (possibly inherited) `is_empty` method",
                     visited_trait.ident.name
                 ),
@@ -484,7 +484,7 @@ fn check_for_is_empty(
         Some(_) => return,
     };
 
-    span_lint_and_then(cx, LEN_WITHOUT_IS_EMPTY, span, &msg, |db| {
+    span_lint_and_then(cx, LEN_WITHOUT_IS_EMPTY, span, msg, |db| {
         if let Some(span) = is_empty_span {
             db.span_note(span, "`is_empty` defined here");
         }
@@ -542,8 +542,8 @@ fn check_len(
                 cx,
                 LEN_ZERO,
                 span,
-                &format!("length comparison to {}", if compare_to == 0 { "zero" } else { "one" }),
-                &format!("using `{op}is_empty` is clearer and more explicit"),
+                format!("length comparison to {}", if compare_to == 0 { "zero" } else { "one" }),
+                format!("using `{op}is_empty` is clearer and more explicit"),
                 format!(
                     "{op}{}.is_empty()",
                     snippet_with_context(cx, receiver.span, span.ctxt(), "_", &mut applicability).0,
@@ -566,7 +566,7 @@ fn check_empty_expr(cx: &LateContext<'_>, span: Span, lit1: &Expr<'_>, lit2: &Ex
             COMPARISON_TO_EMPTY,
             span,
             "comparison to empty slice",
-            &format!("using `{op}is_empty` is clearer and more explicit"),
+            format!("using `{op}is_empty` is clearer and more explicit"),
             format!("{op}{lit_str}.is_empty()"),
             applicability,
         );

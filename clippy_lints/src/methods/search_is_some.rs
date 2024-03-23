@@ -62,7 +62,7 @@ pub(super) fn check<'tcx>(
                     cx,
                     SEARCH_IS_SOME,
                     method_span.with_hi(expr.span.hi()),
-                    &msg,
+                    msg,
                     "consider using",
                     format!(
                         "any({})",
@@ -76,7 +76,7 @@ pub(super) fn check<'tcx>(
                     cx,
                     SEARCH_IS_SOME,
                     expr.span,
-                    &msg,
+                    msg,
                     "consider using",
                     format!(
                         "!{iter}.any({})",
@@ -94,7 +94,7 @@ pub(super) fn check<'tcx>(
                     ""
                 }
             );
-            span_lint_and_help(cx, SEARCH_IS_SOME, expr.span, &msg, None, &hint);
+            span_lint_and_help(cx, SEARCH_IS_SOME, expr.span, msg, None, hint);
         }
     }
     // lint if `find()` is called by `String` or `&str`
@@ -117,7 +117,7 @@ pub(super) fn check<'tcx>(
                         cx,
                         SEARCH_IS_SOME,
                         method_span.with_hi(expr.span.hi()),
-                        &msg,
+                        msg,
                         "consider using",
                         format!("contains({find_arg})"),
                         applicability,
@@ -131,7 +131,7 @@ pub(super) fn check<'tcx>(
                         cx,
                         SEARCH_IS_SOME,
                         expr.span,
-                        &msg,
+                        msg,
                         "consider using",
                         format!("!{string}.contains({find_arg})"),
                         applicability,

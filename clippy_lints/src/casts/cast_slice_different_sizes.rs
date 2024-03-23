@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Msrv
                     cx,
                     CAST_SLICE_DIFFERENT_SIZES,
                     expr.span,
-                    &format!(
+                    format!(
                         "casting between raw pointers to `[{}]` (element size {from_size}) and `[{}]` (element size {to_size}) does not adjust the count",
                         start_ty.ty, end_ty.ty,
                     ),

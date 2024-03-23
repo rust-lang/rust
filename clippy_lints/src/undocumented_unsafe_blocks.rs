@@ -251,7 +251,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
                             cx,
                             UNNECESSARY_SAFETY_COMMENT,
                             span,
-                            &format!("{} has unnecessary safety comment", item.kind.descr()),
+                            format!("{} has unnecessary safety comment", item.kind.descr()),
                             Some(help_span),
                             "consider removing the safety comment",
                         );
@@ -268,7 +268,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
                         cx,
                         UNNECESSARY_SAFETY_COMMENT,
                         span,
-                        &format!("{} has unnecessary safety comment", item.kind.descr()),
+                        format!("{} has unnecessary safety comment", item.kind.descr()),
                         Some(help_span),
                         "consider removing the safety comment",
                     );

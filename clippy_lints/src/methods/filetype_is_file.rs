@@ -34,5 +34,5 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
     }
     let lint_msg = format!("`{lint_unary}FileType::is_file()` only {verb} regular files");
     let help_msg = format!("use `{help_unary}FileType::is_dir()` instead");
-    span_lint_and_help(cx, FILETYPE_IS_FILE, span, &lint_msg, None, &help_msg);
+    span_lint_and_help(cx, FILETYPE_IS_FILE, span, lint_msg, None, help_msg);
 }

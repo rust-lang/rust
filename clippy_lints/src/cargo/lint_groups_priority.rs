@@ -102,7 +102,7 @@ fn check_table(cx: &LateContext<'_>, table: LintTable, groups: &FxHashSet<&str>,
                 cx,
                 LINT_GROUPS_PRIORITY,
                 toml_span(group.span(), file),
-                &format!(
+                format!(
                     "lint group `{}` has the same priority ({priority}) as a lint",
                     group.as_ref()
                 ),

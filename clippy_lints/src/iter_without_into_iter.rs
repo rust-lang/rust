@@ -182,7 +182,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                 cx,
                 INTO_ITER_WITHOUT_ITER,
                 item.span,
-                &format!("`IntoIterator` implemented for a reference type without an `{expected_method_name}` method"),
+                format!("`IntoIterator` implemented for a reference type without an `{expected_method_name}` method"),
                 |diag| {
                     // The suggestion forwards to the `IntoIterator` impl and uses a form of UFCS
                     // to avoid name ambiguities, as there might be an inherent into_iter method
@@ -258,7 +258,7 @@ impl {self_ty_without_ref} {{
                 cx,
                 ITER_WITHOUT_INTO_ITER,
                 item.span,
-                &format!(
+                format!(
                     "`{}` method without an `IntoIterator` impl for `{self_ty_snippet}`",
                     item.ident
                 ),

@@ -47,7 +47,7 @@ pub(super) fn check<'cx>(
             cx,
             CAST_SIGN_LOSS,
             expr.span,
-            &format!("casting `{cast_from}` to `{cast_to}` may lose the sign of the value"),
+            format!("casting `{cast_from}` to `{cast_to}` may lose the sign of the value"),
         );
     }
 }
