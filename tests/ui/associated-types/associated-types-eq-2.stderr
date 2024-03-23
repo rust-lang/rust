@@ -1,9 +1,177 @@
-error[E0229]: associated type bindings are not allowed here
-  --> $DIR/associated-types-eq-2.rs:16:30
+error[E0658]: associated const equality is incomplete
+  --> $DIR/associated-types-eq-2.rs:52:10
    |
-LL | fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {}
-   |                              ^^^^^ associated type not allowed here
+LL | impl Tr3<N = 42, T2 = Qux, T3 = usize> for Bar {
+   |          ^^^^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 1 previous error
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/associated-types-eq-2.rs:17:31
+   |
+LL | fn baz<I: Foo>(_x: &<I as Foo<A=Bar>>::A) {}
+   |                               ^^^^^ associated type not allowed here
+   |
+   = note: `Foo` is not a generic type
+help: try removing this type binding
+   |
+LL | fn baz<I: Foo>(_x: &<I as Foo<A=Bar>>::A) {}
+   |                              ~~~~~~~
 
-For more information about this error, try `rustc --explain E0229`.
+error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/associated-types-eq-2.rs:24:6
+   |
+LL | impl Tr1<T1 = String> for Bar {
+   |      ^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `T1`
+  --> $DIR/associated-types-eq-2.rs:21:7
+   |
+LL | trait Tr1<T1> {
+   |       ^^^ --
+help: add missing generic argument
+   |
+LL | impl Tr1<T1, T1 = String> for Bar {
+   |          +++
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/associated-types-eq-2.rs:24:10
+   |
+LL | impl Tr1<T1 = String> for Bar {
+   |          ^^^^^^^^^^^ associated type not allowed here
+   |
+help: to use `String` as a generic argument specify it directly
+   |
+LL | impl Tr1<String> for Bar {
+   |          ~~~~~~
+
+error[E0107]: trait takes 3 generic arguments but 1 generic argument was supplied
+  --> $DIR/associated-types-eq-2.rs:35:6
+   |
+LL | impl Tr2<i32, T2 = Qux, T3 = usize> for Bar {
+   |      ^^^ --- supplied 1 generic argument
+   |      |
+   |      expected 3 generic arguments
+   |
+note: trait defined here, with 3 generic parameters: `T1`, `T2`, `T3`
+  --> $DIR/associated-types-eq-2.rs:30:7
+   |
+LL | trait Tr2<T1, T2, T3> {
+   |       ^^^ --  --  --
+help: add missing generic arguments
+   |
+LL | impl Tr2<i32, T2, T3, T2 = Qux, T3 = usize> for Bar {
+   |             ++++++++
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/associated-types-eq-2.rs:35:15
+   |
+LL | impl Tr2<i32, T2 = Qux, T3 = usize> for Bar {
+   |               ^^^^^^^^ associated type not allowed here
+   |
+help: to use `Qux` as a generic argument specify it directly
+   |
+LL | impl Tr2<i32, Qux, T3 = usize> for Bar {
+   |               ~~~
+
+error[E0107]: trait takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/associated-types-eq-2.rs:42:6
+   |
+LL | impl Tr2<i32, Qux, T3 = GenericStruct<i32>> for Bar {
+   |      ^^^ ---  --- supplied 2 generic arguments
+   |      |
+   |      expected 3 generic arguments
+   |
+note: trait defined here, with 3 generic parameters: `T1`, `T2`, `T3`
+  --> $DIR/associated-types-eq-2.rs:30:7
+   |
+LL | trait Tr2<T1, T2, T3> {
+   |       ^^^ --  --  --
+help: add missing generic argument
+   |
+LL | impl Tr2<i32, Qux, T3, T3 = GenericStruct<i32>> for Bar {
+   |                  ++++
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/associated-types-eq-2.rs:42:20
+   |
+LL | impl Tr2<i32, Qux, T3 = GenericStruct<i32>> for Bar {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^ associated type not allowed here
+   |
+help: to use `GenericStruct<i32>` as a generic argument specify it directly
+   |
+LL | impl Tr2<i32, Qux, GenericStruct<i32>> for Bar {
+   |                    ~~~~~~~~~~~~~~~~~~
+
+error[E0107]: trait takes 3 generic arguments but 0 generic arguments were supplied
+  --> $DIR/associated-types-eq-2.rs:52:6
+   |
+LL | impl Tr3<N = 42, T2 = Qux, T3 = usize> for Bar {
+   |      ^^^ expected 3 generic arguments
+   |
+note: trait defined here, with 3 generic parameters: `N`, `T2`, `T3`
+  --> $DIR/associated-types-eq-2.rs:49:7
+   |
+LL | trait Tr3<const N: i32, T2, T3> {
+   |       ^^^ ------------  --  --
+help: add missing generic arguments
+   |
+LL | impl Tr3<N, T2, T3, N = 42, T2 = Qux, T3 = usize> for Bar {
+   |          ++++++++++
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/associated-types-eq-2.rs:52:10
+   |
+LL | impl Tr3<N = 42, T2 = Qux, T3 = usize> for Bar {
+   |          ^^^^^^ associated type not allowed here
+   |
+help: to use `42` as a const argument specify it directly
+   |
+LL | impl Tr3<42, T2 = Qux, T3 = usize> for Bar {
+   |          ~~
+
+error[E0107]: struct takes 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/associated-types-eq-2.rs:63:13
+   |
+LL | impl<'a, T> St<'a, T = Qux> {
+   |             ^^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> $DIR/associated-types-eq-2.rs:61:8
+   |
+LL | struct St<'a, T> { v: &'a T }
+   |        ^^     -
+help: add missing generic argument
+   |
+LL | impl<'a, T> St<'a, T, T = Qux> {
+   |                  +++
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/associated-types-eq-2.rs:63:20
+   |
+LL | impl<'a, T> St<'a, T = Qux> {
+   |                    ^^^^^^^ associated type not allowed here
+   |
+help: to use `Qux` as a generic argument specify it directly
+   |
+LL | impl<'a, T> St<'a, Qux> {
+   |                    ~~~
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/associated-types-eq-2.rs:74:10
+   |
+LL | impl Tr4<T = Qux, T2 = usize> for Bar {
+   |          ^^^^^^^ associated type not allowed here
+   |
+   = note: `Tr4` is not a generic type
+help: try removing this type binding
+   |
+LL | impl Tr4<T = Qux, T2 = usize> for Bar {
+   |          ~~~~~~~~
+
+error: aborting due to 13 previous errors
+
+Some errors have detailed explanations: E0107, E0229, E0658.
+For more information about an error, try `rustc --explain E0107`.

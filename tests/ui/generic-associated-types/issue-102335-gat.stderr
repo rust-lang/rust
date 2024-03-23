@@ -3,6 +3,12 @@ error[E0229]: associated type bindings are not allowed here
    |
 LL |     type A: S<C<(), i32 = ()> = ()>;
    |                     ^^^^^^^^ associated type not allowed here
+   |
+   = note: `C` is not a generic type
+help: try removing this type binding
+   |
+LL |     type A: S<C<(), i32 = ()> = ()>;
+   |                     ~~~~~~~~~
 
 error[E0229]: associated type bindings are not allowed here
   --> $DIR/issue-102335-gat.rs:2:21
@@ -10,7 +16,12 @@ error[E0229]: associated type bindings are not allowed here
 LL |     type A: S<C<(), i32 = ()> = ()>;
    |                     ^^^^^^^^ associated type not allowed here
    |
+   = note: `C` is not a generic type
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: try removing this type binding
+   |
+LL |     type A: S<C<(), i32 = ()> = ()>;
+   |                     ~~~~~~~~~
 
 error: aborting due to 2 previous errors
 
