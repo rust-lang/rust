@@ -984,6 +984,14 @@ struct ImproperCTypesVisitor<'a, 'tcx> {
     mode: CItemKind,
 }
 
+/// Accumulator for recursive ffi type checking
+struct CTypesVisitorState<'tcx> {
+    cache: FxHashSet<Ty<'tcx>>,
+    /// The original type being checked, before we recursed
+    /// to any other types it contains.
+    base_ty: Ty<'tcx>,
+}
+
 enum FfiResult<'tcx> {
     FfiSafe,
     FfiPhantom(Ty<'tcx>),
@@ -1212,7 +1220,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Checks if the given field's type is "ffi-safe".
     fn check_field_type_for_ffi(
         &self,
-        cache: &mut FxHashSet<Ty<'tcx>>,
+        acc: &mut CTypesVisitorState<'tcx>,
         field: &ty::FieldDef,
         args: GenericArgsRef<'tcx>,
     ) -> FfiResult<'tcx> {
@@ -1222,13 +1230,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             .tcx
             .try_normalize_erasing_regions(self.cx.param_env, field_ty)
             .unwrap_or(field_ty);
-        self.check_type_for_ffi(cache, field_ty)
+        self.check_type_for_ffi(acc, field_ty)
     }
 
     /// Checks if the given `VariantDef`'s field types are "ffi-safe".
     fn check_variant_for_ffi(
         &self,
-        cache: &mut FxHashSet<Ty<'tcx>>,
+        acc: &mut CTypesVisitorState<'tcx>,
         ty: Ty<'tcx>,
         def: ty::AdtDef<'tcx>,
         variant: &ty::VariantDef,
@@ -1238,7 +1246,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let transparent_with_all_zst_fields = if def.repr().transparent() {
             if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked..
-                match self.check_field_type_for_ffi(cache, field, args) {
+                match self.check_field_type_for_ffi(acc, field, args) {
                     FfiUnsafe { ty, .. } if ty.is_unit() => (),
                     r => return r,
                 }
@@ -1256,7 +1264,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // We can't completely trust `repr(C)` markings, so make sure the fields are actually safe.
         let mut all_phantom = !variant.fields.is_empty();
         for field in &variant.fields {
-            all_phantom &= match self.check_field_type_for_ffi(cache, field, args) {
+            all_phantom &= match self.check_field_type_for_ffi(acc, field, args) {
                 FfiSafe => false,
                 // `()` fields are FFI-safe!
                 FfiUnsafe { ty, .. } if ty.is_unit() => false,
@@ -1276,7 +1284,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
-    fn check_type_for_ffi(&self, cache: &mut FxHashSet<Ty<'tcx>>, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+    fn check_type_for_ffi(
+        &self,
+        acc: &mut CTypesVisitorState<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
         let tcx = self.cx.tcx;
@@ -1285,7 +1297,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // `struct S(*mut S);`.
         // FIXME: A recursion limit is necessary as well, for irregular
         // recursive types.
-        if !cache.insert(ty) {
+        if !acc.cache.insert(ty) {
             return FfiSafe;
         }
 
@@ -1307,6 +1319,17 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
                 match def.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
+                        if let Some(sym::cstring_type | sym::cstr_type) =
+                            tcx.get_diagnostic_name(def.did())
+                            && !acc.base_ty.is_mutable_ptr()
+                        {
+                            return FfiUnsafe {
+                                ty,
+                                reason: fluent::lint_improper_ctypes_cstr_reason,
+                                help: Some(fluent::lint_improper_ctypes_cstr_help),
+                            };
+                        }
+
                         if !def.repr().c() && !def.repr().transparent() {
                             return FfiUnsafe {
                                 ty,
@@ -1353,7 +1376,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
-                        self.check_variant_for_ffi(cache, ty, def, def.non_enum_variant(), args)
+                        self.check_variant_for_ffi(acc, ty, def, def.non_enum_variant(), args)
                     }
                     AdtKind::Enum => {
                         if def.variants().is_empty() {
@@ -1377,7 +1400,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             if let Some(ty) =
                                 repr_nullable_ptr(self.cx.tcx, self.cx.param_env, ty, self.mode)
                             {
-                                return self.check_type_for_ffi(cache, ty);
+                                return self.check_type_for_ffi(acc, ty);
                             }
 
                             return FfiUnsafe {
@@ -1398,7 +1421,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 };
                             }
 
-                            match self.check_variant_for_ffi(cache, ty, def, variant, args) {
+                            match self.check_variant_for_ffi(acc, ty, def, variant, args) {
                                 FfiSafe => (),
                                 r => return r,
                             }
@@ -1468,9 +1491,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => self.check_type_for_ffi(cache, ty),
+            ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => self.check_type_for_ffi(acc, ty),
 
-            ty::Array(inner_ty, _) => self.check_type_for_ffi(cache, inner_ty),
+            ty::Array(inner_ty, _) => self.check_type_for_ffi(acc, inner_ty),
 
             ty::FnPtr(sig) => {
                 if self.is_internal_abi(sig.abi()) {
@@ -1483,7 +1506,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                 let sig = tcx.instantiate_bound_regions_with_erased(sig);
                 for arg in sig.inputs() {
-                    match self.check_type_for_ffi(cache, *arg) {
+                    match self.check_type_for_ffi(acc, *arg) {
                         FfiSafe => {}
                         r => return r,
                     }
@@ -1494,7 +1517,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     return FfiSafe;
                 }
 
-                self.check_type_for_ffi(cache, ret_ty)
+                self.check_type_for_ffi(acc, ret_ty)
             }
 
             ty::Foreign(..) => FfiSafe,
@@ -1617,7 +1640,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return;
         }
 
-        match self.check_type_for_ffi(&mut FxHashSet::default(), ty) {
+        let mut acc = CTypesVisitorState { cache: FxHashSet::default(), base_ty: ty };
+        match self.check_type_for_ffi(&mut acc, ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiPhantom(ty) => {
                 self.emit_ffi_unsafe_type_lint(

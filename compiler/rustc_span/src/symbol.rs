@@ -671,6 +671,7 @@ symbols! {
         crate_visibility_modifier,
         crt_dash_static: "crt-static",
         csky_target_feature,
+        cstr_type,
         cstring_type,
         ctlz,
         ctlz_nonzero,
