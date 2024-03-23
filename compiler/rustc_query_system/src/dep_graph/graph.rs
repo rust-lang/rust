@@ -1240,7 +1240,7 @@ impl<D: Deps> CurrentDepGraph<D> {
         match prev_index_to_index[prev_index] {
             Some(dep_node_index) => dep_node_index,
             None => {
-                let dep_node_index = self.encoder.promote(prev_index, &*prev_index_to_index);
+                let dep_node_index = self.encoder.send_promoted(prev_index, &*prev_index_to_index);
                 prev_index_to_index[prev_index] = Some(dep_node_index);
                 #[cfg(debug_assertions)]
                 self.record_edge(

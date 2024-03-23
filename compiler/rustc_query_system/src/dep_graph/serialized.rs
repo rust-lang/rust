@@ -422,6 +422,9 @@ impl NodeInfo {
         }
     }
 
+    /// Encode a node that was promoted from the previous graph. It reads the edges directly from
+    /// the previous dep graph and expects all edges to already have a new dep node index assigned.
+    /// This avoids the overhead of constructing `EdgesVec`, which would be needed to call `encode`.
     #[inline]
     fn encode_promoted<D: Deps>(
         e: &mut FileEncoder,
@@ -433,6 +436,8 @@ impl NodeInfo {
     ) -> usize {
         let edges = previous.edge_targets_from(prev_index);
         let edge_count = edges.size_hint().0;
+
+        // Find the highest edge in the new dep node indices
         let edge_max =
             edges.clone().map(|i| prev_index_to_index[i].unwrap().as_u32()).max().unwrap_or(0);
 
@@ -502,7 +507,10 @@ impl<D: Deps> EncoderState<D> {
         self.total_edge_count += edge_count;
 
         if let Some(record_graph) = &record_graph {
+            // Call `edges` before the outlined code to allow the closure to be optimized out.
             let edges = edges(self);
+
+            // Outline the build of the full dep graph as it's typically disabled and cold.
             outline(move || {
                 // Do not ICE when a query is called from within `with_query`.
                 if let Some(record_graph) = &mut record_graph.try_lock() {
@@ -514,6 +522,7 @@ impl<D: Deps> EncoderState<D> {
         if let Some(stats) = &mut self.stats {
             let kind = node.kind;
 
+            // Outline the stats code as it's typically disabled and cold.
             outline(move || {
                 let stat =
                     stats.entry(kind).or_insert(Stat { kind, node_counter: 0, edge_counter: 0 });
@@ -525,6 +534,7 @@ impl<D: Deps> EncoderState<D> {
         index
     }
 
+    /// Encodes a node to the current graph.
     fn encode_node(
         &mut self,
         node: &NodeInfo,
@@ -539,8 +549,14 @@ impl<D: Deps> EncoderState<D> {
         )
     }
 
+    /// Encodes a node that was promoted from the previous graph. It reads the information directly from
+    /// the previous dep graph for performance reasons.
+    ///
+    /// This differs from `encode_node` where you have to explictly provide the relevant `NodeInfo`.
+    ///
+    /// It expects all edges to already have a new dep node index assigned.
     #[inline]
-    fn promote_node(
+    fn encode_promoted_node(
         &mut self,
         prev_index: SerializedDepNodeIndex,
         record_graph: &Option<Lock<DepGraphQuery>>,
@@ -698,14 +714,16 @@ impl<D: Deps> GraphEncoder<D> {
         self.status.lock().as_mut().unwrap().encode_node(&node, &self.record_graph)
     }
 
+    /// Encodes a node that was promoted from the previous graph. It reads the information directly from
+    /// the previous dep graph and expects all edges to already have a new dep node index assigned.
     #[inline]
-    pub(crate) fn promote(
+    pub(crate) fn send_promoted(
         &self,
         prev_index: SerializedDepNodeIndex,
         prev_index_to_index: &IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>,
     ) -> DepNodeIndex {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
-        self.status.lock().as_mut().unwrap().promote_node(
+        self.status.lock().as_mut().unwrap().encode_promoted_node(
             prev_index,
             &self.record_graph,
             prev_index_to_index,
