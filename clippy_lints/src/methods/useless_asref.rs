@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::walk_ptrs_ty_depth;
+use clippy_utils::ty::{should_call_clone_as_function, walk_ptrs_ty_depth};
 use clippy_utils::{
     get_parent_expr, is_diag_trait_item, match_def_path, path_to_local_id, paths, peel_blocks, strip_pat_refs,
 };
@@ -93,6 +93,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
             // And that it only has one argument.
             && let [arg] = args
             && is_calling_clone(cx, arg)
+            // And that we are not recommending recv.clone() over Arc::clone() or similar
+            && !should_call_clone_as_function(cx, rcv_ty)
         {
             lint_as_ref_clone(cx, expr.span.with_hi(parent.span.hi()), recvr, call_name);
         }
