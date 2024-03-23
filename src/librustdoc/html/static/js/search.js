@@ -1455,13 +1455,13 @@ function initSearch(rawSearchIndex) {
             });
 
             const transformed = transformResults(result_list);
-            for (const result of transformed) {
-                result.desc = searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
+            const descs = await Promise.all(transformed.map(result => {
+                return searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
                     "" :
                     searchState.loadDesc(result);
-            }
-            for (const result of transformed) {
-                result.desc = await result.desc;
+            }));
+            for (const [i, result] of transformed.entries()) {
+                result.desc = descs[i];
             }
             return transformed;
         }

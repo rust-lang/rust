@@ -192,7 +192,7 @@ impl RenderTypeId {
             RenderTypeId::Index(idx) => (*idx).try_into().unwrap(),
             _ => panic!("must convert render types to indexes before serializing"),
         };
-        search_index::write_vlqhex_to_string(id, string);
+        search_index::encode::write_vlqhex_to_string(id, string);
     }
 }
 

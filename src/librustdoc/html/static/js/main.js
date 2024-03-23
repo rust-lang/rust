@@ -333,6 +333,10 @@ function preLoadCss(cssUrl) {
         loadDesc: async function({descShard, descIndex}) {
             if (descShard.promise === null) {
                 descShard.promise = new Promise((resolve, reject) => {
+                    // The `resolve` callback is stored in the `descShard`
+                    // object, which is itself stored in `this.descShards` map.
+                    // It is called in `loadedDescShard` by the
+                    // search.desc script.
                     descShard.resolve = resolve;
                     const ds = descShard;
                     const fname = `${ds.crate}-desc-${ds.shard}-`;

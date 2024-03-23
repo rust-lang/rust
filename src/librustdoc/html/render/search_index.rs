@@ -1,7 +1,8 @@
+pub(crate) mod encode;
+
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, VecDeque};
 
-use base64::prelude::*;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
@@ -18,12 +19,33 @@ use crate::html::format::join_with_double_colon;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::{self, IndexItem, IndexItemFunctionType, RenderType, RenderTypeId};
 
+use encode::{bitmap_to_string, write_vlqhex_to_string};
+
 /// The serialized search description sharded version
 ///
 /// The `index` is a JSON-encoded list of names and other information.
 ///
 /// The desc has newlined descriptions, split up by size into 128KiB shards.
 /// For example, `(4, "foo\nbar\nbaz\nquux")`.
+///
+/// There is no single, optimal size for these shards, because it depends on
+/// configuration values that we can't predict or control, such as the version
+/// of HTTP used (HTTP/1.1 would work better with larger files, while HTTP/2
+/// and 3 are more agnostic), transport compression (gzip, zstd, etc), whether
+/// the search query is going to produce a large number of results or a small
+/// number, the bandwidth delay product of the network...
+///
+/// Gzipping some standard library descriptions to guess what transport
+/// compression will do, the compressed file sizes can be as small as 4.9KiB
+/// or as large as 18KiB (ignoring the final 1.9KiB shard of leftovers).
+/// A "reasonable" range for files is for them to be bigger than 1KiB,
+/// since that's about the amount of data that can be transferred in a
+/// single TCP packet, and 64KiB, the maximum amount of data that
+/// TCP can transfer in a single round trip without extensions.
+///
+/// [1]: https://en.wikipedia.org/wiki/Maximum_transmission_unit#MTUs_for_common_media
+/// [2]: https://en.wikipedia.org/wiki/Sliding_window_protocol#Basic_concept
+/// [3]: https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/description-tcp-features
 pub(crate) struct SerializedSearchIndex {
     pub(crate) index: String,
     pub(crate) desc: Vec<(usize, String)>,
@@ -342,9 +364,9 @@ pub(crate) fn build_index<'tcx>(
         associated_item_disambiguators: &'a Vec<(usize, String)>,
         // A list of shard lengths encoded as vlqhex. See the comment in write_vlqhex_to_string
         // for information on the format.
-        descindex: String,
+        desc_index: String,
         // A list of items with no description. This is eventually turned into a bitmap.
-        emptydesc: Vec<u32>,
+        empty_desc: Vec<u32>,
     }
 
     struct Paths {
@@ -476,19 +498,11 @@ pub(crate) fn build_index<'tcx>(
             crate_data.serialize_field("q", &full_paths)?;
             crate_data.serialize_field("i", &parents)?;
             crate_data.serialize_field("f", &functions)?;
-            crate_data.serialize_field("D", &self.descindex)?;
+            crate_data.serialize_field("D", &self.desc_index)?;
             crate_data.serialize_field("p", &paths)?;
             crate_data.serialize_field("b", &self.associated_item_disambiguators)?;
-            let mut buf = Vec::new();
-            let mut strbuf = String::new();
-            write_bitmap_to_bytes(&deprecated, &mut buf).unwrap();
-            BASE64_STANDARD.encode_string(&buf, &mut strbuf);
-            crate_data.serialize_field("c", &strbuf)?;
-            strbuf.clear();
-            buf.clear();
-            write_bitmap_to_bytes(&self.emptydesc, &mut buf).unwrap();
-            BASE64_STANDARD.encode_string(&buf, &mut strbuf);
-            crate_data.serialize_field("e", &strbuf)?;
+            crate_data.serialize_field("c", &bitmap_to_string(&deprecated))?;
+            crate_data.serialize_field("e", &bitmap_to_string(&self.empty_desc))?;
             if has_aliases {
                 crate_data.serialize_field("a", &self.aliases)?;
             }
@@ -496,16 +510,16 @@ pub(crate) fn build_index<'tcx>(
         }
     }
 
-    let (emptydesc, desc) = {
-        let mut emptydesc = Vec::new();
+    let (empty_desc, desc) = {
+        let mut empty_desc = Vec::new();
         let mut result = Vec::new();
         let mut set = String::new();
         let mut len: usize = 0;
-        let mut itemindex: u32 = 0;
+        let mut item_index: u32 = 0;
         for desc in std::iter::once(&crate_doc).chain(crate_items.iter().map(|item| &item.desc)) {
             if desc == "" {
-                emptydesc.push(itemindex);
-                itemindex += 1;
+                empty_desc.push(item_index);
+                item_index += 1;
                 continue;
             }
             if set.len() >= DESC_INDEX_SHARD_LEN {
@@ -516,23 +530,23 @@ pub(crate) fn build_index<'tcx>(
             }
             set.push_str(&desc);
             len += 1;
-            itemindex += 1;
+            item_index += 1;
         }
         result.push((len, std::mem::replace(&mut set, String::new())));
-        (emptydesc, result)
+        (empty_desc, result)
     };
 
-    let descindex = {
-        let mut descindex = String::with_capacity(desc.len() * 4);
+    let desc_index = {
+        let mut desc_index = String::with_capacity(desc.len() * 4);
         for &(len, _) in desc.iter() {
-            write_vlqhex_to_string(len.try_into().unwrap(), &mut descindex);
+            write_vlqhex_to_string(len.try_into().unwrap(), &mut desc_index);
         }
-        descindex
+        desc_index
     };
 
     assert_eq!(
         crate_items.len() + 1,
-        desc.iter().map(|(len, _)| *len).sum::<usize>() + emptydesc.len()
+        desc.iter().map(|(len, _)| *len).sum::<usize>() + empty_desc.len()
     );
 
     // The index, which is actually used to search, is JSON
@@ -546,8 +560,8 @@ pub(crate) fn build_index<'tcx>(
             paths: crate_paths,
             aliases: &aliases,
             associated_item_disambiguators: &associated_item_disambiguators,
-            descindex,
-            emptydesc,
+            desc_index,
+            empty_desc,
         })
         .expect("failed serde conversion")
         // All these `replace` calls are because we have to go through JS string for JSON content.
@@ -557,237 +571,6 @@ pub(crate) fn build_index<'tcx>(
         .replace("\\\"", "\\\\\"")
     );
     SerializedSearchIndex { index, desc }
-}
-
-pub(crate) fn write_vlqhex_to_string(n: i32, string: &mut String) {
-    let (sign, magnitude): (bool, u32) =
-        if n >= 0 { (false, n.try_into().unwrap()) } else { (true, (-n).try_into().unwrap()) };
-    // zig-zag encoding
-    let value: u32 = (magnitude << 1) | (if sign { 1 } else { 0 });
-    // Self-terminating hex use capital letters for everything but the
-    // least significant digit, which is lowercase. For example, decimal 17
-    // would be `` Aa `` if zig-zag encoding weren't used.
-    //
-    // Zig-zag encoding, however, stores the sign bit as the last bit.
-    // This means, in the last hexit, 1 is actually `c`, -1 is `b`
-    // (`a` is the imaginary -0), and, because all the bits are shifted
-    // by one, `` A` `` is actually 8 and `` Aa `` is -8.
-    //
-    // https://rust-lang.github.io/rustc-dev-guide/rustdoc-internals/search.html
-    // describes the encoding in more detail.
-    let mut shift: u32 = 28;
-    let mut mask: u32 = 0xF0_00_00_00;
-    // first skip leading zeroes
-    while shift < 32 {
-        let hexit = (value & mask) >> shift;
-        if hexit != 0 || shift == 0 {
-            break;
-        }
-        shift = shift.wrapping_sub(4);
-        mask = mask >> 4;
-    }
-    // now write the rest
-    while shift < 32 {
-        let hexit = (value & mask) >> shift;
-        let hex = char::try_from(if shift == 0 { '`' } else { '@' } as u32 + hexit).unwrap();
-        string.push(hex);
-        shift = shift.wrapping_sub(4);
-        mask = mask >> 4;
-    }
-}
-
-// checked against roaring-rs in
-// https://gitlab.com/notriddle/roaring-test
-pub fn write_bitmap_to_bytes(domain: &[u32], mut out: impl std::io::Write) -> std::io::Result<()> {
-    // https://arxiv.org/pdf/1603.06549.pdf
-    let mut keys = Vec::<u16>::new();
-    let mut containers = Vec::<Container>::new();
-    enum Container {
-        /// number of ones, bits
-        Bits(Box<[u64; 1024]>),
-        /// list of entries
-        Array(Vec<u16>),
-        /// list of (start, len-1)
-        Run(Vec<(u16, u16)>),
-    }
-    impl Container {
-        fn popcount(&self) -> u32 {
-            match self {
-                Container::Bits(bits) => bits.iter().copied().map(|x| x.count_ones()).sum(),
-                Container::Array(array) => {
-                    array.len().try_into().expect("array can't be bigger than 2**32")
-                }
-                Container::Run(runs) => {
-                    runs.iter().copied().map(|(_, lenm1)| u32::from(lenm1) + 1).sum()
-                }
-            }
-        }
-        fn push(&mut self, value: u16) {
-            match self {
-                Container::Bits(bits) => bits[value as usize >> 6] |= 1 << (value & 0x3F),
-                Container::Array(array) => {
-                    array.push(value);
-                    if array.len() >= 4096 {
-                        let array = std::mem::replace(array, Vec::new());
-                        *self = Container::Bits(Box::new([0; 1024]));
-                        for value in array {
-                            self.push(value);
-                        }
-                    }
-                }
-                Container::Run(runs) => {
-                    if let Some(r) = runs.last_mut()
-                        && r.0 + r.1 + 1 == value
-                    {
-                        r.1 += 1;
-                    } else {
-                        runs.push((value, 0));
-                    }
-                }
-            }
-        }
-        fn try_make_run(&mut self) -> bool {
-            match self {
-                Container::Bits(bits) => {
-                    let mut r: u64 = 0;
-                    for (i, chunk) in bits.iter().copied().enumerate() {
-                        let next_chunk =
-                            i.checked_add(1).and_then(|i| bits.get(i)).copied().unwrap_or(0);
-                        r += !chunk & u64::from((chunk << 1).count_ones());
-                        r += !next_chunk & u64::from((chunk >> 63).count_ones());
-                    }
-                    if (2 + 4 * r) < 8192 {
-                        let bits = std::mem::replace(bits, Box::new([0; 1024]));
-                        *self = Container::Run(Vec::new());
-                        for (i, bits) in bits.iter().copied().enumerate() {
-                            if bits == 0 {
-                                continue;
-                            }
-                            for j in 0..64 {
-                                let value = (u16::try_from(i).unwrap() << 6) | j;
-                                if bits & (1 << j) != 0 {
-                                    self.push(value);
-                                }
-                            }
-                        }
-                        true
-                    } else {
-                        false
-                    }
-                }
-                Container::Array(array) if array.len() <= 5 => false,
-                Container::Array(array) => {
-                    let mut r = 0;
-                    let mut prev = None;
-                    for value in array.iter().copied() {
-                        if value.checked_sub(1) != prev {
-                            r += 1;
-                        }
-                        prev = Some(value);
-                    }
-                    if 2 + 4 * r < 2 * array.len() + 2 {
-                        let array = std::mem::replace(array, Vec::new());
-                        *self = Container::Run(Vec::new());
-                        for value in array {
-                            self.push(value);
-                        }
-                        true
-                    } else {
-                        false
-                    }
-                }
-                Container::Run(_) => true,
-            }
-        }
-    }
-    let mut key: u16;
-    let mut domain_iter = domain.into_iter().copied().peekable();
-    let mut has_run = false;
-    while let Some(entry) = domain_iter.next() {
-        key = (entry >> 16).try_into().expect("shifted off the top 16 bits, so it should fit");
-        let value: u16 = (entry & 0x00_00_FF_FF).try_into().expect("AND 16 bits, so it should fit");
-        let mut container = Container::Array(vec![value]);
-        while let Some(entry) = domain_iter.peek().copied() {
-            let entry_key: u16 =
-                (entry >> 16).try_into().expect("shifted off the top 16 bits, so it should fit");
-            if entry_key != key {
-                break;
-            }
-            domain_iter.next().expect("peeking just succeeded");
-            container
-                .push((entry & 0x00_00_FF_FF).try_into().expect("AND 16 bits, so it should fit"));
-        }
-        keys.push(key);
-        has_run = container.try_make_run() || has_run;
-        containers.push(container);
-    }
-    // https://github.com/RoaringBitmap/RoaringFormatSpec
-    use byteorder::{WriteBytesExt, LE};
-    const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
-    const SERIAL_COOKIE: u32 = 12347;
-    const NO_OFFSET_THRESHOLD: u32 = 4;
-    let size: u32 = containers.len().try_into().unwrap();
-    let start_offset = if has_run {
-        out.write_u32::<LE>(SERIAL_COOKIE | ((size - 1) << 16))?;
-        for set in containers.chunks(8) {
-            let mut b = 0;
-            for (i, container) in set.iter().enumerate() {
-                if matches!(container, &Container::Run(..)) {
-                    b |= 1 << i;
-                }
-            }
-            out.write_u8(b)?;
-        }
-        if size < NO_OFFSET_THRESHOLD {
-            4 + 4 * size + ((size + 7) / 8)
-        } else {
-            4 + 8 * size + ((size + 7) / 8)
-        }
-    } else {
-        out.write_u32::<LE>(SERIAL_COOKIE_NO_RUNCONTAINER)?;
-        out.write_u32::<LE>(containers.len().try_into().unwrap())?;
-        4 + 4 + 4 * size + 4 * size
-    };
-    for (&key, container) in keys.iter().zip(&containers) {
-        // descriptive header
-        let key: u32 = key.into();
-        let count: u32 = container.popcount() - 1;
-        out.write_u32::<LE>((count << 16) | key)?;
-    }
-    if !has_run || size >= NO_OFFSET_THRESHOLD {
-        // offset header
-        let mut starting_offset = start_offset;
-        for container in &containers {
-            out.write_u32::<LE>(starting_offset)?;
-            starting_offset += match container {
-                Container::Bits(_) => 8192u32,
-                Container::Array(array) => u32::try_from(array.len()).unwrap() * 2,
-                Container::Run(runs) => 2 + u32::try_from(runs.len()).unwrap() * 4,
-            };
-        }
-    }
-    for container in &containers {
-        match container {
-            Container::Bits(bits) => {
-                for chunk in bits.iter() {
-                    out.write_u64::<LE>(*chunk)?;
-                }
-            }
-            Container::Array(array) => {
-                for value in array.iter() {
-                    out.write_u16::<LE>(*value)?;
-                }
-            }
-            Container::Run(runs) => {
-                out.write_u16::<LE>((runs.len()).try_into().unwrap())?;
-                for (start, lenm1) in runs.iter().copied() {
-                    out.write_u16::<LE>(start)?;
-                    out.write_u16::<LE>(lenm1)?;
-                }
-            }
-        }
-    }
-    Ok(())
 }
 
 pub(crate) fn get_function_type_for_search<'tcx>(
