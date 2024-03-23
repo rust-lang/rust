@@ -5,7 +5,7 @@ use clippy_utils::{expr_use_ctxt, is_no_std_crate, ExprUseNode};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability, Ty, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, TypeAndMut};
+use rustc_middle::ty;
 
 use super::REF_AS_PTR;
 
@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
     );
 
     if matches!(cast_from.kind(), ty::Ref(..))
-        && let ty::RawPtr(TypeAndMut { mutbl: to_mutbl, .. }) = cast_to.kind()
+        && let ty::RawPtr(_, to_mutbl) = cast_to.kind()
         && let Some(use_cx) = expr_use_ctxt(cx, expr)
         // TODO: only block the lint if `cast_expr` is a temporary
         && !matches!(use_cx.node, ExprUseNode::Local(_) | ExprUseNode::ConstStatic(_))

@@ -819,7 +819,7 @@ pub fn mir_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::Const<'tcx>) -> 
             ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
                 int.try_into().expect("invalid f64 bit representation"),
             ))),
-            ty::RawPtr(_) => Some(Constant::RawPtr(int.assert_bits(int.size()))),
+            ty::RawPtr(_, _) => Some(Constant::RawPtr(int.assert_bits(int.size()))),
             _ => None,
         },
         (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Str) => {

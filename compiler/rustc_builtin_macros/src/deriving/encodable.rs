@@ -226,7 +226,7 @@ fn encodable_substructure(
             BlockOrExpr::new_expr(expr)
         }
 
-        EnumMatching(idx, _, variant, fields) => {
+        EnumMatching(idx, variant, fields) => {
             // We're not generating an AST that the borrow checker is expecting,
             // so we need to generate a unique local variable to take the
             // mutable loan out on, otherwise we get conflicts which don't

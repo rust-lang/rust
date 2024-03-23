@@ -82,6 +82,7 @@
 //! Second, when writing constants in MIR, we do not write `Const::Slice` or `Const`
 //! that contain `AllocId`s.
 
+use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{intern_const_alloc_for_constprop, MemoryKind};
 use rustc_const_eval::interpret::{ImmTy, InterpCx, OpTy, Projectable, Scalar};
 use rustc_data_structures::fx::FxIndexSet;
@@ -94,14 +95,13 @@ use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{self, Abi, Size, VariantIdx, FIRST_VARIANT};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 
-use crate::dataflow_const_prop::DummyMachine;
 use crate::ssa::{AssignedValue, SsaLocals};
 use either::Either;
 
@@ -131,7 +131,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         |local, value, location| {
             let value = match value {
                 // We do not know anything of this assigned value.
-                AssignedValue::Arg | AssignedValue::Terminator(_) => None,
+                AssignedValue::Arg | AssignedValue::Terminator => None,
                 // Try to get some insight.
                 AssignedValue::Rvalue(rvalue) => {
                     let value = state.simplify_rvalue(rvalue, location);
@@ -451,11 +451,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     AddressKind::Ref(bk) => Ty::new_ref(
                         self.tcx,
                         self.tcx.lifetimes.re_erased,
-                        ty::TypeAndMut { ty: mplace.layout.ty, mutbl: bk.to_mutbl_lossy() },
+                        mplace.layout.ty,
+                        bk.to_mutbl_lossy(),
                     ),
-                    AddressKind::Address(mutbl) => {
-                        Ty::new_ptr(self.tcx, TypeAndMut { ty: mplace.layout.ty, mutbl })
-                    }
+                    AddressKind::Address(mutbl) => Ty::new_ptr(self.tcx, mplace.layout.ty, mutbl),
                 };
                 let layout = self.ecx.layout_of(ty).ok()?;
                 ImmTy::from_immediate(pointer, layout).into()

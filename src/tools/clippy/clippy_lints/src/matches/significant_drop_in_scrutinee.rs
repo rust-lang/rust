@@ -149,7 +149,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
                 false
             },
             rustc_middle::ty::Array(ty, _)
-            | rustc_middle::ty::RawPtr(TypeAndMut { ty, .. })
+            | rustc_middle::ty::RawPtr(ty, _)
             | rustc_middle::ty::Ref(_, ty, _)
             | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(cx, *ty),
             _ => false,

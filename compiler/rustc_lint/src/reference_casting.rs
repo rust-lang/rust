@@ -1,7 +1,7 @@
 use rustc_ast::Mutability;
 use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_middle::ty::layout::LayoutOf as _;
-use rustc_middle::ty::{self, layout::TyAndLayout, TypeAndMut};
+use rustc_middle::ty::{self, layout::TyAndLayout};
 use rustc_span::sym;
 
 use crate::{lints::InvalidReferenceCastingDiag, LateContext, LateLintPass, LintContext};
@@ -153,7 +153,7 @@ fn is_cast_from_ref_to_mut_ptr<'tcx>(
     let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
 
     // Bail out early if the end type is **not** a mutable pointer.
-    if !matches!(end_ty.kind(), ty::RawPtr(TypeAndMut { ty: _, mutbl: Mutability::Mut })) {
+    if !matches!(end_ty.kind(), ty::RawPtr(_, Mutability::Mut)) {
         return None;
     }
 
@@ -183,7 +183,7 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
 ) -> Option<(TyAndLayout<'tcx>, TyAndLayout<'tcx>, Expr<'tcx>)> {
     let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
 
-    let ty::RawPtr(TypeAndMut { ty: inner_end_ty, mutbl: _ }) = end_ty.kind() else {
+    let ty::RawPtr(inner_end_ty, _) = end_ty.kind() else {
         return None;
     };
 

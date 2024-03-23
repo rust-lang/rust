@@ -1394,9 +1394,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg: &hir::Expr<'tcx>,
         err: &mut Diag<'tcx>,
     ) {
-        if let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Mut, .. }) = expected_ty.kind()
-            && let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Not, .. }) =
-                provided_ty.kind()
+        if let ty::RawPtr(_, hir::Mutability::Mut) = expected_ty.kind()
+            && let ty::RawPtr(_, hir::Mutability::Not) = provided_ty.kind()
             && let hir::ExprKind::Call(callee, _) = arg.kind
             && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = callee.kind
             && let Res::Def(_, def_id) = path.res

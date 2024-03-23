@@ -103,6 +103,8 @@ hir_typeck_no_associated_item = no {$item_kind} named `{$item_name}` found for {
     *[other] {" "}in the current scope
 }
 
+hir_typeck_note_caller_chooses_ty_for_ty_param = the caller chooses a type for `{$ty_param_name}` which can be different from `{$found_ty}`
+
 hir_typeck_note_edition_guide = for more on editions, read https://doc.rust-lang.org/edition-guide
 
 hir_typeck_option_result_asref = use `{$def_path}::as_ref` to convert `{$expected_ty}` to `{$expr_ty}`

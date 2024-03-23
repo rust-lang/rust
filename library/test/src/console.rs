@@ -46,7 +46,6 @@ pub struct ConsoleTestDiscoveryState {
     pub tests: usize,
     pub benchmarks: usize,
     pub ignored: usize,
-    pub options: Options,
 }
 
 impl ConsoleTestDiscoveryState {
@@ -56,13 +55,7 @@ impl ConsoleTestDiscoveryState {
             None => None,
         };
 
-        Ok(ConsoleTestDiscoveryState {
-            log_out,
-            tests: 0,
-            benchmarks: 0,
-            ignored: 0,
-            options: opts.options,
-        })
+        Ok(ConsoleTestDiscoveryState { log_out, tests: 0, benchmarks: 0, ignored: 0 })
     }
 
     pub fn write_log<F, S>(&mut self, msg: F) -> io::Result<()>

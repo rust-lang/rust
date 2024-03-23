@@ -11,7 +11,7 @@ use std::cmp::Ordering;
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
     self, AliasTy, Binder, DebruijnIndex, DebugWithInfcx, EarlyBinder, GenericArg, GenericArgs,
-    GenericArgsRef, ImplPolarity, Term, Ty, TyCtxt, TypeFlags, WithCachedTypeInfo,
+    GenericArgsRef, PredicatePolarity, Term, Ty, TyCtxt, TypeFlags, WithCachedTypeInfo,
 };
 
 pub type ClauseKind<'tcx> = IrClauseKind<TyCtxt<'tcx>>;
@@ -70,7 +70,7 @@ impl<'tcx> Predicate<'tcx> {
                     polarity,
                 })) => Some(PredicateKind::Clause(ClauseKind::Trait(TraitPredicate {
                     trait_ref,
-                    polarity: polarity.flip()?,
+                    polarity: polarity.flip(),
                 }))),
 
                 _ => None,
@@ -663,7 +663,7 @@ pub struct TraitPredicate<'tcx> {
     /// exist via a series of predicates.)
     ///
     /// If polarity is Reserved: that's a bug.
-    pub polarity: ImplPolarity,
+    pub polarity: PredicatePolarity,
 }
 
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
@@ -693,7 +693,7 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     }
 
     #[inline]
-    pub fn polarity(self) -> ImplPolarity {
+    pub fn polarity(self) -> PredicatePolarity {
         self.skip_binder().polarity
     }
 }
@@ -907,7 +907,7 @@ impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
 impl<'tcx> ToPredicate<'tcx, TraitPredicate<'tcx>> for TraitRef<'tcx> {
     #[inline(always)]
     fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> TraitPredicate<'tcx> {
-        TraitPredicate { trait_ref: self, polarity: ImplPolarity::Positive }
+        TraitPredicate { trait_ref: self, polarity: PredicatePolarity::Positive }
     }
 }
 
@@ -940,7 +940,7 @@ impl<'tcx> ToPredicate<'tcx, PolyTraitPredicate<'tcx>> for Binder<'tcx, TraitRef
     fn to_predicate(self, _: TyCtxt<'tcx>) -> PolyTraitPredicate<'tcx> {
         self.map_bound(|trait_ref| TraitPredicate {
             trait_ref,
-            polarity: ty::ImplPolarity::Positive,
+            polarity: ty::PredicatePolarity::Positive,
         })
     }
 }

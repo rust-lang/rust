@@ -2,6 +2,7 @@
 
 use rustc_hir::LangItem;
 use rustc_middle::mir;
+use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
 use rustc_span::Span;
 
@@ -120,11 +121,11 @@ pub fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &Bx,
     span: Option<Span>,
     li: LangItem,
-) -> (Bx::FnAbiOfResult, Bx::Value) {
+) -> (Bx::FnAbiOfResult, Bx::Value, Instance<'tcx>) {
     let tcx = bx.tcx();
     let def_id = tcx.require_lang_item(li, span);
     let instance = ty::Instance::mono(tcx, def_id);
-    (bx.fn_abi_of_instance(instance, ty::List::empty()), bx.get_fn_addr(instance))
+    (bx.fn_abi_of_instance(instance, ty::List::empty()), bx.get_fn_addr(instance), instance)
 }
 
 // To avoid UB from LLVM, these two functions mask RHS with an

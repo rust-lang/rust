@@ -112,7 +112,7 @@ pub enum TyKind<I: Interner> {
     Slice(I::Ty),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
-    RawPtr(TypeAndMut<I>),
+    RawPtr(I::Ty, Mutability),
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
@@ -270,7 +270,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Str => 7,
         Array(_, _) => 8,
         Slice(_) => 9,
-        RawPtr(_) => 10,
+        RawPtr(_, _) => 10,
         Ref(_, _, _) => 11,
         FnDef(_, _) => 12,
         FnPtr(_) => 13,
@@ -308,7 +308,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
             (Foreign(a_d), Foreign(b_d)) => a_d == b_d,
             (Array(a_t, a_c), Array(b_t, b_c)) => a_t == b_t && a_c == b_c,
             (Slice(a_t), Slice(b_t)) => a_t == b_t,
-            (RawPtr(a_t), RawPtr(b_t)) => a_t == b_t,
+            (RawPtr(a_t, a_m), RawPtr(b_t, b_m)) => a_t == b_t && a_m == b_m,
             (Ref(a_r, a_t, a_m), Ref(b_r, b_t, b_m)) => a_r == b_r && a_t == b_t && a_m == b_m,
             (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (FnPtr(a_s), FnPtr(b_s)) => a_s == b_s,
@@ -371,7 +371,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
             Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
-            RawPtr(TypeAndMut { ty, mutbl }) => {
+            RawPtr(ty, mutbl) => {
                 match mutbl {
                     Mutability::Mut => write!(f, "*mut "),
                     Mutability::Not => write!(f, "*const "),

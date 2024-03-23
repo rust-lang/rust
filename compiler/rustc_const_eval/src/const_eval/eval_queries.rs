@@ -3,7 +3,7 @@ use either::{Left, Right};
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
-use rustc_middle::query::TyCtxtAt;
+use rustc_middle::query::{Key, TyCtxtAt};
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -241,6 +241,24 @@ pub(crate) fn turn_into_const_value<'tcx>(
 
     // Turn this into a proper constant.
     op_to_const(&ecx, &mplace.into(), /* for diagnostics */ false)
+}
+
+/// Computes the tag (if any) for a given type and variant.
+#[instrument(skip(tcx), level = "debug")]
+pub fn tag_for_variant_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (ty, variant_index): (Ty<'tcx>, abi::VariantIdx),
+) -> Option<ty::ScalarInt> {
+    assert!(ty.is_enum());
+
+    let ecx = InterpCx::new(
+        tcx,
+        ty.default_span(tcx),
+        ty::ParamEnv::reveal_all(),
+        crate::const_eval::DummyMachine,
+    );
+
+    ecx.tag_for_variant(ty, variant_index).unwrap().map(|(tag, _tag_field)| tag)
 }
 
 #[instrument(skip(tcx), level = "debug")]

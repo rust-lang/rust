@@ -13,6 +13,7 @@ use rustc_query_system::query::DefIdCacheSelector;
 use rustc_query_system::query::{DefaultCacheSelector, SingleCacheSelector, VecCacheSelector};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi;
 
 /// Placeholder for `CrateNum`'s "local" counterpart
 #[derive(Copy, Clone, Debug)]
@@ -495,6 +496,14 @@ impl Key for (Symbol, u32, u32) {
 }
 
 impl<'tcx> Key for (DefId, Ty<'tcx>, GenericArgsRef<'tcx>, ty::ParamEnv<'tcx>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
+impl<'tcx> Key for (Ty<'tcx>, abi::VariantIdx) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {

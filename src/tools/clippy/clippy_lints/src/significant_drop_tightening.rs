@@ -7,7 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{self as hir};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{GenericArgKind, Ty, TypeAndMut};
+use rustc_middle::ty::{GenericArgKind, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, DUMMY_SP};
@@ -199,7 +199,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
                 false
             },
             rustc_middle::ty::Array(ty, _)
-            | rustc_middle::ty::RawPtr(TypeAndMut { ty, .. })
+            | rustc_middle::ty::RawPtr(ty, _)
             | rustc_middle::ty::Ref(_, ty, _)
             | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(*ty),
             _ => false,

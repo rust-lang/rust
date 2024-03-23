@@ -6,7 +6,7 @@ use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::CastKind;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, FloatTy, Ty, TypeAndMut};
+use rustc_middle::ty::{self, FloatTy, Ty};
 use rustc_target::abi::Integer;
 use rustc_type_ir::TyKind::*;
 
@@ -230,7 +230,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         src: &ImmTy<'tcx, M::Provenance>,
         cast_to: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
-        assert_matches!(src.layout.ty.kind(), ty::RawPtr(_) | ty::FnPtr(_));
+        assert_matches!(src.layout.ty.kind(), ty::RawPtr(_, _) | ty::FnPtr(_));
         assert!(cast_to.ty.is_integral());
 
         let scalar = src.to_scalar();
@@ -248,7 +248,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         cast_to: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         assert!(src.layout.ty.is_integral());
-        assert_matches!(cast_to.ty.kind(), ty::RawPtr(_));
+        assert_matches!(cast_to.ty.kind(), ty::RawPtr(_, _));
 
         // First cast to usize.
         let scalar = src.to_scalar();
@@ -435,10 +435,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {}", *src, src.layout.ty, cast_ty.ty);
         match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {
-            (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(TypeAndMut { ty: c, .. }))
-            | (&ty::RawPtr(TypeAndMut { ty: s, .. }), &ty::RawPtr(TypeAndMut { ty: c, .. })) => {
-                self.unsize_into_ptr(src, dest, *s, *c)
-            }
+            (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(c, _))
+            | (&ty::RawPtr(s, _), &ty::RawPtr(c, _)) => self.unsize_into_ptr(src, dest, *s, *c),
             (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
                 assert_eq!(def_a, def_b); // implies same number of fields
 

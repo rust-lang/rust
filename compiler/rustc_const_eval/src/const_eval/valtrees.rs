@@ -98,7 +98,7 @@ fn const_to_valtree_inner<'tcx>(
             Ok(ty::ValTree::Leaf(val.assert_int()))
         }
 
-        ty::RawPtr(_) => {
+        ty::RawPtr(_, _) => {
             // Not all raw pointers are allowed, as we cannot properly test them for
             // equality at compile-time (see `ptr_guaranteed_cmp`).
             // However we allow those that are just integers in disguise.
@@ -278,7 +278,7 @@ pub fn valtree_to_const_value<'tcx>(
             assert!(valtree.unwrap_branch().is_empty());
             mir::ConstValue::ZeroSized
         }
-        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char | ty::RawPtr(_) => {
+        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char | ty::RawPtr(_, _) => {
             match valtree {
                 ty::ValTree::Leaf(scalar_int) => mir::ConstValue::Scalar(Scalar::Int(scalar_int)),
                 ty::ValTree::Branch(_) => bug!(

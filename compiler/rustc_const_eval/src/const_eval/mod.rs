@@ -7,12 +7,14 @@ use rustc_middle::ty::{self, Ty};
 
 use crate::interpret::format_interp_error;
 
+mod dummy_machine;
 mod error;
 mod eval_queries;
 mod fn_queries;
 mod machine;
 mod valtrees;
 
+pub use dummy_machine::*;
 pub use error::*;
 pub use eval_queries::*;
 pub use fn_queries::*;

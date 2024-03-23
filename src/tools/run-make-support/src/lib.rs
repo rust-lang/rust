@@ -2,6 +2,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+pub use object;
 pub use wasmparser;
 
 pub fn out_dir() -> PathBuf {

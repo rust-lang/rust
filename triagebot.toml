@@ -623,7 +623,7 @@ cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
 [mentions."compiler/stable_mir"]
 message = "This PR changes Stable MIR"
-cc = ["@oli-obk", "@celinval", "@spastorino", "@ouz-a"]
+cc = ["@oli-obk", "@celinval", "@ouz-a"]
 
 [mentions."compiler/rustc_target/src/spec"]
 message = """
@@ -833,6 +833,7 @@ parser = [
     "@estebank",
     "@nnethercote",
     "@petrochenkov",
+    "@spastorino",
 ]
 lexer = [
     "@nnethercote",
@@ -841,6 +842,7 @@ lexer = [
 ]
 arena = [
     "@nnethercote",
+    "@spastorino",
 ]
 mir = [
     "@davidtwco",

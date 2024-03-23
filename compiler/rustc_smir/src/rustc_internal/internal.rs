@@ -95,10 +95,9 @@ impl RustcInternal for RigidTy {
             }
             RigidTy::Str => rustc_ty::TyKind::Str,
             RigidTy::Slice(ty) => rustc_ty::TyKind::Slice(ty.internal(tables, tcx)),
-            RigidTy::RawPtr(ty, mutability) => rustc_ty::TyKind::RawPtr(rustc_ty::TypeAndMut {
-                ty: ty.internal(tables, tcx),
-                mutbl: mutability.internal(tables, tcx),
-            }),
+            RigidTy::RawPtr(ty, mutability) => {
+                rustc_ty::TyKind::RawPtr(ty.internal(tables, tcx), mutability.internal(tables, tcx))
+            }
             RigidTy::Ref(region, ty, mutability) => rustc_ty::TyKind::Ref(
                 region.internal(tables, tcx),
                 ty.internal(tables, tcx),

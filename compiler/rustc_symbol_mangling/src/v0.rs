@@ -361,12 +361,12 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 ty.print(self)?;
             }
 
-            ty::RawPtr(mt) => {
-                self.push(match mt.mutbl {
+            ty::RawPtr(ty, mutbl) => {
+                self.push(match mutbl {
                     hir::Mutability::Not => "P",
                     hir::Mutability::Mut => "O",
                 });
-                mt.ty.print(self)?;
+                ty.print(self)?;
             }
 
             ty::Array(ty, len) => {

@@ -1719,7 +1719,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for pointer_ty in place.deref_tys() {
             match pointer_ty.kind() {
                 // We don't capture derefs of raw ptrs
-                ty::RawPtr(_) => unreachable!(),
+                ty::RawPtr(_, _) => unreachable!(),
 
                 // Dereferencing a mut-ref allows us to mut the Place if we don't deref
                 // an immut-ref after on top of this.
@@ -1780,11 +1780,9 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
 ) -> Ty<'tcx> {
     match capture_kind {
         ty::UpvarCapture::ByValue => ty,
-        ty::UpvarCapture::ByRef(kind) => Ty::new_ref(
-            tcx,
-            region.unwrap(),
-            ty::TypeAndMut { ty: ty, mutbl: kind.to_mutbl_lossy() },
-        ),
+        ty::UpvarCapture::ByRef(kind) => {
+            Ty::new_ref(tcx, region.unwrap(), ty, kind.to_mutbl_lossy())
+        }
     }
 }
 

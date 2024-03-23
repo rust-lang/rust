@@ -56,7 +56,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
 
         // Negative trait predicates have different rules than positive trait predicates.
-        if obligation.polarity() == ty::ImplPolarity::Negative {
+        if obligation.polarity() == ty::PredicatePolarity::Negative {
             self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
             self.assemble_candidates_from_impls(obligation, &mut candidates);
             self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
@@ -671,7 +671,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Str
                 | ty::Array(_, _)
                 | ty::Slice(_)
-                | ty::RawPtr(_)
+                | ty::RawPtr(_, _)
                 | ty::Ref(_, _, _)
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
@@ -805,7 +805,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Array(_, _)
                 | ty::Slice(_)
                 | ty::Adt(..)
-                | ty::RawPtr(_)
+                | ty::RawPtr(_, _)
                 | ty::Ref(..)
                 | ty::FnDef(..)
                 | ty::FnPtr(_)
@@ -1186,7 +1186,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Infer(ty::IntVar(_))
             | ty::Infer(ty::FloatVar(_))
             | ty::Str
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::FnDef(..)
             | ty::FnPtr(_)
@@ -1267,7 +1267,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Str
             | ty::Array(_, _)
             | ty::Slice(_)
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
@@ -1330,7 +1330,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Str
             | ty::Array(..)
             | ty::Slice(_)
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::FnDef(..)
             | ty::Placeholder(..)

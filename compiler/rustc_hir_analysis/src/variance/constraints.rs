@@ -253,8 +253,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_ty(current, typ, variance);
             }
 
-            ty::RawPtr(ref mt) => {
-                self.add_constraints_from_mt(current, mt, variance);
+            ty::RawPtr(ty, mutbl) => {
+                self.add_constraints_from_mt(current, &ty::TypeAndMut { ty, mutbl }, variance);
             }
 
             ty::Tuple(subtys) => {

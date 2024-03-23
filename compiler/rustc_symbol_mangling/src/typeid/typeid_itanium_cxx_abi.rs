@@ -683,13 +683,14 @@ fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
-        ty::RawPtr(tm) => {
+        ty::RawPtr(ptr_ty, _mutbl) => {
+            // FIXME: This can definitely not be so spaghettified.
             // P[K]<element-type>
             let mut s = String::new();
-            s.push_str(&encode_ty(tcx, tm.ty, dict, options));
+            s.push_str(&encode_ty(tcx, *ptr_ty, dict, options));
             if !ty.is_mutable_ptr() {
                 s = format!("{}{}", "K", &s);
-                compress(dict, DictKey::Ty(tm.ty, TyQ::Const), &mut s);
+                compress(dict, DictKey::Ty(*ptr_ty, TyQ::Const), &mut s);
             };
             s = format!("{}{}", "P", &s);
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
@@ -930,7 +931,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             }
         }
 
-        ty::RawPtr(tm) => {
+        ty::RawPtr(ptr_ty, _) => {
             if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
                 if ty.is_mutable_ptr() {
                     ty = Ty::new_mut_ptr(tcx, Ty::new_unit(tcx));
@@ -939,9 +940,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 }
             } else {
                 if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ptr(tcx, transform_ty(tcx, tm.ty, options));
+                    ty = Ty::new_mut_ptr(tcx, transform_ty(tcx, *ptr_ty, options));
                 } else {
-                    ty = Ty::new_imm_ptr(tcx, transform_ty(tcx, tm.ty, options));
+                    ty = Ty::new_imm_ptr(tcx, transform_ty(tcx, *ptr_ty, options));
                 }
             }
         }

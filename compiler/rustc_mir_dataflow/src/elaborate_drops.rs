@@ -1,4 +1,3 @@
-use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
@@ -629,11 +628,7 @@ where
         let drop_fn = tcx.associated_item_def_ids(drop_trait)[0];
         let ty = self.place_ty(self.place);
 
-        let ref_ty = Ty::new_ref(
-            tcx,
-            tcx.lifetimes.re_erased,
-            ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut },
-        );
+        let ref_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, ty);
         let ref_place = self.new_temp(ref_ty);
         let unit_temp = Place::from(self.new_temp(Ty::new_unit(tcx)));
 
@@ -700,7 +695,7 @@ where
         let move_ = |place: Place<'tcx>| Operand::Move(place);
         let tcx = self.tcx();
 
-        let ptr_ty = Ty::new_ptr(tcx, ty::TypeAndMut { ty: ety, mutbl: hir::Mutability::Mut });
+        let ptr_ty = Ty::new_mut_ptr(tcx, ety);
         let ptr = Place::from(self.new_temp(ptr_ty));
         let can_go = Place::from(self.new_temp(tcx.types.bool));
         let one = self.constant_usize(1);

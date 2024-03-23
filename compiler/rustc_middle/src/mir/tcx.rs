@@ -170,11 +170,11 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::ThreadLocalRef(did) => tcx.thread_local_ptr_ty(did),
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
-                Ty::new_ref(tcx, reg, ty::TypeAndMut { ty: place_ty, mutbl: bk.to_mutbl_lossy() })
+                Ty::new_ref(tcx, reg, place_ty, bk.to_mutbl_lossy())
             }
             Rvalue::AddressOf(mutability, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
-                Ty::new_ptr(tcx, ty::TypeAndMut { ty: place_ty, mutbl: mutability })
+                Ty::new_ptr(tcx, place_ty, mutability)
             }
             Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,

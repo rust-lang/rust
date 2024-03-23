@@ -234,6 +234,7 @@ trivial! {
     Option<rustc_middle::middle::stability::DeprecationEntry>,
     Option<rustc_middle::ty::Destructor>,
     Option<rustc_middle::ty::ImplTraitInTraitData>,
+    Option<rustc_middle::ty::ScalarInt>,
     Option<rustc_span::def_id::CrateNum>,
     Option<rustc_span::def_id::DefId>,
     Option<rustc_span::def_id::LocalDefId>,

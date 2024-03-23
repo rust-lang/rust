@@ -363,7 +363,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         // Negative trait predicates don't require supertraits to hold, just
         // that their args are WF.
-        if trait_pred.polarity == ty::ImplPolarity::Negative {
+        if trait_pred.polarity == ty::PredicatePolarity::Negative {
             self.compute_negative_trait_pred(trait_ref);
             return;
         }
@@ -687,7 +687,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 }
             }
 
-            ty::RawPtr(_) => {
+            ty::RawPtr(_, _) => {
                 // Simple cases that are WF if their type args are WF.
             }
 

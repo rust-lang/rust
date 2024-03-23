@@ -110,6 +110,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     local_gen_sym_counter: Cell<usize>,
 
     eh_personality: Cell<Option<RValue<'gcc>>>,
+    #[cfg(feature="master")]
     pub rust_try_fn: Cell<Option<(Type<'gcc>, Function<'gcc>)>>,
 
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
@@ -121,6 +122,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// FIXME(antoyo): fix the rustc API to avoid having this hack.
     pub structs_as_pointer: RefCell<FxHashSet<RValue<'gcc>>>,
 
+    #[cfg(feature="master")]
     pub cleanup_blocks: RefCell<FxHashSet<Block<'gcc>>>,
 }
 
@@ -325,9 +327,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             struct_types: Default::default(),
             local_gen_sym_counter: Cell::new(0),
             eh_personality: Cell::new(None),
+            #[cfg(feature="master")]
             rust_try_fn: Cell::new(None),
             pointee_infos: Default::default(),
             structs_as_pointer: Default::default(),
+            #[cfg(feature="master")]
             cleanup_blocks: Default::default(),
         };
         // TODO(antoyo): instead of doing this, add SsizeT to libgccjit.

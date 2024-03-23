@@ -426,7 +426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
             match ty.kind() {
-                ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
+                ty::Ref(_, ty, _) | ty::RawPtr(ty, _) => {
                     if oprnd.is_syntactic_place_expr() {
                         // Places may legitimately have unsized types.
                         // For example, dereferences of a fat pointer and
@@ -442,12 +442,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty =
             self.check_expr_with_expectation_and_needs(oprnd, hint, Needs::maybe_mut_place(mutbl));
 
-        let tm = ty::TypeAndMut { ty, mutbl };
         match kind {
-            _ if tm.ty.references_error() => Ty::new_misc_error(self.tcx),
+            _ if ty.references_error() => Ty::new_misc_error(self.tcx),
             hir::BorrowKind::Raw => {
                 self.check_named_place_expr(oprnd);
-                Ty::new_ptr(self.tcx, tm)
+                Ty::new_ptr(self.tcx, ty, mutbl)
             }
             hir::BorrowKind::Ref => {
                 // Note: at this point, we cannot say what the best lifetime
@@ -465,7 +464,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // whose address was taken can actually be made to live as long
                 // as it needs to live.
                 let region = self.next_region_var(infer::AddrOfRegion(expr.span));
-                Ty::new_ref(self.tcx, region, tm)
+                Ty::new_ref(self.tcx, region, ty, mutbl)
             }
         }
     }
@@ -2686,8 +2685,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 expr,
                 Some(span),
             );
-        } else if let ty::RawPtr(ty_and_mut) = expr_t.kind()
-            && let ty::Adt(adt_def, _) = ty_and_mut.ty.kind()
+        } else if let ty::RawPtr(ptr_ty, _) = expr_t.kind()
+            && let ty::Adt(adt_def, _) = ptr_ty.kind()
             && let ExprKind::Field(base_expr, _) = expr.kind
             && adt_def.variants().len() == 1
             && adt_def
@@ -3100,7 +3099,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     cause.clone().derived_cause(
                         ty::Binder::dummy(ty::TraitPredicate {
                             trait_ref: impl_trait_ref,
-                            polarity: ty::ImplPolarity::Positive,
+                            polarity: ty::PredicatePolarity::Positive,
                         }),
                         |derived| {
                             traits::ImplDerivedObligation(Box::new(
@@ -3225,7 +3224,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.demand_coerce(expr, ty, fnptr_ty, None, AllowTwoPhase::No);
                 }
                 ty::Ref(_, base_ty, mutbl) => {
-                    let ptr_ty = Ty::new_ptr(self.tcx, ty::TypeAndMut { ty: base_ty, mutbl });
+                    let ptr_ty = Ty::new_ptr(self.tcx, base_ty, mutbl);
                     self.demand_coerce(expr, ty, ptr_ty, None, AllowTwoPhase::No);
                 }
                 _ => {}
