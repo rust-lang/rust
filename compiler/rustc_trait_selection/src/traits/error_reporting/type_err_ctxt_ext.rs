@@ -167,8 +167,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         for from_expansion in [false, true] {
             for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
-                    info!(?error.obligation);
-                    info!(?error.obligation.cause);
                     let guar = self.report_fulfillment_error(error);
                     reported = Some(guar);
                     self.reported_trait_errors
