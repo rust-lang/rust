@@ -746,7 +746,13 @@ fn rust_panic_with_hook(
             panic_count::MustAbort::PanicInHook => {
                 // Don't try to print the message in this case
                 // - perhaps that is causing the recursive panics.
-                rtprintpanic!("thread panicked while processing panic. aborting.\n");
+                let panicinfo = PanicInfo::internal_constructor(
+                    None,     // no message
+                    location, // but we want to show the location!
+                    can_unwind,
+                    force_no_backtrace,
+                );
+                rtprintpanic!("{panicinfo}\nthread panicked while processing panic. aborting.\n");
             }
             panic_count::MustAbort::AlwaysAbort => {
                 // Unfortunately, this does not print a backtrace, because creating
