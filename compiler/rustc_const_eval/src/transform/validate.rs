@@ -1057,7 +1057,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // FIXME(dyn-star): make sure nothing needs to be done here.
                     }
                     // FIXME: Add Checks for these
-                    CastKind::PointerFromExposedAddress
+                    CastKind::PointerWithExposedProvenance
                     | CastKind::PointerExposeAddress
                     | CastKind::PointerCoercion(_) => {}
                     CastKind::IntToInt | CastKind::IntToFloat => {

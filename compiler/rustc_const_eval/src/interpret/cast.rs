@@ -40,7 +40,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_immediate(*res, dest)?;
             }
 
-            CastKind::PointerFromExposedAddress => {
+            CastKind::PointerWithExposedProvenance => {
                 let src = self.read_immediate(src)?;
                 let res = self.pointer_from_exposed_address_cast(&src, cast_layout)?;
                 self.write_immediate(*res, dest)?;

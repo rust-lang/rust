@@ -274,7 +274,7 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
         use rustc_middle::mir::CastKind::*;
         match self {
             PointerExposeAddress => stable_mir::mir::CastKind::PointerExposeAddress,
-            PointerFromExposedAddress => stable_mir::mir::CastKind::PointerFromExposedAddress,
+            PointerWithExposedProvenance => stable_mir::mir::CastKind::PointerWithExposedProvenance,
             PointerCoercion(c) => stable_mir::mir::CastKind::PointerCoercion(c.stable(tables)),
             DynStar => stable_mir::mir::CastKind::DynStar,
             IntToInt => stable_mir::mir::CastKind::IntToInt,
