@@ -382,7 +382,7 @@ fn run_test(
     test: &str,
     crate_name: &str,
     line: usize,
-    rustdoc_options: RustdocTestOptions,
+    rustdoc_options: IndividualTestOptions,
     mut lang_string: LangString,
     no_run: bool,
     opts: &GlobalTestOptions,
@@ -936,7 +936,7 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
     (before, after, crates)
 }
 
-pub(crate) struct RustdocTestOptions {
+pub(crate) struct IndividualTestOptions {
     test_builder: Option<PathBuf>,
     test_builder_wrappers: Vec<PathBuf>,
     is_json_unused_externs_enabled: bool,
@@ -952,7 +952,7 @@ pub(crate) struct RustdocTestOptions {
     test_id: String,
 }
 
-impl RustdocTestOptions {
+impl IndividualTestOptions {
     fn new(options: &RustdocOptions, arg_file: &Path, test_id: String) -> Self {
         let outdir = if let Some(ref path) = options.persist_doctests {
             let mut path = path.clone();
@@ -1139,7 +1139,7 @@ impl Tester for Collector {
         );
 
         let rustdoc_test_options =
-            RustdocTestOptions::new(&self.rustdoc_options, &self.arg_file, test_id);
+            IndividualTestOptions::new(&self.rustdoc_options, &self.arg_file, test_id);
 
         debug!("creating test {name}: {test}");
         self.tests.push(test::TestDescAndFn {
