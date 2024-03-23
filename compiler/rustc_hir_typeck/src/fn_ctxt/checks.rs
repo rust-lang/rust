@@ -1601,7 +1601,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Type check a `let` statement.
-    pub fn check_decl_local(&self, local: &'tcx hir::Local<'tcx>) {
+    pub fn check_decl_local(&self, local: &'tcx hir::LetStmt<'tcx>) {
         self.check_decl(local.into());
         if local.pat.is_never_pattern() {
             self.diverges.set(Diverges::Always {
@@ -1789,7 +1789,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             [
                                                 hir::Stmt {
                                                     kind:
-                                                        hir::StmtKind::Let(hir::Local {
+                                                        hir::StmtKind::Let(hir::LetStmt {
                                                             source:
                                                                 hir::LocalSource::AssignDesugar(_),
                                                             ..

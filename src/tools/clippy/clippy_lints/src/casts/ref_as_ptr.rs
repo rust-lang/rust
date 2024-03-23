@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(
         && let ty::RawPtr(_, to_mutbl) = cast_to.kind()
         && let Some(use_cx) = expr_use_ctxt(cx, expr)
         // TODO: only block the lint if `cast_expr` is a temporary
-        && !matches!(use_cx.node, ExprUseNode::Local(_) | ExprUseNode::ConstStatic(_))
+        && !matches!(use_cx.node, ExprUseNode::LetStmt(_) | ExprUseNode::ConstStatic(_))
     {
         let core_or_std = if is_no_std_crate(cx) { "core" } else { "std" };
         let fn_name = match to_mutbl {

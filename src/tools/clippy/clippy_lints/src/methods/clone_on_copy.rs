@@ -69,7 +69,7 @@ pub(super) fn check(
                 _ => false,
             },
             // local binding capturing a reference
-            Node::Local(l) if matches!(l.pat.kind, PatKind::Binding(BindingAnnotation(ByRef::Yes, _), ..)) => {
+            Node::LetStmt(l) if matches!(l.pat.kind, PatKind::Binding(BindingAnnotation(ByRef::Yes, _), ..)) => {
                 return;
             },
             _ => false,

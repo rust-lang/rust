@@ -8,7 +8,7 @@ use clippy_utils::{is_diag_item_method, match_def_path, path_to_local_id, paths}
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{
-    BindingAnnotation, Expr, ExprKind, HirId, LangItem, Local, MatchSource, Node, Pat, PatKind, QPath, Stmt, StmtKind,
+    BindingAnnotation, Expr, ExprKind, HirId, LangItem, LetStmt, MatchSource, Node, Pat, PatKind, QPath, Stmt, StmtKind,
 };
 use rustc_lint::LateContext;
 use rustc_middle::ty;
@@ -128,7 +128,7 @@ fn check_manual_split_once_indirect(
 ) -> Option<()> {
     let ctxt = expr.span.ctxt();
     let mut parents = cx.tcx.hir().parent_iter(expr.hir_id);
-    if let (_, Node::Local(local)) = parents.next()?
+    if let (_, Node::LetStmt(local)) = parents.next()?
         && let PatKind::Binding(BindingAnnotation::MUT, iter_binding_id, iter_ident, None) = local.pat.kind
         && let (iter_stmt_id, Node::Stmt(_)) = parents.next()?
         && let (_, Node::Block(enclosing_block)) = parents.next()?
@@ -198,7 +198,7 @@ fn indirect_usage<'tcx>(
     binding: HirId,
     ctxt: SyntaxContext,
 ) -> Option<IndirectUsage<'tcx>> {
-    if let StmtKind::Let(&Local {
+    if let StmtKind::Let(&LetStmt {
         pat: Pat {
             kind: PatKind::Binding(BindingAnnotation::NONE, _, ident, None),
             ..
