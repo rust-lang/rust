@@ -13,10 +13,10 @@ LL | fn foo(_x: dyn Foo + Send) {
    |            +++
 
 error[E0277]: the size for values of type `(dyn Foo + Send + 'static)` cannot be known at compilation time
-  --> $DIR/not-on-bare-trait.rs:7:8
+  --> $DIR/not-on-bare-trait.rs:7:12
    |
 LL | fn foo(_x: Foo + Send) {
-   |        ^^ doesn't have a size known at compile-time
+   |            ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Foo + Send + 'static)`
    = help: unsized fn params are gated as an unstable feature
@@ -30,10 +30,10 @@ LL | fn foo(_x: &(dyn Foo + Send)) {
    |            +++++           +
 
 error[E0277]: the size for values of type `(dyn Foo + Send + 'static)` cannot be known at compilation time
-  --> $DIR/not-on-bare-trait.rs:12:8
+  --> $DIR/not-on-bare-trait.rs:12:13
    |
 LL | fn bar(_x: (dyn Foo + Send)) {
-   |        ^^ doesn't have a size known at compile-time
+   |             ^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Foo + Send + 'static)`
    = help: unsized fn params are gated as an unstable feature

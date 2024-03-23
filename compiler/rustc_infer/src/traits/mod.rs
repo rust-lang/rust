@@ -206,8 +206,40 @@ impl<'tcx> FulfillmentError<'tcx> {
     ) -> FulfillmentError<'tcx> {
         FulfillmentError { obligation, code, root_obligation }
     }
-    pub fn span(&self) -> Span {
+
+    pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
         let mut span = self.obligation.cause.span;
+        if let ObligationCauseCode::SizedArgumentType(Some(hir_id)) = self.obligation.cause.code()
+            && let Some(ty_span) = {
+                match tcx.hir_node(*hir_id) {
+                    hir::Node::Ty(hir::Ty { span, .. }) => Some(*span),
+                    hir::Node::Param(hir::Param { ty_span, .. }) => {
+                        // We use `contains` because the type might be surrounded by parentheses,
+                        // which makes `ty_span` and `t.span` disagree with each other, but one
+                        // fully contains the other: `foo: (dyn Foo + Bar)`
+                        //                                 ^-------------^
+                        //                                 ||
+                        //                                 |t.span
+                        //                                 param._ty_span
+                        // Otherwise we'd use `ty_span` directly.
+                        // If we don't do this a case like `fn foo(_: (dyn A + B))` would emit two
+                        // unsized errors one for `(dyn A + B)` and one for `dyn A + B`, because the
+                        // dedup logic would consdider them different.
+                        if let Some(decl) = tcx.parent_hir_node(*hir_id).fn_decl()
+                            && let Some(t) = decl.inputs.iter().find(|t| ty_span.contains(t.span))
+                        {
+                            Some(t.span)
+                        } else {
+                            Some(*ty_span)
+                        }
+                    }
+                    _ => None,
+                }
+            }
+        {
+            // On implicit `Sized` on arguments, we want to point at the type and not the pattern.
+            span = ty_span;
+        }
         // We want to ignore desugarings here: spans are equivalent even
         // if one is the result of a desugaring and the other is not.
         let expn_data = span.ctxt().outer_expn_data();
