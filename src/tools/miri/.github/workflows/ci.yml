@@ -30,7 +30,6 @@ jobs:
             host_target: i686-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     env:
-      RUST_BACKTRACE: 1
       HOST_TARGET: ${{ matrix.host_target }}
     steps:
       - uses: actions/checkout@v3
