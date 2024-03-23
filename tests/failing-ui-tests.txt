@@ -28,6 +28,9 @@ tests/ui/mir/mir_calls_to_shims.rs
 tests/ui/mir/mir_drop_order.rs
 tests/ui/mir/mir_let_chains_drop_order.rs
 tests/ui/oom_unwind.rs
+tests/ui/panic-runtime/abort-link-to-unwinding-crates.rs
+tests/ui/panic-runtime/abort.rs 
+tests/ui/panic-runtime/link-to-abort.rs
 tests/ui/unwind-no-uwtable.rs
 tests/ui/parser/unclosed-delimiter-in-dep.rs
 tests/ui/runtime/rt-explody-panic-payloads.rs
@@ -53,6 +56,7 @@ tests/ui/const_prop/ice-issue-111353.rs
 tests/ui/process/println-with-broken-pipe.rs
 tests/ui/lto/thin-lto-inlines2.rs
 tests/ui/lto/weak-works.rs
+tests/ui/panic-runtime/lto-abort.rs 
 tests/ui/lto/thin-lto-inlines.rs
 tests/ui/lto/thin-lto-global-allocator.rs
 tests/ui/lto/msvc-imp-present.rs
