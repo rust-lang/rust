@@ -154,6 +154,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn qux() -> Foo {
    |             ^^^ doesn't have a size known at compile-time
    |
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn qux() -> impl Foo {

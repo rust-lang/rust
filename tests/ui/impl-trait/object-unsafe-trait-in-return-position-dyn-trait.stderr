@@ -92,6 +92,7 @@ help: trait `NotObjectSafe` is not object safe, so you can't return a boxed trai
    |
 LL | fn car() -> dyn NotObjectSafe {
    |                 ^^^^^^^^^^^^^
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 
 error[E0038]: the trait `NotObjectSafe` cannot be made into an object
   --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:31:16

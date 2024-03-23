@@ -2002,6 +2002,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 },
                 Applicability::MachineApplicable,
             );
+        } else {
+            err.help(
+                "if the returned value came from a borrowed argument that implements the trait, \
+                 then you could return `&dyn Trait`",
+            );
         }
 
         true

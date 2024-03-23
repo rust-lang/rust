@@ -48,6 +48,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bap() -> Trait { Struct }
    |             ^^^^^ doesn't have a size known at compile-time
    |
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn bap() -> impl Trait { Struct }
@@ -63,6 +64,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn ban() -> dyn Trait { Struct }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn ban() -> impl Trait { Struct }
@@ -78,6 +80,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bak() -> dyn Trait { unimplemented!() }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn bak() -> impl Trait { unimplemented!() }
@@ -101,6 +104,7 @@ LL |         return Struct;
 LL |     }
 LL |     42
    |     ^^ this returned value has type `{integer}`
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bal() -> Box<dyn Trait> {
@@ -124,6 +128,7 @@ LL |         Struct
 LL |     } else {
 LL |         42
    |         ^^ this returned value has type `{integer}`
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bax() -> Box<dyn Trait> {
@@ -275,6 +280,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bat() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn bat() -> impl Trait {
@@ -294,6 +300,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bay() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn bay() -> impl Trait {

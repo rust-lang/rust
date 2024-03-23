@@ -171,6 +171,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn hat() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn hat() -> impl std::fmt::Display {
@@ -192,6 +193,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn pug() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn pug() -> impl std::fmt::Display {
@@ -219,6 +221,7 @@ LL |         0i32
 LL |     } else {
 LL |         1u32
    |         ^^^^ this returned value has type `u32`
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn man() -> Box<dyn std::fmt::Display> {

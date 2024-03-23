@@ -4,6 +4,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn foo() -> dyn Trait { Struct }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn foo() -> impl Trait { Struct }
@@ -19,6 +20,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bar() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
 help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn bar() -> impl Trait {
