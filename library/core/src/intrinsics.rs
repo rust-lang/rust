@@ -66,6 +66,7 @@
 use crate::marker::DiscriminantKind;
 use crate::marker::Tuple;
 use crate::mem::align_of;
+use crate::ptr;
 
 pub mod mir;
 pub mod simd;
@@ -2636,6 +2637,27 @@ where
 #[rustc_intrinsic]
 pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
     false
+}
+
+/// Non-overlapping *typed* swap of a single value.
+///
+/// The codegen backends will replace this with a better implementation when
+/// `T` is a simple type that can be loaded and stored as an immediate.
+///
+/// The stabilized form of this intrinsic is [`crate::mem::swap`].
+///
+/// # Safety
+///
+/// `x` and `y` are readable and writable as `T`, and non-overlapping.
+#[rustc_nounwind]
+#[inline]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+// This has fallback `const fn` MIR, so shouldn't need stability, see #122652
+#[rustc_const_unstable(feature = "const_typed_swap", issue = "none")]
+pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
+    // SAFETY: The caller provided single non-overlapping items behind
+    // pointers, so swapping them with `count: 1` is fine.
+    unsafe { ptr::swap_nonoverlapping(x, y, 1) };
 }
 
 /// Returns whether we should check for library UB. This evaluate to the value of `cfg!(debug_assertions)`

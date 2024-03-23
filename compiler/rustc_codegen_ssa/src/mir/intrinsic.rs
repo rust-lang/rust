@@ -9,6 +9,7 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::config::OptLevel;
 use rustc_span::{sym, Span};
 use rustc_target::abi::{
     call::{FnAbi, PassMode},
@@ -74,6 +75,29 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let ret_ty = sig.output();
         let name = bx.tcx().item_name(def_id);
         let name_str = name.as_str();
+
+        // If we're swapping something that's *not* an `OperandValue::Ref`,
+        // then we can do it directly and avoid the alloca.
+        // Otherwise, we'll let the fallback MIR body take care of it.
+        if let sym::typed_swap = name {
+            let pointee_ty = fn_args.type_at(0);
+            let pointee_layout = bx.layout_of(pointee_ty);
+            if !bx.is_backend_ref(pointee_layout)
+                // But if we're not going to optimize, trying to use the fallback
+                // body just makes things worse, so don't bother.
+                || bx.sess().opts.optimize == OptLevel::No
+                // NOTE(eddyb) SPIR-V's Logical addressing model doesn't allow for arbitrary
+                // reinterpretation of values as (chunkable) byte arrays, and the loop in the
+                // block optimization in `ptr::swap_nonoverlapping` is hard to rewrite back
+                // into the (unoptimized) direct swapping implementation, so we disable it.
+                || bx.sess().target.arch == "spirv"
+            {
+                let x_place = PlaceRef::new_sized(args[0].immediate(), pointee_layout);
+                let y_place = PlaceRef::new_sized(args[1].immediate(), pointee_layout);
+                bx.typed_place_swap(x_place, y_place);
+                return Ok(());
+            }
+        }
 
         let llret_ty = bx.backend_type(bx.layout_of(ret_ty));
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
