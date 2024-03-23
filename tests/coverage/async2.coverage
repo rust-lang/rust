@@ -41,7 +41,7 @@
    LL|       |    #[coverage(off)]
    LL|       |    pub fn block_on<F: Future>(mut future: F) -> F::Output {
    LL|       |        let mut future = pin!(future);
-   LL|       |        let mut context = Context::from_waker(Waker::noop());
+   LL|       |        let mut context = Context::from_waker(Waker::NOOP);
    LL|       |
    LL|       |        loop {
    LL|       |            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {

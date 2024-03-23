@@ -6,7 +6,7 @@ use std::task::{Context, Poll, Waker};
 
 pub fn fuzzing_block_on<O, F: Future<Output = O>>(fut: F) -> O {
     let mut fut = std::pin::pin!(fut);
-    let mut context = Context::from_waker(Waker::noop());
+    let mut context = Context::from_waker(Waker::NOOP);
     loop {
         match fut.as_mut().poll(&mut context) {
             Poll::Ready(v) => return v,

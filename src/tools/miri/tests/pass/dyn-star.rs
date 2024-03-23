@@ -93,7 +93,7 @@ fn dispatch_on_pin_mut() {
     let mut fut = async_main();
 
     // Poll loop, just to test the future...
-    let ctx = &mut Context::from_waker(Waker::noop());
+    let ctx = &mut Context::from_waker(Waker::NOOP);
 
     loop {
         match unsafe { Pin::new_unchecked(&mut fut).poll(ctx) } {

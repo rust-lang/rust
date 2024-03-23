@@ -6,7 +6,7 @@ use std::task::*;
 
 pub fn block_on<T>(fut: impl Future<Output = T>) -> T {
     let mut fut = pin!(fut);
-    let ctx = &mut Context::from_waker(Waker::noop());
+    let ctx = &mut Context::from_waker(Waker::NOOP);
 
     loop {
         match fut.as_mut().poll(ctx) {

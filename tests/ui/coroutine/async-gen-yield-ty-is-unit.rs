@@ -11,6 +11,6 @@ async gen fn gen_fn() -> &'static str {
 
 pub fn main() {
     let async_iterator = pin!(gen_fn());
-    let ctx = &mut Context::from_waker(Waker::noop());
+    let ctx = &mut Context::from_waker(Waker::NOOP);
     async_iterator.poll_next(ctx);
 }
