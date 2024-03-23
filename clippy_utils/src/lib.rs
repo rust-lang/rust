@@ -3335,3 +3335,12 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
         repeat(String::from("super")).take(go_up_by).chain(path).join("::")
     }
 }
+
+/// Returns true if the specified `HirId` is the top-level expression of a statement or the only
+/// expression in a block.
+pub fn is_parent_stmt(cx: &LateContext<'_>, id: HirId) -> bool {
+    matches!(
+        cx.tcx.parent_hir_node(id),
+        Node::Stmt(..) | Node::Block(Block { stmts: &[], .. })
+    )
+}

@@ -6,11 +6,12 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    higher, is_else_clause, is_expn_of, peel_blocks, peel_blocks_with_stmt, span_extract_comment, SpanlessEq,
+    higher, is_else_clause, is_expn_of, is_parent_stmt, peel_blocks, peel_blocks_with_stmt, span_extract_comment,
+    SpanlessEq,
 };
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Node, UnOp};
+use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
@@ -133,13 +134,6 @@ fn condition_needs_parentheses(e: &Expr<'_>) -> bool {
         inner = i;
     }
     false
-}
-
-fn is_parent_stmt(cx: &LateContext<'_>, id: HirId) -> bool {
-    matches!(
-        cx.tcx.parent_hir_node(id),
-        Node::Stmt(..) | Node::Block(Block { stmts: &[], .. })
-    )
 }
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
