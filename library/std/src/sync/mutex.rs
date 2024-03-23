@@ -396,7 +396,7 @@ impl<T: ?Sized> Mutex<T> {
         self.poison.get()
     }
 
-    /// Clear the poisoned state from a mutex
+    /// Clear the poisoned state from a mutex.
     ///
     /// If the mutex is poisoned, it will remain poisoned until this function is called. This
     /// allows recovering from a poisoned state and marking that it has recovered. For example, if
