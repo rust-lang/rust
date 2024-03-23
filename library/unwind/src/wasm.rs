@@ -59,7 +59,7 @@ pub unsafe fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwi
             wasm_throw(0, exception.cast())
         } else {
             let _ = exception;
-            core::arch::wasm32::unreachable()
+            core::arch::wasm::unreachable()
         }
     }
 }
