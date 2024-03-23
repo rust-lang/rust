@@ -46,6 +46,7 @@ pub enum TerminationInfo {
         op1: RacingOp,
         op2: RacingOp,
         extra: Option<&'static str>,
+        retag_explain: bool,
     },
 }
 
@@ -263,11 +264,16 @@ pub fn report_error<'tcx, 'mir>(
                 vec![(Some(*span), format!("the `{link_name}` symbol is defined here"))],
             Int2PtrWithStrictProvenance =>
                 vec![(None, format!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead"))],
-            DataRace { op1, extra, .. } => {
+            DataRace { op1, extra, retag_explain, .. } => {
                 let mut helps = vec![(Some(op1.span), format!("and (1) occurred earlier here"))];
                 if let Some(extra) = extra {
                     helps.push((None, format!("{extra}")));
                     helps.push((None, format!("see https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#memory-model-for-atomic-accesses for more information about the Rust memory model")));
+                }
+                if *retag_explain {
+                    helps.push((None, "retags occur on all (re)borrows and as well as when references are copied or moved".to_owned()));
+                    helps.push((None, "retags permit optimizations that insert speculative reads or writes".to_owned()));
+                    helps.push((None, "therefore from the perspective of data races, a retag has the same implications as a read or write".to_owned()));
                 }
                 helps.push((None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")));
                 helps.push((None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")));

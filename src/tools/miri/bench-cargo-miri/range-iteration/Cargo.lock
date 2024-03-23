@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "invalidate"
+name = "range-iteration"
 version = "0.1.0"

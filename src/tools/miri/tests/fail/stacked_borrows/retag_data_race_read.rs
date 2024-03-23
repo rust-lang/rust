@@ -15,7 +15,7 @@ fn thread_1(p: SendPtr) {
 fn thread_2(p: SendPtr) {
     let p = p.0;
     unsafe {
-        *p = 5; //~ ERROR: Data race detected between (1) non-atomic read on thread `unnamed-1` and (2) non-atomic write on thread `unnamed-2`
+        *p = 5; //~ ERROR: Data race detected between (1) retag read on thread `unnamed-1` and (2) non-atomic write on thread `unnamed-2`
     }
 }
 
