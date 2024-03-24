@@ -8,6 +8,7 @@ use ide_db::{
     source_change::SourceChange,
     RootDatabase,
 };
+use paths::Utf8Component;
 use syntax::{
     ast::{self, edit::IndentLevel, HasModuleItem, HasName},
     AstNode, TextRange,
@@ -84,10 +85,10 @@ fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
 
         // try resolving the relative difference of the paths as inline modules
         let mut current = root_module;
-        for ele in rel.as_ref().components() {
+        for ele in rel.as_utf8_path().components() {
             let seg = match ele {
-                std::path::Component::Normal(seg) => seg.to_str()?,
-                std::path::Component::RootDir => continue,
+                Utf8Component::Normal(seg) => seg,
+                Utf8Component::RootDir => continue,
                 // shouldn't occur
                 _ => continue 'crates,
             };

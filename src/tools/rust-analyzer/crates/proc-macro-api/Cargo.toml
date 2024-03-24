@@ -23,7 +23,7 @@ snap = "1.1.0"
 indexmap = "2.1.0"
 
 # local deps
-paths.workspace = true
+paths = { workspace = true, features = ["serde1"] }
 tt.workspace = true
 stdx.workspace = true
 text-size.workspace = true

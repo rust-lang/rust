@@ -88,8 +88,6 @@ impl std::fmt::Debug for TokenId {
     }
 }
 
-impl tt::Span for TokenId {}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FlatTree {
     subtree: Vec<u32>,

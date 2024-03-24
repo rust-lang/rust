@@ -148,12 +148,12 @@ impl Attrs {
         }
     }
 
-    pub fn lang(&self) -> Option<&SmolStr> {
+    pub fn lang(&self) -> Option<&str> {
         self.by_key("lang").string_value()
     }
 
     pub fn lang_item(&self) -> Option<LangItem> {
-        self.by_key("lang").string_value().and_then(|it| LangItem::from_str(it))
+        self.by_key("lang").string_value().and_then(LangItem::from_str)
     }
 
     pub fn has_doc_hidden(&self) -> bool {
@@ -178,7 +178,7 @@ impl Attrs {
         self.doc_exprs().flat_map(|doc_expr| doc_expr.aliases().to_vec())
     }
 
-    pub fn export_name(&self) -> Option<&SmolStr> {
+    pub fn export_name(&self) -> Option<&str> {
         self.by_key("export_name").string_value()
     }
 
@@ -565,7 +565,7 @@ impl<'attr> AttrQuery<'attr> {
         self.attrs().filter_map(|attr| attr.token_tree_value())
     }
 
-    pub fn string_value(self) -> Option<&'attr SmolStr> {
+    pub fn string_value(self) -> Option<&'attr str> {
         self.attrs().find_map(|attr| attr.string_value())
     }
 

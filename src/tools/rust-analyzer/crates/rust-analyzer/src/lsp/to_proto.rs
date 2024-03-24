@@ -1,7 +1,7 @@
 //! Conversion of rust-analyzer specific types to lsp_types equivalents.
 use std::{
     iter::once,
-    mem, path,
+    mem,
     sync::atomic::{AtomicU32, Ordering},
 };
 
@@ -13,8 +13,9 @@ use ide::{
     NavigationTarget, ReferenceCategory, RenameError, Runnable, Severity, SignatureHelp,
     SnippetEdit, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
 };
-use ide_db::rust_doc::format_docs;
+use ide_db::{rust_doc::format_docs, FxHasher};
 use itertools::Itertools;
+use paths::{Utf8Component, Utf8Prefix};
 use semver::VersionReq;
 use serde_json::to_value;
 use vfs::AbsPath;
@@ -52,6 +53,7 @@ pub(crate) fn range(line_index: &LineIndex, range: TextRange) -> lsp_types::Rang
 pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
         SymbolKind::Function => lsp_types::SymbolKind::FUNCTION,
+        SymbolKind::Method => lsp_types::SymbolKind::METHOD,
         SymbolKind::Struct => lsp_types::SymbolKind::STRUCT,
         SymbolKind::Enum => lsp_types::SymbolKind::ENUM,
         SymbolKind::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
@@ -122,12 +124,12 @@ pub(crate) fn completion_item_kind(
         CompletionItemKind::BuiltinType => lsp_types::CompletionItemKind::STRUCT,
         CompletionItemKind::InferredType => lsp_types::CompletionItemKind::SNIPPET,
         CompletionItemKind::Keyword => lsp_types::CompletionItemKind::KEYWORD,
-        CompletionItemKind::Method => lsp_types::CompletionItemKind::METHOD,
         CompletionItemKind::Snippet => lsp_types::CompletionItemKind::SNIPPET,
         CompletionItemKind::UnresolvedReference => lsp_types::CompletionItemKind::REFERENCE,
         CompletionItemKind::Expression => lsp_types::CompletionItemKind::SNIPPET,
         CompletionItemKind::SymbolKind(symbol) => match symbol {
             SymbolKind::Attribute => lsp_types::CompletionItemKind::FUNCTION,
+            SymbolKind::Method => lsp_types::CompletionItemKind::METHOD,
             SymbolKind::Const => lsp_types::CompletionItemKind::CONSTANT,
             SymbolKind::ConstParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
             SymbolKind::Derive => lsp_types::CompletionItemKind::FUNCTION,
@@ -444,30 +446,42 @@ pub(crate) fn inlay_hint(
     fields_to_resolve: &InlayFieldsToResolve,
     line_index: &LineIndex,
     file_id: FileId,
-    inlay_hint: InlayHint,
+    mut inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
-    let needs_resolve = inlay_hint.needs_resolve;
-    let (label, tooltip, mut something_to_resolve) =
-        inlay_hint_label(snap, fields_to_resolve, needs_resolve, inlay_hint.label)?;
+    let resolve_hash = inlay_hint.needs_resolve().then(|| {
+        std::hash::BuildHasher::hash_one(
+            &std::hash::BuildHasherDefault::<FxHasher>::default(),
+            &inlay_hint,
+        )
+    });
 
+    let mut something_to_resolve = false;
     let text_edits = if snap
         .config
         .visual_studio_code_version()
         // https://github.com/microsoft/vscode/issues/193124
         .map_or(true, |version| VersionReq::parse(">=1.86.0").unwrap().matches(version))
-        && needs_resolve
+        && resolve_hash.is_some()
         && fields_to_resolve.resolve_text_edits
     {
         something_to_resolve |= inlay_hint.text_edit.is_some();
         None
     } else {
-        inlay_hint.text_edit.map(|it| text_edit_vec(line_index, it))
+        inlay_hint.text_edit.take().map(|it| text_edit_vec(line_index, it))
     };
+    let (label, tooltip) = inlay_hint_label(
+        snap,
+        fields_to_resolve,
+        &mut something_to_resolve,
+        resolve_hash.is_some(),
+        inlay_hint.label,
+    )?;
 
-    let data = if needs_resolve && something_to_resolve {
-        Some(to_value(lsp_ext::InlayHintResolveData { file_id: file_id.index() }).unwrap())
-    } else {
-        None
+    let data = match resolve_hash {
+        Some(hash) if something_to_resolve => Some(
+            to_value(lsp_ext::InlayHintResolveData { file_id: file_id.index(), hash }).unwrap(),
+        ),
+        _ => None,
     };
 
     Ok(lsp_types::InlayHint {
@@ -492,15 +506,15 @@ pub(crate) fn inlay_hint(
 fn inlay_hint_label(
     snap: &GlobalStateSnapshot,
     fields_to_resolve: &InlayFieldsToResolve,
+    something_to_resolve: &mut bool,
     needs_resolve: bool,
     mut label: InlayHintLabel,
-) -> Cancellable<(lsp_types::InlayHintLabel, Option<lsp_types::InlayHintTooltip>, bool)> {
-    let mut something_to_resolve = false;
+) -> Cancellable<(lsp_types::InlayHintLabel, Option<lsp_types::InlayHintTooltip>)> {
     let (label, tooltip) = match &*label.parts {
         [InlayHintLabelPart { linked_location: None, .. }] => {
             let InlayHintLabelPart { text, tooltip, .. } = label.parts.pop().unwrap();
             let hint_tooltip = if needs_resolve && fields_to_resolve.resolve_hint_tooltip {
-                something_to_resolve |= tooltip.is_some();
+                *something_to_resolve |= tooltip.is_some();
                 None
             } else {
                 match tooltip {
@@ -524,7 +538,7 @@ fn inlay_hint_label(
                 .into_iter()
                 .map(|part| {
                     let tooltip = if needs_resolve && fields_to_resolve.resolve_label_tooltip {
-                        something_to_resolve |= part.tooltip.is_some();
+                        *something_to_resolve |= part.tooltip.is_some();
                         None
                     } else {
                         match part.tooltip {
@@ -543,7 +557,7 @@ fn inlay_hint_label(
                         }
                     };
                     let location = if needs_resolve && fields_to_resolve.resolve_label_location {
-                        something_to_resolve |= part.linked_location.is_some();
+                        *something_to_resolve |= part.linked_location.is_some();
                         None
                     } else {
                         part.linked_location.map(|range| location(snap, range)).transpose()?
@@ -559,7 +573,7 @@ fn inlay_hint_label(
             (lsp_types::InlayHintLabel::LabelParts(parts), None)
         }
     };
-    Ok((label, tooltip, something_to_resolve))
+    Ok((label, tooltip))
 }
 
 static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
@@ -636,8 +650,7 @@ pub(crate) fn semantic_token_delta(
 fn semantic_token_type_and_modifiers(
     highlight: Highlight,
 ) -> (lsp_types::SemanticTokenType, semantic_tokens::ModifierSet) {
-    let mut mods = semantic_tokens::ModifierSet::default();
-    let type_ = match highlight.tag {
+    let ty = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
             SymbolKind::Attribute => semantic_tokens::DECORATOR,
             SymbolKind::Derive => semantic_tokens::DERIVE,
@@ -653,22 +666,10 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::SelfParam => semantic_tokens::SELF_KEYWORD,
             SymbolKind::SelfType => semantic_tokens::SELF_TYPE_KEYWORD,
             SymbolKind::Local => semantic_tokens::VARIABLE,
-            SymbolKind::Function => {
-                if highlight.mods.contains(HlMod::Associated) {
-                    semantic_tokens::METHOD
-                } else {
-                    semantic_tokens::FUNCTION
-                }
-            }
-            SymbolKind::Const => {
-                mods |= semantic_tokens::CONSTANT;
-                mods |= semantic_tokens::STATIC;
-                semantic_tokens::VARIABLE
-            }
-            SymbolKind::Static => {
-                mods |= semantic_tokens::STATIC;
-                semantic_tokens::VARIABLE
-            }
+            SymbolKind::Method => semantic_tokens::METHOD,
+            SymbolKind::Function => semantic_tokens::FUNCTION,
+            SymbolKind::Const => semantic_tokens::VARIABLE,
+            SymbolKind::Static => semantic_tokens::VARIABLE,
             SymbolKind::Struct => semantic_tokens::STRUCT,
             SymbolKind::Enum => semantic_tokens::ENUM,
             SymbolKind::Variant => semantic_tokens::ENUM_MEMBER,
@@ -715,12 +716,14 @@ fn semantic_token_type_and_modifiers(
         },
     };
 
+    let mut mods = semantic_tokens::ModifierSet::default();
     for modifier in highlight.mods.iter() {
         let modifier = match modifier {
-            HlMod::Associated => continue,
+            HlMod::Associated => semantic_tokens::ASSOCIATED,
             HlMod::Async => semantic_tokens::ASYNC,
             HlMod::Attribute => semantic_tokens::ATTRIBUTE_MODIFIER,
             HlMod::Callable => semantic_tokens::CALLABLE,
+            HlMod::Const => semantic_tokens::CONSTANT,
             HlMod::Consuming => semantic_tokens::CONSUMING,
             HlMod::ControlFlow => semantic_tokens::CONTROL_FLOW,
             HlMod::CrateRoot => semantic_tokens::CRATE_ROOT,
@@ -742,7 +745,7 @@ fn semantic_token_type_and_modifiers(
         mods |= modifier;
     }
 
-    (type_, mods)
+    (ty, mods)
 }
 
 pub(crate) fn folding_range(
@@ -814,9 +817,9 @@ pub(crate) fn url(snap: &GlobalStateSnapshot, file_id: FileId) -> lsp_types::Url
 /// When processing non-windows path, this is essentially the same as `Url::from_file_path`.
 pub(crate) fn url_from_abs_path(path: &AbsPath) -> lsp_types::Url {
     let url = lsp_types::Url::from_file_path(path).unwrap();
-    match path.as_ref().components().next() {
-        Some(path::Component::Prefix(prefix))
-            if matches!(prefix.kind(), path::Prefix::Disk(_) | path::Prefix::VerbatimDisk(_)) =>
+    match path.components().next() {
+        Some(Utf8Component::Prefix(prefix))
+            if matches!(prefix.kind(), Utf8Prefix::Disk(_) | Utf8Prefix::VerbatimDisk(_)) =>
         {
             // Need to lowercase driver letter
         }
@@ -1514,8 +1517,8 @@ pub(crate) fn test_item(
     snap: &GlobalStateSnapshot,
     test_item: ide::TestItem,
     line_index: Option<&LineIndex>,
-) -> lsp_ext::TestItem {
-    lsp_ext::TestItem {
+) -> Option<lsp_ext::TestItem> {
+    Some(lsp_ext::TestItem {
         id: test_item.id,
         label: test_item.label,
         kind: match test_item.kind {
@@ -1530,9 +1533,9 @@ pub(crate) fn test_item(
                     | project_model::TargetKind::Example
                     | project_model::TargetKind::BuildScript
                     | project_model::TargetKind::Other => lsp_ext::TestItemKind::Package,
-                    project_model::TargetKind::Test | project_model::TargetKind::Bench => {
-                        lsp_ext::TestItemKind::Test
-                    }
+                    project_model::TargetKind::Test => lsp_ext::TestItemKind::Test,
+                    // benches are not tests needed to be shown in the test explorer
+                    project_model::TargetKind::Bench => return None,
                 }
             }
             ide::TestItemKind::Module => lsp_ext::TestItemKind::Module,
@@ -1548,7 +1551,7 @@ pub(crate) fn test_item(
             .map(|f| lsp_types::TextDocumentIdentifier { uri: url(snap, f) }),
         range: line_index.and_then(|l| Some(range(l, test_item.text_range?))),
         runnable: test_item.runnable.and_then(|r| runnable(snap, r).ok()),
-    }
+    })
 }
 
 pub(crate) mod command {
@@ -2728,12 +2731,12 @@ struct ProcMacro {
     #[test]
     #[cfg(target_os = "windows")]
     fn test_lowercase_drive_letter() {
-        use std::path::Path;
+        use paths::Utf8Path;
 
-        let url = url_from_abs_path(Path::new("C:\\Test").try_into().unwrap());
+        let url = url_from_abs_path(Utf8Path::new("C:\\Test").try_into().unwrap());
         assert_eq!(url.to_string(), "file:///c:/Test");
 
-        let url = url_from_abs_path(Path::new(r#"\\localhost\C$\my_dir"#).try_into().unwrap());
+        let url = url_from_abs_path(Utf8Path::new(r#"\\localhost\C$\my_dir"#).try_into().unwrap());
         assert_eq!(url.to_string(), "file://localhost/C$/my_dir");
     }
 }

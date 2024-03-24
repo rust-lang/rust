@@ -10,8 +10,8 @@
 //!
 //! `ReachedFixedPoint` signals about this.
 
-use base_db::Edition;
 use hir_expand::{name::Name, Lookup};
+use span::Edition;
 use triomphe::Arc;
 
 use crate::{

@@ -903,6 +903,7 @@ fn out_dirs_check() {
 }
 
 #[test]
+#[cfg(not(windows))] // windows requires elevated permissions to create symlinks
 fn root_contains_symlink_out_dirs_check() {
     out_dirs_check_impl(true);
 }
@@ -917,7 +918,7 @@ fn resolve_proc_macro() {
     }
 
     let sysroot = project_model::Sysroot::discover_no_source(
-        &AbsPathBuf::assert(std::env::current_dir().unwrap()),
+        &AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()),
         &Default::default(),
     )
     .unwrap();
@@ -1002,7 +1003,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
         },
         "procMacro": {
             "enable": true,
-            "server": proc_macro_server_path.as_path().as_ref(),
+            "server": proc_macro_server_path.as_path().as_str(),
         }
     }))
     .root("foo")
@@ -1039,7 +1040,7 @@ fn test_will_rename_files_same_level() {
 
     let tmp_dir = TestDir::new();
     let tmp_dir_path = tmp_dir.path().to_owned();
-    let tmp_dir_str = tmp_dir_path.to_str().unwrap();
+    let tmp_dir_str = tmp_dir_path.as_str();
     let base_path = PathBuf::from(format!("file://{tmp_dir_str}"));
 
     let code = r#"
@@ -1084,7 +1085,7 @@ use crate::old_folder::nested::foo as bar;
           "documentChanges": [
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").as_str().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
                 "version": null
               },
               "edits": [
@@ -1141,7 +1142,7 @@ use crate::old_folder::nested::foo as bar;
           "documentChanges": [
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").as_str().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
                 "version": null
               },
               "edits": [
@@ -1162,7 +1163,7 @@ use crate::old_folder::nested::foo as bar;
             },
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("old_folder").join("nested.rs").to_str().unwrap().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("old_folder").join("nested.rs").as_str().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
                 "version": null
               },
               "edits": [

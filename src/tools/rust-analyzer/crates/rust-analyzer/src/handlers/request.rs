@@ -4,7 +4,6 @@
 use std::{
     fs,
     io::Write as _,
-    path::PathBuf,
     process::{self, Stdio},
 };
 
@@ -12,8 +11,8 @@ use anyhow::Context;
 
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, RangeLimit,
-    ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
+    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory,
+    Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -27,6 +26,7 @@ use lsp_types::{
     SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
     SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
+use paths::Utf8PathBuf;
 use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
@@ -248,7 +248,7 @@ pub(crate) fn handle_discover_test(
     Ok(lsp_ext::DiscoverTestResults {
         tests: tests
             .into_iter()
-            .map(|t| {
+            .filter_map(|t| {
                 let line_index = t.file.and_then(|f| snap.file_line_index(f).ok());
                 to_proto::test_item(&snap, t, line_index.as_ref())
             })
@@ -1465,7 +1465,7 @@ pub(crate) fn handle_inlay_hints(
     let inlay_hints_config = snap.config.inlay_hints();
     Ok(Some(
         snap.analysis
-            .inlay_hints(&inlay_hints_config, file_id, Some(RangeLimit::Fixed(range)))?
+            .inlay_hints(&inlay_hints_config, file_id, Some(range))?
             .into_iter()
             .map(|it| {
                 to_proto::inlay_hint(
@@ -1499,10 +1499,11 @@ pub(crate) fn handle_inlay_hints_resolve(
     let hint_position = from_proto::offset(&line_index, original_hint.position)?;
     let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
     forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
-    let resolve_hints = snap.analysis.inlay_hints(
+    let resolve_hints = snap.analysis.inlay_hints_resolve(
         &forced_resolve_inlay_hints_config,
         file_id,
-        Some(RangeLimit::NearestParent(hint_position)),
+        hint_position,
+        resolve_data.hash,
     )?;
 
     let mut resolved_hints = resolve_hints
@@ -1542,7 +1543,7 @@ pub(crate) fn handle_call_hierarchy_prepare(
     let RangeInfo { range: _, info: navs } = nav_info;
     let res = navs
         .into_iter()
-        .filter(|it| it.kind == Some(SymbolKind::Function))
+        .filter(|it| matches!(it.kind, Some(SymbolKind::Function | SymbolKind::Method)))
         .map(|it| to_proto::call_hierarchy_item(&snap, it))
         .collect::<Cancellable<Vec<_>>>()?;
 
@@ -1736,8 +1737,8 @@ pub(crate) fn handle_open_docs(
         _ => (None, None),
     };
 
-    let sysroot = sysroot.map(|p| p.root().as_os_str());
-    let target_dir = cargo.map(|cargo| cargo.target_directory()).map(|p| p.as_os_str());
+    let sysroot = sysroot.map(|p| p.root().as_str());
+    let target_dir = cargo.map(|cargo| cargo.target_directory()).map(|p| p.as_str());
 
     let Ok(remote_urls) = snap.analysis.external_docs(position, target_dir, sysroot) else {
         return if snap.config.local_docs() {
@@ -2042,7 +2043,7 @@ fn run_rustfmt(
             cmd
         }
         RustfmtConfig::CustomCommand { command, args } => {
-            let cmd = PathBuf::from(&command);
+            let cmd = Utf8PathBuf::from(&command);
             let workspace = CargoTargetSpec::for_file(snap, file_id)?;
             let mut cmd = match workspace {
                 Some(spec) => {

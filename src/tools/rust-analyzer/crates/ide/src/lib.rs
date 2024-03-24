@@ -58,8 +58,6 @@ mod view_item_tree;
 mod view_memory_layout;
 mod view_mir;
 
-use std::ffi::OsStr;
-
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
 use hir::ChangeWithProcMacros;
@@ -90,7 +88,7 @@ pub use crate::{
     inlay_hints::{
         AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints,
         InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayHintPosition,
-        InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints, RangeLimit,
+        InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,
@@ -121,8 +119,8 @@ pub use ide_completion::{
 };
 pub use ide_db::{
     base_db::{
-        Cancelled, CrateGraph, CrateId, Edition, FileChange, FileId, FilePosition, FileRange,
-        SourceRoot, SourceRootId,
+        Cancelled, CrateGraph, CrateId, FileChange, FileId, FilePosition, FileRange, SourceRoot,
+        SourceRootId,
     },
     documentation::Documentation,
     label::Label,
@@ -137,6 +135,7 @@ pub use ide_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode, Severity,
 };
 pub use ide_ssr::SsrError;
+pub use span::Edition;
 pub use syntax::{TextRange, TextSize};
 pub use text_edit::{Indel, TextEdit};
 
@@ -415,9 +414,18 @@ impl Analysis {
         &self,
         config: &InlayHintsConfig,
         file_id: FileId,
-        range: Option<RangeLimit>,
+        range: Option<TextRange>,
     ) -> Cancellable<Vec<InlayHint>> {
         self.with_db(|db| inlay_hints::inlay_hints(db, file_id, range, config))
+    }
+    pub fn inlay_hints_resolve(
+        &self,
+        config: &InlayHintsConfig,
+        file_id: FileId,
+        position: TextSize,
+        hash: u64,
+    ) -> Cancellable<Option<InlayHint>> {
+        self.with_db(|db| inlay_hints::inlay_hints_resolve(db, file_id, position, hash, config))
     }
 
     /// Returns the set of folding ranges.
@@ -502,8 +510,8 @@ impl Analysis {
     pub fn external_docs(
         &self,
         position: FilePosition,
-        target_dir: Option<&OsStr>,
-        sysroot: Option<&OsStr>,
+        target_dir: Option<&str>,
+        sysroot: Option<&str>,
     ) -> Cancellable<doc_links::DocumentationLinks> {
         self.with_db(|db| {
             doc_links::external_docs(db, position, target_dir, sysroot).unwrap_or_default()

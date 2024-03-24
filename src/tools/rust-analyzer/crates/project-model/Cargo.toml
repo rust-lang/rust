@@ -25,8 +25,9 @@ itertools.workspace = true
 
 # local deps
 base-db.workspace = true
+span.workspace = true
 cfg.workspace = true
-paths.workspace = true
+paths = { workspace = true, features = ["serde1"] }
 stdx.workspace = true
 toolchain.workspace = true
 

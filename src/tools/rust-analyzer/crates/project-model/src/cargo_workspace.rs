@@ -1,17 +1,16 @@
 //! See [`CargoWorkspace`].
 
 use std::ops;
-use std::path::PathBuf;
 use std::str::from_utf8;
 
 use anyhow::Context;
-use base_db::Edition;
 use cargo_metadata::{CargoOpt, MetadataCommand};
 use la_arena::{Arena, Idx};
-use paths::{AbsPath, AbsPathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use serde_json::from_value;
+use span::Edition;
 use toolchain::Tool;
 
 use crate::{utf8_stdout, InvocationLocation, ManifestPath, Sysroot};
@@ -100,7 +99,7 @@ pub struct CargoConfig {
     pub invocation_strategy: InvocationStrategy,
     pub invocation_location: InvocationLocation,
     /// Optional path to use instead of `target` when building
-    pub target_dir: Option<PathBuf>,
+    pub target_dir: Option<Utf8PathBuf>,
 }
 
 pub type Package = Idx<PackageData>;
@@ -262,7 +261,7 @@ impl CargoWorkspace {
                 }
             }
         }
-        meta.current_dir(current_dir.as_os_str());
+        meta.current_dir(current_dir);
 
         let mut other_options = vec![];
         // cargo metadata only supports a subset of flags of what cargo usually accepts, and usually
@@ -351,7 +350,7 @@ impl CargoWorkspace {
                 id: id.repr.clone(),
                 name,
                 version,
-                manifest: AbsPathBuf::assert(manifest_path.into()).try_into().unwrap(),
+                manifest: AbsPathBuf::assert(manifest_path).try_into().unwrap(),
                 targets: Vec::new(),
                 is_local,
                 is_member,
@@ -370,7 +369,7 @@ impl CargoWorkspace {
                 let tgt = targets.alloc(TargetData {
                     package: pkg,
                     name,
-                    root: AbsPathBuf::assert(src_path.into()),
+                    root: AbsPathBuf::assert(src_path),
                     kind: TargetKind::new(&kind),
                     required_features,
                 });
@@ -393,11 +392,9 @@ impl CargoWorkspace {
             packages[source].active_features.extend(node.features);
         }
 
-        let workspace_root =
-            AbsPathBuf::assert(PathBuf::from(meta.workspace_root.into_os_string()));
+        let workspace_root = AbsPathBuf::assert(meta.workspace_root);
 
-        let target_directory =
-            AbsPathBuf::assert(PathBuf::from(meta.target_directory.into_os_string()));
+        let target_directory = AbsPathBuf::assert(meta.target_directory);
 
         CargoWorkspace { packages, targets, workspace_root, target_directory }
     }
@@ -409,7 +406,7 @@ impl CargoWorkspace {
     pub fn target_by_root(&self, root: &AbsPath) -> Option<Target> {
         self.packages()
             .filter(|&pkg| self[pkg].is_member)
-            .find_map(|pkg| self[pkg].targets.iter().find(|&&it| &self[it].root == root))
+            .find_map(|pkg| self[pkg].targets.iter().find(|&&it| self[it].root == root))
             .copied()
     }
 

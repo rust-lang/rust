@@ -552,7 +552,7 @@ impl GlobalState {
                 Task::DiscoverTest(lsp_ext::DiscoverTestResults {
                     tests: tests
                         .into_iter()
-                        .map(|t| {
+                        .filter_map(|t| {
                             let line_index = t.file.and_then(|f| snapshot.file_line_index(f).ok());
                             to_proto::test_item(&snapshot, t, line_index.as_ref())
                         })
@@ -653,7 +653,7 @@ impl GlobalState {
                 };
 
                 if let Some(state) = state {
-                    self.report_progress("Building", state, msg, None, None);
+                    self.report_progress("Building build-artifacts", state, msg, None, None);
                 }
             }
             Task::LoadProcMacros(progress) => {
@@ -669,7 +669,7 @@ impl GlobalState {
                 };
 
                 if let Some(state) = state {
-                    self.report_progress("Loading", state, msg, None, None);
+                    self.report_progress("Loading proc-macros", state, msg, None, None);
                 }
             }
             Task::BuildDepsHaveChanged => self.build_deps_changed = true,
@@ -714,10 +714,9 @@ impl GlobalState {
                     message += &format!(
                         ": {}",
                         match dir.strip_prefix(self.config.root_path()) {
-                            Some(relative_path) => relative_path.as_ref(),
+                            Some(relative_path) => relative_path.as_utf8_path(),
                             None => dir.as_ref(),
                         }
-                        .display()
                     );
                 }
 
@@ -861,7 +860,7 @@ impl GlobalState {
                 let title = if self.flycheck.len() == 1 {
                     format!("{}", self.config.flycheck())
                 } else {
-                    format!("cargo check (#{})", id + 1)
+                    format!("{} (#{})", self.config.flycheck(), id + 1)
                 };
                 self.report_progress(
                     &title,

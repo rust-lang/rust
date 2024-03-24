@@ -1279,6 +1279,40 @@ fn bar() {
 }
 
 #[test]
+fn argument_assoc_impl_trait() {
+    check_infer(
+        r#"
+trait Outer {
+    type Item;
+}
+
+trait Inner { }
+
+fn foo<T: Outer<Item = impl Inner>>(baz: T) {
+}
+
+impl Outer for usize {
+    type Item = usize;
+}
+
+impl Inner for usize {}
+
+fn main() {
+    foo(2);
+}
+"#,
+        expect![[r#"
+            85..88 'baz': T
+            93..96 '{ }': ()
+            182..197 '{     foo(2); }': ()
+            188..191 'foo': fn foo<usize>(usize)
+            188..194 'foo(2)': ()
+            192..193 '2': usize
+        "#]],
+    );
+}
+
+#[test]
 fn simple_return_pos_impl_trait() {
     cov_mark::check!(lower_rpit);
     check_infer(
@@ -4653,5 +4687,80 @@ fn f<T: Send, U>() {
   //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^{unknown}
 }
 "#,
+    );
+}
+
+#[test]
+fn associated_type_impl_trait() {
+    check_types(
+        r#"
+trait Foo {}
+struct S1;
+impl Foo for S1 {}
+
+trait Bar {
+    type Item;
+    fn bar(&self) -> Self::Item;
+}
+struct S2;
+impl Bar for S2 {
+    type Item = impl Foo;
+    fn bar(&self) -> Self::Item {
+        S1
+    }
+}
+
+fn test() {
+    let x = S2.bar();
+      //^ impl Foo + ?Sized
+}
+        "#,
+    );
+}
+
+#[test]
+fn associated_type_impl_traits_complex() {
+    check_types(
+        r#"
+struct Unary<T>(T);
+struct Binary<T, U>(T, U);
+
+trait Foo {}
+struct S1;
+impl Foo for S1 {}
+
+trait Bar {
+    type Item;
+    fn bar(&self) -> Unary<Self::Item>;
+}
+struct S2;
+impl Bar for S2 {
+    type Item = Unary<impl Foo>;
+    fn bar(&self) -> Unary<<Self as Bar>::Item> {
+        Unary(Unary(S1))
+    }
+}
+
+trait Baz {
+    type Target1;
+    type Target2;
+    fn baz(&self) -> Binary<Self::Target1, Self::Target2>;
+}
+struct S3;
+impl Baz for S3 {
+    type Target1 = impl Foo;
+    type Target2 = Unary<impl Bar>;
+    fn baz(&self) -> Binary<Self::Target1, Self::Target2> {
+        Binary(S1, Unary(S2))
+    }
+}
+
+fn test() {
+    let x = S3.baz();
+      //^ Binary<impl Foo + ?Sized, Unary<impl Bar + ?Sized>>
+    let y = x.1.0.bar();
+      //^ Unary<Bar::Item<impl Bar + ?Sized>>
+}
+        "#,
     );
 }

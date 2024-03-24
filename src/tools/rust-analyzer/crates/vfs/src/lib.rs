@@ -91,12 +91,21 @@ impl nohash_hasher::IsEnabled for FileId {}
 pub struct Vfs {
     interner: PathInterner,
     data: Vec<FileState>,
+    // FIXME: This should be a HashMap<FileId, ChangeFile>
+    // right now we do a nasty deduplication in GlobalState::process_changes that would be a lot
+    // easier to handle here on insertion.
     changes: Vec<ChangedFile>,
+    // The above FIXME would then also get rid of this probably
+    created_this_cycle: Vec<FileId>,
 }
 
-#[derive(Copy, PartialEq, PartialOrd, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum FileState {
+    /// The file has been created this cycle.
+    Created,
+    /// The file exists.
     Exists,
+    /// The file is deleted.
     Deleted,
 }
 
@@ -119,6 +128,16 @@ impl ChangedFile {
     /// [`Delete`](Change::Delete).
     pub fn is_created_or_deleted(&self) -> bool {
         matches!(self.change, Change::Create(_) | Change::Delete)
+    }
+
+    /// Returns `true` if the change is [`Create`](ChangeKind::Create).
+    pub fn is_created(&self) -> bool {
+        matches!(self.change, Change::Create(_))
+    }
+
+    /// Returns `true` if the change is [`Modify`](ChangeKind::Modify).
+    pub fn is_modified(&self) -> bool {
+        matches!(self.change, Change::Modify(_))
     }
 
     pub fn kind(&self) -> ChangeKind {
@@ -155,7 +174,9 @@ pub enum ChangeKind {
 impl Vfs {
     /// Id of the given path if it exists in the `Vfs` and is not deleted.
     pub fn file_id(&self, path: &VfsPath) -> Option<FileId> {
-        self.interner.get(path).filter(|&it| matches!(self.get(it), FileState::Exists))
+        self.interner
+            .get(path)
+            .filter(|&it| matches!(self.get(it), FileState::Exists | FileState::Created))
     }
 
     /// File path corresponding to the given `file_id`.
@@ -173,7 +194,9 @@ impl Vfs {
     pub fn iter(&self) -> impl Iterator<Item = (FileId, &VfsPath)> + '_ {
         (0..self.data.len())
             .map(|it| FileId(it as u32))
-            .filter(move |&file_id| matches!(self.get(file_id), FileState::Exists))
+            .filter(move |&file_id| {
+                matches!(self.get(file_id), FileState::Exists | FileState::Created)
+            })
             .map(move |file_id| {
                 let path = self.interner.lookup(file_id);
                 (file_id, path)
@@ -188,27 +211,43 @@ impl Vfs {
     /// [`FileId`] for it.
     pub fn set_file_contents(&mut self, path: VfsPath, contents: Option<Vec<u8>>) -> bool {
         let file_id = self.alloc_file_id(path);
-        let change_kind = match (self.get(file_id), contents) {
+        let state = self.get(file_id);
+        let change_kind = match (state, contents) {
             (FileState::Deleted, None) => return false,
             (FileState::Deleted, Some(v)) => Change::Create(v),
-            (FileState::Exists, None) => Change::Delete,
-            (FileState::Exists, Some(v)) => Change::Modify(v),
+            (FileState::Exists | FileState::Created, None) => Change::Delete,
+            (FileState::Exists | FileState::Created, Some(v)) => Change::Modify(v),
+        };
+        self.data[file_id.0 as usize] = match change_kind {
+            Change::Create(_) => {
+                self.created_this_cycle.push(file_id);
+                FileState::Created
+            }
+            // If the file got created this cycle, make sure we keep it that way even
+            // if a modify comes in
+            Change::Modify(_) if matches!(state, FileState::Created) => FileState::Created,
+            Change::Modify(_) => FileState::Exists,
+            Change::Delete => FileState::Deleted,
         };
         let changed_file = ChangedFile { file_id, change: change_kind };
-        self.data[file_id.0 as usize] =
-            if changed_file.exists() { FileState::Exists } else { FileState::Deleted };
         self.changes.push(changed_file);
         true
     }
 
     /// Drain and returns all the changes in the `Vfs`.
     pub fn take_changes(&mut self) -> Vec<ChangedFile> {
+        for file_id in self.created_this_cycle.drain(..) {
+            if self.data[file_id.0 as usize] == FileState::Created {
+                // downgrade the file from `Created` to `Exists` as the cycle is done
+                self.data[file_id.0 as usize] = FileState::Exists;
+            }
+        }
         mem::take(&mut self.changes)
     }
 
     /// Provides a panic-less way to verify file_id validity.
     pub fn exists(&self, file_id: FileId) -> bool {
-        matches!(self.get(file_id), FileState::Exists)
+        matches!(self.get(file_id), FileState::Exists | FileState::Created)
     }
 
     /// Returns the id associated with `path`

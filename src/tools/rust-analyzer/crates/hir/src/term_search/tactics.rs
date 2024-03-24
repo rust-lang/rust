@@ -177,7 +177,7 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                 // Note that we need special case for 0 param constructors because of multi cartesian
                 // product
                 let variant_exprs: Vec<Expr> = if param_exprs.is_empty() {
-                    vec![Expr::Variant { variant, generics: generics.clone(), params: Vec::new() }]
+                    vec![Expr::Variant { variant, generics, params: Vec::new() }]
                 } else {
                     param_exprs
                         .into_iter()
@@ -462,7 +462,7 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
 
 /// # Impl method tactic
 ///
-/// Attempts to to call methods on types from lookup table.
+/// Attempts to call methods on types from lookup table.
 /// This includes both functions from direct impl blocks as well as functions from traits.
 /// Methods defined in impl blocks that are generic and methods that are themselves have
 /// generics are ignored for performance reasons.

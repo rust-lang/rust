@@ -1,11 +1,9 @@
 //! Defines messages for cross-process message passing based on `ndjson` wire protocol
 pub(crate) mod flat;
 
-use std::{
-    io::{self, BufRead, Write},
-    path::PathBuf,
-};
+use std::io::{self, BufRead, Write};
 
+use paths::Utf8PathBuf;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::ProcMacroKind;
@@ -27,7 +25,7 @@ pub const CURRENT_API_VERSION: u32 = RUST_ANALYZER_SPAN_SUPPORT;
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
     /// Since [`NO_VERSION_CHECK_VERSION`]
-    ListMacros { dylib_path: PathBuf },
+    ListMacros { dylib_path: Utf8PathBuf },
     /// Since [`NO_VERSION_CHECK_VERSION`]
     ExpandMacro(Box<ExpandMacro>),
     /// Since [`VERSION_CHECK_VERSION`]
@@ -89,7 +87,7 @@ pub struct ExpandMacro {
     /// Possible attributes for the attribute-like macros.
     pub attributes: Option<FlatTree>,
 
-    pub lib: PathBuf,
+    pub lib: Utf8PathBuf,
 
     /// Environment variables to set during macro expansion.
     pub env: Vec<(String, String)>,
@@ -273,7 +271,7 @@ mod tests {
             macro_body: FlatTree::new(&tt, CURRENT_API_VERSION, &mut span_data_table),
             macro_name: Default::default(),
             attributes: None,
-            lib: std::env::current_dir().unwrap(),
+            lib: Utf8PathBuf::from_path_buf(std::env::current_dir().unwrap()).unwrap(),
             env: Default::default(),
             current_dir: Default::default(),
             has_global_spans: ExpnGlobals {

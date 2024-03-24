@@ -47,13 +47,14 @@ hir-expand.workspace = true
 base-db.workspace = true
 syntax.workspace = true
 limit.workspace = true
+span.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
-project-model = { path = "../project-model" }
+project-model.workspace = true
 
 # local deps
 test-utils.workspace = true

@@ -15,7 +15,10 @@ extern crate rustc_abi;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
-// No need to use the in-tree one.
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_pattern_analysis;
+
+#[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 
 mod builder;
@@ -584,24 +587,25 @@ impl TypeFoldable<Interner> for CallableSig {
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
-    ReturnTypeImplTrait(hir_def::FunctionId, RpitId),
+    ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx),
+    AssociatedTypeImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
 impl_intern_value_trivial!(ImplTraitId);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct ReturnTypeImplTraits {
-    pub(crate) impl_traits: Arena<ReturnTypeImplTrait>,
+pub struct ImplTraits {
+    pub(crate) impl_traits: Arena<ImplTrait>,
 }
 
-has_interner!(ReturnTypeImplTraits);
+has_interner!(ImplTraits);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct ReturnTypeImplTrait {
+pub struct ImplTrait {
     pub(crate) bounds: Binders<Vec<QuantifiedWhereClause>>,
 }
 
-pub type RpitId = Idx<ReturnTypeImplTrait>;
+pub type ImplTraitIdx = Idx<ImplTrait>;
 
 pub fn static_lifetime() -> Lifetime {
     LifetimeData::Static.intern(Interner)

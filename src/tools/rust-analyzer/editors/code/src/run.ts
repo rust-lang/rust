@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import type * as lc from "vscode-languageclient";
 import * as ra from "./lsp_ext";
 import * as tasks from "./tasks";
+import * as toolchain from "./toolchain";
 
 import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
@@ -111,12 +112,22 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         throw `Unexpected runnable kind: ${runnable.kind}`;
     }
 
-    const args = createArgs(runnable);
+    let program: string;
+    let args = createArgs(runnable);
+    if (runnable.args.overrideCargo) {
+        // Split on spaces to allow overrides like "wrapper cargo".
+        const cargoParts = runnable.args.overrideCargo.split(" ");
 
-    const definition: tasks.CargoTaskDefinition = {
+        program = unwrapUndefinable(cargoParts[0]);
+        args = [...cargoParts.slice(1), ...args];
+    } else {
+        program = await toolchain.cargoPath();
+    }
+
+    const definition: tasks.RustTargetDefinition = {
         type: tasks.TASK_TYPE,
-        command: args[0], // run, test, etc...
-        args: args.slice(1),
+        program,
+        args,
         cwd: runnable.args.workspaceRoot || ".",
         env: prepareEnv(runnable, config.runnablesExtraEnv),
         overrideCargo: runnable.args.overrideCargo,
@@ -124,22 +135,21 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const target = vscode.workspace.workspaceFolders![0]; // safe, see main activate()
-    const cargoTask = await tasks.buildCargoTask(
+    const task = await tasks.buildRustTask(
         target,
         definition,
         runnable.label,
-        args,
         config.problemMatcher,
         config.cargoRunner,
         true,
     );
 
-    cargoTask.presentationOptions.clear = true;
+    task.presentationOptions.clear = true;
     // Sadly, this doesn't prevent focus stealing if the terminal is currently
     // hidden, and will become revealed due to task execution.
-    cargoTask.presentationOptions.focus = false;
+    task.presentationOptions.focus = false;
 
-    return cargoTask;
+    return task;
 }
 
 export function createArgs(runnable: ra.Runnable): string[] {

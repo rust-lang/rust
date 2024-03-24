@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 61f485497d6e8e88
+lsp/ext.rs hash: d5febcbf63650753
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -417,7 +417,7 @@ interface TestItem {
     // A human readable name for this test
     label: string;
     // The kind of this test item. Based on the kind,
-	// an icon is chosen by the editor. 
+	// an icon is chosen by the editor.
     kind: "package" | "module" | "test";
     // True if this test may have children not available eagerly
     canResolveChildren: boolean;
@@ -492,9 +492,9 @@ a `experimental/endRunTest` when is done.
 **Notification:** `ChangeTestStateParams`
 
 ```typescript
-type TestState = { tag: "passed" } 
+type TestState = { tag: "passed" }
     | {
-        tag: "failed"; 
+        tag: "failed";
         // The standard error of the test, containing the panic message. Clients should
         // render it similar to a terminal, and e.g. handle ansi colors.
         message: string;

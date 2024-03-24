@@ -38,7 +38,7 @@ mod display;
 use std::{iter, mem::discriminant, ops::ControlFlow};
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId};
+use base_db::{CrateDisplayName, CrateId, CrateOrigin, FileId};
 use either::Either;
 use hir_def::{
     body::{BodyDiagnostic, SyntheticSyntax},
@@ -79,6 +79,7 @@ use hir_ty::{
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
+use span::Edition;
 use stdx::{impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasName},
@@ -971,7 +972,7 @@ fn precise_macro_call_location(
                 MacroKind::ProcMacro,
             )
         }
-        MacroCallKind::Derive { ast_id, derive_attr_index, derive_index } => {
+        MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
             let node = ast_id.to_node(db.upcast());
             // Compute the precise location of the macro name's token in the derive
             // list.
@@ -1099,7 +1100,7 @@ impl Field {
             VariantDef::Union(it) => it.id.into(),
             VariantDef::Variant(it) => it.parent_enum(db).id.into(),
         };
-        let mut generics = generics.map(|it| it.ty.clone());
+        let mut generics = generics.map(|it| it.ty);
         let substs = TyBuilder::subst_for_def(db, def_id, None)
             .fill(|x| match x {
                 ParamKind::Type => {
@@ -1440,7 +1441,7 @@ impl Adt {
     /// the greatest API, FIXME find a better one.
     pub fn ty_with_args(self, db: &dyn HirDatabase, args: impl Iterator<Item = Type>) -> Type {
         let id = AdtId::from(self);
-        let mut it = args.map(|t| t.ty.clone());
+        let mut it = args.map(|t| t.ty);
         let ty = TyBuilder::def_ty(db, id.into(), None)
             .fill(|x| {
                 let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
@@ -1859,7 +1860,7 @@ impl Function {
             ItemContainerId::TraitId(it) => Some(it.into()),
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
         };
-        let mut generics = generics.map(|it| it.ty.clone());
+        let mut generics = generics.map(|it| it.ty);
         let mut filler = |x: &_| match x {
             ParamKind::Type => {
                 generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
@@ -1954,7 +1955,7 @@ impl Function {
             ItemContainerId::TraitId(it) => Some(it.into()),
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
         };
-        let mut generics = generics.map(|it| it.ty.clone());
+        let mut generics = generics.map(|it| it.ty);
         let parent_substs = parent_id.map(|id| {
             TyBuilder::subst_for_def(db, id, None)
                 .fill(|x| match x {
@@ -2007,8 +2008,7 @@ impl Function {
         }
         let data = db.function_data(self.id);
 
-        data.name.to_smol_str() == "main"
-            || data.attrs.export_name().map(core::ops::Deref::deref) == Some("main")
+        data.name.to_smol_str() == "main" || data.attrs.export_name() == Some("main")
     }
 
     /// Does this function have the ignore attribute?
@@ -2215,7 +2215,7 @@ impl SelfParam {
             }
         };
 
-        let mut generics = generics.map(|it| it.ty.clone());
+        let mut generics = generics.map(|it| it.ty);
         let mut filler = |x: &_| match x {
             ParamKind::Type => {
                 generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
@@ -2592,7 +2592,7 @@ impl Macro {
             },
             MacroId::ProcMacroId(it) => match it.lookup(db.upcast()).kind {
                 ProcMacroKind::CustomDerive => MacroKind::Derive,
-                ProcMacroKind::FuncLike => MacroKind::ProcMacro,
+                ProcMacroKind::Bang => MacroKind::ProcMacro,
                 ProcMacroKind::Attr => MacroKind::Attr,
             },
         }
@@ -3628,15 +3628,40 @@ impl Impl {
                     .filter(filter),
             );
         }
+
+        if let Some(block) =
+            ty.adt_id(Interner).and_then(|def| def.0.module(db.upcast()).containing_block())
+        {
+            if let Some(inherent_impls) = db.inherent_impls_in_block(block) {
+                all.extend(
+                    inherent_impls.for_self_ty(&ty).iter().cloned().map(Self::from).filter(filter),
+                );
+            }
+            if let Some(trait_impls) = db.trait_impls_in_block(block) {
+                all.extend(
+                    trait_impls
+                        .for_self_ty_without_blanket_impls(fp)
+                        .map(Self::from)
+                        .filter(filter),
+                );
+            }
+        }
+
         all
     }
 
     pub fn all_for_trait(db: &dyn HirDatabase, trait_: Trait) -> Vec<Impl> {
-        let krate = trait_.module(db).krate();
+        let module = trait_.module(db);
+        let krate = module.krate();
         let mut all = Vec::new();
         for Crate { id } in krate.transitive_reverse_dependencies(db) {
             let impls = db.trait_impls_in_crate(id);
             all.extend(impls.for_trait(trait_.id).map(Self::from))
+        }
+        if let Some(block) = module.id.containing_block() {
+            if let Some(trait_impls) = db.trait_impls_in_block(block) {
+                all.extend(trait_impls.for_trait(trait_.id).map(Self::from));
+            }
         }
         all
     }
@@ -3683,7 +3708,7 @@ impl Impl {
         let macro_file = src.file_id.macro_file()?;
         let loc = macro_file.macro_call_id.lookup(db.upcast());
         let (derive_attr, derive_index) = match loc.kind {
-            MacroCallKind::Derive { ast_id, derive_attr_index, derive_index } => {
+            MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
                 let module_id = self.id.lookup(db.upcast()).container;
                 (
                     db.crate_def_map(module_id.krate())[module_id.local_id]

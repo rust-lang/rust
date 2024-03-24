@@ -15,11 +15,11 @@ use crate::{
     method_resolution::{self, VisibleFromModule},
     to_chalk_trait_id,
     utils::generics,
-    InferenceDiagnostic, Interner, Substitution, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
-    ValueTyDefId,
+    InferenceDiagnostic, Interner, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
+    TyKind, ValueTyDefId,
 };
 
-use super::{ExprOrPatId, InferenceContext, TraitRef};
+use super::{ExprOrPatId, InferenceContext};
 
 impl InferenceContext<'_> {
     pub(super) fn infer_path(&mut self, path: &Path, id: ExprOrPatId) -> Option<Ty> {

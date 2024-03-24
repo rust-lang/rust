@@ -298,7 +298,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             if let Some(syntax_ptr) = body_source_map.self_param_syntax() {
                 let root = db.parse_or_expand(syntax_ptr.file_id);
                 let node = syntax_ptr.map(|ptr| ptr.to_node(&root).syntax().clone());
-                types.push((node.clone(), ty));
+                types.push((node, ty));
             }
         }
 
