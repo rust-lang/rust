@@ -21,7 +21,7 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
-use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
+use crate::infer::ConstVariableOrigin;
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_index::IndexVec;
 use rustc_middle::infer::unify_key::EffectVarValue;
@@ -148,7 +148,7 @@ impl<'tcx> InferCtxt<'tcx> {
             CanonicalVarKind::Const(ui, ty) => self
                 .next_const_var_in_universe(
                     ty,
-                    ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span },
+                    ConstVariableOrigin { param_def_id: None, span },
                     universe_map(ui),
                 )
                 .into(),

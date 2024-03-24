@@ -354,10 +354,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::ConstKind::Infer(_) = ct.kind() {
                     self.next_const_var(
                         ct.ty(),
-                        ConstVariableOrigin {
-                            kind: ConstVariableOriginKind::MiscVariable,
-                            span: DUMMY_SP,
-                        },
+                        ConstVariableOrigin { param_def_id: None, span: DUMMY_SP },
                     )
                 } else {
                     ct

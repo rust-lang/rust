@@ -13,9 +13,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::infer::unify_key::{
-    ConstVariableOrigin, ConstVariableOriginKind, ConstVariableValue,
-};
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableValue};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{self, InferConst};
@@ -192,8 +190,8 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
             None
         }
         ConstVariableValue::Unknown { origin, universe: _ } => {
-            if let ConstVariableOriginKind::ConstParameterDefinition(name, _) = origin.kind {
-                return Some(name);
+            if let Some(def_id) = origin.param_def_id {
+                Some(infcx.tcx.item_name(def_id))
             } else {
                 None
             }
@@ -317,11 +315,9 @@ impl<'tcx> InferCtxt<'tcx> {
                             }
                             ConstVariableValue::Unknown { origin, universe: _ } => origin,
                         };
-                    if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
-                        origin.kind
-                    {
+                    if let Some(def_id) = origin.param_def_id {
                         return InferenceDiagnosticsData {
-                            name: name.to_string(),
+                            name: self.tcx.item_name(def_id).to_string(),
                             span: Some(origin.span),
                             kind: UnderspecifiedArgKind::Const { is_parameter: true },
                             parent: InferenceDiagnosticsParentData::for_def_id(self.tcx, def_id),
@@ -527,7 +523,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                         arg.ty(),
                                         ConstVariableOrigin {
                                             span: rustc_span::DUMMY_SP,
-                                            kind: ConstVariableOriginKind::MiscVariable,
+                                            param_def_id: None,
                                         },
                                     )
                                     .into(),
