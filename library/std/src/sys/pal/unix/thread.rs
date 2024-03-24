@@ -483,6 +483,12 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                         .ok_or(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"))
                 }
             }
+        } else if #[cfg(any(target_os = "solaris", target_os = "illumos"))] {
+            let mut cpus = 0u32;
+            if unsafe { libc::pset_info(libc::PS_MYID, core::ptr::null_mut(), &mut cpus, core::ptr::null_mut()) } == 0 {
+                NonZero::new(cpus as usize)
+                    .ok_or(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"))
+            }
         } else if #[cfg(target_os = "haiku")] {
             // system_info cpu_count field gets the static data set at boot time with `smp_set_num_cpus`
             // `get_system_info` calls then `smp_get_num_cpus`
