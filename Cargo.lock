@@ -4776,6 +4776,7 @@ dependencies = [
  "itertools 0.12.1",
  "minifier",
  "once_cell",
+ "pulldown-cmark 0.10.0",
  "regex",
  "rustdoc-json-types",
  "serde",
