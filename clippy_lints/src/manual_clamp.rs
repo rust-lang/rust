@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::higher::If;
 use clippy_utils::sugg::Sugg;
@@ -17,6 +18,7 @@ use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use std::cmp::Ordering;
 use std::ops::Deref;
 
 declare_clippy_lint! {
@@ -80,7 +82,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.66.0"]
     pub MANUAL_CLAMP,
-    nursery,
+    complexity,
     "using a clamp pattern instead of the clamp function"
 }
 impl_lint_pass!(ManualClamp => [MANUAL_CLAMP]);
@@ -103,6 +105,24 @@ struct ClampSuggestion<'tcx> {
     hir_with_ignore_attr: Option<HirId>,
 }
 
+impl<'tcx> ClampSuggestion<'tcx> {
+    /// This function will return true if and only if you can demonstrate at compile time that min
+    /// is less than max.
+    fn min_less_than_max(&self, cx: &LateContext<'tcx>) -> bool {
+        let max_type = cx.typeck_results().expr_ty(self.params.max);
+        let min_type = cx.typeck_results().expr_ty(self.params.min);
+        if max_type != min_type {
+            return false;
+        }
+        let max = constant(cx, cx.typeck_results(), self.params.max);
+        let min = constant(cx, cx.typeck_results(), self.params.min);
+        let cmp = max
+            .zip(min)
+            .and_then(|(max, min)| Constant::partial_cmp(cx.tcx, max_type, &min, &max));
+        cmp.is_some_and(|cmp| cmp != Ordering::Greater)
+    }
+}
+
 #[derive(Debug)]
 struct InputMinMax<'tcx> {
     input: &'tcx Expr<'tcx>,
@@ -123,7 +143,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
                 .or_else(|| is_match_pattern(cx, expr))
                 .or_else(|| is_if_elseif_pattern(cx, expr));
             if let Some(suggestion) = suggestion {
-                emit_suggestion(cx, &suggestion);
+                if suggestion.min_less_than_max(cx) {
+                    emit_suggestion(cx, &suggestion);
+                }
             }
         }
     }
@@ -133,7 +155,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
             return;
         }
         for suggestion in is_two_if_pattern(cx, block) {
-            emit_suggestion(cx, &suggestion);
+            if suggestion.min_less_than_max(cx) {
+                emit_suggestion(cx, &suggestion);
+            }
         }
     }
     extract_msrv_attr!(LateContext);

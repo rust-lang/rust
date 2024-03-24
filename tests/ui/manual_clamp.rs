@@ -17,10 +17,8 @@ const CONST_F64_MIN: f64 = 4.0;
 
 fn main() {
     let (input, min, max) = (0, -2, 3);
-    // Lint
+    // Min and max are not const, so this shouldn't trigger the lint.
     let x0 = if max < input {
-        //~^ ERROR: clamp-like pattern without using clamp function
-        //~| NOTE: clamp will panic if max < min
         max
     } else if min > input {
         min
@@ -29,8 +27,6 @@ fn main() {
     };
 
     let x1 = if input > max {
-        //~^ ERROR: clamp-like pattern without using clamp function
-        //~| NOTE: clamp will panic if max < min
         max
     } else if input < min {
         min
@@ -39,8 +35,6 @@ fn main() {
     };
 
     let x2 = if input < min {
-        //~^ ERROR: clamp-like pattern without using clamp function
-        //~| NOTE: clamp will panic if max < min
         min
     } else if input > max {
         max
@@ -49,8 +43,6 @@ fn main() {
     };
 
     let x3 = if min > input {
-        //~^ ERROR: clamp-like pattern without using clamp function
-        //~| NOTE: clamp will panic if max < min
         min
     } else if max < input {
         max
@@ -59,32 +51,22 @@ fn main() {
     };
 
     let x4 = input.max(min).min(max);
-    //~^ ERROR: clamp-like pattern without using clamp function
-    //~| NOTE: clamp will panic if max < min
 
     let x5 = input.min(max).max(min);
-    //~^ ERROR: clamp-like pattern without using clamp function
-    //~| NOTE: clamp will panic if max < min
 
     let x6 = match input {
-        //~^ ERROR: clamp-like pattern without using clamp function
-        //~| NOTE: clamp will panic if max < min
         x if x > max => max,
         x if x < min => min,
         x => x,
     };
 
     let x7 = match input {
-        //~^ ERROR: clamp-like pattern without using clamp function
-        //~| NOTE: clamp will panic if max < min
         x if x < min => min,
         x if x > max => max,
         x => x,
     };
 
     let x8 = match input {
-        //~^ ERROR: clamp-like pattern without using clamp function
-        //~| NOTE: clamp will panic if max < min
         x if max < x => max,
         x if min > x => min,
         x => x,
@@ -92,8 +74,6 @@ fn main() {
 
     let mut x9 = input;
     if x9 < min {
-        //~^ ERROR: clamp-like pattern without using clamp function
-        //~| NOTE: clamp will panic if max < min
         x9 = min;
     }
     if x9 > max {
@@ -101,8 +81,6 @@ fn main() {
     }
 
     let x10 = match input {
-        //~^ ERROR: clamp-like pattern without using clamp function
-        //~| NOTE: clamp will panic if max < min
         x if min > x => min,
         x if max < x => max,
         x => x,
@@ -111,8 +89,6 @@ fn main() {
     let mut x11 = input;
     let _ = 1;
     if x11 > max {
-        //~^ ERROR: clamp-like pattern without using clamp function
-        //~| NOTE: clamp will panic if max < min
         x11 = max;
     }
     if x11 < min {
@@ -121,8 +97,6 @@ fn main() {
 
     let mut x12 = input;
     if min > x12 {
-        //~^ ERROR: clamp-like pattern without using clamp function
-        //~| NOTE: clamp will panic if max < min
         x12 = min;
     }
     if max < x12 {
@@ -131,12 +105,161 @@ fn main() {
 
     let mut x13 = input;
     if max < x13 {
-        //~^ ERROR: clamp-like pattern without using clamp function
-        //~| NOTE: clamp will panic if max < min
         x13 = max;
     }
     if min > x13 {
         x13 = min;
+    }
+
+    {
+        let (input, min, max) = (0.0f64, -2.0, 3.0);
+        let x14 = if input > max {
+            max
+        } else if input < min {
+            min
+        } else {
+            input
+        };
+    }
+    let mut x15 = input;
+    if x15 < min {
+        x15 = min;
+    } else if x15 > max {
+        x15 = max;
+    }
+
+    // It's important this be the last set of statements
+    let mut x16 = input;
+    if max < x16 {
+        x16 = max;
+    }
+    if min > x16 {
+        x16 = min;
+    }
+}
+
+fn const_main() {
+    let input = 0;
+    // Min and max are const, so this should trigger the lint.
+    let x0 = if CONST_MAX < input {
+        //~^ ERROR: clamp-like pattern without using clamp function
+        //~| NOTE: clamp will panic if max < min
+        CONST_MAX
+    } else if CONST_MIN > input {
+        CONST_MIN
+    } else {
+        input
+    };
+
+    let x1 = if input > CONST_MAX {
+        //~^ ERROR: clamp-like pattern without using clamp function
+        //~| NOTE: clamp will panic if max < min
+        CONST_MAX
+    } else if input < CONST_MIN {
+        CONST_MIN
+    } else {
+        input
+    };
+
+    let x2 = if input < CONST_MIN {
+        //~^ ERROR: clamp-like pattern without using clamp function
+        //~| NOTE: clamp will panic if max < min
+        CONST_MIN
+    } else if input > CONST_MAX {
+        CONST_MAX
+    } else {
+        input
+    };
+
+    let x3 = if CONST_MIN > input {
+        //~^ ERROR: clamp-like pattern without using clamp function
+        //~| NOTE: clamp will panic if max < min
+        CONST_MIN
+    } else if CONST_MAX < input {
+        CONST_MAX
+    } else {
+        input
+    };
+
+    let x4 = input.max(CONST_MIN).min(CONST_MAX);
+    //~^ ERROR: clamp-like pattern without using clamp function
+    //~| NOTE: clamp will panic if max < min
+
+    let x5 = input.min(CONST_MAX).max(CONST_MIN);
+    //~^ ERROR: clamp-like pattern without using clamp function
+    //~| NOTE: clamp will panic if max < min
+
+    let x6 = match input {
+        //~^ ERROR: clamp-like pattern without using clamp function
+        //~| NOTE: clamp will panic if max < min
+        x if x > CONST_MAX => CONST_MAX,
+        x if x < CONST_MIN => CONST_MIN,
+        x => x,
+    };
+
+    let x7 = match input {
+        //~^ ERROR: clamp-like pattern without using clamp function
+        //~| NOTE: clamp will panic if max < min
+        x if x < CONST_MIN => CONST_MIN,
+        x if x > CONST_MAX => CONST_MAX,
+        x => x,
+    };
+
+    let x8 = match input {
+        //~^ ERROR: clamp-like pattern without using clamp function
+        //~| NOTE: clamp will panic if max < min
+        x if CONST_MAX < x => CONST_MAX,
+        x if CONST_MIN > x => CONST_MIN,
+        x => x,
+    };
+
+    let mut x9 = input;
+    if x9 < CONST_MIN {
+        //~^ ERROR: clamp-like pattern without using clamp function
+        //~| NOTE: clamp will panic if max < min
+        x9 = CONST_MIN;
+    }
+    if x9 > CONST_MAX {
+        x9 = CONST_MAX;
+    }
+
+    let x10 = match input {
+        //~^ ERROR: clamp-like pattern without using clamp function
+        //~| NOTE: clamp will panic if max < min
+        x if CONST_MIN > x => CONST_MIN,
+        x if CONST_MAX < x => CONST_MAX,
+        x => x,
+    };
+
+    let mut x11 = input;
+    let _ = 1;
+    if x11 > CONST_MAX {
+        //~^ ERROR: clamp-like pattern without using clamp function
+        //~| NOTE: clamp will panic if max < min
+        x11 = CONST_MAX;
+    }
+    if x11 < CONST_MIN {
+        x11 = CONST_MIN;
+    }
+
+    let mut x12 = input;
+    if CONST_MIN > x12 {
+        //~^ ERROR: clamp-like pattern without using clamp function
+        //~| NOTE: clamp will panic if max < min
+        x12 = CONST_MIN;
+    }
+    if CONST_MAX < x12 {
+        x12 = CONST_MAX;
+    }
+
+    let mut x13 = input;
+    if CONST_MAX < x13 {
+        //~^ ERROR: clamp-like pattern without using clamp function
+        //~| NOTE: clamp will panic if max < min
+        x13 = CONST_MAX;
+    }
+    if CONST_MIN > x13 {
+        x13 = CONST_MIN;
     }
 
     let x14 = if input > CONST_MAX {
@@ -149,13 +272,13 @@ fn main() {
         input
     };
     {
-        let (input, min, max) = (0.0f64, -2.0, 3.0);
-        let x15 = if input > max {
+        let input = 0.0f64;
+        let x15 = if input > CONST_F64_MAX {
             //~^ ERROR: clamp-like pattern without using clamp function
-            //~| NOTE: clamp will panic if max < min, min.is_nan(), or max.is_nan()
-            max
-        } else if input < min {
-            min
+            //~| NOTE: clamp will panic if max < min
+            CONST_F64_MAX
+        } else if input < CONST_F64_MIN {
+            CONST_F64_MIN
         } else {
             input
         };
@@ -214,121 +337,141 @@ fn main() {
         //~| NOTE: clamp will panic if max < min, min.is_nan(), or max.is_nan()
     }
     let mut x32 = input;
-    if x32 < min {
+    if x32 < CONST_MIN {
         //~^ ERROR: clamp-like pattern without using clamp function
         //~| NOTE: clamp will panic if max < min
-        x32 = min;
-    } else if x32 > max {
-        x32 = max;
+        x32 = CONST_MIN;
+    } else if x32 > CONST_MAX {
+        x32 = CONST_MAX;
+    }
+
+    // Flip the script, swap the places of min and max. Make sure this doesn't
+    // trigger when clamp would be guaranteed to panic.
+    let mut x33 = input;
+    if x33 < CONST_MAX {
+        x33 = CONST_MAX;
+    } else if x33 > CONST_MIN {
+        x33 = CONST_MIN;
+    }
+
+    // Do it again for NaN
+    #[allow(invalid_nan_comparisons)]
+    {
+        let mut x34 = input as f64;
+        if x34 < f64::NAN {
+            x34 = f64::NAN;
+        } else if x34 > CONST_F64_MAX {
+            x34 = CONST_F64_MAX;
+        }
     }
 
     // It's important this be the last set of statements
-    let mut x33 = input;
-    if max < x33 {
+    let mut x35 = input;
+    if CONST_MAX < x35 {
         //~^ ERROR: clamp-like pattern without using clamp function
         //~| NOTE: clamp will panic if max < min
-        x33 = max;
+        x35 = CONST_MAX;
     }
-    if min > x33 {
-        x33 = min;
+    if CONST_MIN > x35 {
+        x35 = CONST_MIN;
     }
 }
 
 // This code intentionally nonsense.
 fn no_lint() {
-    let (input, min, max) = (0, -2, 3);
-    let x0 = if max < input {
-        max
-    } else if min > input {
-        max
+    let input = 0;
+    let x0 = if CONST_MAX < input {
+        CONST_MAX
+    } else if CONST_MIN > input {
+        CONST_MAX
     } else {
-        min
+        CONST_MIN
     };
 
-    let x1 = if input > max {
-        max
-    } else if input > min {
-        min
+    let x1 = if input > CONST_MAX {
+        CONST_MAX
+    } else if input > CONST_MIN {
+        CONST_MIN
     } else {
-        max
+        CONST_MAX
     };
 
-    let x2 = if max < min {
-        min
-    } else if input > max {
+    let x2 = if CONST_MAX < CONST_MIN {
+        CONST_MIN
+    } else if input > CONST_MAX {
         input
     } else {
         input
     };
 
-    let x3 = if min > input {
+    let x3 = if CONST_MIN > input {
         input
-    } else if max < input {
-        max
+    } else if CONST_MAX < input {
+        CONST_MAX
     } else {
-        max
+        CONST_MAX
     };
 
     let x6 = match input {
-        x if x < max => x,
-        x if x < min => x,
+        x if x < CONST_MAX => x,
+        x if x < CONST_MIN => x,
         x => x,
     };
 
     let x7 = match input {
-        x if x < min => max,
-        x if x > max => min,
+        x if x < CONST_MIN => CONST_MAX,
+        x if x > CONST_MAX => CONST_MIN,
         x => x,
     };
 
     let x8 = match input {
-        x if max > x => max,
-        x if min > x => min,
+        x if CONST_MAX > x => CONST_MAX,
+        x if CONST_MIN > x => CONST_MIN,
         x => x,
     };
 
     let mut x9 = input;
-    if x9 > min {
-        x9 = min;
+    if x9 > CONST_MIN {
+        x9 = CONST_MIN;
     }
-    if x9 > max {
-        x9 = max;
+    if x9 > CONST_MAX {
+        x9 = CONST_MAX;
     }
 
     let x10 = match input {
-        x if min > x => min,
-        x if max < x => max,
-        x => min,
+        x if CONST_MIN > x => CONST_MIN,
+        x if CONST_MAX < x => CONST_MAX,
+        x => CONST_MIN,
     };
 
     let mut x11 = input;
-    if x11 > max {
-        x11 = min;
+    if x11 > CONST_MAX {
+        x11 = CONST_MIN;
     }
-    if x11 < min {
-        x11 = max;
+    if x11 < CONST_MIN {
+        x11 = CONST_MAX;
     }
 
     let mut x12 = input;
-    if min > x12 {
-        x12 = max * 3;
+    if CONST_MIN > x12 {
+        x12 = CONST_MAX * 3;
     }
-    if max < x12 {
-        x12 = min;
+    if CONST_MAX < x12 {
+        x12 = CONST_MIN;
     }
 
     let mut x13 = input;
-    if max < x13 {
-        let x13 = max;
+    if CONST_MAX < x13 {
+        let x13 = CONST_MAX;
     }
-    if min > x13 {
-        x13 = min;
+    if CONST_MIN > x13 {
+        x13 = CONST_MIN;
     }
     let mut x14 = input;
-    if x14 < min {
+    if x14 < CONST_MIN {
         x14 = 3;
-    } else if x14 > max {
-        x14 = max;
+    } else if x14 > CONST_MAX {
+        x14 = CONST_MAX;
     }
     {
         let input: i32 = cmp_min_max(1);
@@ -385,13 +528,13 @@ fn msrv_1_49() {
 
 #[clippy::msrv = "1.50"]
 fn msrv_1_50() {
-    let (input, min, max) = (0, -1, 2);
-    let _ = if input < min {
+    let input = 0;
+    let _ = if input > CONST_MAX {
         //~^ ERROR: clamp-like pattern without using clamp function
         //~| NOTE: clamp will panic if max < min
-        min
-    } else if input > max {
-        max
+        CONST_MAX
+    } else if input < CONST_MIN {
+        CONST_MIN
     } else {
         input
     };
