@@ -739,12 +739,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     // In a cases of pattern like `let pat = upvar`, don't use the span
                     // of the pattern, as this just looks confusing, instead use the span
                     // of the discriminant.
-                    match bm {
-                        ty::BindByReference(m) => {
+                    match bm.0 {
+                        hir::ByRef::Yes(m) => {
                             let bk = ty::BorrowKind::from_mutbl(m);
                             delegate.borrow(place, discr_place.hir_id, bk);
                         }
-                        ty::BindByValue(..) => {
+                        hir::ByRef::No => {
                             debug!("walk_pat binding consuming pat");
                             delegate_consume(mc, *delegate, place, discr_place.hir_id);
                         }

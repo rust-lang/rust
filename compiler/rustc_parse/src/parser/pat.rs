@@ -4,11 +4,11 @@ use crate::errors::{
     DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
     ExpectedCommaAfterPatternField, GenericArgsInPatRequireTurbofishSyntax,
     InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern,
-    PatternOnWrongSideOfAt, RefMutOrderIncorrect, RemoveLet, RepeatedMutInPattern,
-    SwitchRefBoxOrder, TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg,
-    TrailingVertNotAllowed, UnexpectedExpressionInPattern, UnexpectedLifetimeInPattern,
-    UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
-    UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern,
+    PatternOnWrongSideOfAt, RemoveLet, RepeatedMutInPattern, SwitchRefBoxOrder,
+    TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed,
+    UnexpectedExpressionInPattern, UnexpectedLifetimeInPattern, UnexpectedParenInRangePat,
+    UnexpectedParenInRangePatSugg, UnexpectedVertVertBeforeFunctionParam,
+    UnexpectedVertVertInPattern,
 };
 use crate::parser::expr::could_be_unclosed_char_literal;
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
@@ -476,7 +476,7 @@ impl<'a> Parser<'a> {
             // Parse `_`
             PatKind::Wild
         } else if self.eat_keyword(kw::Mut) {
-            self.parse_pat_ident_mut(syntax_loc)?
+            self.parse_pat_ident_mut()?
         } else if self.eat_keyword(kw::Ref) {
             if self.check_keyword(kw::Box) {
                 // Suggest `box ref`.
@@ -486,7 +486,7 @@ impl<'a> Parser<'a> {
             }
             // Parse ref ident @ pat / ref mut ident @ pat
             let mutbl = self.parse_mutability();
-            self.parse_pat_ident(BindingAnnotation(ByRef::Yes, mutbl), syntax_loc)?
+            self.parse_pat_ident(BindingAnnotation(ByRef::Yes(mutbl), Mutability::Not), syntax_loc)?
         } else if self.eat_keyword(kw::Box) {
             self.parse_pat_box()?
         } else if self.check_inline_const(0) {
@@ -746,13 +746,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a mutable binding with the `mut` token already eaten.
-    fn parse_pat_ident_mut(&mut self, syntax_loc: Option<PatternLocation>) -> PResult<'a, PatKind> {
+    fn parse_pat_ident_mut(&mut self) -> PResult<'a, PatKind> {
         let mut_span = self.prev_token.span;
 
-        if self.eat_keyword(kw::Ref) {
-            self.dcx().emit_err(RefMutOrderIncorrect { span: mut_span.to(self.prev_token.span) });
-            return self.parse_pat_ident(BindingAnnotation::REF_MUT, syntax_loc);
-        }
+        self.recover_additional_muts();
+
+        let byref = self.parse_byref();
 
         self.recover_additional_muts();
 
@@ -767,10 +766,12 @@ impl<'a> Parser<'a> {
         let mut pat = self.parse_pat_no_top_alt(Some(Expected::Identifier), None)?;
 
         // If we don't have `mut $ident (@ pat)?`, error.
-        if let PatKind::Ident(BindingAnnotation(ByRef::No, m @ Mutability::Not), ..) = &mut pat.kind
+        if let PatKind::Ident(BindingAnnotation(br @ ByRef::No, m @ Mutability::Not), ..) =
+            &mut pat.kind
         {
             // Don't recurse into the subpattern.
             // `mut` on the outer binding doesn't affect the inner bindings.
+            *br = byref;
             *m = Mutability::Mut;
         } else {
             // Add `mut` to any binding in the parsed pattern.
@@ -1390,16 +1391,12 @@ impl<'a> Parser<'a> {
             // Parsing a pattern of the form `(box) (ref) (mut) fieldname`.
             let is_box = self.eat_keyword(kw::Box);
             let boxed_span = self.token.span;
-            let is_ref = self.eat_keyword(kw::Ref);
-            let is_mut = self.eat_keyword(kw::Mut);
+            let mutability = self.parse_mutability();
+            let by_ref = self.parse_byref();
+
             let fieldname = self.parse_field_name()?;
             hi = self.prev_token.span;
-
-            let mutability = match is_mut {
-                false => Mutability::Not,
-                true => Mutability::Mut,
-            };
-            let ann = BindingAnnotation(ByRef::from(is_ref), mutability);
+            let ann = BindingAnnotation(by_ref, mutability);
             let fieldpat = self.mk_pat_ident(boxed_span.to(hi), ann, fieldname);
             let subpat =
                 if is_box { self.mk_pat(lo.to(hi), PatKind::Box(fieldpat)) } else { fieldpat };

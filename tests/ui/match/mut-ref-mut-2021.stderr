@@ -1,0 +1,70 @@
+error[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/mut-ref-mut-2021.rs:7:5
+   |
+LL |     let Foo(a) = Foo(0);
+   |             -
+   |             |
+   |             first assignment to `a`
+   |             help: consider making this binding mutable: `mut a`
+LL |     a = 42;
+   |     ^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/mut-ref-mut-2021.rs:13:5
+   |
+LL |     let Foo(ref a) = Foo(0);
+   |             ----- first assignment to `a`
+LL |     a = &42;
+   |     ^^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/mut-ref-mut-2021.rs:19:5
+   |
+LL |     let Foo(ref mut a) = Foo(0);
+   |             --------- first assignment to `a`
+LL |     a = &mut 42;
+   |     ^^^^^^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/mut-ref-mut-2021.rs:25:5
+   |
+LL |     let Foo(a) = &Foo(0);
+   |             - first assignment to `a`
+LL |     a = &42;
+   |     ^^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/mut-ref-mut-2021.rs:31:5
+   |
+LL |     let Foo(ref a) = &Foo(0);
+   |             ----- first assignment to `a`
+LL |     a = &42;
+   |     ^^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/mut-ref-mut-2021.rs:37:5
+   |
+LL |     let Foo(a) = &mut Foo(0);
+   |             - first assignment to `a`
+LL |     a = &mut 42;
+   |     ^^^^^^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/mut-ref-mut-2021.rs:43:5
+   |
+LL |     let Foo(ref a) = &mut Foo(0);
+   |             ----- first assignment to `a`
+LL |     a = &42;
+   |     ^^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/mut-ref-mut-2021.rs:49:5
+   |
+LL |     let Foo(ref mut a) = &mut Foo(0);
+   |             --------- first assignment to `a`
+LL |     a = &mut 42;
+   |     ^^^^^^^^^^^ cannot assign twice to immutable variable
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0384`.
