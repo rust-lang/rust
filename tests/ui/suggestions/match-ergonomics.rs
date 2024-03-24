@@ -1,7 +1,7 @@
 fn main() {
     let x = vec![1i32];
     match &x[..] {
-        [&v] => {}, //~ ERROR mismatched types
+        [&v] => {},
         _ => {},
     }
     match x {
@@ -37,5 +37,5 @@ fn main() {
         v => {},
         _ => {},
     }
-    if let [&v] = &x[..] {} //~ ERROR mismatched types
+    if let [&v] = &x[..] {}
 }
