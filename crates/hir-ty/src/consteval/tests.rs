@@ -2828,7 +2828,7 @@ fn unsized_local() {
 
 #[test]
 fn recursive_adt() {
-    check_answer(
+    check_fail(
         r#"
         //- minicore: coerce_unsized, index, slice
         pub enum TagTree {
@@ -2849,6 +2849,6 @@ fn recursive_adt() {
             TAG_TREE
         };
     "#,
-        |b, _| assert_eq!(b[0] % 8, 0),
+        |e| matches!(e, ConstEvalError::MirEvalError(MirEvalError::StackOverflow)),
     );
 }
