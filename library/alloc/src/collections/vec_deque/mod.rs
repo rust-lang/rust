@@ -2086,9 +2086,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // Extend or possibly remove this assertion when valid use-cases for growing the
         // buffer without it being full emerge
         debug_assert!(self.is_full());
+        let old_cap = self.capacity();
         self.buf.reserve_for_push();
         unsafe {
-            self.handle_capacity_increase(self.capacity());
+            self.handle_capacity_increase(old_cap);
         }
         debug_assert!(!self.is_full());
     }
