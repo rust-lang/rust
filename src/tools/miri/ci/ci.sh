@@ -58,8 +58,9 @@ function run_tests {
     MIRIFLAGS="${MIRIFLAGS:-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
 
     # Also run some many-seeds tests. 64 seeds means this takes around a minute per test.
+    # (Need to invoke via explicit `bash -c` for Windows.)
     for FILE in tests/many-seeds/*.rs; do
-      MIRI_SEEDS=64 ./miri many-seeds ./miri run "$FILE"
+      MIRI_SEEDS=64 ./miri many-seeds "$BASH" -c "./miri run '$FILE'"
     done
 
     # Check that the benchmarks build and run, but without actually benchmarking.
