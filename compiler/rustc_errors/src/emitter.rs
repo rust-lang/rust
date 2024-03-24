@@ -541,6 +541,7 @@ pub struct SilentEmitter {
     pub fallback_bundle: LazyFallbackBundle,
     pub fatal_dcx: DiagCtxt,
     pub fatal_note: Option<String>,
+    pub emit_fatal_diagnostic: bool,
 }
 
 impl Translate for SilentEmitter {
@@ -561,7 +562,7 @@ impl Emitter for SilentEmitter {
     }
 
     fn emit_diagnostic(&mut self, mut diag: DiagInner) {
-        if diag.level == Level::Fatal {
+        if self.emit_fatal_diagnostic && diag.level == Level::Fatal {
             if let Some(fatal_note) = &self.fatal_note {
                 diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
             }
