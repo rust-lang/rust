@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+env:
+  RUSTFLAGS: -Dwarnings
+  RUST_BACKTRACE: 1
+  nightly: nightly-2022-11-12
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Check formatting
+  rustfmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Rust
+      run: rustup update stable && rustup default stable
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+
+  # TODO
+  # # Apply clippy lints
+  # clippy:
+  #   name: clippy
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - name: Apply clippy lints
+  #     run: cargo clippy --all-features
+
+  # This represents the minimum Rust version supported by
+  # Bytes. Updating this should be done in a dedicated PR.
+  #
+  # Tests are not run as tests may require newer versions of
+  # rust.
+  minrust:
+    name: minrust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: rustup update 1.39.0 && rustup default 1.39.0
+      - name: Check
+        run: . ci/test-stable.sh check
+
+  # Stable
+  stable:
+    name: stable
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        # --no-self-update is necessary because the windows environment cannot self-update rustup.exe.
+        run: rustup update stable --no-self-update && rustup default stable
+      - name: Test
+        run: . ci/test-stable.sh test
+
+  # Nightly
+  nightly:
+    name: nightly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: rustup update $nightly && rustup default $nightly
+      - name: Test
+        run: . ci/test-stable.sh test
+
+  # Run tests on some extra platforms
+  cross:
+    name: cross
+    strategy:
+      matrix:
+        target:
+          - i686-unknown-linux-gnu
+          - armv7-unknown-linux-gnueabihf
+          - powerpc-unknown-linux-gnu
+          - powerpc64-unknown-linux-gnu
+          - wasm32-unknown-unknown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: rustup update stable && rustup default stable
+      - name: cross build --target ${{ matrix.target }}
+        run: |
+          cargo install cross
+          cross build --target ${{ matrix.target }}
+        if: matrix.target != 'wasm32-unknown-unknown'
+      # WASM support
+      - name: cargo build --target ${{ matrix.target }}
+        run: |
+          rustup target add ${{ matrix.target }}
+          cargo build --target ${{ matrix.target }}
+        if: matrix.target == 'wasm32-unknown-unknown'
+
+  # Sanitizers
+  tsan:
+    name: tsan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: rustup update $nightly && rustup default $nightly
+      - name: Install rust-src
+        run: rustup component add rust-src
+      - name: ASAN / TSAN
+        run: . ci/tsan.sh
+  miri:
+    name: miri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Miri
+        run: ci/miri.sh
+
+  # Loom
+  loom:
+    name: loom
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: rustup update $nightly && rustup default $nightly
+      - name: Loom tests
+        run: RUSTFLAGS="--cfg loom -Dwarnings" cargo test --lib
+
+  publish_docs:
+    name: Publish Documentation
+    needs:
+      - rustfmt
+      # - clippy
+      - stable
+      - nightly
+      - minrust
+      - cross
+      - tsan
+      - loom
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: rustup update $nightly && rustup default $nightly
+      - name: Build documentation
+        run: cargo doc --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: --cfg docsrs
+      - name: Publish documentation
+        run: |
+          cd target/doc
+          git init
+          git add .
+          git -c user.name='ci' -c user.email='ci' commit -m 'Deploy Bytes API documentation'
+          git push -f -q https://git:${{ secrets.github_token }}@github.com/${{ github.repository }} HEAD:gh-pages
+        if: github.event_name == 'push' && github.event.ref == 'refs/heads/master' && github.repository == 'tokio-rs/bytes'
