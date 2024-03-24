@@ -1,0 +1,14 @@
+SOURCE_FILE
+  IMPL
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "S"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
