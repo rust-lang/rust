@@ -1791,7 +1791,6 @@ ui/issues/issue-2150.rs
 ui/issues/issue-2151.rs
 ui/issues/issue-21546.rs
 ui/issues/issue-21554.rs
-ui/issues/issue-21596.rs
 ui/issues/issue-21600.rs
 ui/issues/issue-21622.rs
 ui/issues/issue-21634.rs
