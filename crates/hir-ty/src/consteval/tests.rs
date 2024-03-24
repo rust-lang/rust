@@ -2825,3 +2825,30 @@ fn unsized_local() {
         |e| matches!(e, ConstEvalError::MirLowerError(MirLowerError::UnsizedTemporary(_))),
     );
 }
+
+#[test]
+fn recursive_adt() {
+    check_fail(
+        r#"
+        //- minicore: coerce_unsized, index, slice
+        pub enum TagTree {
+            Leaf,
+            Choice(&'static [TagTree]),
+        }
+        const GOAL: TagTree = {
+            const TAG_TREE: TagTree = TagTree::Choice(&[
+                {
+                    const VARIANT_TAG_TREE: TagTree = TagTree::Choice(
+                        &[
+                            TagTree::Leaf,
+                        ],
+                    );
+                    VARIANT_TAG_TREE
+                },
+            ]);
+            TAG_TREE
+        };
+    "#,
+        |e| matches!(e, ConstEvalError::MirEvalError(MirEvalError::StackOverflow)),
+    );
+}

@@ -1931,7 +1931,11 @@ impl Evaluator<'_> {
             ty: &Ty,
             locals: &Locals,
             mm: &mut ComplexMemoryMap,
+            stack_depth_limit: usize,
         ) -> Result<()> {
+            if stack_depth_limit.checked_sub(1).is_none() {
+                return Err(MirEvalError::StackOverflow);
+            }
             match ty.kind(Interner) {
                 TyKind::Ref(_, _, t) => {
                     let size = this.size_align_of(t, locals)?;
@@ -1970,7 +1974,14 @@ impl Evaluator<'_> {
                             if let Some(ty) = check_inner {
                                 for i in 0..count {
                                     let offset = element_size * i;
-                                    rec(this, &b[offset..offset + element_size], ty, locals, mm)?;
+                                    rec(
+                                        this,
+                                        &b[offset..offset + element_size],
+                                        ty,
+                                        locals,
+                                        mm,
+                                        stack_depth_limit - 1,
+                                    )?;
                                 }
                             }
                         }
@@ -1984,7 +1995,14 @@ impl Evaluator<'_> {
                     let size = this.size_of_sized(inner, locals, "inner of array")?;
                     for i in 0..len {
                         let offset = i * size;
-                        rec(this, &bytes[offset..offset + size], inner, locals, mm)?;
+                        rec(
+                            this,
+                            &bytes[offset..offset + size],
+                            inner,
+                            locals,
+                            mm,
+                            stack_depth_limit - 1,
+                        )?;
                     }
                 }
                 chalk_ir::TyKind::Tuple(_, subst) => {
@@ -1993,7 +2011,14 @@ impl Evaluator<'_> {
                         let ty = ty.assert_ty_ref(Interner); // Tuple only has type argument
                         let offset = layout.fields.offset(id).bytes_usize();
                         let size = this.layout(ty)?.size.bytes_usize();
-                        rec(this, &bytes[offset..offset + size], ty, locals, mm)?;
+                        rec(
+                            this,
+                            &bytes[offset..offset + size],
+                            ty,
+                            locals,
+                            mm,
+                            stack_depth_limit - 1,
+                        )?;
                     }
                 }
                 chalk_ir::TyKind::Adt(adt, subst) => match adt.0 {
@@ -2008,7 +2033,14 @@ impl Evaluator<'_> {
                                 .bytes_usize();
                             let ty = &field_types[f].clone().substitute(Interner, subst);
                             let size = this.layout(ty)?.size.bytes_usize();
-                            rec(this, &bytes[offset..offset + size], ty, locals, mm)?;
+                            rec(
+                                this,
+                                &bytes[offset..offset + size],
+                                ty,
+                                locals,
+                                mm,
+                                stack_depth_limit - 1,
+                            )?;
                         }
                     }
                     AdtId::EnumId(e) => {
@@ -2027,7 +2059,14 @@ impl Evaluator<'_> {
                                     l.fields.offset(u32::from(f.into_raw()) as usize).bytes_usize();
                                 let ty = &field_types[f].clone().substitute(Interner, subst);
                                 let size = this.layout(ty)?.size.bytes_usize();
-                                rec(this, &bytes[offset..offset + size], ty, locals, mm)?;
+                                rec(
+                                    this,
+                                    &bytes[offset..offset + size],
+                                    ty,
+                                    locals,
+                                    mm,
+                                    stack_depth_limit - 1,
+                                )?;
                             }
                         }
                     }
@@ -2038,7 +2077,7 @@ impl Evaluator<'_> {
             Ok(())
         }
         let mut mm = ComplexMemoryMap::default();
-        rec(self, bytes, ty, locals, &mut mm)?;
+        rec(self, bytes, ty, locals, &mut mm, self.stack_depth_limit - 1)?;
         Ok(mm)
     }
 
