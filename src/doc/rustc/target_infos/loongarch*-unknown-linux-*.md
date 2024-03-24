@@ -1,17 +1,12 @@
-# loongarch\*-unknown-linux-\*
+---
+maintainers:
+  - "[WANG Rui](https://github.com/heiher) `wangrui@loongson.cn`"
+  - "[ZHAI Xiang](https://github.com/xiangzhai) `zhaixiang@loongson.cn`"
+  - "[ZHAI Xiaojuan](https://github.com/zhaixiaojuan) `zhaixiaojuan@loongson.cn`"
+  - "[WANG Xuerui](https://github.com/xen0n) `git@xen0n.name`"
+---
 
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-***WARNING***
-This target has already been migrated to the new target docs system: #120745
-When editing this file, make sure that you keep the equivalent docs in ../../target_infos in sync!!!
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
-
-
-**Tier: 2**
+## Overview
 
 [LoongArch] is a new RISC ISA developed by Loongson Technology Corporation Limited.
 
@@ -36,13 +31,6 @@ While the integer base ABI is implied by the machine field, the floating po
 |           lp64d/base             |  musl libc  |  linux   | loongarch64-unknown-linux-musl|
 |           lp64f/base             |  musl libc  |  linux   | loongarch64-unknown-linux-muslf32|
 |           lp64s/base             |  musl libc  |  linux   | loongarch64-unknown-linux-muslsf |
-
-## Target maintainers
-
-- [WANG Rui](https://github.com/heiher) `wangrui@loongson.cn`
-- [ZHAI Xiang](https://github.com/xiangzhai) `zhaixiang@loongson.cn`
-- [ZHAI Xiaojuan](https://github.com/zhaixiaojuan) `zhaixiaojuan@loongson.cn`
-- [WANG Xuerui](https://github.com/xen0n) `git@xen0n.name`
 
 ## Requirements
 
@@ -70,7 +58,7 @@ ranlib = "/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-ranlib"
 linker = "/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-gcc"
 ```
 
-## Cross-compilation
+## Cross compilation
 
 This target can be cross-compiled on a `x86_64-unknown-linux-gnu` host. Cross-compilation on other hosts may work but is not tested.
 
