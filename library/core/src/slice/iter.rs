@@ -11,8 +11,8 @@ use crate::iter::{
 use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
-use crate::ptr::{NonNull, without_provenance, without_provenance_mut};
-use crate::{cmp, fmt};
+use crate::ptr::{self, NonNull};
+use crate::{cmp, fmt, intrinsics};
 
 #[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
 impl<T> !Iterator for [T] {}
@@ -72,10 +72,14 @@ pub struct Iter<'a, T: 'a> {
     ///
     /// This address will be used for all ZST elements, never changed.
     ptr: NonNull<T>,
-    /// For non-ZSTs, the non-null pointer to the past-the-end element.
+    /// For non-ZSTs, the address of the past-the-end element.  This is
+    /// intentionally *not* a pointer, so that it doesn't carry provenance.
+    /// If you're turning this into a pointer, you need to use the provenance from
+    /// `ptr` instead.  (If this carried provenance, the compiler wouldn't know
+    /// that reads from the start and the end are actually the same provenance.)
     ///
-    /// For ZSTs, this is `ptr::without_provenance_mut(len)`.
-    end_or_len: *const T,
+    /// For ZSTs, this is the length.
+    end_addr_or_len: usize,
     _marker: PhantomData<&'a T>,
 }
 
@@ -98,10 +102,9 @@ impl<'a, T> Iter<'a, T> {
         let ptr: NonNull<T> = NonNull::from_ref(slice).cast();
         // SAFETY: Similar to `IterMut::new`.
         unsafe {
-            let end_or_len =
-                if T::IS_ZST { without_provenance(len) } else { ptr.as_ptr().add(len) };
+            let end_addr_or_len = if T::IS_ZST { len } else { addr_usize(ptr.add(len)) };
 
-            Self { ptr, end_or_len, _marker: PhantomData }
+            Self { ptr, end_addr_or_len, _marker: PhantomData }
         }
     }
 
@@ -153,7 +156,7 @@ iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, as_ref, {
 impl<T> Clone for Iter<'_, T> {
     #[inline]
     fn clone(&self) -> Self {
-        Iter { ptr: self.ptr, end_or_len: self.end_or_len, _marker: self._marker }
+        Iter { ptr: self.ptr, end_addr_or_len: self.end_addr_or_len, _marker: self._marker }
     }
 }
 
@@ -197,10 +200,14 @@ pub struct IterMut<'a, T: 'a> {
     ///
     /// This address will be used for all ZST elements, never changed.
     ptr: NonNull<T>,
-    /// For non-ZSTs, the non-null pointer to the past-the-end element.
+    /// For non-ZSTs, the address of the past-the-end element.  This is
+    /// intentionally *not* a pointer, so that it doesn't carry provenance.
+    /// If you're turning this into a pointer, you need to use the provenance from
+    /// `ptr` instead.  (If this carried provenance, the compiler wouldn't know
+    /// that reads from the start and the end are actually the same provenance.)
     ///
-    /// For ZSTs, this is `ptr::without_provenance_mut(len)`.
-    end_or_len: *mut T,
+    /// For ZSTs, this is the length.
+    end_addr_or_len: usize,
     _marker: PhantomData<&'a mut T>,
 }
 
@@ -238,10 +245,9 @@ impl<'a, T> IterMut<'a, T> {
         // See the `next_unchecked!` and `is_empty!` macros as well as the
         // `post_inc_start` method for more information.
         unsafe {
-            let end_or_len =
-                if T::IS_ZST { without_provenance_mut(len) } else { ptr.as_ptr().add(len) };
+            let end_addr_or_len = if T::IS_ZST { len } else { addr_usize(ptr.add(len)) };
 
-            Self { ptr, end_or_len, _marker: PhantomData }
+            Self { ptr, end_addr_or_len, _marker: PhantomData }
         }
     }
 
@@ -3477,4 +3483,13 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for ChunkByMut<'a, T, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ChunkByMut").field("slice", &self.slice).finish()
     }
+}
+
+/// Same as `p.addr().get()`, but faster to compile by avoiding a bunch of
+/// intermediate steps and unneeded UB checks, which also inlines better.
+#[inline]
+const fn addr_usize<T>(p: NonNull<T>) -> usize {
+    // SAFETY: `NonNull` for a sized type has the same layout as `usize`,
+    // and we intentionally don't want to expose here.
+    unsafe { intrinsics::transmute(p) }
 }

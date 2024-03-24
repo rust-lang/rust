@@ -1,4 +1,5 @@
 //@ compile-flags: -Copt-level=3
+//@ only-64bit
 //@ needs-deterministic-layouts (opposite scalar pair orders breaks it)
 #![crate_type = "lib"]
 
@@ -7,8 +8,11 @@ type Demo = [u8; 3];
 // CHECK-LABEL: @slice_iter_len_eq_zero
 #[no_mangle]
 pub fn slice_iter_len_eq_zero(y: std::slice::Iter<'_, Demo>) -> bool {
-    // CHECK-NOT: sub
-    // CHECK: %[[RET:.+]] = icmp eq ptr {{%y.0, %y.1|%y.1, %y.0}}
+    // CHECK: start:
+    // CHECK: %[[NOT_ZERO:.+]] = icmp ne i64 %1, 0
+    // CHECK: call void @llvm.assume(i1 %[[NOT_ZERO]])
+    // CHECK: %[[PTR_ADDR:.+]] = ptrtoint ptr %0 to i64
+    // CHECK: %[[RET:.+]] = icmp eq i64 %1, %[[PTR_ADDR]]
     // CHECK: ret i1 %[[RET]]
     y.len() == 0
 }
@@ -21,7 +25,7 @@ pub fn slice_iter_len_eq_zero_ref(y: &mut std::slice::Iter<'_, Demo>) -> bool {
     // CHECK-SAME: !nonnull
     // CHECK: %[[B:.+]] = load ptr
     // CHECK-SAME: !nonnull
-    // CHECK: %[[RET:.+]] = icmp eq ptr %[[A]], %[[B]]
+    // CHECK: %[[RET:.+]] = icmp eq ptr %[[B]], %[[A]]
     // CHECK: ret i1 %[[RET]]
     y.len() == 0
 }
@@ -31,7 +35,7 @@ struct MyZST;
 // CHECK-LABEL: @slice_zst_iter_len_eq_zero
 #[no_mangle]
 pub fn slice_zst_iter_len_eq_zero(y: std::slice::Iter<'_, MyZST>) -> bool {
-    // CHECK: %[[RET:.+]] = icmp eq ptr %y.1, null
+    // CHECK: %[[RET:.+]] = icmp eq i64 %y.1, 0
     // CHECK: ret i1 %[[RET]]
     y.len() == 0
 }
@@ -39,9 +43,9 @@ pub fn slice_zst_iter_len_eq_zero(y: std::slice::Iter<'_, MyZST>) -> bool {
 // CHECK-LABEL: @slice_zst_iter_len_eq_zero_ref
 #[no_mangle]
 pub fn slice_zst_iter_len_eq_zero_ref(y: &mut std::slice::Iter<'_, MyZST>) -> bool {
-    // CHECK: %[[LEN:.+]] = load ptr
-    // CHECK-NOT: !nonnull
-    // CHECK: %[[RET:.+]] = icmp eq ptr %[[LEN]], null
+    // CHECK: %[[LEN:.+]] = load i64
+    // CHECK-NOT: !range
+    // CHECK: %[[RET:.+]] = icmp eq i64 %[[LEN]], 0
     // CHECK: ret i1 %[[RET]]
     y.len() == 0
 }
