@@ -214,7 +214,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
         // the snippet should look like " else \n    " with maybe comments anywhere
         // it’s bad when there is a ‘\n’ after the “else”
         && let Some(else_snippet) = snippet_opt(cx, else_span)
-        && let Some((pre_else, post_else)) = else_snippet.split_once("else")
+        && let Some((pre_else, post_else)) = split_once_with_else(&else_snippet)
         && let Some((_, post_else_post_eol)) = post_else.split_once('\n')
     {
         // Allow allman style braces `} \n else \n {`
@@ -322,4 +322,45 @@ fn is_block(expr: &Expr) -> bool {
 /// Check if the expression is an `if` or `if let`
 fn is_if(expr: &Expr) -> bool {
     matches!(expr.kind, ExprKind::If(..))
+}
+
+fn split_once_with_else(base: &str) -> Option<(&str, &str)> {
+    let else_str = "else";
+
+    let indices: Vec<_> = base.match_indices(else_str).map(|(i, _)| i).collect();
+
+    match indices.len() {
+        0 => return None,
+        1 => return base.split_once(else_str),
+        _ => {},
+    }
+
+    let mut i = 0;
+    let mut is_in_comment = false;
+
+    for line in base.lines() {
+        if let Some(else_pos) = line.find(else_str) {
+            if let Some(pos) = line.find("//") {
+                if pos > else_pos {
+                    return Some(base.split_at(indices[i]));
+                }
+            } else if let Some(pos) = line.find("/*") {
+                if pos > else_pos {
+                    return Some(base.split_at(indices[i]));
+                }
+                is_in_comment = true;
+            } else if let Some(pos) = line.find("*/") {
+                if pos < else_pos {
+                    return Some(base.split_at(indices[i]));
+                }
+                is_in_comment = false;
+            } else if !is_in_comment {
+                return Some(base.split_at(indices[i]));
+            }
+
+            i += 1;
+        }
+    }
+
+    None
 }
