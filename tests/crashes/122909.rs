@@ -1,4 +1,6 @@
 //@ compile-flags: -Zpolymorphize=on -Zinline-mir=yes
+//@ known-bug: #12345
+
 
 use std::sync::{Arc, Context, Weak};
 
