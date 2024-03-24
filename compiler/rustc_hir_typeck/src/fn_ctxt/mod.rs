@@ -16,7 +16,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer;
 use rustc_infer::infer::error_reporting::sub_relations::SubRelations;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
@@ -236,10 +236,7 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
         match param {
             Some(param) => self.var_for_def(span, param).as_type().unwrap(),
-            None => self.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::TypeInference,
-                span,
-            }),
+            None => self.next_ty_var(TypeVariableOrigin { param_def_id: None, span }),
         }
     }
 

@@ -7,7 +7,7 @@ use rustc_ast as ast;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag};
 use rustc_hir as hir;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
@@ -219,10 +219,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // e.g., adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
                 // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
                 let lhs_ty = self.check_expr(lhs_expr);
-                let fresh_var = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span: lhs_expr.span,
-                });
+                let fresh_var = self
+                    .next_ty_var(TypeVariableOrigin { param_def_id: None, span: lhs_expr.span });
                 self.demand_coerce(lhs_expr, lhs_ty, fresh_var, Some(rhs_expr), AllowTwoPhase::No)
             }
             IsAssign::Yes => {
@@ -241,10 +239,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // using this variable as the expected type, which sometimes lets
         // us do better coercions than we would be able to do otherwise,
         // particularly for things like `String + &String`.
-        let rhs_ty_var = self.next_ty_var(TypeVariableOrigin {
-            kind: TypeVariableOriginKind::MiscVariable,
-            span: rhs_expr.span,
-        });
+        let rhs_ty_var =
+            self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: rhs_expr.span });
 
         let result = self.lookup_op_method(
             (lhs_expr, lhs_ty),

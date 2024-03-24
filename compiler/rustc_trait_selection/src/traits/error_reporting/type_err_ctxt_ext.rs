@@ -6,7 +6,7 @@ use crate::errors::{
     AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
 };
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
-use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::type_variable::TypeVariableOrigin;
 use crate::infer::InferCtxtExt as _;
 use crate::infer::{self, InferCtxt};
 use crate::traits::error_reporting::infer_ctxt_ext::InferCtxtExt;
@@ -2820,10 +2820,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if let ty::Param(_) = *ty.kind() {
                     let infcx = self.infcx;
                     *self.var_map.entry(ty).or_insert_with(|| {
-                        infcx.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::MiscVariable,
-                            span: DUMMY_SP,
-                        })
+                        infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span: DUMMY_SP })
                     })
                 } else {
                     ty.super_fold_with(self)
