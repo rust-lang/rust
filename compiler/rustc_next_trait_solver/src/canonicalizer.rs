@@ -239,7 +239,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
             // FIXME: We should investigate the perf implications of not uniquifying
             // `ReErased`. We may be able to short-circuit registering region
             // obligations if we encounter a `ReErased` on one side, for example.
-            ty::ReStatic | ty::ReErased => match self.canonicalize_mode {
+            ty::ReStatic | ty::ReErased | ty::ReError(_) => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                 CanonicalizeMode::Response { .. } => return r,
             },
@@ -277,7 +277,6 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
                     }
                 }
             }
-            ty::ReError(_) => return r,
         };
 
         let existing_bound_var = match self.canonicalize_mode {
