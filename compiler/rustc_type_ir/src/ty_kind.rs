@@ -373,17 +373,8 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
             Pat(t, p) => write!(f, "pattern_type!({:?} is {:?})", &this.wrap(t), &this.wrap(p)),
             Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
-            RawPtr(ty, mutbl) => {
-                match mutbl {
-                    Mutability::Mut => write!(f, "*mut "),
-                    Mutability::Not => write!(f, "*const "),
-                }?;
-                write!(f, "{:?}", &this.wrap(ty))
-            }
-            Ref(r, t, m) => match m {
-                Mutability::Mut => write!(f, "&{:?} mut {:?}", &this.wrap(r), &this.wrap(t)),
-                Mutability::Not => write!(f, "&{:?} {:?}", &this.wrap(r), &this.wrap(t)),
-            },
+            RawPtr(ty, mutbl) => write!(f, "*{} {:?}", mutbl.ptr_str(), this.wrap(ty)),
+            Ref(r, t, m) => write!(f, "&{:?} {}{:?}", this.wrap(r), m.prefix_str(), this.wrap(t)),
             FnDef(d, s) => f.debug_tuple("FnDef").field(d).field(&this.wrap(s)).finish(),
             FnPtr(s) => write!(f, "{:?}", &this.wrap(s)),
             Dynamic(p, r, repr) => match repr {

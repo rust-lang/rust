@@ -978,12 +978,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             CopyForDeref(ref place) => write!(fmt, "deref_copy {place:#?}"),
 
             AddressOf(mutability, ref place) => {
-                let kind_str = match mutability {
-                    Mutability::Mut => "mut",
-                    Mutability::Not => "const",
-                };
-
-                write!(fmt, "&raw {kind_str} {place:?}")
+                write!(fmt, "&raw {mut_str} {place:?}", mut_str = mutability.ptr_str())
             }
 
             Aggregate(ref kind, ref places) => {
