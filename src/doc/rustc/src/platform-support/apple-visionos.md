@@ -13,6 +13,7 @@ Apple visionOS targets:
 ## Target maintainers
 
 -   [@agg23](https://github.com/agg23)
+-   [@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 
