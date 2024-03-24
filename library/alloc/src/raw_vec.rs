@@ -349,8 +349,8 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// oft-instantiated `Vec::push()`, which does its own capacity check.
     #[cfg(not(no_global_oom_handling))]
     #[inline(never)]
-    pub fn reserve_for_push(&mut self, len: usize) {
-        if let Err(err) = self.grow_amortized(len, 1) {
+    pub fn reserve_for_push(&mut self) {
+        if let Err(err) = self.grow_amortized(self.cap.0, 1) {
             handle_error(err);
         }
     }
