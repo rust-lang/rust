@@ -9,7 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
 use rustc_hir::{GenericParamKind, ImplItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{util, FulfillmentError};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -800,10 +800,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
                 bug!("FIXME(RPITIT): error here");
             }
             // Replace with infer var
-            let infer_ty = self.ocx.infcx.next_ty_var(TypeVariableOrigin {
-                span: self.span,
-                kind: TypeVariableOriginKind::MiscVariable,
-            });
+            let infer_ty = self
+                .ocx
+                .infcx
+                .next_ty_var(TypeVariableOrigin { span: self.span, param_def_id: None });
             self.types.insert(proj.def_id, (infer_ty, proj.args));
             // Recurse into bounds
             for (pred, pred_span) in self

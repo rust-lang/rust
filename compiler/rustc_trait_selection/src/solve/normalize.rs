@@ -3,7 +3,7 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{BoundVarReplacer, PlaceholderReplacer};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::TraitEngineExt;
 use rustc_infer::traits::{FulfillmentError, Obligation, TraitEngine};
@@ -74,10 +74,8 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
 
         self.depth += 1;
 
-        let new_infer_ty = infcx.next_ty_var(TypeVariableOrigin {
-            kind: TypeVariableOriginKind::NormalizeProjectionType,
-            span: self.at.cause.span,
-        });
+        let new_infer_ty =
+            infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span: self.at.cause.span });
         let obligation = Obligation::new(
             tcx,
             self.at.cause.clone(),
