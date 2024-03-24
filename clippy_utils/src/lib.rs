@@ -298,9 +298,10 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
 /// Checks if the method call given in `expr` belongs to the given trait.
 /// This is a deprecated function, consider using [`is_trait_method`].
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
-    let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
-    let trt_id = cx.tcx.trait_of_item(def_id);
-    trt_id.map_or(false, |trt_id| match_def_path(cx, trt_id, path))
+    cx.typeck_results()
+        .type_dependent_def_id(expr.hir_id)
+        .and_then(|defid| cx.tcx.trait_of_item(defid))
+        .map_or(false, |trt_id| match_def_path(cx, trt_id, path))
 }
 
 /// Checks if a method is defined in an impl of a diagnostic item
