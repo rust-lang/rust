@@ -1165,14 +1165,6 @@ extern "rust-intrinsic" {
     /// may lead to unexpected and unstable compilation results. This makes `transmute` **incredibly
     /// unsafe**. `transmute` should be the absolute last resort.
     ///
-    /// Transmuting pointers *to* integers in a `const` context is [undefined behavior][ub],
-    /// unless the pointer was originally created *from* an integer.
-    /// (That includes this function specifically, integer-to-pointer casts, and helpers like [`invalid`][crate::ptr::dangling],
-    /// but also semantically-equivalent conversions such as punning through `repr(C)` union fields.)
-    /// Any attempt to use the resulting value for integer operations will abort const-evaluation.
-    /// (And even outside `const`, such transmutation is touching on many unspecified aspects of the
-    /// Rust memory model and should be avoided. See below for alternatives.)
-    ///
     /// Because `transmute` is a by-value operation, alignment of the *transmuted values
     /// themselves* is not a concern. As with any other function, the compiler already ensures
     /// both `Src` and `Dst` are properly aligned. However, when transmuting values that *point
@@ -1182,6 +1174,39 @@ extern "rust-intrinsic" {
     /// The [nomicon](../../nomicon/transmutes.html) has additional documentation.
     ///
     /// [ub]: ../../reference/behavior-considered-undefined.html
+    ///
+    /// # Transmutation between pointers and integers
+    ///
+    /// Special care has to be taken when transmuting between pointers and integers, e.g.
+    /// transmuting between `*const ()` and `usize`.
+    ///
+    /// Transmuting *pointers to integers* in a `const` context is [undefined behavior][ub], unless
+    /// the pointer was originally created *from* an integer. (That includes this function
+    /// specifically, integer-to-pointer casts, and helpers like [`dangling`][crate::ptr::dangling],
+    /// but also semantically-equivalent conversions such as punning through `repr(C)` union
+    /// fields.) Any attempt to use the resulting value for integer operations will abort
+    /// const-evaluation. (And even outside `const`, such transmutation is touching on many
+    /// unspecified aspects of the Rust memory model and should be avoided. See below for
+    /// alternatives.)
+    ///
+    /// Transmuting *integers to pointers* is a largely unspecified operation. It is likely *not*
+    /// equivalent to an `as` cast. Doing non-zero-sized memory accesses with a pointer constructed
+    /// this way is currently considered undefined behavior.
+    ///
+    /// All this also applies when the integer is nested inside an array, tuple, struct, or enum.
+    /// However, `MaybeUninit<usize>` is not considered an integer type for the purpose of this
+    /// section. Transmuting `*const ()` to `MaybeUninit<usize>` is fine---but then calling
+    /// `assume_init()` on that result is considered as completing the pointer-to-integer transmute
+    /// and thus runs into the issues discussed above.
+    ///
+    /// In particular, doing a pointer-to-integer-to-pointer roundtrip via `transmute` is *not* a
+    /// lossless process. If you want to round-trip a pointer through an integer in a way that you
+    /// can get back the original pointer, you need to use `as` casts, or replace the integer type
+    /// by `MaybeUninit<$int>` (and never call `assume_init()`). If you are looking for a way to
+    /// store data of arbitrary type, also use `MaybeUninit<T>` (that will also handle uninitialized
+    /// memory due to padding). If you specifically need to store something that is "either an
+    /// integer or a pointer", use `*mut ()`: integers can be converted to pointers and back without
+    /// any loss (via `as` casts or via `transmute`).
     ///
     /// # Examples
     ///
