@@ -127,9 +127,7 @@ impl Builder<'_, '_> {
 
             let marker_statement = mir::Statement {
                 source_info,
-                kind: mir::StatementKind::Coverage(Box::new(mir::Coverage {
-                    kind: CoverageKind::BlockMarker { id },
-                })),
+                kind: mir::StatementKind::Coverage(CoverageKind::BlockMarker { id }),
             };
             self.cfg.push(block, marker_statement);
 
