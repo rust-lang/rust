@@ -758,6 +758,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-mode-codegen-units",
     "ignore-mode-coverage-map",
     "ignore-mode-coverage-run",
+    "ignore-mode-crashes",
     "ignore-mode-debuginfo",
     "ignore-mode-incremental",
     "ignore-mode-js-doc-test",
