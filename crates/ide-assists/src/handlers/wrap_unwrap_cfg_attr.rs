@@ -4,7 +4,7 @@ use syntax::{
     algo,
     ast::{self, make, AstNode},
     ted::{self, Position},
-    AstToken, NodeOrToken, SyntaxToken, TextRange, T,
+    NodeOrToken, SyntaxToken, TextRange, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -55,39 +55,46 @@ fn attempt_get_derive(attr: ast::Attr, ident: SyntaxToken) -> WrapUnwrapOption {
                 syntax::Direction::Next,
             )?;
             if (prev.kind() == T![,] || prev.kind() == T!['('])
-                && (following.kind() == T![,] || following.kind() == T!['('])
+                && (following.kind() == T![,] || following.kind() == T![')'])
             {
                 // This would be a single ident such as Debug. As no path is present
                 if following.kind() == T![,] {
                     derive = derive.cover(following.text_range());
+                } else if following.kind() == T![')'] && prev.kind() == T![,] {
+                    derive = derive.cover(prev.text_range());
                 }
 
                 Some(WrapUnwrapOption::WrapDerive { derive, attr: attr.clone() })
             } else {
+                let mut consumed_comma = false;
                 // Collect the path
-
                 while let Some(prev_token) = algo::skip_trivia_token(prev, syntax::Direction::Prev)
                 {
                     let kind = prev_token.kind();
-                    if kind == T![,] || kind == T!['('] {
+                    if kind == T![,] {
+                        consumed_comma = true;
+                        derive = derive.cover(prev_token.text_range());
                         break;
+                    } else if kind == T!['('] {
+                        break;
+                    } else {
+                        derive = derive.cover(prev_token.text_range());
                     }
-                    derive = derive.cover(prev_token.text_range());
                     prev = prev_token.prev_sibling_or_token()?.into_token()?;
                 }
                 while let Some(next_token) =
                     algo::skip_trivia_token(following.clone(), syntax::Direction::Next)
                 {
                     let kind = next_token.kind();
-                    if kind != T![')'] {
-                        // We also want to consume a following comma
-                        derive = derive.cover(next_token.text_range());
+                    match kind {
+                        T![,] if !consumed_comma => {
+                            derive = derive.cover(next_token.text_range());
+                            break;
+                        }
+                        T![')'] | T![,] => break,
+                        _ => derive = derive.cover(next_token.text_range()),
                     }
                     following = next_token.next_sibling_or_token()?.into_token()?;
-
-                    if kind == T![,] || kind == T![')'] {
-                        break;
-                    }
                 }
                 Some(WrapUnwrapOption::WrapDerive { derive, attr: attr.clone() })
             }
@@ -103,7 +110,7 @@ fn attempt_get_derive(attr: ast::Attr, ident: SyntaxToken) -> WrapUnwrapOption {
 }
 pub(crate) fn wrap_unwrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let option = if ctx.has_empty_selection() {
-        let ident = ctx.find_token_at_offset::<ast::Ident>().map(|v| v.syntax().clone());
+        let ident = ctx.find_token_syntax_at_offset(T![ident]);
         let attr = ctx.find_node_at_offset::<ast::Attr>();
         match (attr, ident) {
             (Some(attr), Some(ident))
@@ -111,6 +118,7 @@ pub(crate) fn wrap_unwrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>) -
             {
                 Some(attempt_get_derive(attr.clone(), ident))
             }
+
             (Some(attr), _) => Some(WrapUnwrapOption::WrapAttr(attr)),
             _ => None,
         }
@@ -156,7 +164,7 @@ fn wrap_derive(
         }
 
         if derive_element.contains_range(token.text_range()) {
-            if token.kind() != T![,] {
+            if token.kind() != T![,] && token.kind() != syntax::SyntaxKind::WHITESPACE {
                 path_text.push_str(token.text());
                 cfg_derive_tokens.push(NodeOrToken::Token(token));
             }
@@ -527,7 +535,42 @@ mod tests {
             }
             "#,
             r#"
-            #[derive(Clone,  Copy)]
+            #[derive(Clone, Copy)]
+            #[cfg_attr($0, derive(std::fmt::Debug))]
+            pub struct Test {
+                test: u32,
+            }
+            "#,
+        );
+    }
+    #[test]
+    fn test_derive_wrap_at_end() {
+        check_assist(
+            wrap_unwrap_cfg_attr,
+            r#"
+            #[derive(std::fmt::Debug, Clone, Cop$0y)]
+            pub struct Test {
+                test: u32,
+            }
+            "#,
+            r#"
+            #[derive(std::fmt::Debug, Clone)]
+            #[cfg_attr($0, derive(Copy))]
+            pub struct Test {
+                test: u32,
+            }
+            "#,
+        );
+        check_assist(
+            wrap_unwrap_cfg_attr,
+            r#"
+            #[derive(Clone, Copy, std::fmt::D$0ebug)]
+            pub struct Test {
+                test: u32,
+            }
+            "#,
+            r#"
+            #[derive(Clone, Copy)]
             #[cfg_attr($0, derive(std::fmt::Debug))]
             pub struct Test {
                 test: u32,
