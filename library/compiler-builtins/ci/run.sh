@@ -1,10 +1,7 @@
 set -ex
 
-cargo=cargo
-
 # Test our implementation
-if [ "$XARGO" = "1" ]; then
-    # FIXME: currently these tests don't work...
+if [ "$NO_STD" = "1" ]; then
     echo nothing to do
 else
     run="cargo test --manifest-path testcrate/Cargo.toml --target $1"
@@ -15,6 +12,15 @@ else
     $run --features no-asm
     $run --features no-asm --release
 fi
+
+if [ -d /target ]; then
+    path=/target/${1}/debug/deps/libcompiler_builtins-*.rlib
+else
+    path=target/${1}/debug/deps/libcompiler_builtins-*.rlib
+fi
+
+# Remove any existing artifacts from previous tests that don't set #![compiler_builtins]
+rm -f $path
 
 cargo build --target $1
 cargo build --target $1 --release
@@ -36,15 +42,15 @@ case $1 in
         ;;
 esac
 
-NM=$(find $(rustc --print sysroot) -name llvm-nm)
+NM=$(find $(rustc --print sysroot) \( -name llvm-nm -o -name llvm-nm.exe \) )
 if [ "$NM" = "" ]; then
   NM=${PREFIX}nm
 fi
-
-if [ -d /target ]; then
-    path=/target/${1}/debug/deps/libcompiler_builtins-*.rlib
-else
-    path=target/${1}/debug/deps/libcompiler_builtins-*.rlib
+# i686-pc-windows-gnu tools have a dependency on some DLLs, so run it with
+# rustup run to ensure that those are in PATH.
+TOOLCHAIN=$(rustup show active-toolchain | sed 's/ (default)//')
+if [[ $TOOLCHAIN == *i686-pc-windows-gnu ]]; then
+  NM="rustup run $TOOLCHAIN $NM"
 fi
 
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
@@ -79,29 +85,29 @@ done
 rm -f $path
 
 # Verify that we haven't drop any intrinsic/symbol
-build_intrinsics="$cargo build --target $1 -v --example intrinsics"
-RUSTFLAGS="-C debug-assertions=no" $build_intrinsics
-RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --release
-RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --features c
-RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --features c --release
+build_intrinsics="cargo build --target $1 -v --example intrinsics"
+$build_intrinsics
+$build_intrinsics --release
+$build_intrinsics --features c
+$build_intrinsics --features c --release
 
 # Verify that there are no undefined symbols to `panic` within our
 # implementations
-#
-# TODO(#79) fix the undefined references problem for debug-assertions+lto
-if [ -z "$DEBUG_LTO_BUILD_DOESNT_WORK" ]; then
-  RUSTFLAGS="-C debug-assertions=no" \
-    CARGO_INCREMENTAL=0 \
-    CARGO_PROFILE_DEV_LTO=true \
-    $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics
-fi
+CARGO_PROFILE_DEV_LTO=true \
+    cargo build --target $1 --example intrinsics
 CARGO_PROFILE_RELEASE_LTO=true \
-  $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics --release
+    cargo build --target $1 --example intrinsics --release
 
-# Ensure no references to a panicking function
+# Ensure no references to any symbols from core
 for rlib in $(echo $path); do
     set +ex
-    $NM -u $rlib 2>&1 | grep panicking
+    echo "================================================================"
+    echo checking $rlib for references to core
+    echo "================================================================"
+
+    $NM --quiet -U $rlib | grep 'T _ZN4core' | awk '{print $3}' | sort | uniq > defined_symbols.txt
+    $NM --quiet -u $rlib | grep 'U _ZN4core' | awk '{print $2}' | sort | uniq > undefined_symbols.txt
+    grep -v -F -x -f defined_symbols.txt undefined_symbols.txt
 
     if test $? = 0; then
         exit 1
