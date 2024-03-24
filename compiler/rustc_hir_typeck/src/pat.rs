@@ -605,23 +605,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        let PatInfo { binding_mode: def_bm, top_info: ti, .. } = pat_info;
+        let PatInfo { binding_mode: BindingAnnotation(def_br, _), top_info: ti, .. } = pat_info;
 
         // Determine the binding mode...
         let bm = match ba {
-            BindingAnnotation(ByRef::No, Mutability::Not) => def_bm,
-            BindingAnnotation(ByRef::No, Mutability::Mut) => {
-                if matches!(def_bm.0, ByRef::Yes(_)) {
-                    // `mut x` resets the binding mode.
-                    self.tcx.emit_node_span_lint(
-                        lint::builtin::DEREFERENCING_MUT_BINDING,
-                        pat.hir_id,
-                        pat.span,
-                        errors::DereferencingMutBinding { span: pat.span },
-                    );
-                }
+            BindingAnnotation(ByRef::No, Mutability::Mut)
+                if !pat.span.at_least_rust_2024() && matches!(def_br, ByRef::Yes(_)) =>
+            {
+                // `mut x` resets the binding mode in edition <= 2021.
+                self.tcx.emit_node_span_lint(
+                    lint::builtin::DEREFERENCING_MUT_BINDING,
+                    pat.hir_id,
+                    pat.span,
+                    errors::DereferencingMutBinding { span: pat.span },
+                );
                 BindingAnnotation(ByRef::No, Mutability::Mut)
             }
+            BindingAnnotation(ByRef::No, mutbl) => BindingAnnotation(def_br, mutbl),
             BindingAnnotation(ByRef::Yes(_), _) => ba,
         };
         // ...and store it in a side table:
@@ -731,7 +731,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    // Precondition: pat is a Ref(_) pattern
+    /// Precondition: pat is a `Ref(_)` pattern
     fn borrow_pat_suggestion(&self, err: &mut Diag<'_>, pat: &Pat<'_>) {
         let tcx = self.tcx;
         if let PatKind::Ref(inner, mutbl) = pat.kind
