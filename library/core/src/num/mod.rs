@@ -1409,10 +1409,12 @@ pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) 
     radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
 }
 
+#[track_caller]
 const fn from_str_radix_panic_ct(_radix: u32) -> ! {
     panic!("from_str_radix_int: must lie in the range `[2, 36]`");
 }
 
+#[track_caller]
 fn from_str_radix_panic_rt(radix: u32) -> ! {
     panic!("from_str_radix_int: must lie in the range `[2, 36]` - found {}", radix);
 }
