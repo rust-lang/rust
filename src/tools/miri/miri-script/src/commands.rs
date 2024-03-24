@@ -178,7 +178,7 @@ impl Command {
             .context("Please install rustup-toolchain-install-master by running 'cargo install rustup-toolchain-install-master'")?;
         let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
-        let new_commit = Some(sh.read_file("rust-version")?.trim().to_owned());
+        let new_commit = sh.read_file("rust-version")?.trim().to_owned();
         let current_commit = {
             let rustc_info = cmd!(sh, "rustc +miri --version -v").read();
             if rustc_info.is_err() {
@@ -193,7 +193,7 @@ impl Command {
             }
         };
         // Check if we already are at that commit.
-        if current_commit == new_commit {
+        if current_commit.as_ref() == Some(&new_commit) {
             if active_toolchain()? != "miri" {
                 cmd!(sh, "rustup override set miri").run()?;
             }
@@ -202,7 +202,7 @@ impl Command {
         // Install and setup new toolchain.
         cmd!(sh, "rustup toolchain uninstall miri").run()?;
 
-        cmd!(sh, "rustup-toolchain-install-master -n miri -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy {flags...} -- {new_commit...}").run()?;
+        cmd!(sh, "rustup-toolchain-install-master -n miri -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy {flags...} -- {new_commit}").run()?;
         cmd!(sh, "rustup override set miri").run()?;
         // Cleanup.
         cmd!(sh, "cargo clean").run()?;
