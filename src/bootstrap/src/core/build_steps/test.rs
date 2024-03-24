@@ -1376,7 +1376,6 @@ default_test!(Ui { path: "tests/ui", mode: "ui", suite: "ui" });
 
 default_test!(Crashes { path: "tests/crashes", mode: "crashes", suite: "crashes" });
 
-
 default_test!(RunPassValgrind {
     path: "tests/run-pass-valgrind",
     mode: "run-pass-valgrind",
