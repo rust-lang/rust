@@ -1,4 +1,4 @@
-use super::{InlineAsmArch, InlineAsmType};
+use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 use crate::spec::{RelocModel, Target};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_macros::HashStable_Generic;
@@ -27,32 +27,28 @@ impl AArch64InlineAsmRegClass {
         None
     }
 
-    pub fn suggest_modifier(
-        self,
-        _arch: InlineAsmArch,
-        ty: InlineAsmType,
-    ) -> Option<(char, &'static str)> {
+    pub fn suggest_modifier(self, _arch: InlineAsmArch, ty: InlineAsmType) -> Option<ModifierInfo> {
         match self {
             Self::reg => match ty.size().bits() {
                 64 => None,
-                _ => Some(('w', "w0")),
+                _ => Some(('w', "w0", 32).into()),
             },
             Self::vreg | Self::vreg_low16 => match ty.size().bits() {
-                8 => Some(('b', "b0")),
-                16 => Some(('h', "h0")),
-                32 => Some(('s', "s0")),
-                64 => Some(('d', "d0")),
-                128 => Some(('q', "q0")),
+                8 => Some(('b', "b0", 8).into()),
+                16 => Some(('h', "h0", 16).into()),
+                32 => Some(('s', "s0", 32).into()),
+                64 => Some(('d', "d0", 64).into()),
+                128 => Some(('q', "q0", 128).into()),
                 _ => None,
             },
             Self::preg => None,
         }
     }
 
-    pub fn default_modifier(self, _arch: InlineAsmArch) -> Option<(char, &'static str)> {
+    pub fn default_modifier(self, _arch: InlineAsmArch) -> Option<ModifierInfo> {
         match self {
-            Self::reg => Some(('x', "x0")),
-            Self::vreg | Self::vreg_low16 => Some(('v', "v0")),
+            Self::reg => Some(('x', "x0", 64).into()),
+            Self::vreg | Self::vreg_low16 => Some(('v', "v0", 128).into()),
             Self::preg => None,
         }
     }
