@@ -164,81 +164,83 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
 }
 
 fn is_integer_module(cx: &LateContext<'_>, did: DefId) -> bool {
-    [
-        sym::isize_legacy_mod,
-        sym::i128_legacy_mod,
-        sym::i64_legacy_mod,
-        sym::i32_legacy_mod,
-        sym::i16_legacy_mod,
-        sym::i8_legacy_mod,
-        sym::usize_legacy_mod,
-        sym::u128_legacy_mod,
-        sym::u64_legacy_mod,
-        sym::u32_legacy_mod,
-        sym::u16_legacy_mod,
-        sym::u8_legacy_mod,
-    ]
-    .iter()
-    .any(|&name| cx.tcx.is_diagnostic_item(name, did))
+    matches!(
+        cx.tcx.get_diagnostic_name(did),
+        Some(
+            sym::isize_legacy_mod
+                | sym::i128_legacy_mod
+                | sym::i64_legacy_mod
+                | sym::i32_legacy_mod
+                | sym::i16_legacy_mod
+                | sym::i8_legacy_mod
+                | sym::usize_legacy_mod
+                | sym::u128_legacy_mod
+                | sym::u64_legacy_mod
+                | sym::u32_legacy_mod
+                | sym::u16_legacy_mod
+                | sym::u8_legacy_mod
+        )
+    )
 }
 
 fn is_numeric_const(cx: &LateContext<'_>, did: DefId) -> bool {
-    [
-        sym::isize_legacy_const_max,
-        sym::isize_legacy_const_min,
-        sym::i128_legacy_const_max,
-        sym::i128_legacy_const_min,
-        sym::i16_legacy_const_max,
-        sym::i16_legacy_const_min,
-        sym::i32_legacy_const_max,
-        sym::i32_legacy_const_min,
-        sym::i64_legacy_const_max,
-        sym::i64_legacy_const_min,
-        sym::i8_legacy_const_max,
-        sym::i8_legacy_const_min,
-        sym::usize_legacy_const_max,
-        sym::usize_legacy_const_min,
-        sym::u128_legacy_const_max,
-        sym::u128_legacy_const_min,
-        sym::u16_legacy_const_max,
-        sym::u16_legacy_const_min,
-        sym::u32_legacy_const_max,
-        sym::u32_legacy_const_min,
-        sym::u64_legacy_const_max,
-        sym::u64_legacy_const_min,
-        sym::u8_legacy_const_max,
-        sym::u8_legacy_const_min,
-        sym::f32_legacy_const_digits,
-        sym::f32_legacy_const_epsilon,
-        sym::f32_legacy_const_infinity,
-        sym::f32_legacy_const_mantissa_dig,
-        sym::f32_legacy_const_max,
-        sym::f32_legacy_const_max_10_exp,
-        sym::f32_legacy_const_max_exp,
-        sym::f32_legacy_const_min,
-        sym::f32_legacy_const_min_10_exp,
-        sym::f32_legacy_const_min_exp,
-        sym::f32_legacy_const_min_positive,
-        sym::f32_legacy_const_nan,
-        sym::f32_legacy_const_neg_infinity,
-        sym::f32_legacy_const_radix,
-        sym::f64_legacy_const_digits,
-        sym::f64_legacy_const_epsilon,
-        sym::f64_legacy_const_infinity,
-        sym::f64_legacy_const_mantissa_dig,
-        sym::f64_legacy_const_max,
-        sym::f64_legacy_const_max_10_exp,
-        sym::f64_legacy_const_max_exp,
-        sym::f64_legacy_const_min,
-        sym::f64_legacy_const_min_10_exp,
-        sym::f64_legacy_const_min_exp,
-        sym::f64_legacy_const_min_positive,
-        sym::f64_legacy_const_nan,
-        sym::f64_legacy_const_neg_infinity,
-        sym::f64_legacy_const_radix,
-    ]
-    .iter()
-    .any(|&name| cx.tcx.is_diagnostic_item(name, did))
+    matches!(
+        cx.tcx.get_diagnostic_name(did),
+        Some(
+            sym::isize_legacy_const_max
+                | sym::isize_legacy_const_min
+                | sym::i128_legacy_const_max
+                | sym::i128_legacy_const_min
+                | sym::i16_legacy_const_max
+                | sym::i16_legacy_const_min
+                | sym::i32_legacy_const_max
+                | sym::i32_legacy_const_min
+                | sym::i64_legacy_const_max
+                | sym::i64_legacy_const_min
+                | sym::i8_legacy_const_max
+                | sym::i8_legacy_const_min
+                | sym::usize_legacy_const_max
+                | sym::usize_legacy_const_min
+                | sym::u128_legacy_const_max
+                | sym::u128_legacy_const_min
+                | sym::u16_legacy_const_max
+                | sym::u16_legacy_const_min
+                | sym::u32_legacy_const_max
+                | sym::u32_legacy_const_min
+                | sym::u64_legacy_const_max
+                | sym::u64_legacy_const_min
+                | sym::u8_legacy_const_max
+                | sym::u8_legacy_const_min
+                | sym::f32_legacy_const_digits
+                | sym::f32_legacy_const_epsilon
+                | sym::f32_legacy_const_infinity
+                | sym::f32_legacy_const_mantissa_dig
+                | sym::f32_legacy_const_max
+                | sym::f32_legacy_const_max_10_exp
+                | sym::f32_legacy_const_max_exp
+                | sym::f32_legacy_const_min
+                | sym::f32_legacy_const_min_10_exp
+                | sym::f32_legacy_const_min_exp
+                | sym::f32_legacy_const_min_positive
+                | sym::f32_legacy_const_nan
+                | sym::f32_legacy_const_neg_infinity
+                | sym::f32_legacy_const_radix
+                | sym::f64_legacy_const_digits
+                | sym::f64_legacy_const_epsilon
+                | sym::f64_legacy_const_infinity
+                | sym::f64_legacy_const_mantissa_dig
+                | sym::f64_legacy_const_max
+                | sym::f64_legacy_const_max_10_exp
+                | sym::f64_legacy_const_max_exp
+                | sym::f64_legacy_const_min
+                | sym::f64_legacy_const_min_10_exp
+                | sym::f64_legacy_const_min_exp
+                | sym::f64_legacy_const_min_positive
+                | sym::f64_legacy_const_nan
+                | sym::f64_legacy_const_neg_infinity
+                | sym::f64_legacy_const_radix
+        )
+    )
 }
 
 // Whether path expression looks like `i32::MAX`
@@ -259,32 +261,33 @@ fn is_numeric_const_path_canonical(expr_path: &hir::Path<'_>, [mod_name, name]: 
 }
 
 fn is_integer_method(cx: &LateContext<'_>, did: DefId) -> bool {
-    [
-        sym::isize_legacy_fn_max_value,
-        sym::isize_legacy_fn_min_value,
-        sym::i128_legacy_fn_max_value,
-        sym::i128_legacy_fn_min_value,
-        sym::i16_legacy_fn_max_value,
-        sym::i16_legacy_fn_min_value,
-        sym::i32_legacy_fn_max_value,
-        sym::i32_legacy_fn_min_value,
-        sym::i64_legacy_fn_max_value,
-        sym::i64_legacy_fn_min_value,
-        sym::i8_legacy_fn_max_value,
-        sym::i8_legacy_fn_min_value,
-        sym::usize_legacy_fn_max_value,
-        sym::usize_legacy_fn_min_value,
-        sym::u128_legacy_fn_max_value,
-        sym::u128_legacy_fn_min_value,
-        sym::u16_legacy_fn_max_value,
-        sym::u16_legacy_fn_min_value,
-        sym::u32_legacy_fn_max_value,
-        sym::u32_legacy_fn_min_value,
-        sym::u64_legacy_fn_max_value,
-        sym::u64_legacy_fn_min_value,
-        sym::u8_legacy_fn_max_value,
-        sym::u8_legacy_fn_min_value,
-    ]
-    .iter()
-    .any(|&name| cx.tcx.is_diagnostic_item(name, did))
+    matches!(
+        cx.tcx.get_diagnostic_name(did),
+        Some(
+            sym::isize_legacy_fn_max_value
+                | sym::isize_legacy_fn_min_value
+                | sym::i128_legacy_fn_max_value
+                | sym::i128_legacy_fn_min_value
+                | sym::i16_legacy_fn_max_value
+                | sym::i16_legacy_fn_min_value
+                | sym::i32_legacy_fn_max_value
+                | sym::i32_legacy_fn_min_value
+                | sym::i64_legacy_fn_max_value
+                | sym::i64_legacy_fn_min_value
+                | sym::i8_legacy_fn_max_value
+                | sym::i8_legacy_fn_min_value
+                | sym::usize_legacy_fn_max_value
+                | sym::usize_legacy_fn_min_value
+                | sym::u128_legacy_fn_max_value
+                | sym::u128_legacy_fn_min_value
+                | sym::u16_legacy_fn_max_value
+                | sym::u16_legacy_fn_min_value
+                | sym::u32_legacy_fn_max_value
+                | sym::u32_legacy_fn_min_value
+                | sym::u64_legacy_fn_max_value
+                | sym::u64_legacy_fn_min_value
+                | sym::u8_legacy_fn_max_value
+                | sym::u8_legacy_fn_min_value
+        )
+    )
 }

@@ -1,7 +1,6 @@
 //@aux-build:proc_macros.rs
 #![allow(clippy::no_effect, deprecated, unused)]
 #![allow(clippy::legacy_numeric_constants)] // For imports.
-#![feature(lint_reasons)]
 
 #[macro_use]
 extern crate proc_macros;
