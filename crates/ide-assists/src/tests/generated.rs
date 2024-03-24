@@ -3151,3 +3151,22 @@ fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 "#####,
     )
 }
+
+#[test]
+fn doctest_wrap_unwrap_cfg_attr() {
+    check_doc_test(
+        "wrap_unwrap_cfg_attr",
+        r#####"
+#[derive$0(Debug)]
+struct S {
+   field: i32
+}
+"#####,
+        r#####"
+#[cfg_attr($0, derive(Debug))]
+struct S {
+   field: i32
+}
+"#####,
+    )
+}

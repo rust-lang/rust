@@ -344,7 +344,7 @@ mod handlers {
             unqualify_method_call::unqualify_method_call,
             wrap_return_type_in_result::wrap_return_type_in_result,
             wrap_unwrap_cfg_attr::wrap_unwrap_cfg_attr,
-            
+
             // These are manually sorted for better priorities. By default,
             // priority is determined by the size of the target range (smaller
             // target wins). If the ranges are equal, position in this list is
