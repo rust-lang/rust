@@ -4,10 +4,10 @@ error: character literal may only contain one codepoint
 LL |     'nope'
    |     ^^^^^^
    |
-help: if you meant to write a `str` literal, use double quotes
+help: if you meant to write a string literal, use double quotes
    |
 LL |     "nope"
-   |     ~~~~~~
+   |     ~    ~
 
 error: aborting due to 1 previous error
 
