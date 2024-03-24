@@ -1,5 +1,5 @@
 #![allow(dead_code, unused_variables)]
-#![allow(clippy::unnecessary_cast)]
+#![allow(clippy::unnecessary_cast, clippy::missing_transmute_annotations)]
 
 /// Should not trigger an ICE in `SpanlessEq` / `consts::constant`
 ///

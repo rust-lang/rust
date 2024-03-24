@@ -7,7 +7,9 @@
     clippy::upper_case_acronyms,
     clippy::from_over_into,
     clippy::self_named_constructors,
-    clippy::needless_lifetimes
+    clippy::needless_lifetimes,
+    clippy::missing_transmute_annotations,
+    clippy::missing_transmute_annotations
 )]
 
 #[macro_use]
