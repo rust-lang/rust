@@ -1,0 +1,8 @@
+error: defaults for generic parameters are not allowed in `for<...>` binders
+  --> $DIR/no-entry-found-for-key-ice-gce-nlb-113133.rs:9:9
+   |
+LL |     for<const N: usize = { const fn bar() {} bar(); 1 }> ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
