@@ -201,7 +201,7 @@ pub trait Write {
         impl<W: Write + ?Sized> SpecWriteFmt for &mut W {
             #[inline]
             default fn spec_write_fmt(mut self, args: Arguments<'_>) -> Result {
-                if let Some(s) = args.as_const_str() {
+                if let Some(s) = args.as_statically_known_str() {
                     self.write_str(s)
                 } else {
                     write(&mut self, args)
@@ -212,7 +212,7 @@ pub trait Write {
         impl<W: Write> SpecWriteFmt for &mut W {
             #[inline]
             fn spec_write_fmt(self, args: Arguments<'_>) -> Result {
-                if let Some(s) = args.as_const_str() {
+                if let Some(s) = args.as_statically_known_str() {
                     self.write_str(s)
                 } else {
                     write(self, args)
@@ -442,7 +442,7 @@ impl<'a> Arguments<'a> {
     /// Same as [`Arguments::as_str`], but will only return `Some(s)` if it can be determined at compile time.
     #[must_use]
     #[inline]
-    fn as_const_str(&self) -> Option<&'static str> {
+    fn as_statically_known_str(&self) -> Option<&'static str> {
         let s = self.as_str();
         if core::intrinsics::is_val_statically_known(s.is_some()) { s } else { None }
     }
@@ -1617,7 +1617,11 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn write_fmt(&mut self, fmt: Arguments<'_>) -> Result {
-        if let Some(s) = fmt.as_const_str() { self.buf.write_str(s) } else { write(self.buf, fmt) }
+        if let Some(s) = fmt.as_statically_known_str() {
+            self.buf.write_str(s)
+        } else {
+            write(self.buf, fmt)
+        }
     }
 
     /// Flags for formatting
@@ -2308,7 +2312,7 @@ impl Write for Formatter<'_> {
 
     #[inline]
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
-        if let Some(s) = args.as_const_str() {
+        if let Some(s) = args.as_statically_known_str() {
             self.buf.write_str(s)
         } else {
             write(self.buf, args)
