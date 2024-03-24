@@ -1,26 +1,12 @@
-# `*-apple-tvos`
-- aarch64-apple-tvos
-- x86_64-apple-tvos
+---
+maintainers: ["@thomcc"]
+---
 
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-***WARNING***
-This target has already been migrated to the new target docs system: #120745
-When editing this file, make sure that you keep the equivalent docs in ../../target_infos in sync!!!
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
-
-**Tier: 3**
+## Overview
 
 Apple tvOS targets:
 - Apple tvOS on aarch64
 - Apple tvOS Simulator on x86_64
-
-## Target maintainers
-
-* [@thomcc](https://github.com/thomcc)
 
 ## Requirements
 
@@ -39,8 +25,6 @@ of Xcode and your SDKs.
 As with the other Apple targets, `rustc` respects the common environment
 variables used by Xcode to configure this, in this case
 `TVOS_DEPLOYMENT_TARGET`.
-
-#### Incompletely supported library functionality
 
 As mentioned, "most" of the standard library is supported, which means that some portions
 are known to be unsupported. The following APIs are currently known to have
@@ -83,15 +67,12 @@ $ rustc --target aarch64-apple-tvos-sim your-code.rs
 
 ## Testing
 
-There is no support for running the Rust or standard library testsuite on tvOS
-or the simulators at the moment. Testing has mostly been done manually with
-builds of static libraries called from Xcode or a simulator.
+There is no support for running the Rust or standard library testsuite on tvOS or the simulators at the moment. Testing has mostly been done manually with builds of static libraries called from Xcode or a simulator.
 
 It hopefully will be possible to improve this in the future.
 
-## Cross-compilation toolchains and C code
+## Cross compilation
 
 This target can be cross-compiled from x86_64 or aarch64 macOS hosts.
 
-Other hosts are not supported for cross-compilation, but might work when also
-providing the required Xcode SDK.
+Other hosts are not supported for cross-compilation, but might work when also providing the required Xcode SDK.
