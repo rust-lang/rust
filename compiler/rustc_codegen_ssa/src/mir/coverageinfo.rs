@@ -1,12 +1,12 @@
 use crate::traits::*;
 
-use rustc_middle::mir::Coverage;
+use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::SourceScope;
 
 use super::FunctionCx;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn codegen_coverage(&self, bx: &mut Bx, coverage: &Coverage, scope: SourceScope) {
+    pub fn codegen_coverage(&self, bx: &mut Bx, kind: &CoverageKind, scope: SourceScope) {
         // Determine the instance that coverage data was originally generated for.
         let instance = if let Some(inlined) = scope.inlined_instance(&self.mir.source_scopes) {
             self.monomorphize(inlined)
@@ -15,6 +15,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         // Handle the coverage info in a backend-specific way.
-        bx.add_coverage(instance, coverage);
+        bx.add_coverage(instance, kind);
     }
 }
