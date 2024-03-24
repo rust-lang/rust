@@ -16,6 +16,10 @@ mod utils;
 fn main() {
     test_dup_stdout_stderr();
     test_canonicalize_too_long();
+    test_rename();
+    test_ftruncate::<libc::off_t>(libc::ftruncate);
+    #[cfg(target_os = "linux")]
+    test_ftruncate::<libc::off64_t>(libc::ftruncate64);
     test_readlink();
     test_file_open_unix_allow_two_args();
     test_file_open_unix_needs_three_args();
@@ -131,6 +135,65 @@ fn test_readlink() {
     };
     assert_eq!(res, -1);
     assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
+}
+
+fn test_rename() {
+    let path1 = prepare("miri_test_libc_fs_source.txt");
+    let path2 = prepare("miri_test_libc_fs_rename_destination.txt");
+
+    let file = File::create(&path1).unwrap();
+    drop(file);
+
+    let c_path1 = CString::new(path1.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_path2 = CString::new(path2.as_os_str().as_bytes()).expect("CString::new failed");
+
+    // Renaming should succeed
+    unsafe { libc::rename(c_path1.as_ptr(), c_path2.as_ptr()) };
+    // Check that old file path isn't present
+    assert_eq!(ErrorKind::NotFound, path1.metadata().unwrap_err().kind());
+    // Check that the file has moved successfully
+    assert!(path2.metadata().unwrap().is_file());
+
+    // Renaming a nonexistent file should fail
+    let res = unsafe { libc::rename(c_path1.as_ptr(), c_path2.as_ptr()) };
+    assert_eq!(res, -1);
+    assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
+
+    remove_file(&path2).unwrap();
+}
+
+fn test_ftruncate<T: From<i32>>(
+    ftruncate: unsafe extern "C" fn(fd: libc::c_int, length: T) -> libc::c_int,
+) {
+    // libc::off_t is i32 in target i686-unknown-linux-gnu
+    // https://docs.rs/libc/latest/i686-unknown-linux-gnu/libc/type.off_t.html
+
+    let bytes = b"hello";
+    let path = prepare("miri_test_libc_fs_ftruncate.txt");
+    let mut file = File::create(&path).unwrap();
+    file.write(bytes).unwrap();
+    file.sync_all().unwrap();
+    assert_eq!(file.metadata().unwrap().len(), 5);
+
+    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) };
+
+    // Truncate to a bigger size
+    let mut res = unsafe { ftruncate(fd, T::from(10)) };
+    assert_eq!(res, 0);
+    assert_eq!(file.metadata().unwrap().len(), 10);
+
+    // Write after truncate
+    file.write(b"dup").unwrap();
+    file.sync_all().unwrap();
+    assert_eq!(file.metadata().unwrap().len(), 10);
+
+    // Truncate to smaller size
+    res = unsafe { ftruncate(fd, T::from(2)) };
+    assert_eq!(res, 0);
+    assert_eq!(file.metadata().unwrap().len(), 2);
+
+    remove_file(&path).unwrap();
 }
 
 #[cfg(target_os = "linux")]
