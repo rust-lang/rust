@@ -3,7 +3,7 @@ use crate::errors::{
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
 use crate::infer::error_reporting::TypeErrCtxt;
-use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::type_variable::TypeVariableOrigin;
 use crate::infer::InferCtxt;
 use rustc_errors::{codes::*, Diag, IntoDiagArg};
 use rustc_hir as hir;
@@ -163,7 +163,8 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         let mut infcx_inner = infcx.inner.borrow_mut();
         let ty_vars = infcx_inner.type_variables();
         let var_origin = ty_vars.var_origin(ty_vid);
-        if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) = var_origin.kind
+        if let Some(def_id) = var_origin.param_def_id
+            && let name = infcx.tcx.item_name(def_id)
             && name != kw::SelfUpper
             && !var_origin.span.from_expansion()
         {
@@ -278,9 +279,8 @@ impl<'tcx> InferCtxt<'tcx> {
                     let mut inner = self.inner.borrow_mut();
                     let ty_vars = &inner.type_variables();
                     let var_origin = ty_vars.var_origin(ty_vid);
-                    if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) =
-                        var_origin.kind
-                    {
+                    if let Some(def_id) = var_origin.param_def_id {
+                        let name = self.tcx.item_name(def_id);
                         if name != kw::SelfUpper && !var_origin.span.from_expansion() {
                             return InferenceDiagnosticsData {
                                 name: name.to_string(),
@@ -519,7 +519,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 GenericArgKind::Type(_) => self
                                     .next_ty_var(TypeVariableOrigin {
                                         span: rustc_span::DUMMY_SP,
-                                        kind: TypeVariableOriginKind::MiscVariable,
+                                        param_def_id: None,
                                     })
                                     .into(),
                                 GenericArgKind::Const(arg) => self
@@ -548,7 +548,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {
                 let placeholder = Some(self.next_ty_var(TypeVariableOrigin {
                     span: rustc_span::DUMMY_SP,
-                    kind: TypeVariableOriginKind::MiscVariable,
+                    param_def_id: None,
                 }));
                 if let Some(args) = args.make_suggestable(self.infcx.tcx, true, placeholder) {
                     let mut printer = fmt_printer(self, Namespace::ValueNS);
@@ -585,7 +585,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
                 let placeholder = Some(self.next_ty_var(TypeVariableOrigin {
                     span: rustc_span::DUMMY_SP,
-                    kind: TypeVariableOriginKind::MiscVariable,
+                    param_def_id: None,
                 }));
                 if let Some(ty) = ty.make_suggestable(self.infcx.tcx, true, placeholder) {
                     let ty_info = ty_to_string(self, ty, None);

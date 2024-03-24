@@ -2,7 +2,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::CanonicalVarValues;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk, TyCtxtInferExt,
 };
@@ -588,10 +588,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 
     pub(super) fn next_ty_infer(&self) -> Ty<'tcx> {
-        self.infcx.next_ty_var(TypeVariableOrigin {
-            kind: TypeVariableOriginKind::MiscVariable,
-            span: DUMMY_SP,
-        })
+        self.infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span: DUMMY_SP })
     }
 
     pub(super) fn next_const_infer(&self, ty: Ty<'tcx>) -> ty::Const<'tcx> {

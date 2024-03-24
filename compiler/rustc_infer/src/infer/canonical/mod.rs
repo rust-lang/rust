@@ -22,7 +22,7 @@
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
-use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_index::IndexVec;
 use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -115,7 +115,7 @@ impl<'tcx> InferCtxt<'tcx> {
             CanonicalVarKind::Ty(ty_kind) => {
                 let ty = match ty_kind {
                     CanonicalTyVarKind::General(ui) => self.next_ty_var_in_universe(
-                        TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span },
+                        TypeVariableOrigin { param_def_id: None, span },
                         universe_map(ui),
                     ),
 
