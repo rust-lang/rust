@@ -7,7 +7,7 @@ use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::TraitEngineExt;
 use rustc_infer::traits::{FulfillmentError, Obligation, TraitEngine};
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, AliasTy, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
@@ -122,10 +122,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
 
         let new_infer_ct = infcx.next_const_var(
             ty,
-            ConstVariableOrigin {
-                kind: ConstVariableOriginKind::MiscVariable,
-                span: self.at.cause.span,
-            },
+            ConstVariableOrigin { param_def_id: None, span: self.at.cause.span },
         );
         let obligation = Obligation::new(
             tcx,

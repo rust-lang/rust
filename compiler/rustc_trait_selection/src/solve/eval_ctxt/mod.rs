@@ -10,7 +10,7 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::{MaybeCause, NestedNormalizationGoals};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::traits::solve::inspect;
 use rustc_middle::traits::solve::{
     CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaques, PredefinedOpaquesData,
@@ -592,10 +592,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 
     pub(super) fn next_const_infer(&self, ty: Ty<'tcx>) -> ty::Const<'tcx> {
-        self.infcx.next_const_var(
-            ty,
-            ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span: DUMMY_SP },
-        )
+        self.infcx.next_const_var(ty, ConstVariableOrigin { param_def_id: None, span: DUMMY_SP })
     }
 
     /// Returns a ty infer or a const infer depending on whether `kind` is a `Ty` or `Const`.

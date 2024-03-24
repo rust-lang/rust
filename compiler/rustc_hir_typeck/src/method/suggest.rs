@@ -23,7 +23,7 @@ use rustc_hir::PatKind::Binding;
 use rustc_hir::PathSegment;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::{self, type_variable::TypeVariableOrigin, RegionVariableOrigin};
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
@@ -1831,7 +1831,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     arg.ty(),
                                     ConstVariableOrigin {
                                         span: rustc_span::DUMMY_SP,
-                                        kind: ConstVariableOriginKind::MiscVariable,
+                                        param_def_id: None,
                                     },
                                 )
                                 .into(),
