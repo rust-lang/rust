@@ -470,7 +470,7 @@ extern "rust-intrinsic" {
     /// No matter whether the output is an array or an unsigned integer, it is treated as a single
     /// contiguous list of bits. The bitmask is always packed on the least-significant side of the
     /// output, and padded with 0s in the most-significant bits. The order of the bits depends on
-    /// endianess:
+    /// endianness:
     ///
     /// * On little endian, the least significant bit corresponds to the first vector element.
     /// * On big endian, the least significant bit corresponds to the last vector element.
