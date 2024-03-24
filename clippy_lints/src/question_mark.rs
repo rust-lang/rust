@@ -14,7 +14,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    BindingAnnotation, Block, ByRef, Expr, ExprKind, LetStmt, Node, PatKind, PathSegment, QPath, Stmt, StmtKind,
+    BindingAnnotation, Block, ByRef, Expr, ExprKind, LetStmt, Mutability, Node, PatKind, PathSegment, QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
@@ -283,9 +283,13 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         let mut applicability = Applicability::MachineApplicable;
         let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
         let requires_semi = matches!(cx.tcx.parent_hir_node(expr.hir_id), Node::Stmt(_));
+        let method_call_str = match by_ref {
+            ByRef::Yes(Mutability::Mut) => ".as_mut()",
+            ByRef::Yes(Mutability::Not) => ".as_ref()",
+            ByRef::No => "",
+        };
         let sugg = format!(
-            "{receiver_str}{}?{}",
-            if by_ref == ByRef::Yes { ".as_ref()" } else { "" },
+            "{receiver_str}{method_call_str}?{}",
             if requires_semi { ";" } else { "" }
         );
         span_lint_and_sugg(
