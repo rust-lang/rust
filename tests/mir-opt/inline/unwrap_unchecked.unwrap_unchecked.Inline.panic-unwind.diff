@@ -17,6 +17,10 @@
 +                 let _5: ();
 +                 scope 5 {
 +                 }
++                 scope 6 (inlined core::ub_checks::check_language_ub) {
++                     scope 7 (inlined core::ub_checks::check_language_ub::runtime) {
++                     }
++                 }
 +             }
 +         }
 +     }
@@ -41,7 +45,7 @@
 -         resume;
 +     bb2: {
 +         StorageLive(_4);
-+         _4 = UbCheck(LanguageUb);
++         _4 = UbChecks();
 +         assume(_4);
 +         _5 = unreachable_unchecked::precondition_check() -> [return: bb1, unwind unreachable];
 +     }

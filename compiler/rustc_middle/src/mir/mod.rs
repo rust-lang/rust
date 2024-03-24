@@ -796,7 +796,7 @@ impl<'tcx> Body<'tcx> {
         }
 
         match rvalue {
-            Rvalue::NullaryOp(NullOp::UbCheck(_), _) => {
+            Rvalue::NullaryOp(NullOp::UbChecks, _) => {
                 Some((tcx.sess.opts.debug_assertions as u128, targets))
             }
             Rvalue::Use(Operand::Constant(constant)) => {

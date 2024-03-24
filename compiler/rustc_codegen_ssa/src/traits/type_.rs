@@ -120,6 +120,20 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
         immediate: bool,
     ) -> Self::Type;
 
+    /// A type that produces an [`OperandValue::Ref`] when loaded.
+    ///
+    /// AKA one that's not a ZST, not `is_backend_immediate`, and
+    /// not `is_backend_scalar_pair`. For such a type, a
+    /// [`load_operand`] doesn't actually `load` anything.
+    ///
+    /// [`OperandValue::Ref`]: crate::mir::operand::OperandValue::Ref
+    /// [`load_operand`]: super::BuilderMethods::load_operand
+    fn is_backend_ref(&self, layout: TyAndLayout<'tcx>) -> bool {
+        !(layout.is_zst()
+            || self.is_backend_immediate(layout)
+            || self.is_backend_scalar_pair(layout))
+    }
+
     /// A type that can be used in a [`super::BuilderMethods::load`] +
     /// [`super::BuilderMethods::store`] pair to implement a *typed* copy,
     /// such as a MIR `*_0 = *_1`.

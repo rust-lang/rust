@@ -50,7 +50,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: &str, re
             | ExprKind::Break(_, _) => true,
             _ => false,
         },
-        Some((Node::Stmt(_) | Node::Local(_), _)) => false,
+        Some((Node::Stmt(_) | Node::LetStmt(_), _)) => false,
         _ => true,
     };
 

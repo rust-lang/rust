@@ -113,7 +113,7 @@ impl<'a> State<'a> {
             // `hir_map` to reconstruct their full structure for pretty
             // printing.
             Node::Ctor(..) => panic!("cannot print isolated Ctor"),
-            Node::Local(a) => self.print_local_decl(a),
+            Node::LetStmt(a) => self.print_local_decl(a),
             Node::Crate(..) => panic!("cannot print Crate"),
             Node::WhereBoundPredicate(pred) => {
                 self.print_formal_generic_params(pred.bound_generic_params);
@@ -1544,7 +1544,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_local_decl(&mut self, loc: &hir::Local<'_>) {
+    fn print_local_decl(&mut self, loc: &hir::LetStmt<'_>) {
         self.print_pat(loc.pat);
         if let Some(ty) = loc.ty {
             self.word_space(":");

@@ -9,6 +9,10 @@ fn ub_if_b(_1: Thing) -> Thing {
         let _4: ();
         scope 2 {
         }
+        scope 3 (inlined core::ub_checks::check_language_ub) {
+            scope 4 (inlined core::ub_checks::check_language_ub::runtime) {
+            }
+        }
     }
 
     bb0: {
@@ -23,7 +27,7 @@ fn ub_if_b(_1: Thing) -> Thing {
 
     bb2: {
         StorageLive(_3);
-        _3 = UbCheck(LanguageUb);
+        _3 = UbChecks();
         assume(_3);
         _4 = unreachable_unchecked::precondition_check() -> [return: bb3, unwind unreachable];
     }

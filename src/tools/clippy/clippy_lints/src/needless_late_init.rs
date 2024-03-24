@@ -6,7 +6,7 @@ use clippy_utils::visitors::{for_each_expr, for_each_expr_with_closures, is_loca
 use core::ops::ControlFlow;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{
-    BindingAnnotation, Block, Expr, ExprKind, HirId, Local, LocalSource, MatchSource, Node, Pat, PatKind, Stmt,
+    BindingAnnotation, Block, Expr, ExprKind, HirId, LetStmt, LocalSource, MatchSource, Node, Pat, PatKind, Stmt,
     StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -237,7 +237,7 @@ fn first_usage<'tcx>(
         })
 }
 
-fn local_snippet_without_semicolon(cx: &LateContext<'_>, local: &Local<'_>) -> Option<String> {
+fn local_snippet_without_semicolon(cx: &LateContext<'_>, local: &LetStmt<'_>) -> Option<String> {
     let span = local.span.with_hi(match local.ty {
         // let <pat>: <ty>;
         // ~~~~~~~~~~~~~~~
@@ -252,7 +252,7 @@ fn local_snippet_without_semicolon(cx: &LateContext<'_>, local: &Local<'_>) -> O
 
 fn check<'tcx>(
     cx: &LateContext<'tcx>,
-    local: &'tcx Local<'tcx>,
+    local: &'tcx LetStmt<'tcx>,
     local_stmt: &'tcx Stmt<'tcx>,
     block: &'tcx Block<'tcx>,
     binding_id: HirId,
@@ -363,9 +363,9 @@ fn check<'tcx>(
 }
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
-    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         let mut parents = cx.tcx.hir().parent_iter(local.hir_id);
-        if let Local {
+        if let LetStmt {
             init: None,
             pat:
                 &Pat {

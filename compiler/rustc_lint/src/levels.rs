@@ -354,7 +354,7 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
         intravisit::walk_variant(self, v);
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, l: &'tcx hir::LetStmt<'tcx>) {
         self.add_id(l.hir_id);
         intravisit::walk_local(self, l);
     }
@@ -428,7 +428,7 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'
         intravisit::walk_variant(self, v);
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, l: &'tcx hir::LetStmt<'tcx>) {
         self.add_id(l.hir_id);
         intravisit::walk_local(self, l);
     }

@@ -3,7 +3,7 @@ use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::for_each_expr_with_closures;
 use clippy_utils::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
-use rustc_hir::{Block, ExprKind, HirId, LangItem, Local, Node, PatKind};
+use rustc_hir::{Block, ExprKind, HirId, LangItem, LetStmt, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
@@ -58,7 +58,7 @@ static COLLECTIONS: [Symbol; 9] = [
 ];
 
 impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {
-    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         // Look for local variables whose type is a container. Search surrounding bock for read access.
         if match_acceptable_type(cx, local, &COLLECTIONS)
             && let PatKind::Binding(_, local_id, _, _) = local.pat.kind
@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {
     }
 }
 
-fn match_acceptable_type(cx: &LateContext<'_>, local: &Local<'_>, collections: &[rustc_span::Symbol]) -> bool {
+fn match_acceptable_type(cx: &LateContext<'_>, local: &LetStmt<'_>, collections: &[rustc_span::Symbol]) -> bool {
     let ty = cx.typeck_results().pat_ty(local.pat);
     collections.iter().any(|&sym| is_type_diagnostic_item(cx, ty, sym))
     // String type is a lang item but not a diagnostic item for now so we need a separate check

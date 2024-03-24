@@ -85,7 +85,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
         cfg_checker.check_cleanup_control_flow();
 
         // Also run the TypeChecker.
-        for (location, msg) in validate_types(tcx, self.mir_phase, param_env, body) {
+        for (location, msg) in validate_types(tcx, self.mir_phase, param_env, body, body) {
             cfg_checker.fail(location, msg);
         }
 
@@ -541,19 +541,25 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
 /// A faster version of the validation pass that only checks those things which may break when
 /// instantiating any generic parameters.
+///
+/// `caller_body` is used to detect cycles in MIR inlining and MIR validation before
+/// `optimized_mir` is available.
 pub fn validate_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_phase: MirPhase,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
+    caller_body: &Body<'tcx>,
 ) -> Vec<(Location, String)> {
-    let mut type_checker = TypeChecker { body, tcx, param_env, mir_phase, failures: Vec::new() };
+    let mut type_checker =
+        TypeChecker { body, caller_body, tcx, param_env, mir_phase, failures: Vec::new() };
     type_checker.visit_body(body);
     type_checker.failures
 }
 
 struct TypeChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
+    caller_body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     mir_phase: MirPhase,
@@ -705,8 +711,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                     &ty::Coroutine(def_id, args) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
-                            let gen_body = if def_id == self.body.source.def_id() {
-                                self.body
+                            // If we're currently validating an inlined copy of this body,
+                            // then it will no longer be parameterized over the original
+                            // args of the coroutine. Otherwise, we prefer to use this body
+                            // since we may be in the process of computing this MIR in the
+                            // first place.
+                            let gen_body = if def_id == self.caller_body.source.def_id() {
+                                self.caller_body
                             } else {
                                 self.tcx.optimized_mir(def_id)
                             };
@@ -1168,7 +1179,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::AddressOf(_, _)
-            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::UbCheck(_), _)
+            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::UbChecks, _)
             | Rvalue::Discriminant(_) => {}
         }
         self.super_rvalue(rvalue, location);

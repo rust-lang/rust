@@ -388,10 +388,9 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{
-    self, assert_unsafe_precondition, is_aligned_and_not_null, is_nonoverlapping,
-};
+use crate::intrinsics;
 use crate::marker::FnPtr;
+use crate::ub_checks;
 
 use crate::mem::{self, align_of, size_of, MaybeUninit};
 
@@ -1019,7 +1018,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         };
     }
 
-    assert_unsafe_precondition!(
+    ub_checks::assert_unsafe_precondition!(
         check_language_ub,
         "ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null \
         and the specified memory ranges do not overlap",
@@ -1030,9 +1029,9 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
             align: usize = align_of::<T>(),
             count: usize = count,
         ) =>
-        is_aligned_and_not_null(x, align)
-            && is_aligned_and_not_null(y, align)
-            && is_nonoverlapping(x, y, size, count)
+        ub_checks::is_aligned_and_not_null(x, align)
+            && ub_checks::is_aligned_and_not_null(y, align)
+            && ub_checks::is_nonoverlapping(x, y, size, count)
     );
 
     // Split up the slice into small power-of-two-sized chunks that LLVM is able
@@ -1062,11 +1061,26 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
     let mut i = 0;
     while i < count {
         // SAFETY: By precondition, `i` is in-bounds because it's below `n`
-        let x = unsafe { &mut *x.add(i) };
+        let x = unsafe { x.add(i) };
         // SAFETY: By precondition, `i` is in-bounds because it's below `n`
         // and it's distinct from `x` since the ranges are non-overlapping
-        let y = unsafe { &mut *y.add(i) };
-        mem::swap_simple::<MaybeUninit<T>>(x, y);
+        let y = unsafe { y.add(i) };
+
+        // If we end up here, it's because we're using a simple type -- like
+        // a small power-of-two-sized thing -- or a special type with particularly
+        // large alignment, particularly SIMD types.
+        // Thus we're fine just reading-and-writing it, as either it's small
+        // and that works well anyway or it's special and the type's author
+        // presumably wanted things to be done in the larger chunk.
+
+        // SAFETY: we're only ever given pointers that are valid to read/write,
+        // including being aligned, and nothing here panics so it's drop-safe.
+        unsafe {
+            let a: MaybeUninit<T> = read(x);
+            let b: MaybeUninit<T> = read(y);
+            write(x, b);
+            write(y, a);
+        }
 
         i += 1;
     }
@@ -1120,13 +1134,13 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
     // and cannot overlap `src` since `dst` must point to a distinct
     // allocated object.
     unsafe {
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::replace requires that the pointer argument is aligned and non-null",
             (
                 addr: *const () = dst as *const (),
                 align: usize = align_of::<T>(),
-            ) => is_aligned_and_not_null(addr, align)
+            ) => ub_checks::is_aligned_and_not_null(addr, align)
         );
         mem::replace(&mut *dst, src)
     }
@@ -1272,13 +1286,13 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     // SAFETY: the caller must guarantee that `src` is valid for reads.
     unsafe {
         #[cfg(debug_assertions)] // Too expensive to always enable (for now?)
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::read requires that the pointer argument is aligned and non-null",
             (
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
-            ) => is_aligned_and_not_null(addr, align)
+            ) => ub_checks::is_aligned_and_not_null(addr, align)
         );
         crate::intrinsics::read_via_copy(src)
     }
@@ -1481,13 +1495,13 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
     // to `dst` while `src` is owned by this function.
     unsafe {
         #[cfg(debug_assertions)] // Too expensive to always enable (for now?)
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::write requires that the pointer argument is aligned and non-null",
             (
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
-            ) => is_aligned_and_not_null(addr, align)
+            ) => ub_checks::is_aligned_and_not_null(addr, align)
         );
         intrinsics::write_via_move(dst, src)
     }
@@ -1653,13 +1667,13 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::read_volatile requires that the pointer argument is aligned and non-null",
             (
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
-            ) => is_aligned_and_not_null(addr, align)
+            ) => ub_checks::is_aligned_and_not_null(addr, align)
         );
         intrinsics::volatile_load(src)
     }
@@ -1732,13 +1746,13 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::write_volatile requires that the pointer argument is aligned and non-null",
             (
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
-            ) => is_aligned_and_not_null(addr, align)
+            ) => ub_checks::is_aligned_and_not_null(addr, align)
         );
         intrinsics::volatile_store(dst, src);
     }

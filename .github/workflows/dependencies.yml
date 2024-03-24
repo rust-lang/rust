@@ -42,7 +42,7 @@ jobs:
 
           # Exit with error if open and S-waiting-on-bors
           if [[ "$STATE" == "OPEN" && "$WAITING_ON_BORS" == "true" ]]; then
-            exit 1
+            gh run cancel ${{ github.run_id }}
           fi
 
   update:
@@ -65,7 +65,10 @@ jobs:
 
       - name: cargo update
         # Remove first line that always just says "Updating crates.io index"
-        run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+        # If there are no changes, cancel the job here
+        run: |
+          cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+          git status --porcelain | grep -q Cargo.lock || gh run cancel ${{ github.run_id }}
       - name: upload Cargo.lock artifact for use in PR
         uses: actions/upload-artifact@v3
         with:
@@ -131,7 +134,7 @@ jobs:
           # Exit with error if PR is closed
           STATE=$(gh pr view cargo_update --repo $GITHUB_REPOSITORY --json state --jq '.state')
           if [[ "$STATE" != "OPEN" ]]; then
-            exit 1
+            gh run cancel ${{ github.run_id }}
           fi
 
           gh pr edit cargo_update --title "${PR_TITLE}" --body-file body.md --repo $GITHUB_REPOSITORY

@@ -9,6 +9,7 @@ use crate::ops::{BitOr, BitOrAssign, Div, DivAssign, Neg, Rem, RemAssign};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::ptr;
 use crate::str::FromStr;
+use crate::ub_checks;
 
 use super::from_str_radix;
 use super::{IntErrorKind, ParseIntError};
@@ -369,7 +370,7 @@ where
             None => {
                 // SAFETY: The caller guarantees that `n` is non-zero, so this is unreachable.
                 unsafe {
-                    intrinsics::assert_unsafe_precondition!(
+                    ub_checks::assert_unsafe_precondition!(
                         check_language_ub,
                         "NonZero::new_unchecked requires the argument to be non-zero",
                         () => false,
@@ -409,7 +410,7 @@ where
             None => {
                 // SAFETY: The caller guarantees that `n` references a value that is non-zero, so this is unreachable.
                 unsafe {
-                    intrinsics::assert_unsafe_precondition!(
+                    ub_checks::assert_unsafe_precondition!(
                         check_library_ub,
                         "NonZero::from_mut_unchecked requires the argument to dereference as non-zero",
                         () => false,
