@@ -14,7 +14,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, StashKey};
+use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{Annotatable, DeriveResolutions, Indeterminate, ResolverExpand};
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
@@ -916,14 +916,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         rule_spans = Vec::new();
                     }
                     BuiltinMacroState::AlreadySeen(span) => {
-                        struct_span_code_err!(
-                            self.dcx(),
-                            item.span,
-                            E0773,
-                            "attempted to define built-in macro more than once"
-                        )
-                        .with_span_note(span, "previously defined here")
-                        .emit();
+                        self.dcx().emit_err(errors::AttemptToDefineBuiltinMacroTwice {
+                            span: item.span,
+                            note_span: span,
+                        });
                     }
                 }
             } else {

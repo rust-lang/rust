@@ -296,7 +296,7 @@ resolve_self_in_generic_param_default =
     generic parameters cannot use `Self` in their defaults
     .label = `Self` in generic parameter default
 
-resolve_static_lifetime_is_reserved = invalid lifetime parameter name: `{$ident}`
+resolve_static_lifetime_is_reserved = invalid lifetime parameter name: `{$lifetime}`
     .label = 'static is a reserved lifetime name
 
 resolve_tool_module_imported =

@@ -29,8 +29,8 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use thin_vec::{thin_vec, ThinVec};
 
-use crate::errors::{AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion};
-use crate::errors::{
+use crate::errors::{self,
+    AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion,
     ConsiderAddingADerive, ExplicitUnsafeTraits, MacroDefinedLater, MacroSuggMovePosition,
     MaybeMissingMacroRulesName,
 };
@@ -677,18 +677,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let origin_sp = origin.iter().copied().collect::<Vec<_>>();
 
                 let msp = MultiSpan::from_spans(target_sp.clone());
-                let mut err = struct_span_code_err!(
-                    self.dcx(),
-                    msp,
-                    E0408,
-                    "variable `{}` is not bound in all patterns",
+                let mut err = self.dcx().create_err(errors::VariableIsNotBoundInAllPatterns {
+                    multispan: msp,
                     name,
-                );
+                });
                 for sp in target_sp {
-                    err.span_label(sp, format!("pattern doesn't bind `{name}`"));
+                    err.subdiagnostic(self.dcx(), errors::PatternDoesntBindName {
+                        span: sp,
+                        name,
+                    });
                 }
                 for sp in origin_sp {
-                    err.span_label(sp, "variable not in all patterns");
+                    err.subdiagnostic(self.dcx(), errors::VariableNotInAllPatterns {
+                        span: sp,
+                    });
                 }
                 if could_be_path {
                     let import_suggestions = self.lookup_import_candidates(
