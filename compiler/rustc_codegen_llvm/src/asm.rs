@@ -466,11 +466,11 @@ pub(crate) fn inline_asm_call<'ll>(
 
             let call = if !labels.is_empty() {
                 assert!(catch_funclet.is_none());
-                bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None)
+                bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None, None)
             } else if let Some((catch, funclet)) = catch_funclet {
-                bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet)
+                bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet, None)
             } else {
-                bx.call(fty, None, None, v, inputs, None)
+                bx.call(fty, None, None, v, inputs, None, None)
             };
 
             // Store mark in a metadata node so we can map LLVM errors
