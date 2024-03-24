@@ -5,10 +5,10 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::Visitable;
 use clippy_utils::{is_entrypoint_fn, is_trait_impl_item, method_chain_args};
 use pulldown_cmark::Event::{
-    Code, End, FootnoteReference, HardBreak, Html, Rule, SoftBreak, Start, TaskListMarker, Text,
+    Code, End, FootnoteReference, HardBreak, Html, InlineHtml, Rule, SoftBreak, Start, TaskListMarker, Text,
 };
 use pulldown_cmark::Tag::{BlockQuote, CodeBlock, Heading, Item, Link, Paragraph};
-use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options};
+use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::intravisit::{self, Visitor};
@@ -588,7 +588,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
 
     for (event, range) in events {
         match event {
-            Html(tag) => {
+            Html(tag) | InlineHtml(tag) => {
                 if tag.starts_with("<code") {
                     code_level += 1;
                 } else if tag.starts_with("</code") {
@@ -600,7 +600,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 }
             },
             Start(BlockQuote) => blockquote_level += 1,
-            End(BlockQuote) => blockquote_level -= 1,
+            End(TagEnd::BlockQuote) => blockquote_level -= 1,
             Start(CodeBlock(ref kind)) => {
                 in_code = true;
                 if let CodeBlockKind::Fenced(lang) = kind {
@@ -622,22 +622,22 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     }
                 }
             },
-            End(CodeBlock(_)) => {
+            End(TagEnd::CodeBlock) => {
                 in_code = false;
                 is_rust = false;
                 ignore = false;
             },
-            Start(Link(_, url, _)) => in_link = Some(url),
-            End(Link(..)) => in_link = None,
-            Start(Heading(_, _, _) | Paragraph | Item) => {
-                if let Start(Heading(_, _, _)) = event {
+            Start(Link { dest_url, .. }) => in_link = Some(dest_url),
+            End(TagEnd::Link) => in_link = None,
+            Start(Heading { .. } | Paragraph | Item) => {
+                if let Start(Heading { .. }) = event {
                     in_heading = true;
                 }
                 ticks_unbalanced = false;
                 paragraph_range = range;
             },
-            End(Heading(_, _, _) | Paragraph | Item) => {
-                if let End(Heading(_, _, _)) = event {
+            End(TagEnd::Heading(..) | TagEnd::Paragraph | TagEnd::Item) => {
+                if let End(TagEnd::Heading(..)) = event {
                     in_heading = false;
                 }
                 if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone()) {
@@ -658,7 +658,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 }
                 text_to_check = Vec::new();
             },
-            Start(_tag) | End(_tag) => (), // We don't care about other tags
+            Start(..) | End(..) => (), // We don't care about other tags
             SoftBreak | HardBreak | TaskListMarker(_) | Code(_) | Rule => (),
             FootnoteReference(text) | Text(text) => {
                 paragraph_range.end = range.end;
