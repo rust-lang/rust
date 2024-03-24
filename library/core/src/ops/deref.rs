@@ -275,7 +275,15 @@ impl<T: ?Sized> DerefMut for &mut T {
     }
 }
 
-/// UwU
+/// Perma-unstable marker trait. Indicates that the type has a well-behaved [`Deref`]
+/// (and, if applicable, [`DerefMut`]) implementation. This is relied on for soundness
+/// of deref patterns.
+///
+/// FIXME(deref_patterns): The precise semantics are undecided; the rough idea is that
+/// successive calls to `deref`/`deref_mut` without intermediate mutation should be
+/// idempotent, in the sense that they return the same value as far as pattern-matching
+/// is concerned. Calls to `deref`/`deref_mut`` must leave the pointer itself likewise
+/// unchanged.
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 #[cfg_attr(not(bootstrap), lang = "deref_pure")]
 pub unsafe trait DerefPure {}

@@ -2020,20 +2020,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Check if the pattern has any `ref mut` bindings, which would require
         // `DerefMut` to be emitted in MIR building instead of just `Deref`.
-        let mut needs_mut = false;
-        inner.walk(|pat| {
-            if let hir::PatKind::Binding(_, id, _, _) = pat.kind
-                && let Some(ty::BindByReference(ty::Mutability::Mut)) =
-                    self.typeck_results.borrow().pat_binding_modes().get(id)
-            {
-                needs_mut = true;
-                // No need to continue recursing
-                false
-            } else {
-                true
-            }
-        });
-        if needs_mut {
+        // We do this *after* checking the inner pattern, since we want to make
+        // sure to apply any match-ergonomics adjustments.
+        if self.typeck_results.borrow().pat_has_ref_mut_binding(inner) {
             self.register_bound(
                 expected,
                 tcx.require_lang_item(hir::LangItem::DerefMut, Some(span)),
