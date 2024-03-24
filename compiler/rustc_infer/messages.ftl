@@ -169,7 +169,7 @@ infer_lifetime_param_suggestion_elided = each elided lifetime in input position 
 
 infer_meant_byte_literal = if you meant to write a byte literal, prefix with `b`
 infer_meant_char_literal = if you meant to write a `char` literal, use single quotes
-infer_meant_str_literal = if you meant to write a `str` literal, use double quotes
+infer_meant_str_literal = if you meant to write a string literal, use double quotes
 infer_mismatched_static_lifetime = incompatible lifetime on type
 infer_more_targeted = {$has_param_name ->
     [true] `{$param_name}`
