@@ -354,7 +354,7 @@ impl<'test> TestCx<'test> {
         if self.props.should_ice {
             match proc_res.status.code() {
                 Some(101) => (),
-                _ => self.fatal("expected ICE"),
+                _ => self.fatal("test no longer crashes/triggers ICE! Please annotate it and add it as test to tests/ui or wherever you see fit"),
             }
         }
 
