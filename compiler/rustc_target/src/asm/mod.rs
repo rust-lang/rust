@@ -6,6 +6,18 @@ use rustc_span::Symbol;
 use std::fmt;
 use std::str::FromStr;
 
+pub struct ModifierInfo {
+    pub modifier: char,
+    pub result: &'static str,
+    pub size: u64,
+}
+
+impl From<(char, &'static str, u64)> for ModifierInfo {
+    fn from((modifier, result, size): (char, &'static str, u64)) -> Self {
+        Self { modifier, result, size }
+    }
+}
+
 macro_rules! def_reg_class {
     ($arch:ident $arch_regclass:ident {
         $(
@@ -512,11 +524,7 @@ impl InlineAsmRegClass {
     /// Such suggestions are useful if a type smaller than the full register
     /// size is used and a modifier can be used to point to the subregister of
     /// the correct size.
-    pub fn suggest_modifier(
-        self,
-        arch: InlineAsmArch,
-        ty: InlineAsmType,
-    ) -> Option<(char, &'static str)> {
+    pub fn suggest_modifier(self, arch: InlineAsmArch, ty: InlineAsmType) -> Option<ModifierInfo> {
         match self {
             Self::X86(r) => r.suggest_modifier(arch, ty),
             Self::Arm(r) => r.suggest_modifier(arch, ty),
@@ -545,7 +553,7 @@ impl InlineAsmRegClass {
     /// This is only needed when the register class can suggest a modifier, so
     /// that the user can be shown how to get the default behavior without a
     /// warning.
-    pub fn default_modifier(self, arch: InlineAsmArch) -> Option<(char, &'static str)> {
+    pub fn default_modifier(self, arch: InlineAsmArch) -> Option<ModifierInfo> {
         match self {
             Self::X86(r) => r.default_modifier(arch),
             Self::Arm(r) => r.default_modifier(arch),

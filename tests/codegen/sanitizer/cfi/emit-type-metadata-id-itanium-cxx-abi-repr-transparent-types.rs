@@ -34,6 +34,12 @@ pub struct Bar(i32);
 #[repr(transparent)]
 pub struct Type3<T>(T);
 
+// repr(transparent) wrapper which engages in self-reference
+#[repr(transparent)]
+pub struct Type4(Type4Helper<Type4>);
+#[repr(transparent)]
+pub struct Type4Helper<T>(*mut T);
+
 pub fn foo1(_: Type1) { }
 // CHECK: define{{.*}}4foo1{{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo2(_: Type1, _: Type1) { }
@@ -52,6 +58,13 @@ pub fn foo8(_: Type3<Bar>, _: Type3<Bar>) { }
 // CHECK: define{{.*}}4foo8{{.*}}!type ![[TYPE8:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo9(_: Type3<Bar>, _: Type3<Bar>, _: Type3<Bar>) { }
 // CHECK: define{{.*}}4foo9{{.*}}!type ![[TYPE9:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+pub fn foo10(_: Type4) { }
+// CHECK: define{{.*}}5foo10{{.*}}!type ![[TYPE10:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+pub fn foo11(_: Type4, _: Type4) { }
+// CHECK: define{{.*}}5foo11{{.*}}!type ![[TYPE11:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+pub fn foo12(_: Type4, _: Type4, _: Type4) { }
+// CHECK: define{{.*}}5foo12{{.*}}!type ![[TYPE12:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 
 // CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}3FooE"}
 // CHECK: ![[TYPE2]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}3FooS_E"}
@@ -62,3 +75,6 @@ pub fn foo9(_: Type3<Bar>, _: Type3<Bar>, _: Type3<Bar>) { }
 // CHECK: ![[TYPE7]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}3BarE"}
 // CHECK: ![[TYPE8]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}3BarS_E"}
 // CHECK: ![[TYPE9]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}3BarS_S_E"}
+// CHECK: ![[TYPE10]] = !{i64 0, !"_ZTSFvPu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type4E"}
+// CHECK: ![[TYPE11]] = !{i64 0, !"_ZTSFvPu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type4S0_E"}
+// CHECK: ![[TYPE12]] = !{i64 0, !"_ZTSFvPu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type4S0_S0_E"}

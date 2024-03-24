@@ -709,7 +709,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     } else {
                         None
                     };
-                    bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, &[], None)
+                    bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, &[], None, Some(instance))
                 } else {
                     bx.get_static(def_id)
                 };
