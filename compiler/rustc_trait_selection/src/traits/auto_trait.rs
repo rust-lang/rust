@@ -10,9 +10,8 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{ImplPolarity, Region, RegionVid};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 
-use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
 use std::iter;
 
@@ -35,17 +34,10 @@ pub enum AutoTraitResult<A> {
     NegativeImpl,
 }
 
-#[allow(dead_code)]
-impl<A> AutoTraitResult<A> {
-    fn is_auto(&self) -> bool {
-        matches!(self, AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl)
-    }
-}
-
 pub struct AutoTraitInfo<'cx> {
     pub full_user_env: ty::ParamEnv<'cx>,
     pub region_data: RegionConstraintData<'cx>,
-    pub vid_to_region: FxHashMap<ty::RegionVid, ty::Region<'cx>>,
+    pub vid_to_region: FxIndexMap<ty::RegionVid, ty::Region<'cx>>,
 }
 
 pub struct AutoTraitFinder<'tcx> {
@@ -114,7 +106,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
 
         let infcx = tcx.infer_ctxt().build();
-        let mut fresh_preds = FxHashSet::default();
+        let mut fresh_preds = FxIndexSet::default();
 
         // Due to the way projections are handled by SelectionContext, we need to run
         // evaluate_predicates twice: once on the original param env, and once on the result of
@@ -239,7 +231,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         user_env: ty::ParamEnv<'tcx>,
-        fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
+        fresh_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
     ) -> Option<(ty::ParamEnv<'tcx>, ty::ParamEnv<'tcx>)> {
         let tcx = infcx.tcx;
 
@@ -252,7 +244,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let mut select = SelectionContext::new(infcx);
 
-        let mut already_visited = FxHashSet::default();
+        let mut already_visited = FxHashSet::default(); // NOTE(fmease): not used for iteration
         let mut predicates = VecDeque::new();
         predicates.push_back(ty::Binder::dummy(ty::TraitPredicate {
             trait_ref: ty::TraitRef::new(infcx.tcx, trait_did, [ty]),
@@ -473,9 +465,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     fn map_vid_to_region<'cx>(
         &self,
         regions: &RegionConstraintData<'cx>,
-    ) -> FxHashMap<ty::RegionVid, ty::Region<'cx>> {
-        let mut vid_map: FxHashMap<RegionTarget<'cx>, RegionDeps<'cx>> = FxHashMap::default();
-        let mut finished_map = FxHashMap::default();
+    ) -> FxIndexMap<ty::RegionVid, ty::Region<'cx>> {
+        let mut vid_map = FxIndexMap::<RegionTarget<'cx>, RegionDeps<'cx>>::default();
+        let mut finished_map = FxIndexMap::default();
 
         for (constraint, _) in &regions.constraints {
             match constraint {
@@ -513,22 +505,22 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
 
         while !vid_map.is_empty() {
-            #[allow(rustc::potential_query_instability)]
             let target = *vid_map.keys().next().expect("Keys somehow empty");
-            let deps = vid_map.remove(&target).expect("Entry somehow missing");
+            // FIXME(#120456) - is `swap_remove` correct?
+            let deps = vid_map.swap_remove(&target).expect("Entry somehow missing");
 
             for smaller in deps.smaller.iter() {
                 for larger in deps.larger.iter() {
                     match (smaller, larger) {
                         (&RegionTarget::Region(_), &RegionTarget::Region(_)) => {
-                            if let Entry::Occupied(v) = vid_map.entry(*smaller) {
+                            if let IndexEntry::Occupied(v) = vid_map.entry(*smaller) {
                                 let smaller_deps = v.into_mut();
                                 smaller_deps.larger.insert(*larger);
                                 // FIXME(#120456) - is `swap_remove` correct?
                                 smaller_deps.larger.swap_remove(&target);
                             }
 
-                            if let Entry::Occupied(v) = vid_map.entry(*larger) {
+                            if let IndexEntry::Occupied(v) = vid_map.entry(*larger) {
                                 let larger_deps = v.into_mut();
                                 larger_deps.smaller.insert(*smaller);
                                 // FIXME(#120456) - is `swap_remove` correct?
@@ -542,14 +534,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             // Do nothing; we don't care about regions that are smaller than vids.
                         }
                         (&RegionTarget::RegionVid(_), &RegionTarget::RegionVid(_)) => {
-                            if let Entry::Occupied(v) = vid_map.entry(*smaller) {
+                            if let IndexEntry::Occupied(v) = vid_map.entry(*smaller) {
                                 let smaller_deps = v.into_mut();
                                 smaller_deps.larger.insert(*larger);
                                 // FIXME(#120456) - is `swap_remove` correct?
                                 smaller_deps.larger.swap_remove(&target);
                             }
 
-                            if let Entry::Occupied(v) = vid_map.entry(*larger) {
+                            if let IndexEntry::Occupied(v) = vid_map.entry(*larger) {
                                 let larger_deps = v.into_mut();
                                 larger_deps.smaller.insert(*smaller);
                                 // FIXME(#120456) - is `swap_remove` correct?
@@ -560,6 +552,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
             }
         }
+
         finished_map
     }
 
@@ -588,7 +581,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         ty: Ty<'_>,
         nested: impl Iterator<Item = PredicateObligation<'tcx>>,
         computed_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
-        fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
+        fresh_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
         predicates: &mut VecDeque<ty::PolyTraitPredicate<'tcx>>,
         selcx: &mut SelectionContext<'_, 'tcx>,
     ) -> bool {

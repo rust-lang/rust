@@ -15,18 +15,15 @@ enum RegionTarget<'tcx> {
 
 #[derive(Default, Debug, Clone)]
 struct RegionDeps<'tcx> {
-    larger: FxHashSet<RegionTarget<'tcx>>,
-    smaller: FxHashSet<RegionTarget<'tcx>>,
+    larger: FxIndexSet<RegionTarget<'tcx>>,
+    smaller: FxIndexSet<RegionTarget<'tcx>>,
 }
 
 pub(crate) struct AutoTraitFinder<'a, 'tcx> {
     pub(crate) cx: &'a mut core::DocContext<'tcx>,
 }
 
-impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx>
-where
-    'tcx: 'a, // should be an implied bound; rustc bug #98852.
-{
+impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     pub(crate) fn new(cx: &'a mut core::DocContext<'tcx>) -> Self {
         AutoTraitFinder { cx }
     }
@@ -158,7 +155,7 @@ where
         auto_traits
     }
 
-    fn get_lifetime(region: Region<'_>, names_map: &FxHashMap<Symbol, Lifetime>) -> Lifetime {
+    fn get_lifetime(region: Region<'_>, names_map: &FxIndexMap<Symbol, Lifetime>) -> Lifetime {
         region_name(region)
             .map(|name| {
                 names_map
@@ -181,15 +178,15 @@ where
     /// existing inference/solver code do what we want.
     fn handle_lifetimes<'cx>(
         regions: &RegionConstraintData<'cx>,
-        names_map: &FxHashMap<Symbol, Lifetime>,
+        names_map: &FxIndexMap<Symbol, Lifetime>,
     ) -> ThinVec<WherePredicate> {
         // Our goal is to 'flatten' the list of constraints by eliminating
         // all intermediate RegionVids. At the end, all constraints should
         // be between Regions (aka region variables). This gives us the information
         // we need to create the Generics.
-        let mut finished: FxHashMap<_, Vec<_>> = Default::default();
+        let mut finished: FxIndexMap<_, Vec<_>> = Default::default();
 
-        let mut vid_map: FxHashMap<RegionTarget<'_>, RegionDeps<'_>> = Default::default();
+        let mut vid_map: FxIndexMap<RegionTarget<'_>, RegionDeps<'_>> = Default::default();
 
         // Flattening is done in two parts. First, we insert all of the constraints
         // into a map. Each RegionTarget (either a RegionVid or a Region) maps
@@ -246,7 +243,8 @@ where
         //  deleted items, this process will always finish.
         while !vid_map.is_empty() {
             let target = *vid_map.keys().next().expect("Keys somehow empty");
-            let deps = vid_map.remove(&target).expect("Entry somehow missing");
+            // FIXME(#120456) - is `swap_remove` correct?
+            let deps = vid_map.swap_remove(&target).expect("Entry somehow missing");
 
             for smaller in deps.smaller.iter() {
                 for larger in deps.larger.iter() {
@@ -260,30 +258,34 @@ where
                             }
                         }
                         (&RegionTarget::RegionVid(_), &RegionTarget::Region(_)) => {
-                            if let Entry::Occupied(v) = vid_map.entry(*smaller) {
+                            if let IndexEntry::Occupied(v) = vid_map.entry(*smaller) {
                                 let smaller_deps = v.into_mut();
                                 smaller_deps.larger.insert(*larger);
-                                smaller_deps.larger.remove(&target);
+                                // FIXME(#120456) - is `swap_remove` correct?
+                                smaller_deps.larger.swap_remove(&target);
                             }
                         }
                         (&RegionTarget::Region(_), &RegionTarget::RegionVid(_)) => {
-                            if let Entry::Occupied(v) = vid_map.entry(*larger) {
+                            if let IndexEntry::Occupied(v) = vid_map.entry(*larger) {
                                 let deps = v.into_mut();
                                 deps.smaller.insert(*smaller);
-                                deps.smaller.remove(&target);
+                                // FIXME(#120456) - is `swap_remove` correct?
+                                deps.smaller.swap_remove(&target);
                             }
                         }
                         (&RegionTarget::RegionVid(_), &RegionTarget::RegionVid(_)) => {
-                            if let Entry::Occupied(v) = vid_map.entry(*smaller) {
+                            if let IndexEntry::Occupied(v) = vid_map.entry(*smaller) {
                                 let smaller_deps = v.into_mut();
                                 smaller_deps.larger.insert(*larger);
-                                smaller_deps.larger.remove(&target);
+                                // FIXME(#120456) - is `swap_remove` correct?
+                                smaller_deps.larger.swap_remove(&target);
                             }
 
-                            if let Entry::Occupied(v) = vid_map.entry(*larger) {
+                            if let IndexEntry::Occupied(v) = vid_map.entry(*larger) {
                                 let larger_deps = v.into_mut();
                                 larger_deps.smaller.insert(*smaller);
-                                larger_deps.smaller.remove(&target);
+                                // FIXME(#120456) - is `swap_remove` correct?
+                                larger_deps.smaller.swap_remove(&target);
                             }
                         }
                     }
@@ -295,7 +297,7 @@ where
             .iter()
             .flat_map(|(name, lifetime)| {
                 let empty = Vec::new();
-                let bounds: FxHashSet<GenericBound> = finished
+                let bounds: FxIndexSet<GenericBound> = finished
                     .get(name)
                     .unwrap_or(&empty)
                     .iter()
@@ -315,7 +317,7 @@ where
         lifetime_predicates
     }
 
-    fn extract_for_generics(&self, pred: ty::Clause<'tcx>) -> FxHashSet<GenericParamDef> {
+    fn extract_for_generics(&self, pred: ty::Clause<'tcx>) -> FxIndexSet<GenericParamDef> {
         let bound_predicate = pred.kind();
         let tcx = self.cx.tcx;
         let regions =
@@ -324,7 +326,7 @@ where
                     .collect_referenced_late_bound_regions(bound_predicate.rebind(poly_trait_pred)),
                 ty::ClauseKind::Projection(poly_proj_pred) => tcx
                     .collect_referenced_late_bound_regions(bound_predicate.rebind(poly_proj_pred)),
-                _ => return FxHashSet::default(),
+                _ => return FxIndexSet::default(),
             };
 
         regions
@@ -342,9 +344,9 @@ where
 
     fn make_final_bounds(
         &self,
-        ty_to_bounds: FxHashMap<Type, FxHashSet<GenericBound>>,
-        ty_to_fn: FxHashMap<Type, (PolyTrait, Option<Type>)>,
-        lifetime_to_bounds: FxHashMap<Lifetime, FxHashSet<GenericBound>>,
+        ty_to_bounds: FxIndexMap<Type, FxIndexSet<GenericBound>>,
+        ty_to_fn: FxIndexMap<Type, (PolyTrait, Option<Type>)>,
+        lifetime_to_bounds: FxIndexMap<Lifetime, FxIndexSet<GenericBound>>,
     ) -> Vec<WherePredicate> {
         ty_to_bounds
             .into_iter()
@@ -390,20 +392,16 @@ where
                     return None;
                 }
 
-                let mut bounds_vec = bounds.into_iter().collect();
-                self.sort_where_bounds(&mut bounds_vec);
-
                 Some(WherePredicate::BoundPredicate {
                     ty,
-                    bounds: bounds_vec,
+                    bounds: bounds.into_iter().collect(),
                     bound_params: Vec::new(),
                 })
             })
             .chain(lifetime_to_bounds.into_iter().filter(|(_, bounds)| !bounds.is_empty()).map(
-                |(lifetime, bounds)| {
-                    let mut bounds_vec = bounds.into_iter().collect();
-                    self.sort_where_bounds(&mut bounds_vec);
-                    WherePredicate::RegionPredicate { lifetime, bounds: bounds_vec }
+                |(lifetime, bounds)| WherePredicate::RegionPredicate {
+                    lifetime,
+                    bounds: bounds.into_iter().collect(),
                 },
             ))
             .collect()
@@ -418,19 +416,14 @@ where
     /// * `Fn` bounds are handled specially - instead of leaving it as `T: Fn(), <T as Fn::Output> =
     /// K`, we use the dedicated syntax `T: Fn() -> K`
     /// * We explicitly add a `?Sized` bound if we didn't find any `Sized` predicates for a type
+    #[instrument(level = "debug", skip(self, vid_to_region))]
     fn param_env_to_generics(
         &mut self,
         item_def_id: DefId,
         param_env: ty::ParamEnv<'tcx>,
         mut existing_predicates: ThinVec<WherePredicate>,
-        vid_to_region: FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
+        vid_to_region: FxIndexMap<ty::RegionVid, ty::Region<'tcx>>,
     ) -> Generics {
-        debug!(
-            "param_env_to_generics(item_def_id={:?}, param_env={:?}, \
-             existing_predicates={:?})",
-            item_def_id, param_env, existing_predicates
-        );
-
         let tcx = self.cx.tcx;
 
         // The `Sized` trait must be handled specially, since we only display it when
@@ -439,6 +432,7 @@ where
 
         let mut replacer = RegionReplacer { vid_to_region: &vid_to_region, tcx };
 
+        // FIXME(fmease): Remove this!
         let orig_bounds: FxHashSet<_> = tcx.param_env(item_def_id).caller_bounds().iter().collect();
         let clean_where_predicates = param_env
             .caller_bounds()
@@ -461,12 +455,11 @@ where
 
         debug!("param_env_to_generics({item_def_id:?}): generic_params={generic_params:?}");
 
-        let mut has_sized = FxHashSet::default();
-        let mut ty_to_bounds: FxHashMap<_, FxHashSet<_>> = Default::default();
-        let mut lifetime_to_bounds: FxHashMap<_, FxHashSet<_>> = Default::default();
-        let mut ty_to_traits: FxHashMap<Type, FxHashSet<Path>> = Default::default();
-
-        let mut ty_to_fn: FxHashMap<Type, (PolyTrait, Option<Type>)> = Default::default();
+        let mut has_sized = FxHashSet::default(); // NOTE(fmease): not used for iteration
+        let mut ty_to_bounds = FxIndexMap::<_, FxIndexSet<_>>::default();
+        let mut lifetime_to_bounds = FxIndexMap::<_, FxIndexSet<_>>::default();
+        let mut ty_to_traits = FxIndexMap::<Type, FxIndexSet<Path>>::default();
+        let mut ty_to_fn = FxIndexMap::<Type, (PolyTrait, Option<Type>)>::default();
 
         // FIXME: This code shares much of the logic found in `clean_ty_generics` and
         //        `simplify::where_clause`. Consider deduplicating it to avoid diverging
@@ -526,7 +519,7 @@ where
                                 // that we don't end up with duplicate bounds (e.g., for<'b, 'b>)
                                 for_generics.extend(p.generic_params.drain(..));
                                 p.generic_params.extend(for_generics);
-                                self.is_fn_trait(&p.trait_)
+                                tcx.is_fn_trait(p.trait_.def_id())
                             }
                             _ => false,
                         };
@@ -559,7 +552,7 @@ where
                             let ty = &*self_type;
                             let mut new_trait = trait_.clone();
 
-                            if self.is_fn_trait(trait_) && assoc.name == sym::Output {
+                            if tcx.is_fn_trait(trait_.def_id()) && assoc.name == sym::Output {
                                 ty_to_fn
                                     .entry(ty.clone())
                                     .and_modify(|e| {
@@ -611,7 +604,8 @@ where
                             // that we don't see a
                             // duplicate bound like `T: Iterator + Iterator<Item=u8>`
                             // on the docs page.
-                            bounds.remove(&GenericBound::TraitBound(
+                            // FIXME(#120456) - is `swap_remove` correct?
+                            bounds.swap_remove(&GenericBound::TraitBound(
                                 PolyTrait { trait_: trait_.clone(), generic_params: Vec::new() },
                                 hir::TraitBoundModifier::None,
                             ));
@@ -647,74 +641,7 @@ where
             }
         }
 
-        self.sort_where_predicates(&mut existing_predicates);
-
         Generics { params: generic_params, where_predicates: existing_predicates }
-    }
-
-    /// Ensure that the predicates are in a consistent order. The precise
-    /// ordering doesn't actually matter, but it's important that
-    /// a given set of predicates always appears in the same order -
-    /// both for visual consistency between 'rustdoc' runs, and to
-    /// make writing tests much easier
-    #[inline]
-    fn sort_where_predicates(&self, predicates: &mut [WherePredicate]) {
-        // We should never have identical bounds - and if we do,
-        // they're visually identical as well. Therefore, using
-        // an unstable sort is fine.
-        self.unstable_debug_sort(predicates);
-    }
-
-    /// Ensure that the bounds are in a consistent order. The precise
-    /// ordering doesn't actually matter, but it's important that
-    /// a given set of bounds always appears in the same order -
-    /// both for visual consistency between 'rustdoc' runs, and to
-    /// make writing tests much easier
-    #[inline]
-    fn sort_where_bounds(&self, bounds: &mut Vec<GenericBound>) {
-        // We should never have identical bounds - and if we do,
-        // they're visually identical as well. Therefore, using
-        // an unstable sort is fine.
-        self.unstable_debug_sort(bounds);
-    }
-
-    /// This might look horrendously hacky, but it's actually not that bad.
-    ///
-    /// For performance reasons, we use several different FxHashMaps
-    /// in the process of computing the final set of where predicates.
-    /// However, the iteration order of a HashMap is completely unspecified.
-    /// In fact, the iteration of an FxHashMap can even vary between platforms,
-    /// since FxHasher has different behavior for 32-bit and 64-bit platforms.
-    ///
-    /// Obviously, it's extremely undesirable for documentation rendering
-    /// to be dependent on the platform it's run on. Apart from being confusing
-    /// to end users, it makes writing tests much more difficult, as predicates
-    /// can appear in any order in the final result.
-    ///
-    /// To solve this problem, we sort WherePredicates and GenericBounds
-    /// by their Debug string. The thing to keep in mind is that we don't really
-    /// care what the final order is - we're synthesizing an impl or bound
-    /// ourselves, so any order can be considered equally valid. By sorting the
-    /// predicates and bounds, however, we ensure that for a given codebase, all
-    /// auto-trait impls always render in exactly the same way.
-    ///
-    /// Using the Debug implementation for sorting prevents us from needing to
-    /// write quite a bit of almost entirely useless code (e.g., how should two
-    /// Types be sorted relative to each other). It also allows us to solve the
-    /// problem for both WherePredicates and GenericBounds at the same time. This
-    /// approach is probably somewhat slower, but the small number of items
-    /// involved (impls rarely have more than a few bounds) means that it
-    /// shouldn't matter in practice.
-    fn unstable_debug_sort<T: Debug>(&self, vec: &mut [T]) {
-        vec.sort_by_cached_key(|x| format!("{x:?}"))
-    }
-
-    fn is_fn_trait(&self, path: &Path) -> bool {
-        let tcx = self.cx.tcx;
-        let did = path.def_id();
-        did == tcx.require_lang_item(LangItem::Fn, None)
-            || did == tcx.require_lang_item(LangItem::FnMut, None)
-            || did == tcx.require_lang_item(LangItem::FnOnce, None)
     }
 }
 
@@ -727,7 +654,7 @@ fn region_name(region: Region<'_>) -> Option<Symbol> {
 
 /// Replaces all [`ty::RegionVid`]s in a type with [`ty::Region`]s, using the provided map.
 struct RegionReplacer<'a, 'tcx> {
-    vid_to_region: &'a FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
+    vid_to_region: &'a FxIndexMap<ty::RegionVid, ty::Region<'tcx>>,
     tcx: TyCtxt<'tcx>,
 }
 
