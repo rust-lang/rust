@@ -16,11 +16,10 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableValue};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
-use rustc_middle::ty::{
-    self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Ty, TyCtxt,
-    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
-};
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_middle::ty::{self, InferConst};
+use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
+use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeckResults};
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::iter;
@@ -187,8 +186,10 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         let ty_vars = infcx_inner.type_variables();
         let var_origin = ty_vars.var_origin(ty_vid);
         if let Some(def_id) = var_origin.param_def_id
+            // The `Self` param of a trait has the def-id of the trait,
+            // since it's a synthetic parameter.
+            && infcx.tcx.def_kind(def_id) == DefKind::TyParam
             && let name = infcx.tcx.item_name(def_id)
-            && name != kw::SelfUpper
             && !var_origin.span.from_expansion()
         {
             let generics = infcx.tcx.generics_of(infcx.tcx.parent(def_id));
@@ -301,20 +302,18 @@ impl<'tcx> InferCtxt<'tcx> {
                     let mut inner = self.inner.borrow_mut();
                     let ty_vars = &inner.type_variables();
                     let var_origin = ty_vars.var_origin(ty_vid);
-                    if let Some(def_id) = var_origin.param_def_id {
-                        let name = self.tcx.item_name(def_id);
-                        if name != kw::SelfUpper && !var_origin.span.from_expansion() {
-                            return InferenceDiagnosticsData {
-                                name: name.to_string(),
-                                span: Some(var_origin.span),
-                                kind: UnderspecifiedArgKind::Type {
-                                    prefix: "type parameter".into(),
-                                },
-                                parent: InferenceDiagnosticsParentData::for_def_id(
-                                    self.tcx, def_id,
-                                ),
-                            };
-                        }
+                    if let Some(def_id) = var_origin.param_def_id
+                        // The `Self` param of a trait has the def-id of the trait,
+                        // since it's a synthetic parameter.
+                        && self.tcx.def_kind(def_id) == DefKind::TyParam
+                        && !var_origin.span.from_expansion()
+                    {
+                        return InferenceDiagnosticsData {
+                            name: self.tcx.item_name(def_id).to_string(),
+                            span: Some(var_origin.span),
+                            kind: UnderspecifiedArgKind::Type { prefix: "type parameter".into() },
+                            parent: InferenceDiagnosticsParentData::for_def_id(self.tcx, def_id),
+                        };
                     }
                 }
 
