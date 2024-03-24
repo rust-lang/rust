@@ -187,9 +187,7 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         // for their parent `BasicBlock`.
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
-        // Ignore `ConstEvalCounter`s
         | StatementKind::ConstEvalCounter
-        // Ignore `Nop`s
         | StatementKind::Nop => None,
 
         // FIXME(#78546): MIR InstrumentCoverage - Can the source_info.span for `FakeRead`
@@ -211,30 +209,28 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         StatementKind::FakeRead(box (FakeReadCause::ForGuardBinding, _)) => None,
 
         // Retain spans from most other statements.
-        StatementKind::FakeRead(box (_, _)) // Not including `ForGuardBinding`
+        StatementKind::FakeRead(_)
         | StatementKind::Intrinsic(..)
-        | StatementKind::Coverage(box mir::Coverage {
+        | StatementKind::Coverage(
             // The purpose of `SpanMarker` is to be matched and accepted here.
-            kind: CoverageKind::SpanMarker
-        })
+            CoverageKind::SpanMarker,
+        )
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }
         | StatementKind::Deinit(..)
         | StatementKind::Retag(_, _)
         | StatementKind::PlaceMention(..)
-        | StatementKind::AscribeUserType(_, _) => {
-            Some(statement.source_info.span)
-        }
+        | StatementKind::AscribeUserType(_, _) => Some(statement.source_info.span),
 
-        StatementKind::Coverage(box mir::Coverage {
-            // Block markers are used for branch coverage, so ignore them here.
-            kind: CoverageKind::BlockMarker {..}
-        }) => None,
+        // Block markers are used for branch coverage, so ignore them here.
+        StatementKind::Coverage(CoverageKind::BlockMarker { .. }) => None,
 
-        StatementKind::Coverage(box mir::Coverage {
-            // These coverage statements should not exist prior to coverage instrumentation.
-            kind: CoverageKind::CounterIncrement { .. } | CoverageKind::ExpressionUsed { .. }
-        }) => bug!("Unexpected coverage statement found during coverage instrumentation: {statement:?}"),
+        // These coverage statements should not exist prior to coverage instrumentation.
+        StatementKind::Coverage(
+            CoverageKind::CounterIncrement { .. } | CoverageKind::ExpressionUsed { .. },
+        ) => bug!(
+            "Unexpected coverage statement found during coverage instrumentation: {statement:?}"
+        ),
     }
 }
 
@@ -382,9 +378,7 @@ pub(super) fn extract_branch_mappings(
     // Fill out the mapping from block marker IDs to their enclosing blocks.
     for (bb, data) in mir_body.basic_blocks.iter_enumerated() {
         for statement in &data.statements {
-            if let StatementKind::Coverage(coverage) = &statement.kind
-                && let CoverageKind::BlockMarker { id } = coverage.kind
-            {
+            if let StatementKind::Coverage(CoverageKind::BlockMarker { id }) = statement.kind {
                 block_markers[id] = Some(bb);
             }
         }

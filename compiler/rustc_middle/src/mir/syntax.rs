@@ -373,7 +373,7 @@ pub enum StatementKind<'tcx> {
     ///
     /// Interpreters and codegen backends that don't support coverage instrumentation
     /// can usually treat this as a no-op.
-    Coverage(Box<Coverage>),
+    Coverage(CoverageKind),
 
     /// Denotes a call to an intrinsic that does not require an unwind path and always returns.
     /// This avoids adding a new block and a terminator for simple intrinsics.
@@ -515,12 +515,6 @@ pub enum FakeReadCause {
     /// index expression. Thus we create a fake borrow of `x` across the second
     /// indexer, which will cause a borrow check error.
     ForIndex,
-}
-
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct Coverage {
-    pub kind: CoverageKind,
 }
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -1458,5 +1452,6 @@ mod size_asserts {
     static_assert_size!(Place<'_>, 16);
     static_assert_size!(PlaceElem<'_>, 24);
     static_assert_size!(Rvalue<'_>, 40);
+    static_assert_size!(StatementKind<'_>, 16);
     // tidy-alphabetical-end
 }
