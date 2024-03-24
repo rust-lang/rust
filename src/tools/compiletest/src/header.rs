@@ -625,6 +625,7 @@ impl TestProps {
     fn update_pass_mode(&mut self, ln: &str, revision: Option<&str>, config: &Config) {
         let check_no_run = |s| match (config.mode, s) {
             (Mode::Ui, _) => (),
+            (Mode::Crashes, "should-ice") => (),
             (Mode::Codegen, "build-pass") => (),
             (Mode::Incremental, _) => {
                 if revision.is_some() && !self.revisions.iter().all(|r| r.starts_with("cfail")) {
