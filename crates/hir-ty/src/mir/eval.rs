@@ -2356,7 +2356,7 @@ impl Evaluator<'_> {
 
     fn exec_fn_with_args(
         &mut self,
-        def: FunctionId,
+        mut def: FunctionId,
         args: &[IntervalAndTy],
         generic_args: Substitution,
         locals: &Locals,
@@ -2373,6 +2373,9 @@ impl Evaluator<'_> {
             span,
         )? {
             return Ok(None);
+        }
+        if let Some(redirect_def) = self.detect_and_redirect_special_function(def)? {
+            def = redirect_def;
         }
         let arg_bytes = args.iter().map(|it| IntervalOrOwned::Borrowed(it.interval));
         match self.get_mir_or_dyn_index(def, generic_args.clone(), locals, span)? {

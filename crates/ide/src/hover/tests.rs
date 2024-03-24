@@ -5106,6 +5106,32 @@ fn foo(e: E) {
 }
 
 #[test]
+fn hover_const_value() {
+    check(
+        r#"
+pub enum AA {
+    BB,
+}
+const CONST: AA = AA::BB;
+pub fn the_function() -> AA {
+    CON$0ST
+}
+"#,
+        expect![[r#"
+            *CONST*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const CONST: AA = BB
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn array_repeat_exp() {
     check(
         r#"

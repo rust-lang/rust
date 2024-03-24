@@ -13,7 +13,7 @@ use crate::mir::eval::{
     name, pad16, static_lifetime, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId,
     HasModule, HirDisplay, Interned, InternedClosure, Interner, Interval, IntervalAndTy,
     IntervalOrOwned, ItemContainerId, LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan,
-    ModPath, Mutability, Result, Substitution, Ty, TyBuilder, TyExt,
+    Mutability, Result, Substitution, Ty, TyBuilder, TyExt,
 };
 
 mod simd;
@@ -158,6 +158,25 @@ impl Evaluator<'_> {
         Ok(false)
     }
 
+    pub(super) fn detect_and_redirect_special_function(
+        &mut self,
+        def: FunctionId,
+    ) -> Result<Option<FunctionId>> {
+        // `PanicFmt` is redirected to `ConstPanicFmt`
+        if let Some(LangItem::PanicFmt) = self.db.lang_attr(def.into()) {
+            let resolver =
+                self.db.crate_def_map(self.crate_id).crate_root().resolver(self.db.upcast());
+
+            let Some(hir_def::lang_item::LangItemTarget::Function(const_panic_fmt)) =
+                self.db.lang_item(resolver.krate(), LangItem::ConstPanicFmt)
+            else {
+                not_supported!("const_panic_fmt lang item not found or not a function");
+            };
+            return Ok(Some(const_panic_fmt));
+        }
+        Ok(None)
+    }
+
     /// Clone has special impls for tuples and function pointers
     fn exec_clone(
         &mut self,
@@ -291,8 +310,13 @@ impl Evaluator<'_> {
         use LangItem::*;
         let candidate = self.db.lang_attr(def.into())?;
         // We want to execute these functions with special logic
-        if [PanicFmt, BeginPanic, SliceLen, DropInPlace].contains(&candidate) {
+        // `PanicFmt` is not detected here as it's redirected later.
+        if [BeginPanic, SliceLen, DropInPlace].contains(&candidate) {
             return Some(candidate);
+        }
+        if self.db.attrs(def.into()).by_key("rustc_const_panic_str").exists() {
+            // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
+            return Some(LangItem::BeginPanic);
         }
         None
     }
@@ -309,43 +333,6 @@ impl Evaluator<'_> {
         let mut args = args.iter();
         match it {
             BeginPanic => Err(MirEvalError::Panic("<unknown-panic-payload>".to_owned())),
-            PanicFmt => {
-                let message = (|| {
-                    let resolver = self
-                        .db
-                        .crate_def_map(self.crate_id)
-                        .crate_root()
-                        .resolver(self.db.upcast());
-                    let Some(format_fn) = resolver.resolve_path_in_value_ns_fully(
-                        self.db.upcast(),
-                        &hir_def::path::Path::from_known_path_with_no_generic(
-                            ModPath::from_segments(
-                                hir_expand::mod_path::PathKind::Abs,
-                                [name![std], name![fmt], name![format]],
-                            ),
-                        ),
-                    ) else {
-                        not_supported!("std::fmt::format not found");
-                    };
-                    let hir_def::resolver::ValueNs::FunctionId(format_fn) = format_fn else {
-                        not_supported!("std::fmt::format is not a function")
-                    };
-                    let interval = self.interpret_mir(
-                        self.db
-                            .mir_body(format_fn.into())
-                            .map_err(|e| MirEvalError::MirLowerError(format_fn, e))?,
-                        args.map(|x| IntervalOrOwned::Owned(x.clone())),
-                    )?;
-                    let message_string = interval.get(self)?;
-                    let addr =
-                        Address::from_bytes(&message_string[self.ptr_size()..2 * self.ptr_size()])?;
-                    let size = from_bytes!(usize, message_string[2 * self.ptr_size()..]);
-                    Ok(std::string::String::from_utf8_lossy(self.read_memory(addr, size)?)
-                        .into_owned())
-                })()
-                .unwrap_or_else(|e| format!("Failed to render panic format args: {e:?}"));
-                Err(MirEvalError::Panic(message))
-            }
             SliceLen => {
                 let arg = args.next().ok_or(MirEvalError::InternalError(
                     "argument of <[T]>::len() is not provided".into(),
