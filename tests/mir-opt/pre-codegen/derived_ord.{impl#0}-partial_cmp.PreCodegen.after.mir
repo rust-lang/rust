@@ -16,24 +16,16 @@ fn <impl at $DIR/derived_ord.rs:6:10: 6:20>::partial_cmp(_1: &MultiField, _2: &M
     scope 2 (inlined std::cmp::impls::<impl PartialOrd for char>::partial_cmp) {
         debug self => _3;
         debug other => _4;
+        let mut _5: char;
+        let mut _6: char;
         let mut _7: std::cmp::Ordering;
-        scope 3 (inlined std::cmp::impls::<impl Ord for char>::cmp) {
-            debug self => _3;
-            debug other => _4;
-            let mut _5: char;
-            let mut _6: char;
-        }
     }
-    scope 4 (inlined std::cmp::impls::<impl PartialOrd for i16>::partial_cmp) {
+    scope 3 (inlined std::cmp::impls::<impl PartialOrd for i16>::partial_cmp) {
         debug self => _10;
         debug other => _11;
+        let mut _12: i16;
+        let mut _13: i16;
         let mut _14: std::cmp::Ordering;
-        scope 5 (inlined std::cmp::impls::<impl Ord for i16>::cmp) {
-            debug self => _10;
-            debug other => _11;
-            let mut _12: i16;
-            let mut _13: i16;
-        }
     }
 
     bb0: {

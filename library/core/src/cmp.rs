@@ -1548,7 +1548,14 @@ mod impls {
             impl PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
-                    Some(self.cmp(other))
+                    #[cfg(bootstrap)]
+                    {
+                        Some(self.cmp(other))
+                    }
+                    #[cfg(not(bootstrap))]
+                    {
+                        Some(crate::intrinsics::three_way_compare(*self, *other))
+                    }
                 }
                 #[inline(always)]
                 fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
@@ -1566,12 +1573,12 @@ mod impls {
                 fn cmp(&self, other: &$t) -> Ordering {
                     #[cfg(bootstrap)]
                     {
-                    // The order here is important to generate more optimal assembly.
-                    // See <https://github.com/rust-lang/rust/issues/63758> for more info.
-                    if *self < *other { Less }
-                    else if *self == *other { Equal }
-                    else { Greater }
-                }
+                        // The order here is important to generate more optimal assembly.
+                        // See <https://github.com/rust-lang/rust/issues/63758> for more info.
+                        if *self < *other { Less }
+                        else if *self == *other { Equal }
+                        else { Greater }
+                    }
                     #[cfg(not(bootstrap))]
                     {
                         crate::intrinsics::three_way_compare(*self, *other)
