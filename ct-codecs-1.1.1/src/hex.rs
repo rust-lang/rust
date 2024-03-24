@@ -49,7 +49,7 @@ impl Decoder for Hex {
                 match ignore {
                     Some(ignore) if ignore.contains(&c) => continue,
                     _ => return Err(Error::InvalidInput),
-                };
+                }
             }
             let c_val = (c_num0 & c_num) | (c_alpha0 & c_alpha);
             if bin_pos >= bin_maxlen {

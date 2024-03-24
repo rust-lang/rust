@@ -23,12 +23,12 @@ macro_rules! buf_get_impl {
         if let Some(ret) = ret {
             // if the direct conversion was possible, advance and return
             $this.advance(SIZE);
-            return ret;
+            ret
         } else {
             // if not we copy the bytes in a temp buffer then convert
             let mut buf = [0; SIZE];
             $this.copy_to_slice(&mut buf); // (do the advance)
-            return $typ::$conv(buf);
+            $typ::$conv(buf)
         }
     }};
     (le => $this:ident, $typ:tt, $len_to_read:expr) => {{
@@ -332,7 +332,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u16(&mut self) -> u16 {
-        buf_get_impl!(self, u16::from_be_bytes);
+        buf_get_impl!(self, u16::from_be_bytes)
     }
 
     /// Gets an unsigned 16 bit integer from `self` in little-endian byte order.
@@ -352,7 +352,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u16_le(&mut self) -> u16 {
-        buf_get_impl!(self, u16::from_le_bytes);
+        buf_get_impl!(self, u16::from_le_bytes)
     }
 
     /// Gets an unsigned 16 bit integer from `self` in native-endian byte order.
@@ -375,7 +375,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u16_ne(&mut self) -> u16 {
-        buf_get_impl!(self, u16::from_ne_bytes);
+        buf_get_impl!(self, u16::from_ne_bytes)
     }
 
     /// Gets a signed 16 bit integer from `self` in big-endian byte order.
@@ -395,7 +395,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i16(&mut self) -> i16 {
-        buf_get_impl!(self, i16::from_be_bytes);
+        buf_get_impl!(self, i16::from_be_bytes)
     }
 
     /// Gets a signed 16 bit integer from `self` in little-endian byte order.
@@ -415,7 +415,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i16_le(&mut self) -> i16 {
-        buf_get_impl!(self, i16::from_le_bytes);
+        buf_get_impl!(self, i16::from_le_bytes)
     }
 
     /// Gets a signed 16 bit integer from `self` in native-endian byte order.
@@ -438,7 +438,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i16_ne(&mut self) -> i16 {
-        buf_get_impl!(self, i16::from_ne_bytes);
+        buf_get_impl!(self, i16::from_ne_bytes)
     }
 
     /// Gets an unsigned 32 bit integer from `self` in the big-endian byte order.
@@ -458,7 +458,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u32(&mut self) -> u32 {
-        buf_get_impl!(self, u32::from_be_bytes);
+        buf_get_impl!(self, u32::from_be_bytes)
     }
 
     /// Gets an unsigned 32 bit integer from `self` in the little-endian byte order.
@@ -478,7 +478,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u32_le(&mut self) -> u32 {
-        buf_get_impl!(self, u32::from_le_bytes);
+        buf_get_impl!(self, u32::from_le_bytes)
     }
 
     /// Gets an unsigned 32 bit integer from `self` in native-endian byte order.
@@ -501,7 +501,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u32_ne(&mut self) -> u32 {
-        buf_get_impl!(self, u32::from_ne_bytes);
+        buf_get_impl!(self, u32::from_ne_bytes)
     }
 
     /// Gets a signed 32 bit integer from `self` in big-endian byte order.
@@ -521,7 +521,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i32(&mut self) -> i32 {
-        buf_get_impl!(self, i32::from_be_bytes);
+        buf_get_impl!(self, i32::from_be_bytes)
     }
 
     /// Gets a signed 32 bit integer from `self` in little-endian byte order.
@@ -541,7 +541,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i32_le(&mut self) -> i32 {
-        buf_get_impl!(self, i32::from_le_bytes);
+        buf_get_impl!(self, i32::from_le_bytes)
     }
 
     /// Gets a signed 32 bit integer from `self` in native-endian byte order.
@@ -564,7 +564,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i32_ne(&mut self) -> i32 {
-        buf_get_impl!(self, i32::from_ne_bytes);
+        buf_get_impl!(self, i32::from_ne_bytes)
     }
 
     /// Gets an unsigned 64 bit integer from `self` in big-endian byte order.
@@ -584,7 +584,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u64(&mut self) -> u64 {
-        buf_get_impl!(self, u64::from_be_bytes);
+        buf_get_impl!(self, u64::from_be_bytes)
     }
 
     /// Gets an unsigned 64 bit integer from `self` in little-endian byte order.
@@ -604,7 +604,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u64_le(&mut self) -> u64 {
-        buf_get_impl!(self, u64::from_le_bytes);
+        buf_get_impl!(self, u64::from_le_bytes)
     }
 
     /// Gets an unsigned 64 bit integer from `self` in native-endian byte order.
@@ -627,7 +627,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u64_ne(&mut self) -> u64 {
-        buf_get_impl!(self, u64::from_ne_bytes);
+        buf_get_impl!(self, u64::from_ne_bytes)
     }
 
     /// Gets a signed 64 bit integer from `self` in big-endian byte order.
@@ -647,7 +647,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i64(&mut self) -> i64 {
-        buf_get_impl!(self, i64::from_be_bytes);
+        buf_get_impl!(self, i64::from_be_bytes)
     }
 
     /// Gets a signed 64 bit integer from `self` in little-endian byte order.
@@ -667,7 +667,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i64_le(&mut self) -> i64 {
-        buf_get_impl!(self, i64::from_le_bytes);
+        buf_get_impl!(self, i64::from_le_bytes)
     }
 
     /// Gets a signed 64 bit integer from `self` in native-endian byte order.
@@ -690,7 +690,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i64_ne(&mut self) -> i64 {
-        buf_get_impl!(self, i64::from_ne_bytes);
+        buf_get_impl!(self, i64::from_ne_bytes)
     }
 
     /// Gets an unsigned 128 bit integer from `self` in big-endian byte order.
@@ -710,7 +710,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u128(&mut self) -> u128 {
-        buf_get_impl!(self, u128::from_be_bytes);
+        buf_get_impl!(self, u128::from_be_bytes)
     }
 
     /// Gets an unsigned 128 bit integer from `self` in little-endian byte order.
@@ -730,7 +730,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u128_le(&mut self) -> u128 {
-        buf_get_impl!(self, u128::from_le_bytes);
+        buf_get_impl!(self, u128::from_le_bytes)
     }
 
     /// Gets an unsigned 128 bit integer from `self` in native-endian byte order.
@@ -753,7 +753,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u128_ne(&mut self) -> u128 {
-        buf_get_impl!(self, u128::from_ne_bytes);
+        buf_get_impl!(self, u128::from_ne_bytes)
     }
 
     /// Gets a signed 128 bit integer from `self` in big-endian byte order.
@@ -773,7 +773,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i128(&mut self) -> i128 {
-        buf_get_impl!(self, i128::from_be_bytes);
+        buf_get_impl!(self, i128::from_be_bytes)
     }
 
     /// Gets a signed 128 bit integer from `self` in little-endian byte order.
@@ -793,7 +793,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i128_le(&mut self) -> i128 {
-        buf_get_impl!(self, i128::from_le_bytes);
+        buf_get_impl!(self, i128::from_le_bytes)
     }
 
     /// Gets a signed 128 bit integer from `self` in native-endian byte order.
@@ -816,7 +816,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i128_ne(&mut self) -> i128 {
-        buf_get_impl!(self, i128::from_ne_bytes);
+        buf_get_impl!(self, i128::from_ne_bytes)
     }
 
     /// Gets an unsigned n-byte integer from `self` in big-endian byte order.
@@ -836,7 +836,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_uint(&mut self, nbytes: usize) -> u64 {
-        buf_get_impl!(be => self, u64, nbytes);
+        buf_get_impl!(be => self, u64, nbytes)
     }
 
     /// Gets an unsigned n-byte integer from `self` in little-endian byte order.
@@ -856,7 +856,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_uint_le(&mut self, nbytes: usize) -> u64 {
-        buf_get_impl!(le => self, u64, nbytes);
+        buf_get_impl!(le => self, u64, nbytes)
     }
 
     /// Gets an unsigned n-byte integer from `self` in native-endian byte order.
@@ -903,7 +903,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_int(&mut self, nbytes: usize) -> i64 {
-        buf_get_impl!(be => self, i64, nbytes);
+        buf_get_impl!(be => self, i64, nbytes)
     }
 
     /// Gets a signed n-byte integer from `self` in little-endian byte order.
@@ -923,7 +923,7 @@ pub trait Buf {
     ///
     /// This function panics if there is not enough remaining data in `self`.
     fn get_int_le(&mut self, nbytes: usize) -> i64 {
-        buf_get_impl!(le => self, i64, nbytes);
+        buf_get_impl!(le => self, i64, nbytes)
     }
 
     /// Gets a signed n-byte integer from `self` in native-endian byte order.

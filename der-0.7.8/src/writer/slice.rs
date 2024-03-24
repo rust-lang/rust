@@ -31,7 +31,7 @@ impl<'a> SliceWriter<'a> {
     /// Encode a value which impls the [`Encode`] trait.
     pub fn encode<T: Encode>(&mut self, encodable: &T) -> Result<()> {
         if self.is_failed() {
-            self.error(ErrorKind::Failed)?;
+            self.error(ErrorKind::Failed)?
         }
 
         encodable.encode(self).map_err(|e| {
