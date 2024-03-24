@@ -141,6 +141,11 @@ jobs:
       - name: Test (release)
         run: cargo test --verbose --target=${{ matrix.target }} --release
 
+      - name: Generate docs
+        run: cargo doc --verbose --target=${{ matrix.target }}
+        env:
+          RUSTDOCFLAGS: -Dwarnings
+
   wasm-tests:
     name: "wasm (firefox, ${{ matrix.name }})"
     runs-on: ubuntu-latest
