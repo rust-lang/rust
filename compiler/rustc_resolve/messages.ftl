@@ -11,6 +11,8 @@ resolve_added_macro_use =
 resolve_ancestor_only =
     visibilities can only be restricted to ancestor modules
 
+resolve_arguments_macro_use_not_allowed = arguments to `macro_use` are not allowed here
+
 resolve_associated_const_with_similar_name_exists =
     there is an associated constant with a similar name
 
@@ -19,6 +21,10 @@ resolve_associated_fn_with_similar_name_exists =
 
 resolve_associated_type_with_similar_name_exists =
     there is an associated type with a similar name
+
+resolve_attempt_to_define_builtin_macro_twice =
+    attempted to define built-in macro more than once
+    .note = previously defined here
 
 resolve_attempt_to_use_non_constant_value_in_constant =
     attempt to use a non-constant value in a constant
@@ -31,6 +37,8 @@ resolve_attempt_to_use_non_constant_value_in_constant_with_suggestion =
 
 resolve_attempt_to_use_non_constant_value_in_constant_without_suggestion =
     this would need to be a `{$suggestion}`
+
+resolve_bad_macro_import = bad macro import
 
 resolve_binding_in_never_pattern =
     never patterns cannot contain variable bindings
@@ -100,12 +108,30 @@ resolve_const_param_in_non_trivial_anon_const =
 resolve_const_param_in_ty_of_const_param =
     const parameters may not be used in the type of const parameters
 
-resolve_expected_found =
+resolve_elided_anonymous_lifetime_report_error =
+    `&` without an explicit lifetime name cannot be used here
+    .label = explicit lifetime name needed here
+
+resolve_elided_anonymous_lifetime_report_error_suggestion =
+    consider introducing a higher-ranked lifetime here
+
+resolve_expected_module_found =
     expected module, found {$res} `{$path_str}`
     .label = not a module
 
+resolve_explicit_anonymous_lifetime_report_error =
+    `'_` cannot be used here
+    .label = `'_` is a reserved lifetime name
+
 resolve_explicit_unsafe_traits =
     unsafe traits like `{$ident}` should be implemented explicitly
+
+resolve_extern_crate_loading_macro_not_at_crate_root =
+    an `extern crate` loading macros must be at the crate root
+
+resolve_extern_crate_self_requires_renaming =
+    `extern crate self;` requires renaming
+    .suggestion = rename the `self` crate to be able to import it
 
 resolve_forward_declared_generic_param =
     generic parameters with a default cannot use forward declared identifiers
@@ -135,16 +161,19 @@ resolve_generic_params_from_outer_item_static = a `static` is a separate item fr
 
 resolve_generic_params_from_outer_item_ty_param = type parameter from outer item
 
-
 resolve_ident_bound_more_than_once_in_parameter_list =
     identifier `{$identifier}` is bound more than once in this parameter list
     .label = used as parameter more than once
+
+resolve_implicit_elided_lifetimes_not_allowed_here = implicit elided lifetime not allowed here
 
 resolve_ident_bound_more_than_once_in_same_pattern =
     identifier `{$identifier}` is bound more than once in the same pattern
     .label = used in a pattern more than once
 
 resolve_imported_crate = `$crate` may not be imported
+
+resolve_imported_macro_not_found = imported macro not found
 
 resolve_imports_cannot_refer_to =
     imports cannot refer to {$what}
@@ -183,10 +212,21 @@ resolve_lowercase_self =
 resolve_macro_defined_later =
     a macro with the same name exists, but it appears later at here
 
+resolve_macro_expanded_extern_crate_cannot_shadow_extern_arguments =
+    macro-expanded `extern crate` items cannot shadow names passed with `--extern`
+
 resolve_macro_expected_found =
     expected {$expected}, found {$found} `{$macro_path}`
 
+resolve_macro_extern_deprecated =
+    `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
+    .help = try an outer attribute: `#[macro_use]`
+
 resolve_macro_use_extern_crate_self = `#[macro_use]` is not supported on `extern crate self`
+
+resolve_macro_use_name_already_in_use =
+    `{$name}` is already in scope
+    .note = macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)
 
 resolve_method_not_member_of_trait =
     method `{$method}` is not a member of trait `{$trait_}`
@@ -216,6 +256,8 @@ resolve_param_in_non_trivial_anon_const_help =
 resolve_param_in_ty_of_const_param =
     the type of const parameters must not depend on other generic parameters
     .label = the type must not depend on the parameter `{$name}`
+
+resolve_pattern_doesnt_bind_name = pattern doesn't bind `{$name}`
 
 resolve_proc_macro_same_crate = can't use a procedural macro from the same crate that defines it
     .help = you can define integration tests in a directory named `tests`
@@ -254,6 +296,9 @@ resolve_self_in_generic_param_default =
     generic parameters cannot use `Self` in their defaults
     .label = `Self` in generic parameter default
 
+resolve_static_lifetime_is_reserved = invalid lifetime parameter name: `{$ident}`
+    .label = 'static is a reserved lifetime name
+
 resolve_tool_module_imported =
     cannot use a tool module through an import
     .note = the tool module imported here
@@ -284,11 +329,17 @@ resolve_undeclared_label =
     use of undeclared label `{$name}`
     .label = undeclared label `{$name}`
 
+resolve_underscore_lifetime_is_reserved = `'_` cannot be used here
+    .label = `'_` is a reserved lifetime name
+
 resolve_unexpected_res_change_ty_to_const_param_sugg =
     you might have meant to write a const parameter here
 
 resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg =
     if you meant to collect the rest of the slice in `{$ident}`, use the at operator
+
+resolve_unnamed_crate_root_import =
+    crate root imports need to be explicitly named: `use crate as name;`
 
 resolve_unreachable_label =
     use of unreachable label `{$name}`
@@ -312,3 +363,8 @@ resolve_variable_bound_with_different_mode =
     variable `{$variable_name}` is bound inconsistently across alternatives separated by `|`
     .label = bound in different ways
     .first_binding_span = first binding
+
+resolve_variable_is_not_bound_in_all_patterns =
+    variable `{$name}` is not bound in all patterns
+
+resolve_variable_not_in_all_patterns = variable not in all patterns

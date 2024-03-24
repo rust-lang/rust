@@ -1,4 +1,5 @@
-use rustc_errors::{codes::*, Applicability};
+#![allow(dead_code)] // TODO : non
+use rustc_errors::{codes::*, Applicability, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{
     symbol::{Ident, Symbol},
@@ -495,8 +496,8 @@ pub(crate) struct Relative2018 {
 pub(crate) struct AncestorOnly(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
-#[diag(resolve_expected_found, code = E0577)]
-pub(crate) struct ExpectedFound {
+#[diag(resolve_expected_module_found, code = E0577)]
+pub(crate) struct ExpectedModuleFound {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
@@ -800,4 +801,158 @@ pub(crate) struct UnexpectedResUseAtOpInSlicePatWithRangeSugg {
     pub span: Span,
     pub ident: Ident,
     pub snippet: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_extern_crate_loading_macro_not_at_crate_root, code = E0468)]
+pub(crate) struct ExternCrateLoadingMacroNotAtCrateRoot {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_bad_macro_import, code = E0466)]
+pub(crate) struct BadMacroImport {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_extern_crate_self_requires_renaming)]
+pub(crate) struct ExternCrateSelfRequiresRenaming {
+    #[primary_span]
+    #[suggestion(code = "extern crate self as name;", applicability = "has-placeholders")]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_macro_use_name_already_in_use)]
+#[note]
+pub(crate) struct MacroUseNameAlreadyInUse {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_imported_macro_not_found, code = E0469)]
+pub(crate) struct ImportedMacroNotFound {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_macro_extern_deprecated)]
+pub(crate) struct MacroExternDeprecated {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[help]
+    pub inner_attribute: Option<()>,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_arguments_macro_use_not_allowed)]
+pub(crate) struct ArgumentsMacroUseNotAllowed {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_unnamed_crate_root_import)]
+pub(crate) struct UnnamedCrateRootImport {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_macro_expanded_extern_crate_cannot_shadow_extern_arguments)]
+pub(crate) struct MacroExpandedExternCrateCannotShadowExternArguments {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_elided_anonymous_lifetime_report_error, code = E0637)]
+pub(crate) struct ElidedAnonymousLivetimeReportError {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) suggestion: Option<ElidedAnonymousLivetimeReportErrorSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    resolve_elided_anonymous_lifetime_report_error_suggestion,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct ElidedAnonymousLivetimeReportErrorSuggestion {
+    #[suggestion_part(code = "for<'a> ")]
+    pub(crate) lo: Span,
+    #[suggestion_part(code = "'a ")]
+    pub(crate) hi: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_explicit_anonymous_lifetime_report_error, code = E0637)]
+pub(crate) struct ExplicitAnonymousLivetimeReportError {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_implicit_elided_lifetimes_not_allowed_here, code = E0726)]
+pub(crate) struct ImplicitElidedLifetimeNotAllowedHere {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_underscore_lifetime_is_reserved, code = E0637)]
+pub(crate) struct UnderscoreLifetimeIsReserved {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_static_lifetime_is_reserved, code = E0262)]
+pub(crate) struct StaticLifetimeIsReserved {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) lifetime: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_attempt_to_define_builtin_macro_twice, code = E0773)]
+pub(crate) struct AttemptToDefineBuiltinMacroTwice {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[note]
+    pub(crate) note_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_variable_is_not_bound_in_all_patterns, code = E0408)]
+pub(crate) struct VariableIsNotBoundInAllPatterns {
+    #[primary_span]
+    pub(crate) multispan: MultiSpan,
+    pub(crate) name: Symbol,
+}
+
+#[derive(Subdiagnostic, Debug, Clone)]
+#[label(resolve_pattern_doesnt_bind_name)]
+pub(crate) struct PatternDoesntBindName {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) name: Symbol,
+}
+
+#[derive(Subdiagnostic, Debug, Clone)]
+#[label(resolve_variable_not_in_all_patterns)]
+pub(crate) struct VariableNotInAllPatterns {
+    #[primary_span]
+    pub(crate) span: Span,
 }

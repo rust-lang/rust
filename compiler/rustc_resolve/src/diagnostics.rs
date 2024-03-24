@@ -1005,7 +1005,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 ResolutionError::FailedToResolve { segment: None, label, suggestion, module: None },
             ),
             VisResolutionError::ExpectedFound(span, path_str, res) => {
-                self.dcx().create_err(errs::ExpectedFound { span, res, path_str })
+                self.dcx().create_err(errs::ExpectedModuleFound { span, res, path_str })
             }
             VisResolutionError::Indeterminate(span) => {
                 self.dcx().create_err(errs::Indeterminate(span))
