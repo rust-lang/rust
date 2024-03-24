@@ -100,6 +100,7 @@ pub trait Interner: Sized + Copy {
     type SubtypePredicate: Copy + Debug + Hash + Eq;
     type CoercePredicate: Copy + Debug + Hash + Eq;
     type ClosureKind: Copy + Debug + Hash + Eq;
+    type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
     fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
 }

@@ -55,6 +55,16 @@ where
     }
 }
 
+impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for &'tcx ty::ListWithCachedTypeInfo<T>
+where
+    T: HashStable<StableHashingContext<'a>>,
+{
+    #[inline]
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        self.as_list().hash_stable(hcx, hasher);
+    }
+}
+
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for SimplifiedType {
     type KeyType = Fingerprint;
 

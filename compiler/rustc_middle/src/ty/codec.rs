@@ -414,7 +414,9 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<ty
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<ty::Clause<'tcx>> {
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
+    for ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>
+{
     fn decode(decoder: &mut D) -> &'tcx Self {
         let len = decoder.read_usize();
         decoder.interner().mk_clauses_from_iter(
@@ -461,7 +463,7 @@ impl_decodable_via_ref! {
     &'tcx mir::BorrowCheckResult<'tcx>,
     &'tcx mir::coverage::CodeRegion,
     &'tcx ty::List<ty::BoundVariableKind>,
-    &'tcx ty::List<ty::Clause<'tcx>>,
+    &'tcx ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>,
     &'tcx ty::List<FieldIdx>,
     &'tcx ty::List<(VariantIdx, FieldIdx)>,
 }
