@@ -229,6 +229,15 @@ impl<'tcx> InferCtxtInner<'tcx> {
             .expect("region constraints already solved")
             .with_log(&mut self.undo_log)
     }
+
+    // Iterates through the opaque type definitions without taking them; this holds the
+    // `InferCtxtInner` lock, so make sure to not do anything with `InferCtxt` side-effects
+    // while looping through this.
+    pub fn iter_opaque_types(
+        &self,
+    ) -> impl Iterator<Item = (ty::OpaqueTypeKey<'tcx>, ty::OpaqueHiddenType<'tcx>)> + '_ {
+        self.opaque_type_storage.opaque_types.iter().map(|(&k, v)| (k, v.hidden_type))
+    }
 }
 
 pub struct InferCtxt<'tcx> {

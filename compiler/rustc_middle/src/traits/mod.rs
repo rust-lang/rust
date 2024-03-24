@@ -571,7 +571,8 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub scrut_span: Span,
     pub source: hir::MatchSource,
     pub prior_non_diverging_arms: Vec<Span>,
-    pub opt_suggest_box_span: Option<Span>,
+    // Is the expectation of this match expression an RPIT?
+    pub tail_defines_return_position_impl_trait: Option<LocalDefId>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -582,7 +583,8 @@ pub struct IfExpressionCause<'tcx> {
     pub then_ty: Ty<'tcx>,
     pub else_ty: Ty<'tcx>,
     pub outer_span: Option<Span>,
-    pub opt_suggest_box_span: Option<Span>,
+    // Is the expectation of this match expression an RPIT?
+    pub tail_defines_return_position_impl_trait: Option<LocalDefId>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
