@@ -9,11 +9,11 @@
   
 +     coverage ExpressionId(0) => Expression { lhs: Counter(0), op: Add, rhs: Counter(1) };
 +     coverage ExpressionId(1) => Expression { lhs: Expression(0), op: Subtract, rhs: Counter(1) };
-+     coverage Code(Counter(0)) => /the/src/instrument_coverage.rs:12:1 - 12:11;
-+     coverage Code(Expression(0)) => /the/src/instrument_coverage.rs:13:5 - 14:17;
-+     coverage Code(Expression(1)) => /the/src/instrument_coverage.rs:15:13 - 15:18;
-+     coverage Code(Counter(1)) => /the/src/instrument_coverage.rs:16:10 - 16:11;
-+     coverage Code(Expression(1)) => /the/src/instrument_coverage.rs:18:1 - 18:2;
++     coverage Code(Counter(0)) => $DIR/instrument_coverage.rs:10:1 - 10:11;
++     coverage Code(Expression(0)) => $DIR/instrument_coverage.rs:11:5 - 12:17;
++     coverage Code(Expression(1)) => $DIR/instrument_coverage.rs:13:13 - 13:18;
++     coverage Code(Counter(1)) => $DIR/instrument_coverage.rs:14:10 - 14:11;
++     coverage Code(Expression(1)) => $DIR/instrument_coverage.rs:16:1 - 16:2;
 + 
       bb0: {
 +         Coverage::CounterIncrement(0);

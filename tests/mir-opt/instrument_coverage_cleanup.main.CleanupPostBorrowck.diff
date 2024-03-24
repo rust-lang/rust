@@ -5,15 +5,15 @@
       let mut _0: ();
       let mut _1: bool;
   
-      coverage branch { true: BlockMarkerId(0), false: BlockMarkerId(1) } => /the/src/instrument_coverage_cleanup.rs:15:8: 15:36 (#0)
+      coverage branch { true: BlockMarkerId(0), false: BlockMarkerId(1) } => $DIR/instrument_coverage_cleanup.rs:14:8: 14:36 (#0)
   
       coverage ExpressionId(0) => Expression { lhs: Counter(0), op: Subtract, rhs: Counter(1) };
       coverage ExpressionId(1) => Expression { lhs: Counter(1), op: Add, rhs: Expression(0) };
-      coverage Code(Counter(0)) => /the/src/instrument_coverage_cleanup.rs:14:1 - 15:36;
-      coverage Code(Expression(0)) => /the/src/instrument_coverage_cleanup.rs:15:37 - 15:39;
-      coverage Code(Counter(1)) => /the/src/instrument_coverage_cleanup.rs:15:39 - 15:40;
-      coverage Code(Expression(1)) => /the/src/instrument_coverage_cleanup.rs:16:1 - 16:2;
-      coverage Branch { true_term: Expression(0), false_term: Counter(1) } => /the/src/instrument_coverage_cleanup.rs:15:8 - 15:36;
+      coverage Code(Counter(0)) => $DIR/instrument_coverage_cleanup.rs:13:1 - 14:36;
+      coverage Code(Expression(0)) => $DIR/instrument_coverage_cleanup.rs:14:37 - 14:39;
+      coverage Code(Counter(1)) => $DIR/instrument_coverage_cleanup.rs:14:39 - 14:40;
+      coverage Code(Expression(1)) => $DIR/instrument_coverage_cleanup.rs:15:1 - 15:2;
+      coverage Branch { true_term: Expression(0), false_term: Counter(1) } => $DIR/instrument_coverage_cleanup.rs:14:8 - 14:36;
   
       bb0: {
           Coverage::CounterIncrement(0);
