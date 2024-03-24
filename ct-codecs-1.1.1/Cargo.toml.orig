@@ -1,0 +1,21 @@
+[package]
+name = "ct-codecs"
+version = "1.1.1"
+authors = ["Frank Denis <github@pureftpd.org>"]
+edition = "2018"
+description = "Constant-time hex and base64 codecs from libsodium reimplemented in Rust"
+keywords = ["base64", "hex", "crypto"]
+license = "MIT"
+homepage = "https://github.com/jedisct1/rust-ct-codecs"
+repository = "https://github.com/jedisct1/rust-ct-codecs"
+categories = ["no-std", "cryptography", "encoding"]
+readme = "README.md"
+
+[profile.release]
+codegen-units = 1
+incremental = false
+panic = "abort"
+
+[features]
+default = ["std"]
+std = []
