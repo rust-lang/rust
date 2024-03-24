@@ -9,8 +9,8 @@ pub fn out_dir() -> PathBuf {
     env::var_os("TMPDIR").unwrap().into()
 }
 
-fn setup_common_build_cmd() -> Command {
-    let rustc = env::var("RUSTC").unwrap();
+fn setup_common_build_cmd(command: &str) -> Command {
+    let rustc = env::var(command).unwrap();
     let mut cmd = Command::new(rustc);
     cmd.arg("--out-dir").arg(out_dir()).arg("-L").arg(out_dir());
     cmd
@@ -33,6 +33,10 @@ pub fn aux_build() -> AuxBuildInvocationBuilder {
     AuxBuildInvocationBuilder::new()
 }
 
+pub fn rustdoc() -> Rustdoc {
+    Rustdoc::new()
+}
+
 #[derive(Debug)]
 pub struct RustcInvocationBuilder {
     cmd: Command,
@@ -40,7 +44,7 @@ pub struct RustcInvocationBuilder {
 
 impl RustcInvocationBuilder {
     fn new() -> Self {
-        let cmd = setup_common_build_cmd();
+        let cmd = setup_common_build_cmd("RUSTC");
         Self { cmd }
     }
 
@@ -74,12 +78,41 @@ pub struct AuxBuildInvocationBuilder {
 
 impl AuxBuildInvocationBuilder {
     fn new() -> Self {
-        let mut cmd = setup_common_build_cmd();
+        let mut cmd = setup_common_build_cmd("RUSTC");
         cmd.arg("--crate-type=lib");
         Self { cmd }
     }
 
     pub fn arg(&mut self, arg: &str) -> &mut AuxBuildInvocationBuilder {
+        self.cmd.arg(arg);
+        self
+    }
+
+    #[track_caller]
+    pub fn run(&mut self) -> Output {
+        let caller_location = std::panic::Location::caller();
+        let caller_line_number = caller_location.line();
+
+        let output = self.cmd.output().unwrap();
+        if !output.status.success() {
+            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+        }
+        output
+    }
+}
+
+#[derive(Debug)]
+pub struct Rustdoc {
+    cmd: Command,
+}
+
+impl Rustdoc {
+    fn new() -> Self {
+        let cmd = setup_common_build_cmd("RUSTDOC");
+        Self { cmd }
+    }
+
+    pub fn arg(&mut self, arg: &str) -> &mut Self {
         self.cmd.arg(arg);
         self
     }
