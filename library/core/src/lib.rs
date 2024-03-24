@@ -170,6 +170,8 @@
 #![feature(const_try)]
 #![feature(const_type_id)]
 #![feature(const_type_name)]
+#![feature(const_typed_swap)]
+#![feature(const_ub_checks)]
 #![feature(const_unicode_case_lookup)]
 #![feature(const_unsafecell_get_mut)]
 #![feature(const_waker)]
@@ -189,7 +191,6 @@
 #![feature(ptr_metadata)]
 #![feature(set_ptr_value)]
 #![feature(slice_ptr_get)]
-#![feature(slice_split_at_unchecked)]
 #![feature(split_at_checked)]
 #![feature(str_internals)]
 #![feature(str_split_inclusive_remainder)]
@@ -366,6 +367,7 @@ pub mod hint;
 pub mod intrinsics;
 pub mod mem;
 pub mod ptr;
+mod ub_checks;
 
 /* Core language traits */
 

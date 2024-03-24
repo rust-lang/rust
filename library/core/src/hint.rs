@@ -4,6 +4,7 @@
 //! Hints may be compile time or runtime.
 
 use crate::intrinsics;
+use crate::ub_checks;
 
 /// Informs the compiler that the site which is calling this function is not
 /// reachable, possibly enabling further optimizations.
@@ -98,7 +99,7 @@ use crate::intrinsics;
 #[rustc_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn unreachable_unchecked() -> ! {
-    intrinsics::assert_unsafe_precondition!(
+    ub_checks::assert_unsafe_precondition!(
         check_language_ub,
         "hint::unreachable_unchecked must never be reached",
         () => false
@@ -148,7 +149,7 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 pub const unsafe fn assert_unchecked(cond: bool) {
     // SAFETY: The caller promised `cond` is true.
     unsafe {
-        intrinsics::assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "hint::assert_unchecked must never be called when the condition is false",
             (cond: bool = cond) => cond,

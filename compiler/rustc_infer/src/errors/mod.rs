@@ -1339,15 +1339,12 @@ pub enum TypeErrorAdditionalDiags {
         span: Span,
         code: String,
     },
-    #[suggestion(
-        infer_meant_str_literal,
-        code = "\"{code}\"",
-        applicability = "machine-applicable"
-    )]
+    #[multipart_suggestion(infer_meant_str_literal, applicability = "machine-applicable")]
     MeantStrLiteral {
-        #[primary_span]
-        span: Span,
-        code: String,
+        #[suggestion_part(code = "\"")]
+        start: Span,
+        #[suggestion_part(code = "\"")]
+        end: Span,
     },
     #[suggestion(
         infer_consider_specifying_length,

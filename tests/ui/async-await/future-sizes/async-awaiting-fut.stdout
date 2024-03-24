@@ -2,7 +2,7 @@ print-type-size type: `{async fn body@$DIR/async-awaiting-fut.rs:21:21: 24:2}`: 
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 0 bytes
 print-type-size     variant `Suspend0`: 3077 bytes
-print-type-size         local `.__awaitee`: 3077 bytes
+print-type-size         local `.__awaitee`: 3077 bytes, type: {async fn body@$DIR/async-awaiting-fut.rs:10:64: 19:2}
 print-type-size     variant `Returned`: 0 bytes
 print-type-size     variant `Panicked`: 0 bytes
 print-type-size type: `std::mem::ManuallyDrop<{async fn body@$DIR/async-awaiting-fut.rs:10:64: 19:2}>`: 3077 bytes, alignment: 1 bytes
@@ -19,19 +19,19 @@ print-type-size     variant `Suspend0`: 2052 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size         padding: 1 bytes
 print-type-size         local `.fut`: 1025 bytes, alignment: 1 bytes
-print-type-size         local `..coroutine_field4`: 1 bytes
-print-type-size         local `.__awaitee`: 1 bytes
+print-type-size         local `..coroutine_field4`: 1 bytes, type: bool
+print-type-size         local `.__awaitee`: 1 bytes, type: {async fn body@$DIR/async-awaiting-fut.rs:6:17: 6:19}
 print-type-size     variant `Suspend1`: 3076 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size         padding: 1026 bytes
-print-type-size         local `..coroutine_field4`: 1 bytes, alignment: 1 bytes
-print-type-size         local `.__awaitee`: 1025 bytes
+print-type-size         local `..coroutine_field4`: 1 bytes, alignment: 1 bytes, type: bool
+print-type-size         local `.__awaitee`: 1025 bytes, type: {async fn body@$DIR/async-awaiting-fut.rs:8:35: 8:37}
 print-type-size     variant `Suspend2`: 2052 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size         padding: 1 bytes
 print-type-size         local `.fut`: 1025 bytes, alignment: 1 bytes
-print-type-size         local `..coroutine_field4`: 1 bytes
-print-type-size         local `.__awaitee`: 1 bytes
+print-type-size         local `..coroutine_field4`: 1 bytes, type: bool
+print-type-size         local `.__awaitee`: 1 bytes, type: {async fn body@$DIR/async-awaiting-fut.rs:6:17: 6:19}
 print-type-size     variant `Returned`: 1025 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size     variant `Panicked`: 1025 bytes

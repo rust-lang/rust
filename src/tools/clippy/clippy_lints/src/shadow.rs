@@ -241,7 +241,7 @@ fn find_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'
                 ExprKind::Match(e, _, _) | ExprKind::Let(&LetExpr { init: e, .. }) => Some(e),
                 _ => None,
             },
-            Node::Local(local) => local.init,
+            Node::LetStmt(local) => local.init,
             _ => None,
         };
         return init;

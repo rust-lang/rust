@@ -20,30 +20,13 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     sym::unreachable => {
                         terminator.kind = TerminatorKind::Unreachable;
                     }
-                    sym::check_language_ub => {
+                    sym::ub_checks => {
                         let target = target.unwrap();
                         block.statements.push(Statement {
                             source_info: terminator.source_info,
                             kind: StatementKind::Assign(Box::new((
                                 *destination,
-                                Rvalue::NullaryOp(
-                                    NullOp::UbCheck(UbKind::LanguageUb),
-                                    tcx.types.bool,
-                                ),
-                            ))),
-                        });
-                        terminator.kind = TerminatorKind::Goto { target };
-                    }
-                    sym::check_library_ub => {
-                        let target = target.unwrap();
-                        block.statements.push(Statement {
-                            source_info: terminator.source_info,
-                            kind: StatementKind::Assign(Box::new((
-                                *destination,
-                                Rvalue::NullaryOp(
-                                    NullOp::UbCheck(UbKind::LibraryUb),
-                                    tcx.types.bool,
-                                ),
+                                Rvalue::NullaryOp(NullOp::UbChecks, tcx.types.bool),
                             ))),
                         });
                         terminator.kind = TerminatorKind::Goto { target };

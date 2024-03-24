@@ -2341,7 +2341,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug_assert!(!a.is_empty());
             self.attrs.insert(hir_id.local_id, a);
         }
-        let local = hir::Local {
+        let local = hir::LetStmt {
             hir_id,
             init,
             pat,

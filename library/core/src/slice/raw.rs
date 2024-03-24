@@ -1,12 +1,10 @@
 //! Free functions to create `&[T]` and `&mut [T]`.
 
 use crate::array;
-use crate::intrinsics::{
-    assert_unsafe_precondition, is_aligned_and_not_null, is_valid_allocation_size,
-};
 use crate::mem::{align_of, size_of};
 use crate::ops::Range;
 use crate::ptr;
+use crate::ub_checks;
 
 /// Forms a slice from a pointer and a length.
 ///
@@ -95,7 +93,7 @@ use crate::ptr;
 pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
     unsafe {
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "slice::from_raw_parts requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
             (
@@ -104,8 +102,8 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
                 align: usize = align_of::<T>(),
                 len: usize = len,
             ) =>
-                is_aligned_and_not_null(data, align)
-                && is_valid_allocation_size(size, len)
+            ub_checks::is_aligned_and_not_null(data, align)
+                && ub_checks::is_valid_allocation_size(size, len)
         );
         &*ptr::slice_from_raw_parts(data, len)
     }
@@ -149,7 +147,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
     unsafe {
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "slice::from_raw_parts_mut requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
             (
@@ -158,8 +156,8 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
                 align: usize = align_of::<T>(),
                 len: usize = len,
             ) =>
-                is_aligned_and_not_null(data, align)
-                && is_valid_allocation_size(size, len)
+            ub_checks::is_aligned_and_not_null(data, align)
+                && ub_checks::is_valid_allocation_size(size, len)
         );
         &mut *ptr::slice_from_raw_parts_mut(data, len)
     }

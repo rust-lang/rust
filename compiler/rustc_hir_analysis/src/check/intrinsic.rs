@@ -127,8 +127,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::variant_count
         | sym::is_val_statically_known
         | sym::ptr_mask
-        | sym::check_language_ub
-        | sym::check_library_ub
+        | sym::ub_checks
         | sym::fadd_algebraic
         | sym::fsub_algebraic
         | sym::fmul_algebraic
@@ -484,6 +483,8 @@ pub fn check_intrinsic_type(
                 (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], Ty::new_unit(tcx))
             }
 
+            sym::typed_swap => (1, 1, vec![Ty::new_mut_ptr(tcx, param(0)); 2], Ty::new_unit(tcx)),
+
             sym::discriminant_value => {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::DiscriminantKind, None),
@@ -569,7 +570,7 @@ pub fn check_intrinsic_type(
                 (0, 0, vec![Ty::new_imm_ptr(tcx, Ty::new_unit(tcx))], tcx.types.usize)
             }
 
-            sym::check_language_ub | sym::check_library_ub => (0, 1, Vec::new(), tcx.types.bool),
+            sym::ub_checks => (0, 1, Vec::new(), tcx.types.bool),
 
             sym::simd_eq
             | sym::simd_ne

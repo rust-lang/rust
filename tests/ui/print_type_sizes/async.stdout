@@ -5,7 +5,7 @@ print-type-size         upvar `.arg`: 8192 bytes
 print-type-size     variant `Suspend0`: 16385 bytes
 print-type-size         upvar `.arg`: 8192 bytes
 print-type-size         local `.arg`: 8192 bytes
-print-type-size         local `.__awaitee`: 1 bytes
+print-type-size         local `.__awaitee`: 1 bytes, type: {async fn body@$DIR/async.rs:8:17: 8:19}
 print-type-size     variant `Returned`: 8192 bytes
 print-type-size         upvar `.arg`: 8192 bytes
 print-type-size     variant `Panicked`: 8192 bytes

@@ -15,7 +15,7 @@ macro_rules! late_lint_methods {
             fn check_foreign_item(a: &'tcx rustc_hir::ForeignItem<'tcx>);
             fn check_item(a: &'tcx rustc_hir::Item<'tcx>);
             fn check_item_post(a: &'tcx rustc_hir::Item<'tcx>);
-            fn check_local(a: &'tcx rustc_hir::Local<'tcx>);
+            fn check_local(a: &'tcx rustc_hir::LetStmt<'tcx>);
             fn check_block(a: &'tcx rustc_hir::Block<'tcx>);
             fn check_block_post(a: &'tcx rustc_hir::Block<'tcx>);
             fn check_stmt(a: &'tcx rustc_hir::Stmt<'tcx>);

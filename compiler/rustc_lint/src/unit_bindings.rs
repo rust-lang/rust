@@ -46,7 +46,7 @@ declare_lint! {
 declare_lint_pass!(UnitBindings => [UNIT_BINDINGS]);
 
 impl<'tcx> LateLintPass<'tcx> for UnitBindings {
-    fn check_local(&mut self, cx: &crate::LateContext<'tcx>, local: &'tcx hir::Local<'tcx>) {
+    fn check_local(&mut self, cx: &crate::LateContext<'tcx>, local: &'tcx hir::LetStmt<'tcx>) {
         // Suppress warning if user:
         // - explicitly ascribes a type to the pattern
         // - explicitly wrote `let pat = ();`

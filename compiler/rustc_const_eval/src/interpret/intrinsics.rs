@@ -21,8 +21,8 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Size;
 
 use super::{
-    util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, MPlaceTy, Machine, OpTy,
-    Pointer,
+    memory::MemoryKind, util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx,
+    MPlaceTy, Machine, OpTy, Pointer,
 };
 
 use crate::fluent_generated as fluent;
@@ -414,6 +414,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
                 self.write_scalar(result, dest)?;
             }
+            sym::typed_swap => {
+                self.typed_swap_intrinsic(&args[0], &args[1])?;
+            }
 
             sym::vtable_size => {
                 let ptr = self.read_pointer(&args[0])?;
@@ -605,6 +608,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.check_ptr_align(dst, align)?;
 
         self.mem_copy(src, dst, size, nonoverlapping)
+    }
+
+    /// Does a *typed* swap of `*left` and `*right`.
+    fn typed_swap_intrinsic(
+        &mut self,
+        left: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        right: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+    ) -> InterpResult<'tcx> {
+        let left = self.deref_pointer(left)?;
+        let right = self.deref_pointer(right)?;
+        debug_assert_eq!(left.layout, right.layout);
+        let kind = MemoryKind::Stack;
+        let temp = self.allocate(left.layout, kind)?;
+        self.copy_op(&left, &temp)?;
+        self.copy_op(&right, &left)?;
+        self.copy_op(&temp, &right)?;
+        self.deallocate_ptr(temp.ptr(), None, kind)?;
+        Ok(())
     }
 
     pub(crate) fn write_bytes_intrinsic(

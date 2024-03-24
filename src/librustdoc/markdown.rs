@@ -3,11 +3,13 @@ use std::fs::{create_dir_all, read_to_string, File};
 use std::io::prelude::*;
 use std::path::Path;
 
+use tempfile::tempdir;
+
 use rustc_span::edition::Edition;
 use rustc_span::DUMMY_SP;
 
 use crate::config::{Options, RenderOptions};
-use crate::doctest::{Collector, GlobalTestOptions};
+use crate::doctest::{generate_args_file, Collector, GlobalTestOptions};
 use crate::html::escape::Escape;
 use crate::html::markdown;
 use crate::html::markdown::{
@@ -146,6 +148,12 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
         .map_err(|err| format!("{input}: {err}", input = options.input.display()))?;
     let mut opts = GlobalTestOptions::default();
     opts.no_crate_inject = true;
+
+    let temp_dir =
+        tempdir().map_err(|error| format!("failed to create temporary directory: {error:?}"))?;
+    let file_path = temp_dir.path().join("rustdoc-cfgs");
+    generate_args_file(&file_path, &options)?;
+
     let mut collector = Collector::new(
         options.input.display().to_string(),
         options.clone(),
@@ -154,6 +162,7 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
         None,
         Some(options.input),
         options.enable_per_target_ignores,
+        file_path,
     );
     collector.set_position(DUMMY_SP);
     let codes = ErrorCodes::from(options.unstable_features.is_nightly_build());

@@ -258,17 +258,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let val = layout.offset_of_subfield(self, fields.iter()).bytes();
                         Scalar::from_target_usize(val, self)
                     }
-                    mir::NullOp::UbCheck(kind) => {
-                        // We want to enable checks for library UB, because the interpreter doesn't
-                        // know about those on its own.
-                        // But we want to disable checks for language UB, because the interpreter
-                        // has its own better checks for that.
-                        let should_check = match kind {
-                            mir::UbKind::LibraryUb => self.tcx.sess.opts.debug_assertions,
-                            mir::UbKind::LanguageUb => false,
-                        };
-                        Scalar::from_bool(should_check)
-                    }
+                    mir::NullOp::UbChecks => Scalar::from_bool(self.tcx.sess.opts.debug_assertions),
                 };
                 self.write_scalar(val, &dest)?;
             }

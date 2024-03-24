@@ -2,7 +2,6 @@
 #![crate_type = "lib"]
 #![feature(unchecked_shifts)]
 
-//@ ignore-debug: the debug assertions prevent the inlining we are testing for
 //@ compile-flags: -Zmir-opt-level=2 -Zinline-mir
 
 // EMIT_MIR unchecked_shifts.unchecked_shl_unsigned_smaller.Inline.diff

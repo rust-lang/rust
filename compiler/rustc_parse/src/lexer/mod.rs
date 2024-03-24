@@ -63,6 +63,7 @@ pub(crate) fn parse_token_trees<'psess, 'src>(
         cursor,
         override_span,
         nbsp_is_whitespace: false,
+        last_lifetime: None,
     };
     let (stream, res, unmatched_delims) =
         tokentrees::TokenTreesReader::parse_all_token_trees(string_reader);
@@ -105,6 +106,10 @@ struct StringReader<'psess, 'src> {
     /// in this file, it's safe to treat further occurrences of the non-breaking
     /// space character as whitespace.
     nbsp_is_whitespace: bool,
+
+    /// Track the `Span` for the leading `'` of the last lifetime. Used for
+    /// diagnostics to detect possible typo where `"` was meant.
+    last_lifetime: Option<Span>,
 }
 
 impl<'psess, 'src> StringReader<'psess, 'src> {
@@ -129,6 +134,18 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
             self.pos = self.pos + BytePos(token.len);
 
             debug!("next_token: {:?}({:?})", token.kind, self.str_from(start));
+
+            if let rustc_lexer::TokenKind::Semi
+            | rustc_lexer::TokenKind::LineComment { .. }
+            | rustc_lexer::TokenKind::BlockComment { .. }
+            | rustc_lexer::TokenKind::CloseParen
+            | rustc_lexer::TokenKind::CloseBrace
+            | rustc_lexer::TokenKind::CloseBracket = token.kind
+            {
+                // Heuristic: we assume that it is unlikely we're dealing with an unterminated
+                // string surrounded by single quotes.
+                self.last_lifetime = None;
+            }
 
             // Now "cook" the token, converting the simple `rustc_lexer::TokenKind` enum into a
             // rich `rustc_ast::TokenKind`. This turns strings into interned symbols and runs
@@ -247,6 +264,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     // expansion purposes. See #12512 for the gory details of why
                     // this is necessary.
                     let lifetime_name = self.str_from(start);
+                    self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
                     if starts_with_number {
                         let span = self.mk_sp(start, self.pos);
                         self.dcx().struct_err("lifetimes cannot start with a number")
@@ -395,10 +413,21 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
         match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
-                    self.dcx()
+                    let mut err = self
+                        .dcx()
                         .struct_span_fatal(self.mk_sp(start, end), "unterminated character literal")
-                        .with_code(E0762)
-                        .emit()
+                        .with_code(E0762);
+                    if let Some(lt_sp) = self.last_lifetime {
+                        err.multipart_suggestion(
+                            "if you meant to write a string literal, use double quotes",
+                            vec![
+                                (lt_sp, "\"".to_string()),
+                                (self.mk_sp(start, start + BytePos(1)), "\"".to_string()),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    err.emit()
                 }
                 self.cook_unicode(token::Char, Mode::Char, start, end, 1, 1) // ' '
             }
@@ -669,15 +698,33 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
         let expn_data = prefix_span.ctxt().outer_expn_data();
 
         if expn_data.edition >= Edition::Edition2021 {
+            let mut silence = false;
             // In Rust 2021, this is a hard error.
             let sugg = if prefix == "rb" {
                 Some(errors::UnknownPrefixSugg::UseBr(prefix_span))
             } else if expn_data.is_root() {
-                Some(errors::UnknownPrefixSugg::Whitespace(prefix_span.shrink_to_hi()))
+                if self.cursor.first() == '\''
+                    && let Some(start) = self.last_lifetime
+                    && self.cursor.third() != '\''
+                {
+                    // An "unclosed `char`" error will be emitted already, silence redundant error.
+                    silence = true;
+                    Some(errors::UnknownPrefixSugg::MeantStr {
+                        start,
+                        end: self.mk_sp(self.pos, self.pos + BytePos(1)),
+                    })
+                } else {
+                    Some(errors::UnknownPrefixSugg::Whitespace(prefix_span.shrink_to_hi()))
+                }
             } else {
                 None
             };
-            self.dcx().emit_err(errors::UnknownPrefix { span: prefix_span, prefix, sugg });
+            let err = errors::UnknownPrefix { span: prefix_span, prefix, sugg };
+            if silence {
+                self.dcx().create_err(err).delay_as_bug();
+            } else {
+                self.dcx().emit_err(err);
+            }
         } else {
             // Before Rust 2021, only emit a lint for migration.
             self.psess.buffer_lint_with_diagnostic(

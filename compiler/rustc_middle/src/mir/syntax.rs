@@ -1367,16 +1367,9 @@ pub enum NullOp<'tcx> {
     AlignOf,
     /// Returns the offset of a field
     OffsetOf(&'tcx List<(VariantIdx, FieldIdx)>),
-    /// Returns whether we want to check for library UB or language UB at monomorphization time.
-    /// Both kinds of UB evaluate to `true` in codegen, and only library UB evalutes to `true` in
-    /// const-eval/Miri, because the interpreter has its own better checks for language UB.
-    UbCheck(UbKind),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-pub enum UbKind {
-    LanguageUb,
-    LibraryUb,
+    /// Returns whether we want to check for UB.
+    /// This returns the value of `cfg!(debug_assertions)` at monomorphization time.
+    UbChecks,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
