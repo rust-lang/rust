@@ -654,7 +654,7 @@ fn resolve_local<'tcx>(
         // & expression, and its lifetime would be extended to the end of the block (due
         // to a different rule, not the below code).
         match pat.kind {
-            PatKind::Binding(hir::BindingAnnotation(hir::ByRef::Yes, _), ..) => true,
+            PatKind::Binding(hir::BindingAnnotation(hir::ByRef::Yes(_), _), ..) => true,
 
             PatKind::Struct(_, field_pats, _) => field_pats.iter().any(|fp| is_binding_pat(fp.pat)),
 

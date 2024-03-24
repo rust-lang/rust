@@ -3,8 +3,8 @@ use crate::{
     infer::canonical::Canonical,
     traits::ObligationCause,
     ty::{
-        self, tls, BindingMode, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData,
-        GenericArgKind, GenericArgs, GenericArgsRef, Ty, UserArgs,
+        self, tls, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind,
+        GenericArgs, GenericArgsRef, Ty, UserArgs,
     },
 };
 use rustc_data_structures::{
@@ -12,12 +12,12 @@ use rustc_data_structures::{
     unord::{ExtendUnord, UnordItems, UnordSet},
 };
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::{
+    self as hir,
     def::{DefKind, Res},
     def_id::{DefId, LocalDefId, LocalDefIdMap},
     hir_id::OwnerId,
-    HirId, ItemLocalId, ItemLocalMap, ItemLocalSet,
+    BindingAnnotation, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet,
 };
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::HashStable;
@@ -78,8 +78,8 @@ pub struct TypeckResults<'tcx> {
 
     adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 
-    /// Stores the actual binding mode for all instances of hir::BindingAnnotation.
-    pat_binding_modes: ItemLocalMap<BindingMode>,
+    /// Stores the actual binding mode for all instances of [`BindingAnnotation`].
+    pat_binding_modes: ItemLocalMap<BindingAnnotation>,
 
     /// Stores the types which were implicitly dereferenced in pattern binding modes
     /// for later usage in THIR lowering. For example,
@@ -408,17 +408,22 @@ impl<'tcx> TypeckResults<'tcx> {
         matches!(self.type_dependent_defs().get(expr.hir_id), Some(Ok((DefKind::AssocFn, _))))
     }
 
-    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {
+    pub fn extract_binding_mode(
+        &self,
+        s: &Session,
+        id: HirId,
+        sp: Span,
+    ) -> Option<BindingAnnotation> {
         self.pat_binding_modes().get(id).copied().or_else(|| {
             s.dcx().span_bug(sp, "missing binding mode");
         })
     }
 
-    pub fn pat_binding_modes(&self) -> LocalTableInContext<'_, BindingMode> {
+    pub fn pat_binding_modes(&self) -> LocalTableInContext<'_, BindingAnnotation> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.pat_binding_modes }
     }
 
-    pub fn pat_binding_modes_mut(&mut self) -> LocalTableInContextMut<'_, BindingMode> {
+    pub fn pat_binding_modes_mut(&mut self) -> LocalTableInContextMut<'_, BindingAnnotation> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_binding_modes }
     }
 

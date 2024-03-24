@@ -11,9 +11,8 @@ params: [
                 span: $DIR/thir-tree-match.rs:15:14: 15:17 (#0)
                 kind: PatKind {
                     Binding {
-                        mutability: Not
                         name: "foo"
-                        mode: ByValue
+                        mode: BindingAnnotation(No, Not)
                         var: LocalVarId(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).2))
                         ty: Foo
                         is_primary: true

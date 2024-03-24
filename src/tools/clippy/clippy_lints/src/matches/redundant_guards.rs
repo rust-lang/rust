@@ -182,7 +182,7 @@ fn get_pat_binding<'tcx>(
             if let PatKind::Binding(bind_annot, hir_id, ident, _) = pat.kind
                 && hir_id == local
             {
-                if matches!(bind_annot.0, rustc_ast::ByRef::Yes) {
+                if matches!(bind_annot.0, rustc_ast::ByRef::Yes(_)) {
                     let _ = byref_ident.insert(ident);
                 }
                 // the second call of `replace()` returns a `Some(span)`, meaning a multi-binding pattern

@@ -14,6 +14,7 @@ use rustc_data_structures::{
     fx::{FxHashSet, FxIndexMap, FxIndexSet},
     stack::ensure_sufficient_stack,
 };
+use rustc_hir::{BindingAnnotation, ByRef};
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};
@@ -554,7 +555,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         match irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
-            PatKind::Binding { mode: BindingMode::ByValue, var, subpattern: None, .. } => {
+            PatKind::Binding {
+                mode: BindingAnnotation(ByRef::No, _),
+                var,
+                subpattern: None,
+                ..
+            } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
                 unpack!(block = self.expr_into_dest(place, block, initializer_id));
@@ -580,7 +586,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     box Pat {
                         kind:
                             PatKind::Binding {
-                                mode: BindingMode::ByValue, var, subpattern: None, ..
+                                mode: BindingAnnotation(ByRef::No, _),
+                                var,
+                                subpattern: None,
+                                ..
                             },
                         ..
                     },
@@ -720,7 +729,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.visit_primary_bindings(
             pattern,
             UserTypeProjections::none(),
-            &mut |this, mutability, name, mode, var, span, ty, user_ty| {
+            &mut |this, name, mode, var, span, ty, user_ty| {
                 if visibility_scope.is_none() {
                     visibility_scope =
                         Some(this.new_source_scope(scope_span, LintLevel::Inherited, None));
@@ -730,7 +739,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.declare_binding(
                     source_info,
                     visibility_scope,
-                    mutability,
                     name,
                     mode,
                     var,
@@ -818,9 +826,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         pattern_user_ty: UserTypeProjections,
         f: &mut impl FnMut(
             &mut Self,
-            Mutability,
             Symbol,
-            BindingMode,
+            BindingAnnotation,
             LocalVarId,
             Span,
             Ty<'tcx>,
@@ -832,18 +839,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             pattern, pattern_user_ty
         );
         match pattern.kind {
-            PatKind::Binding {
-                mutability,
-                name,
-                mode,
-                var,
-                ty,
-                ref subpattern,
-                is_primary,
-                ..
-            } => {
+            PatKind::Binding { name, mode, var, ty, ref subpattern, is_primary, .. } => {
                 if is_primary {
-                    f(self, mutability, name, mode, var, pattern.span, ty, pattern_user_ty.clone());
+                    f(self, name, mode, var, pattern.span, ty, pattern_user_ty.clone());
                 }
                 if let Some(subpattern) = subpattern.as_ref() {
                     self.visit_primary_bindings(subpattern, pattern_user_ty, f);
@@ -1074,7 +1072,7 @@ struct Binding<'tcx> {
     span: Span,
     source: Place<'tcx>,
     var_id: LocalVarId,
-    binding_mode: BindingMode,
+    binding_mode: BindingAnnotation,
 }
 
 /// Indicates that the type of `source` must be a subtype of the
@@ -2085,9 +2083,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings);
 
             self.bind_matched_candidate_for_guard(block, schedule_drops, bindings.clone());
-            let guard_frame = GuardFrame {
-                locals: bindings.map(|b| GuardFrameLocal::new(b.var_id, b.binding_mode)).collect(),
-            };
+            let guard_frame =
+                GuardFrame { locals: bindings.map(|b| GuardFrameLocal::new(b.var_id)).collect() };
             debug!("entering guard building context: {:?}", guard_frame);
             self.guard_context.push(guard_frame);
 
@@ -2164,7 +2161,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 .iter()
                 .flat_map(|d| &d.bindings)
                 .chain(&candidate.extra_data.bindings)
-                .filter(|binding| matches!(binding.binding_mode, BindingMode::ByValue));
+                .filter(|binding| matches!(binding.binding_mode.0, ByRef::No));
             // Read all of the by reference bindings to ensure that the
             // place they refer to can't be modified by the guard.
             for binding in by_value_bindings.clone() {
@@ -2251,12 +2248,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 RefWithinGuard,
                 schedule_drops,
             );
-            match binding.binding_mode {
-                BindingMode::ByValue => {
+            match binding.binding_mode.0 {
+                ByRef::No => {
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, binding.source);
                     self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
                 }
-                BindingMode::ByRef(borrow_kind) => {
+                ByRef::Yes(mutbl) => {
                     let value_for_arm = self.storage_live_binding(
                         block,
                         binding.var_id,
@@ -2265,7 +2262,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         schedule_drops,
                     );
 
-                    let rvalue = Rvalue::Ref(re_erased, borrow_kind, binding.source);
+                    let rvalue =
+                        Rvalue::Ref(re_erased, util::ref_pat_borrow_kind(mutbl), binding.source);
                     self.cfg.push_assign(block, source_info, value_for_arm, rvalue);
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, value_for_arm);
                     self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
@@ -2306,10 +2304,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if schedule_drops {
                 self.schedule_drop_for_binding(binding.var_id, binding.span, OutsideGuard);
             }
-            let rvalue = match binding.binding_mode {
-                BindingMode::ByValue => Rvalue::Use(self.consume_by_copy_or_move(binding.source)),
-                BindingMode::ByRef(borrow_kind) => {
-                    Rvalue::Ref(re_erased, borrow_kind, binding.source)
+            let rvalue = match binding.binding_mode.0 {
+                ByRef::No => Rvalue::Use(self.consume_by_copy_or_move(binding.source)),
+                ByRef::Yes(mutbl) => {
+                    Rvalue::Ref(re_erased, util::ref_pat_borrow_kind(mutbl), binding.source)
                 }
             };
             self.cfg.push_assign(block, source_info, local, rvalue);
@@ -2326,9 +2324,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         source_info: SourceInfo,
         visibility_scope: SourceScope,
-        mutability: Mutability,
         name: Symbol,
-        mode: BindingMode,
+        mode: BindingAnnotation,
         var_id: LocalVarId,
         var_ty: Ty<'tcx>,
         user_ty: UserTypeProjections,
@@ -2338,18 +2335,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         let debug_source_info = SourceInfo { span: source_info.span, scope: visibility_scope };
-        let binding_mode = match mode {
-            BindingMode::ByValue => ty::BindingMode::BindByValue(mutability),
-            BindingMode::ByRef(_) => ty::BindingMode::BindByReference(mutability),
-        };
         let local = LocalDecl {
-            mutability,
+            mutability: mode.1,
             ty: var_ty,
             user_ty: if user_ty.is_empty() { None } else { Some(Box::new(user_ty)) },
             source_info,
             local_info: ClearCrossCrate::Set(Box::new(LocalInfo::User(BindingForm::Var(
                 VarBindingForm {
-                    binding_mode,
+                    binding_mode: mode,
                     // hypothetically, `visit_primary_bindings` could try to unzip
                     // an outermost hir::Ty as we descend, matching up
                     // idents in pat; but complex w/ unclear UI payoff.

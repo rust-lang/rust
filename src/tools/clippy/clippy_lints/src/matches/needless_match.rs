@@ -178,7 +178,7 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
                 },
             )),
         ) => {
-            return !matches!(annot, BindingAnnotation(ByRef::Yes, _)) && pat_ident.name == first_seg.ident.name;
+            return !matches!(annot, BindingAnnotation(ByRef::Yes(_), _)) && pat_ident.name == first_seg.ident.name;
         },
         // Example: `Custom::TypeA => Custom::TypeB`, or `None => None`
         (PatKind::Path(QPath::Resolved(_, p_path)), ExprKind::Path(QPath::Resolved(_, e_path))) => {

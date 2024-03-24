@@ -653,9 +653,6 @@ parse_question_mark_in_type = invalid `?` in type
 parse_recover_import_as_use = expected item, found {$token_name}
     .suggestion = items are imported using the `use` keyword
 
-parse_ref_mut_order_incorrect = the order of `mut` and `ref` is incorrect
-    .suggestion = try switching the order
-
 parse_remove_let = expected pattern, found `let`
     .suggestion = remove the unnecessary `let` keyword
 

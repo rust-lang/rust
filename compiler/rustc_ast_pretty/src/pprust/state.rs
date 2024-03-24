@@ -1545,11 +1545,14 @@ impl<'a> State<'a> {
             PatKind::Wild => self.word("_"),
             PatKind::Never => self.word("!"),
             PatKind::Ident(BindingAnnotation(by_ref, mutbl), ident, sub) => {
-                if *by_ref == ByRef::Yes {
-                    self.word_nbsp("ref");
-                }
                 if mutbl.is_mut() {
                     self.word_nbsp("mut");
+                }
+                if let ByRef::Yes(rmutbl) = by_ref {
+                    self.word_nbsp("ref");
+                    if rmutbl.is_mut() {
+                        self.word_nbsp("mut");
+                    }
                 }
                 self.print_ident(*ident);
                 if let Some(p) = sub {

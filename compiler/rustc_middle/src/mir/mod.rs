@@ -17,8 +17,10 @@ use rustc_data_structures::captures::Captures;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
-use rustc_hir::{self, CoroutineDesugaring, CoroutineKind, ImplicitSelfKind};
-use rustc_hir::{self as hir, HirId};
+use rustc_hir::{
+    self as hir, BindingAnnotation, ByRef, CoroutineDesugaring, CoroutineKind, HirId,
+    ImplicitSelfKind,
+};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::{FieldIdx, VariantIdx};
@@ -991,8 +993,8 @@ pub enum LocalKind {
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct VarBindingForm<'tcx> {
-    /// Is variable bound via `x`, `mut x`, `ref x`, or `ref mut x`?
-    pub binding_mode: ty::BindingMode,
+    /// Is variable bound via `x`, `mut x`, `ref x`, `ref mut x`, `mut ref x`, or `mut ref mut x`?
+    pub binding_mode: BindingAnnotation,
     /// If an explicit type was provided for this variable binding,
     /// this holds the source Span of that type.
     ///
@@ -1217,7 +1219,7 @@ impl<'tcx> LocalDecl<'tcx> {
             self.local_info(),
             LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
-                    binding_mode: ty::BindingMode::BindByValue(_),
+                    binding_mode: BindingAnnotation(ByRef::No, _),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
@@ -1234,7 +1236,7 @@ impl<'tcx> LocalDecl<'tcx> {
             self.local_info(),
             LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
-                    binding_mode: ty::BindingMode::BindByValue(_),
+                    binding_mode: BindingAnnotation(ByRef::No, _),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,

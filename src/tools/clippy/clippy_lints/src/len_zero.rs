@@ -384,8 +384,8 @@ impl LenOutput {
 
     fn expected_sig(self, self_kind: ImplicitSelfKind) -> String {
         let self_ref = match self_kind {
-            ImplicitSelfKind::ImmRef => "&",
-            ImplicitSelfKind::MutRef => "&mut ",
+            ImplicitSelfKind::RefImm => "&",
+            ImplicitSelfKind::RefMut => "&mut ",
             _ => "",
         };
         match self {
@@ -411,8 +411,8 @@ fn check_is_empty_sig<'tcx>(
         [arg, res] if len_output.matches_is_empty_output(cx, *res) => {
             matches!(
                 (arg.kind(), self_kind),
-                (ty::Ref(_, _, Mutability::Not), ImplicitSelfKind::ImmRef)
-                    | (ty::Ref(_, _, Mutability::Mut), ImplicitSelfKind::MutRef)
+                (ty::Ref(_, _, Mutability::Not), ImplicitSelfKind::RefImm)
+                    | (ty::Ref(_, _, Mutability::Mut), ImplicitSelfKind::RefMut)
             ) || (!arg.is_ref() && matches!(self_kind, ImplicitSelfKind::Imm | ImplicitSelfKind::Mut))
         },
         _ => false,

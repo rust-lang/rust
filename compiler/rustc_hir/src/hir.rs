@@ -2739,9 +2739,9 @@ pub enum ImplicitSelfKind {
     /// Represents a `fn x(mut self);`.
     Mut,
     /// Represents a `fn x(&self);`.
-    ImmRef,
+    RefImm,
     /// Represents a `fn x(&mut self);`.
-    MutRef,
+    RefMut,
     /// Represents when a function does not have a self argument or
     /// when a function has a `self: X` argument.
     None,

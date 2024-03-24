@@ -75,8 +75,6 @@ pub use rustc_type_ir::ConstKind::{
 };
 pub use rustc_type_ir::*;
 
-pub use self::binding::BindingMode;
-pub use self::binding::BindingMode::*;
 pub use self::closure::{
     is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
     CapturedPlace, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
@@ -122,7 +120,6 @@ pub use self::typeck_results::{
 pub mod _match;
 pub mod abstract_const;
 pub mod adjustment;
-pub mod binding;
 pub mod cast;
 pub mod codec;
 pub mod error;

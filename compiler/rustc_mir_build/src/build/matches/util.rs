@@ -152,15 +152,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                 TestCase::Irrefutable { ascription, binding: None }
             }
 
-            PatKind::Binding {
-                name: _,
-                mutability: _,
-                mode,
-                var,
-                ty: _,
-                ref subpattern,
-                is_primary: _,
-            } => {
+            PatKind::Binding { mode, var, ref subpattern, .. } => {
                 let binding = place.try_to_place(cx).map(|source| super::Binding {
                     span: pattern.span,
                     source,
@@ -344,5 +336,13 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
                 projection: self.cx.tcx.mk_place_elems(proj_base),
             });
         }
+    }
+}
+
+#[must_use]
+pub fn ref_pat_borrow_kind(ref_mutability: Mutability) -> BorrowKind {
+    match ref_mutability {
+        Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
+        Mutability::Not => BorrowKind::Shared,
     }
 }

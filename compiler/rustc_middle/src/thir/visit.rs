@@ -230,15 +230,7 @@ pub fn walk_pat<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         AscribeUserType { subpattern, ascription: _ }
         | Deref { subpattern }
         | DerefPattern { subpattern }
-        | Binding {
-            subpattern: Some(subpattern),
-            mutability: _,
-            mode: _,
-            var: _,
-            ty: _,
-            is_primary: _,
-            name: _,
-        } => visitor.visit_pat(subpattern),
+        | Binding { subpattern: Some(subpattern), .. } => visitor.visit_pat(subpattern),
         Binding { .. } | Wild | Never | Error(_) => {}
         Variant { subpatterns, adt_def: _, args: _, variant_index: _ } | Leaf { subpatterns } => {
             for subpattern in subpatterns {

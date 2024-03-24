@@ -14,14 +14,7 @@ pub fn maybe_expr_static_mut(tcx: TyCtxt<'_>, expr: hir::Expr<'_>) {
         && matches!(borrow_kind, hir::BorrowKind::Ref)
         && let Some(var) = is_path_static_mut(*expr)
     {
-        handle_static_mut_ref(
-            tcx,
-            span,
-            var,
-            span.edition().at_least_rust_2024(),
-            matches!(m, Mutability::Mut),
-            hir_id,
-        );
+        handle_static_mut_ref(tcx, span, var, span.edition().at_least_rust_2024(), m, hir_id);
     }
 }
 
@@ -29,7 +22,7 @@ pub fn maybe_expr_static_mut(tcx: TyCtxt<'_>, expr: hir::Expr<'_>) {
 pub fn maybe_stmt_static_mut(tcx: TyCtxt<'_>, stmt: hir::Stmt<'_>) {
     if let hir::StmtKind::Let(loc) = stmt.kind
         && let hir::PatKind::Binding(ba, _, _, _) = loc.pat.kind
-        && matches!(ba.0, rustc_ast::ByRef::Yes)
+        && let hir::ByRef::Yes(rmutbl) = ba.0
         && let Some(init) = loc.init
         && let Some(var) = is_path_static_mut(*init)
     {
@@ -38,7 +31,7 @@ pub fn maybe_stmt_static_mut(tcx: TyCtxt<'_>, stmt: hir::Stmt<'_>) {
             init.span,
             var,
             loc.span.edition().at_least_rust_2024(),
-            matches!(ba.1, Mutability::Mut),
+            rmutbl,
             stmt.hir_id,
         );
     }
@@ -60,28 +53,27 @@ fn handle_static_mut_ref(
     span: Span,
     var: String,
     e2024: bool,
-    mutable: bool,
+    mutable: Mutability,
     hir_id: hir::HirId,
 ) {
     if e2024 {
-        let (sugg, shared) = if mutable {
+        let (sugg, shared) = if mutable == Mutability::Mut {
             (errors::StaticMutRefSugg::Mut { span, var }, "mutable")
         } else {
             (errors::StaticMutRefSugg::Shared { span, var }, "shared")
         };
         tcx.sess.psess.dcx.emit_err(errors::StaticMutRef { span, sugg, shared });
-        return;
-    }
-
-    let (sugg, shared) = if mutable {
-        (errors::RefOfMutStaticSugg::Mut { span, var }, "mutable")
     } else {
-        (errors::RefOfMutStaticSugg::Shared { span, var }, "shared")
-    };
-    tcx.emit_node_span_lint(
-        STATIC_MUT_REFS,
-        hir_id,
-        span,
-        errors::RefOfMutStatic { span, sugg, shared },
-    );
+        let (sugg, shared) = if mutable == Mutability::Mut {
+            (errors::RefOfMutStaticSugg::Mut { span, var }, "mutable")
+        } else {
+            (errors::RefOfMutStaticSugg::Shared { span, var }, "shared")
+        };
+        tcx.emit_node_span_lint(
+            STATIC_MUT_REFS,
+            hir_id,
+            span,
+            errors::RefOfMutStatic { span, sugg, shared },
+        );
+    }
 }
