@@ -34,6 +34,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Show Rust version (stable toolchain)
+        run: |
+          rustup show
+          rustc -Vv
+          cargo -V
+
       # Cache the global cargo directory, but NOT the local `target` directory which
       # we cannot reuse anyway when the nightly changes (and it grows quite large
       # over time).
@@ -57,7 +63,7 @@ jobs:
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         run: cargo install -f rustup-toolchain-install-master
 
-      - name: Install "master" toolchain
+      - name: Install miri toolchain
         run: |
           if [[ ${{ github.event_name }} == 'schedule' ]]; then
             echo "Building against latest rustc git version"
@@ -65,13 +71,13 @@ jobs:
           fi
           ./miri toolchain --host ${{ matrix.host_target }}
 
-      - name: Show Rust version
+      - name: Show Rust version (miri toolchain)
         run: |
           rustup show
           rustc -Vv
           cargo -V
 
-      - name: Test
+      - name: Test Miri
         run: ./ci/ci.sh
 
   style:
