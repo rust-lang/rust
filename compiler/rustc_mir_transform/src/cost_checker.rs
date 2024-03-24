@@ -7,6 +7,13 @@ const CALL_PENALTY: usize = 25;
 const LANDINGPAD_PENALTY: usize = 50;
 const RESUME_PENALTY: usize = 45;
 
+// While debug info has no runtime cost, when inlining we do need to copy it
+// into the caller MIR, which means we should give it a small cost to represent
+// the compile-time impact of doing that, since just because something has few
+// instructions doesn't necessarily mean it's cheap for us to inline.
+// The backend can, of course, still inline such things later should it so wish.
+const DEBUG_INFO_COST: usize = 1;
+
 /// Verify that the callee body is compatible with the caller.
 #[derive(Clone)]
 pub(crate) struct CostChecker<'b, 'tcx> {
@@ -29,6 +36,12 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
 
     pub fn cost(&self) -> usize {
         self.cost
+    }
+
+    // The MIR inliner doesn't actually call `visit_body`, so it doesn't work
+    // to put this in the visitor below.
+    pub fn before_body(&mut self, body: &Body<'tcx>) {
+        self.cost += body.var_debug_info.len() * DEBUG_INFO_COST;
     }
 
     fn instantiate_ty(&self, v: Ty<'tcx>) -> Ty<'tcx> {
