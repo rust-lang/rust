@@ -213,6 +213,7 @@ impl<'tcx> Inliner<'tcx> {
             MirPhase::Runtime(RuntimePhase::Optimized),
             self.param_env,
             &callee_body,
+            &caller_body,
         )
         .is_empty()
         {
