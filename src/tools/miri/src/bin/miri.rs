@@ -45,12 +45,34 @@ use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
 
 use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields};
 
+fn show_error(msg: &impl std::fmt::Display) -> ! {
+    eprintln!("fatal error: {msg}");
+    std::process::exit(1)
+}
+
+macro_rules! show_error {
+    ($($tt:tt)*) => { show_error(&format_args!($($tt)*)) };
+}
+
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
 }
 
+fn set_default_sysroot_for_target_crate(config: &mut Config) {
+    if config.opts.maybe_sysroot.is_none() {
+        // Overwrite the default.
+        let miri_sysroot = env::var("MIRI_SYSROOT").unwrap_or_else(|_| {
+            show_error!(
+                "Miri was invoked in 'target' mode without `MIRI_SYSROOT` or `--sysroot` being set"
+            )
+        });
+        config.opts.maybe_sysroot = Some(PathBuf::from(miri_sysroot));
+    }
+}
+
 impl rustc_driver::Callbacks for MiriCompilerCalls {
     fn config(&mut self, config: &mut Config) {
+        set_default_sysroot_for_target_crate(config);
         config.override_queries = Some(|_, providers| {
             providers.extern_queries.used_crate_source = |tcx, cnum| {
                 let mut providers = Providers::default();
@@ -130,6 +152,9 @@ struct MiriBeRustCompilerCalls {
 impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
     #[allow(rustc::potential_query_instability)] // rustc_codegen_ssa (where this code is copied from) also allows this lint
     fn config(&mut self, config: &mut Config) {
+        if self.target_crate {
+            set_default_sysroot_for_target_crate(config);
+        }
         if config.opts.prints.is_empty() && self.target_crate {
             // Queries overridden here affect the data stored in `rmeta` files of dependencies,
             // which will be used later in non-`MIRI_BE_RUSTC` mode.
@@ -201,15 +226,6 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
     }
 }
 
-fn show_error(msg: &impl std::fmt::Display) -> ! {
-    eprintln!("fatal error: {msg}");
-    std::process::exit(1)
-}
-
-macro_rules! show_error {
-    ($($tt:tt)*) => { show_error(&format_args!($($tt)*)) };
-}
-
 fn rustc_logger_config() -> rustc_log::LoggerConfig {
     // Start with the usual env vars.
     let mut cfg = rustc_log::LoggerConfig::from_env("RUSTC_LOG");
@@ -271,25 +287,6 @@ fn run_compiler(
     callbacks: &mut (dyn rustc_driver::Callbacks + Send),
     using_internal_features: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> ! {
-    if target_crate {
-        // Miri needs a custom sysroot for target crates.
-        // If no `--sysroot` is given, the `MIRI_SYSROOT` env var is consulted to find where
-        // that sysroot lives, and that is passed to rustc.
-        let sysroot_flag = "--sysroot";
-        if !args.iter().any(|e| e == sysroot_flag) {
-            // Using the built-in default here would be plain wrong, so we *require*
-            // the env var to make sure things make sense.
-            let miri_sysroot = env::var("MIRI_SYSROOT").unwrap_or_else(|_| {
-                show_error!(
-                    "Miri was invoked in 'target' mode without `MIRI_SYSROOT` or `--sysroot` being set"
-                    )
-            });
-
-            args.push(sysroot_flag.to_owned());
-            args.push(miri_sysroot);
-        }
-    }
-
     // Don't insert `MIRI_DEFAULT_ARGS`, in particular, `--cfg=miri`, if we are building
     // a "host" crate. That may cause procedural macros (and probably build scripts) to
     // depend on Miri-only symbols, such as `miri_resolve_frame`:

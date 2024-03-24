@@ -30,7 +30,7 @@ use rustc_span::{BytePos, Pos, SpanData, SpanDecoder, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::iter::TrustedLen;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
@@ -1589,10 +1589,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     /// Proc macro crates don't currently export spans, so this function does not have
     /// to work for them.
     fn imported_source_file(self, source_file_index: u32, sess: &Session) -> ImportedSourceFile {
-        fn filter<'a>(sess: &Session, path: Option<&'a Path>) -> Option<&'a Path> {
+        fn filter<'a>(
+            sess: &Session,
+            real_rust_source_base_dir: &Option<PathBuf>,
+            path: Option<&'a Path>,
+        ) -> Option<&'a Path> {
             path.filter(|_| {
                 // Only spend time on further checks if we have what to translate *to*.
-                sess.opts.real_rust_source_base_dir.is_some()
+                real_rust_source_base_dir.is_some()
                 // Some tests need the translation to be always skipped.
                 && sess.opts.unstable_opts.translate_remapped_path_to_local_path
             })
@@ -1604,6 +1608,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             })
         }
 
+        let real_rust_source_base_dir = sess.real_rust_source_base_dir();
         let try_to_translate_virtual_to_real = |name: &mut rustc_span::FileName| {
             // Translate the virtual `/rustc/$hash` prefix back to a real directory
             // that should hold actual sources, where possible.
@@ -1611,18 +1616,26 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             // NOTE: if you update this, you might need to also update bootstrap's code for generating
             // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
             let virtual_rust_source_base_dir = [
-                filter(sess, option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(Path::new)),
-                filter(sess, sess.opts.unstable_opts.simulate_remapped_rust_src_base.as_deref()),
+                filter(
+                    sess,
+                    &real_rust_source_base_dir,
+                    option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(Path::new),
+                ),
+                filter(
+                    sess,
+                    &real_rust_source_base_dir,
+                    sess.opts.unstable_opts.simulate_remapped_rust_src_base.as_deref(),
+                ),
             ];
 
             debug!(
                 "try_to_translate_virtual_to_real(name={:?}): \
                  virtual_rust_source_base_dir={:?}, real_rust_source_base_dir={:?}",
-                name, virtual_rust_source_base_dir, sess.opts.real_rust_source_base_dir,
+                name, virtual_rust_source_base_dir, real_rust_source_base_dir,
             );
 
             for virtual_dir in virtual_rust_source_base_dir.iter().flatten() {
-                if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
+                if let Some(real_dir) = &real_rust_source_base_dir {
                     if let rustc_span::FileName::Real(old_name) = name {
                         if let rustc_span::RealFileName::Remapped { local_path: _, virtual_name } =
                             old_name
@@ -1713,7 +1726,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 // `try_to_translate_virtual_to_real` don't have to worry about how the
                 // compiler is bootstrapped.
                 if let Some(virtual_dir) = &sess.opts.unstable_opts.simulate_remapped_rust_src_base
-                    && let Some(real_dir) = &sess.opts.real_rust_source_base_dir
+                    && let Some(real_dir) = &real_rust_source_base_dir
                     && let rustc_span::FileName::Real(ref mut old_name) = name
                 {
                     let relative_path = match old_name {

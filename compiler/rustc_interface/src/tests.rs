@@ -642,10 +642,6 @@ fn test_top_level_options_tracked_no_crate() {
 
     // Make sure that changing a [TRACKED_NO_CRATE_HASH] option leaves the crate hash unchanged but changes the incremental hash.
     // tidy-alphabetical-start
-    tracked!(
-        real_rust_source_base_dir,
-        Some("/home/bors/rust/.rustup/toolchains/nightly/lib/rustlib/src/rust".into())
-    );
     tracked!(remap_path_prefix, vec![("/home/bors/rust".into(), "src".into())]);
     // tidy-alphabetical-end
 }

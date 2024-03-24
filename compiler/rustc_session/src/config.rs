@@ -8,7 +8,7 @@ pub use crate::options::*;
 use crate::errors::FileWriteFail;
 use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use crate::{filesearch, lint, HashStableContext};
+use crate::{lint, HashStableContext};
 use crate::{EarlyDiagCtxt, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
@@ -1066,7 +1066,6 @@ impl Default for Options {
             cli_forced_codegen_units: None,
             cli_forced_local_thinlto_off: false,
             remap_path_prefix: Vec::new(),
-            real_rust_source_base_dir: None,
             edition: DEFAULT_EDITION,
             json_artifact_notifications: false,
             json_unused_externs: JsonUnusedExterns::No,
@@ -2780,7 +2779,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let cg = cg;
 
-    let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
+    let maybe_sysroot = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
     let target_triple = parse_target_triple(early_dcx, matches);
     let opt_level = parse_opt_level(early_dcx, matches, &cg);
     // The `-g` and `-C debuginfo` flags specify the same setting, so we want to be able
@@ -2823,26 +2822,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let logical_env = parse_logical_env(early_dcx, matches);
 
-    let sysroot = filesearch::materialize_sysroot(sysroot_opt);
-
-    let real_rust_source_base_dir = {
-        // This is the location used by the `rust-src` `rustup` component.
-        let mut candidate = sysroot.join("lib/rustlib/src/rust");
-        if let Ok(metadata) = candidate.symlink_metadata() {
-            // Replace the symlink rustbuild creates, with its destination.
-            // We could try to use `fs::canonicalize` instead, but that might
-            // produce unnecessarily verbose path.
-            if metadata.file_type().is_symlink() {
-                if let Ok(symlink_dest) = std::fs::read_link(&candidate) {
-                    candidate = symlink_dest;
-                }
-            }
-        }
-
-        // Only use this directory if it has a file we can expect to always find.
-        candidate.join("library/std/src/lib.rs").is_file().then_some(candidate)
-    };
-
     let working_dir = std::env::current_dir().unwrap_or_else(|e| {
         early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
     });
@@ -2868,7 +2847,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         describe_lints,
         output_types,
         search_paths,
-        maybe_sysroot: Some(sysroot),
+        maybe_sysroot,
         target_triple,
         test,
         incremental,
@@ -2889,7 +2868,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         cli_forced_codegen_units: codegen_units,
         cli_forced_local_thinlto_off: disable_local_thinlto,
         remap_path_prefix,
-        real_rust_source_base_dir,
         edition,
         json_artifact_notifications,
         json_unused_externs,
