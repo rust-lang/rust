@@ -1,6 +1,6 @@
 extern crate run_make_support;
 
-use run_make_support::{out_dir, rustc, wasmparser};
+use run_make_support::{out_dir, wasmparser, rustc};
 use std::collections::{HashMap, HashSet};
 
 fn main() {
@@ -24,7 +24,7 @@ fn test_file(file: &str, expected_imports: &[(&str, &[&str])]) {
 fn test(file: &str, args: &[&str], expected_imports: &[(&str, &[&str])]) {
     println!("test {file:?} {args:?} for {expected_imports:?}");
 
-    rustc().arg(file).arg("--target=wasm32-wasip1").args(args).run();
+    rustc().input(file).target("wasm32-wasip1").args(args).run();
 
     let file = std::fs::read(&out_dir().join(file).with_extension("wasm")).unwrap();
 
