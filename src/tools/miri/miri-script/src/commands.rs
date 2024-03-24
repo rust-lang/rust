@@ -380,9 +380,9 @@ impl Command {
                 .env("MIRIFLAGS", miriflags)
                 .quiet()
                 .run();
-            if status.is_err() {
+            if let Err(err) = status {
                 println!("Failing seed: {seed}");
-                break;
+                return Err(err.into());
             }
         }
         Ok(())
