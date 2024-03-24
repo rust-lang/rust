@@ -965,9 +965,10 @@ impl<'a> Linker for MsvcLinker<'a> {
                     self.cmd.arg(arg);
                 }
             }
-            Strip::Debuginfo | Strip::Symbols => {
+            Strip::Symbols => {
                 self.cmd.arg("/DEBUG:NONE");
             }
+            Strip::Debuginfo => {}
         }
     }
 
