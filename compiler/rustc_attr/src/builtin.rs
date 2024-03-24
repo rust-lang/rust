@@ -1,5 +1,6 @@
 //! Parsing and validation of builtin attributes
 
+use rustc_abi::Align;
 use rustc_ast::{self as ast, attr};
 use rustc_ast::{Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId};
 use rustc_ast_pretty::pprust;
@@ -919,10 +920,10 @@ pub enum ReprAttr {
     ReprInt(IntType),
     ReprRust,
     ReprC,
-    ReprPacked(u32),
+    ReprPacked(Align),
     ReprSimd,
     ReprTransparent,
-    ReprAlign(u32),
+    ReprAlign(Align),
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
@@ -968,7 +969,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                 let hint = match item.name_or_empty() {
                     sym::Rust => Some(ReprRust),
                     sym::C => Some(ReprC),
-                    sym::packed => Some(ReprPacked(1)),
+                    sym::packed => Some(ReprPacked(Align::ONE)),
                     sym::simd => Some(ReprSimd),
                     sym::transparent => Some(ReprTransparent),
                     sym::align => {
@@ -1209,11 +1210,17 @@ fn allow_unstable<'a>(
     })
 }
 
-pub fn parse_alignment(node: &ast::LitKind) -> Result<u32, &'static str> {
+pub fn parse_alignment(node: &ast::LitKind) -> Result<Align, &'static str> {
     if let ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed) = node {
+        // `Align::from_bytes` accepts 0 as an input, check is_power_of_two() first
         if literal.get().is_power_of_two() {
-            // rustc_middle::ty::layout::Align restricts align to <= 2^29
-            if *literal <= 1 << 29 { Ok(literal.get() as u32) } else { Err("larger than 2^29") }
+            // Only possible error is larger than 2^29
+            literal
+                .get()
+                .try_into()
+                .ok()
+                .and_then(|v| Align::from_bytes(v).ok())
+                .ok_or("larger than 2^29")
         } else {
             Err("not a power of two")
         }

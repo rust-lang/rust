@@ -964,7 +964,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
             for r in attr::parse_repr_attr(tcx.sess, attr) {
                 if let attr::ReprPacked(pack) = r
                     && let Some(repr_pack) = repr.pack
-                    && pack as u64 != repr_pack.bytes()
+                    && pack != repr_pack
                 {
                     struct_span_code_err!(
                         tcx.dcx(),
