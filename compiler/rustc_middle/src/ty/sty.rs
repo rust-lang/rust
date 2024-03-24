@@ -1837,6 +1837,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_tuple(self) -> bool {
+        matches!(self.kind(), Tuple(..))
+    }
+
+    #[inline]
     pub fn is_unit(self) -> bool {
         match self.kind() {
             Tuple(tys) => tys.is_empty(),
@@ -2206,6 +2211,11 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_fn(self) -> bool {
         matches!(self.kind(), FnDef(..) | FnPtr(_))
+    }
+
+    #[inline]
+    pub fn is_fn_def(self) -> bool {
+        matches!(self.kind(), FnDef(..))
     }
 
     #[inline]

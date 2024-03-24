@@ -91,6 +91,8 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
+#![feature(iter_order_by)]
+#![feature(let_chains)]
 
 #[macro_use]
 extern crate rustc_middle;

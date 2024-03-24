@@ -136,16 +136,15 @@ pub fn foo27(_: &dyn Trait5<Type5, 32>, _: &dyn Trait5<Type5, 32>, _: &dyn Trait
 // CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEEE"}
 // CHECK: ![[TYPE2]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES2_E"}
 // CHECK: ![[TYPE3]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES2_S2_E"}
-// FIXME(rcvalle): Enforce autotraits ordering when encoding (e.g., alphabetical order)
-// CHECK: ![[TYPE4]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u6regionEEE"}
-// CHECK: ![[TYPE5]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u6regionEES3_E"}
-// CHECK: ![[TYPE6]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u6regionEES3_S3_E"}
+// CHECK: ![[TYPE4]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Syncu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEEE"}
+// CHECK: ![[TYPE5]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Syncu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES3_E"}
+// CHECK: ![[TYPE6]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Syncu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES3_S3_E"}
 // CHECK: ![[TYPE7]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEEE"}
 // CHECK: ![[TYPE8]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES3_E"}
 // CHECK: ![[TYPE9]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES3_S3_E"}
-// CHECK: ![[TYPE10]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u6regionEEE"}
-// CHECK: ![[TYPE11]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u6regionEES4_E"}
-// CHECK: ![[TYPE12]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u6regionEES4_S4_E"}
+// CHECK: ![[TYPE10]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Syncu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEEE"}
+// CHECK: ![[TYPE11]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Syncu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES4_E"}
+// CHECK: ![[TYPE12]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Syncu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES4_S4_E"}
 // CHECK: ![[TYPE14]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u6regionEES2_E"}
 // CHECK: ![[TYPE15]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u6regionEES2_S2_E"}
 // CHECK: ![[TYPE17]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait2Iu5paramEu6regionEES3_E"}

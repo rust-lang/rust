@@ -141,20 +141,30 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {
+                let mut typeids = Vec::new();
                 let typeid = typeid_for_instance(self.tcx, &instance, TypeIdOptions::empty());
+                typeids.push(typeid.clone());
                 self.set_type_metadata(llfn, typeid);
                 let typeid =
                     typeid_for_instance(self.tcx, &instance, TypeIdOptions::GENERALIZE_POINTERS);
+                typeids.push(typeid.clone());
                 self.add_type_metadata(llfn, typeid);
                 let typeid =
                     typeid_for_instance(self.tcx, &instance, TypeIdOptions::NORMALIZE_INTEGERS);
+                typeids.push(typeid.clone());
                 self.add_type_metadata(llfn, typeid);
                 let typeid = typeid_for_instance(
                     self.tcx,
                     &instance,
                     TypeIdOptions::GENERALIZE_POINTERS | TypeIdOptions::NORMALIZE_INTEGERS,
                 );
+                typeids.push(typeid.clone());
                 self.add_type_metadata(llfn, typeid);
+                let typeid =
+                    typeid_for_instance(self.tcx, &instance, TypeIdOptions::NO_TYPE_ERASURE);
+                if !typeids.contains(&typeid) {
+                    self.add_type_metadata(llfn, typeid);
+                }
             } else {
                 let typeid = typeid_for_fnabi(self.tcx, fn_abi, TypeIdOptions::empty());
                 self.set_type_metadata(llfn, typeid);

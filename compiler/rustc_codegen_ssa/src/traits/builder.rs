@@ -82,6 +82,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         then: Self::BasicBlock,
         catch: Self::BasicBlock,
         funclet: Option<&Self::Funclet>,
+        is_drop: bool,
     ) -> Self::Value;
     fn unreachable(&mut self);
 
@@ -389,6 +390,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         llfn: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
+        is_drop: bool,
     ) -> Self::Value;
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 

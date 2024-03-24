@@ -41,6 +41,6 @@ pub fn foo11(_: (), _: usize, _: usize, _: usize) { }
 // CHECK: ![[TYPE6]] = !{i64 0, !"_ZTSFv{{u3i16|u3i32|u3i64|u4i128}}E.normalized"}
 // CHECK: ![[TYPE7]] = !{i64 0, !"_ZTSFv{{u3i16|u3i32|u3i64|u4i128}}S_E.normalized"}
 // CHECK: ![[TYPE8]] = !{i64 0, !"_ZTSFv{{u3i16|u3i32|u3i64|u4i128}}S_S_E.normalized"}
-// CHECK: ![[TYPE9]] = !{i64 0, !"_ZTSFv{{u3u16|u3u32|u3u64|u4u128}}E.normalized"}
-// CHECK: ![[TYPE10]] = !{i64 0, !"_ZTSFv{{u3u16|u3u32|u3u64|u4u128}}S_E.normalized"}
-// CHECK: ![[TYPE11]] = !{i64 0, !"_ZTSFv{{u3u16|u3u32|u3u64|u4u128}}S_S_E.normalized"}
+// CHECK: ![[TYPE9]] = !{i64 0, !"_ZTSFvv{{u3u16|u3u32|u3u64|u4u128}}E.normalized"}
+// CHECK: ![[TYPE10]] = !{i64 0, !"_ZTSFvv{{u3u16|u3u32|u3u64|u4u128}}S_E.normalized"}
+// CHECK: ![[TYPE11]] = !{i64 0, !"_ZTSFvv{{u3u16|u3u32|u3u64|u4u128}}S_S_E.normalized"}

@@ -592,12 +592,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         then: Block<'gcc>,
         catch: Block<'gcc>,
         _funclet: Option<&Funclet>,
+        _is_drop: bool
     ) -> RValue<'gcc> {
         let try_block = self.current_func().new_block("try");
 
         let current_block = self.block.clone();
         self.block = try_block;
-        let call = self.call(typ, fn_attrs, None, func, args, None); // TODO(antoyo): use funclet here?
+        let call = self.call(typ, fn_attrs, None, func, args, None, false); // TODO(antoyo): use funclet here?
         self.block = current_block;
 
         let return_value =
@@ -629,8 +630,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         then: Block<'gcc>,
         catch: Block<'gcc>,
         _funclet: Option<&Funclet>,
+        _is_drop: bool
     ) -> RValue<'gcc> {
-        let call_site = self.call(typ, fn_attrs, None, func, args, None);
+        let call_site = self.call(typ, fn_attrs, None, func, args, None, false);
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(self.location, condition, then, catch);
         if let Some(_fn_abi) = fn_abi {
@@ -1667,6 +1669,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         func: RValue<'gcc>,
         args: &[RValue<'gcc>],
         funclet: Option<&Funclet>,
+        _is_drop: bool
     ) -> RValue<'gcc> {
         // FIXME(antoyo): remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute(func) };
