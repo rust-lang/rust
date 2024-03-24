@@ -804,7 +804,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::Str => p!("str"),
             ty::Coroutine(did, args) => {
-                p!(write("{{"));
+                p!("{{");
                 let coroutine_kind = self.tcx().coroutine_kind(did).unwrap();
                 let should_print_movability = self.should_print_verbose()
                     || matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
@@ -818,9 +818,17 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                 if !self.should_print_verbose() {
                     p!(write("{}", coroutine_kind));
-                    // FIXME(eddyb) should use `def_span`.
-                    if let Some(did) = did.as_local() {
-                        let span = self.tcx().def_span(did);
+                    if coroutine_kind.is_fn_like() {
+                        // If we are printing an `async fn` coroutine type, then give the path
+                        // of the fn, instead of its span, because that will in most cases be
+                        // more helpful for the reader than just a source location.
+                        //
+                        // This will look like:
+                        //    {async fn body of some_fn()}
+                        let did_of_the_fn_item = self.tcx().parent(did);
+                        p!(" of ", print_def_path(did_of_the_fn_item, args), "()");
+                    } else if let Some(local_did) = did.as_local() {
+                        let span = self.tcx().def_span(local_did);
                         p!(write(
                             "@{}",
                             // This may end up in stderr diagnostics but it may also be emitted
@@ -828,7 +836,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             self.tcx().sess.source_map().span_to_embeddable_string(span)
                         ));
                     } else {
-                        p!(write("@"), print_def_path(did, args));
+                        p!("@", print_def_path(did, args));
                     }
                 } else {
                     p!(print_def_path(did, args));
