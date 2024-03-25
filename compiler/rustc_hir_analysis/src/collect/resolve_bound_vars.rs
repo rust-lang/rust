@@ -793,12 +793,20 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         fd: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
         _: Span,
-        _: LocalDefId,
+        def_id: LocalDefId,
     ) {
         let output = match fd.output {
             hir::FnRetTy::DefaultReturn(_) => None,
             hir::FnRetTy::Return(ty) => Some(ty),
         };
+        if let Some(ty) = output
+            && let hir::TyKind::InferDelegation(sig_id, _) = ty.kind
+        {
+            let bound_vars: Vec<_> =
+                self.tcx.fn_sig(sig_id).skip_binder().bound_vars().iter().collect();
+            let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
+            self.map.late_bound_vars.insert(hir_id, bound_vars);
+        }
         self.visit_fn_like_elision(fd.inputs, output, matches!(fk, intravisit::FnKind::Closure));
         intravisit::walk_fn_kind(self, fk);
         self.visit_nested_body(body_id)
