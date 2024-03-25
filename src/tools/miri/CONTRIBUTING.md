@@ -181,6 +181,7 @@ to `.vscode/settings.json` in your local Miri clone:
         "cargo",
         "clippy", // make this `check` when working with a locally built rustc
         "--message-format=json",
+        "--all-targets",
     ],
     // Contrary to what the name suggests, this also affects proc macros.
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
@@ -190,6 +191,7 @@ to `.vscode/settings.json` in your local Miri clone:
         "cargo",
         "check",
         "--message-format=json",
+        "--all-targets",
     ],
 }
 ```
