@@ -620,7 +620,7 @@ pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
 
     // The `--test-builder` and `--runtool` arguments are unstable rustdoc features,
     // which are disabled by default. We first need to enable them explicitly:
-    cmd.arg("-Z").arg("unstable-options");
+    cmd.arg("-Zunstable-options");
 
     // rustdoc needs to know the right sysroot.
     cmd.arg("--sysroot").arg(env::var_os("MIRI_SYSROOT").unwrap());
