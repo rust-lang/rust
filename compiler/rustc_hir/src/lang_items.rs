@@ -168,11 +168,10 @@ language_item_table! {
     SurfaceAsyncDropInPlace, sym::surface_async_drop_in_place, surface_async_drop_in_place_fn, Target::Fn, GenericRequirement::Exact(1);
     AsyncDropSlice,          sym::async_drop_slice,    async_drop_slice_fn,        Target::Fn,             GenericRequirement::Exact(1);
     AsyncDropChain,          sym::async_drop_chain,    async_drop_chain_fn,        Target::Fn,             GenericRequirement::Exact(2);
-    AsyncDropIntoChain,      sym::async_drop_into_chain, async_drop_into_chain_fn, Target::Fn,             GenericRequirement::Exact(2);
     AsyncDropNever,          sym::async_drop_never,    async_drop_never_type,      Target::Enum,           GenericRequirement::Exact(0);
     AsyncDropNop,            sym::async_drop_nop,      async_drop_nop_fn,          Target::Fn,             GenericRequirement::Exact(0);
     AsyncDropFuse,           sym::async_drop_fuse,     async_drop_fuse_fn,         Target::Fn,             GenericRequirement::Exact(1);
-    IntoAsyncDestructor,     sym::into_async_destructor, into_async_destructor_fn, Target::Fn,             GenericRequirement::Exact(1);
+    AsyncDropDefer,          sym::async_drop_defer,    async_drop_defer_fn,        Target::Fn,             GenericRequirement::Exact(1);
     AsyncDropEither,         sym::async_drop_either,   async_drop_either_fn,       Target::Fn,             GenericRequirement::Exact(3);
 
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);

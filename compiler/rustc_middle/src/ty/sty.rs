@@ -2359,10 +2359,10 @@ impl<'tcx> Ty<'tcx> {
                 }
 
                 let into_async_destructor = tcx
-                    .fn_sig(tcx.require_lang_item(LangItem::IntoAsyncDestructor, None))
+                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropDefer, None))
                     .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
                 let into_chain = tcx
-                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropIntoChain, None))
+                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropChain, None))
                     .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
 
                 let nop = tcx
@@ -2531,7 +2531,7 @@ impl<'tcx> Ty<'tcx> {
             .fn_sig(tcx.require_lang_item(LangItem::AsyncDropChain, None))
             .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
         let into_async_destructor = tcx
-            .fn_sig(tcx.require_lang_item(LangItem::IntoAsyncDestructor, None))
+            .fn_sig(tcx.require_lang_item(LangItem::AsyncDropDefer, None))
             .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
         tys.fold(first_drop, |dtor, ty| {
             chain.instantiate(

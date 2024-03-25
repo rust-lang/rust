@@ -1175,10 +1175,10 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             for (field_idx, field) in variant.fields.iter_enumerated() {
                 let field_ty = field.ty(tcx, args);
                 self.put_variant_field(variant.name, variant_idx, field_idx, field_ty);
-                let into_async_destructor = self.combine_into_async_destructor(field_ty);
+                let into_async_destructor = self.combine_defer(field_ty);
                 chain = Some(match chain {
                     None => into_async_destructor,
-                    Some(chain) => self.combine_into_chain(chain, into_async_destructor),
+                    Some(chain) => self.combine_chain(chain, into_async_destructor),
                 })
             }
             let variant_dtor = chain.unwrap_or_else(|| self.put_nop());
@@ -1246,7 +1246,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
         elems.fold(first, |prev, (field, elem_ty)| {
             self.put_field(field, elem_ty);
-            let second = self.combine_into_async_destructor(elem_ty);
+            let second = self.combine_defer(elem_ty);
             self.combine_chain(prev, second)
         });
 
@@ -1359,16 +1359,12 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.apply_combinator(1, LangItem::AsyncDropSlice, &[elem_ty.into()])
     }
 
-    fn combine_into_async_destructor(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::IntoAsyncDestructor, &[to_drop_ty.into()])
+    fn combine_defer(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator(1, LangItem::AsyncDropDefer, &[to_drop_ty.into()])
     }
 
     fn combine_chain(&mut self, first: Ty<'tcx>, second: Ty<'tcx>) -> Ty<'tcx> {
         self.apply_combinator(2, LangItem::AsyncDropChain, &[first.into(), second.into()])
-    }
-
-    fn combine_into_chain(&mut self, first: Ty<'tcx>, second: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(2, LangItem::AsyncDropIntoChain, &[first.into(), second.into()])
     }
 
     fn combine_either(&mut self, other: Ty<'tcx>, matched: Ty<'tcx>) -> Ty<'tcx> {
