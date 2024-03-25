@@ -1,5 +1,4 @@
 use crate::cmp::BytewiseEq;
-use crate::convert::TryInto;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, U, const N: usize> PartialEq<[U; N]> for [T; N]
