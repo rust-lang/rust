@@ -105,14 +105,13 @@ impl<'tcx> MirPass<'tcx> for Validator {
             && let Some(by_move_body) = body.coroutine_by_move_body()
             && let Some(by_move_layout) = by_move_body.coroutine_layout_raw()
         {
-            if layout != by_move_layout {
-                // If this turns out not to be true, please let compiler-errors know.
-                // It is possible to support, but requires some changes to the layout
-                // computation code.
+            // FIXME(async_closures): We could do other validation here?
+            if layout.variant_fields.len() != by_move_layout.variant_fields.len() {
                 cfg_checker.fail(
                     Location::START,
                     format!(
-                        "Coroutine layout differs from by-move coroutine layout:\n\
+                        "Coroutine layout has different number of variant fields from \
+                        by-move coroutine layout:\n\
                         layout: {layout:#?}\n\
                         by_move_layout: {by_move_layout:#?}",
                     ),
