@@ -2,7 +2,7 @@
 
 use std::str::FromStr;
 
-use crate::install::{ClientOpt, Malloc, ServerOpt};
+use crate::install::{ClientOpt, ServerOpt};
 
 xflags::xflags! {
     src "./src/flags.rs"
@@ -36,6 +36,10 @@ xflags::xflags! {
             optional --dry-run
         }
         cmd dist {
+            /// Use mimalloc allocator for server
+            optional --mimalloc
+            /// Use jemalloc allocator for server
+            optional --jemalloc
             optional --client-patch-version version: String
         }
         /// Read a changelog AsciiDoc file and update the GitHub Releases entry in Markdown.
@@ -82,35 +86,6 @@ pub enum XtaskCmd {
 }
 
 #[derive(Debug)]
-pub struct Codegen {
-    pub check: bool,
-    pub codegen_type: Option<CodegenType>,
-}
-
-#[derive(Debug, Default)]
-pub enum CodegenType {
-    #[default]
-    All,
-    Grammar,
-    AssistsDocTests,
-    DiagnosticsDocs,
-    LintDefinitions,
-}
-
-impl FromStr for CodegenType {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "all" => Ok(Self::All),
-            "grammar" => Ok(Self::Grammar),
-            "assists-doc-tests" => Ok(Self::AssistsDocTests),
-            "diagnostics-docs" => Ok(Self::DiagnosticsDocs),
-            "lints-definitions" => Ok(Self::LintDefinitions),
-            _ => Err("Invalid option".to_owned()),
-        }
-    }
-}
-#[derive(Debug)]
 pub struct Install {
     pub client: bool,
     pub code_bin: Option<String>,
@@ -135,6 +110,8 @@ pub struct Promote {
 
 #[derive(Debug)]
 pub struct Dist {
+    pub mimalloc: bool,
+    pub jemalloc: bool,
     pub client_patch_version: Option<String>,
 }
 
@@ -143,6 +120,65 @@ pub struct PublishReleaseNotes {
     pub changelog: String,
 
     pub dry_run: bool,
+}
+
+#[derive(Debug)]
+pub struct Metrics {
+    pub measurement_type: Option<MeasurementType>,
+}
+
+#[derive(Debug)]
+pub struct Bb {
+    pub suffix: String,
+}
+
+#[derive(Debug)]
+pub struct Codegen {
+    pub codegen_type: Option<CodegenType>,
+
+    pub check: bool,
+}
+
+impl Xtask {
+    #[allow(dead_code)]
+    pub fn from_env_or_exit() -> Self {
+        Self::from_env_or_exit_()
+    }
+
+    #[allow(dead_code)]
+    pub fn from_env() -> xflags::Result<Self> {
+        Self::from_env_()
+    }
+
+    #[allow(dead_code)]
+    pub fn from_vec(args: Vec<std::ffi::OsString>) -> xflags::Result<Self> {
+        Self::from_vec_(args)
+    }
+}
+// generated end
+
+#[derive(Debug, Default)]
+pub enum CodegenType {
+    #[default]
+    All,
+    Grammar,
+    AssistsDocTests,
+    DiagnosticsDocs,
+    LintDefinitions,
+}
+
+impl FromStr for CodegenType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "all" => Ok(Self::All),
+            "grammar" => Ok(Self::Grammar),
+            "assists-doc-tests" => Ok(Self::AssistsDocTests),
+            "diagnostics-docs" => Ok(Self::DiagnosticsDocs),
+            "lints-definitions" => Ok(Self::LintDefinitions),
+            _ => Err("Invalid option".to_owned()),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -185,33 +221,22 @@ impl AsRef<str> for MeasurementType {
     }
 }
 
-#[derive(Debug)]
-pub struct Metrics {
-    pub measurement_type: Option<MeasurementType>,
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Malloc {
+    System,
+    Mimalloc,
+    Jemalloc,
 }
 
-#[derive(Debug)]
-pub struct Bb {
-    pub suffix: String,
-}
-
-impl Xtask {
-    #[allow(dead_code)]
-    pub fn from_env_or_exit() -> Self {
-        Self::from_env_or_exit_()
-    }
-
-    #[allow(dead_code)]
-    pub fn from_env() -> xflags::Result<Self> {
-        Self::from_env_()
-    }
-
-    #[allow(dead_code)]
-    pub fn from_vec(args: Vec<std::ffi::OsString>) -> xflags::Result<Self> {
-        Self::from_vec_(args)
+impl Malloc {
+    pub(crate) fn to_features(self) -> &'static [&'static str] {
+        match self {
+            Malloc::System => &[][..],
+            Malloc::Mimalloc => &["--features", "mimalloc"],
+            Malloc::Jemalloc => &["--features", "jemalloc"],
+        }
     }
 }
-// generated end
 
 impl Install {
     pub(crate) fn server(&self) -> Option<ServerOpt> {
@@ -232,5 +257,17 @@ impl Install {
             return None;
         }
         Some(ClientOpt { code_bin: self.code_bin.clone() })
+    }
+}
+
+impl Dist {
+    pub(crate) fn allocator(&self) -> Malloc {
+        if self.mimalloc {
+            Malloc::Mimalloc
+        } else if self.jemalloc {
+            Malloc::Jemalloc
+        } else {
+            Malloc::System
+        }
     }
 }
