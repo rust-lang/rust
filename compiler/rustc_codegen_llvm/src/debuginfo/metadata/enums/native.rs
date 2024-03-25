@@ -135,7 +135,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let coroutine_type = unique_type_id.expect_ty();
-    let &ty::Coroutine(coroutine_def_id, _) = coroutine_type.kind() else {
+    let &ty::Coroutine(coroutine_def_id, coroutine_args) = coroutine_type.kind() else {
         bug!("build_coroutine_di_node() called with non-coroutine type: `{:?}`", coroutine_type)
     };
 
@@ -158,7 +158,10 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
             DIFlags::FlagZero,
         ),
         |cx, coroutine_type_di_node| {
-            let coroutine_layout = cx.tcx.coroutine_layout(coroutine_def_id).unwrap();
+            let coroutine_layout = cx
+                .tcx
+                .coroutine_layout(coroutine_def_id, coroutine_args.as_coroutine().kind_ty())
+                .unwrap();
 
             let Variants::Multiple { tag_encoding: TagEncoding::Direct, ref variants, .. } =
                 coroutine_type_and_layout.variants

@@ -60,6 +60,7 @@ pub use rustc_target::abi::{ReprFlags, ReprOptions};
 pub use rustc_type_ir::{DebugWithInfcx, InferCtxtLike, WithInfcx};
 pub use vtable::*;
 
+use std::assert_matches::assert_matches;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -1826,8 +1827,40 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns layout of a coroutine. Layout might be unavailable if the
     /// coroutine is tainted by errors.
-    pub fn coroutine_layout(self, def_id: DefId) -> Option<&'tcx CoroutineLayout<'tcx>> {
-        self.optimized_mir(def_id).coroutine_layout()
+    ///
+    /// Takes `coroutine_kind` which can be acquired from the `CoroutineArgs::kind_ty`,
+    /// e.g. `args.as_coroutine().kind_ty()`.
+    pub fn coroutine_layout(
+        self,
+        def_id: DefId,
+        coroutine_kind_ty: Ty<'tcx>,
+    ) -> Option<&'tcx CoroutineLayout<'tcx>> {
+        let mir = self.optimized_mir(def_id);
+        // Regular coroutine
+        if coroutine_kind_ty.is_unit() {
+            mir.coroutine_layout_raw()
+        } else {
+            // If we have a `Coroutine` that comes from an coroutine-closure,
+            // then it may be a by-move or by-ref body.
+            let ty::Coroutine(_, identity_args) =
+                *self.type_of(def_id).instantiate_identity().kind()
+            else {
+                unreachable!();
+            };
+            let identity_kind_ty = identity_args.as_coroutine().kind_ty();
+            // If the types differ, then we must be getting the by-move body of
+            // a by-ref coroutine.
+            if identity_kind_ty == coroutine_kind_ty {
+                mir.coroutine_layout_raw()
+            } else {
+                assert_matches!(coroutine_kind_ty.to_opt_closure_kind(), Some(ClosureKind::FnOnce));
+                assert_matches!(
+                    identity_kind_ty.to_opt_closure_kind(),
+                    Some(ClosureKind::Fn | ClosureKind::FnMut)
+                );
+                mir.coroutine_by_move_body().unwrap().coroutine_layout_raw()
+            }
+        }
     }
 
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.

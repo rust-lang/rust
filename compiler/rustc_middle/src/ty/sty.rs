@@ -694,7 +694,10 @@ impl<'tcx> CoroutineArgs<'tcx> {
     #[inline]
     pub fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
-        FIRST_VARIANT..tcx.coroutine_layout(def_id).unwrap().variant_fields.next_index()
+        // FIXME(async_closures): We should assert all coroutine layouts have
+        // the same number of variants.
+        FIRST_VARIANT
+            ..tcx.coroutine_layout(def_id, tcx.types.unit).unwrap().variant_fields.next_index()
     }
 
     /// The discriminant for the given variant. Panics if the `variant_index` is
@@ -754,7 +757,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item: Iterator<Item = Ty<'tcx>> + Captures<'tcx>> {
-        let layout = tcx.coroutine_layout(def_id).unwrap();
+        let layout = tcx.coroutine_layout(def_id, self.kind_ty()).unwrap();
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {
                 ty::EarlyBinder::bind(layout.field_tys[*field].ty).instantiate(tcx, self.args)

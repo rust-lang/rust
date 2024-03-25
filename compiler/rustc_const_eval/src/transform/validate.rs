@@ -101,9 +101,9 @@ impl<'tcx> MirPass<'tcx> for Validator {
         }
 
         // Enforce that coroutine-closure layouts are identical.
-        if let Some(layout) = body.coroutine_layout()
+        if let Some(layout) = body.coroutine_layout_raw()
             && let Some(by_move_body) = body.coroutine_by_move_body()
-            && let Some(by_move_layout) = by_move_body.coroutine_layout()
+            && let Some(by_move_layout) = by_move_body.coroutine_layout_raw()
         {
             if layout != by_move_layout {
                 // If this turns out not to be true, please let compiler-errors know.
@@ -715,13 +715,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             // args of the coroutine. Otherwise, we prefer to use this body
                             // since we may be in the process of computing this MIR in the
                             // first place.
-                            let gen_body = if def_id == self.caller_body.source.def_id() {
-                                self.caller_body
+                            let layout = if def_id == self.caller_body.source.def_id() {
+                                // FIXME: This is not right for async closures.
+                                self.caller_body.coroutine_layout_raw()
                             } else {
-                                self.tcx.optimized_mir(def_id)
+                                self.tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty())
                             };
 
-                            let Some(layout) = gen_body.coroutine_layout() else {
+                            let Some(layout) = layout else {
                                 self.fail(
                                     location,
                                     format!("No coroutine layout for {parent_ty:?}"),

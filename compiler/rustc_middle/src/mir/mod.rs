@@ -652,8 +652,9 @@ impl<'tcx> Body<'tcx> {
         self.coroutine.as_ref().and_then(|coroutine| coroutine.resume_ty)
     }
 
+    /// Prefer going through [`TyCtxt::coroutine_layout`] rather than using this directly.
     #[inline]
-    pub fn coroutine_layout(&self) -> Option<&CoroutineLayout<'tcx>> {
+    pub fn coroutine_layout_raw(&self) -> Option<&CoroutineLayout<'tcx>> {
         self.coroutine.as_ref().and_then(|coroutine| coroutine.coroutine_layout.as_ref())
     }
 

@@ -745,7 +745,7 @@ fn coroutine_layout<'tcx>(
     let tcx = cx.tcx;
     let instantiate_field = |ty: Ty<'tcx>| EarlyBinder::bind(ty).instantiate(tcx, args);
 
-    let Some(info) = tcx.coroutine_layout(def_id) else {
+    let Some(info) = tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty()) else {
         return Err(error(cx, LayoutError::Unknown(ty)));
     };
     let (ineligible_locals, assignments) = coroutine_saved_local_eligibility(info);
@@ -1072,7 +1072,7 @@ fn variant_info_for_coroutine<'tcx>(
         return (vec![], None);
     };
 
-    let coroutine = cx.tcx.coroutine_layout(def_id).unwrap();
+    let coroutine = cx.tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty()).unwrap();
     let upvar_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
 
     let mut upvars_size = Size::ZERO;

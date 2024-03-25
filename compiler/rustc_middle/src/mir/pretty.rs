@@ -126,7 +126,7 @@ fn dump_matched_mir_node<'tcx, F>(
             Some(promoted) => write!(file, "::{promoted:?}`")?,
         }
         writeln!(file, " {disambiguator} {pass_name}")?;
-        if let Some(ref layout) = body.coroutine_layout() {
+        if let Some(ref layout) = body.coroutine_layout_raw() {
             writeln!(file, "/* coroutine_layout = {layout:#?} */")?;
         }
         writeln!(file)?;
