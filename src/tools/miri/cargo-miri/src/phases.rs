@@ -192,12 +192,14 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
             "WARNING: Ignoring `RUSTC` environment variable; set `MIRI` if you want to control the binary used as the driver."
         );
     }
-    // Build scripts (and also cargo: https://github.com/rust-lang/cargo/issues/10885) will invoke
-    // `rustc` even when `RUSTC_WRAPPER` is set. To make sure everything is coherent, we want that
-    // to be the Miri driver, but acting as rustc, on the target level. (Target, rather than host,
-    // is needed for cross-interpretation situations.) This is not a perfect emulation of real rustc
-    // (it might be unable to produce binaries since the sysroot is check-only), but it's as close
-    // as we can get, and it's good enough for autocfg.
+    // Ideally we would set RUSTC to some non-existent path, so we can be sure our wrapping is
+    // always applied. However, buggy build scripts (https://github.com/eyre-rs/eyre/issues/84) and
+    // also cargo (https://github.com/rust-lang/cargo/issues/10885) will invoke `rustc` even when
+    // `RUSTC_WRAPPER` is set, bypassing the wrapper. To make sure everything is coherent, we want
+    // that to be the Miri driver, but acting as rustc, on the target level. (Target, rather than
+    // host, is needed for cross-interpretation situations.) This is not a perfect emulation of real
+    // rustc (it might be unable to produce binaries since the sysroot is check-only), but it's as
+    // close as we can get, and it's good enough for autocfg.
     //
     // In `main`, we need the value of `RUSTC` to distinguish RUSTC_WRAPPER invocations from rustdoc
     // or TARGET_RUNNER invocations, so we canonicalize it here to make it exceedingly unlikely that
@@ -251,6 +253,16 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     /// Cargo does not give us this information directly, so we need to check
     /// various command-line flags.
     fn is_runnable_crate() -> bool {
+        // Determine whether this is cargo invoking rustc to get some infos. Ideally we'd check "is
+        // there a filename passed to rustc", but that's very hard as we would have to know whether
+        // e.g. `--print foo` is a booolean flag `--print` followed by filename `foo` or equivalent
+        // to `--print=foo`. So instead we use this more fragile approach of detecting the presence
+        // of a "query" flag rather than the absence of a filename.
+        let info_query = get_arg_flag_value("--print").is_some() || has_arg_flag("-vV");
+        if info_query {
+            // Nothing to run.
+            return false;
+        }
         let is_bin = get_arg_flag_value("--crate-type").as_deref().unwrap_or("bin") == "bin";
         let is_test = has_arg_flag("--test");
         is_bin || is_test
@@ -297,8 +309,6 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     let verbose = std::env::var("MIRI_VERBOSE")
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
     let target_crate = is_target_crate();
-    // Determine whether this is cargo invoking rustc to get some infos.
-    let info_query = get_arg_flag_value("--print").is_some() || has_arg_flag("-vV");
 
     let store_json = |info: CrateRunInfo| {
         if get_arg_flag_value("--emit").unwrap_or_default().split(',').any(|e| e == "dep-info") {
@@ -325,7 +335,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
         }
     };
 
-    let runnable_crate = !info_query && is_runnable_crate();
+    let runnable_crate = is_runnable_crate();
 
     if runnable_crate && target_crate {
         assert!(
@@ -399,7 +409,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     let mut emit_link_hack = false;
     // Arguments are treated very differently depending on whether this crate is
     // for interpretation by Miri, or for use by a build script / proc macro.
-    if !info_query && target_crate {
+    if target_crate {
         // Forward arguments, but remove "link" from "--emit" to make this a check-only build.
         let emit_flag = "--emit";
         while let Some(arg) = args.next() {
@@ -433,17 +443,14 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
             cmd.arg("-C").arg("panic=abort");
         }
     } else {
-        // For host crates (but not when we are just printing some info),
-        // we might still have to set the sysroot.
-        if !info_query {
-            // When we're running `cargo-miri` from `x.py` we need to pass the sysroot explicitly
-            // due to bootstrap complications.
-            if let Some(sysroot) = std::env::var_os("MIRI_HOST_SYSROOT") {
-                cmd.arg("--sysroot").arg(sysroot);
-            }
+        // This is a host crate.
+        // When we're running `cargo-miri` from `x.py` we need to pass the sysroot explicitly
+        // due to bootstrap complications.
+        if let Some(sysroot) = std::env::var_os("MIRI_HOST_SYSROOT") {
+            cmd.arg("--sysroot").arg(sysroot);
         }
 
-        // For host crates or when we are printing, just forward everything.
+        // Forward everything.
         cmd.args(args);
     }
 
@@ -455,9 +462,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
 
     // Run it.
     if verbose > 0 {
-        eprintln!(
-            "[cargo-miri rustc] target_crate={target_crate} runnable_crate={runnable_crate} info_query={info_query}"
-        );
+        eprintln!("[cargo-miri rustc] target_crate={target_crate} runnable_crate={runnable_crate}");
     }
 
     // Create a stub .rlib file if "link" was requested by cargo.
@@ -546,15 +551,13 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     // but when we run here, cargo does not interpret the JSON any more. `--json`
     // then also needs to be dropped.
     let mut args = info.args.into_iter();
-    let error_format_flag = "--error-format";
-    let json_flag = "--json";
     while let Some(arg) = args.next() {
         if arg == "--extern" {
             forward_patched_extern_arg(&mut args, &mut cmd);
-        } else if let Some(suffix) = arg.strip_prefix(error_format_flag) {
+        } else if let Some(suffix) = arg.strip_prefix("--error-format") {
             assert!(suffix.starts_with('='));
             // Drop this argument.
-        } else if let Some(suffix) = arg.strip_prefix(json_flag) {
+        } else if let Some(suffix) = arg.strip_prefix("--json") {
             assert!(suffix.starts_with('='));
             // Drop this argument.
         } else {
@@ -592,13 +595,11 @@ pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
     // just default to a straight-forward invocation for now:
     let mut cmd = Command::new("rustdoc");
 
-    let extern_flag = "--extern";
-    let runtool_flag = "--runtool";
     while let Some(arg) = args.next() {
-        if arg == extern_flag {
+        if arg == "--extern" {
             // Patch --extern arguments to use *.rmeta files, since phase_cargo_rustc only creates stub *.rlib files.
             forward_patched_extern_arg(&mut args, &mut cmd);
-        } else if arg == runtool_flag {
+        } else if arg == "--runtool" {
             // An existing --runtool flag indicates cargo is running in cross-target mode, which we don't support.
             // Note that this is only passed when cargo is run with the unstable -Zdoctest-xcompile flag;
             // otherwise, we won't be called as rustdoc at all.
