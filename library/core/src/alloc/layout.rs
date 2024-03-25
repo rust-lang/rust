@@ -25,7 +25,9 @@ const fn size_align<T>() -> (usize, usize) {
 /// An instance of `Layout` describes a particular layout of memory.
 /// You build a `Layout` up as an input to give to an allocator.
 ///
-/// All layouts have an associated size and a power-of-two alignment.
+/// All layouts have an associated size and a power-of-two alignment. The size, when rounded up to
+/// the nearest multiple of `align`, does not overflow isize (i.e., the rounded value will always be
+/// less than or equal to `isize::MAX`).
 ///
 /// (Note that layouts are *not* required to have non-zero size,
 /// even though `GlobalAlloc` requires that all memory requests
