@@ -159,53 +159,66 @@ where
             .0);
         }
 
+        let mut error_info = None;
         let mut region_constraints = QueryRegionConstraints::default();
-        let (output, error_info, mut obligations, _) =
-            Q::fully_perform_into(self, infcx, &mut region_constraints, span).map_err(|_| {
-                infcx.dcx().span_delayed_bug(span, format!("error performing {self:?}"))
-            })?;
 
-        // Typically, instantiating NLL query results does not
-        // create obligations. However, in some cases there
-        // are unresolved type variables, and unify them *can*
-        // create obligations. In that case, we have to go
-        // fulfill them. We do this via a (recursive) query.
-        while !obligations.is_empty() {
-            trace!("{:#?}", obligations);
-            let mut progress = false;
-            for obligation in std::mem::take(&mut obligations) {
-                let obligation = infcx.resolve_vars_if_possible(obligation);
-                match ProvePredicate::fully_perform_into(
-                    obligation.param_env.and(ProvePredicate::new(obligation.predicate)),
-                    infcx,
-                    &mut region_constraints,
-                    span,
-                ) {
-                    Ok(((), _, new, certainty)) => {
-                        obligations.extend(new);
-                        progress = true;
-                        if let Certainty::Ambiguous = certainty {
-                            obligations.push(obligation);
+        let (mut output, _) = scrape_region_constraints(
+            infcx,
+            |_ocx| {
+                let (output, ei, mut obligations, _) =
+                    Q::fully_perform_into(self, infcx, &mut region_constraints, span)?;
+                error_info = ei;
+
+                // Typically, instantiating NLL query results does not
+                // create obligations. However, in some cases there
+                // are unresolved type variables, and unify them *can*
+                // create obligations. In that case, we have to go
+                // fulfill them. We do this via a (recursive) query.
+                while !obligations.is_empty() {
+                    trace!("{:#?}", obligations);
+                    let mut progress = false;
+                    for obligation in std::mem::take(&mut obligations) {
+                        let obligation = infcx.resolve_vars_if_possible(obligation);
+                        match ProvePredicate::fully_perform_into(
+                            obligation.param_env.and(ProvePredicate::new(obligation.predicate)),
+                            infcx,
+                            &mut region_constraints,
+                            span,
+                        ) {
+                            Ok(((), _, new, certainty)) => {
+                                obligations.extend(new);
+                                progress = true;
+                                if let Certainty::Ambiguous = certainty {
+                                    obligations.push(obligation);
+                                }
+                            }
+                            Err(_) => obligations.push(obligation),
                         }
                     }
-                    Err(_) => obligations.push(obligation),
+                    if !progress {
+                        infcx.dcx().span_bug(
+                            span,
+                            format!("ambiguity processing {obligations:?} from {self:?}"),
+                        );
+                    }
                 }
-            }
-            if !progress {
-                infcx
-                    .dcx()
-                    .span_bug(span, format!("ambiguity processing {obligations:?} from {self:?}"));
-            }
-        }
-
-        Ok(TypeOpOutput {
-            output,
-            constraints: if region_constraints.is_empty() {
-                None
-            } else {
-                Some(infcx.tcx.arena.alloc(region_constraints))
+                Ok(output)
             },
-            error_info,
-        })
+            "fully_perform",
+            span,
+        )?;
+        output.error_info = error_info;
+        if let Some(constraints) = output.constraints {
+            region_constraints
+                .member_constraints
+                .extend(constraints.member_constraints.iter().cloned());
+            region_constraints.outlives.extend(constraints.outlives.iter().cloned());
+        }
+        output.constraints = if region_constraints.is_empty() {
+            None
+        } else {
+            Some(infcx.tcx.arena.alloc(region_constraints))
+        };
+        Ok(output)
     }
 }
