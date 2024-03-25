@@ -215,6 +215,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
         // it’s bad when there is a ‘\n’ after the “else”
         && let Some(else_snippet) = snippet_opt(cx, else_span)
         && let Some((pre_else, post_else)) = else_snippet.split_once("else")
+        && !else_snippet.contains('/')
         && let Some((_, post_else_post_eol)) = post_else.split_once('\n')
     {
         // Allow allman style braces `} \n else \n {`
