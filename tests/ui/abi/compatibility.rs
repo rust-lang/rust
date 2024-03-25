@@ -277,6 +277,10 @@ test_abi_compatible!(zst_unit, Zst, ());
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
 test_abi_compatible!(nonzero_int, NonZero<i32>, i32);
 
+// `#[repr(C)]` enums should not change ABI based on individual variant inhabitedness.
+enum Void {}
+test_abi_compatible!(repr_c_enum_void, ReprCEnum<Void>, ReprCEnum<ReprCUnion<Void>>);
+
 // `DispatchFromDyn` relies on ABI compatibility.
 // This is interesting since these types are not `repr(transparent)`. So this is not part of our
 // public ABI guarantees, but is relied on by the compiler.
