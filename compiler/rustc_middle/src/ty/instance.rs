@@ -335,7 +335,7 @@ impl<'tcx> InstanceDef<'tcx> {
 
 fn fmt_instance(
     f: &mut fmt::Formatter<'_>,
-    instance: &Instance<'_>,
+    instance: Instance<'_>,
     type_length: Option<rustc_session::Limit>,
 ) -> fmt::Result {
     ty::tls::with(|tcx| {
@@ -369,9 +369,9 @@ fn fmt_instance(
     }
 }
 
-pub struct ShortInstance<'a, 'tcx>(pub &'a Instance<'tcx>, pub usize);
+pub struct ShortInstance<'tcx>(pub Instance<'tcx>, pub usize);
 
-impl<'a, 'tcx> fmt::Display for ShortInstance<'a, 'tcx> {
+impl<'tcx> fmt::Display for ShortInstance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt_instance(f, self.0, Some(rustc_session::Limit(self.1)))
     }
@@ -379,7 +379,7 @@ impl<'a, 'tcx> fmt::Display for ShortInstance<'a, 'tcx> {
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_instance(f, self, None)
+        fmt_instance(f, *self, None)
     }
 }
 
