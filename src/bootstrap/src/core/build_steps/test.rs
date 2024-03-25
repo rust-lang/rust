@@ -680,8 +680,12 @@ impl Step for Miri {
             .arg("--manifest-path")
             .arg(builder.src.join("src/tools/miri/test-cargo-miri/Cargo.toml"));
         cargo.arg("--target").arg(target.rustc_target_arg());
-        cargo.arg("--tests"); // don't run doctests, they are too confused by the staging
         cargo.arg("--").args(builder.config.test_args());
+
+        // `prepare_tool_cargo` sets RUSTDOC to the bootstrap wrapper and RUSTDOC_REAL to a dummy path as this is a "run", not a "test".
+        // Also, we want the rustdoc from the "next" stage for the same reason that we build a std from the next stage.
+        // So let's just set that here, and bypass bootstrap's RUSTDOC (just like cargo-miri already ignores bootstrap's RUSTC_WRAPPER).
+        cargo.env("RUSTDOC", builder.rustdoc(compiler_std));
 
         // Tell `cargo miri` where to find things.
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
