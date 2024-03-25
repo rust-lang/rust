@@ -928,6 +928,11 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
             cgcx.create_dcx().emit_fatal(errors::NoSavedObjectFile { cgu_name: &module.name })
         }),
     );
+    if module_config.json_artifact_notifications {
+        if let Some(path) = object.as_deref() {
+            cgcx.create_dcx().emit_artifact_notification(path, "obj");
+        }
+    }
     let dwarf_object =
         module.source.saved_files.get("dwo").as_ref().and_then(|saved_dwarf_object_file| {
             let dwarf_obj_out = cgcx
