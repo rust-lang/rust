@@ -25,12 +25,16 @@ fn emit_if_duplicated(
     }
 }
 
+#[allow(clippy::needless_return)]
 fn check_duplicated_attr(
     cx: &EarlyContext<'_>,
     attr: &MetaItem,
     attr_paths: &mut FxHashMap<String, Span>,
     parent: &mut Vec<String>,
 ) {
+    if attr.span.from_expansion() {
+        return;
+    }
     let Some(ident) = attr.ident() else { return };
     let name = ident.name;
     if name == sym::doc || name == sym::cfg_attr {
@@ -38,7 +42,14 @@ fn check_duplicated_attr(
         // conditions are the same.
         return;
     }
-    if let Some(value) = attr.value_str() {
+    if let Some(direct_parent) = parent.last()
+        && ["cfg", "cfg_attr"].contains(&direct_parent.as_str())
+        && [sym::all, sym::not, sym::any].contains(&name)
+    {
+        // FIXME: We don't correctly check `cfg`s for now, so if it's more complex than just a one
+        // level `cfg`, we leave.
+        return;
+    } else if let Some(value) = attr.value_str() {
         emit_if_duplicated(cx, attr, attr_paths, format!("{}:{name}={value}", parent.join(":")));
     } else if let Some(sub_attrs) = attr.meta_item_list() {
         parent.push(name.as_str().to_string());
