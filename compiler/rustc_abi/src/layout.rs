@@ -186,7 +186,7 @@ pub trait LayoutCalculator {
         let (present_first, present_second) = {
             let mut present_variants = variants
                 .iter_enumerated()
-                .filter_map(|(i, v)| if absent(v) { None } else { Some(i) });
+                .filter_map(|(i, v)| if !repr.c() && absent(v) { None } else { Some(i) });
             (present_variants.next(), present_variants.next())
         };
         let present_first = match present_first {
@@ -621,7 +621,7 @@ where
     let discr_type = repr.discr_type();
     let bits = Integer::from_attr(dl, discr_type).size().bits();
     for (i, mut val) in discriminants {
-        if variants[i].iter().any(|f| f.abi.is_uninhabited()) {
+        if !repr.c() && variants[i].iter().any(|f| f.abi.is_uninhabited()) {
             continue;
         }
         if discr_type.is_signed() {

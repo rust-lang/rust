@@ -1388,6 +1388,7 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single { index: VariantIdx },
 
+    // REVIEW: probably this wording has to be adjusted somehow?
     /// Enum-likes with more than one inhabited variant: each variant comes with
     /// a *discriminant* (usually the same as the variant index but the user can
     /// assign explicit discriminant values). That discriminant is encoded
