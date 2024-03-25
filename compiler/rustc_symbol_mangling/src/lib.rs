@@ -90,6 +90,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+#![feature(let_chains)]
 #![allow(internal_features)]
 
 #[macro_use]
