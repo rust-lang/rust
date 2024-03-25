@@ -15,10 +15,8 @@ extern crate rustc_abi;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_pattern_analysis;
-
-#[cfg(not(feature = "in-rust-tree"))]
+// Use the crates.io version unconditionally until the API settles enough that we can switch to
+// using the in-tree one.
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 
 mod builder;
