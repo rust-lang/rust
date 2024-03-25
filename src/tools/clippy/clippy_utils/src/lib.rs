@@ -131,14 +131,14 @@ use rustc_middle::hir::nested_filter;
 #[macro_export]
 macro_rules! extract_msrv_attr {
     ($context:ident) => {
-        fn enter_lint_attrs(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+        fn check_attributes(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
-            self.msrv.enter_lint_attrs(sess, attrs);
+            self.msrv.check_attributes(sess, attrs);
         }
 
-        fn exit_lint_attrs(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+        fn check_attributes_post(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
-            self.msrv.exit_lint_attrs(sess, attrs);
+            self.msrv.check_attributes_post(sess, attrs);
         }
     };
 }
