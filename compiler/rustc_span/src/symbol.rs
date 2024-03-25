@@ -2407,7 +2407,7 @@ impl Symbol {
 
     fn is_unused_keyword_conditional(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
         self == kw::Try && edition().at_least_rust_2018()
-            || self == kw::Gen && edition().at_least_rust_2024()
+        // || self == kw::Gen && edition().at_least_rust_2024()
     }
 
     pub fn is_reserved(self, edition: impl Copy + FnOnce() -> Edition) -> bool {

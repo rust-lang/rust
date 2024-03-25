@@ -1201,14 +1201,14 @@ impl<'a> Parser<'a> {
                     return_impl_trait_id: DUMMY_NODE_ID,
                 })
             }
-        } else if self.token.uninterpolated_span().at_least_rust_2024()
-            && self.eat_keyword_case(kw::Gen, case)
-        {
-            Some(CoroutineKind::Gen {
-                span,
-                closure_id: DUMMY_NODE_ID,
-                return_impl_trait_id: DUMMY_NODE_ID,
-            })
+        // } else if self.token.uninterpolated_span().at_least_rust_2024()
+        //     && self.eat_keyword_case(kw::Gen, case)
+        // {
+        //     Some(CoroutineKind::Gen {
+        //         span,
+        //         closure_id: DUMMY_NODE_ID,
+        //         return_impl_trait_id: DUMMY_NODE_ID,
+        //     })
         } else {
             None
         }
