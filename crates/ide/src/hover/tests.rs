@@ -18,6 +18,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     format: HoverDocFormat::Markdown,
     keywords: true,
     max_trait_assoc_items_count: None,
+    max_struct_field_count: None,
 };
 
 fn check_hover_no_result(ra_fixture: &str) {
@@ -37,6 +38,28 @@ fn check(ra_fixture: &str, expect: Expect) {
     let hover = analysis
         .hover(
             &HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG },
+            FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
+        )
+        .unwrap()
+        .unwrap();
+
+    let content = analysis.db.file_text(position.file_id);
+    let hovered_element = &content[hover.range];
+
+    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
+    expect.assert_eq(&actual)
+}
+
+#[track_caller]
+fn check_hover_struct_limit(count: usize, ra_fixture: &str, expect: Expect) {
+    let (analysis, position) = fixture::position(ra_fixture);
+    let hover = analysis
+        .hover(
+            &HoverConfig {
+                links_in_hover: true,
+                max_struct_field_count: Some(count),
+                ..HOVER_BASE_CONFIG
+            },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
         .unwrap()
@@ -853,9 +876,7 @@ struct Foo$0 { field: u32 }
 
             ```rust
             // size = 4, align = 4
-            struct Foo {
-                field: u32,
-            }
+            struct Foo
             ```
         "#]],
     );
@@ -875,8 +896,74 @@ struct Foo$0 where u32: Copy { field: u32 }
             struct Foo
             where
                 u32: Copy,
-            {
-                field: u32,
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_record_struct_limit() {
+    check_hover_struct_limit(
+        3,
+        r#"
+    struct Foo$0 { a: u32, b: i32, c: i32 }
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            struct Foo  {
+                a: u32,
+                b: i32,
+                c: i32,
+            }
+            ```
+        "#]],
+    );
+    check_hover_struct_limit(
+        3,
+        r#"
+    struct Foo$0 { a: u32 }
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            struct Foo  {
+                a: u32,
+            }
+            ```
+        "#]],
+    );
+    check_hover_struct_limit(
+        3,
+        r#"
+    struct Foo$0 { a: u32, b: i32, c: i32, d: u32 }
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 16 (0x10), align = 4
+            struct Foo  {
+                a: u32,
+                b: i32,
+                c: i32,
+                /* … */
             }
             ```
         "#]],
@@ -1344,9 +1431,7 @@ impl Thing {
                 ```
 
                 ```rust
-                struct Thing {
-                    x: u32,
-                }
+                struct Thing
                 ```
             "#]],
     );
@@ -1365,9 +1450,7 @@ impl Thing {
                 ```
 
                 ```rust
-                struct Thing {
-                    x: u32,
-                }
+                struct Thing
                 ```
             "#]],
     );
@@ -2599,7 +2682,7 @@ fn main() { let s$0t = S{ f1:0 }; }
                                     focus_range: 7..8,
                                     name: "S",
                                     kind: Struct,
-                                    description: "struct S {\n    f1: u32,\n}",
+                                    description: "struct S",
                                 },
                             },
                         ],
@@ -2645,7 +2728,7 @@ fn main() { let s$0t = S{ f1:Arg(0) }; }
                                 focus_range: 24..25,
                                 name: "S",
                                 kind: Struct,
-                                description: "struct S<T> {\n    f1: T,\n}",
+                                description: "struct S<T>",
                             },
                         },
                     ],
@@ -2704,7 +2787,7 @@ fn main() { let s$0t = S{ f1: S{ f1: Arg(0) } }; }
                                 focus_range: 24..25,
                                 name: "S",
                                 kind: Struct,
-                                description: "struct S<T> {\n    f1: T,\n}",
+                                description: "struct S<T>",
                             },
                         },
                     ],
@@ -2957,7 +3040,7 @@ fn main() { let s$0t = foo(); }
                                 focus_range: 39..41,
                                 name: "S1",
                                 kind: Struct,
-                                description: "struct S1 {}",
+                                description: "struct S1",
                             },
                         },
                         HoverGotoTypeData {
@@ -2970,7 +3053,7 @@ fn main() { let s$0t = foo(); }
                                 focus_range: 52..54,
                                 name: "S2",
                                 kind: Struct,
-                                description: "struct S2 {}",
+                                description: "struct S2",
                             },
                         },
                     ],
@@ -3061,7 +3144,7 @@ fn foo(ar$0g: &impl Foo + Bar<S>) {}
                                 focus_range: 36..37,
                                 name: "S",
                                 kind: Struct,
-                                description: "struct S {}",
+                                description: "struct S",
                             },
                         },
                     ],
@@ -3161,7 +3244,7 @@ fn foo(ar$0g: &impl Foo<S>) {}
                                 focus_range: 23..24,
                                 name: "S",
                                 kind: Struct,
-                                description: "struct S {}",
+                                description: "struct S",
                             },
                         },
                     ],
@@ -3198,7 +3281,7 @@ fn main() { let s$0t = foo(); }
                                 focus_range: 49..50,
                                 name: "B",
                                 kind: Struct,
-                                description: "struct B<T> {}",
+                                description: "struct B<T>",
                             },
                         },
                         HoverGotoTypeData {
@@ -3287,7 +3370,7 @@ fn foo(ar$0g: &dyn Foo<S>) {}
                                 focus_range: 23..24,
                                 name: "S",
                                 kind: Struct,
-                                description: "struct S {}",
+                                description: "struct S",
                             },
                         },
                     ],
@@ -3322,7 +3405,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 focus_range: 50..51,
                                 name: "B",
                                 kind: Struct,
-                                description: "struct B<T> {}",
+                                description: "struct B<T>",
                             },
                         },
                         HoverGotoTypeData {
@@ -3361,7 +3444,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 focus_range: 65..66,
                                 name: "S",
                                 kind: Struct,
-                                description: "struct S {}",
+                                description: "struct S",
                             },
                         },
                     ],
