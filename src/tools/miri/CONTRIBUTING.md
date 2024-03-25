@@ -64,19 +64,22 @@ For example, you can (cross-)run the driver on a particular file by doing
 ./miri run tests/pass/hello.rs --target i686-unknown-linux-gnu
 ```
 
-and you can (cross-)run the entire test suite using:
+Tests in ``pass-dep`` need to be run using ``./miri run --dep <filename>``.  
+For example:
+```sh
+./miri run --dep tests/pass-dep/shims/libc-fs.rs
+```
+
+You can (cross-)run the entire test suite using:
 
 ```
 ./miri test
 MIRI_TEST_TARGET=i686-unknown-linux-gnu ./miri test
 ```
 
-If your target doesn't support libstd that should usually just work. However, if you are using a
-custom target file, you might have to set `MIRI_NO_STD=1`.
-
 `./miri test FILTER` only runs those tests that contain `FILTER` in their filename (including the
 base directory, e.g. `./miri test fail` will run all compile-fail tests). These filters are passed
-to `cargo test`, so for multiple filers you need to use `./miri test -- FILTER1 FILTER2`.
+to `cargo test`, so for multiple filters you need to use `./miri test -- FILTER1 FILTER2`.
 
 #### Fine grained logging
 
@@ -178,6 +181,7 @@ to `.vscode/settings.json` in your local Miri clone:
         "cargo",
         "clippy", // make this `check` when working with a locally built rustc
         "--message-format=json",
+        "--all-targets",
     ],
     // Contrary to what the name suggests, this also affects proc macros.
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
@@ -187,6 +191,7 @@ to `.vscode/settings.json` in your local Miri clone:
         "cargo",
         "check",
         "--message-format=json",
+        "--all-targets",
     ],
 }
 ```

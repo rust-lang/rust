@@ -5,7 +5,7 @@ set MIRI_SCRIPT_TARGET_DIR=%0\..\miri-script\target
 
 :: If any other steps are added, the "|| exit /b" must be appended to early
 :: return from the script. If not, it will continue execution.
-cargo build %CARGO_EXTRA_FLAGS% -q --target-dir %MIRI_SCRIPT_TARGET_DIR% --manifest-path %0\..\miri-script\Cargo.toml || exit /b
+cargo +stable build %CARGO_EXTRA_FLAGS% -q --target-dir %MIRI_SCRIPT_TARGET_DIR% --manifest-path %0\..\miri-script\Cargo.toml || exit /b
 
 :: Forwards all arguments to this file to the executable.
 :: We invoke the binary directly to avoid going through rustup, which would set some extra

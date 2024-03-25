@@ -13,6 +13,15 @@ function endgroup {
 
 begingroup "Building Miri"
 
+# Special Windows hacks
+if [ "$HOST_TARGET" = i686-pc-windows-msvc ]; then
+  # The $BASH variable is `/bin/bash` here, but that path does not actually work. There are some
+  # hacks in place somewhere to try to paper over this, but the hacks dont work either (see
+  # <https://github.com/rust-lang/miri/pull/3402>). So we hard-code the correct location for Github
+  # CI instead.
+  BASH="C:/Program Files/Git/usr/bin/bash"
+fi
+
 # Determine configuration for installed build
 echo "Installing release version of Miri"
 export RUSTFLAGS="-D warnings"
@@ -58,12 +67,13 @@ function run_tests {
     MIRIFLAGS="${MIRIFLAGS:-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
 
     # Also run some many-seeds tests. 64 seeds means this takes around a minute per test.
+    # (Need to invoke via explicit `bash -c` for Windows.)
     for FILE in tests/many-seeds/*.rs; do
-      MIRI_SEEDS=64 ./miri many-seeds ./miri run "$FILE"
+      MIRI_SEEDS=64 ./miri many-seeds "$BASH" -c "./miri run '$FILE'"
     done
 
     # Check that the benchmarks build and run, but without actually benchmarking.
-    HYPERFINE="bash -c" ./miri bench
+    HYPERFINE="'$BASH' -c" ./miri bench
   fi
 
   ## test-cargo-miri

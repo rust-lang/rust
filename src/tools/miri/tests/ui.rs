@@ -4,8 +4,11 @@ use std::ffi::OsString;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
-use ui_test::{color_eyre::Result, Config, Match, Mode, OutputConflictHandling};
-use ui_test::{status_emitter, CommandBuilder, Format, RustfixMode};
+use ui_test::color_eyre::eyre::{Context, Result};
+use ui_test::{
+    status_emitter, CommandBuilder, Config, Format, Match, Mode, OutputConflictHandling,
+    RustfixMode,
+};
 
 fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
@@ -124,6 +127,9 @@ fn run_tests(
     // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
     config.program.envs.push(("MIRI_TEMP".into(), Some(tmpdir.to_owned().into())));
 
+    // If a test ICEs, we want to see a backtrace.
+    config.program.envs.push(("RUST_BACKTRACE".into(), Some("1".into())));
+
     // Handle command-line arguments.
     let args = ui_test::Args::test()?;
     let default_bless = env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
@@ -223,7 +229,7 @@ fn ui(
     with_dependencies: Dependencies,
     tmpdir: &Path,
 ) -> Result<()> {
-    let msg = format!("## Running ui tests in {path} against miri for {target}");
+    let msg = format!("## Running ui tests in {path} for {target}");
     eprintln!("{}", msg.green().bold());
 
     let with_dependencies = match with_dependencies {
@@ -231,6 +237,7 @@ fn ui(
         WithoutDependencies => false,
     };
     run_tests(mode, path, target, with_dependencies, tmpdir)
+        .with_context(|| format!("ui tests in {path} for {target} failed"))
 }
 
 fn get_target() -> String {
