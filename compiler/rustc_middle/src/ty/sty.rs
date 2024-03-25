@@ -2395,14 +2395,10 @@ impl<'tcx> Ty<'tcx> {
                     .unwrap();
 
                 if self.has_surface_async_drop(tcx, param_env) {
-                    let assoc_items = tcx
-                        .associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDrop, None));
-                    // FIXME: Should this lifetime be `'static` or erased?
-                    let dropper_ty = Ty::new_projection(
-                        tcx,
-                        assoc_items[0],
-                        [ty::GenericArg::from(self), tcx.lifetimes.re_static.into()],
-                    );
+                    let dropper_ty = tcx
+                        .fn_sig(tcx.require_lang_item(LangItem::SurfaceAsyncDropInPlace, None))
+                        .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+                        .instantiate(tcx, &[self.into()]);
 
                     tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropChain, None))
                         .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
@@ -2449,16 +2445,13 @@ impl<'tcx> Ty<'tcx> {
                 // `Drop` impl must not contain any new bounds that
                 // don't exist for struct definition, thus it is not
                 // ambiguous with any parameters.
-                // FIXME: Add same restrictions on AsyncDrop impls as with Drop impls
+                // TODO: Add same restrictions on AsyncDrop impls as
+                //   with Drop impls
                 if self.has_surface_async_drop(tcx, param_env) {
-                    let assoc_items = tcx
-                        .associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDrop, None));
-                    // FIXME: Should this lifetime be `'static` or erased?
-                    let dropper_ty = Ty::new_projection(
-                        tcx,
-                        assoc_items[0],
-                        [ty::GenericArg::from(self), tcx.lifetimes.re_static.into()],
-                    );
+                    let dropper_ty = tcx
+                        .fn_sig(tcx.require_lang_item(LangItem::SurfaceAsyncDropInPlace, None))
+                        .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+                        .instantiate(tcx, &[self.into()]);
 
                     tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
                         .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
@@ -2496,11 +2489,9 @@ impl<'tcx> Ty<'tcx> {
         // - `Chain<Chain<<Self as AsyncDrop>::Dropper, IntoAsyncDestruct<F0>>, IntoAsyncDestruct<F1>>...` if any with surface drop
 
         let surface_drop = surface_drop.map(|self_ty| {
-            Ty::new_projection(
-                tcx,
-                tcx.associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDrop, None))[0],
-                [ty::GenericArg::from(self_ty), tcx.lifetimes.re_static.into()],
-            )
+            tcx.fn_sig(tcx.require_lang_item(LangItem::SurfaceAsyncDropInPlace, None))
+                .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+                .instantiate(tcx, &[self_ty.into()])
         });
 
         if tys.len() == 0 {
