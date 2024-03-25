@@ -1,6 +1,6 @@
-// only-windows
-// run-pass
-// run-flags:--parent-process
+//@ only-windows
+//@ run-pass
+//@ run-flags:--parent-process
 
 use std::env;
 use std::io::ErrorKind::{self, InvalidInput};
