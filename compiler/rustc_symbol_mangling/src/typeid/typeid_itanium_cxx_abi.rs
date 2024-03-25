@@ -747,9 +747,8 @@ fn transform_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>> {
-    let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> = predicates
-        .iter()
-        .filter_map(|predicate| match predicate.skip_binder() {
+    tcx.mk_poly_existential_predicates_from_iter(predicates.iter().filter_map(|predicate| {
+        match predicate.skip_binder() {
             ty::ExistentialPredicate::Trait(trait_ref) => {
                 let trait_ref = ty::TraitRef::identity(tcx, trait_ref.def_id);
                 Some(ty::Binder::dummy(ty::ExistentialPredicate::Trait(
@@ -758,9 +757,8 @@ fn transform_predicates<'tcx>(
             }
             ty::ExistentialPredicate::Projection(..) => None,
             ty::ExistentialPredicate::AutoTrait(..) => Some(predicate),
-        })
-        .collect();
-    tcx.mk_poly_existential_predicates(&predicates)
+        }
+    }))
 }
 
 /// Transforms args for being encoded and used in the substitution dictionary.
@@ -1171,14 +1169,17 @@ fn strip_receiver_auto<'tcx>(
     let ty::Dynamic(preds, lifetime, kind) = ty.kind() else {
         bug!("Tried to strip auto traits from non-dynamic type {ty}");
     };
-    let filtered_preds =
-        if preds.principal().is_some() {
+    let new_rcvr = if preds.principal().is_some() {
+        let filtered_preds =
             tcx.mk_poly_existential_predicates_from_iter(preds.into_iter().filter(|pred| {
                 !matches!(pred.skip_binder(), ty::ExistentialPredicate::AutoTrait(..))
-            }))
-        } else {
-            ty::List::empty()
-        };
-    let new_rcvr = Ty::new_dynamic(tcx, filtered_preds, *lifetime, *kind);
+            }));
+        Ty::new_dynamic(tcx, filtered_preds, *lifetime, *kind)
+    } else {
+        // If there's no principal type, re-encode it as a unit, since we don't know anything
+        // about it. This technically discards the knowledge that it was a type that was made
+        // into a trait object at some point, but that's not a lot.
+        tcx.types.unit
+    };
     tcx.mk_args_trait(new_rcvr, args.into_iter().skip(1))
 }
