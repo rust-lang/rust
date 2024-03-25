@@ -45,10 +45,6 @@
 #![unstable(feature = "portable_simd", issue = "86656")]
 //! Portable SIMD module.
 
-#[prelude_import]
-#[allow(unused_imports)]
-use core::prelude::v1::*;
-
 #[path = "mod.rs"]
 mod core_simd;
 pub use self::core_simd::simd;
