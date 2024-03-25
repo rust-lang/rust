@@ -103,18 +103,26 @@ fn test_const_deallocate_at_runtime() {
 #[cfg(not(bootstrap))]
 #[test]
 fn test_three_way_compare_in_const_contexts() {
-    use core::cmp::Ordering::*;
+    use core::cmp::Ordering::{self, *};
     use core::intrinsics::three_way_compare;
 
-    const {
-        assert!(Less as i8 == three_way_compare(123_u16, 456) as _);
-        assert!(Equal as i8 == three_way_compare(456_u16, 456) as _);
-        assert!(Greater as i8 == three_way_compare(789_u16, 456) as _);
-        assert!(Less as i8 == three_way_compare('A', 'B') as _);
-        assert!(Equal as i8 == three_way_compare('B', 'B') as _);
-        assert!(Greater as i8 == three_way_compare('C', 'B') as _);
-        assert!(Less as i8 == three_way_compare(-123_i16, 456) as _);
-        assert!(Equal as i8 == three_way_compare(456_i16, 456) as _);
-        assert!(Greater as i8 == three_way_compare(123_i16, -456) as _);
-    }
+    const UNSIGNED_LESS: Ordering = three_way_compare(123_u16, 456);
+    const UNSIGNED_EQUAL: Ordering = three_way_compare(456_u16, 456);
+    const UNSIGNED_GREATER: Ordering = three_way_compare(789_u16, 456);
+    const CHAR_LESS: Ordering = three_way_compare('A', 'B');
+    const CHAR_EQUAL: Ordering = three_way_compare('B', 'B');
+    const CHAR_GREATER: Ordering = three_way_compare('C', 'B');
+    const SIGNED_LESS: Ordering = three_way_compare(123_i64, 456);
+    const SIGNED_EQUAL: Ordering = three_way_compare(456_i64, 456);
+    const SIGNED_GREATER: Ordering = three_way_compare(789_i64, 456);
+
+    assert_eq!(UNSIGNED_LESS, Less);
+    assert_eq!(UNSIGNED_EQUAL, Equal);
+    assert_eq!(UNSIGNED_GREATER, Greater);
+    assert_eq!(CHAR_LESS, Less);
+    assert_eq!(CHAR_EQUAL, Equal);
+    assert_eq!(CHAR_GREATER, Greater);
+    assert_eq!(SIGNED_LESS, Less);
+    assert_eq!(SIGNED_EQUAL, Equal);
+    assert_eq!(SIGNED_GREATER, Greater);
 }

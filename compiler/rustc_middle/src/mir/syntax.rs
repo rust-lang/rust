@@ -1445,6 +1445,14 @@ pub enum BinOp {
     /// The `>` operator (greater than)
     Gt,
     /// The `<=>` operator (three-way comparison, like `Ord::cmp`)
+    ///
+    /// This is supported only on the integer types and `char`, always returning
+    /// [`rustc_hir::LangItem::OrderingEnum`] (aka [`std::cmp::Ordering`]).
+    ///
+    /// [`Rvalue::BinaryOp`]`(BinOp::Cmp, A, B)` returns
+    /// - `Ordering::Less` (`-1_i8`, as a Scalar) if `A < B`
+    /// - `Ordering::Equal` (`0_i8`, as a Scalar) if `A == B`
+    /// - `Ordering::Greater` (`+1_i8`, as a Scalar) if `A > B`
     Cmp,
     /// The `ptr.offset` operator
     Offset,
