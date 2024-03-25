@@ -517,7 +517,7 @@ impl FileAttr {
 
     #[cfg(any(target_os = "horizon", target_os = "hurd"))]
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(self.stat.st_mtim))
+        SystemTime::new(self.stat.st_mtim.tv_sec as i64, self.stat.st_mtim.tv_nsec as i64)
     }
 
     #[cfg(not(any(
@@ -545,7 +545,7 @@ impl FileAttr {
 
     #[cfg(any(target_os = "horizon", target_os = "hurd"))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(self.stat.st_atim))
+        SystemTime::new(self.stat.st_atim.tv_sec as i64, self.stat.st_atim.tv_nsec as i64)
     }
 
     #[cfg(any(
