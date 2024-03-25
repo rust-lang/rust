@@ -1015,8 +1015,8 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
         bug!();
     };
 
-    // We use `*mut Self` here because we only need to emit an ABI-compatible shim body,
-    // rather than match the signature exactly.
+    // We use `&mut Self` here because we only need to emit an ABI-compatible shim body,
+    // rather than match the signature exactly (which might take `&self` instead).
     //
     // The self type here is a coroutine-closure, not a coroutine, and we never read from
     // it because it never has any captures, because this is only true in the Fn/FnMut
@@ -1025,7 +1025,7 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
     if receiver_by_ref {
         // Triple-check that there's no captures here.
         assert_eq!(args.as_coroutine_closure().tupled_upvars_ty(), tcx.types.unit);
-        self_ty = Ty::new_mut_ptr(tcx, self_ty);
+        self_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, self_ty);
     }
 
     let poly_sig = args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
