@@ -25,14 +25,13 @@ mod try_err;
 mod wild_in_or_pats;
 
 use clippy_config::msrvs::{self, Msrv};
-use clippy_utils::source::{snippet_opt, walk_span_to_context};
-use clippy_utils::{higher, in_constant, is_direct_expn_of, is_span_match, tokenize_with_text};
+use clippy_utils::source::walk_span_to_context;
+use clippy_utils::{higher, in_constant, is_direct_expn_of, is_span_match, span_contains_cfg};
 use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
-use rustc_lexer::TokenKind;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, SpanData, SyntaxContext};
+use rustc_span::{SpanData, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -1195,29 +1194,4 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
         },
         Err(()) => true,
     }
-}
-
-/// Checks if the given span contains a `#[cfg(..)]` attribute
-fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
-    let Some(snip) = snippet_opt(cx, s) else {
-        // Assume true. This would require either an invalid span, or one which crosses file boundaries.
-        return true;
-    };
-    let mut iter = tokenize_with_text(&snip);
-
-    // Search for the token sequence [`#`, `[`, `cfg`]
-    while iter.any(|(t, _)| matches!(t, TokenKind::Pound)) {
-        let mut iter = iter.by_ref().skip_while(|(t, _)| {
-            matches!(
-                t,
-                TokenKind::Whitespace | TokenKind::LineComment { .. } | TokenKind::BlockComment { .. }
-            )
-        });
-        if matches!(iter.next(), Some((TokenKind::OpenBracket, _)))
-            && matches!(iter.next(), Some((TokenKind::Ident, "cfg")))
-        {
-            return true;
-        }
-    }
-    false
 }

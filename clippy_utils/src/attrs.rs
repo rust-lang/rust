@@ -1,9 +1,14 @@
 use rustc_ast::{ast, attr};
 use rustc_errors::Applicability;
+use rustc_lexer::TokenKind;
+use rustc_lint::LateContext;
 use rustc_middle::ty::{AdtDef, TyCtxt};
 use rustc_session::Session;
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 use std::str::FromStr;
+
+use crate::source::snippet_opt;
+use crate::tokenize_with_text;
 
 /// Deprecation status of attributes known by Clippy.
 pub enum DeprecationStatus {
@@ -170,4 +175,29 @@ pub fn has_non_exhaustive_attr(tcx: TyCtxt<'_>, adt: AdtDef<'_>) -> bool {
         || adt
             .all_fields()
             .any(|field_def| tcx.has_attr(field_def.did, sym::non_exhaustive))
+}
+
+/// Checks if the given span contains a `#[cfg(..)]` attribute
+pub fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
+    let Some(snip) = snippet_opt(cx, s) else {
+        // Assume true. This would require either an invalid span, or one which crosses file boundaries.
+        return true;
+    };
+    let mut iter = tokenize_with_text(&snip);
+
+    // Search for the token sequence [`#`, `[`, `cfg`]
+    while iter.any(|(t, _)| matches!(t, TokenKind::Pound)) {
+        let mut iter = iter.by_ref().skip_while(|(t, _)| {
+            matches!(
+                t,
+                TokenKind::Whitespace | TokenKind::LineComment { .. } | TokenKind::BlockComment { .. }
+            )
+        });
+        if matches!(iter.next(), Some((TokenKind::OpenBracket, _)))
+            && matches!(iter.next(), Some((TokenKind::Ident, "cfg")))
+        {
+            return true;
+        }
+    }
+    false
 }
