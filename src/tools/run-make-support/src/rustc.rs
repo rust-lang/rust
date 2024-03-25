@@ -183,6 +183,18 @@ impl Rustc {
         output
     }
 
+    #[track_caller]
+    pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
+        let caller_location = std::panic::Location::caller();
+        let caller_line_number = caller_location.line();
+
+        let output = self.cmd.output().unwrap();
+        if output.status.code().unwrap() != code {
+            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+        }
+        output
+    }
+
     /// Inspect what the underlying [`Command`] is up to the current construction.
     pub fn inspect(&mut self, f: impl FnOnce(&Command)) -> &mut Self {
         f(&self.cmd);

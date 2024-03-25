@@ -59,7 +59,6 @@ run-make/emit/Makefile
 run-make/env-dep-info/Makefile
 run-make/error-found-staticlib-instead-crate/Makefile
 run-make/error-writing-dependencies/Makefile
-run-make/exit-code/Makefile
 run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
 run-make/extern-flag-disambiguates/Makefile

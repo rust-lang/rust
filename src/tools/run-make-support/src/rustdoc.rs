@@ -65,6 +65,11 @@ impl Rustdoc {
         self
     }
 
+    pub fn arg_path<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg(path.as_ref());
+        self
+    }
+
     /// Run the build `rustdoc` command and assert that the run is successful.
     #[track_caller]
     pub fn run(&mut self) -> Output {
@@ -73,6 +78,18 @@ impl Rustdoc {
 
         let output = self.cmd.output().unwrap();
         if !output.status.success() {
+            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+        }
+        output
+    }
+
+    #[track_caller]
+    pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
+        let caller_location = std::panic::Location::caller();
+        let caller_line_number = caller_location.line();
+
+        let output = self.cmd.output().unwrap();
+        if output.status.code().unwrap() != code {
             handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
         }
         output
