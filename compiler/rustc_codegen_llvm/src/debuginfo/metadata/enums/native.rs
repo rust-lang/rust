@@ -158,8 +158,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
             DIFlags::FlagZero,
         ),
         |cx, coroutine_type_di_node| {
-            let coroutine_layout =
-                cx.tcx.optimized_mir(coroutine_def_id).coroutine_layout().unwrap();
+            let coroutine_layout = cx.tcx.coroutine_layout(coroutine_def_id).unwrap();
 
             let Variants::Multiple { tag_encoding: TagEncoding::Direct, ref variants, .. } =
                 coroutine_type_and_layout.variants

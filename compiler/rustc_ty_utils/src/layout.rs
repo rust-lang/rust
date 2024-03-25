@@ -1072,7 +1072,7 @@ fn variant_info_for_coroutine<'tcx>(
         return (vec![], None);
     };
 
-    let coroutine = cx.tcx.optimized_mir(def_id).coroutine_layout().unwrap();
+    let coroutine = cx.tcx.coroutine_layout(def_id).unwrap();
     let upvar_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
 
     let mut upvars_size = Size::ZERO;
