@@ -592,7 +592,7 @@ fn produce_final_output_artifacts(
                 .unwrap()
                 .to_owned();
 
-            if crate_output.outputs.contains_key(&output_type) {
+            if crate_output.outputs.contains_explicit_name(&output_type) {
                 // 2) Multiple codegen units, with `--emit foo=some_name`. We have
                 //    no good solution for this case, so warn the user.
                 sess.dcx().emit_warn(errors::IgnoringEmitPath { extension });
