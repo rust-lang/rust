@@ -64,13 +64,13 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
         is_write: bool,
     ) -> InterpResult<'tcx> {
         if is_write {
-            throw_machine_stop_str!("can't write to global");
+            throw_machine_stop_str!("can't write to global")
         }
 
         // If the static allocation is mutable, then we can't const prop it as its content
         // might be different at runtime.
         if alloc.inner().mutability.is_mut() {
-            throw_machine_stop_str!("can't access mutable globals in ConstProp");
+            throw_machine_stop_str!("can't access mutable globals in ConstProp")
         }
 
         Ok(())

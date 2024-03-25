@@ -374,9 +374,8 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
             }
             panic_runtime = Some((
                 cnum,
-                tcx.required_panic_strategy(cnum).unwrap_or_else(|| {
-                    bug!("cannot determine panic strategy of a panic runtime");
-                }),
+                tcx.required_panic_strategy(cnum)
+                    .unwrap_or_else(|| bug!("cannot determine panic strategy of a panic runtime")),
             ));
         }
     }

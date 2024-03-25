@@ -174,7 +174,7 @@ pub(super) fn get_metadata_xcoff<'a>(path: &Path, data: &'a [u8]) -> Result<&'a 
         return Ok(&info_data[offset..(offset + len)]);
     } else {
         return Err(format!("Unable to find symbol {AIX_METADATA_SYMBOL_NAME}"));
-    };
+    }
 }
 
 pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static>> {

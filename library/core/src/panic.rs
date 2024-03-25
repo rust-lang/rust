@@ -17,7 +17,7 @@ pub use self::unwind_safe::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(panic_internals, const_format_args)]
+#[allow_internal_unstable(panic_internals, const_format_args, never_type, stmt_expr_attributes)]
 #[rustc_diagnostic_item = "core_panic_2015_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2015 {
@@ -28,23 +28,26 @@ pub macro panic_2015 {
         $crate::panicking::panic($msg)
     ),
     // Use `panic_str` instead of `panic_display::<&str>` for non_fmt_panic lint.
-    ($msg:expr $(,)?) => ({
-        $crate::panicking::panic_str($msg);
-    }),
+    ($msg:expr $(,)?) => (#[allow(unreachable_code)] $crate::convert::identity::<!>({
+        let _never = $crate::panicking::panic_str($msg);
+        _never
+    })),
     // Special-case the single-argument case for const_panic.
-    ("{}", $arg:expr $(,)?) => ({
-        $crate::panicking::panic_display(&$arg);
-    }),
-    ($fmt:expr, $($arg:tt)+) => ({
+    ("{}", $arg:expr $(,)?) => (#[allow(unreachable_code)] $crate::convert::identity::<!>({
+        let _never = $crate::panicking::panic_display(&$arg);
+        _never
+    })),
+    ($fmt:expr, $($arg:tt)+) => (#[allow(unreachable_code)] $crate::convert::identity::<!>({
         // Semicolon to prevent temporaries inside the formatting machinery from
         // being considered alive in the caller after the panic_fmt call.
-        $crate::panicking::panic_fmt($crate::const_format_args!($fmt, $($arg)+));
-    }),
+        let _never = $crate::panicking::panic_fmt($crate::const_format_args!($fmt, $($arg)+));
+        _never
+    })),
 }
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(panic_internals, const_format_args)]
+#[allow_internal_unstable(panic_internals, const_format_args, never_type, stmt_expr_attributes)]
 #[rustc_diagnostic_item = "core_panic_2021_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 #[cfg(feature = "panic_immediate_abort")]
@@ -53,14 +56,16 @@ pub macro panic_2021 {
         $crate::panicking::panic("explicit panic")
     ),
     // Special-case the single-argument case for const_panic.
-    ("{}", $arg:expr $(,)?) => ({
-        $crate::panicking::panic_display(&$arg);
-    }),
-    ($($t:tt)+) => ({
+    ("{}", $arg:expr $(,)?) => (#[allow(unreachable_code)] $crate::convert::identity::<!>({
+        let _never = $crate::panicking::panic_display(&$arg);
+        _never
+    })),
+    ($($t:tt)+) => (#[allow(unreachable_code)] $crate::convert::identity::<!>({
         // Semicolon to prevent temporaries inside the formatting machinery from
         // being considered alive in the caller after the panic_fmt call.
-        $crate::panicking::panic_fmt($crate::const_format_args!($($t)+));
-    }),
+        let _never = $crate::panicking::panic_fmt($crate::const_format_args!($($t)+));
+        _never
+    })),
 }
 
 #[doc(hidden)]
@@ -71,13 +76,15 @@ pub macro panic_2021 {
     const_dispatch,
     const_eval_select,
     const_format_args,
-    rustc_attrs
+    rustc_attrs,
+    never_type,
+    stmt_expr_attributes
 )]
 #[rustc_diagnostic_item = "core_panic_2021_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 #[cfg(not(feature = "panic_immediate_abort"))]
 pub macro panic_2021 {
-    () => ({
+    () => (#[allow(unreachable_code)] $crate::convert::identity::<!>({
         // Create a function so that the argument for `track_caller`
         // can be moved inside if possible.
         #[cold]
@@ -86,10 +93,11 @@ pub macro panic_2021 {
         const fn panic_cold_explicit() -> ! {
             $crate::panicking::panic_explicit()
         }
-        panic_cold_explicit();
-    }),
+        let _never = panic_cold_explicit();
+        _never
+    })),
     // Special-case the single-argument case for const_panic.
-    ("{}", $arg:expr $(,)?) => ({
+    ("{}", $arg:expr $(,)?) => (#[allow(unreachable_code)] $crate::convert::identity::<!>({
         #[cold]
         #[track_caller]
         #[inline(never)]
@@ -98,18 +106,20 @@ pub macro panic_2021 {
         const fn panic_cold_display<T: $crate::fmt::Display>(arg: &T) -> ! {
             $crate::panicking::panic_display(arg)
         }
-        panic_cold_display(&$arg);
-    }),
-    ($($t:tt)+) => ({
+        let _never = panic_cold_display(&$arg);
+        _never
+    })),
+    ($($t:tt)+) => (#[allow(unreachable_code)] $crate::convert::identity::<!>({
         // Semicolon to prevent temporaries inside the formatting machinery from
         // being considered alive in the caller after the panic_fmt call.
-        $crate::panicking::panic_fmt($crate::const_format_args!($($t)+));
-    }),
+        let _never = $crate::panicking::panic_fmt($crate::const_format_args!($($t)+));
+        _never
+    })),
 }
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use unreachable!() instead")]
-#[allow_internal_unstable(panic_internals)]
+#[allow_internal_unstable(panic_internals, never_type, stmt_expr_attributes)]
 #[rustc_diagnostic_item = "unreachable_2015_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro unreachable_2015 {
@@ -118,9 +128,10 @@ pub macro unreachable_2015 {
     ),
     // Use of `unreachable_display` for non_fmt_panic lint.
     // NOTE: the message ("internal error ...") is embedded directly in unreachable_display
-    ($msg:expr $(,)?) => ({
-        $crate::panicking::unreachable_display(&$msg);
-    }),
+    ($msg:expr $(,)?) => (#[allow(unreachable_code)] $crate::convert::identity::<!>({
+        let _never = $crate::panicking::unreachable_display(&$msg);
+        _never
+    })),
     ($fmt:expr, $($arg:tt)*) => (
         $crate::panic!($crate::concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
     ),

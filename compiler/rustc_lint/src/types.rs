@@ -1118,7 +1118,7 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
                 WrappingRange { start, end } => {
                     unreachable!("Unhandled start and end range: ({}, {})", start, end)
                 }
-            };
+            }
         }
     }
     None
