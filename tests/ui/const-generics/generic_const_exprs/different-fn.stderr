@@ -13,7 +13,10 @@ error: unconstrained generic constant
 LL |     [0; size_of::<Foo<T>>()]
    |         ^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); size_of::<Foo<T>>()]:`
+help: try adding a `where` bound
+   |
+LL | fn test<T>() -> [u8; size_of::<T>()] where [(); size_of::<Foo<T>>()]: {
+   |                                      ++++++++++++++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

@@ -4,7 +4,10 @@ error: unconstrained generic constant
 LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]);
    |                                      ^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); 0 + N]:`
+help: try adding a `where` bound
+   |
+LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]) where [(); 0 + N]:;
+   |                                                    ++++++++++++++++++
 
 error: overly complex generic constant
   --> $DIR/array-size-in-generic-struct-param.rs:23:15
