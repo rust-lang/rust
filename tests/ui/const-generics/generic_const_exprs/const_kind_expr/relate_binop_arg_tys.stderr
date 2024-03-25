@@ -13,7 +13,10 @@ error: unconstrained generic constant
 LL |     Bar::<{ make_generic(N, 1_u8 == 0_u8) }>
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); { make_generic(N, 1_u8 == 0_u8) }]:`
+help: try adding a `where` bound
+   |
+LL | fn foo<const N: usize>() -> Bar<{ make_generic(N, true == false) }> where [(); { make_generic(N, 1_u8 == 0_u8) } as usize]: {
+   |                                                                     +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

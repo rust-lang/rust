@@ -18,6 +18,7 @@ use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
+use rustc_middle::query::TyCtxtAt;
 use rustc_middle::thir::{
     self, BindingMode, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir,
 };
@@ -29,13 +30,6 @@ use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
 use super::lints;
-
-pub(crate) fn mir_built(
-    tcx: TyCtxt<'_>,
-    def: LocalDefId,
-) -> &rustc_data_structures::steal::Steal<Body<'_>> {
-    tcx.alloc_steal_mir(mir_build(tcx, def))
-}
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -54,7 +48,8 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
 }
 
 /// Construct the MIR for a given `DefId`.
-fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
+pub(crate) fn mir_build<'tcx>(tcx: TyCtxtAt<'tcx>, def: LocalDefId) -> Body<'tcx> {
+    let tcx = tcx.tcx;
     tcx.ensure_with_value().thir_abstract_const(def);
     if let Err(e) = tcx.check_match(def) {
         return construct_error(tcx, def, e);

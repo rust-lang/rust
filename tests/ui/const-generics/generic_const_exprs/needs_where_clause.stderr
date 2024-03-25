@@ -4,7 +4,10 @@ error: unconstrained generic constant
 LL |   b: [f32; complex_maths::<T>(N)],
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); complex_maths::<T>(N)]:`
+help: try adding a `where` bound
+   |
+LL | struct Example<T, const N: usize> where [(); complex_maths::<T>(N)]: {
+   |                                   ++++++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

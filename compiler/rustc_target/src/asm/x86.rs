@@ -1,4 +1,4 @@
-use super::{InlineAsmArch, InlineAsmType};
+use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 use crate::spec::{RelocModel, Target};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_macros::HashStable_Generic;
@@ -53,32 +53,28 @@ impl X86InlineAsmRegClass {
         }
     }
 
-    pub fn suggest_modifier(
-        self,
-        arch: InlineAsmArch,
-        ty: InlineAsmType,
-    ) -> Option<(char, &'static str)> {
+    pub fn suggest_modifier(self, arch: InlineAsmArch, ty: InlineAsmType) -> Option<ModifierInfo> {
         match self {
             Self::reg => match ty.size().bits() {
-                16 => Some(('x', "ax")),
-                32 if arch == InlineAsmArch::X86_64 => Some(('e', "eax")),
+                16 => Some(('x', "ax", 16).into()),
+                32 if arch == InlineAsmArch::X86_64 => Some(('e', "eax", 32).into()),
                 _ => None,
             },
             Self::reg_abcd => match ty.size().bits() {
-                16 => Some(('x', "ax")),
-                32 if arch == InlineAsmArch::X86_64 => Some(('e', "eax")),
+                16 => Some(('x', "ax", 16).into()),
+                32 if arch == InlineAsmArch::X86_64 => Some(('e', "eax", 32).into()),
                 _ => None,
             },
             Self::reg_byte => None,
             Self::xmm_reg => None,
             Self::ymm_reg => match ty.size().bits() {
                 256 => None,
-                _ => Some(('x', "xmm0")),
+                _ => Some(('x', "xmm0", 128).into()),
             },
             Self::zmm_reg => match ty.size().bits() {
                 512 => None,
-                256 => Some(('y', "ymm0")),
-                _ => Some(('x', "xmm0")),
+                256 => Some(('y', "ymm0", 256).into()),
+                _ => Some(('x', "xmm0", 128).into()),
             },
             Self::kreg | Self::kreg0 => None,
             Self::mmx_reg | Self::x87_reg => None,
@@ -86,19 +82,19 @@ impl X86InlineAsmRegClass {
         }
     }
 
-    pub fn default_modifier(self, arch: InlineAsmArch) -> Option<(char, &'static str)> {
+    pub fn default_modifier(self, arch: InlineAsmArch) -> Option<ModifierInfo> {
         match self {
             Self::reg | Self::reg_abcd => {
                 if arch == InlineAsmArch::X86_64 {
-                    Some(('r', "rax"))
+                    Some(('r', "rax", 64).into())
                 } else {
-                    Some(('e', "eax"))
+                    Some(('e', "eax", 32).into())
                 }
             }
             Self::reg_byte => None,
-            Self::xmm_reg => Some(('x', "xmm0")),
-            Self::ymm_reg => Some(('y', "ymm0")),
-            Self::zmm_reg => Some(('z', "zmm0")),
+            Self::xmm_reg => Some(('x', "xmm0", 128).into()),
+            Self::ymm_reg => Some(('y', "ymm0", 256).into()),
+            Self::zmm_reg => Some(('z', "zmm0", 512).into()),
             Self::kreg | Self::kreg0 => None,
             Self::mmx_reg | Self::x87_reg => None,
             Self::tmm_reg => None,

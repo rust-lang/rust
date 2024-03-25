@@ -459,7 +459,7 @@ impl Socket {
             const AF_NAME_MAX: usize = 16;
             let mut buf = [0; AF_NAME_MAX];
             for (src, dst) in name.to_bytes().iter().zip(&mut buf[..AF_NAME_MAX - 1]) {
-                *dst = *src as i8;
+                *dst = *src as libc::c_char;
             }
             let mut arg: libc::accept_filter_arg = unsafe { mem::zeroed() };
             arg.af_name = buf;

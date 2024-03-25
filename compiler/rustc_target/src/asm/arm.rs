@@ -1,4 +1,4 @@
-use super::{InlineAsmArch, InlineAsmType};
+use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 use crate::spec::{RelocModel, Target};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_macros::HashStable_Generic;
@@ -35,11 +35,11 @@ impl ArmInlineAsmRegClass {
         self,
         _arch: InlineAsmArch,
         _ty: InlineAsmType,
-    ) -> Option<(char, &'static str)> {
+    ) -> Option<ModifierInfo> {
         None
     }
 
-    pub fn default_modifier(self, _arch: InlineAsmArch) -> Option<(char, &'static str)> {
+    pub fn default_modifier(self, _arch: InlineAsmArch) -> Option<ModifierInfo> {
         None
     }
 

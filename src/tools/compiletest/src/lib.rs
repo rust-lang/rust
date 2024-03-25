@@ -609,6 +609,8 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         stamp.add_path(&rust_src_dir.join("src/etc/htmldocck.py"));
     }
 
+    stamp.add_dir(&rust_src_dir.join("src/tools/run-make-support"));
+
     // Compiletest itself.
     stamp.add_dir(&rust_src_dir.join("src/tools/compiletest/"));
 

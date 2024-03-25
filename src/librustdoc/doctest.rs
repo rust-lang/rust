@@ -67,9 +67,6 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
         }
     }
 
-    if let Some(sysroot) = &options.maybe_sysroot {
-        content.push(format!("--sysroot={}", sysroot.display()));
-    }
     for lib_str in &options.lib_strs {
         content.push(format!("-L{lib_str}"));
     }
@@ -410,6 +407,10 @@ fn run_test(
     let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
 
     compiler.arg(&format!("@{}", rustdoc_options.arg_file.display()));
+
+    if let Some(sysroot) = &rustdoc_options.maybe_sysroot {
+        compiler.arg(format!("--sysroot={}", sysroot.display()));
+    }
 
     compiler.arg("--edition").arg(&edition.to_string());
     compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", path);
@@ -950,6 +951,7 @@ pub(crate) struct IndividualTestOptions {
     runtool_args: Vec<String>,
     target: TargetTriple,
     test_id: String,
+    maybe_sysroot: Option<PathBuf>,
 }
 
 impl IndividualTestOptions {
@@ -982,6 +984,7 @@ impl IndividualTestOptions {
             runtool_args: options.runtool_args.clone(),
             target: options.target.clone(),
             test_id,
+            maybe_sysroot: options.maybe_sysroot.clone(),
         }
     }
 }

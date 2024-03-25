@@ -13,7 +13,10 @@ error: unconstrained generic constant
 LL |     Bool::<{ std::mem::needs_drop::<T>() }>::assert();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); { std::mem::needs_drop::<T>() }]:`
+help: try adding a `where` bound
+   |
+LL | fn f<T>() where [(); { std::mem::needs_drop::<T>() } as usize]: {
+   |           +++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

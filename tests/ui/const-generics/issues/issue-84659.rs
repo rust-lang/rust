@@ -1,4 +1,5 @@
-#![allow(incomplete_features)]
+//@ run-rustfix
+#![allow(incomplete_features, dead_code, unused_braces)]
 #![feature(generic_const_exprs)]
 
 trait Bar<const N: usize> {}
