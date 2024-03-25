@@ -616,6 +616,32 @@ impl Session {
             .default_hidden_visibility
             .unwrap_or(self.target.options.default_hidden_visibility)
     }
+
+    /// Base directory containing the `src/` for the Rust standard library, and
+    /// potentially `rustc` as well, if we can find it. Right now it's always
+    /// `$sysroot/lib/rustlib/src/rust` (i.e. the `rustup` `rust-src` component).
+    ///
+    /// This directory is what the virtual `/rustc/$hash` is translated back to,
+    /// if Rust was built with path remapping to `/rustc/$hash` enabled
+    /// (the `rust.remap-debuginfo` option in `config.toml`).
+    pub fn real_rust_source_base_dir(&self) -> Option<PathBuf> {
+        // This is the location used by the `rust-src` `rustup` component.
+        let sysroot = filesearch::materialize_sysroot(self.opts.maybe_sysroot.clone());
+        let mut candidate = sysroot.join("lib/rustlib/src/rust");
+        if let Ok(metadata) = candidate.symlink_metadata() {
+            // Replace the symlink rustbuild creates, with its destination.
+            // We could try to use `fs::canonicalize` instead, but that might
+            // produce an unnecessarily verbose path.
+            if metadata.file_type().is_symlink() {
+                if let Ok(symlink_dest) = std::fs::read_link(&candidate) {
+                    candidate = symlink_dest;
+                }
+            }
+        }
+
+        // Only use this directory if it has a file we can expect to always find.
+        candidate.join("library/std/src/lib.rs").is_file().then_some(candidate)
+    }
 }
 
 // JUSTIFICATION: defn of the suggested wrapper fns

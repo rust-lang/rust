@@ -197,14 +197,6 @@ top_level_options!(
 
         /// Remap source path prefixes in all output (messages, object files, debug, etc.).
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [TRACKED_NO_CRATE_HASH],
-        /// Base directory containing the `src/` for the Rust standard library, and
-        /// potentially `rustc` as well, if we can find it. Right now it's always
-        /// `$sysroot/lib/rustlib/src/rust` (i.e. the `rustup` `rust-src` component).
-        ///
-        /// This directory is what the virtual `/rustc/$hash` is translated back to,
-        /// if Rust was built with path remapping to `/rustc/$hash` enabled
-        /// (the `rust.remap-debuginfo` option in `config.toml`).
-        real_rust_source_base_dir: Option<PathBuf> [TRACKED_NO_CRATE_HASH],
 
         edition: Edition [TRACKED],
 
