@@ -19,6 +19,7 @@ pub fn target() -> Target {
             stack_probes: StackProbeType::Inline,
             supported_sanitizers: SanitizerSet::ADDRESS
                 | SanitizerSet::CFI
+                | SanitizerSet::KCFI
                 | SanitizerSet::LEAK
                 | SanitizerSet::MEMORY
                 | SanitizerSet::MEMTAG

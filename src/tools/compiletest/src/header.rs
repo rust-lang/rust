@@ -826,6 +826,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-sanitizer-cfi",
     "needs-sanitizer-dataflow",
     "needs-sanitizer-hwaddress",
+    "needs-sanitizer-kcfi",
     "needs-sanitizer-leak",
     "needs-sanitizer-memory",
     "needs-sanitizer-memtag",
