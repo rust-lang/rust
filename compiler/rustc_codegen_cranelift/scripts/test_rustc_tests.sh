@@ -154,7 +154,6 @@ rm tests/ui/codegen/subtyping-enforces-type-equality.rs # assert_assignable bug 
 # ======================
 rm tests/ui/backtrace.rs # TODO warning
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
-rm tests/ui/async-await/async-closures/once.rs # FIXME bug in the rustc FnAbi calculation code
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
