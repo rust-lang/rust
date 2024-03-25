@@ -24,7 +24,10 @@ error: unconstrained generic constant
 LL |     foo::<_, L>([(); L + 1 + L]);
    |                      ^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); L + 1 + L]:`
+help: try adding a `where` bound
+   |
+LL |     [(); (L - 1) + 1 + L]:, [(); L + 1 + L]:
+   |                           ~~~~~~~~~~~~~~~~~~
 
 error: unconstrained generic constant
   --> $DIR/issue_114151.rs:17:17
@@ -34,11 +37,6 @@ LL |     foo::<_, L>([(); L + 1 + L]);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: try adding a `where` bound using this expression: `where [(); {
-                   {
-                       N
-                   }
-               }]:`
 note: required by a bound in `foo`
   --> $DIR/issue_114151.rs:5:13
    |
@@ -51,6 +49,14 @@ LL | |             N
 LL | |         }
 LL | |     }],
    | |_____^ required by this bound in `foo`
+help: try adding a `where` bound
+   |
+LL ~     [(); (L - 1) + 1 + L]:, [(); {
+LL +         {
+LL +             N
+LL +         }
+LL +     }]:
+   |
 
 error: unconstrained generic constant `L + 1 + L`
   --> $DIR/issue_114151.rs:17:5

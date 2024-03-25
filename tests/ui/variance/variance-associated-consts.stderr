@@ -4,7 +4,10 @@ error: unconstrained generic constant
 LL |     field: [u8; <T as Trait>::Const]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); <T as Trait>::Const]:`
+help: try adding a `where` bound
+   |
+LL | struct Foo<T: Trait> where [(); <T as Trait>::Const]: {
+   |                      ++++++++++++++++++++++++++++++++
 
 error: [o]
   --> $DIR/variance-associated-consts.rs:13:1

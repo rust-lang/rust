@@ -10,24 +10,27 @@ LL | |         <IsCopy<T>>::VALUE
 LL | |     } as usize] = [];
    | |_____________________^
    |
-   = help: try adding a `where` bound using this expression: `where [(); 1 - {
-                   trait NotCopy {
-                       const VALUE: bool = false;
-                   }
-           
-                   impl<__Type: ?Sized> NotCopy for __Type {}
-           
-                   struct IsCopy<__Type: ?Sized>(PhantomData<__Type>);
-           
-                   impl<__Type> IsCopy<__Type>
-                   where
-                       __Type: Sized + Copy,
-                   {
-                       const VALUE: bool = true;
-                   }
-           
-                   <IsCopy<T>>::VALUE
-               } as usize]:`
+help: try adding a `where` bound
+   |
+LL ~     } as usize] where [(); 1 - {
+LL +         trait NotCopy {
+LL +             const VALUE: bool = false;
+LL +         }
+LL + 
+LL +         impl<__Type: ?Sized> NotCopy for __Type {}
+LL + 
+LL +         struct IsCopy<__Type: ?Sized>(PhantomData<__Type>);
+LL + 
+LL +         impl<__Type> IsCopy<__Type>
+LL +         where
+LL +             __Type: Sized + Copy,
+LL +         {
+LL +             const VALUE: bool = true;
+LL +         }
+LL + 
+LL +         <IsCopy<T>>::VALUE
+LL ~     } as usize]: = [];
+   |
 
 error: unconstrained generic constant
   --> $DIR/issue-71202.rs:28:19
@@ -35,24 +38,27 @@ error: unconstrained generic constant
 LL |     } as usize] = [];
    |                   ^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); 1 - {
-                   trait NotCopy {
-                       const VALUE: bool = false;
-                   }
-           
-                   impl<__Type: ?Sized> NotCopy for __Type {}
-           
-                   struct IsCopy<__Type: ?Sized>(PhantomData<__Type>);
-           
-                   impl<__Type> IsCopy<__Type>
-                   where
-                       __Type: Sized + Copy,
-                   {
-                       const VALUE: bool = true;
-                   }
-           
-                   <IsCopy<T>>::VALUE
-               } as usize]:`
+help: try adding a `where` bound
+   |
+LL ~     } as usize] where [(); 1 - {
+LL +         trait NotCopy {
+LL +             const VALUE: bool = false;
+LL +         }
+LL + 
+LL +         impl<__Type: ?Sized> NotCopy for __Type {}
+LL + 
+LL +         struct IsCopy<__Type: ?Sized>(PhantomData<__Type>);
+LL + 
+LL +         impl<__Type> IsCopy<__Type>
+LL +         where
+LL +             __Type: Sized + Copy,
+LL +         {
+LL +             const VALUE: bool = true;
+LL +         }
+LL + 
+LL +         <IsCopy<T>>::VALUE
+LL ~     } as usize]: = [];
+   |
 
 error: aborting due to 2 previous errors
 

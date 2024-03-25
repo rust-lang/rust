@@ -11,7 +11,7 @@
 trait Trait {
     const LEN: usize;
 
-    const ARRAY: [i32; Self::LEN]; //~ ERROR unconstrained generic constant
+    const ARRAY: [i32; Self::LEN] where [(); Self::LEN]:; //~ ERROR unconstrained generic constant
 
 }
 

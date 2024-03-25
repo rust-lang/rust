@@ -40,7 +40,10 @@ error: unconstrained generic constant
 LL |     bar2::<{ std::ops::Add::add(N, N) }>();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); { std::ops::Add::add(N, N) }]:`
+help: try adding a `where` bound
+   |
+LL | fn foo2<const N: usize>(a: Evaluatable2<{ N + N }>) where [(); { std::ops::Add::add(N, N) }]: {
+   |                                                     +++++++++++++++++++++++++++++++++++++++++
 
 error[E0015]: cannot call non-const operator in constants
   --> $DIR/unify-op-with-fn-call.rs:20:39
