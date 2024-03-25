@@ -41,12 +41,6 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # missing features
 # ================
 
-# requires stack unwinding
-# FIXME add needs-unwind to these tests
-rm -r tests/run-make/libtest-junit
-rm tests/ui/asm/may_unwind.rs
-rm tests/ui/stable-mir-print/basic_function.rs
-
 # extra warning about -Cpanic=abort for proc macros
 rm tests/ui/proc-macro/crt-static.rs
 rm tests/ui/proc-macro/proc-macro-deprecated-attr.rs
