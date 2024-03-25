@@ -70,3 +70,11 @@ tests/ui/consts/try-operator.rs
 tests/ui/coroutine/unwind-abort-mix.rs
 tests/ui/type-alias-impl-trait/rpit_tait_equality_in_canonical_query.rs
 tests/ui/impl-trait/equality-in-canonical-query.rs
+tests/ui/consts/issue-miri-1910.rs
+tests/ui/mir/mir_heavy_promoted.rs
+tests/ui/consts/const_cmp_type_id.rs
+tests/ui/consts/issue-73976-monomorphic.rs
+tests/ui/consts/issue-94675.rs
+tests/ui/rfcs/rfc-2632-const-trait-impl/const-drop-fail.rs
+tests/ui/rfcs/rfc-2632-const-trait-impl/const-drop.rs
+
