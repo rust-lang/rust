@@ -3,8 +3,12 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, CoroutineArgs, EarlyBinder, Ty, TyCtxt};
+use rustc_span::source_map::respan;
+use rustc_span::Symbol;
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 
 use rustc_index::{Idx, IndexVec};
@@ -127,6 +131,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceDef::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
         ty::InstanceDef::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
+        ty::InstanceDef::AsyncDropGlueCtorShim(def_id, ty) => {
+            build_async_destructor_ctor_shim(tcx, def_id, ty)
+        }
         ty::InstanceDef::Virtual(..) => {
             bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
         }
@@ -1003,6 +1010,506 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
     };
     let source = MirSource::from_instance(ty::InstanceDef::FnPtrAddrShim(def_id, self_ty));
     new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
+}
+
+fn build_async_destructor_ctor_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    self_ty: Ty<'tcx>,
+) -> Body<'tcx> {
+    AsyncDestructorCtorShimBuilder::new(tcx, def_id, self_ty).build()
+}
+
+/// Builder for async_drop_in_place shim. Functions as a stack machine
+/// to build up an expression using combinators. Stack contains pairs
+/// of locals and types. Combinator is a not yet instantiated pair of a
+/// function and a type, is considered to be an operator which consumes
+/// operands from the stack by instantiating its function and its type
+/// with operand types and moving locals into the function call. Top
+/// pair is considered to be the last operand.
+struct AsyncDestructorCtorShimBuilder<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    self_ty: Ty<'tcx>,
+    span: Span,
+    source_info: SourceInfo,
+
+    stack: Vec<Operand<'tcx>>,
+    last_bb: BasicBlock,
+
+    locals: IndexVec<Local, LocalDecl<'tcx>>,
+    bbs: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+}
+
+impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
+    const SELF_PTR: Local = Local::from_u32(1);
+    const INPUT_COUNT: usize = 1;
+    const MAX_STACK_LEN: usize = 2;
+
+    fn new(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Self {
+        let span = tcx.def_span(def_id);
+        let Some(sig) = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).no_bound_vars()
+        else {
+            span_bug!(span, "async_drop_in_place_raw with bound vars for `{self_ty}`");
+        };
+
+        let source_info = SourceInfo::outermost(span);
+
+        debug_assert_eq!(sig.inputs().len(), Self::INPUT_COUNT);
+        let locals = local_decls_for_sig(&sig, span);
+
+        AsyncDestructorCtorShimBuilder {
+            tcx,
+            def_id,
+            self_ty,
+            span,
+            source_info,
+
+            stack: Vec::with_capacity(Self::MAX_STACK_LEN),
+            last_bb: BasicBlock::new(0),
+
+            locals,
+            bbs: IndexVec::from([BasicBlockData::new(None)]),
+        }
+    }
+
+    fn build(self) -> Body<'tcx> {
+        let (tcx, def_id, self_ty) = (self.tcx, self.def_id, self.self_ty);
+        let defer_param_env = || tcx.param_env_reveal_all_normalized(def_id);
+
+        match self_ty.kind() {
+            ty::Array(elem_ty, _) => {
+                self.build_slice(true, *elem_ty)
+            }
+            ty::Slice(elem_ty) => {
+                self.build_slice(false, *elem_ty)
+            }
+
+            ty::Tuple(elem_tys) => {
+                self.build_chain(false, elem_tys.iter())
+            }
+            ty::Adt(adt_def, args) if adt_def.is_struct() => {
+                if adt_def.is_manually_drop() {
+                    return self.build_nop();
+                }
+
+                debug_assert_eq!(adt_def.variants().len(), 1);
+                let has_surface_async_drop = self_ty.is_async_drop(tcx, defer_param_env());
+                let field_tys = adt_def.variant(VariantIdx::new(0)).fields.iter().map(|f| f.ty(tcx, args));
+                self.build_chain(has_surface_async_drop, field_tys)
+            }
+            ty::Closure(_, args) => {
+                self.build_chain(false, args.as_closure().upvar_tys().iter())
+            }
+
+            ty::Adt(adt_def, args) if adt_def.is_enum() => {
+                let has_surface_async_drop = self_ty.is_async_drop(tcx, defer_param_env());
+                self.build_enum(*adt_def, *args, has_surface_async_drop)
+            }
+
+            ty::Never => self.build_unreachable(),
+
+            ty::Foreign(_)
+            // TODO: implement enums, disallow unions
+            | ty::Adt(_, _)
+            | ty::Dynamic(_, _, _)
+            | ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(_, _)
+            | ty::Alias(_, _)
+            | ty::Param(_)
+            | ty::Bound(_, _)
+            | ty::Placeholder(_)
+            | ty::Infer(_)
+            | ty::Error(_) => {
+                if self_ty.is_async_drop(tcx, defer_param_env()) {
+                    self.build_fused_surface()
+                } else {
+                    self.build_nop()
+                }
+            }
+
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_) => self.build_nop(),
+        }
+    }
+
+    fn build_enum(
+        mut self,
+        adt_def: ty::AdtDef<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
+        has_surface_async_drop: bool,
+    ) -> Body<'tcx> {
+        let (tcx, self_ty) = (self.tcx, self.self_ty);
+
+        if adt_def.variants().is_empty() {
+            return self.build_unreachable();
+        }
+
+        let surface = has_surface_async_drop.then(|| {
+            self.put_self();
+            self.combine_surface(self_ty)
+        });
+
+        let mut other = None;
+        for (variant_idx, discr) in adt_def.discriminants(tcx) {
+            let variant = adt_def.variant(variant_idx);
+
+            let mut chain = None;
+            for (field_idx, field) in variant.fields.iter_enumerated() {
+                let field_ty = field.ty(tcx, args);
+                self.put_variant_field(variant.name, variant_idx, field_idx, field_ty);
+                let into_async_destructor = self.combine_into_async_destructor(field_ty);
+                chain = Some(match chain {
+                    None => into_async_destructor,
+                    Some(chain) => self.combine_into_chain(chain, into_async_destructor),
+                })
+            }
+            let variant_dtor = chain.unwrap_or_else(|| self.put_nop());
+
+            other = Some(match other {
+                None => variant_dtor,
+                Some(other) => {
+                    self.put_self();
+                    self.put_discr(discr);
+                    self.combine_either(other, variant_dtor)
+                }
+            });
+        }
+        let variants_dtor = other.unwrap();
+
+        if let Some(surface) = surface {
+            self.combine_chain(surface, variants_dtor);
+        }
+        self.return_()
+    }
+
+    fn build_nop(mut self) -> Body<'tcx> {
+        self.put_nop();
+        self.return_()
+    }
+
+    fn build_fused_surface(mut self) -> Body<'tcx> {
+        self.put_self();
+        let surface = self.combine_surface(self.self_ty);
+        self.combine_fuse(surface);
+        self.return_()
+    }
+
+    fn build_slice(mut self, is_array: bool, elem_ty: Ty<'tcx>) -> Body<'tcx> {
+        if is_array {
+            self.put_array_as_slice(elem_ty)
+        } else {
+            self.put_self()
+        }
+        self.combine_slice(elem_ty);
+        self.return_()
+    }
+
+    fn build_chain<I>(mut self, has_surface_async_drop: bool, elem_tys: I) -> Body<'tcx>
+    where
+        I: Iterator<Item = Ty<'tcx>> + ExactSizeIterator,
+    {
+        if elem_tys.len() == 0 {
+            return if has_surface_async_drop {
+                self.build_fused_surface()
+            } else {
+                self.build_nop()
+            };
+        }
+
+        let mut elems = elem_tys.enumerate().map(|(i, ty)| (FieldIdx::new(i), ty));
+        let first = if has_surface_async_drop {
+            self.put_self();
+            self.combine_surface(self.self_ty)
+        } else {
+            let (field, ty) = elems.next().unwrap();
+            self.put_field(field, ty);
+            self.combine_deep(ty)
+        };
+
+        elems.fold(first, |prev, (field, elem_ty)| {
+            self.put_field(field, elem_ty);
+            let second = self.combine_into_async_destructor(elem_ty);
+            self.combine_chain(prev, second)
+        });
+
+        self.return_()
+    }
+
+    /// Puts `to_drop: *mut Self` on top of the stack.
+    fn put_self(&mut self) {
+        self.put_operand(Operand::Copy(Self::SELF_PTR.into()))
+    }
+
+    /// Given that `Self is [ElemTy; N]` puts `to_drop: *mut [ElemTy]`
+    /// on top of the stack.
+    fn put_array_as_slice(&mut self, elem_ty: Ty<'tcx>) {
+        let slice_ptr_ty = Ty::new_mut_ptr(self.tcx, Ty::new_slice(self.tcx, elem_ty));
+        self.put_temp_rvalue(Rvalue::Cast(
+            CastKind::PointerCoercion(PointerCoercion::Unsize),
+            Operand::Copy(Self::SELF_PTR.into()),
+            slice_ptr_ty,
+        ))
+    }
+
+    /// If given Self is a struct puts `to_drop: *mut FieldTy` on top
+    /// of the stack.
+    fn put_field(&mut self, field: FieldIdx, field_ty: Ty<'tcx>) {
+        let place = Place {
+            local: Self::SELF_PTR,
+            projection: self
+                .tcx
+                .mk_place_elems(&[PlaceElem::Deref, PlaceElem::Field(field, field_ty)]),
+        };
+        self.put_temp_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
+    }
+
+    /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of
+    /// the stack.
+    fn put_variant_field(
+        &mut self,
+        variant_sym: Symbol,
+        variant: VariantIdx,
+        field: FieldIdx,
+        field_ty: Ty<'tcx>,
+    ) {
+        let place = Place {
+            local: Self::SELF_PTR,
+            projection: self.tcx.mk_place_elems(&[
+                PlaceElem::Deref,
+                PlaceElem::Downcast(Some(variant_sym), variant),
+                PlaceElem::Field(field, field_ty),
+            ]),
+        };
+        self.put_temp_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
+    }
+
+    /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of
+    /// the stack.
+    fn put_discr(&mut self, discr: Discr<'tcx>) {
+        let (size, _) = discr.ty.int_size_and_signed(self.tcx);
+        self.put_operand(Operand::const_from_scalar(
+            self.tcx,
+            discr.ty,
+            interpret::Scalar::from_uint(discr.val, size),
+            self.span,
+        ));
+    }
+
+    /// Puts `x: RvalueType` on top of the stack.
+    fn put_temp_rvalue(&mut self, rvalue: Rvalue<'tcx>) {
+        let last_bb = &mut self.bbs[self.last_bb];
+        debug_assert!(last_bb.terminator.is_none());
+
+        let local_ty = rvalue.ty(&self.locals, self.tcx);
+        // We need to create a new local to be able to "consume" it with
+        // a combinator
+        let local = self.locals.push(LocalDecl::with_source_info(local_ty, self.source_info));
+        last_bb.statements.extend_from_slice(&[
+            Statement { source_info: self.source_info, kind: StatementKind::StorageLive(local) },
+            Statement {
+                source_info: self.source_info,
+                kind: StatementKind::Assign(Box::new((local.into(), rvalue))),
+            },
+        ]);
+
+        self.put_operand(Operand::Move(local.into()));
+    }
+
+    /// Puts operand on top of the stack.
+    fn put_operand(&mut self, operand: Operand<'tcx>) {
+        self.stack.push(operand);
+    }
+
+    /// Puts `nop: async_drop::Nop` on top of the stack
+    fn put_nop(&mut self) -> Ty<'tcx> {
+        self.apply_combinator(0, LangItem::AsyncDropNop, &[])
+    }
+
+    fn combine_surface(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator(1, LangItem::SurfaceAsyncDropInPlace, &[to_drop_ty.into()])
+    }
+
+    fn combine_deep(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator(1, LangItem::AsyncDropInPlace, &[to_drop_ty.into()])
+    }
+
+    fn combine_fuse(&mut self, inner_future_ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator(1, LangItem::AsyncDropFuse, &[inner_future_ty.into()])
+    }
+
+    fn combine_slice(&mut self, elem_ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator(1, LangItem::AsyncDropSlice, &[elem_ty.into()])
+    }
+
+    fn combine_into_async_destructor(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator(1, LangItem::IntoAsyncDestructor, &[to_drop_ty.into()])
+    }
+
+    fn combine_chain(&mut self, first: Ty<'tcx>, second: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator(2, LangItem::AsyncDropChain, &[first.into(), second.into()])
+    }
+
+    fn combine_into_chain(&mut self, first: Ty<'tcx>, second: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator(2, LangItem::AsyncDropIntoChain, &[first.into(), second.into()])
+    }
+
+    fn combine_either(&mut self, other: Ty<'tcx>, matched: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator(
+            4,
+            LangItem::AsyncDropEither,
+            &[other.into(), matched.into(), self.self_ty.into()],
+        )
+    }
+
+    fn build_unreachable(mut self) -> Body<'tcx> {
+        let last_bb = &mut self.bbs[self.last_bb];
+        debug_assert!(last_bb.terminator.is_none());
+
+        if self.stack.is_empty() {
+            span_bug!(
+                self.span,
+                "async destructor ctor shim builder finished with invalid number of stack items: expected 0 found {}",
+                self.stack.len(),
+            )
+        }
+
+        last_bb.terminator =
+            Some(Terminator { source_info: self.source_info, kind: TerminatorKind::Unreachable });
+
+        let source = MirSource::from_instance(ty::InstanceDef::AsyncDropGlueCtorShim(
+            self.def_id,
+            self.self_ty,
+        ));
+        new_body(source, self.bbs, self.locals, Self::INPUT_COUNT, self.span)
+    }
+
+    fn return_(mut self) -> Body<'tcx> {
+        let last_bb = &mut self.bbs[self.last_bb];
+        debug_assert!(last_bb.terminator.is_none());
+
+        let (1, Some(output)) = (self.stack.len(), self.stack.pop()) else {
+            span_bug!(
+                self.span,
+                "async destructor ctor shim builder finished with invalid number of stack items: expected 1 found {}",
+                self.stack.len(),
+            )
+        };
+        const RETURN_LOCAL: Local = Local::from_u32(0);
+
+        let dead_storage = match &output {
+            Operand::Move(Place { local, projection }) => {
+                assert!(projection.is_empty());
+                Some(Statement {
+                    source_info: self.source_info,
+                    kind: StatementKind::StorageDead(*local),
+                })
+            }
+            _ => None,
+        };
+
+        last_bb.statements.extend(
+            iter::once(Statement {
+                source_info: self.source_info,
+                kind: StatementKind::Assign(Box::new((RETURN_LOCAL.into(), Rvalue::Use(output)))),
+            })
+            .chain(dead_storage),
+        );
+
+        last_bb.terminator =
+            Some(Terminator { source_info: self.source_info, kind: TerminatorKind::Return });
+
+        let source = MirSource::from_instance(ty::InstanceDef::AsyncDropGlueCtorShim(
+            self.def_id,
+            self.self_ty,
+        ));
+        new_body(source, self.bbs, self.locals, Self::INPUT_COUNT, self.span)
+    }
+
+    fn apply_combinator(
+        &mut self,
+        arity: usize,
+        function: LangItem,
+        args: &[ty::GenericArg<'tcx>],
+    ) -> Ty<'tcx> {
+        let function = self.tcx.require_lang_item(function, Some(self.span));
+        let operands_range = self
+            .stack
+            .len()
+            .checked_sub(arity)
+            .expect("async destructor ctor shim combinator tried to consume too many items")..;
+        let operands = &self.stack[operands_range.clone()];
+
+        let func_ty = Ty::new_fn_def(self.tcx, function, args.iter().copied());
+        let func_sig = func_ty.fn_sig(self.tcx).no_bound_vars().unwrap();
+        // TODO:
+        // #[cfg(debug_assertions)]
+        // operands.iter().zip(func_sig.inputs()).for_each(|(operand, expected_ty)| {
+        //     debug_assert_eq!(operand.ty(&self.locals, self.tcx), *expected_ty)
+        // });
+
+        let target = self.bbs.push(BasicBlockData {
+            statements: operands
+                .iter()
+                .rev()
+                .filter_map(|o| {
+                    if let Operand::Move(Place { local, projection }) = o {
+                        assert!(projection.is_empty());
+                        Some(Statement {
+                            source_info: self.source_info,
+                            kind: StatementKind::StorageDead(*local),
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+            terminator: None,
+            is_cleanup: false,
+        });
+
+        let dest_ty = func_sig.output();
+        let dest =
+            self.locals.push(LocalDecl::with_source_info(dest_ty, self.source_info).immutable());
+
+        let last_bb = &mut self.bbs[self.last_bb];
+        debug_assert!(last_bb.terminator.is_none());
+        last_bb.statements.push(Statement {
+            source_info: self.source_info,
+            kind: StatementKind::StorageLive(dest),
+        });
+        last_bb.terminator = Some(Terminator {
+            source_info: self.source_info,
+            kind: TerminatorKind::Call {
+                func: Operand::Constant(Box::new(ConstOperand {
+                    span: self.span,
+                    user_ty: None,
+                    const_: Const::Val(ConstValue::ZeroSized, func_ty),
+                })),
+                destination: dest.into(),
+                target: Some(target),
+                // TODO: Figure out unwind (even tho they shouldn't panic?)
+                unwind: UnwindAction::Continue,
+                call_source: CallSource::Misc,
+                fn_span: self.span,
+                args: self.stack.drain(operands_range).map(|o| respan(self.span, o)).collect(),
+            },
+        });
+
+        self.stack.push(Operand::Move(dest.into()));
+        self.last_bb = target;
+
+        dest_ty
+    }
 }
 
 fn build_construct_coroutine_by_move_shim<'tcx>(

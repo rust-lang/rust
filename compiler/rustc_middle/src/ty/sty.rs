@@ -2315,6 +2315,233 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Returns the type of the async destructor of this type.
+    pub fn async_destructor_ty(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Ty<'tcx> {
+        match *self.kind() {
+            ty::Array(elem_ty, _) | ty::Slice(elem_ty) => tcx
+                .fn_sig(tcx.require_lang_item(hir::LangItem::AsyncDropSlice, None))
+                .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+                .instantiate(tcx, &[elem_ty.into()]),
+            ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
+                let assoc_items = tcx.associated_item_def_ids(
+                    tcx.require_lang_item(hir::LangItem::AsyncDestruct, None),
+                );
+                Ty::new_projection(tcx, assoc_items[0], [self])
+            }
+            ty::Tuple(tys) => Self::chain_async_destructor_ty(tcx, tys.iter(), None),
+            ty::Adt(adt_def, args) if adt_def.is_struct() => {
+                if adt_def.is_manually_drop() {
+                    return tcx
+                        .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                        .instantiate_identity()
+                        .output()
+                        .no_bound_vars()
+                        .unwrap();
+                }
+
+                Self::chain_async_destructor_ty(
+                    tcx,
+                    adt_def.non_enum_variant().fields.iter().map(|f| f.ty(tcx, args)),
+                    self.is_async_drop(tcx, param_env).then_some(self),
+                )
+            }
+            ty::Closure(_, args) => {
+                Self::chain_async_destructor_ty(tcx, args.as_closure().upvar_tys().iter(), None)
+            }
+
+            ty::Never => tcx
+                .type_of(tcx.require_lang_item(LangItem::AsyncDropNever, None))
+                .instantiate_identity(),
+            ty::Adt(adt_def, args) if adt_def.is_enum() => {
+                if adt_def.variants().is_empty() {
+                    return tcx
+                        .type_of(tcx.require_lang_item(LangItem::AsyncDropNever, None))
+                        .instantiate_identity();
+                }
+
+                let into_async_destructor = tcx
+                    .fn_sig(tcx.require_lang_item(LangItem::IntoAsyncDestructor, None))
+                    .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
+                let into_chain = tcx
+                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropIntoChain, None))
+                    .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
+
+                let nop = tcx
+                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                    .instantiate_identity()
+                    .output()
+                    .no_bound_vars()
+                    .unwrap();
+                let either = tcx
+                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropEither, None))
+                    .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
+
+                let variants_dtor = adt_def
+                    .variants()
+                    .iter()
+                    .map(|variant| {
+                        variant
+                            .fields
+                            .iter()
+                            .map(|field| field.ty(tcx, args))
+                            .map(|ty| into_async_destructor.instantiate(tcx, &[ty.into()]))
+                            .reduce(|acc, next| {
+                                into_chain.instantiate(tcx, &[acc.into(), next.into()])
+                            })
+                            .unwrap_or(nop)
+                    })
+                    .reduce(|other, matched| {
+                        either.instantiate(tcx, &[other.into(), matched.into(), self.into()])
+                    })
+                    .unwrap();
+
+                if self.is_async_drop(tcx, param_env) {
+                    let assoc_items = tcx
+                        .associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDrop, None));
+                    // FIXME: Should this lifetime be `'static` or erased?
+                    let dropper_ty = Ty::new_projection(
+                        tcx,
+                        assoc_items[0],
+                        [ty::GenericArg::from(self), tcx.lifetimes.re_static.into()],
+                    );
+
+                    tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropChain, None))
+                        .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+                        .instantiate(tcx, &[dropper_ty.into(), variants_dtor.into()])
+                } else {
+                    variants_dtor
+                }
+            }
+
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::RawPtr(_)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Infer(IntVar(_) | FloatVar(_)) => tcx
+                .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                .instantiate_identity()
+                .output()
+                .no_bound_vars()
+                .unwrap(),
+
+            ty::Adt(adt_def, _) if adt_def.is_union() => tcx
+                .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                .instantiate_identity()
+                .output()
+                .no_bound_vars()
+                .unwrap(),
+
+            ty::Dynamic(..)
+            | ty::CoroutineClosure(..)
+            | ty::CoroutineWitness(..)
+            | ty::Error(_)
+            | ty::Coroutine(..) => {
+                // TODO: This branch should emit a bug for some cases
+                //   or be implemented for other cases
+
+                // This condition is conservative, evaluating to false
+                // in some unclear cases. However `AsyncDrop` as with
+                // `Drop` impl must not contain any new bounds that
+                // don't exist for struct definition, thus it is not
+                // ambiguous with any parameters.
+                // FIXME: Add same restrictions on AsyncDrop impls as with Drop impls
+                if self.is_async_drop(tcx, param_env) {
+                    let assoc_items = tcx
+                        .associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDrop, None));
+                    // FIXME: Should this lifetime be `'static` or erased?
+                    let dropper_ty = Ty::new_projection(
+                        tcx,
+                        assoc_items[0],
+                        [ty::GenericArg::from(self), tcx.lifetimes.re_static.into()],
+                    );
+
+                    tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
+                        .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+                        .instantiate(tcx, &[dropper_ty.into()])
+                } else {
+                    tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                        .instantiate_identity()
+                        .output()
+                        .no_bound_vars()
+                        .unwrap()
+                }
+            }
+
+            ty::Adt(..)
+            | ty::Bound(..)
+            | ty::Foreign(_)
+            | ty::Placeholder(_)
+            | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("`async_destructor_ty` applied to unexpected type: {:?}", self)
+            }
+        }
+    }
+
+    fn chain_async_destructor_ty<I>(
+        tcx: TyCtxt<'tcx>,
+        mut tys: I,
+        surface_drop: Option<Ty<'tcx>>,
+    ) -> Ty<'tcx>
+    where
+        I: Iterator<Item = Ty<'tcx>> + ExactSizeIterator,
+    {
+        // - `Nop` if empty
+        // - `Fuse<<Self as AsyncDrop>::Dropper>` if surface drop only
+        // - `Chain<AsyncDropInPlace<F0>, IntoAsyncDestruct<F1>>...` if any without surface drop
+        // - `Chain<Chain<<Self as AsyncDrop>::Dropper, IntoAsyncDestruct<F0>>, IntoAsyncDestruct<F1>>...` if any with surface drop
+
+        let surface_drop = surface_drop.map(|self_ty| {
+            Ty::new_projection(
+                tcx,
+                tcx.associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDrop, None))[0],
+                [ty::GenericArg::from(self_ty), tcx.lifetimes.re_static.into()],
+            )
+        });
+
+        if tys.len() == 0 {
+            return match surface_drop {
+                None => tcx
+                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                    .instantiate_identity()
+                    .output()
+                    .no_bound_vars()
+                    .unwrap(),
+                Some(surface_drop) => tcx
+                    .fn_sig(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
+                    .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+                    .instantiate(tcx, &[surface_drop.into()]),
+            };
+        }
+
+        let first_drop = surface_drop.unwrap_or_else(|| {
+            Ty::new_projection(
+                tcx,
+                tcx.associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDestruct, None))
+                    [0],
+                [tys.next().unwrap()],
+            )
+        });
+
+        let chain = tcx
+            .fn_sig(tcx.require_lang_item(LangItem::AsyncDropChain, None))
+            .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
+        let into_async_destructor = tcx
+            .fn_sig(tcx.require_lang_item(LangItem::IntoAsyncDestructor, None))
+            .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
+        tys.fold(first_drop, |dtor, ty| {
+            chain.instantiate(
+                tcx,
+                &[dtor.into(), into_async_destructor.instantiate(tcx, &[ty.into()]).into()],
+            )
+        })
+    }
+
     /// Returns the type of metadata for (potentially fat) pointers to this type,
     /// or the struct tail if the metadata type cannot be determined.
     pub fn ptr_metadata_ty_or_tail(
