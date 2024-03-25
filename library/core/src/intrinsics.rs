@@ -1356,7 +1356,7 @@ extern "rust-intrinsic" {
     /// let v_clone = v_orig.clone();
     ///
     /// // This is the suggested, safe way.
-    /// // It does copy the entire vector, though, into a new array.
+    /// // It may copy the entire vector into a new one though, but also may not.
     /// let v_collected = v_clone.into_iter()
     ///                          .map(Some)
     ///                          .collect::<Vec<Option<&i32>>>();
