@@ -464,10 +464,9 @@ Moreover, Miri recognizes some environment variables:
   standard library that it will build and use for interpretation. This directory
   must point to the `library` subdirectory of a `rust-lang/rust` repository
   checkout.
-* `MIRI_SYSROOT` (recognized by `cargo miri` and the Miri driver) indicates the sysroot to use. When
+* `MIRI_SYSROOT` (recognized by `cargo miri` and the test suite) indicates the sysroot to use. When
   using `cargo miri`, this skips the automatic setup -- only set this if you do not want to use the
-  automatically created sysroot. For directly invoking the Miri driver, this variable (or a
-  `--sysroot` flag) is mandatory. When invoking `cargo miri setup`, this indicates where the sysroot
+  automatically created sysroot. When invoking `cargo miri setup`, this indicates where the sysroot
   will be put.
 * `MIRI_TEST_TARGET` (recognized by the test suite and the `./miri` script) indicates which target
   architecture to test against.  `miri` and `cargo miri` accept the `--target` flag for the same
