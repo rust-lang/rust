@@ -1306,7 +1306,7 @@ symbols! {
         panic_misaligned_pointer_dereference,
         panic_nounwind,
         panic_runtime,
-        panic_str,
+        panic_str_2015,
         panic_unwind,
         panicking,
         param_attrs,
