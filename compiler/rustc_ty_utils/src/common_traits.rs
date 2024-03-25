@@ -29,6 +29,10 @@ fn has_surface_async_drop_raw<'tcx>(
     is_item_raw(tcx, query, LangItem::AsyncDrop)
 }
 
+fn has_surface_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    is_item_raw(tcx, query, LangItem::Drop)
+}
+
 fn is_item_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
@@ -47,6 +51,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         is_freeze_raw,
         is_unpin_raw,
         has_surface_async_drop_raw,
+        has_surface_drop_raw,
         ..*providers
     };
 }
