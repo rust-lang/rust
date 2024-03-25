@@ -212,7 +212,7 @@ fn suggest<'tcx>(
     call: &CallCandidate<'tcx>,
 ) {
     span_lint_and_then(cx, ASSIGNING_CLONES, assign_expr.span, call.message(), |diag| {
-        let mut applicability = Applicability::MachineApplicable;
+        let mut applicability = Applicability::Unspecified;
 
         diag.span_suggestion(
             assign_expr.span,
