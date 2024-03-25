@@ -106,6 +106,15 @@ impl OngoingCodegen {
             }
         }
 
+        if sess.opts.json_artifact_notifications {
+            for module in &modules {
+                let dcx = sess.dcx();
+                if let Some(path) = module.object.as_deref() {
+                    dcx.emit_artifact_notification(path, "obj");
+                }
+            }
+        }
+
         self.concurrency_limiter.finished();
 
         sess.dcx().abort_if_errors();
