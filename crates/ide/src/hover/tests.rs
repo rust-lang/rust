@@ -51,6 +51,28 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 #[track_caller]
+fn check_hover_struct_limit(count: usize, ra_fixture: &str, expect: Expect) {
+    let (analysis, position) = fixture::position(ra_fixture);
+    let hover = analysis
+        .hover(
+            &HoverConfig {
+                links_in_hover: true,
+                max_struct_field_count: Some(count),
+                ..HOVER_BASE_CONFIG
+            },
+            FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
+        )
+        .unwrap()
+        .unwrap();
+
+    let content = analysis.db.file_text(position.file_id);
+    let hovered_element = &content[hover.range];
+
+    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
+    expect.assert_eq(&actual)
+}
+
+#[track_caller]
 fn check_assoc_count(count: usize, ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
@@ -874,6 +896,75 @@ struct Foo$0 where u32: Copy { field: u32 }
             struct Foo
             where
                 u32: Copy,
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_record_struct_limit() {
+    check_hover_struct_limit(
+        3,
+        r#"
+    struct Foo$0 { a: u32, b: i32, c: i32 }
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            struct Foo  {
+                a: u32,
+                b: i32,
+                c: i32,
+            }
+            ```
+        "#]],
+    );
+    check_hover_struct_limit(
+        3,
+        r#"
+    struct Foo$0 { a: u32 }
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            struct Foo  {
+                a: u32,
+            }
+            ```
+        "#]],
+    );
+    check_hover_struct_limit(
+        3,
+        r#"
+    struct Foo$0 { a: u32, b: i32, c: i32, d: u32 }
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 16 (0x10), align = 4
+            struct Foo  {
+                a: u32,
+                b: i32,
+                c: i32,
+                /* … */
+            }
             ```
         "#]],
     );
