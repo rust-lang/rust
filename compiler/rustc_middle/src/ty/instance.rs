@@ -517,6 +517,24 @@ impl<'tcx> Instance<'tcx> {
                     debug!(" => fn pointer created for virtual call");
                     resolved.def = InstanceDef::ReifyShim(def_id, reason);
                 }
+                // Reify `Trait::method` implementations if KCFI is enabled
+                // FIXME(maurer) only reify it if it is a vtable-safe function
+                _ if tcx.sess.is_sanitizer_kcfi_enabled()
+                    && tcx.associated_item(def_id).trait_item_def_id.is_some() =>
+                {
+                    // If this function could also go in a vtable, we need to `ReifyShim` it with
+                    // KCFI because it can only attach one type per function.
+                    resolved.def = InstanceDef::ReifyShim(resolved.def_id(), reason)
+                }
+                // Reify `::call`-like method implementations if KCFI is enabled
+                _ if tcx.sess.is_sanitizer_kcfi_enabled()
+                    && tcx.is_closure_like(resolved.def_id()) =>
+                {
+                    // Reroute through a reify via the *unresolved* instance. The resolved one can't
+                    // be directly reified because it's closure-like. The reify can handle the
+                    // unresolved instance.
+                    resolved = Instance { def: InstanceDef::ReifyShim(def_id, reason), args }
+                }
                 _ => {}
             }
 

@@ -15,7 +15,6 @@
 
 #![feature(fn_traits)]
 #![feature(unboxed_closures)]
-#![feature(cfg_sanitize)]
 
 fn foo<'a, T>() -> Box<dyn Fn(&'a T) -> &'a T> {
     Box::new(|x| x)
@@ -72,9 +71,6 @@ fn use_closure<C>(call: extern "rust-call" fn(&C, ()) -> i32, f: &C) -> i32 {
 }
 
 #[test]
-// FIXME after KCFI reify support is added, remove this
-// It will appear to work if you test locally, set -C opt-level=0 to see it fail.
-#[cfg_attr(sanitize = "kcfi", ignore)]
 fn closure_addr_taken() {
     let x = 3i32;
     let f = || x;
