@@ -1630,7 +1630,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             }
 
             let typeid = if let Some(instance) = instance {
-                typeid_for_instance(self.tcx, &instance, options)
+                typeid_for_instance(self.tcx, instance, options)
             } else {
                 typeid_for_fnabi(self.tcx, fn_abi, options)
             };
@@ -1678,7 +1678,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             }
 
             let kcfi_typeid = if let Some(instance) = instance {
-                kcfi_typeid_for_instance(self.tcx, &instance, options)
+                kcfi_typeid_for_instance(self.tcx, instance, options)
             } else {
                 kcfi_typeid_for_fnabi(self.tcx, fn_abi, options)
             };
