@@ -280,12 +280,12 @@ fn encode_region<'tcx>(region: Region<'tcx>, dict: &mut FxHashMap<DictKey<'tcx>,
             s.push('E');
             compress(dict, DictKey::Region(region), &mut s);
         }
-        // FIXME(@lcnr): Why is `ReEarlyParam` reachable here.
-        RegionKind::ReEarlyParam(..) | RegionKind::ReErased => {
+        RegionKind::ReErased => {
             s.push_str("u6region");
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReLateParam(..)
+        RegionKind::ReEarlyParam(..)
+        | RegionKind::ReLateParam(..)
         | RegionKind::ReStatic
         | RegionKind::ReError(_)
         | RegionKind::ReVar(..)
@@ -746,22 +746,40 @@ fn encode_ty<'tcx>(
 }
 
 /// Transforms predicates for being encoded and used in the substitution dictionary.
-fn transform_predicates<'tcx>(
+fn transform_dyn_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
+    parents: &mut Vec<Ty<'tcx>>,
+    options: TransformTyOptions,
 ) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>> {
-    tcx.mk_poly_existential_predicates_from_iter(predicates.iter().filter_map(|predicate| {
-        match predicate.skip_binder() {
-            ty::ExistentialPredicate::Trait(trait_ref) => {
-                let trait_ref = ty::TraitRef::identity(tcx, trait_ref.def_id);
-                Some(ty::Binder::dummy(ty::ExistentialPredicate::Trait(
-                    ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
-                )))
-            }
-            ty::ExistentialPredicate::Projection(..) => None,
-            ty::ExistentialPredicate::AutoTrait(..) => Some(predicate),
-        }
-    }))
+    let mut predicates: Vec<_> = predicates
+        .iter()
+        .map(|predicate| {
+            predicate.map_bound(|predicate| match predicate {
+                ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef { def_id, args }) => {
+                    ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef {
+                        def_id,
+                        args: transform_args(tcx, args, parents, options),
+                    })
+                }
+                ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
+                    def_id,
+                    args,
+                    term,
+                }) => ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
+                    def_id,
+                    args: transform_args(tcx, args, parents, options),
+                    term: match term.unpack() {
+                        TermKind::Ty(ty) => transform_ty(tcx, ty, parents, options).into(),
+                        TermKind::Const(ct) => ct.into(),
+                    },
+                }),
+                ty::ExistentialPredicate::AutoTrait(..) => predicate,
+            })
+        })
+        .collect();
+    predicates.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
+    tcx.mk_poly_existential_predicates(&predicates)
 }
 
 /// Transforms args for being encoded and used in the substitution dictionary.
@@ -935,11 +953,12 @@ fn transform_ty<'tcx>(
         }
 
         ty::Ref(region, ty0, ..) => {
+            assert_eq!(*region, tcx.lifetimes.re_erased);
             if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
                 if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_static, Ty::new_unit(tcx));
+                    ty = Ty::new_mut_ref(tcx, *region, Ty::new_unit(tcx));
                 } else {
-                    ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, Ty::new_unit(tcx));
+                    ty = Ty::new_imm_ref(tcx, *region, Ty::new_unit(tcx));
                 }
             } else {
                 if ty.is_mutable_ptr() {
@@ -993,25 +1012,22 @@ fn transform_ty<'tcx>(
             }
         }
 
-        ty::Dynamic(predicates, _region, kind) => {
+        ty::Dynamic(predicates, region, kind) => {
+            assert_eq!(*region, tcx.lifetimes.re_erased);
             ty = Ty::new_dynamic(
                 tcx,
-                transform_predicates(tcx, predicates),
-                tcx.lifetimes.re_erased,
+                transform_dyn_predicates(tcx, predicates, parents, options),
+                *region,
                 *kind,
             );
         }
 
-        ty::Alias(..) => {
-            ty = transform_ty(
-                tcx,
-                tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty),
-                parents,
-                options,
-            );
-        }
-
-        ty::Bound(..) | ty::Error(..) | ty::Infer(..) | ty::Param(..) | ty::Placeholder(..) => {
+        ty::Alias(..)
+        | ty::Bound(..)
+        | ty::Error(..)
+        | ty::Infer(..)
+        | ty::Param(..)
+        | ty::Placeholder(..) => {
             bug!("transform_ty: unexpected `{:?}`", ty.kind());
         }
     }
