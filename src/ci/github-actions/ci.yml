@@ -672,7 +672,6 @@ jobs:
               SCRIPT: make ci-mingw
               RUST_CONFIGURE_ARGS: >-
                 --build=x86_64-pc-windows-gnu
-                --enable-profiler
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
@@ -720,7 +719,6 @@ jobs:
               RUST_CONFIGURE_ARGS: >-
                 --build=i686-pc-windows-gnu
                 --enable-full-tools
-                --enable-profiler
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
@@ -735,7 +733,6 @@ jobs:
               RUST_CONFIGURE_ARGS: >-
                 --build=x86_64-pc-windows-gnu
                 --enable-full-tools
-                --enable-profiler
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1

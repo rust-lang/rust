@@ -1,6 +1,5 @@
-//@ needs-profiler-support
 //@ revisions: branch no-branch bad
-//@ compile-flags -Cinstrument-coverage
+//@ compile-flags -Cinstrument-coverage -Zno-profiler-runtime
 
 //@ [branch] check-pass
 //@ [branch] compile-flags: -Zcoverage-options=branch

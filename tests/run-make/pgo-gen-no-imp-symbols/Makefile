@@ -1,8 +1,6 @@
-# needs-profiler-support
-
 include ../tools.mk
 
-COMPILE_FLAGS=-O -Ccodegen-units=1 -Cprofile-generate="$(TMPDIR)"
+COMPILE_FLAGS=-O -Ccodegen-units=1 -Cprofile-generate="$(TMPDIR)" -Zno-profiler-runtime
 
 all:
 	$(RUSTC) $(COMPILE_FLAGS) --emit=llvm-ir test.rs
