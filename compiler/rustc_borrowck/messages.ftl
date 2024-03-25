@@ -132,6 +132,10 @@ borrowck_moved_due_to_usage_in_operator =
         *[false] operator
     }
 
+borrowck_must_define_opaque =
+    method must define opaque type
+    .label = because it shows up in the args of this method
+
 borrowck_opaque_type_lifetime_mismatch =
     opaque type used twice with different lifetimes
     .label = lifetime `{$arg}` used here

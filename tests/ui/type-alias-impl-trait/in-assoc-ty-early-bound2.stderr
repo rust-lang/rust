@@ -9,6 +9,16 @@ LL |     fn bar<'a: 'a>()
 LL |             let _: Self::Assoc<'a> = x;
    |                    ^^^^^^^^^^^^^^^
 
+error: method must define opaque type
+  --> $DIR/in-assoc-ty-early-bound2.rs:9:22
+   |
+LL |       type Assoc<'a> = impl Sized;
+   |                        ^^^^^^^^^^
+LL | /     fn bar<'a: 'a>()
+LL | |     where
+LL | |         Self::Assoc<'a>:,
+   | |_________________________- because it shows up in the args of this method
+
 error: unconstrained opaque type
   --> $DIR/in-assoc-ty-early-bound2.rs:9:22
    |
@@ -17,6 +27,6 @@ LL |     type Assoc<'a> = impl Sized;
    |
    = note: `Assoc` must be used in combination with a concrete type within the same impl
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0700`.

@@ -16,8 +16,9 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
 
-use crate::session_diagnostics::LifetimeMismatchOpaqueParam;
-use crate::session_diagnostics::NonGenericOpaqueTypeParam;
+use crate::session_diagnostics::{
+    LifetimeMismatchOpaqueParam, MustDefineOpaque, NonGenericOpaqueTypeParam,
+};
 
 use super::RegionInferenceContext;
 
@@ -42,12 +43,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Check that all opaque types have the same region parameters if they have the same
     /// non-region parameters. This is necessary because within the new solver we perform various query operations
     /// modulo regions, and thus could unsoundly select some impls that don't hold.
-    fn check_unique(
+    fn check_unique_and_defined(
         &self,
         infcx: &InferCtxt<'tcx>,
+        anchor: LocalDefId,
         opaque_ty_decls: &FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
     ) {
+        let mut seen = FxIndexSet::default();
         for (i, (a, a_ty)) in opaque_ty_decls.iter().enumerate() {
+            seen.insert(a.def_id);
             for (b, b_ty) in opaque_ty_decls.iter().skip(i + 1) {
                 if a.def_id != b.def_id {
                     continue;
@@ -75,6 +79,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         span: a_ty.span,
                         prev_span: b_ty.span,
                     });
+                }
+            }
+        }
+
+        if !infcx.tcx.is_typeck_child(anchor.to_def_id()) {
+            // Check that all the in-scope ATPITs are defined by the anchor
+            for def_id in infcx.tcx.opaque_types_defined_by(anchor) {
+                if seen.contains(&def_id) {
+                    continue;
+                }
+                match infcx.tcx.opaque_type_origin(def_id) {
+                    OpaqueTyOrigin::TyAlias { in_assoc_ty: true, .. } => {
+                        infcx.dcx().emit_err(MustDefineOpaque {
+                            span: infcx.tcx.def_span(def_id),
+                            item_span: infcx.tcx.def_span(anchor),
+                        });
+                    }
+                    _ => {}
                 }
             }
         }
@@ -125,7 +147,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'tcx>,
         opaque_ty_decls: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
     ) -> FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> {
-        self.check_unique(infcx, &opaque_ty_decls);
+        self.check_unique_and_defined(
+            infcx,
+            self.universal_regions().defining_ty.def_id().expect_local(),
+            &opaque_ty_decls,
+        );
 
         let mut result: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> = FxIndexMap::default();
 
