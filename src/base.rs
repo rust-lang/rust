@@ -8,6 +8,7 @@ use rustc_index::IndexVec;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_monomorphize::is_call_from_compiler_builtins_to_upstream_monomorphization;
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::FunctionDebugContext;
@@ -779,7 +780,7 @@ fn codegen_stmt<'tcx>(
                         NullOp::OffsetOf(fields) => {
                             layout.offset_of_subfield(fx, fields.iter()).bytes()
                         }
-                        NullOp::UbCheck(_) => {
+                        NullOp::UbChecks => {
                             let val = fx.tcx.sess.opts.debug_assertions;
                             let val = CValue::by_val(
                                 fx.bcx.ins().iconst(types::I8, i64::try_from(val).unwrap()),
@@ -999,6 +1000,12 @@ fn codegen_panic_inner<'tcx>(
     let def_id = fx.tcx.require_lang_item(lang_item, span);
 
     let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
+
+    if is_call_from_compiler_builtins_to_upstream_monomorphization(fx.tcx, instance) {
+        fx.bcx.ins().trap(TrapCode::User(0));
+        return;
+    }
+
     let symbol_name = fx.tcx.symbol_name(instance).name;
 
     fx.lib_call(
