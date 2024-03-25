@@ -10,7 +10,7 @@ error: concrete type differs from previous defining opaque type use
   --> $DIR/hkl_forbidden4.rs:13:1
    |
 LL | async fn operation(_: &mut ()) -> () {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `FutNothing<'_>`, got `{async fn body@$DIR/hkl_forbidden4.rs:13:38: 16:2}`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `FutNothing<'_>`, got `{async fn body of operation()}`
    |
 note: previous use here
   --> $DIR/hkl_forbidden4.rs:15:5
