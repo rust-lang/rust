@@ -346,8 +346,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(location, format!("explicit `{kind:?}` is forbidden"));
                 }
             }
-            StatementKind::Coverage(coverage) => {
-                let kind = &coverage.kind;
+            StatementKind::Coverage(kind) => {
                 if self.mir_phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup)
                     && let CoverageKind::BlockMarker { .. } | CoverageKind::SpanMarker { .. } = kind
                 {

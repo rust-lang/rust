@@ -70,13 +70,13 @@ jobs:
           cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
           git status --porcelain | grep -q Cargo.lock || gh run cancel ${{ github.run_id }}
       - name: upload Cargo.lock artifact for use in PR
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Cargo-lock
           path: Cargo.lock
           retention-days: 1
       - name: upload cargo-update log artifact for use in PR
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cargo-updates
           path: cargo_update.log

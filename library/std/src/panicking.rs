@@ -391,6 +391,7 @@ pub mod panic_count {
     pub fn increase(run_panic_hook: bool) -> Option<MustAbort> {
         let global_count = GLOBAL_PANIC_COUNT.fetch_add(1, Ordering::Relaxed);
         if global_count & ALWAYS_ABORT_FLAG != 0 {
+            // Do *not* access thread-local state, we might be after a `fork`.
             return Some(MustAbort::AlwaysAbort);
         }
 
@@ -744,11 +745,14 @@ fn rust_panic_with_hook(
     if let Some(must_abort) = must_abort {
         match must_abort {
             panic_count::MustAbort::PanicInHook => {
-                // Don't try to print the message in this case
-                // - perhaps that is causing the recursive panics.
+                // Don't try to format the message in this case, perhaps that is causing the
+                // recursive panics. However if the message is just a string, no user-defined
+                // code is involved in printing it, so that is risk-free.
+                let msg_str = message.and_then(|m| m.as_str()).map(|m| [m]);
+                let message = msg_str.as_ref().map(|m| fmt::Arguments::new_const(m));
                 let panicinfo = PanicInfo::internal_constructor(
-                    None,     // no message
-                    location, // but we want to show the location!
+                    message.as_ref(),
+                    location,
                     can_unwind,
                     force_no_backtrace,
                 );
@@ -756,7 +760,7 @@ fn rust_panic_with_hook(
             }
             panic_count::MustAbort::AlwaysAbort => {
                 // Unfortunately, this does not print a backtrace, because creating
-                // a `Backtrace` will allocate, which we must to avoid here.
+                // a `Backtrace` will allocate, which we must avoid here.
                 let panicinfo = PanicInfo::internal_constructor(
                     message,
                     location,

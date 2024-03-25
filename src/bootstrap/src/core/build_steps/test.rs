@@ -1289,9 +1289,9 @@ macro_rules! test_definitions {
 /// Adapted from [`test_definitions`].
 macro_rules! coverage_test_alias {
     ($name:ident {
-        alias_and_mode: $alias_and_mode:expr,
-        default: $default:expr,
-        only_hosts: $only_hosts:expr $(,)?
+        alias_and_mode: $alias_and_mode:expr, // &'static str
+        default: $default:expr, // bool
+        only_hosts: $only_hosts:expr $(,)? // bool
     }) => {
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
@@ -1309,6 +1309,8 @@ macro_rules! coverage_test_alias {
             const ONLY_HOSTS: bool = $only_hosts;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+                // Register the mode name as a command-line alias.
+                // This allows `x test coverage-map` and `x test coverage-run`.
                 run.alias($alias_and_mode)
             }
 
@@ -1319,8 +1321,7 @@ macro_rules! coverage_test_alias {
             }
 
             fn run(self, builder: &Builder<'_>) {
-                Coverage { compiler: self.compiler, target: self.target }
-                    .run_unified_suite(builder, Self::MODE)
+                Coverage::run_coverage_tests(builder, self.compiler, self.target, Self::MODE);
             }
         }
     };
@@ -1449,11 +1450,20 @@ host_test!(RunMakeFullDeps {
 
 default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
 
-/// Custom test step that is responsible for running the coverage tests
-/// in multiple different modes.
+/// Coverage tests are a bit more complicated than other test suites, because
+/// we want to run the same set of test files in multiple different modes,
+/// in a way that's convenient and flexible when invoked manually.
 ///
-/// Each individual mode also has its own alias that will run the tests in
-/// just that mode.
+/// This combined step runs the specified tests (or all of `tests/coverage`)
+/// in both "coverage-map" and "coverage-run" modes.
+///
+/// Used by:
+/// - `x test coverage`
+/// - `x test tests/coverage`
+/// - `x test tests/coverage/trivial.rs` (etc)
+///
+/// (Each individual mode also has its own step that will run the tests in
+/// just that mode.)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Coverage {
     pub compiler: Compiler,
@@ -1464,24 +1474,41 @@ impl Coverage {
     const PATH: &'static str = "tests/coverage";
     const SUITE: &'static str = "coverage";
 
-    fn run_unified_suite(&self, builder: &Builder<'_>, mode: &'static str) {
+    /// Runs the coverage test suite (or a user-specified subset) in one mode.
+    ///
+    /// This same function is used by the multi-mode step ([`Coverage`]) and by
+    /// the single-mode steps ([`CoverageMap`] and [`CoverageRun`]), to help
+    /// ensure that they all behave consistently with each other, regardless of
+    /// how the coverage tests have been invoked.
+    fn run_coverage_tests(
+        builder: &Builder<'_>,
+        compiler: Compiler,
+        target: TargetSelection,
+        mode: &'static str,
+    ) {
+        // Like many other test steps, we delegate to a `Compiletest` step to
+        // actually run the tests. (See `test_definitions!`.)
         builder.ensure(Compiletest {
-            compiler: self.compiler,
-            target: self.target,
+            compiler,
+            target,
             mode,
             suite: Self::SUITE,
             path: Self::PATH,
             compare_mode: None,
-        })
+        });
     }
 }
 
 impl Step for Coverage {
     type Output = ();
+    // We rely on the individual CoverageMap/CoverageRun steps to run themselves.
     const DEFAULT: bool = false;
+    // When manually invoked, try to run as much as possible.
+    // Compiletest will automatically skip the "coverage-run" tests if necessary.
     const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        // Take responsibility for command-line paths within `tests/coverage`.
         run.suite_path(Self::PATH)
     }
 
@@ -1492,20 +1519,26 @@ impl Step for Coverage {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        self.run_unified_suite(builder, CoverageMap::MODE);
-        self.run_unified_suite(builder, CoverageRun::MODE);
+        // Run the specified coverage tests (possibly all of them) in both modes.
+        Self::run_coverage_tests(builder, self.compiler, self.target, CoverageMap::MODE);
+        Self::run_coverage_tests(builder, self.compiler, self.target, CoverageRun::MODE);
     }
 }
 
-// Aliases for running the coverage tests in only one mode.
+// Runs `tests/coverage` in "coverage-map" mode only.
+// Used by `x test` and `x test coverage-map`.
 coverage_test_alias!(CoverageMap {
     alias_and_mode: "coverage-map",
     default: true,
     only_hosts: false,
 });
+// Runs `tests/coverage` in "coverage-run" mode only.
+// Used by `x test` and `x test coverage-run`.
 coverage_test_alias!(CoverageRun {
     alias_and_mode: "coverage-run",
     default: true,
+    // Compiletest knows how to automatically skip these tests when cross-compiling,
+    // but skipping the whole step here makes it clearer that they haven't run at all.
     only_hosts: true,
 });
 

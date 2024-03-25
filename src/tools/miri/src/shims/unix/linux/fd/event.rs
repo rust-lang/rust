@@ -38,7 +38,7 @@ impl FileDescriptor for Event {
     }
 
     /// A write call adds the 8-byte integer value supplied in
-    /// its buffer (in native endianess) to the counter.  The maximum value that may be
+    /// its buffer (in native endianness) to the counter.  The maximum value that may be
     /// stored in the counter is the largest unsigned 64-bit value
     /// minus 1 (i.e., 0xfffffffffffffffe).  If the addition would
     /// cause the counter's value to exceed the maximum, then the
@@ -57,7 +57,7 @@ impl FileDescriptor for Event {
     ) -> InterpResult<'tcx, io::Result<usize>> {
         let v1 = self.val.get();
         let bytes: [u8; 8] = bytes.try_into().unwrap(); // FIXME fail gracefully when this has the wrong size
-        // Convert from target endianess to host endianess.
+        // Convert from target endianness to host endianness.
         let num = match tcx.sess.target.endian {
             Endian::Little => u64::from_le_bytes(bytes),
             Endian::Big => u64::from_be_bytes(bytes),

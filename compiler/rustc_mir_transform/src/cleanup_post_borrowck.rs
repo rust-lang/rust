@@ -18,7 +18,7 @@
 
 use crate::MirPass;
 use rustc_middle::mir::coverage::CoverageKind;
-use rustc_middle::mir::{Body, BorrowKind, Coverage, Rvalue, StatementKind, TerminatorKind};
+use rustc_middle::mir::{Body, BorrowKind, Rvalue, StatementKind, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
 
 pub struct CleanupPostBorrowck;
@@ -30,12 +30,11 @@ impl<'tcx> MirPass<'tcx> for CleanupPostBorrowck {
                 match statement.kind {
                     StatementKind::AscribeUserType(..)
                     | StatementKind::Assign(box (_, Rvalue::Ref(_, BorrowKind::Fake, _)))
-                    | StatementKind::Coverage(box Coverage {
+                    | StatementKind::Coverage(
                         // These kinds of coverage statements are markers inserted during
                         // MIR building, and are not needed after InstrumentCoverage.
-                        kind: CoverageKind::BlockMarker { .. } | CoverageKind::SpanMarker { .. },
-                        ..
-                    })
+                        CoverageKind::BlockMarker { .. } | CoverageKind::SpanMarker { .. },
+                    )
                     | StatementKind::FakeRead(..) => statement.make_nop(),
                     _ => (),
                 }

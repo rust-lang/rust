@@ -11,6 +11,7 @@ use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{
     self, Const, ExistentialPredicate, FloatTy, FnSig, Instance, IntTy, List, Region, RegionKind,
     TermKind, Ty, TyCtxt, UintTy,
@@ -21,7 +22,9 @@ use rustc_span::sym;
 use rustc_target::abi::call::{Conv, FnAbi, PassMode};
 use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::traits;
 use std::fmt::Write as _;
+use std::iter;
 
 use crate::typeid::TypeIdOptions;
 
@@ -178,14 +181,14 @@ fn encode_fnsig<'tcx>(
     // Encode the return type
     let transform_ty_options = TransformTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("encode_fnsig: invalid option(s) `{:?}`", options.bits()));
-    let ty = transform_ty(tcx, fn_sig.output(), transform_ty_options);
+    let ty = transform_ty(tcx, fn_sig.output(), &mut Vec::new(), transform_ty_options);
     s.push_str(&encode_ty(tcx, ty, dict, encode_ty_options));
 
     // Encode the parameter types
     let tys = fn_sig.inputs();
     if !tys.is_empty() {
         for ty in tys {
-            let ty = transform_ty(tcx, *ty, transform_ty_options);
+            let ty = transform_ty(tcx, *ty, &mut Vec::new(), transform_ty_options);
             s.push_str(&encode_ty(tcx, ty, dict, encode_ty_options));
         }
 
@@ -747,9 +750,8 @@ fn transform_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>> {
-    let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> = predicates
-        .iter()
-        .filter_map(|predicate| match predicate.skip_binder() {
+    tcx.mk_poly_existential_predicates_from_iter(predicates.iter().filter_map(|predicate| {
+        match predicate.skip_binder() {
             ty::ExistentialPredicate::Trait(trait_ref) => {
                 let trait_ref = ty::TraitRef::identity(tcx, trait_ref.def_id);
                 Some(ty::Binder::dummy(ty::ExistentialPredicate::Trait(
@@ -758,20 +760,20 @@ fn transform_predicates<'tcx>(
             }
             ty::ExistentialPredicate::Projection(..) => None,
             ty::ExistentialPredicate::AutoTrait(..) => Some(predicate),
-        })
-        .collect();
-    tcx.mk_poly_existential_predicates(&predicates)
+        }
+    }))
 }
 
 /// Transforms args for being encoded and used in the substitution dictionary.
 fn transform_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     args: GenericArgsRef<'tcx>,
+    parents: &mut Vec<Ty<'tcx>>,
     options: TransformTyOptions,
 ) -> GenericArgsRef<'tcx> {
     let args = args.iter().map(|arg| match arg.unpack() {
         GenericArgKind::Type(ty) if ty.is_c_void(tcx) => Ty::new_unit(tcx).into(),
-        GenericArgKind::Type(ty) => transform_ty(tcx, ty, options).into(),
+        GenericArgKind::Type(ty) => transform_ty(tcx, ty, parents, options).into(),
         _ => arg,
     });
     tcx.mk_args_from_iter(args)
@@ -781,9 +783,12 @@ fn transform_args<'tcx>(
 // c_void types into unit types unconditionally, generalizes pointers if
 // TransformTyOptions::GENERALIZE_POINTERS option is set, and normalizes integers if
 // TransformTyOptions::NORMALIZE_INTEGERS option is set.
-fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptions) -> Ty<'tcx> {
-    let mut ty = ty;
-
+fn transform_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mut ty: Ty<'tcx>,
+    parents: &mut Vec<Ty<'tcx>>,
+    options: TransformTyOptions,
+) -> Ty<'tcx> {
     match ty.kind() {
         ty::Float(..) | ty::Str | ty::Never | ty::Foreign(..) | ty::CoroutineWitness(..) => {}
 
@@ -843,17 +848,20 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         _ if ty.is_unit() => {}
 
         ty::Tuple(tys) => {
-            ty = Ty::new_tup_from_iter(tcx, tys.iter().map(|ty| transform_ty(tcx, ty, options)));
+            ty = Ty::new_tup_from_iter(
+                tcx,
+                tys.iter().map(|ty| transform_ty(tcx, ty, parents, options)),
+            );
         }
 
         ty::Array(ty0, len) => {
             let len = len.eval_target_usize(tcx, ty::ParamEnv::reveal_all());
 
-            ty = Ty::new_array(tcx, transform_ty(tcx, *ty0, options), len);
+            ty = Ty::new_array(tcx, transform_ty(tcx, *ty0, parents, options), len);
         }
 
         ty::Slice(ty0) => {
-            ty = Ty::new_slice(tcx, transform_ty(tcx, *ty0, options));
+            ty = Ty::new_slice(tcx, transform_ty(tcx, *ty0, parents, options));
         }
 
         ty::Adt(adt_def, args) => {
@@ -862,7 +870,8 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             } else if options.contains(TransformTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c()
             {
                 ty = Ty::new_adt(tcx, *adt_def, ty::List::empty());
-            } else if adt_def.repr().transparent() && adt_def.is_struct() {
+            } else if adt_def.repr().transparent() && adt_def.is_struct() && !parents.contains(&ty)
+            {
                 // Don't transform repr(transparent) types with an user-defined CFI encoding to
                 // preserve the user-defined CFI encoding.
                 if let Some(_) = tcx.get_attr(adt_def.did(), sym::cfi_encoding) {
@@ -881,38 +890,48 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     // Generalize any repr(transparent) user-defined type that is either a pointer
                     // or reference, and either references itself or any other type that contains or
                     // references itself, to avoid a reference cycle.
+
+                    // If the self reference is not through a pointer, for example, due
+                    // to using `PhantomData`, need to skip normalizing it if we hit it again.
+                    parents.push(ty);
                     if ty0.is_any_ptr() && ty0.contains(ty) {
                         ty = transform_ty(
                             tcx,
                             ty0,
+                            parents,
                             options | TransformTyOptions::GENERALIZE_POINTERS,
                         );
                     } else {
-                        ty = transform_ty(tcx, ty0, options);
+                        ty = transform_ty(tcx, ty0, parents, options);
                     }
+                    parents.pop();
                 } else {
                     // Transform repr(transparent) types without non-ZST field into ()
                     ty = Ty::new_unit(tcx);
                 }
             } else {
-                ty = Ty::new_adt(tcx, *adt_def, transform_args(tcx, args, options));
+                ty = Ty::new_adt(tcx, *adt_def, transform_args(tcx, args, parents, options));
             }
         }
 
         ty::FnDef(def_id, args) => {
-            ty = Ty::new_fn_def(tcx, *def_id, transform_args(tcx, args, options));
+            ty = Ty::new_fn_def(tcx, *def_id, transform_args(tcx, args, parents, options));
         }
 
         ty::Closure(def_id, args) => {
-            ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, options));
+            ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, parents, options));
         }
 
         ty::CoroutineClosure(def_id, args) => {
-            ty = Ty::new_coroutine_closure(tcx, *def_id, transform_args(tcx, args, options));
+            ty = Ty::new_coroutine_closure(
+                tcx,
+                *def_id,
+                transform_args(tcx, args, parents, options),
+            );
         }
 
         ty::Coroutine(def_id, args) => {
-            ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, options));
+            ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, parents, options));
         }
 
         ty::Ref(region, ty0, ..) => {
@@ -924,9 +943,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 }
             } else {
                 if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ref(tcx, *region, transform_ty(tcx, *ty0, options));
+                    ty = Ty::new_mut_ref(tcx, *region, transform_ty(tcx, *ty0, parents, options));
                 } else {
-                    ty = Ty::new_imm_ref(tcx, *region, transform_ty(tcx, *ty0, options));
+                    ty = Ty::new_imm_ref(tcx, *region, transform_ty(tcx, *ty0, parents, options));
                 }
             }
         }
@@ -940,9 +959,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 }
             } else {
                 if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ptr(tcx, transform_ty(tcx, *ptr_ty, options));
+                    ty = Ty::new_mut_ptr(tcx, transform_ty(tcx, *ptr_ty, parents, options));
                 } else {
-                    ty = Ty::new_imm_ptr(tcx, transform_ty(tcx, *ptr_ty, options));
+                    ty = Ty::new_imm_ptr(tcx, transform_ty(tcx, *ptr_ty, parents, options));
                 }
             }
         }
@@ -955,9 +974,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     .skip_binder()
                     .inputs()
                     .iter()
-                    .map(|ty| transform_ty(tcx, *ty, options))
+                    .map(|ty| transform_ty(tcx, *ty, parents, options))
                     .collect();
-                let output = transform_ty(tcx, fn_sig.skip_binder().output(), options);
+                let output = transform_ty(tcx, fn_sig.skip_binder().output(), parents, options);
                 ty = Ty::new_fn_ptr(
                     tcx,
                     ty::Binder::bind_with_vars(
@@ -987,6 +1006,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             ty = transform_ty(
                 tcx,
                 tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty),
+                parents,
                 options,
             );
         }
@@ -1037,7 +1057,7 @@ pub fn typeid_for_fnabi<'tcx>(
     // Encode the return type
     let transform_ty_options = TransformTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("typeid_for_fnabi: invalid option(s) `{:?}`", options.bits()));
-    let ty = transform_ty(tcx, fn_abi.ret.layout.ty, transform_ty_options);
+    let ty = transform_ty(tcx, fn_abi.ret.layout.ty, &mut Vec::new(), transform_ty_options);
     typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
 
     // Encode the parameter types
@@ -1049,7 +1069,7 @@ pub fn typeid_for_fnabi<'tcx>(
         let mut pushed_arg = false;
         for arg in fn_abi.args.iter().filter(|arg| arg.mode != PassMode::Ignore) {
             pushed_arg = true;
-            let ty = transform_ty(tcx, arg.layout.ty, transform_ty_options);
+            let ty = transform_ty(tcx, arg.layout.ty, &mut Vec::new(), transform_ty_options);
             typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
         }
         if !pushed_arg {
@@ -1062,7 +1082,8 @@ pub fn typeid_for_fnabi<'tcx>(
             if fn_abi.args[n].mode == PassMode::Ignore {
                 continue;
             }
-            let ty = transform_ty(tcx, fn_abi.args[n].layout.ty, transform_ty_options);
+            let ty =
+                transform_ty(tcx, fn_abi.args[n].layout.ty, &mut Vec::new(), transform_ty_options);
             typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
         }
 
@@ -1088,53 +1109,108 @@ pub fn typeid_for_fnabi<'tcx>(
 /// vendor extended type qualifiers and types for Rust types that are not used at the FFI boundary.
 pub fn typeid_for_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
-    instance: &Instance<'tcx>,
+    mut instance: Instance<'tcx>,
     options: TypeIdOptions,
 ) -> String {
+    if matches!(instance.def, ty::InstanceDef::Virtual(..)) {
+        instance.args = strip_receiver_auto(tcx, instance.args)
+    }
+
+    if let Some(impl_id) = tcx.impl_of_method(instance.def_id())
+        && let Some(trait_ref) = tcx.impl_trait_ref(impl_id)
+    {
+        let impl_method = tcx.associated_item(instance.def_id());
+        let method_id = impl_method
+            .trait_item_def_id
+            .expect("Part of a trait implementation, but not linked to the def_id?");
+        let trait_method = tcx.associated_item(method_id);
+        if traits::is_vtable_safe_method(tcx, trait_ref.skip_binder().def_id, trait_method) {
+            // Trait methods will have a Self polymorphic parameter, where the concreteized
+            // implementatation will not. We need to walk back to the more general trait method
+            let trait_ref = tcx.instantiate_and_normalize_erasing_regions(
+                instance.args,
+                ty::ParamEnv::reveal_all(),
+                trait_ref,
+            );
+            let invoke_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
+
+            // At the call site, any call to this concrete function through a vtable will be
+            // `Virtual(method_id, idx)` with appropriate arguments for the method. Since we have the
+            // original method id, and we've recovered the trait arguments, we can make the callee
+            // instance we're computing the alias set for match the caller instance.
+            //
+            // Right now, our code ignores the vtable index everywhere, so we use 0 as a placeholder.
+            // If we ever *do* start encoding the vtable index, we will need to generate an alias set
+            // based on which vtables we are putting this method into, as there will be more than one
+            // index value when supertraits are involved.
+            instance.def = ty::InstanceDef::Virtual(method_id, 0);
+            let abstract_trait_args =
+                tcx.mk_args_trait(invoke_ty, trait_ref.args.into_iter().skip(1));
+            instance.args = instance.args.rebase_onto(tcx, impl_id, abstract_trait_args);
+        }
+    }
+
     let fn_abi = tcx
-        .fn_abi_of_instance(tcx.param_env(instance.def_id()).and((*instance, ty::List::empty())))
+        .fn_abi_of_instance(tcx.param_env(instance.def_id()).and((instance, ty::List::empty())))
         .unwrap_or_else(|instance| {
             bug!("typeid_for_instance: couldn't get fn_abi of instance {:?}", instance)
         });
 
-    // If this instance is a method and self is a reference, get the impl it belongs to
-    let impl_def_id = tcx.impl_of_method(instance.def_id());
-    if impl_def_id.is_some() && !fn_abi.args.is_empty() && fn_abi.args[0].layout.ty.is_ref() {
-        // If this impl is not an inherent impl, get the trait it implements
-        if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id.unwrap()) {
-            // Transform the concrete self into a reference to a trait object
-            let existential_predicate = trait_ref.map_bound(|trait_ref| {
-                ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(
-                    tcx, trait_ref,
-                ))
-            });
-            let existential_predicates = tcx.mk_poly_existential_predicates(&[ty::Binder::dummy(
-                existential_predicate.skip_binder(),
-            )]);
-            // Is the concrete self mutable?
-            let self_ty = if fn_abi.args[0].layout.ty.is_mutable_ptr() {
-                Ty::new_mut_ref(
-                    tcx,
-                    tcx.lifetimes.re_erased,
-                    Ty::new_dynamic(tcx, existential_predicates, tcx.lifetimes.re_erased, ty::Dyn),
-                )
-            } else {
-                Ty::new_imm_ref(
-                    tcx,
-                    tcx.lifetimes.re_erased,
-                    Ty::new_dynamic(tcx, existential_predicates, tcx.lifetimes.re_erased, ty::Dyn),
-                )
-            };
-
-            // Replace the concrete self in an fn_abi clone by the reference to a trait object
-            let mut fn_abi = fn_abi.clone();
-            // HACK(rcvalle): It is okay to not replace or update the entire ArgAbi here because the
-            //   other fields are never used.
-            fn_abi.args[0].layout.ty = self_ty;
-
-            return typeid_for_fnabi(tcx, &fn_abi, options);
-        }
-    }
-
     typeid_for_fnabi(tcx, fn_abi, options)
+}
+
+fn strip_receiver_auto<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    args: ty::GenericArgsRef<'tcx>,
+) -> ty::GenericArgsRef<'tcx> {
+    let ty = args.type_at(0);
+    let ty::Dynamic(preds, lifetime, kind) = ty.kind() else {
+        bug!("Tried to strip auto traits from non-dynamic type {ty}");
+    };
+    let new_rcvr = if preds.principal().is_some() {
+        let filtered_preds =
+            tcx.mk_poly_existential_predicates_from_iter(preds.into_iter().filter(|pred| {
+                !matches!(pred.skip_binder(), ty::ExistentialPredicate::AutoTrait(..))
+            }));
+        Ty::new_dynamic(tcx, filtered_preds, *lifetime, *kind)
+    } else {
+        // If there's no principal type, re-encode it as a unit, since we don't know anything
+        // about it. This technically discards the knowledge that it was a type that was made
+        // into a trait object at some point, but that's not a lot.
+        tcx.types.unit
+    };
+    tcx.mk_args_trait(new_rcvr, args.into_iter().skip(1))
+}
+
+fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tcx>) -> Ty<'tcx> {
+    assert!(!poly_trait_ref.has_non_region_param());
+    let principal_pred = poly_trait_ref.map_bound(|trait_ref| {
+        ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref))
+    });
+    let mut assoc_preds: Vec<_> = traits::supertraits(tcx, poly_trait_ref)
+        .flat_map(|super_poly_trait_ref| {
+            tcx.associated_items(super_poly_trait_ref.def_id())
+                .in_definition_order()
+                .filter(|item| item.kind == ty::AssocKind::Type)
+                .map(move |assoc_ty| {
+                    super_poly_trait_ref.map_bound(|super_trait_ref| {
+                        let alias_ty = ty::AliasTy::new(tcx, assoc_ty.def_id, super_trait_ref.args);
+                        let resolved = tcx.normalize_erasing_regions(
+                            ty::ParamEnv::reveal_all(),
+                            alias_ty.to_ty(tcx),
+                        );
+                        ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
+                            def_id: assoc_ty.def_id,
+                            args: ty::ExistentialTraitRef::erase_self_ty(tcx, super_trait_ref).args,
+                            term: resolved.into(),
+                        })
+                    })
+                })
+        })
+        .collect();
+    assoc_preds.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
+    let preds = tcx.mk_poly_existential_predicates_from_iter(
+        iter::once(principal_pred).chain(assoc_preds.into_iter()),
+    );
+    Ty::new_dynamic(tcx, preds, tcx.lifetimes.re_erased, ty::Dyn)
 }

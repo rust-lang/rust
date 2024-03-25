@@ -1,4 +1,4 @@
-use super::{InlineAsmArch, InlineAsmType};
+use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 
@@ -21,11 +21,11 @@ impl SpirVInlineAsmRegClass {
         self,
         _arch: InlineAsmArch,
         _ty: InlineAsmType,
-    ) -> Option<(char, &'static str)> {
+    ) -> Option<ModifierInfo> {
         None
     }
 
-    pub fn default_modifier(self, _arch: InlineAsmArch) -> Option<(char, &'static str)> {
+    pub fn default_modifier(self, _arch: InlineAsmArch) -> Option<ModifierInfo> {
         None
     }
 

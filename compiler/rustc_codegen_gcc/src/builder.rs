@@ -25,7 +25,7 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers,
     TyAndLayout,
 };
-use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{ParamEnv, Ty, TyCtxt, Instance};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_target::abi::{
@@ -592,12 +592,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         then: Block<'gcc>,
         catch: Block<'gcc>,
         _funclet: Option<&Funclet>,
+        instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
         let try_block = self.current_func().new_block("try");
 
         let current_block = self.block.clone();
         self.block = try_block;
-        let call = self.call(typ, fn_attrs, None, func, args, None); // TODO(antoyo): use funclet here?
+        let call = self.call(typ, fn_attrs, None, func, args, None, instance); // TODO(antoyo): use funclet here?
         self.block = current_block;
 
         let return_value =
@@ -1667,6 +1668,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         func: RValue<'gcc>,
         args: &[RValue<'gcc>],
         funclet: Option<&Funclet>,
+        _instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
         // FIXME(antoyo): remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute(func) };

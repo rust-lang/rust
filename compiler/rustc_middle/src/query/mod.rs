@@ -505,19 +505,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Fetch the MIR for a given `DefId` right after it's built - this includes
-    /// unreachable code.
+    /// Build the MIR for a given `DefId` and prepare it for const qualification.
+    ///
+    /// See the [rustc dev guide] for more info.
+    ///
+    /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/construction.html
     query mir_built(key: LocalDefId) -> &'tcx Steal<mir::Body<'tcx>> {
         desc { |tcx| "building MIR for `{}`", tcx.def_path_str(key) }
-    }
-
-    /// Fetch the MIR for a given `DefId` up till the point where it is
-    /// ready for const qualification.
-    ///
-    /// See the README for the `mir` module for details.
-    query mir_const(key: LocalDefId) -> &'tcx Steal<mir::Body<'tcx>> {
-        desc { |tcx| "preparing `{}` for borrow checking", tcx.def_path_str(key) }
-        no_hash
     }
 
     /// Try to build an abstract representation of the given constant.

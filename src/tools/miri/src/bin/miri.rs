@@ -276,7 +276,7 @@ fn run_compiler(
         // If no `--sysroot` is given, the `MIRI_SYSROOT` env var is consulted to find where
         // that sysroot lives, and that is passed to rustc.
         let sysroot_flag = "--sysroot";
-        if !args.iter().any(|e| e == sysroot_flag) {
+        if !args.iter().any(|e| e.starts_with(sysroot_flag)) {
             // Using the built-in default here would be plain wrong, so we *require*
             // the env var to make sure things make sense.
             let miri_sysroot = env::var("MIRI_SYSROOT").unwrap_or_else(|_| {

@@ -261,7 +261,7 @@ x--expand-yaml-anchors--remove:
         <<: *step
 
       - name: upload artifacts to github
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           # name is set in previous step
           name: ${{ env.DOC_ARTIFACT_NAME }}

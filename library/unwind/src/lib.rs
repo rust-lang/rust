@@ -4,6 +4,7 @@
 #![feature(staged_api)]
 #![feature(c_unwind)]
 #![feature(strict_provenance)]
+#![cfg_attr(target_arch = "wasm64", feature(simd_wasm64))]
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 #![cfg_attr(
     all(target_family = "wasm", not(target_os = "emscripten")),

@@ -127,7 +127,7 @@ pub fn provide(providers: &mut Providers) {
     cross_crate_inline::provide(providers);
     providers.queries = query::Providers {
         mir_keys,
-        mir_const,
+        mir_built,
         mir_const_qualif,
         mir_promoted,
         mir_drops_elaborated_and_const_checked,
@@ -259,9 +259,9 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
 
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_promoted()`, which steals
-    // from `mir_const()`, forces this query to execute before
+    // from `mir_built()`, forces this query to execute before
     // performing the steal.
-    let body = &tcx.mir_const(def).borrow();
+    let body = &tcx.mir_built(def).borrow();
 
     if body.return_ty().references_error() {
         // It's possible to reach here without an error being emitted (#121103).
@@ -279,19 +279,13 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
     validator.qualifs_in_return_place()
 }
 
-/// Make MIR ready for const evaluation. This is run on all MIR, not just on consts!
-/// FIXME(oli-obk): it's unclear whether we still need this phase (and its corresponding query).
-/// We used to have this for pre-miri MIR based const eval.
-fn mir_const(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
+fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
     // MIR unsafety check uses the raw mir, so make sure it is run.
     if !tcx.sess.opts.unstable_opts.thir_unsafeck {
         tcx.ensure_with_value().mir_unsafety_check_result(def);
     }
 
-    // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
-    tcx.ensure_with_value().has_ffi_unwind_calls(def);
-
-    let mut body = tcx.mir_built(def).steal();
+    let mut body = tcx.build_mir(def);
 
     pass_manager::dump_mir_for_phase_change(tcx, &body);
 
@@ -339,7 +333,9 @@ fn mir_promoted(
         | DefKind::AnonConst => tcx.mir_const_qualif(def),
         _ => ConstQualifs::default(),
     };
-    let mut body = tcx.mir_const(def).steal();
+    // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
+    tcx.ensure_with_value().has_ffi_unwind_calls(def);
+    let mut body = tcx.mir_built(def).steal();
     if let Some(error_reported) = const_qualifs.tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
     }

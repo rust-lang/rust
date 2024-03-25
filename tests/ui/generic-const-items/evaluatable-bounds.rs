@@ -1,10 +1,9 @@
 // This is a regression test for issue #104400.
 
-//@ revisions: unconstrained constrained
-//@[constrained] check-pass
+//@ run-rustfix
 
 // Test that we can constrain generic const items that appear inside associated consts by
-// adding a (makeshift) "evaluatable"-bound to the item.
+// adding a (makeshift) "evaluatable"-bound to the item, after applying the suggestion.
 
 #![feature(generic_const_items, generic_const_exprs)]
 #![allow(incomplete_features)]
@@ -12,13 +11,8 @@
 trait Trait {
     const LEN: usize;
 
-    #[cfg(unconstrained)]
-    const ARRAY: [i32; Self::LEN]; //[unconstrained]~ ERROR unconstrained generic constant
+    const ARRAY: [i32; Self::LEN]; //~ ERROR unconstrained generic constant
 
-    #[cfg(constrained)]
-    const ARRAY: [i32; Self::LEN]
-    where
-        [(); Self::LEN]:;
 }
 
 impl Trait for () {

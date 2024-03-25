@@ -14,7 +14,6 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
-use rustc_middle::mir::Coverage;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Instance;
 
@@ -75,7 +74,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
 impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
-    fn add_coverage(&mut self, instance: Instance<'tcx>, coverage: &Coverage) {
+    fn add_coverage(&mut self, instance: Instance<'tcx>, kind: &CoverageKind) {
         // Our caller should have already taken care of inlining subtleties,
         // so we can assume that counter/expression IDs in this coverage
         // statement are meaningful for the given instance.
@@ -98,7 +97,6 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             .entry(instance)
             .or_insert_with(|| FunctionCoverageCollector::new(instance, function_coverage_info));
 
-        let Coverage { kind } = coverage;
         match *kind {
             CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => unreachable!(
                 "marker statement {kind:?} should have been removed by CleanupPostBorrowck"
