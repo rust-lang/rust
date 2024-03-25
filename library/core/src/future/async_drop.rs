@@ -108,12 +108,22 @@ trait AsyncDestruct {
 /// Basically calls `AsyncDrop::async_drop` with pointer. Used to simplify
 /// generation of the code for `async_drop_in_place_raw`
 #[lang = "surface_async_drop_in_place"]
-unsafe fn surface_async_drop_in_place<T: AsyncDrop>(
+unsafe fn surface_async_drop_in_place<T: AsyncDrop + ?Sized>(
     ptr: *mut T,
 ) -> <T as AsyncDrop>::Dropper<'static> {
     // SAFETY: We call this from async drop `async_drop_in_place_raw`
     //   which has the same safety requirements
     unsafe { <T as AsyncDrop>::async_drop(Pin::new_unchecked(&mut *ptr)) }
+}
+
+/// Basically calls `Drop::drop` with pointer. Used to simplify generation
+/// of the code for `async_drop_in_place_raw`
+#[allow(drop_bounds)]
+#[lang = "async_drop_surface_drop_in_place"]
+async unsafe fn surface_drop_in_place<T: Drop + ?Sized>(ptr: *mut T) {
+    // SAFETY: We call this from async drop `async_drop_in_place_raw`
+    //   which has the same safety requirements
+    unsafe { crate::ops::fallback_surface_drop(&mut *ptr) }
 }
 
 /// Wraps a future to continue outputing `Poll::Ready(())` once after
