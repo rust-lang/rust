@@ -1049,6 +1049,12 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
     bbs: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 }
 
+#[derive(Clone, Copy)]
+enum SurfaceDropKind {
+    Async,
+    Sync,
+}
+
 impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     const SELF_PTR: Local = Local::from_u32(1);
     const INPUT_COUNT: usize = 1;
@@ -1083,7 +1089,17 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
     fn build(self) -> Body<'tcx> {
         let (tcx, def_id, self_ty) = (self.tcx, self.def_id, self.self_ty);
-        let defer_param_env = || tcx.param_env_reveal_all_normalized(def_id);
+
+        let surface_drop_kind = || {
+            let param_env = tcx.param_env_reveal_all_normalized(def_id);
+            if self_ty.has_surface_async_drop(tcx, param_env) {
+                Some(SurfaceDropKind::Async)
+            } else if self_ty.has_surface_drop(tcx, param_env) {
+                Some(SurfaceDropKind::Sync)
+            } else {
+                None
+            }
+        };
 
         match self_ty.kind() {
             ty::Array(elem_ty, _) => {
@@ -1094,7 +1110,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             }
 
             ty::Tuple(elem_tys) => {
-                self.build_chain(false, elem_tys.iter())
+                self.build_chain(None, elem_tys.iter())
             }
             ty::Adt(adt_def, args) if adt_def.is_struct() => {
                 if adt_def.is_manually_drop() {
@@ -1102,17 +1118,15 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 }
 
                 debug_assert_eq!(adt_def.variants().len(), 1);
-                let has_surface_async_drop = self_ty.has_surface_async_drop(tcx, defer_param_env());
                 let field_tys = adt_def.variant(VariantIdx::new(0)).fields.iter().map(|f| f.ty(tcx, args));
-                self.build_chain(has_surface_async_drop, field_tys)
+                self.build_chain(surface_drop_kind(), field_tys)
             }
             ty::Closure(_, args) => {
-                self.build_chain(false, args.as_closure().upvar_tys().iter())
+                self.build_chain(None, args.as_closure().upvar_tys().iter())
             }
 
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
-                let has_surface_async_drop = self_ty.has_surface_async_drop(tcx, defer_param_env());
-                self.build_enum(*adt_def, *args, has_surface_async_drop)
+                self.build_enum(*adt_def, *args, surface_drop_kind())
             }
 
             ty::Never => self.build_unreachable(),
@@ -1130,10 +1144,10 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             | ty::Placeholder(_)
             | ty::Infer(_)
             | ty::Error(_) => {
-                if self_ty.has_surface_async_drop(tcx, defer_param_env()) {
-                    self.build_fused_surface()
-                } else {
-                    self.build_nop()
+                match surface_drop_kind() {
+                    Some(SurfaceDropKind::Async) => self.build_fused_surface(),
+                    Some(SurfaceDropKind::Sync) => self.build_fused_sync_surface(),
+                    None => self.build_nop(),
                 }
             }
 
@@ -1154,7 +1168,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         mut self,
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
-        has_surface_async_drop: bool,
+        surface_drop: Option<SurfaceDropKind>,
     ) -> Body<'tcx> {
         let (tcx, self_ty) = (self.tcx, self.self_ty);
 
@@ -1162,10 +1176,16 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             return self.build_unreachable();
         }
 
-        let surface = has_surface_async_drop.then(|| {
-            self.put_self();
-            self.combine_surface(self_ty)
-        });
+        let surface = match surface_drop {
+            None => None,
+            Some(kind) => {
+                self.put_self();
+                Some(match kind {
+                    SurfaceDropKind::Async => self.combine_surface(self_ty),
+                    SurfaceDropKind::Sync => self.combine_sync_surface(self_ty),
+                })
+            }
+        };
 
         let mut other = None;
         for (variant_idx, discr) in adt_def.discriminants(tcx) {
@@ -1212,6 +1232,13 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.return_()
     }
 
+    fn build_fused_sync_surface(mut self) -> Body<'tcx> {
+        self.put_self();
+        let surface = self.combine_sync_surface(self.self_ty);
+        self.combine_fuse(surface);
+        self.return_()
+    }
+
     fn build_slice(mut self, is_array: bool, elem_ty: Ty<'tcx>) -> Body<'tcx> {
         if is_array {
             self.put_array_as_slice(elem_ty)
@@ -1222,26 +1249,32 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.return_()
     }
 
-    fn build_chain<I>(mut self, has_surface_async_drop: bool, elem_tys: I) -> Body<'tcx>
+    fn build_chain<I>(mut self, surface_drop: Option<SurfaceDropKind>, elem_tys: I) -> Body<'tcx>
     where
         I: Iterator<Item = Ty<'tcx>> + ExactSizeIterator,
     {
         if elem_tys.len() == 0 {
-            return if has_surface_async_drop {
-                self.build_fused_surface()
-            } else {
-                self.build_nop()
+            return match surface_drop {
+                Some(SurfaceDropKind::Async) => self.build_fused_surface(),
+                Some(SurfaceDropKind::Sync) => self.build_fused_sync_surface(),
+                None => self.build_nop(),
             };
         }
 
         let mut elems = elem_tys.enumerate().map(|(i, ty)| (FieldIdx::new(i), ty));
-        let first = if has_surface_async_drop {
-            self.put_self();
-            self.combine_surface(self.self_ty)
-        } else {
-            let (field, ty) = elems.next().unwrap();
-            self.put_field(field, ty);
-            self.combine_deep(ty)
+        let first = match surface_drop {
+            Some(kind) => {
+                self.put_self();
+                match kind {
+                    SurfaceDropKind::Async => self.combine_surface(self.self_ty),
+                    SurfaceDropKind::Sync => self.combine_sync_surface(self.self_ty),
+                }
+            }
+            None => {
+                let (field, ty) = elems.next().unwrap();
+                self.put_field(field, ty);
+                self.combine_deep(ty)
+            }
         };
 
         elems.fold(first, |prev, (field, elem_ty)| {
@@ -1345,6 +1378,10 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
     fn combine_surface(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
         self.apply_combinator(1, LangItem::SurfaceAsyncDropInPlace, &[to_drop_ty.into()])
+    }
+
+    fn combine_sync_surface(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.apply_combinator(1, LangItem::AsyncDropSurfaceDropInPlace, &[to_drop_ty.into()])
     }
 
     fn combine_deep(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {

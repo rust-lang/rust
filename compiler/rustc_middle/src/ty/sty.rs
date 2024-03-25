@@ -2327,7 +2327,7 @@ impl<'tcx> Ty<'tcx> {
                 );
                 Ty::new_projection(tcx, assoc_items[0], [self])
             }
-            ty::Tuple(tys) => Self::chain_async_destructor_ty(tcx, tys.iter(), None),
+            ty::Tuple(tys) => self.chain_async_destructor_ty(tcx, tys.iter(), param_env),
             ty::Adt(adt_def, args) if adt_def.is_struct() => {
                 if adt_def.is_manually_drop() {
                     return tcx
@@ -2338,14 +2338,14 @@ impl<'tcx> Ty<'tcx> {
                         .unwrap();
                 }
 
-                Self::chain_async_destructor_ty(
+                self.chain_async_destructor_ty(
                     tcx,
                     adt_def.non_enum_variant().fields.iter().map(|f| f.ty(tcx, args)),
-                    self.has_surface_async_drop(tcx, param_env).then_some(self),
+                    param_env,
                 )
             }
             ty::Closure(_, args) => {
-                Self::chain_async_destructor_ty(tcx, args.as_closure().upvar_tys().iter(), None)
+                self.chain_async_destructor_ty(tcx, args.as_closure().upvar_tys().iter(), param_env)
             }
 
             ty::Never => tcx
@@ -2394,12 +2394,7 @@ impl<'tcx> Ty<'tcx> {
                     })
                     .unwrap();
 
-                if self.has_surface_async_drop(tcx, param_env) {
-                    let dropper_ty = tcx
-                        .fn_sig(tcx.require_lang_item(LangItem::SurfaceAsyncDropInPlace, None))
-                        .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
-                        .instantiate(tcx, &[self.into()]);
-
+                if let Some(dropper_ty) = self.surface_async_dropper_ty(tcx, param_env) {
                     tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropChain, None))
                         .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
                         .instantiate(tcx, &[dropper_ty.into(), variants_dtor.into()])
@@ -2447,12 +2442,7 @@ impl<'tcx> Ty<'tcx> {
                 // ambiguous with any parameters.
                 // TODO: Add same restrictions on AsyncDrop impls as
                 //   with Drop impls
-                if self.has_surface_async_drop(tcx, param_env) {
-                    let dropper_ty = tcx
-                        .fn_sig(tcx.require_lang_item(LangItem::SurfaceAsyncDropInPlace, None))
-                        .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
-                        .instantiate(tcx, &[self.into()]);
-
+                if let Some(dropper_ty) = self.surface_async_dropper_ty(tcx, param_env) {
                     tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
                         .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
                         .instantiate(tcx, &[dropper_ty.into()])
@@ -2475,10 +2465,30 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    fn surface_async_dropper_ty(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+    ) -> Option<Ty<'tcx>> {
+        if self.has_surface_async_drop(tcx, param_env) {
+            Some(LangItem::SurfaceAsyncDropInPlace)
+        } else if self.has_surface_drop(tcx, param_env) {
+            Some(LangItem::AsyncDropSurfaceDropInPlace)
+        } else {
+            None
+        }
+        .map(|dropper| {
+            tcx.fn_sig(tcx.require_lang_item(dropper, None))
+                .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+                .instantiate(tcx, &[self.into()])
+        })
+    }
+
     fn chain_async_destructor_ty<I>(
+        self,
         tcx: TyCtxt<'tcx>,
         mut tys: I,
-        surface_drop: Option<Ty<'tcx>>,
+        param_env: ParamEnv<'tcx>,
     ) -> Ty<'tcx>
     where
         I: Iterator<Item = Ty<'tcx>> + ExactSizeIterator,
@@ -2487,12 +2497,9 @@ impl<'tcx> Ty<'tcx> {
         // - `Fuse<<Self as AsyncDrop>::Dropper>` if surface drop only
         // - `Chain<AsyncDropInPlace<F0>, IntoAsyncDestruct<F1>>...` if any without surface drop
         // - `Chain<Chain<<Self as AsyncDrop>::Dropper, IntoAsyncDestruct<F0>>, IntoAsyncDestruct<F1>>...` if any with surface drop
+        // If this type implements only sync version `Drop`, then uses that instead
 
-        let surface_drop = surface_drop.map(|self_ty| {
-            tcx.fn_sig(tcx.require_lang_item(LangItem::SurfaceAsyncDropInPlace, None))
-                .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
-                .instantiate(tcx, &[self_ty.into()])
-        });
+        let surface_drop = self.surface_async_dropper_ty(tcx, param_env);
 
         if tys.len() == 0 {
             return match surface_drop {
