@@ -977,7 +977,9 @@ pub mod fmt {
         }
 
         impl UnsafeArg {
-            pub unsafe fn new() -> Self;
+            pub unsafe fn new() -> Self {
+                UnsafeArg { _private: () }
+            }
         }
     }
 
@@ -1487,7 +1489,6 @@ mod macros {
         };
     }
     // endregion:unimplemented
-
 
     // region:derive
     pub(crate) mod builtin {
