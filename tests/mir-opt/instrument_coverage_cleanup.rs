@@ -7,7 +7,6 @@
 
 //@ unit-test: InstrumentCoverage
 //@ compile-flags: -Cinstrument-coverage -Zcoverage-options=branch -Zno-profiler-runtime
-//@ compile-flags: --remap-path-prefix={{src-base}}=/the/src
 
 // EMIT_MIR instrument_coverage_cleanup.main.InstrumentCoverage.diff
 // EMIT_MIR instrument_coverage_cleanup.main.CleanupPostBorrowck.diff

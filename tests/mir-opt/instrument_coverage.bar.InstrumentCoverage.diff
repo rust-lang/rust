@@ -4,7 +4,7 @@
   fn bar() -> bool {
       let mut _0: bool;
   
-+     coverage Code(Counter(0)) => /the/src/instrument_coverage.rs:21:1 - 23:2;
++     coverage Code(Counter(0)) => $DIR/instrument_coverage.rs:19:1 - 21:2;
 + 
       bb0: {
 +         Coverage::CounterIncrement(0);
