@@ -207,7 +207,7 @@ fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallC
 
 fn suggest<'tcx>(cx: &LateContext<'tcx>, assign_expr: &Expr<'tcx>, lhs: &Expr<'tcx>, call: &CallCandidate<'tcx>) {
     span_lint_and_then(cx, ASSIGNING_CLONES, assign_expr.span, call.message(), |diag| {
-        let mut applicability = Applicability::MachineApplicable;
+        let mut applicability = Applicability::Unspecified;
 
         diag.span_suggestion(
             assign_expr.span,
