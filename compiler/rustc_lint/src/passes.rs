@@ -41,13 +41,8 @@ macro_rules! late_lint_methods {
             fn check_variant(a: &'tcx rustc_hir::Variant<'tcx>);
             fn check_path(a: &rustc_hir::Path<'tcx>, b: rustc_hir::HirId);
             fn check_attribute(a: &'tcx rustc_ast::Attribute);
-
-            /// Called when entering a syntax node that can have lint attributes such
-            /// as `#[allow(...)]`. Called with *all* the attributes of that node.
-            fn enter_lint_attrs(a: &'tcx [rustc_ast::Attribute]);
-
-            /// Counterpart to `enter_lint_attrs`.
-            fn exit_lint_attrs(a: &'tcx [rustc_ast::Attribute]);
+            fn check_attributes(a: &'tcx [rustc_ast::Attribute]);
+            fn check_attributes_post(a: &'tcx [rustc_ast::Attribute]);
         ]);
     )
 }
@@ -162,15 +157,10 @@ macro_rules! early_lint_methods {
             fn check_impl_item(a: &rustc_ast::AssocItem);
             fn check_variant(a: &rustc_ast::Variant);
             fn check_attribute(a: &rustc_ast::Attribute);
+            fn check_attributes(a: &[rustc_ast::Attribute]);
+            fn check_attributes_post(a: &[rustc_ast::Attribute]);
             fn check_mac_def(a: &rustc_ast::MacroDef);
             fn check_mac(a: &rustc_ast::MacCall);
-
-            /// Called when entering a syntax node that can have lint attributes such
-            /// as `#[allow(...)]`. Called with *all* the attributes of that node.
-            fn enter_lint_attrs(a: &[rustc_ast::Attribute]);
-
-            /// Counterpart to `enter_lint_attrs`.
-            fn exit_lint_attrs(a: &[rustc_ast::Attribute]);
 
             fn enter_where_predicate(a: &rustc_ast::WherePredicate);
             fn exit_where_predicate(a: &rustc_ast::WherePredicate);
