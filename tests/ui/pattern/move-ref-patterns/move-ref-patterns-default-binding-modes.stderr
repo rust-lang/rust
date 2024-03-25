@@ -2,7 +2,10 @@ warning: dereferencing `mut` binding
   --> $DIR/move-ref-patterns-default-binding-modes.rs:9:13
    |
 LL |     let (a, mut b) = &p;
-   |             ^^^^^ `mut` dereferences the type of this binding
+   |             ^^^^^
+   |             |
+   |             `mut` dereferences the type of this binding
+   |             help: desugar the match ergonomics: `&(mut b)`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see FIXME none yet

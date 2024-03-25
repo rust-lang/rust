@@ -1,0 +1,145 @@
+warning: dereferencing `mut` binding
+  --> $DIR/match-2024-migration.rs:12:13
+   |
+LL |     let (a, mut b) = &mut p;
+   |             ^^^^^
+   |             |
+   |             `mut` dereferences the type of this binding
+   |             help: desugar the match ergonomics: `&mut mut b`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see FIXME none yet
+help: this will change in edition 2024
+  --> $DIR/match-2024-migration.rs:12:13
+   |
+LL |     let (a, mut b) = &mut p;
+   |             ^^^^^
+note: the lint level is defined here
+  --> $DIR/match-2024-migration.rs:5:9
+   |
+LL | #![warn(dereferencing_mut_binding)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: dereferencing `mut` binding
+  --> $DIR/match-2024-migration.rs:17:13
+   |
+LL |     let (a, mut b) = &p;
+   |             ^^^^^
+   |             |
+   |             `mut` dereferences the type of this binding
+   |             help: desugar the match ergonomics: `&(mut b)`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see FIXME none yet
+help: this will change in edition 2024
+  --> $DIR/match-2024-migration.rs:17:13
+   |
+LL |     let (a, mut b) = &p;
+   |             ^^^^^
+
+warning: dereferencing `mut` binding
+  --> $DIR/match-2024-migration.rs:22:13
+   |
+LL |     let (a, mut b @ _) = &mut p;
+   |             --------^
+   |             |
+   |             `mut` dereferences the type of this binding
+   |             help: desugar the match ergonomics: `&mut mut b @`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see FIXME none yet
+help: this will change in edition 2024
+  --> $DIR/match-2024-migration.rs:22:13
+   |
+LL |     let (a, mut b @ _) = &mut p;
+   |             ^^^^^^^^^
+
+warning: dereferencing `mut` binding
+  --> $DIR/match-2024-migration.rs:27:13
+   |
+LL |     let (a, mut b @ _) = &p;
+   |             ^^^^^^^^^ `mut` dereferences the type of this binding
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see FIXME none yet
+help: this will change in edition 2024
+  --> $DIR/match-2024-migration.rs:27:13
+   |
+LL |     let (a, mut b @ _) = &p;
+   |             ^^^^^^^^^
+help: desugar the match ergonomics
+   |
+LL |     let (a, &(mut b @ _)) = &p;
+   |             ~~~~~~~~~  +
+
+warning: dereferencing `mut` binding
+  --> $DIR/match-2024-migration.rs:33:13
+   |
+LL |     let (a, mut b) = &mut p;
+   |             ^^^^^
+   |             |
+   |             `mut` dereferences the type of this binding
+   |             help: desugar the match ergonomics: `&mut mut b`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see FIXME none yet
+help: this will change in edition 2024
+  --> $DIR/match-2024-migration.rs:33:13
+   |
+LL |     let (a, mut b) = &mut p;
+   |             ^^^^^
+
+warning: dereferencing `mut` binding
+  --> $DIR/match-2024-migration.rs:38:13
+   |
+LL |     let (a, mut b) = &p;
+   |             ^^^^^
+   |             |
+   |             `mut` dereferences the type of this binding
+   |             help: desugar the match ergonomics: `&(mut ref b)`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see FIXME none yet
+help: this will change in edition 2024
+  --> $DIR/match-2024-migration.rs:38:13
+   |
+LL |     let (a, mut b) = &p;
+   |             ^^^^^
+
+warning: dereferencing `mut` binding
+  --> $DIR/match-2024-migration.rs:43:13
+   |
+LL |     let (a, mut b @ _) = &mut p;
+   |             --------^
+   |             |
+   |             `mut` dereferences the type of this binding
+   |             help: desugar the match ergonomics: `&mut mut b @`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see FIXME none yet
+help: this will change in edition 2024
+  --> $DIR/match-2024-migration.rs:43:13
+   |
+LL |     let (a, mut b @ _) = &mut p;
+   |             ^^^^^^^^^
+
+warning: dereferencing `mut` binding
+  --> $DIR/match-2024-migration.rs:48:13
+   |
+LL |     let (a, mut b @ _) = &p;
+   |             ^^^^^^^^^ `mut` dereferences the type of this binding
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see FIXME none yet
+help: this will change in edition 2024
+  --> $DIR/match-2024-migration.rs:48:13
+   |
+LL |     let (a, mut b @ _) = &p;
+   |             ^^^^^^^^^
+help: desugar the match ergonomics
+   |
+LL |     let (a, &(mut ref b @ _)) = &p;
+   |             ~~~~~~~~~~~~~  +
+
+warning: 8 warnings emitted
+

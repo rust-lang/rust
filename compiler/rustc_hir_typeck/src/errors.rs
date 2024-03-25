@@ -628,4 +628,16 @@ pub struct DereferencingMutBinding {
     #[label]
     #[help]
     pub span: Span,
+    #[subdiagnostic]
+    pub sugg: DereferencingMutBindingSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(hir_typeck_suggestion, applicability = "machine-applicable")]
+pub struct DereferencingMutBindingSuggestion {
+    #[suggestion_part(code = "{code}")]
+    pub lo: Span,
+    pub code: String,
+    #[suggestion_part(code = ")")]
+    pub hi: Option<Span>,
 }

@@ -2,7 +2,10 @@ warning: dereferencing `mut` binding
   --> $DIR/for.rs:7:13
    |
 LL |     for (n, mut m) in &tups {
-   |             ^^^^^ `mut` dereferences the type of this binding
+   |             ^^^^^
+   |             |
+   |             `mut` dereferences the type of this binding
+   |             help: desugar the match ergonomics: `&(mut m)`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see FIXME none yet

@@ -2,7 +2,10 @@ error: dereferencing `mut` binding
   --> $DIR/resetting-mut.rs:5:13
    |
 LL |     let (x, mut y) = &(0, 0);
-   |             ^^^^^ `mut` dereferences the type of this binding
+   |             ^^^^^
+   |             |
+   |             `mut` dereferences the type of this binding
+   |             help: desugar the match ergonomics: `&(mut y)`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see FIXME none yet
@@ -21,7 +24,10 @@ error: dereferencing `mut` binding
   --> $DIR/resetting-mut.rs:12:14
    |
 LL |         Some(mut n) => {
-   |              ^^^^^ `mut` dereferences the type of this binding
+   |              ^^^^^
+   |              |
+   |              `mut` dereferences the type of this binding
+   |              help: desugar the match ergonomics: `&(mut n)`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see FIXME none yet
@@ -35,7 +41,10 @@ error: dereferencing `mut` binding
   --> $DIR/resetting-mut.rs:20:17
    |
 LL |     if let Some(mut n) = &Some(5i32) {
-   |                 ^^^^^ `mut` dereferences the type of this binding
+   |                 ^^^^^
+   |                 |
+   |                 `mut` dereferences the type of this binding
+   |                 help: desugar the match ergonomics: `&(mut n)`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see FIXME none yet

@@ -195,8 +195,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Never => expected,
             PatKind::Lit(lt) => self.check_pat_lit(pat.span, lt, expected, ti),
             PatKind::Range(lhs, rhs, _) => self.check_pat_range(pat.span, lhs, rhs, expected, ti),
-            PatKind::Binding(ba, var_id, _, sub) => {
-                self.check_pat_ident(pat, ba, var_id, sub, expected, pat_info)
+            PatKind::Binding(ba, var_id, ident, sub) => {
+                self.check_pat_ident(pat, ba, var_id, ident, sub, expected, pat_info)
             }
             PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, pat_info)
@@ -623,6 +623,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         ba: BindingAnnotation,
         var_id: HirId,
+        ident: Ident,
         sub: Option<&'tcx Pat<'tcx>>,
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
@@ -630,21 +631,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let PatInfo { binding_mode: BindingAnnotation(def_br, _), top_info: ti, .. } = pat_info;
 
         // Determine the binding mode...
-        let bm = match ba {
-            BindingAnnotation(ByRef::No, Mutability::Mut)
-                if !pat.span.at_least_rust_2024() && matches!(def_br, ByRef::Yes(_)) =>
+        let bm = match (ba, def_br) {
+            (BindingAnnotation(ByRef::No, Mutability::Mut), ByRef::Yes(brmut))
+                if !pat.span.at_least_rust_2024() =>
             {
                 // `mut x` resets the binding mode in edition <= 2021.
+
+                let using_and_mut = brmut == Mutability::Mut;
+                let maybe_mut_kw = if using_and_mut { "mut " } else { "(" };
+                let (suggestion_span, pre_sub_str) = if let Some(sub) = sub {
+                    (pat.span.until(sub.span), " @ ")
+                } else {
+                    (pat.span, if using_and_mut { "" } else { ")" })
+                };
+                let ident_str = ident.as_str();
+                let ref_mut_str = match self.shallow_resolve(expected).kind() {
+                    ty::Ref(_, _, emut) if *emut == brmut => {
+                        if using_and_mut {
+                            "ref mut "
+                        } else {
+                            "ref "
+                        }
+                    }
+                    _ => "",
+                };
+
                 self.tcx.emit_node_span_lint(
                     lint::builtin::DEREFERENCING_MUT_BINDING,
                     pat.hir_id,
                     pat.span,
-                    errors::DereferencingMutBinding { span: pat.span },
+                    errors::DereferencingMutBinding {
+                        span: pat.span,
+                        sugg: errors::DereferencingMutBindingSuggestion {
+                            lo: suggestion_span,
+                            code: format!(
+                                "&{maybe_mut_kw}mut {ref_mut_str}{ident_str}{pre_sub_str}"
+                            ),
+                            hi: (!using_and_mut && sub.is_some())
+                                .then_some(pat.span.with_lo(pat.span.hi())),
+                        },
+                    },
                 );
                 BindingAnnotation(ByRef::No, Mutability::Mut)
             }
-            BindingAnnotation(ByRef::No, mutbl) => BindingAnnotation(def_br, mutbl),
-            BindingAnnotation(ByRef::Yes(_), _) => ba,
+            (BindingAnnotation(ByRef::No, mutbl), _) => BindingAnnotation(def_br, mutbl),
+            (BindingAnnotation(ByRef::Yes(_), _), _) => ba,
         };
         // ...and store it in a side table:
         self.inh.typeck_results.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);
