@@ -1521,15 +1521,15 @@ impl<'a> Parser<'a> {
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
             } else if this.token.uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
-                if this.token.uninterpolated_span().at_least_rust_2024()
-                    // check for `gen {}` and `gen move {}`
-                    // or `async gen {}` and `async gen move {}`
-                    && (this.is_gen_block(kw::Gen, 0)
-                        || (this.check_keyword(kw::Async) && this.is_gen_block(kw::Gen, 1)))
-                {
-                    // FIXME: (async) gen closures aren't yet parsed.
-                    this.parse_gen_block()
-                } else if this.check_keyword(kw::Async) {
+                // if this.token.uninterpolated_span().at_least_rust_2024()
+                //     // check for `gen {}` and `gen move {}`
+                //     // or `async gen {}` and `async gen move {}`
+                //     && (this.is_gen_block(kw::Gen, 0)
+                //         || (this.check_keyword(kw::Async) && this.is_gen_block(kw::Gen, 1)))
+                // {
+                //     // FIXME: (async) gen closures aren't yet parsed.
+                //     this.parse_gen_block()
+                if this.check_keyword(kw::Async) {
                     // FIXME(gen_blocks): Parse `gen async` and suggest swap
                     if this.is_gen_block(kw::Async, 0) {
                         // Check for `async {` and `async move {`,
