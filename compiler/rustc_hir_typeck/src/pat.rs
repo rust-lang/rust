@@ -919,8 +919,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, E0533, expected);
                 return Ty::new_error(tcx, e);
             }
-            Res::SelfCtor(..)
-            | Res::Def(
+            Res::SelfCtor(def_id) => {
+                if let ty::Adt(adt_def, _) = *tcx.type_of(def_id).skip_binder().kind()
+                    && adt_def.is_struct()
+                    && let Some((CtorKind::Const, _)) = adt_def.non_enum_variant().ctor
+                {
+                    // Ok, we allow unit struct ctors in patterns only.
+                } else {
+                    let e = report_unexpected_variant_res(
+                        tcx,
+                        res,
+                        qpath,
+                        pat.span,
+                        E0533,
+                        "unit struct",
+                    );
+                    return Ty::new_error(tcx, e);
+                }
+            }
+            Res::Def(
                 DefKind::Ctor(_, CtorKind::Const)
                 | DefKind::Const
                 | DefKind::AssocConst
