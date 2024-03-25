@@ -123,6 +123,7 @@ rm -r tests/run-make/issue-88756-default-output
 # should work when using ./x.py test the way it is intended
 # ============================================================
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
+rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contains the standard library source
 
 # genuine bugs
 # ============
