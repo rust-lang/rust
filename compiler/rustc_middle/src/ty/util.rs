@@ -1266,16 +1266,20 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Checks whether values of this type `T` implement the `AsyncDrop` trait.
-    pub fn is_async_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        self.is_trivially_async_drop() || tcx.is_async_drop_raw(param_env.and(self))
+    /// Checks whether values of this type `T` implements the `AsyncDrop`
+    /// trait.
+    pub fn has_surface_async_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        self.trivially_has_surface_async_drop()
+            && tcx.has_surface_async_drop_raw(param_env.and(self))
     }
 
-    /// Fast path helper for testing if a type is `AsyncDrop`.
+    /// Fast path helper for testing if a type has `AsyncDrop`
+    /// implementation.
     ///
-    /// Returning true means the type is known to be `AsyncDrop`. Returning
-    /// `false` means nothing -- could be `AsyncDrop`, might not be.
-    fn is_trivially_async_drop(self) -> bool {
+    /// Returning `false` means the type is known to not have `AsyncDrop`
+    /// implementation. Returning `true` means nothing -- could be
+    /// `AsyncDrop`, might not be.
+    fn trivially_has_surface_async_drop(self) -> bool {
         match self.kind() {
             ty::Int(_)
             | ty::Uint(_)
@@ -1287,22 +1291,23 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::RawPtr(_)
             | ty::FnDef(..)
+            | ty::FnPtr(_)
             | ty::Error(_)
-            | ty::FnPtr(_) => true,
-            ty::Tuple(fields) => fields.iter().all(Self::is_trivially_async_drop),
-            ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_async_drop(),
-            ty::Adt(..)
-            | ty::Bound(..)
+            | ty::Tuple(_)
+            | ty::Slice(_)
+            | ty::Array(_, _)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..) => false,
+            ty::Adt(..)
+            | ty::Bound(..)
             | ty::Dynamic(..)
             | ty::Foreign(_)
-            | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
-            | ty::Placeholder(_) => false,
+            | ty::Placeholder(_) => true,
         }
     }
 

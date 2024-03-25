@@ -2341,7 +2341,7 @@ impl<'tcx> Ty<'tcx> {
                 Self::chain_async_destructor_ty(
                     tcx,
                     adt_def.non_enum_variant().fields.iter().map(|f| f.ty(tcx, args)),
-                    self.is_async_drop(tcx, param_env).then_some(self),
+                    self.has_surface_async_drop(tcx, param_env).then_some(self),
                 )
             }
             ty::Closure(_, args) => {
@@ -2394,7 +2394,7 @@ impl<'tcx> Ty<'tcx> {
                     })
                     .unwrap();
 
-                if self.is_async_drop(tcx, param_env) {
+                if self.has_surface_async_drop(tcx, param_env) {
                     let assoc_items = tcx
                         .associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDrop, None));
                     // FIXME: Should this lifetime be `'static` or erased?
@@ -2450,7 +2450,7 @@ impl<'tcx> Ty<'tcx> {
                 // don't exist for struct definition, thus it is not
                 // ambiguous with any parameters.
                 // FIXME: Add same restrictions on AsyncDrop impls as with Drop impls
-                if self.is_async_drop(tcx, param_env) {
+                if self.has_surface_async_drop(tcx, param_env) {
                     let assoc_items = tcx
                         .associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDrop, None));
                     // FIXME: Should this lifetime be `'static` or erased?

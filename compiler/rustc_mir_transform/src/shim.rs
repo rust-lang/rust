@@ -1102,7 +1102,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 }
 
                 debug_assert_eq!(adt_def.variants().len(), 1);
-                let has_surface_async_drop = self_ty.is_async_drop(tcx, defer_param_env());
+                let has_surface_async_drop = self_ty.has_surface_async_drop(tcx, defer_param_env());
                 let field_tys = adt_def.variant(VariantIdx::new(0)).fields.iter().map(|f| f.ty(tcx, args));
                 self.build_chain(has_surface_async_drop, field_tys)
             }
@@ -1111,7 +1111,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             }
 
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
-                let has_surface_async_drop = self_ty.is_async_drop(tcx, defer_param_env());
+                let has_surface_async_drop = self_ty.has_surface_async_drop(tcx, defer_param_env());
                 self.build_enum(*adt_def, *args, has_surface_async_drop)
             }
 
@@ -1130,7 +1130,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             | ty::Placeholder(_)
             | ty::Infer(_)
             | ty::Error(_) => {
-                if self_ty.is_async_drop(tcx, defer_param_env()) {
+                if self_ty.has_surface_async_drop(tcx, defer_param_env()) {
                     self.build_fused_surface()
                 } else {
                     self.build_nop()
