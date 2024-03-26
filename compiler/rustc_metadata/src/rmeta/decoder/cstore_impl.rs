@@ -21,7 +21,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_session::{Session, StableCrateId};
-use rustc_span::hygiene::{ExpnHash, ExpnId};
+use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
@@ -655,19 +655,13 @@ impl CrateStore for CStore {
         let def_index = self.get_crate_data(cnum).def_path_hash_to_def_index(hash);
         DefId { krate: cnum, index: def_index }
     }
-
-    fn expn_hash_to_expn_id(
-        &self,
-        sess: &Session,
-        cnum: CrateNum,
-        index_guess: u32,
-        hash: ExpnHash,
-    ) -> ExpnId {
-        self.get_crate_data(cnum).expn_hash_to_expn_id(sess, index_guess, hash)
-    }
 }
 
 fn provide_cstore_hooks(providers: &mut Providers) {
+    providers.hooks.expn_hash_to_expn_id = |tcx, cnum, index_guess, hash| {
+        let cstore = CStore::from_tcx(tcx.tcx);
+        cstore.get_crate_data(cnum).expn_hash_to_expn_id(tcx.sess, index_guess, hash)
+    };
     providers.hooks.import_source_files = |tcx, cnum| {
         let cstore = CStore::from_tcx(tcx.tcx);
         let cdata = cstore.get_crate_data(cnum);

@@ -632,12 +632,7 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
             expn_id
         } else {
             let index_guess = self.foreign_expn_data[&hash];
-            self.tcx.cstore_untracked().expn_hash_to_expn_id(
-                self.tcx.sess,
-                krate,
-                index_guess,
-                hash,
-            )
+            self.tcx.expn_hash_to_expn_id(krate, index_guess, hash)
         };
 
         debug_assert_eq!(expn_id.krate, krate);

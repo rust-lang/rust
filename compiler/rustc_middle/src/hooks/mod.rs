@@ -7,7 +7,7 @@ use crate::mir;
 use crate::query::TyCtxtAt;
 use crate::ty::{Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, LocalDefId};
-use rustc_span::DUMMY_SP;
+use rustc_span::{ExpnHash, ExpnId, DUMMY_SP};
 
 macro_rules! declare_hooks {
     ($($(#[$attr:meta])*hook $name:ident($($arg:ident: $K:ty),*) -> $V:ty;)*) => {
@@ -88,4 +88,10 @@ declare_hooks! {
     /// that crate's metadata - however, the incr comp cache needs
     /// to trigger this manually when decoding a foreign `Span`
     hook import_source_files(key: CrateNum) -> ();
+
+    hook expn_hash_to_expn_id(
+        cnum: CrateNum,
+        index_guess: u32,
+        hash: ExpnHash
+    ) -> ExpnId;
 }
