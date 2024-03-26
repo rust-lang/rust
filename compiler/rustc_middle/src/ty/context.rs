@@ -1261,14 +1261,17 @@ impl<'tcx> TyCtxt<'tcx> {
         feed
     }
 
-    pub fn create_crate_num(self, stable_crate_id: StableCrateId) -> Result<CrateNum, CrateNum> {
+    pub fn create_crate_num(
+        self,
+        stable_crate_id: StableCrateId,
+    ) -> Result<TyCtxtFeed<'tcx, CrateNum>, CrateNum> {
         if let Some(&existing) = self.untracked().stable_crate_ids.read().get(&stable_crate_id) {
             return Err(existing);
         }
 
         let num = CrateNum::new(self.untracked().stable_crate_ids.read().len());
         self.untracked().stable_crate_ids.write().insert(stable_crate_id, num);
-        Ok(num)
+        Ok(TyCtxtFeed { key: num, tcx: self })
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {

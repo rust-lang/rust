@@ -16,7 +16,7 @@ use rustc_fs_util::try_canonicalize;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
 use rustc_session::lint;
@@ -166,7 +166,7 @@ impl CStore {
         &mut self,
         root: &CrateRoot,
         tcx: TyCtxt<'tcx>,
-    ) -> Result<CrateNum, CrateError> {
+    ) -> Result<TyCtxtFeed<'tcx, CrateNum>, CrateError> {
         assert_eq!(self.metas.len(), tcx.untracked().stable_crate_ids.read().len());
         let num = tcx.create_crate_num(root.stable_crate_id()).map_err(|existing| {
             // Check for (potential) conflicts with the local crate
@@ -409,7 +409,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let private_dep = self.is_private_dep(name.as_str(), private_dep);
 
         // Claim this crate number and cache it
-        let cnum = self.cstore.intern_stable_crate_id(&crate_root, self.tcx)?;
+        let feed = self.cstore.intern_stable_crate_id(&crate_root, self.tcx)?;
+        let cnum = feed.key();
 
         info!(
             "register crate `{}` (cnum = {}. private_dep = {})",
