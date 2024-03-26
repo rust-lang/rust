@@ -33,6 +33,7 @@ RUN yum upgrade -y && \
       xz \
       zlib-devel.i686 \
       zlib-devel.x86_64 \
+      jemalloc-devel \
       && yum clean all
 
 RUN mkdir -p /rustroot/bin
@@ -89,7 +90,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.codegen-units=1
 
 ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \
-    ./build/$HOSTS/stage0-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
+    LD_PRELOAD=`jemalloc-config --libdir`/libjemalloc.so.`jemalloc-config --revision` ./build/$HOSTS/stage0-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
     build-manifest bootstrap
