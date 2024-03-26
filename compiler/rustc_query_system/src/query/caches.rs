@@ -9,13 +9,6 @@ use rustc_span::def_id::DefId;
 use rustc_span::def_id::DefIndex;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::marker::PhantomData;
-
-pub trait CacheSelector<'tcx, V> {
-    type Cache
-    where
-        V: Copy;
-}
 
 pub trait QueryCache: Sized {
     type Key: Hash + Eq + Copy + Debug;
@@ -27,14 +20,6 @@ pub trait QueryCache: Sized {
     fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex);
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
-}
-
-pub struct DefaultCacheSelector<K>(PhantomData<K>);
-
-impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<'tcx, V> for DefaultCacheSelector<K> {
-    type Cache = DefaultCache<K, V>
-    where
-        V: Copy;
 }
 
 pub struct DefaultCache<K, V> {
@@ -81,14 +66,6 @@ where
     }
 }
 
-pub struct SingleCacheSelector;
-
-impl<'tcx, V: 'tcx> CacheSelector<'tcx, V> for SingleCacheSelector {
-    type Cache = SingleCache<V>
-    where
-        V: Copy;
-}
-
 pub struct SingleCache<V> {
     cache: OnceLock<(V, DepNodeIndex)>,
 }
@@ -121,14 +98,6 @@ where
             f(&(), &value.0, value.1)
         }
     }
-}
-
-pub struct VecCacheSelector<K>(PhantomData<K>);
-
-impl<'tcx, K: Idx, V: 'tcx> CacheSelector<'tcx, V> for VecCacheSelector<K> {
-    type Cache = VecCache<K, V>
-    where
-        V: Copy;
 }
 
 pub struct VecCache<K: Idx, V> {
@@ -172,14 +141,6 @@ where
             }
         }
     }
-}
-
-pub struct DefIdCacheSelector;
-
-impl<'tcx, V: 'tcx> CacheSelector<'tcx, V> for DefIdCacheSelector {
-    type Cache = DefIdCache<V>
-    where
-        V: Copy;
 }
 
 pub struct DefIdCache<V> {

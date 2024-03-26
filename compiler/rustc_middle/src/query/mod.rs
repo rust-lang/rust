@@ -73,7 +73,7 @@ use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_query_system::query::{try_get_cached, CacheSelector, QueryCache, QueryMode, QueryState};
+use rustc_query_system::query::{try_get_cached, QueryCache, QueryMode, QueryState};
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{CrateDepKind, CrateSource};
 use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
