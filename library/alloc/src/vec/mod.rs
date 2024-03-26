@@ -2772,6 +2772,9 @@ impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
     }
 }
 
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T, A: Allocator> ops::DerefPure for Vec<T, A> {}
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
