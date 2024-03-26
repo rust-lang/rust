@@ -116,8 +116,9 @@ impl<'tcx> ClampSuggestion<'tcx> {
         }
         if let Some(max) = constant(cx, cx.typeck_results(), self.params.max)
             && let Some(min) = constant(cx, cx.typeck_results(), self.params.min)
+            && let Some(ord) = Constant::partial_cmp(cx.tcx, max_type, &min, &max)
         {
-            Constant::partial_cmp(cx.tcx, max_type, &min, &max).is_some_and(|o| o != Ordering::Greater)
+            ord != Ordering::Greater
         } else {
             false
         }
