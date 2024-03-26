@@ -27,4 +27,6 @@ fn main() {
    let f = identity(async || ());
    let _ = f.async_call(());
    let _ = f();
+   let g: Box<dyn FnOnce() -> _> = Box::new(f) as _;
+   let _ = g();
 }

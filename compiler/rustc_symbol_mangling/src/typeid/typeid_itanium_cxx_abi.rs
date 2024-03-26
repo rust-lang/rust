@@ -10,6 +10,7 @@
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{
@@ -1152,6 +1153,14 @@ pub fn typeid_for_instance<'tcx>(
         instance.args = tcx.mk_args_trait(self_ty, List::empty());
     } else if matches!(instance.def, ty::InstanceDef::Virtual(..)) {
         instance.args = strip_receiver_auto(tcx, instance.args);
+    } else if let ty::InstanceDef::VTableShim(def_id) = instance.def
+        && let Some(trait_id) = tcx.trait_of_item(def_id)
+    {
+        // VTableShims may have a trait method, but a concrete Self. This is not suitable for a vtable,
+        // as the caller will not know the concrete Self.
+        let trait_ref = ty::TraitRef::new(tcx, trait_id, instance.args);
+        let invoke_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
+        instance.args = tcx.mk_args_trait(invoke_ty, trait_ref.args.into_iter().skip(1));
     }
 
     if let Some(impl_id) = tcx.impl_of_method(instance.def_id())
@@ -1189,6 +1198,45 @@ pub fn typeid_for_instance<'tcx>(
                 tcx.mk_args_trait(invoke_ty, trait_ref.args.into_iter().skip(1));
             instance.args = instance.args.rebase_onto(tcx, impl_id, abstract_trait_args);
         }
+    } else if tcx.is_closure_like(instance.def_id()) {
+        // We're either a closure or a coroutine. Our goal is to find the trait we're defined on,
+        // instantiate it, and take the type of its only method as our own.
+        let closure_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
+        let (trait_id, inputs) = match closure_ty.kind() {
+            ty::Closure(..) => {
+                let closure_args = instance.args.as_closure();
+                let trait_id = tcx.fn_trait_kind_to_def_id(closure_args.kind()).unwrap();
+                let tuple_args =
+                    tcx.instantiate_bound_regions_with_erased(closure_args.sig()).inputs()[0];
+                (trait_id, tuple_args)
+            }
+            ty::Coroutine(..) => (
+                tcx.require_lang_item(LangItem::Coroutine, None),
+                instance.args.as_coroutine().resume_ty(),
+            ),
+            ty::CoroutineClosure(..) => (
+                tcx.require_lang_item(LangItem::FnOnce, None),
+                tcx.instantiate_bound_regions_with_erased(
+                    instance.args.as_coroutine_closure().coroutine_closure_sig(),
+                )
+                .tupled_inputs_ty,
+            ),
+            x => bug!("Unexpected type kind for closure-like: {x:?}"),
+        };
+        let trait_ref = ty::TraitRef::new(tcx, trait_id, [closure_ty, inputs]);
+        let invoke_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
+        let abstract_args = tcx.mk_args_trait(invoke_ty, trait_ref.args.into_iter().skip(1));
+        // There should be exactly one method on this trait, and it should be the one we're
+        // defining.
+        let call = tcx
+            .associated_items(trait_id)
+            .in_definition_order()
+            .find(|it| it.kind == ty::AssocKind::Fn)
+            .expect("No call-family function on closure-like Fn trait?")
+            .def_id;
+
+        instance.def = ty::InstanceDef::Virtual(call, 0);
+        instance.args = abstract_args;
     }
 
     let fn_abi = tcx
