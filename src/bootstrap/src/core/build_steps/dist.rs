@@ -1003,6 +1003,7 @@ impl Step for PlainSourceTarball {
             // Vendor all Cargo dependencies
             let mut cmd = Command::new(&builder.initial_cargo);
             cmd.arg("vendor")
+                .arg("--versioned-dirs")
                 .arg("--sync")
                 .arg(builder.src.join("./src/tools/cargo/Cargo.toml"))
                 .arg("--sync")
