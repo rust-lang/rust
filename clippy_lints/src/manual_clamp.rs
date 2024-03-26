@@ -114,12 +114,13 @@ impl<'tcx> ClampSuggestion<'tcx> {
         if max_type != min_type {
             return false;
         }
-        let max = constant(cx, cx.typeck_results(), self.params.max);
-        let min = constant(cx, cx.typeck_results(), self.params.min);
-        let cmp = max
-            .zip(min)
-            .and_then(|(max, min)| Constant::partial_cmp(cx.tcx, max_type, &min, &max));
-        cmp.is_some_and(|cmp| cmp != Ordering::Greater)
+        if let Some(max) = constant(cx, cx.typeck_results(), self.params.max)
+            && let Some(min) = constant(cx, cx.typeck_results(), self.params.min)
+        {
+            Constant::partial_cmp(cx.tcx, max_type, &min, &max).is_some_and(|o| o != Ordering::Greater)
+        } else {
+            false
+        }
     }
 }
 
