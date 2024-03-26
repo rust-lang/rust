@@ -31,6 +31,7 @@ use rustc_span::edit_distance::{
 };
 use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;
 use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefStepsResult,
@@ -1450,12 +1451,22 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             return ProbeResult::NoMatch;
                         }
                     }
-                    ocx.register_obligation(traits::Obligation::new(
+                    let obligation = traits::Obligation::new(
                         self.tcx,
                         cause.clone(),
                         self.param_env,
                         ty::Binder::dummy(trait_ref),
-                    ));
+                    );
+
+                    // FIXME(-Znext-solver): We only need this hack to deal with fatal
+                    // overflow in the old solver.
+                    if self.infcx.next_trait_solver() || self.infcx.predicate_may_hold(&obligation)
+                    {
+                        ocx.register_obligation(obligation);
+                    } else {
+                        result = ProbeResult::NoMatch;
+                    }
+
                     trait_predicate = Some(ty::Binder::dummy(trait_ref).to_predicate(self.tcx));
                 }
                 ObjectCandidate(poly_trait_ref) | WhereClauseCandidate(poly_trait_ref) => {
