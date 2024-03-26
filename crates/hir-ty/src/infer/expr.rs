@@ -8,13 +8,12 @@ use std::{
 use chalk_ir::{cast::Cast, fold::Shift, DebruijnIndex, Mutability, TyVariableKind};
 use either::Either;
 use hir_def::{
-    generics::TypeOrConstParamData,
     hir::{
         ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
     },
     lang_item::{LangItem, LangItemTarget},
-    path::{GenericArg, GenericArgs, Path},
-    BlockId, ConstParamId, FieldId, ItemContainerId, Lookup, TupleFieldId, TupleId,
+    path::{GenericArgs, Path},
+    BlockId, FieldId, GenericParamId, ItemContainerId, Lookup, TupleFieldId, TupleId,
 };
 use hir_expand::name::{name, Name};
 use stdx::always;
@@ -1816,10 +1815,17 @@ impl InferenceContext<'_> {
         def_generics: Generics,
         generic_args: Option<&GenericArgs>,
     ) -> Substitution {
-        let (parent_params, self_params, type_params, const_params, impl_trait_params) =
-            def_generics.provenance_split();
+        let (
+            parent_params,
+            self_params,
+            type_params,
+            const_params,
+            impl_trait_params,
+            lifetime_params,
+        ) = def_generics.provenance_split();
         assert_eq!(self_params, 0); // method shouldn't have another Self param
-        let total_len = parent_params + type_params + const_params + impl_trait_params;
+        let total_len =
+            parent_params + type_params + const_params + impl_trait_params + lifetime_params;
         let mut substs = Vec::with_capacity(total_len);
 
         // handle provided arguments
@@ -1828,8 +1834,7 @@ impl InferenceContext<'_> {
             for (arg, kind_id) in generic_args
                 .args
                 .iter()
-                .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
-                .take(type_params + const_params)
+                .take(type_params + const_params + lifetime_params)
                 .zip(def_generics.iter_id())
             {
                 if let Some(g) = generic_arg_to_chalk(
@@ -1850,6 +1855,7 @@ impl InferenceContext<'_> {
                             DebruijnIndex::INNERMOST,
                         )
                     },
+                    |this, lt_ref| this.make_lifetime(lt_ref),
                 ) {
                     substs.push(g);
                 }
@@ -1858,16 +1864,17 @@ impl InferenceContext<'_> {
 
         // Handle everything else as unknown. This also handles generic arguments for the method's
         // parent (impl or trait), which should come after those for the method.
-        for (id, data) in def_generics.iter().skip(substs.len()) {
-            match data {
-                TypeOrConstParamData::TypeParamData(_) => {
+        for (id, _data) in def_generics.iter().skip(substs.len()) {
+            match id {
+                GenericParamId::TypeParamId(_) => {
                     substs.push(self.table.new_type_var().cast(Interner))
                 }
-                TypeOrConstParamData::ConstParamData(_) => substs.push(
-                    self.table
-                        .new_const_var(self.db.const_param_ty(ConstParamId::from_unchecked(id)))
-                        .cast(Interner),
-                ),
+                GenericParamId::ConstParamId(id) => {
+                    substs.push(self.table.new_const_var(self.db.const_param_ty(id)).cast(Interner))
+                }
+                GenericParamId::LifetimeParamId(_) => {
+                    substs.push(self.table.new_lifetime_var().cast(Interner))
+                }
             }
         }
         assert_eq!(substs.len(), total_len);

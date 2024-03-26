@@ -11,7 +11,7 @@ use stdx::never;
 
 use crate::{
     builder::ParamKind,
-    consteval,
+    consteval, error_lifetime,
     method_resolution::{self, VisibleFromModule},
     to_chalk_trait_id,
     utils::generics,
@@ -111,6 +111,7 @@ impl InferenceContext<'_> {
                 it.next().unwrap_or_else(|| match x {
                     ParamKind::Type => self.result.standard_types.unknown.clone().cast(Interner),
                     ParamKind::Const(ty) => consteval::unknown_const_as_generic(ty.clone()),
+                    ParamKind::Lifetime => error_lifetime().cast(Interner),
                 })
             })
             .build();

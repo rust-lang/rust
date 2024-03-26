@@ -938,18 +938,32 @@ impl HirDisplay for Ty {
                 f.end_location_link();
                 if parameters.len(Interner) > 0 {
                     let generics = generics(db.upcast(), def.into());
-                    let (parent_params, self_param, type_params, const_params, _impl_trait_params) =
-                        generics.provenance_split();
-                    let total_len = parent_params + self_param + type_params + const_params;
+                    let (
+                        parent_params,
+                        self_param,
+                        type_params,
+                        const_params,
+                        _impl_trait_params,
+                        lifetime_params,
+                    ) = generics.provenance_split();
+                    let total_len =
+                        parent_params + self_param + type_params + const_params + lifetime_params;
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
                     if total_len > 0 {
-                        // `parameters` are in the order of fn's params (including impl traits),
+                        // `parameters` are in the order of fn's params (including impl traits), fn's lifetimes
                         // parent's params (those from enclosing impl or trait, if any).
                         let parameters = parameters.as_slice(Interner);
                         let fn_params_len = self_param + type_params + const_params;
+                        // This will give slice till last type or const
                         let fn_params = parameters.get(..fn_params_len);
+                        let fn_lt_params =
+                            parameters.get(fn_params_len..(fn_params_len + lifetime_params));
                         let parent_params = parameters.get(parameters.len() - parent_params..);
-                        let params = parent_params.into_iter().chain(fn_params).flatten();
+                        let params = parent_params
+                            .into_iter()
+                            .chain(fn_lt_params)
+                            .chain(fn_params)
+                            .flatten();
                         write!(f, "<")?;
                         f.write_joined(params, ", ")?;
                         write!(f, ">")?;
@@ -1308,8 +1322,17 @@ fn hir_fmt_generics(
     generic_def: Option<hir_def::GenericDefId>,
 ) -> Result<(), HirDisplayError> {
     let db = f.db;
-    let lifetime_args_count = generic_def.map_or(0, |g| db.generic_params(g).lifetimes.len());
-    if parameters.len(Interner) + lifetime_args_count > 0 {
+    if parameters.len(Interner) > 0 {
+        use std::cmp::Ordering;
+        let param_compare =
+            |a: &GenericArg, b: &GenericArg| match (a.data(Interner), b.data(Interner)) {
+                (crate::GenericArgData::Lifetime(_), crate::GenericArgData::Lifetime(_)) => {
+                    Ordering::Equal
+                }
+                (crate::GenericArgData::Lifetime(_), _) => Ordering::Less,
+                (_, crate::GenericArgData::Lifetime(_)) => Ordering::Less,
+                (_, _) => Ordering::Equal,
+            };
         let parameters_to_write = if f.display_target.is_source_code() || f.omit_verbose_types() {
             match generic_def
                 .map(|generic_def_id| db.generic_defaults(generic_def_id))
@@ -1335,6 +1358,11 @@ fn hir_fmt_generics(
                                 return true;
                             }
                         }
+                        if parameter.lifetime(Interner).map(|it| it.data(Interner))
+                            == Some(&crate::LifetimeData::Static)
+                        {
+                            return true;
+                        }
                         let default_parameter = match default_parameters.get(i) {
                             Some(it) => it,
                             None => return true,
@@ -1355,16 +1383,12 @@ fn hir_fmt_generics(
         } else {
             parameters.as_slice(Interner)
         };
-        if !parameters_to_write.is_empty() || lifetime_args_count != 0 {
+        //FIXME: Should handle the ordering of lifetimes when creating substitutions
+        let mut parameters_to_write = parameters_to_write.to_vec();
+        parameters_to_write.sort_by(param_compare);
+        if !parameters_to_write.is_empty() {
             write!(f, "<")?;
             let mut first = true;
-            for _ in 0..lifetime_args_count {
-                if !first {
-                    write!(f, ", ")?;
-                }
-                first = false;
-                write!(f, "'_")?;
-            }
             for generic_arg in parameters_to_write {
                 if !first {
                     write!(f, ", ")?;

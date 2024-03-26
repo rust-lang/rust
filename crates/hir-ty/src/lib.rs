@@ -90,8 +90,8 @@ pub use lower::{
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
-    lt_from_placeholder_idx, to_assoc_type_id, to_chalk_trait_id, to_foreign_def_id,
-    to_placeholder_idx,
+    lt_from_placeholder_idx, lt_to_placeholder_idx, to_assoc_type_id, to_chalk_trait_id,
+    to_foreign_def_id, to_placeholder_idx,
 };
 pub use method_resolution::check_orphan_rules;
 pub use traits::TraitEnvironment;
@@ -335,11 +335,23 @@ pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
     generics: &Generics,
     value: T,
 ) -> Binders<T> {
-    let it = generics.iter_id().take(count).map(|id| match id {
-        Either::Left(_) => None,
-        Either::Right(id) => Some(db.const_param_ty(id)),
-    });
-    crate::make_type_and_const_binders(it, value)
+    let it = generics.iter_id().take(count);
+
+    Binders::new(
+        VariableKinds::from_iter(
+            Interner,
+            it.map(|x| match x {
+                hir_def::GenericParamId::ConstParamId(id) => {
+                    chalk_ir::VariableKind::Const(db.const_param_ty(id))
+                }
+                hir_def::GenericParamId::TypeParamId(_) => {
+                    chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
+                }
+                hir_def::GenericParamId::LifetimeParamId(_) => chalk_ir::VariableKind::Lifetime,
+            }),
+        ),
+        value,
+    )
 }
 
 pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
@@ -609,6 +621,10 @@ pub fn static_lifetime() -> Lifetime {
     LifetimeData::Static.intern(Interner)
 }
 
+pub fn error_lifetime() -> Lifetime {
+    static_lifetime()
+}
+
 pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
     t: T,
     for_ty: impl FnMut(BoundVar, DebruijnIndex) -> Ty,
@@ -693,6 +709,55 @@ pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFold
 
         fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Const {
             self.0(Either::Right(c), outer_binder).right().unwrap()
+        }
+    }
+    t.fold_with(&mut TyFolder(f), binders)
+}
+
+pub(crate) fn fold_generic_args<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
+    t: T,
+    f: impl FnMut(GenericArgData, DebruijnIndex) -> GenericArgData,
+    binders: DebruijnIndex,
+) -> T {
+    use chalk_ir::fold::{TypeFolder, TypeSuperFoldable};
+    #[derive(chalk_derive::FallibleTypeFolder)]
+    #[has_interner(Interner)]
+    struct TyFolder<F: FnMut(GenericArgData, DebruijnIndex) -> GenericArgData>(F);
+    impl<F: FnMut(GenericArgData, DebruijnIndex) -> GenericArgData> TypeFolder<Interner>
+        for TyFolder<F>
+    {
+        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
+            self
+        }
+
+        fn interner(&self) -> Interner {
+            Interner
+        }
+
+        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Ty {
+            let ty = ty.super_fold_with(self.as_dyn(), outer_binder);
+            self.0(GenericArgData::Ty(ty), outer_binder)
+                .intern(Interner)
+                .ty(Interner)
+                .unwrap()
+                .clone()
+        }
+
+        fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Const {
+            self.0(GenericArgData::Const(c), outer_binder)
+                .intern(Interner)
+                .constant(Interner)
+                .unwrap()
+                .clone()
+        }
+
+        fn fold_lifetime(&mut self, lt: Lifetime, outer_binder: DebruijnIndex) -> Lifetime {
+            let lt = lt.super_fold_with(self.as_dyn(), outer_binder);
+            self.0(GenericArgData::Lifetime(lt), outer_binder)
+                .intern(Interner)
+                .lifetime(Interner)
+                .unwrap()
+                .clone()
         }
     }
     t.fold_with(&mut TyFolder(f), binders)

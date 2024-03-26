@@ -1109,7 +1109,7 @@ fn var_args() {
 #[lang = "va_list"]
 pub struct VaListImpl<'f>;
 fn my_fn(foo: ...) {}
-       //^^^ VaListImpl<'_>
+       //^^^ VaListImpl<'static>
 "#,
     );
 }
