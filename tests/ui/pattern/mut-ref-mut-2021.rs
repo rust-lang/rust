@@ -1,4 +1,6 @@
 //@ edition: 2021
+#![allow(incomplete_features)]
+#![feature(mut_ref)]
 
 struct Foo(u8);
 

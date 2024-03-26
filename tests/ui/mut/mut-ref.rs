@@ -1,5 +1,6 @@
 //@ check-pass
-
+#![allow(incomplete_features)]
+#![feature(mut_ref)]
 fn main() {
     let mut ref x = 10;
     x = &11;

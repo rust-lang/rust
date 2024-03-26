@@ -779,6 +779,10 @@ impl<'a> Parser<'a> {
             self.ban_mut_general_pat(mut_span, &pat, changed_any_binding);
         }
 
+        if matches!(pat.kind, PatKind::Ident(BindingAnnotation(ByRef::Yes(_), Mutability::Mut), ..))
+        {
+            self.psess.gated_spans.gate(sym::mut_ref, pat.span);
+        }
         Ok(pat.into_inner().kind)
     }
 
