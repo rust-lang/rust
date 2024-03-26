@@ -15,6 +15,7 @@ use rustc_index::{Idx, IndexVec};
 
 use rustc_span::{source_map::Spanned, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
+use rustc_target::spec::PanicStrategy;
 
 use std::fmt;
 use std::iter;
@@ -1061,6 +1062,13 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     const MAX_STACK_LEN: usize = 2;
 
     fn new(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Self {
+        // TODO: Implement unwind
+        assert_eq!(
+            tcx.sess.panic_strategy(),
+            PanicStrategy::Abort,
+            "Async destructor shims are not implemented yet for unwind panic strategy",
+        );
+
         let span = tcx.def_span(def_id);
         let Some(sig) = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).no_bound_vars()
         else {
@@ -1542,7 +1550,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 destination: dest.into(),
                 target: Some(target),
                 // TODO: Figure out unwind (even tho they shouldn't panic?)
-                unwind: UnwindAction::Continue,
+                unwind: UnwindAction::Unreachable,
                 call_source: CallSource::Misc,
                 fn_span: self.span,
                 args: self.stack.drain(operands_range).map(|o| respan(self.span, o)).collect(),

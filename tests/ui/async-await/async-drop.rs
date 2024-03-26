@@ -5,6 +5,9 @@
 #![allow(incomplete_features, dead_code)]
 
 //@ edition: 2021
+// TODO: remove when unwind is implemented
+//@ compile-flags: -Cpanic=abort
+//@ no-prefer-dynamic
 
 use core::future::{async_drop_in_place, AsyncDrop, Future};
 use core::hint::black_box;
