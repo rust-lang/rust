@@ -10,6 +10,7 @@ use crate::{
 
 pub trait Interner: Sized {
     type DefId: Copy + Debug + Hash + Ord;
+    type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
     type AdtDef: Copy + Debug + Hash + Ord;
 
     type GenericArgs: Copy

@@ -4,11 +4,10 @@ use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{self, PredicateObligation};
 use hir::def_id::{DefId, LocalDefId};
-use hir::OpaqueTyOrigin;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
-use rustc_middle::traits::{DefiningAnchor, ObligationCause};
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::GenericArgKind;
@@ -54,16 +53,13 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         let mut obligations = vec![];
-        let replace_opaque_type = |def_id: DefId| {
-            def_id.as_local().is_some_and(|def_id| self.opaque_type_origin(def_id).is_some())
-        };
         let value = value.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
             lt_op: |lt| lt,
             ct_op: |ct| ct,
             ty_op: |ty| match *ty.kind() {
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })
-                    if replace_opaque_type(def_id) && !ty.has_escaping_bound_vars() =>
+                    if self.can_define_opaque_ty(def_id) && !ty.has_escaping_bound_vars() =>
                 {
                     let def_span = self.tcx.def_span(def_id);
                     let span = if span.contains(def_span) { def_span } else { span };
@@ -106,56 +102,52 @@ impl<'tcx> InferCtxt<'tcx> {
                         b,
                     ));
                 }
-                match self.defining_use_anchor {
-                    DefiningAnchor::Bind(_) => {
-                        // Check that this is `impl Trait` type is
-                        // declared by `parent_def_id` -- i.e., one whose
-                        // value we are inferring. At present, this is
-                        // always true during the first phase of
-                        // type-check, but not always true later on during
-                        // NLL. Once we support named opaque types more fully,
-                        // this same scenario will be able to arise during all phases.
-                        //
-                        // Here is an example using type alias `impl Trait`
-                        // that indicates the distinction we are checking for:
-                        //
-                        // ```rust
-                        // mod a {
-                        //   pub type Foo = impl Iterator;
-                        //   pub fn make_foo() -> Foo { .. }
-                        // }
-                        //
-                        // mod b {
-                        //   fn foo() -> a::Foo { a::make_foo() }
-                        // }
-                        // ```
-                        //
-                        // Here, the return type of `foo` references an
-                        // `Opaque` indeed, but not one whose value is
-                        // presently being inferred. You can get into a
-                        // similar situation with closure return types
-                        // today:
-                        //
-                        // ```rust
-                        // fn foo() -> impl Iterator { .. }
-                        // fn bar() {
-                        //     let x = || foo(); // returns the Opaque assoc with `foo`
-                        // }
-                        // ```
-                        if self.opaque_type_origin(def_id).is_none() {
-                            return None;
-                        }
-                    }
-                    DefiningAnchor::Bubble => {}
+                // Check that this is `impl Trait` type is
+                // declared by `parent_def_id` -- i.e., one whose
+                // value we are inferring. At present, this is
+                // always true during the first phase of
+                // type-check, but not always true later on during
+                // NLL. Once we support named opaque types more fully,
+                // this same scenario will be able to arise during all phases.
+                //
+                // Here is an example using type alias `impl Trait`
+                // that indicates the distinction we are checking for:
+                //
+                // ```rust
+                // mod a {
+                //   pub type Foo = impl Iterator;
+                //   pub fn make_foo() -> Foo { .. }
+                // }
+                //
+                // mod b {
+                //   fn foo() -> a::Foo { a::make_foo() }
+                // }
+                // ```
+                //
+                // Here, the return type of `foo` references an
+                // `Opaque` indeed, but not one whose value is
+                // presently being inferred. You can get into a
+                // similar situation with closure return types
+                // today:
+                //
+                // ```rust
+                // fn foo() -> impl Iterator { .. }
+                // fn bar() {
+                //     let x = || foo(); // returns the Opaque assoc with `foo`
+                // }
+                // ```
+                if !self.can_define_opaque_ty(def_id) {
+                    return None;
                 }
+
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
                     // We could accept this, but there are various ways to handle this situation, and we don't
                     // want to make a decision on it right now. Likely this case is so super rare anyway, that
                     // no one encounters it in practice.
                     // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
                     // where it is of no concern, so we only check for TAITs.
-                    if let Some(OpaqueTyOrigin::TyAlias { .. }) =
-                        b_def_id.as_local().and_then(|b_def_id| self.opaque_type_origin(b_def_id))
+                    if self.can_define_opaque_ty(b_def_id)
+                        && self.tcx.is_type_alias_impl_trait(b_def_id)
                     {
                         self.tcx.dcx().emit_err(OpaqueHiddenTypeDiag {
                             span: cause.span,
@@ -366,20 +358,6 @@ impl<'tcx> InferCtxt<'tcx> {
             tcx: self.tcx,
             op: |r| self.member_constraint(opaque_type_key, span, concrete_ty, r, &choice_regions),
         });
-    }
-
-    /// Returns the origin of the opaque type `def_id` if we're currently
-    /// in its defining scope.
-    #[instrument(skip(self), level = "trace", ret)]
-    pub fn opaque_type_origin(&self, def_id: LocalDefId) -> Option<OpaqueTyOrigin> {
-        let defined_opaque_types = match self.defining_use_anchor {
-            DefiningAnchor::Bubble => return None,
-            DefiningAnchor::Bind(bind) => bind,
-        };
-
-        let origin = self.tcx.opaque_type_origin(def_id);
-
-        defined_opaque_types.contains(&def_id).then_some(origin)
     }
 }
 

@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
@@ -7,7 +8,6 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_macros::extension;
-use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
@@ -140,24 +140,43 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let args = opaque_type_key.args;
             debug!(?concrete_type, ?args);
 
-            let mut arg_regions = vec![self.universal_regions.fr_static];
+            let mut arg_regions =
+                vec![(self.universal_regions.fr_static, infcx.tcx.lifetimes.re_static)];
 
-            let to_universal_region = |vid, arg_regions: &mut Vec<_>| match self.universal_name(vid)
-            {
-                Some(region) => {
-                    let vid = self.universal_regions.to_region_vid(region);
-                    arg_regions.push(vid);
-                    region
-                }
-                None => {
-                    arg_regions.push(vid);
-                    ty::Region::new_error_with_message(
-                        infcx.tcx,
-                        concrete_type.span,
-                        "opaque type with non-universal region args",
-                    )
-                }
-            };
+            let mut seen_error = FxHashMap::default();
+
+            let mut to_universal_region =
+                |vid, arg_regions: &mut Vec<_>| match self.universal_name(vid) {
+                    Some(region) => {
+                        let vid = self.universal_regions.to_region_vid(region);
+                        arg_regions.push((vid, region));
+                        region
+                    }
+                    None => {
+                        let guar = *seen_error.entry(vid).or_insert_with(|| {
+                            match infcx.tcx.opaque_type_origin(opaque_type_key.def_id) {
+                                // FIXME(#113916)
+                                OpaqueTyOrigin::TyAlias { .. } => infcx.dcx().span_delayed_bug(
+                                    concrete_type.span,
+                                    "opaque type with non-universal region args",
+                                ),
+                                OpaqueTyOrigin::AsyncFn(_) | OpaqueTyOrigin::FnReturn(_) => {
+                                    let member_region = ty::Region::new_var(infcx.tcx, vid);
+                                    let named_region = self.name_regions(infcx.tcx, member_region);
+                                    infcx.dcx().emit_err(NonGenericOpaqueTypeParam {
+                                        ty: named_region.into(),
+                                        kind: "lifetime",
+                                        span: concrete_type.span,
+                                        param_span: concrete_type.span,
+                                    })
+                                }
+                            }
+                        });
+                        let region = ty::Region::new_error(infcx.tcx, guar);
+                        arg_regions.push((vid, region));
+                        region
+                    }
+                };
 
             // Start by inserting universal regions from the member_constraint choice regions.
             // This will ensure they get precedence when folding the regions in the concrete type.
@@ -189,8 +208,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 infcx.tcx.fold_regions(concrete_type, |region, _| match *region {
                     ty::ReVar(vid) => arg_regions
                         .iter()
-                        .find(|ur_vid| self.eval_equal(vid, **ur_vid))
-                        .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
+                        .find(|(ur_vid, _)| self.eval_equal(vid, *ur_vid))
+                        .map(|(_, region)| *region)
                         .unwrap_or(infcx.tcx.lifetimes.re_erased),
                     ty::RePlaceholder(_) => ty::Region::new_error_with_message(
                         infcx.tcx,
@@ -207,6 +226,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 opaque_type_key,
                 universal_concrete_type,
             );
+
+            // Sometimes, when the hidden type is an inference variable, it can happen that
+            // the hidden type becomes the opaque type itself. In this case, this was an opaque
+            // usage of the opaque type and we can ignore it. This check is mirrored in typeck's
+            // writeback.
+            if let ty::Alias(ty::Opaque, alias_ty) = universal_concrete_type.ty.kind()
+                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
+                && alias_ty.args == opaque_type_key.args
+            {
+                continue;
+            }
             // Sometimes two opaque types are the same only after we remap the generic parameters
             // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to `(X, Y)`
             // and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we only know that
@@ -273,11 +303,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     None => {
                         // Nothing exact found, so we pick the first one that we find.
                         let scc = self.constraint_sccs.scc(vid);
-                        for vid in self.rev_scc_graph.as_ref().unwrap().upper_bounds(scc) {
-                            match self.definitions[vid].external_name {
-                                None => {}
-                                Some(region) if region.is_static() => {}
-                                Some(region) => return region,
+                        if let Some(rev_scc_graph) = &self.rev_scc_graph {
+                            for vid in rev_scc_graph.upper_bounds(scc) {
+                                match self.definitions[vid].external_name {
+                                    None => {}
+                                    Some(region) if region.is_static() => {}
+                                    Some(region) => return region,
+                                }
                             }
                         }
                         region
@@ -372,13 +404,13 @@ fn check_opaque_type_well_formed<'tcx>(
         parent_def_id = tcx.local_parent(parent_def_id);
     }
 
-    // FIXME(-Znext-solver): We probably should use `DefiningAnchor::Bind(&[])`
+    // FIXME(-Znext-solver): We probably should use `&[]` instead of
     // and prepopulate this `InferCtxt` with known opaque values, rather than
-    // using the `Bind` anchor here. For now it's fine.
+    // allowing opaque types to be defined and checking them after the fact.
     let infcx = tcx
         .infer_ctxt()
         .with_next_trait_solver(next_trait_solver)
-        .with_opaque_type_inference(DefiningAnchor::bind(tcx, parent_def_id))
+        .with_opaque_type_inference(parent_def_id)
         .build();
     let ocx = ObligationCtxt::new(&infcx);
     let identity_args = GenericArgs::identity_for_item(tcx, def_id);

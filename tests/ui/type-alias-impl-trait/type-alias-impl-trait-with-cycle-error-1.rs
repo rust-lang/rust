@@ -1,11 +1,10 @@
 #![feature(type_alias_impl_trait)]
-
-//@ check-pass
+//@ known-bug: #109268
 
 type Foo = impl Fn() -> Foo;
 
-fn foo() -> Foo {
-    foo
+fn crash(x: Foo) -> Foo {
+    x
 }
 
 fn main() {}

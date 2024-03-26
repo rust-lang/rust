@@ -1,4 +1,4 @@
-error: internal compiler error: error performing ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: UserFacing }, value: ImpliedOutlivesBounds { ty: &'?2 mut StateContext<'?3, usize> } }
+error: internal compiler error: error performing operation: fully_perform
   --> $DIR/issue-80409.rs:49:30
    |
 LL |     builder.state().on_entry(|_| {});

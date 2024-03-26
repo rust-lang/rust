@@ -23,6 +23,7 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
+use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
 use rustc_type_ir::Canonical as IrCanonical;
 use rustc_type_ir::CanonicalVarInfo as IrCanonicalVarInfo;
@@ -153,11 +154,6 @@ pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
     pub region_constraints: QueryRegionConstraints<'tcx>,
     pub certainty: Certainty,
-    /// List of opaque types which we tried to compare to another type.
-    /// Inside the query we don't know yet whether the opaque type actually
-    /// should get its hidden type inferred. So we bubble the opaque type
-    /// and the type it was compared against upwards and let the query caller
-    /// handle it.
     pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
     pub value: R,
 }
@@ -316,6 +312,7 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         key: ty::ParamEnv<'tcx>,
+        defining_opaque_types: &'tcx ty::List<LocalDefId>,
         state: &mut OriginalQueryValues<'tcx>,
         canonicalize_op: fn(
             TyCtxt<'tcx>,
@@ -330,6 +327,7 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
                 max_universe: ty::UniverseIndex::ROOT,
                 variables: List::empty(),
                 value: key,
+                defining_opaque_types,
             };
         }
 
@@ -344,7 +342,8 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
                 *canonical
             }
             Entry::Vacant(e) => {
-                let canonical = canonicalize_op(tcx, key, state);
+                let mut canonical = canonicalize_op(tcx, key, state);
+                canonical.defining_opaque_types = defining_opaque_types;
                 let OriginalQueryValues { var_values, universe_map } = state;
                 assert_eq!(universe_map.len(), 1);
                 e.insert((canonical, tcx.arena.alloc_slice(var_values)));
