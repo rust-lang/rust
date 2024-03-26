@@ -13,7 +13,7 @@ use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
 use rustc_errors::DiagCtxt;
 use rustc_expand::base::SyntaxExtension;
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TyCtxt;
@@ -61,9 +61,6 @@ pub struct CStore {
     has_global_allocator: bool,
     /// This crate has a `#[alloc_error_handler]` item.
     has_alloc_error_handler: bool,
-
-    /// The interned [StableCrateId]s.
-    pub(crate) stable_crate_ids: StableCrateIdMap,
 
     /// Unused externs of the crate
     unused_externs: Vec<Symbol>,
@@ -165,9 +162,15 @@ impl CStore {
         })
     }
 
-    fn intern_stable_crate_id(&mut self, root: &CrateRoot) -> Result<CrateNum, CrateError> {
-        assert_eq!(self.metas.len(), self.stable_crate_ids.len());
-        if let Some(&existing) = self.stable_crate_ids.get(&root.stable_crate_id()) {
+    fn intern_stable_crate_id<'tcx>(
+        &mut self,
+        root: &CrateRoot,
+        tcx: TyCtxt<'tcx>,
+    ) -> Result<CrateNum, CrateError> {
+        assert_eq!(self.metas.len(), tcx.untracked().stable_crate_ids.read().len());
+        if let Some(&existing) =
+            tcx.untracked().stable_crate_ids.read().get(&root.stable_crate_id())
+        {
             // Check for (potential) conflicts with the local crate
             if existing == LOCAL_CRATE {
                 Err(CrateError::SymbolConflictsCurrent(root.name()))
@@ -180,8 +183,8 @@ impl CStore {
             }
         } else {
             self.metas.push(None);
-            let num = CrateNum::new(self.stable_crate_ids.len());
-            self.stable_crate_ids.insert(root.stable_crate_id(), num);
+            let num = CrateNum::new(tcx.untracked().stable_crate_ids.read().len());
+            tcx.untracked().stable_crate_ids.write().insert(root.stable_crate_id(), num);
             Ok(num)
         }
     }
@@ -289,12 +292,7 @@ impl CStore {
         }
     }
 
-    pub fn new(
-        metadata_loader: Box<MetadataLoaderDyn>,
-        local_stable_crate_id: StableCrateId,
-    ) -> CStore {
-        let mut stable_crate_ids = StableCrateIdMap::default();
-        stable_crate_ids.insert(local_stable_crate_id, LOCAL_CRATE);
+    pub fn new(metadata_loader: Box<MetadataLoaderDyn>) -> CStore {
         CStore {
             metadata_loader,
             // We add an empty entry for LOCAL_CRATE (which maps to zero) in
@@ -307,7 +305,6 @@ impl CStore {
             alloc_error_handler_kind: None,
             has_global_allocator: false,
             has_alloc_error_handler: false,
-            stable_crate_ids,
             unused_externs: Vec::new(),
         }
     }
@@ -416,7 +413,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let private_dep = self.is_private_dep(name.as_str(), private_dep);
 
         // Claim this crate number and cache it
-        let cnum = self.cstore.intern_stable_crate_id(&crate_root)?;
+        let cnum = self.cstore.intern_stable_crate_id(&crate_root, self.tcx)?;
 
         info!(
             "register crate `{}` (cnum = {}. private_dep = {})",

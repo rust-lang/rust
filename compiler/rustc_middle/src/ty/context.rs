@@ -1140,7 +1140,12 @@ impl<'tcx> TyCtxt<'tcx> {
         if stable_crate_id == self.stable_crate_id(LOCAL_CRATE) {
             LOCAL_CRATE
         } else {
-            self.cstore_untracked().stable_crate_id_to_crate_num(stable_crate_id)
+            *self
+                .untracked()
+                .stable_crate_ids
+                .read()
+                .get(&stable_crate_id)
+                .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"))
         }
     }
 
