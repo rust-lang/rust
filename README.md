@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="The Rust Programming Language: A language empowering everyone to build reliable and efficient software" src="https://www.rust-lang.org/static/images/rust-social-wide.jpg">
+  <img alt="The Rust Programming Language: A language empowering everyone to build reliable and efficient software" src="https://www.rust-lang.org/static/images/rust-social-wide.jpg" width="512" height="256">
   <br>
   <a href="https://www.rust-lang.org/">Website</a> |
   <a href="https://www.rust-lang.org/learn/get-started">Getting started</a> |
