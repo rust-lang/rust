@@ -106,9 +106,7 @@ impl BranchInfoBuilder {
         }
 
         let mut decision_spans = IndexVec::from_iter(
-            decisions
-                .into_iter()
-                .map(|span| DecisionSpan { span, num_conditions: 0 }),
+            decisions.into_iter().map(|span| DecisionSpan { span, num_conditions: 0 }),
         );
 
         // Count the number of conditions linked to each decision.
@@ -161,10 +159,8 @@ impl Builder<'_, '_> {
                 CoverageKind::BlockMarker { id }
             };
 
-            let marker_statement = mir::Statement {
-                source_info,
-                kind: mir::StatementKind::Coverage(cov_kind),
-            };
+            let marker_statement =
+                mir::Statement { source_info, kind: mir::StatementKind::Coverage(cov_kind) };
             self.cfg.push(block, marker_statement);
 
             id
@@ -204,9 +200,9 @@ impl Builder<'_, '_> {
         let source_info = self.source_info(span);
         let marker_statement = mir::Statement {
             source_info,
-            kind: mir::StatementKind::Coverage(
-                CoverageKind::MCDCDecisionMarker { id: decision_id },
-            ),
+            kind: mir::StatementKind::Coverage(CoverageKind::MCDCDecisionEntryMarker {
+                id: decision_id,
+            }),
         };
         self.cfg.push(block, marker_statement);
 

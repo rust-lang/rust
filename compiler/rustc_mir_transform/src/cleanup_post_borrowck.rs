@@ -38,7 +38,8 @@ impl<'tcx> MirPass<'tcx> for CleanupPostBorrowck {
                         CoverageKind::BlockMarker { .. }
                         | CoverageKind::SpanMarker { .. }
                         | CoverageKind::MCDCBlockMarker { .. }
-                        | CoverageKind::MCDCDecisionMarker { .. },
+                        | CoverageKind::MCDCDecisionEntryMarker { .. }
+                        | CoverageKind::MCDCDecisionOutputMarker { .. },
                     )
                     | StatementKind::FakeRead(..) => statement.make_nop(),
                     _ => (),

@@ -227,7 +227,8 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
             CoverageKind::BlockMarker {..}
             // Ignore MCDC markers as well
             | CoverageKind::MCDCBlockMarker{ .. }
-            | CoverageKind::MCDCDecisionMarker{ .. }
+            | CoverageKind::MCDCDecisionEntryMarker{ .. }
+            | CoverageKind::MCDCDecisionOutputMarker { .. }
         ) => None,
 
         // These coverage statements should not exist prior to coverage instrumentation.

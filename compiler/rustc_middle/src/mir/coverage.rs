@@ -114,7 +114,14 @@ pub enum CoverageKind {
     /// conditions in the same decision will reference this id.
     ///
     /// Has no effect during codegen.
-    MCDCDecisionMarker { id: DecisionMarkerId },
+    MCDCDecisionEntryMarker { id: DecisionMarkerId },
+
+    /// Marks one of the basic blocks following the decision referenced with `id`.
+    /// the outcome bool designates which branch of the decision it is:
+    /// `true` for the then block, `false` for the else block.
+    ///
+    /// Has no effect during codegen.
+    MCDCDecisionOutputMarker { id: DecisionMarkerId, outcome: bool },
 
     /// Declares the number of bytes needed to store the test-vector bitmaps of
     /// all the decisions in the function body.
@@ -151,8 +158,15 @@ impl Debug for CoverageKind {
             MCDCBlockMarker { id, decision_id } => {
                 write!(fmt, "MCDCBlockMarker({:?}, {:?})", id.index(), decision_id.index())
             }
-            MCDCDecisionMarker { id } => write!(fmt, "MCDCDecisionMarker({:?})", id.index()),
-            MCDCBitmapRequire { needed_bytes } => write!(fmt, "MCDCBitmapRequire({needed_bytes} bytes)"),
+            MCDCDecisionEntryMarker { id } => {
+                write!(fmt, "MCDCDecisionEntryMarker({:?})", id.index())
+            }
+            &MCDCDecisionOutputMarker { id, outcome } => {
+                write!(fmt, "MCDCDecisionOutputMarker({:?}, {})", id.index(), outcome)
+            }
+            MCDCBitmapRequire { needed_bytes } => {
+                write!(fmt, "MCDCBitmapRequire({needed_bytes} bytes)")
+            }
             CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
             ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
         }
