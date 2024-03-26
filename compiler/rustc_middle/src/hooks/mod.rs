@@ -6,6 +6,8 @@
 use crate::mir;
 use crate::query::TyCtxtAt;
 use crate::ty::{Ty, TyCtxt};
+use rustc_hir::def_id::{DefId, DefPathHash};
+use rustc_session::StableCrateId;
 use rustc_span::def_id::{CrateNum, LocalDefId};
 use rustc_span::{ExpnHash, ExpnId, DUMMY_SP};
 
@@ -94,4 +96,10 @@ declare_hooks! {
         index_guess: u32,
         hash: ExpnHash
     ) -> ExpnId;
+
+    /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
+    /// session, if it still exists. This is used during incremental compilation to
+    /// turn a deserialized `DefPathHash` into its current `DefId`.
+    /// Will fetch a DefId from a DefPathHash for a foreign crate.
+    hook def_path_hash_to_def_id_extern(hash: DefPathHash, stable_crate_id: StableCrateId) -> DefId;
 }

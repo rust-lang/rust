@@ -650,14 +650,18 @@ impl CrateStore for CStore {
     fn def_path_hash(&self, def: DefId) -> DefPathHash {
         self.get_crate_data(def.krate).def_path_hash(def.index)
     }
-
-    fn def_path_hash_to_def_id(&self, cnum: CrateNum, hash: DefPathHash) -> DefId {
-        let def_index = self.get_crate_data(cnum).def_path_hash_to_def_index(hash);
-        DefId { krate: cnum, index: def_index }
-    }
 }
 
 fn provide_cstore_hooks(providers: &mut Providers) {
+    providers.hooks.def_path_hash_to_def_id_extern = |tcx, hash, stable_crate_id| {
+        // If this is a DefPathHash from an upstream crate, let the CrateStore map
+        // it to a DefId.
+        let cstore = CStore::from_tcx(tcx.tcx);
+        let cnum = cstore.stable_crate_id_to_crate_num(stable_crate_id);
+        let def_index = cstore.get_crate_data(cnum).def_path_hash_to_def_index(hash);
+        DefId { krate: cnum, index: def_index }
+    };
+
     providers.hooks.expn_hash_to_expn_id = |tcx, cnum, index_guess, hash| {
         let cstore = CStore::from_tcx(tcx.tcx);
         cstore.get_crate_data(cnum).expn_hash_to_expn_id(tcx.sess, index_guess, hash)

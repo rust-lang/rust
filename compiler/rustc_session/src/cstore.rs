@@ -218,9 +218,6 @@ pub trait CrateStore: std::fmt::Debug {
     fn crate_name(&self, cnum: CrateNum) -> Symbol;
     fn stable_crate_id(&self, cnum: CrateNum) -> StableCrateId;
     fn stable_crate_id_to_crate_num(&self, stable_crate_id: StableCrateId) -> CrateNum;
-
-    /// Fetch a DefId from a DefPathHash for a foreign crate.
-    fn def_path_hash_to_def_id(&self, cnum: CrateNum, hash: DefPathHash) -> DefId;
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::DynSync + sync::DynSend;
