@@ -415,6 +415,19 @@ enum PathResult<'a> {
         label: String,
         suggestion: Option<Suggestion>,
         is_error_from_last_segment: bool,
+        /// The final module being resolved, for instance:
+        ///
+        /// ```compile_fail
+        /// mod a {
+        ///     mod b {
+        ///         mod c {}
+        ///     }
+        /// }
+        ///
+        /// use a::not_exist::c;
+        /// ```
+        ///
+        /// In this case, `module` will point to `a`.
         module: Option<ModuleOrUniformRoot<'a>>,
         /// The segment name of target
         segment_name: Symbol,
