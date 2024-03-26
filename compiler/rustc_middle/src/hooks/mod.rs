@@ -6,7 +6,7 @@
 use crate::mir;
 use crate::query::TyCtxtAt;
 use crate::ty::{Ty, TyCtxt};
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{CrateNum, LocalDefId};
 use rustc_span::DUMMY_SP;
 
 macro_rules! declare_hooks {
@@ -16,7 +16,6 @@ macro_rules! declare_hooks {
             $(
             $(#[$attr])*
             #[inline(always)]
-            #[must_use]
             pub fn $name(self, $($arg: $K,)*) -> $V
             {
                 self.at(DUMMY_SP).$name($($arg,)*)
@@ -28,7 +27,6 @@ macro_rules! declare_hooks {
             $(
             $(#[$attr])*
             #[inline(always)]
-            #[must_use]
             #[instrument(level = "debug", skip(self), ret)]
             pub fn $name(self, $($arg: $K,)*) -> $V
             {
@@ -83,4 +81,11 @@ declare_hooks! {
     /// You do not want to call this yourself, instead use the cached version
     /// via `mir_built`
     hook build_mir(key: LocalDefId) -> mir::Body<'tcx>;
+
+
+    /// Imports all `SourceFile`s from the given crate into the current session.
+    /// This normally happens automatically when we decode a `Span` from
+    /// that crate's metadata - however, the incr comp cache needs
+    /// to trigger this manually when decoding a foreign `Span`
+    hook import_source_files(key: CrateNum) -> ();
 }

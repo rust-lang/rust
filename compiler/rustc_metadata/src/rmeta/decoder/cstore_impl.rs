@@ -378,6 +378,7 @@ provide! { tcx, def_id, other, cdata,
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
+    provide_cstore_hooks(providers);
     // FIXME(#44234) - almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about
@@ -664,11 +665,14 @@ impl CrateStore for CStore {
     ) -> ExpnId {
         self.get_crate_data(cnum).expn_hash_to_expn_id(sess, index_guess, hash)
     }
+}
 
-    fn import_source_files(&self, sess: &Session, cnum: CrateNum) {
-        let cdata = self.get_crate_data(cnum);
+fn provide_cstore_hooks(providers: &mut Providers) {
+    providers.hooks.import_source_files = |tcx, cnum| {
+        let cstore = CStore::from_tcx(tcx.tcx);
+        let cdata = cstore.get_crate_data(cnum);
         for file_index in 0..cdata.root.source_map.size() {
-            cdata.imported_source_file(file_index as u32, sess);
+            cdata.imported_source_file(file_index as u32, tcx.sess);
         }
-    }
+    };
 }
