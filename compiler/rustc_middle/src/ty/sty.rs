@@ -2494,8 +2494,8 @@ impl<'tcx> Ty<'tcx> {
     {
         // - `Nop` if empty
         // - `Fuse<<Self as AsyncDrop>::Dropper>` if surface drop only
-        // - `Chain<AsyncDropInPlace<F0>, IntoAsyncDestruct<F1>>...` if any without surface drop
-        // - `Chain<Chain<<Self as AsyncDrop>::Dropper, IntoAsyncDestruct<F0>>, IntoAsyncDestruct<F1>>...` if any with surface drop
+        // - `Chain<AsyncDropInPlace<F0>, Defer<F1>>...` if any without surface drop
+        // - `Chain<Chain<<Self as AsyncDrop>::Dropper, Defer<F0>>, Defer<F1>>...` if any with surface drop
         // If this type implements only sync version `Drop`, then uses that instead
 
         let surface_drop = self.surface_async_dropper_ty(tcx, param_env);
