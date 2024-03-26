@@ -167,7 +167,6 @@ impl CStore {
 
     fn intern_stable_crate_id(&mut self, root: &CrateRoot) -> Result<CrateNum, CrateError> {
         assert_eq!(self.metas.len(), self.stable_crate_ids.len());
-        let num = CrateNum::new(self.stable_crate_ids.len());
         if let Some(&existing) = self.stable_crate_ids.get(&root.stable_crate_id()) {
             // Check for (potential) conflicts with the local crate
             if existing == LOCAL_CRATE {
@@ -181,6 +180,7 @@ impl CStore {
             }
         } else {
             self.metas.push(None);
+            let num = CrateNum::new(self.stable_crate_ids.len());
             self.stable_crate_ids.insert(root.stable_crate_id(), num);
             Ok(num)
         }
