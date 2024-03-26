@@ -263,8 +263,7 @@ async unsafe fn defer<T: ?Sized>(to_drop: *mut T) {
 /// User should carefully manage returned future, since it would
 /// try creating an immutable referece from `this` and get pointee's
 /// discriminant.
-// TODO: Wrap this with `Fuse`
-// TODO: Send and Sync
+// TODO: Send and Sync impls
 #[lang = "async_drop_either"]
 async unsafe fn either<O: IntoFuture<Output = ()>, M: IntoFuture<Output = ()>, T>(
     other: O,
