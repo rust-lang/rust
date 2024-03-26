@@ -1195,10 +1195,10 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             for (field_idx, field) in variant.fields.iter_enumerated() {
                 let field_ty = field.ty(tcx, args);
                 self.put_variant_field(variant.name, variant_idx, field_idx, field_ty);
-                let into_async_destructor = self.combine_defer(field_ty);
+                let defer = self.combine_defer(field_ty);
                 chain = Some(match chain {
-                    None => into_async_destructor,
-                    Some(chain) => self.combine_chain(chain, into_async_destructor),
+                    None => defer,
+                    Some(chain) => self.combine_chain(chain, defer),
                 })
             }
             let variant_dtor = chain.unwrap_or_else(|| self.put_nop());
@@ -1214,9 +1214,11 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         }
         let variants_dtor = other.unwrap();
 
-        if let Some(surface) = surface {
-            self.combine_chain(surface, variants_dtor);
-        }
+        let dtor = match surface {
+            None => variants_dtor,
+            Some(surface) => self.combine_chain(surface, variants_dtor),
+        };
+        self.combine_fuse(dtor);
         self.return_()
     }
 
@@ -1245,7 +1247,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         } else {
             self.put_self()
         }
-        self.combine_slice(elem_ty);
+        let dtor = self.combine_slice(elem_ty);
+        self.combine_fuse(dtor);
         self.return_()
     }
 
@@ -1277,11 +1280,13 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             }
         };
 
-        elems.fold(first, |prev, (field, elem_ty)| {
+        let dtor = elems.fold(first, |prev, (field, elem_ty)| {
             self.put_field(field, elem_ty);
             let second = self.combine_defer(elem_ty);
             self.combine_chain(prev, second)
         });
+
+        self.combine_fuse(dtor);
 
         self.return_()
     }

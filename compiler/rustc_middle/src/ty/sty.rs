@@ -2317,10 +2317,15 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the type of the async destructor of this type.
     pub fn async_destructor_ty(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Ty<'tcx> {
         match *self.kind() {
-            ty::Array(elem_ty, _) | ty::Slice(elem_ty) => tcx
-                .fn_sig(tcx.require_lang_item(hir::LangItem::AsyncDropSlice, None))
-                .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
-                .instantiate(tcx, &[elem_ty.into()]),
+            ty::Array(elem_ty, _) | ty::Slice(elem_ty) => {
+                let dtor = tcx
+                    .fn_sig(tcx.require_lang_item(hir::LangItem::AsyncDropSlice, None))
+                    .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+                    .instantiate(tcx, &[elem_ty.into()]);
+                tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
+                    .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+                    .instantiate(tcx, &[dtor.into()])
+            }
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::AsyncDestruct, None),
@@ -2358,10 +2363,10 @@ impl<'tcx> Ty<'tcx> {
                         .instantiate_identity();
                 }
 
-                let into_async_destructor = tcx
+                let defer = tcx
                     .fn_sig(tcx.require_lang_item(LangItem::AsyncDropDefer, None))
                     .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
-                let into_chain = tcx
+                let chain = tcx
                     .fn_sig(tcx.require_lang_item(LangItem::AsyncDropChain, None))
                     .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
 
@@ -2383,10 +2388,8 @@ impl<'tcx> Ty<'tcx> {
                             .fields
                             .iter()
                             .map(|field| field.ty(tcx, args))
-                            .map(|ty| into_async_destructor.instantiate(tcx, &[ty.into()]))
-                            .reduce(|acc, next| {
-                                into_chain.instantiate(tcx, &[acc.into(), next.into()])
-                            })
+                            .map(|ty| defer.instantiate(tcx, &[ty.into()]))
+                            .reduce(|acc, next| chain.instantiate(tcx, &[acc.into(), next.into()]))
                             .unwrap_or(nop)
                     })
                     .reduce(|other, matched| {
@@ -2394,13 +2397,17 @@ impl<'tcx> Ty<'tcx> {
                     })
                     .unwrap();
 
-                if let Some(dropper_ty) = self.surface_async_dropper_ty(tcx, param_env) {
+                let dtor = if let Some(dropper_ty) = self.surface_async_dropper_ty(tcx, param_env) {
                     tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropChain, None))
                         .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
                         .instantiate(tcx, &[dropper_ty.into(), variants_dtor.into()])
                 } else {
                     variants_dtor
-                }
+                };
+
+                tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
+                    .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+                    .instantiate(tcx, &[dtor.into()])
             }
 
             ty::Bool
@@ -2528,15 +2535,16 @@ impl<'tcx> Ty<'tcx> {
         let chain = tcx
             .fn_sig(tcx.require_lang_item(LangItem::AsyncDropChain, None))
             .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
-        let into_async_destructor = tcx
+        let defer = tcx
             .fn_sig(tcx.require_lang_item(LangItem::AsyncDropDefer, None))
             .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap());
-        tys.fold(first_drop, |dtor, ty| {
-            chain.instantiate(
-                tcx,
-                &[dtor.into(), into_async_destructor.instantiate(tcx, &[ty.into()]).into()],
-            )
-        })
+        let dtor = tys.fold(first_drop, |dtor, ty| {
+            chain.instantiate(tcx, &[dtor.into(), defer.instantiate(tcx, &[ty.into()]).into()])
+        });
+
+        tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
+            .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+            .instantiate(tcx, &[dtor.into()])
     }
 
     /// Returns the type of metadata for (potentially fat) pointers to this type,

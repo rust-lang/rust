@@ -4,40 +4,53 @@
 #![feature(async_drop, impl_trait_in_assoc_type, noop_waker)]
 #![allow(incomplete_features, dead_code)]
 
-use core::future::{async_drop, AsyncDrop, Future};
+use core::future::{async_drop_in_place, poll_fn, AsyncDrop, Future};
 use core::hint::black_box;
 use core::mem::{self, ManuallyDrop};
 use core::pin::{pin, Pin};
 use core::task::{Context, Poll, Waker};
+
+// TODO: Check idempotency of async_drop
+async fn test_async_drop<T>(x: T) {
+    let mut x = mem::MaybeUninit::new(x);
+    let mut dtor = pin!(unsafe { async_drop_in_place(x.as_mut_ptr()) });
+    poll_fn(|cx| {
+        assert_eq!(dtor.as_mut().poll(cx), Poll::Ready(()));
+        // Check for idempotency
+        assert_eq!(dtor.as_mut().poll(cx), Poll::Ready(()));
+        Poll::Ready(())
+    })
+    .await;
+}
 
 fn main() {
     let waker = Waker::noop();
     let mut cx = Context::from_waker(&waker);
 
     let i = 13;
-    // TODO: Check idempotency
     let fut = pin!(async {
-        async_drop(Int(0)).await;
-        async_drop(AsyncInt(0)).await;
-        async_drop([AsyncInt(1), AsyncInt(2)]).await;
-        async_drop((AsyncInt(3), AsyncInt(4))).await;
-        async_drop(5).await;
+        test_async_drop(Int(0)).await;
+        test_async_drop(AsyncInt(0)).await;
+        test_async_drop([AsyncInt(1), AsyncInt(2)]).await;
+        test_async_drop((AsyncInt(3), AsyncInt(4))).await;
+        test_async_drop(5).await;
         let j = 42;
-        async_drop(&i).await;
-        async_drop(&j).await;
-        async_drop(AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 }).await;
-        async_drop(ManuallyDrop::new(AsyncInt(9))).await;
+        test_async_drop(&i).await;
+        test_async_drop(&j).await;
+        test_async_drop(AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 }).await;
+        test_async_drop(ManuallyDrop::new(AsyncInt(9))).await;
 
         let foo = AsyncInt(10);
-        async_drop(AsyncReference { foo: &foo }).await;
+        test_async_drop(AsyncReference { foo: &foo }).await;
 
         let foo = AsyncInt(11);
-        async_drop(|| black_box(foo)).await;
+        test_async_drop(|| black_box(foo)).await;
 
-        async_drop(AsyncEnum::A(AsyncInt(12))).await;
-        async_drop(AsyncEnum::B(SyncInt(13))).await;
+        test_async_drop(AsyncEnum::A(AsyncInt(12))).await;
+        test_async_drop(AsyncEnum::B(SyncInt(13))).await;
 
-        async_drop(SyncThenAsync { i: 14, a: AsyncInt(15), b: SyncInt(16), c: AsyncInt(17) }).await;
+        test_async_drop(SyncThenAsync { i: 14, a: AsyncInt(15), b: SyncInt(16), c: AsyncInt(17) })
+            .await;
     });
     let res = fut.poll(&mut cx);
     assert_eq!(res, Poll::Ready(()));
