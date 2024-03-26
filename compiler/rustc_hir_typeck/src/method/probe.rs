@@ -1465,6 +1465,17 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         ocx.register_obligation(obligation);
                     } else {
                         result = ProbeResult::NoMatch;
+                        if let Ok(Some(candidate)) = self.select_trait_candidate(trait_ref) {
+                            for nested_obligation in candidate.nested_obligations() {
+                                if !self.infcx.predicate_may_hold(&nested_obligation) {
+                                    possibly_unsatisfied_predicates.push((
+                                        self.resolve_vars_if_possible(nested_obligation.predicate),
+                                        Some(self.resolve_vars_if_possible(obligation.predicate)),
+                                        Some(nested_obligation.cause),
+                                    ));
+                                }
+                            }
+                        }
                     }
 
                     trait_predicate = Some(ty::Binder::dummy(trait_ref).to_predicate(self.tcx));
