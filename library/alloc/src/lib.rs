@@ -169,6 +169,7 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(utf8_chunks)]
+#![feature(vec_pop_if)]
 // tidy-alphabetical-end
 //
 // Language features:
