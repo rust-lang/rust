@@ -33,10 +33,9 @@ dependencies = [
  "issue_1567",
  "issue_1691",
  "issue_1705",
- "issue_1760",
  "issue_rust_86261",
  "proc-macro2",
- "serde_derive",
+ "proc_macro_crate",
 ]
 
 [[package]]
@@ -92,10 +91,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "issue_1760"
-version = "0.1.0"
-
-[[package]]
 name = "issue_rust_86261"
 version = "0.1.0"
 
@@ -115,23 +110,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "quote"
-version = "1.0.33"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
+name = "proc_macro_crate"
+version = "0.1.0"
 dependencies = [
  "proc-macro2",
-]
-
-[[package]]
-name = "serde_derive"
-version = "1.0.185"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc59dfdcbad1437773485e0367fea4b090a2e0a16d9ffc46af47764536a298ec"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -139,17 +121,6 @@ name = "subcrate"
 version = "0.1.0"
 dependencies = [
  "byteorder 1.4.3",
-]
-
-[[package]]
-name = "syn"
-version = "2.0.29"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c324c494eba9d92503e6f1ef2e6df781e78f6a7705a0202d9801b198807d518a"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-ident",
 ]
 
 [[package]]
