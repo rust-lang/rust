@@ -4,7 +4,7 @@ use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_target::abi::{Pointer, VariantIdx};
+use rustc_target::abi::{Pointer, Size, VariantIdx};
 
 use super::FnCtxt;
 
@@ -84,19 +84,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        fn size_to_bits(size: Size) -> u128 {
+            let Some(bits) = u128::from(size.bytes()).checked_mul(8) else {
+                // `u128` should definitely be able to hold the size of different architectures
+                // larger sizes should be reported as error `are too big for the current architecture`
+                // otherwise we have a bug somewhere
+                bug!("{:?} overflow for u128", size)
+            };
+
+            bits
+        }
+
         // Try to display a sensible error with as much information as possible.
         let skeleton_string = |ty: Ty<'tcx>, sk: Result<_, &_>| match sk {
-            Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
-            Ok(SizeSkeleton::Known(size)) => {
-                if let Some(v) = u128::from(size.bytes()).checked_mul(8) {
-                    format!("{v} bits")
-                } else {
-                    // `u128` should definitely be able to hold the size of different architectures
-                    // larger sizes should be reported as error `are too big for the current architecture`
-                    // otherwise we have a bug somewhere
-                    bug!("{:?} overflow for u128", size)
-                }
+            Ok(SizeSkeleton::Pointer { tail, known_size: Some(size), .. }) => {
+                format!("{} bits, pointer to `{tail}`", size_to_bits(size))
             }
+            Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
+            Ok(SizeSkeleton::Known(size)) => format!("{} bits", size_to_bits(size)),
             Ok(SizeSkeleton::Generic(size)) => {
                 if let Some(size) = size.try_eval_target_usize(tcx, self.param_env) {
                     format!("{size} bytes")

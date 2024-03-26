@@ -776,7 +776,7 @@ fn const_maybe_uninit_zeroed() {
     // Sanity check for `MaybeUninit::zeroed` in a realistic const situation (plugin array term)
     #[repr(C)]
     struct Foo {
-        a: Option<&'static str>,
+        a: Option<&'static [u8; 256]>,
         b: Bar,
         c: f32,
         d: *const u8,

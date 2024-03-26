@@ -1,3 +1,4 @@
+use crate::layout::ty::ParamEnv;
 use hir::def_id::DefId;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
@@ -13,9 +14,12 @@ use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::*;
+use rustc_type_ir::DynKind;
 
+use std::cmp;
 use std::fmt::Debug;
 use std::iter;
+use std::ops::ControlFlow;
 
 use crate::errors::{
     MultipleArrayFieldsSimdType, NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType,
@@ -123,7 +127,7 @@ fn layout_of_uncached<'tcx>(
     };
     debug_assert!(!ty.has_non_region_infer());
 
-    Ok(match *ty.kind() {
+    let layout = match *ty.kind() {
         // Basic scalars.
         ty::Bool => tcx.mk_layout(LayoutS::scalar(
             cx,
@@ -201,9 +205,33 @@ fn layout_of_uncached<'tcx>(
                     return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
                 }
 
-                let Abi::Scalar(metadata) = metadata_layout.abi else {
+                let Abi::Scalar(mut metadata) = metadata_layout.abi else {
                     return Err(error(cx, LayoutError::Unknown(pointee)));
                 };
+
+                // if !ty.is_unsafe_ptr() && metadata_ty == tcx.types.usize {
+                // let pointee_zst = is_trivially_non_zst(pointee, tcx);
+                // // eprintln!("usize-meta {:?} {}", pointee, pointee_zst);
+                // if pointee_zst {
+                //     metadata.valid_range_mut().end = dl.ptr_sized_integer().signed_max() as u128;
+
+                if !ty.is_unsafe_ptr() {
+                    match pointee.kind() {
+                        ty::Slice(element) => match ty_is_non_zst(*element, param_env, tcx) {
+                            NonZst::True => {
+                                metadata.valid_range_mut().end =
+                                    dl.ptr_sized_integer().signed_max() as u128
+                            }
+                            NonZst::Unknown => return Err(error(cx, LayoutError::Unknown(ty))),
+                            _ => {}
+                        },
+                        ty::Str => {
+                            metadata.valid_range_mut().end =
+                                dl.ptr_sized_integer().signed_max() as u128;
+                        }
+                        _ => {}
+                    }
+                }
 
                 metadata
             } else {
@@ -213,7 +241,26 @@ fn layout_of_uncached<'tcx>(
                     ty::Foreign(..) => {
                         return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
                     }
-                    ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
+                    ty::Slice(element) => {
+                        let mut metadata = scalar_unit(Int(dl.ptr_sized_integer(), false));
+                        if !ty.is_unsafe_ptr() {
+                            match ty_is_non_zst(*element, param_env, tcx) {
+                                NonZst::True => {
+                                    metadata.valid_range_mut().end =
+                                        dl.ptr_sized_integer().signed_max() as u128
+                                }
+                                NonZst::Unknown => return Err(error(cx, LayoutError::Unknown(ty))),
+                                _ => {}
+                            }
+                        }
+                        metadata
+                    }
+                    ty::Str => {
+                        let mut metadata = scalar_unit(Int(dl.ptr_sized_integer(), false));
+                        metadata.valid_range_mut().end =
+                            dl.ptr_sized_integer().signed_max() as u128;
+                        metadata
+                    }
                     ty::Dynamic(..) => {
                         let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
                         vtable.valid_range_mut().start = 1;
@@ -606,7 +653,147 @@ fn layout_of_uncached<'tcx>(
         ty::Placeholder(..) | ty::Param(_) => {
             return Err(error(cx, LayoutError::Unknown(ty)));
         }
-    })
+    };
+
+    #[cfg(debug_assertions)]
+    if layout.is_sized() && !layout.abi.is_uninhabited() {
+        match (ty_is_non_zst(ty, param_env, tcx), layout.is_zst()) {
+            (NonZst::Unknown, _) => {
+                bug!("ZSTness should not be unknown at this point {:?} {:?}", ty, layout)
+            }
+            (NonZst::False | NonZst::Uninhabited, false) => {
+                bug!("{:?} is not a ZST but ty_is_non_zst() thinks it is", ty)
+            }
+            (NonZst::True, true) => bug!("{:?} is a ZST but ty_is_non_zst() thinks it isn't", ty),
+            _ => {}
+        }
+    }
+
+    Ok(layout)
+}
+
+fn ty_is_non_zst<'tcx>(ty: Ty<'tcx>, param_env: ParamEnv<'tcx>, tcx: TyCtxt<'tcx>) -> NonZst {
+    fn fold_fields<'tcx>(
+        mut it: impl Iterator<Item = Ty<'tcx>>,
+        param_env: ParamEnv<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> NonZst {
+        let (ControlFlow::Break(res) | ControlFlow::Continue(res)) =
+            it.try_fold(NonZst::False, |acc, ty| {
+                if acc == NonZst::True {
+                    return ControlFlow::Break(acc);
+                }
+
+                ControlFlow::Continue(cmp::max(acc, ty_is_non_zst(ty, param_env, tcx)))
+            });
+
+        res
+    }
+
+    match ty.kind() {
+        ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::Uint(_)
+        | ty::Int(_)
+        | ty::Bool
+        | ty::Float(_)
+        | ty::FnPtr(_)
+        | ty::RawPtr(..)
+        | ty::Dynamic(_, _, DynKind::DynStar)
+        | ty::Char
+        | ty::Ref(..) => NonZst::True,
+
+        ty::Closure(_, args) => fold_fields(args.as_closure().upvar_tys().iter(), param_env, tcx),
+        ty::Coroutine(_, _) => NonZst::True,
+        ty::CoroutineClosure(_, args) => {
+            fold_fields(args.as_coroutine_closure().upvar_tys().iter(), param_env, tcx)
+        }
+        ty::Array(ty, len) => {
+            let len = if len.has_projections() {
+                tcx.normalize_erasing_regions(param_env, *len)
+            } else {
+                *len
+            };
+
+            if let Some(len) = len.try_to_target_usize(tcx) {
+                if len == 0 {
+                    return NonZst::False;
+                }
+                let element_zst = ty_is_non_zst(*ty, param_env, tcx);
+                if element_zst != NonZst::Unknown {
+                    return element_zst;
+                }
+            }
+            NonZst::Unknown
+        }
+        ty::Tuple(tys) => fold_fields(tys.iter(), param_env, tcx),
+        ty::Adt(def, args) => {
+            if ty.is_enum() {
+                if def.variants().len() == 0 {
+                    return NonZst::Uninhabited;
+                }
+                // An enum is !ZST if
+                // * it has a repr and at least one non-uninhabited variant
+                // * it has at least one variant with a !ZST payload
+                // * it has multiple variants that are not uninhabited
+
+                let min_empty_variants = if def.repr().inhibit_enum_layout_opt() { 1 } else { 2 };
+
+                // first check without recursing
+                let simple_variants = def.variants().iter().filter(|v| v.fields.len() == 0).count();
+                if simple_variants >= min_empty_variants {
+                    return NonZst::True;
+                }
+
+                let mut inhabited_zst_variants = 0;
+                let mut unknown = false;
+
+                for variant in def.variants().iter().filter(|v| v.fields.len() != 0) {
+                    let variant_sized =
+                        fold_fields(variant.fields.iter().map(|f| f.ty(tcx, args)), param_env, tcx);
+
+                    match variant_sized {
+                        // enum E { A(!, u32) } counts as !ZST for our purposes
+                        NonZst::True => return NonZst::True,
+                        NonZst::False => inhabited_zst_variants += 1,
+                        NonZst::Unknown => unknown = true,
+                        NonZst::Uninhabited => {}
+                    }
+                }
+
+                if simple_variants + inhabited_zst_variants >= min_empty_variants {
+                    return NonZst::True;
+                }
+                if unknown {
+                    return NonZst::Unknown;
+                }
+                if simple_variants + inhabited_zst_variants == 0 {
+                    return NonZst::Uninhabited;
+                }
+
+                NonZst::False
+            } else {
+                fold_fields(def.all_fields().map(|f| f.ty(tcx, args)), param_env, tcx)
+            }
+        }
+        ty::FnDef(..) => NonZst::False,
+        ty::Never => NonZst::Uninhabited,
+        ty::Param(..) => NonZst::Unknown,
+        // treat unsized types as potentially-ZST
+        ty::Dynamic(..) | ty::Slice(..) => NonZst::False,
+        ty::Alias(..) => match tcx.try_normalize_erasing_regions(param_env, ty) {
+            Ok(ty) if !matches!(ty.kind(), ty::Alias(..)) => ty_is_non_zst(ty, param_env, tcx),
+            _ => NonZst::Unknown,
+        },
+        _ => bug!("is_non_zst not implemented for this kind {:?}", ty),
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
+pub enum NonZst {
+    False,
+    Uninhabited,
+    Unknown,
+    True,
 }
 
 /// Overlap eligibility and variant assignment for each CoroutineSavedLocal.
