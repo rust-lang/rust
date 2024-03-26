@@ -12,7 +12,7 @@
 use r_efi::efi::{self, Guid};
 use r_efi::protocols::{device_path, device_path_to_text};
 
-use crate::ffi::OsString;
+use crate::ffi::{OsString, OsStr};
 use crate::io::{self, const_io_error};
 use crate::mem::{size_of, MaybeUninit};
 use crate::os::uefi::{self, env::boot_services, ffi::OsStringExt};
@@ -220,4 +220,74 @@ pub(crate) fn runtime_services() -> Option<NonNull<r_efi::efi::RuntimeServices>>
         crate::os::uefi::env::try_system_table()?.cast();
     let runtime_services = unsafe { (*system_table.as_ptr()).runtime_services };
     NonNull::new(runtime_services)
+}
+
+pub(crate) struct DevicePath(NonNull<r_efi::protocols::device_path::Protocol>);
+
+impl DevicePath {
+    pub(crate) fn from_text(p: &OsStr) -> io::Result<Self> {
+        fn inner(
+            p: &OsStr,
+            protocol: NonNull<r_efi::protocols::device_path_from_text::Protocol>,
+        ) -> io::Result<DevicePath> {
+            let path_vec = p.encode_wide().chain(Some(0)).collect::<Vec<u16>>();
+            let path =
+                unsafe { ((*protocol.as_ptr()).convert_text_to_device_path)(path_vec.as_ptr()) };
+
+            NonNull::new(path).map(DevicePath).ok_or_else(|| {
+                const_io_error!(io::ErrorKind::InvalidFilename, "Invalid Device Path")
+            })
+        }
+
+        static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
+            AtomicPtr::new(crate::ptr::null_mut());
+
+        if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {
+            if let Ok(protocol) = open_protocol::<r_efi::protocols::device_path_from_text::Protocol>(
+                handle,
+                r_efi::protocols::device_path_from_text::PROTOCOL_GUID,
+            ) {
+                return inner(p, protocol);
+            }
+        }
+
+        let handles = locate_handles(r_efi::protocols::device_path_from_text::PROTOCOL_GUID)?;
+        for handle in handles {
+            if let Ok(protocol) = open_protocol::<r_efi::protocols::device_path_from_text::Protocol>(
+                handle,
+                r_efi::protocols::device_path_from_text::PROTOCOL_GUID,
+            ) {
+                LAST_VALID_HANDLE.store(handle.as_ptr(), Ordering::Release);
+                return inner(p, protocol);
+            }
+        }
+
+        io::Result::Err(const_io_error!(
+            io::ErrorKind::NotFound,
+            "DevicePathFromText Protocol not found"
+        ))
+    }
+}
+
+impl AsRef<r_efi::protocols::device_path::Protocol> for DevicePath {
+    fn as_ref(&self) -> &r_efi::protocols::device_path::Protocol {
+        unsafe { self.0.as_ref() }
+    }
+}
+
+impl AsMut<r_efi::protocols::device_path::Protocol> for DevicePath {
+    fn as_mut(&mut self) -> &mut r_efi::protocols::device_path::Protocol {
+        unsafe { self.0.as_mut() }
+    }
+}
+
+impl Drop for DevicePath {
+    fn drop(&mut self) {
+        if let Some(bt) = boot_services() {
+            let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
+            unsafe {
+                ((*bt.as_ptr()).free_pool)(self.0.as_ptr() as *mut crate::ffi::c_void);
+            }
+        }
+    }
 }
