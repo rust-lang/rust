@@ -97,7 +97,7 @@ use crate::time::SystemTime;
 /// have been opened for asynchronous I/O (e.g. by using `FILE_FLAG_OVERLAPPED`).
 ///
 /// [`BufReader`]: io::BufReader
-/// [`BufWriter`]: io::BufReader
+/// [`BufWriter`]: io::BufWriter
 /// [`sync_all`]: File::sync_all
 /// [`write`]: File::write
 /// [`read`]: File::read

@@ -1,5 +1,29 @@
+error[E0432]: unresolved import `super::inner::doesnt_exist`
+  --> $DIR/diagnostics-same-crate.rs:28:9
+   |
+LL |     use super::inner::doesnt_exist;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ no `doesnt_exist` in `inner`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:7:13
+   |
+LL |     pub mod doesnt_exist {
+   |             ^^^^^^^^^^^^
+
+error[E0432]: unresolved import `super::inner::doesnt_exist`
+  --> $DIR/diagnostics-same-crate.rs:31:23
+   |
+LL |     use super::inner::doesnt_exist::hi;
+   |                       ^^^^^^^^^^^^ could not find `doesnt_exist` in `inner`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:7:13
+   |
+LL |     pub mod doesnt_exist {
+   |             ^^^^^^^^^^^^
+
 error[E0433]: failed to resolve: could not find `doesnt_exist` in `inner`
-  --> $DIR/diagnostics-same-crate.rs:37:12
+  --> $DIR/diagnostics-same-crate.rs:50:12
    |
 LL |     inner::doesnt_exist::hello();
    |            ^^^^^^^^^^^^ could not find `doesnt_exist` in `inner`
@@ -11,7 +35,7 @@ LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
 
 error[E0425]: cannot find function `uwu` in module `inner`
-  --> $DIR/diagnostics-same-crate.rs:32:12
+  --> $DIR/diagnostics-same-crate.rs:45:12
    |
 LL |     inner::uwu();
    |            ^^^ not found in `inner`
@@ -23,31 +47,31 @@ LL |     pub fn uwu() {}
    |            ^^^
 
 error[E0425]: cannot find function `meow` in module `inner::right`
-  --> $DIR/diagnostics-same-crate.rs:41:19
+  --> $DIR/diagnostics-same-crate.rs:54:19
    |
 LL |     inner::right::meow();
    |                   ^^^^ not found in `inner::right`
    |
 note: found an item that was configured out
-  --> $DIR/diagnostics-same-crate.rs:18:16
+  --> $DIR/diagnostics-same-crate.rs:22:16
    |
 LL |         pub fn meow() {}
    |                ^^^^
    = note: the item is gated behind the `what-a-cool-feature` feature
 
 error[E0425]: cannot find function `uwu` in this scope
-  --> $DIR/diagnostics-same-crate.rs:28:5
+  --> $DIR/diagnostics-same-crate.rs:41:5
    |
 LL |     uwu();
    |     ^^^ not found in this scope
 
 error[E0425]: cannot find function `vanished` in this scope
-  --> $DIR/diagnostics-same-crate.rs:48:5
+  --> $DIR/diagnostics-same-crate.rs:61:5
    |
 LL |     vanished();
    |     ^^^^^^^^ not found in this scope
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0425, E0433.
+Some errors have detailed explanations: E0425, E0432, E0433.
 For more information about an error, try `rustc --explain E0425`.
