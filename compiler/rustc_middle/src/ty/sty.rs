@@ -2332,23 +2332,20 @@ impl<'tcx> Ty<'tcx> {
                 );
                 Ty::new_projection(tcx, assoc_items[0], [self])
             }
-            ty::Tuple(tys) => self.chain_async_destructor_ty(tcx, tys.iter(), param_env),
-            ty::Adt(adt_def, args) if adt_def.is_struct() => {
-                if adt_def.is_manually_drop() {
-                    return tcx
-                        .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
-                        .instantiate_identity()
-                        .output()
-                        .no_bound_vars()
-                        .unwrap();
-                }
 
-                self.chain_async_destructor_ty(
-                    tcx,
-                    adt_def.non_enum_variant().fields.iter().map(|f| f.ty(tcx, args)),
-                    param_env,
-                )
-            }
+            ty::Adt(adt_def, _) if adt_def.is_manually_drop() => tcx
+                .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                .instantiate_identity()
+                .output()
+                .no_bound_vars()
+                .unwrap(),
+
+            ty::Tuple(tys) => self.chain_async_destructor_ty(tcx, tys.iter(), param_env),
+            ty::Adt(adt_def, args) if adt_def.is_struct() => self.chain_async_destructor_ty(
+                tcx,
+                adt_def.non_enum_variant().fields.iter().map(|f| f.ty(tcx, args)),
+                param_env,
+            ),
             ty::Closure(_, args) => {
                 self.chain_async_destructor_ty(tcx, args.as_closure().upvar_tys().iter(), param_env)
             }

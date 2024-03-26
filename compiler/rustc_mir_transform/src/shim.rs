@@ -1105,15 +1105,11 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             ty::Array(elem_ty, _) => self.build_slice(true, *elem_ty),
             ty::Slice(elem_ty) => self.build_slice(false, *elem_ty),
 
+            ty::Adt(adt_def, _) if adt_def.is_manually_drop() => self.build_nop(),
+
             ty::Tuple(elem_tys) => self.build_chain(None, elem_tys.iter()),
             ty::Adt(adt_def, args) if adt_def.is_struct() => {
-                if adt_def.is_manually_drop() {
-                    return self.build_nop();
-                }
-
-                debug_assert_eq!(adt_def.variants().len(), 1);
-                let field_tys =
-                    adt_def.variant(VariantIdx::new(0)).fields.iter().map(|f| f.ty(tcx, args));
+                let field_tys = adt_def.non_enum_variant().fields.iter().map(|f| f.ty(tcx, args));
                 self.build_chain(surface_drop_kind(), field_tys)
             }
             ty::Closure(_, args) => self.build_chain(None, args.as_closure().upvar_tys().iter()),
