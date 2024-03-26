@@ -1,6 +1,7 @@
 //@ compile-flags: -Z unpretty=stable-mir -Z mir-opt-level=3
 //@ check-pass
 //@ only-x86_64
+//@ needs-unwind unwind edges are different with panic=abort
 
 fn foo(i: i32) -> i32 {
     i + 1

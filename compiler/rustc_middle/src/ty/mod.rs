@@ -832,6 +832,38 @@ pub struct OpaqueTypeKey<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 }
 
+impl<'tcx> OpaqueTypeKey<'tcx> {
+    pub fn iter_captured_args(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> impl Iterator<Item = (usize, GenericArg<'tcx>)> {
+        std::iter::zip(self.args, tcx.variances_of(self.def_id)).enumerate().filter_map(
+            |(i, (arg, v))| match (arg.unpack(), v) {
+                (_, ty::Invariant) => Some((i, arg)),
+                (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => None,
+                _ => bug!("unexpected opaque type arg variance"),
+            },
+        )
+    }
+
+    pub fn fold_captured_lifetime_args(
+        self,
+        tcx: TyCtxt<'tcx>,
+        mut f: impl FnMut(Region<'tcx>) -> Region<'tcx>,
+    ) -> Self {
+        let Self { def_id, args } = self;
+        let args = std::iter::zip(args, tcx.variances_of(def_id)).map(|(arg, v)| {
+            match (arg.unpack(), v) {
+                (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => arg,
+                (ty::GenericArgKind::Lifetime(lt), _) => f(lt).into(),
+                _ => arg,
+            }
+        });
+        let args = tcx.mk_args_from_iter(args);
+        Self { def_id, args }
+    }
+}
+
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
 pub struct OpaqueHiddenType<'tcx> {
     /// The span of this particular definition of the opaque type. So

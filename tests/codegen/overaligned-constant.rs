@@ -16,7 +16,7 @@ fn main() {
     // CHECK-LABEL: @_ZN20overaligned_constant4main
     // CHECK: [[full:%_.*]] = alloca %SmallStruct, align 8
     // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 8 [[full]], ptr align 8 @0, i64 32, i1 false)
-    // CHECK: %b.0 = load i32, ptr @0, align 4,
+    // CHECK: %b.0 = load i32, ptr @0, align 4
     // CHECK: %b.1 = load i32, ptr getelementptr inbounds ({{.*}}), align 4
     let mut s = S(1);
 

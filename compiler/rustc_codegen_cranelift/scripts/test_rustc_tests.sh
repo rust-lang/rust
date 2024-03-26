@@ -41,21 +41,6 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # missing features
 # ================
 
-# requires stack unwinding
-# FIXME add needs-unwind to these tests
-rm -r tests/run-make/libtest-junit
-rm tests/ui/asm/may_unwind.rs
-rm tests/ui/stable-mir-print/basic_function.rs
-
-# extra warning about -Cpanic=abort for proc macros
-rm tests/ui/proc-macro/crt-static.rs
-rm tests/ui/proc-macro/proc-macro-deprecated-attr.rs
-rm tests/ui/proc-macro/quote-debug.rs
-rm tests/ui/proc-macro/no-missing-docs.rs
-rm tests/ui/rust-2018/proc-macro-crate-in-paths.rs
-rm tests/ui/proc-macro/allowed-signatures.rs
-rm tests/ui/proc-macro/no-mangle-in-proc-macro-issue-111888.rs
-
 # vendor intrinsics
 rm tests/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
 rm tests/ui/asm/x86_64/evex512-implicit-feature.rs # unimplemented AVX512 x86 vendor intrinsic
@@ -154,7 +139,6 @@ rm tests/ui/codegen/subtyping-enforces-type-equality.rs # assert_assignable bug 
 # ======================
 rm tests/ui/backtrace.rs # TODO warning
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
-rm tests/ui/async-await/async-closures/once.rs # FIXME bug in the rustc FnAbi calculation code
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 

@@ -141,17 +141,17 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {
-                let typeid = typeid_for_instance(self.tcx, &instance, TypeIdOptions::empty());
+                let typeid = typeid_for_instance(self.tcx, instance, TypeIdOptions::empty());
                 self.set_type_metadata(llfn, typeid);
                 let typeid =
-                    typeid_for_instance(self.tcx, &instance, TypeIdOptions::GENERALIZE_POINTERS);
+                    typeid_for_instance(self.tcx, instance, TypeIdOptions::GENERALIZE_POINTERS);
                 self.add_type_metadata(llfn, typeid);
                 let typeid =
-                    typeid_for_instance(self.tcx, &instance, TypeIdOptions::NORMALIZE_INTEGERS);
+                    typeid_for_instance(self.tcx, instance, TypeIdOptions::NORMALIZE_INTEGERS);
                 self.add_type_metadata(llfn, typeid);
                 let typeid = typeid_for_instance(
                     self.tcx,
-                    &instance,
+                    instance,
                     TypeIdOptions::GENERALIZE_POINTERS | TypeIdOptions::NORMALIZE_INTEGERS,
                 );
                 self.add_type_metadata(llfn, typeid);
@@ -182,7 +182,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             }
 
             if let Some(instance) = instance {
-                let kcfi_typeid = kcfi_typeid_for_instance(self.tcx, &instance, options);
+                let kcfi_typeid = kcfi_typeid_for_instance(self.tcx, instance, options);
                 self.set_kcfi_type_metadata(llfn, kcfi_typeid);
             } else {
                 let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi, options);

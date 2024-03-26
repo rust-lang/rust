@@ -1,6 +1,7 @@
 //@ check-pass
 //@ force-host
 //@ no-prefer-dynamic
+//@ needs-unwind compiling proc macros with panic=abort causes a warning
 
 #![deny(deprecated)]
 

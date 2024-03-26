@@ -15,7 +15,6 @@
 //! for all lint attributes.
 
 use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
-use rustc_ast as ast;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::{join, Lrc};
 use rustc_hir as hir;
@@ -62,13 +61,13 @@ impl<'tcx, T: LateLintPass<'tcx>> LateContextAndPass<'tcx, T> {
         let prev = self.context.last_node_with_lint_attrs;
         self.context.last_node_with_lint_attrs = id;
         debug!("late context: enter_attrs({:?})", attrs);
-        lint_callback!(self, enter_lint_attrs, attrs);
+        lint_callback!(self, check_attributes, attrs);
         for attr in attrs {
             lint_callback!(self, check_attribute, attr);
         }
         f(self);
         debug!("late context: exit_attrs({:?})", attrs);
-        lint_callback!(self, exit_lint_attrs, attrs);
+        lint_callback!(self, check_attributes_post, attrs);
         self.context.last_node_with_lint_attrs = prev;
     }
 
@@ -309,10 +308,6 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     fn visit_path(&mut self, p: &hir::Path<'tcx>, id: hir::HirId) {
         lint_callback!(self, check_path, p, id);
         hir_visit::walk_path(self, p);
-    }
-
-    fn visit_attribute(&mut self, attr: &'tcx ast::Attribute) {
-        lint_callback!(self, check_attribute, attr);
     }
 }
 

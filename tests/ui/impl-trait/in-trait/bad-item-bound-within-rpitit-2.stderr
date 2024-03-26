@@ -28,6 +28,15 @@ help: consider introducing lifetime `'a` here
 LL | trait Foo<'a> {
    |          ++++
 
-error: aborting due to 2 previous errors
+error[E0792]: expected generic lifetime parameter, found `'static`
+  --> $DIR/bad-item-bound-within-rpitit-2.rs:5:45
+   |
+LL |     fn bar<'other: 'a>() -> impl Sized + 'a {}
+   |            ------                           ^^
+   |            |
+   |            cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
 
-For more information about this error, try `rustc --explain E0261`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0261, E0792.
+For more information about an error, try `rustc --explain E0261`.

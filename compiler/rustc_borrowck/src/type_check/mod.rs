@@ -229,6 +229,22 @@ pub(crate) fn type_check<'mir, 'tcx>(
                 );
             }
 
+            // Convert all regions to nll vars.
+            let (opaque_type_key, hidden_type) =
+                infcx.tcx.fold_regions((opaque_type_key, hidden_type), |region, _| {
+                    match region.kind() {
+                        ty::ReVar(_) => region,
+                        ty::RePlaceholder(placeholder) => checker
+                            .borrowck_context
+                            .constraints
+                            .placeholder_region(infcx, placeholder),
+                        _ => ty::Region::new_var(
+                            infcx.tcx,
+                            checker.borrowck_context.universal_regions.to_region_vid(region),
+                        ),
+                    }
+                });
+
             (opaque_type_key, hidden_type)
         })
         .collect();

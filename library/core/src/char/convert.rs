@@ -1,7 +1,6 @@
 //! Character conversions.
 
 use crate::char::TryFromCharError;
-use crate::convert::TryFrom;
 use crate::error::Error;
 use crate::fmt;
 use crate::mem::transmute;
