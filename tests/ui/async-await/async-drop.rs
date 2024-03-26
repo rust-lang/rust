@@ -78,6 +78,8 @@ fn main() {
             black_box(core::future::ready(())).await;
             foo
         }).await;
+
+        test_async_drop(AsyncUnion { signed: 21 }).await;
     });
     let res = fut.poll(&mut cx);
     assert_eq!(res, Poll::Ready(()));
@@ -169,6 +171,22 @@ impl AsyncDrop for AsyncEnum {
                 }
             };
             mem::forget(mem::replace(&mut *self, new_self));
+        }
+    }
+}
+
+// TODO: add test to disallow AsyncDrop types in unions
+union AsyncUnion {
+    signed: i32,
+    unsigned: u32,
+}
+
+impl AsyncDrop for AsyncUnion {
+    type Dropper<'a> = impl Future<Output = ()>;
+
+    fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_> {
+        async move {
+            println!("AsyncUnion::Dropper::poll: {}, {}", unsafe { self.signed }, unsafe { self.unsigned });
         }
     }
 }

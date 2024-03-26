@@ -2436,11 +2436,19 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Adt(adt_def, _) => {
                 assert!(adt_def.is_union());
-                tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
-                    .instantiate_identity()
-                    .output()
-                    .no_bound_vars()
-                    .unwrap()
+
+                match self.surface_async_dropper_ty(tcx, param_env) {
+                    None => tcx
+                        .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                        .instantiate_identity()
+                        .output()
+                        .no_bound_vars()
+                        .unwrap(),
+                    Some(surface_drop) => tcx
+                        .fn_sig(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
+                        .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
+                        .instantiate(tcx, &[surface_drop.into()]),
+                }
             }
 
             ty::Dynamic(..) | ty::CoroutineWitness(..) | ty::Coroutine(..) => {
