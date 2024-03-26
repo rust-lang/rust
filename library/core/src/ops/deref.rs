@@ -275,6 +275,25 @@ impl<T: ?Sized> DerefMut for &mut T {
     }
 }
 
+/// Perma-unstable marker trait. Indicates that the type has a well-behaved [`Deref`]
+/// (and, if applicable, [`DerefMut`]) implementation. This is relied on for soundness
+/// of deref patterns.
+///
+/// FIXME(deref_patterns): The precise semantics are undecided; the rough idea is that
+/// successive calls to `deref`/`deref_mut` without intermediate mutation should be
+/// idempotent, in the sense that they return the same value as far as pattern-matching
+/// is concerned. Calls to `deref`/`deref_mut`` must leave the pointer itself likewise
+/// unchanged.
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+#[cfg_attr(not(bootstrap), lang = "deref_pure")]
+pub unsafe trait DerefPure {}
+
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T: ?Sized> DerefPure for &T {}
+
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T: ?Sized> DerefPure for &mut T {}
+
 /// Indicates that a struct can be used as a method receiver, without the
 /// `arbitrary_self_types` feature. This is implemented by stdlib pointer types like `Box<T>`,
 /// `Rc<T>`, `&T`, and `Pin<P>`.

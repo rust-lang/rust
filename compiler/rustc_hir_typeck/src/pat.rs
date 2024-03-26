@@ -388,8 +388,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !pat_adjustments.is_empty() {
             debug!("default binding mode is now {:?}", def_bm);
-            self.inh
-                .typeck_results
+            self.typeck_results
                 .borrow_mut()
                 .pat_adjustments_mut()
                 .insert(pat.hir_id, pat_adjustments);
@@ -614,7 +613,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => BindingMode::convert(ba),
         };
         // ...and store it in a side table:
-        self.inh.typeck_results.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);
+        self.typeck_results.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);
 
         debug!("check_pat_ident: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
@@ -2002,8 +2001,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        // FIXME(deref_patterns): use `DerefPure` for soundness
-        // FIXME(deref_patterns): use `DerefMut` when required
+        // Register a `DerefPure` bound, which is required by all `deref!()` pats.
+        self.register_bound(
+            expected,
+            tcx.require_lang_item(hir::LangItem::DerefPure, Some(span)),
+            self.misc(span),
+        );
         // <expected as Deref>::Target
         let ty = Ty::new_projection(
             tcx,
@@ -2013,6 +2016,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.normalize(span, ty);
         let ty = self.try_structurally_resolve_type(span, ty);
         self.check_pat(inner, ty, pat_info);
+
+        // Check if the pattern has any `ref mut` bindings, which would require
+        // `DerefMut` to be emitted in MIR building instead of just `Deref`.
+        // We do this *after* checking the inner pattern, since we want to make
+        // sure to apply any match-ergonomics adjustments.
+        if self.typeck_results.borrow().pat_has_ref_mut_binding(inner) {
+            self.register_bound(
+                expected,
+                tcx.require_lang_item(hir::LangItem::DerefMut, Some(span)),
+                self.misc(span),
+            );
+        }
+
         expected
     }
 

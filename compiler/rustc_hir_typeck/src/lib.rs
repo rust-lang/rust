@@ -31,7 +31,6 @@ pub mod expr_use_visitor;
 mod fallback;
 mod fn_ctxt;
 mod gather_locals;
-mod inherited;
 mod intrinsicck;
 mod mem_categorization;
 mod method;
@@ -39,11 +38,12 @@ mod op;
 mod pat;
 mod place_op;
 mod rvalue_scopes;
+mod typeck_root_ctxt;
 mod upvar;
 mod writeback;
 
 pub use fn_ctxt::FnCtxt;
-pub use inherited::Inherited;
+pub use typeck_root_ctxt::TypeckRootCtxt;
 
 use crate::check::check_fn;
 use crate::coercion::DynamicCoerceMany;
@@ -170,11 +170,11 @@ fn typeck_with_fallback<'tcx>(
 
     let param_env = tcx.param_env(def_id);
 
-    let inh = Inherited::new(tcx, def_id);
+    let root_ctxt = TypeckRootCtxt::new(tcx, def_id);
     if let Some(inspector) = inspector {
-        inh.infcx.attach_obligation_inspector(inspector);
+        root_ctxt.infcx.attach_obligation_inspector(inspector);
     }
-    let mut fcx = FnCtxt::new(&inh, param_env, def_id);
+    let mut fcx = FnCtxt::new(&root_ctxt, param_env, def_id);
 
     if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
         let fn_sig = if decl.output.get_infer_ret_ty().is_some() {

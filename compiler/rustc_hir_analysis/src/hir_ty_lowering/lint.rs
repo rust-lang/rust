@@ -9,8 +9,85 @@ use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamNa
 use super::HirTyLowerer;
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
+    /// Prohibit or lint against *bare* trait object types depending on the edition.
+    ///
+    /// *Bare* trait object types are ones that aren't preceeded by the keyword `dyn`.
+    /// In edition 2021 and onward we emit a hard error for them.
+    pub(super) fn prohibit_or_lint_bare_trait_object_ty(
+        &self,
+        self_ty: &hir::Ty<'_>,
+        in_path: bool,
+    ) {
+        let tcx = self.tcx();
+
+        let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
+            self_ty.kind
+        else {
+            return;
+        };
+
+        let needs_bracket = in_path
+            && !tcx
+                .sess
+                .source_map()
+                .span_to_prev_source(self_ty.span)
+                .ok()
+                .is_some_and(|s| s.trim_end().ends_with('<'));
+
+        let is_global = poly_trait_ref.trait_ref.path.is_global();
+
+        let mut sugg = vec![(
+            self_ty.span.shrink_to_lo(),
+            format!(
+                "{}dyn {}",
+                if needs_bracket { "<" } else { "" },
+                if is_global { "(" } else { "" },
+            ),
+        )];
+
+        if is_global || needs_bracket {
+            sugg.push((
+                self_ty.span.shrink_to_hi(),
+                format!(
+                    "{}{}",
+                    if is_global { ")" } else { "" },
+                    if needs_bracket { ">" } else { "" },
+                ),
+            ));
+        }
+
+        if self_ty.span.edition().at_least_rust_2021() {
+            let msg = "trait objects must include the `dyn` keyword";
+            let label = "add `dyn` keyword before this trait";
+            let mut diag =
+                rustc_errors::struct_span_code_err!(tcx.dcx(), self_ty.span, E0782, "{}", msg);
+            if self_ty.span.can_be_used_for_suggestions()
+                && !self.maybe_suggest_impl_trait(self_ty, &mut diag)
+            {
+                // FIXME: Only emit this suggestion if the trait is object safe.
+                diag.multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable);
+            }
+            // Check if the impl trait that we are considering is an impl of a local trait.
+            self.maybe_suggest_blanket_trait_impl(self_ty, &mut diag);
+            self.maybe_suggest_assoc_ty_bound(self_ty, &mut diag);
+            diag.stash(self_ty.span, StashKey::TraitMissingMethod);
+        } else {
+            let msg = "trait objects without an explicit `dyn` are deprecated";
+            tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, msg, |lint| {
+                if self_ty.span.can_be_used_for_suggestions() {
+                    lint.multipart_suggestion_verbose(
+                        "if this is an object-safe trait, use `dyn`",
+                        sugg,
+                        Applicability::MachineApplicable,
+                    );
+                }
+                self.maybe_suggest_blanket_trait_impl(self_ty, lint);
+            });
+        }
+    }
+
     /// Make sure that we are in the condition to suggest the blanket implementation.
-    pub(super) fn maybe_lint_blanket_trait_impl<G: EmissionGuarantee>(
+    fn maybe_suggest_blanket_trait_impl<G: EmissionGuarantee>(
         &self,
         self_ty: &hir::Ty<'_>,
         diag: &mut Diag<'_, G>,
@@ -75,9 +152,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Make sure that we are in the condition to suggest `impl Trait`.
-    fn maybe_lint_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) -> bool {
+    fn maybe_suggest_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) -> bool {
         let tcx = self.tcx();
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
+        // FIXME: If `type_alias_impl_trait` is enabled, also look for `Trait0<Ty = Trait1>`
+        //        and suggest `Trait0<Ty = impl Trait1>`.
         let (sig, generics, owner) = match tcx.hir_node_by_def_id(parent_id) {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, generics, _), .. }) => {
                 (sig, generics, None)
@@ -186,71 +265,37 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         false
     }
 
-    pub(super) fn maybe_lint_bare_trait(&self, self_ty: &hir::Ty<'_>, in_path: bool) {
-        let tcx = self.tcx();
-        if let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
-            self_ty.kind
+    fn maybe_suggest_assoc_ty_bound(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) {
+        let mut parents = self.tcx().hir().parent_iter(self_ty.hir_id);
+
+        if let Some((_, hir::Node::TypeBinding(binding))) = parents.next()
+            && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(obj_ty) } = binding.kind
         {
-            let needs_bracket = in_path
-                && !tcx
-                    .sess
-                    .source_map()
-                    .span_to_prev_source(self_ty.span)
-                    .ok()
-                    .is_some_and(|s| s.trim_end().ends_with('<'));
-
-            let is_global = poly_trait_ref.trait_ref.path.is_global();
-
-            let mut sugg = Vec::from_iter([(
-                self_ty.span.shrink_to_lo(),
-                format!(
-                    "{}dyn {}",
-                    if needs_bracket { "<" } else { "" },
-                    if is_global { "(" } else { "" },
-                ),
-            )]);
-
-            if is_global || needs_bracket {
-                sugg.push((
-                    self_ty.span.shrink_to_hi(),
-                    format!(
-                        "{}{}",
-                        if is_global { ")" } else { "" },
-                        if needs_bracket { ">" } else { "" },
-                    ),
-                ));
+            if let Some((_, hir::Node::TraitRef(..))) = parents.next()
+                && let Some((_, hir::Node::Ty(ty))) = parents.next()
+                && let hir::TyKind::TraitObject(..) = ty.kind
+            {
+                // Assoc ty bounds aren't permitted inside trait object types.
+                return;
             }
 
-            if self_ty.span.edition().at_least_rust_2021() {
-                let msg = "trait objects must include the `dyn` keyword";
-                let label = "add `dyn` keyword before this trait";
-                let mut diag =
-                    rustc_errors::struct_span_code_err!(tcx.dcx(), self_ty.span, E0782, "{}", msg);
-                if self_ty.span.can_be_used_for_suggestions()
-                    && !self.maybe_lint_impl_trait(self_ty, &mut diag)
-                {
-                    diag.multipart_suggestion_verbose(
-                        label,
-                        sugg,
-                        Applicability::MachineApplicable,
-                    );
-                }
-                // check if the impl trait that we are considering is a impl of a local trait
-                self.maybe_lint_blanket_trait_impl(self_ty, &mut diag);
-                diag.stash(self_ty.span, StashKey::TraitMissingMethod);
+            let lo = if binding.gen_args.span_ext.is_dummy() {
+                binding.ident.span
             } else {
-                let msg = "trait objects without an explicit `dyn` are deprecated";
-                tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, msg, |lint| {
-                    if self_ty.span.can_be_used_for_suggestions() {
-                        lint.multipart_suggestion_verbose(
-                            "if this is an object-safe trait, use `dyn`",
-                            sugg,
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                    self.maybe_lint_blanket_trait_impl(self_ty, lint);
-                });
+                binding.gen_args.span_ext
+            };
+            let hi = obj_ty.span;
+
+            if !lo.eq_ctxt(hi) {
+                return;
             }
+
+            diag.span_suggestion_verbose(
+                lo.between(hi),
+                "you might have meant to write a bound here",
+                ": ",
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 }

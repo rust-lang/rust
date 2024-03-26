@@ -122,6 +122,7 @@
 #![feature(const_waker)]
 #![feature(core_intrinsics)]
 #![feature(deprecated_suggestion)]
+#![feature(deref_pure_trait)]
 #![feature(dispatch_from_dyn)]
 #![feature(error_generic_member_access)]
 #![feature(error_in_core)]

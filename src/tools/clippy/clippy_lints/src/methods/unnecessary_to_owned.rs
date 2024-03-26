@@ -12,7 +12,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
-use rustc_hir_typeck::{FnCtxt, Inherited};
+use rustc_hir_typeck::{FnCtxt, TypeckRootCtxt};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
@@ -438,8 +438,8 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
             Node::Item(item) => {
                 if let ItemKind::Fn(_, _, body_id) = &item.kind
                     && let output_ty = return_ty(cx, item.owner_id)
-                    && let inherited = Inherited::new(cx.tcx, item.owner_id.def_id)
-                    && let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, item.owner_id.def_id)
+                    && let root_ctxt = TypeckRootCtxt::new(cx.tcx, item.owner_id.def_id)
+                    && let fn_ctxt = FnCtxt::new(&root_ctxt, cx.param_env, item.owner_id.def_id)
                     && fn_ctxt.can_coerce(ty, output_ty)
                 {
                     if has_lifetime(output_ty) && has_lifetime(ty) {
