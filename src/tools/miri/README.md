@@ -505,6 +505,8 @@ binaries, and as such worth documenting:
 * `MIRI_LOCAL_CRATES` is set by `cargo-miri` to tell the Miri driver which
   crates should be given special treatment in diagnostics, in addition to the
   crate currently being compiled.
+* `MIRI_ORIG_RUSTDOC` is set and read by different phases of `cargo-miri` to remember the
+  value of `RUSTDOC` from before it was overwritten.
 * `MIRI_VERBOSE` when set to any value tells the various `cargo-miri` phases to
   perform verbose logging.
 * `MIRI_HOST_SYSROOT` is set by bootstrap to tell `cargo-miri` which sysroot to use for *host*

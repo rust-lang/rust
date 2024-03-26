@@ -202,6 +202,9 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     cmd.env("MIRI_BE_RUSTC", "target"); // we better remember to *unset* this in the other phases!
 
     // Set rustdoc to us as well, so we can run doctests.
+    if let Some(orig_rustdoc) = env::var_os("RUSTDOC") {
+        cmd.env("MIRI_ORIG_RUSTDOC", orig_rustdoc);
+    }
     cmd.env("RUSTDOC", &cargo_miri_path);
 
     cmd.env("MIRI_LOCAL_CRATES", local_crates(&metadata));
@@ -581,9 +584,10 @@ pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
     let verbose = std::env::var("MIRI_VERBOSE")
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
 
-    // phase_cargo_miri sets the RUSTDOC env var to ourselves, so we can't use that here;
-    // just default to a straight-forward invocation for now:
-    let mut cmd = Command::new("rustdoc");
+    // phase_cargo_miri sets the RUSTDOC env var to ourselves, and puts a backup
+    // of the old value into MIRI_ORIG_RUSTDOC. So that's what we have to invoke now.
+    let rustdoc = env::var("MIRI_ORIG_RUSTDOC").unwrap_or("rustdoc".to_string());
+    let mut cmd = Command::new(rustdoc);
 
     let extern_flag = "--extern";
     let runtool_flag = "--runtool";
