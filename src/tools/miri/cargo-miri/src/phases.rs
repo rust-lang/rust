@@ -301,11 +301,6 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
         }
     }
 
-    // phase_cargo_miri set `MIRI_BE_RUSTC` for when build scripts directly invoke the driver;
-    // however, if we get called back by cargo here, we'll carefully compute the right flags
-    // ourselves, so we first un-do what the earlier phase did.
-    env::remove_var("MIRI_BE_RUSTC");
-
     let verbose = std::env::var("MIRI_VERBOSE")
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
     let target_crate = is_target_crate();
@@ -489,11 +484,6 @@ pub enum RunnerPhase {
 }
 
 pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: RunnerPhase) {
-    // phase_cargo_miri set `MIRI_BE_RUSTC` for when build scripts directly invoke the driver;
-    // however, if we get called back by cargo here, we'll carefully compute the right flags
-    // ourselves, so we first un-do what the earlier phase did.
-    env::remove_var("MIRI_BE_RUSTC");
-
     let verbose = std::env::var("MIRI_VERBOSE")
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
 
