@@ -25,6 +25,8 @@ serde_derive = "1.0.185"
 # Not actually used, but uses a custom build probe so let's make sure that works.
 # (Ideally we'd check if the probe was successful, but that's not easily possible.)
 anyhow = "1.0"
+# Same as anyhow.
+eyre = "0.6"
 
 [build-dependencies]
 autocfg = "1"

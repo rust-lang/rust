@@ -36,6 +36,7 @@ dependencies = [
  "byteorder 1.4.3",
  "cdylib",
  "exported_symbol",
+ "eyre",
  "issue_1567",
  "issue_1691",
  "issue_1705",
@@ -63,6 +64,22 @@ name = "exported_symbol_dep"
 version = "0.1.0"
 
 [[package]]
+name = "eyre"
+version = "0.6.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cd915d99f24784cdc19fd37ef22b97e3ff0ae756c7e492e9fbfe897d61e2aec"
+dependencies = [
+ "indenter",
+ "once_cell",
+]
+
+[[package]]
+name = "indenter"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
+
+[[package]]
 name = "issue_1567"
 version = "0.1.0"
 dependencies = [
@@ -87,6 +104,12 @@ version = "0.1.0"
 [[package]]
 name = "issue_rust_86261"
 version = "0.1.0"
+
+[[package]]
+name = "once_cell"
+version = "1.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
 name = "proc-macro2"
