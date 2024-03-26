@@ -179,6 +179,13 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
         );
     }
     cmd.env("RUSTC_WRAPPER", &cargo_miri_path);
+    // There's also RUSTC_WORKSPACE_WRAPPER, which gets in the way of our own wrapping.
+    if env::var_os("RUSTC_WORKSPACE_WRAPPER").is_some() {
+        println!(
+            "WARNING: Ignoring `RUSTC_WORKSPACE_WRAPPER` environment variable, Miri does not support wrapping."
+        );
+    }
+    cmd.env_remove("RUSTC_WORKSPACE_WRAPPER");
     // We are going to invoke `MIRI` for everything, not `RUSTC`.
     if env::var_os("RUSTC").is_some() && env::var_os("MIRI").is_none() {
         println!(
