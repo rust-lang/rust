@@ -16,9 +16,7 @@ unsafe impl Sync for Meh {}
 // the following will never be ok! no interior mut behind consts, because
 // all allocs interned here will be marked immutable.
 const MUH: Meh = Meh {
-    //~^ ERROR encountered mutable pointer in final value of constant
-    //~| WARNING this was previously accepted by the compiler
-    //~| ERROR: it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     x: &UnsafeCell::new(42),
 };
 
@@ -29,9 +27,7 @@ unsafe impl Sync for Synced {}
 
 // Make sure we also catch this behind a type-erased `dyn Trait` reference.
 const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
-//~^ ERROR: mutable pointer in final value
-//~| WARNING this was previously accepted by the compiler
-//~| ERROR it is undefined behavior to use this value
+//~^ ERROR: it is undefined behavior to use this value
 
 // Make sure we also catch mutable references in values that shouldn't have them.
 static mut FOO: i32 = 0;
@@ -40,9 +36,7 @@ const SUBTLE: &mut i32 = unsafe { &mut FOO };
 //~| static
 
 const BLUNT: &mut i32 = &mut 42;
-//~^ ERROR: mutable pointer in final value
-//~| WARNING this was previously accepted by the compiler
-//~| ERROR it is undefined behavior to use this value
+//~^ ERROR: it is undefined behavior to use this value
 
 // Check for mutable references to read-only memory.
 static READONLY: i32 = 0;
