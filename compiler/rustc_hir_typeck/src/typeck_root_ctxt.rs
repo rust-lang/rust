@@ -16,7 +16,8 @@ use rustc_trait_selection::traits::{self, PredicateObligation, TraitEngine, Trai
 use std::cell::RefCell;
 use std::ops::Deref;
 
-/// Closures defined within the function. For example:
+// Data shared between a "typeck root" and its nested bodies,
+/// e.g. closures defined within the function. For example:
 /// ```ignore (illustrative)
 /// fn foo() {
 ///     bar(move|| { ... })
@@ -24,8 +25,9 @@ use std::ops::Deref;
 /// ```
 /// Here, the function `foo()` and the closure passed to
 /// `bar()` will each have their own `FnCtxt`, but they will
-/// share the inherited fields.
-pub struct Inherited<'tcx> {
+/// share the inference context, will process obligations together,
+/// can access each other's local types (scoping permitted), etc.
+pub struct TypeckRootCtxt<'tcx> {
     pub(super) infcx: InferCtxt<'tcx>,
 
     pub(super) typeck_results: RefCell<ty::TypeckResults<'tcx>>,
@@ -65,14 +67,14 @@ pub struct Inherited<'tcx> {
     pub(super) infer_var_info: RefCell<UnordMap<ty::TyVid, ty::InferVarInfo>>,
 }
 
-impl<'tcx> Deref for Inherited<'tcx> {
+impl<'tcx> Deref for TypeckRootCtxt<'tcx> {
     type Target = InferCtxt<'tcx>;
     fn deref(&self) -> &Self::Target {
         &self.infcx
     }
 }
 
-impl<'tcx> Inherited<'tcx> {
+impl<'tcx> TypeckRootCtxt<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
 
@@ -83,7 +85,7 @@ impl<'tcx> Inherited<'tcx> {
             .build();
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
 
-        Inherited {
+        TypeckRootCtxt {
             typeck_results,
             fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(&infcx)),
             infcx,
