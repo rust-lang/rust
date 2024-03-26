@@ -50,7 +50,6 @@ rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg sup
 rm -r tests/run-pass-valgrind/unsized-locals
 
 # misc unimplemented things
-rm tests/ui/intrinsics/intrinsic-nearby.rs # unimplemented nearbyintf32 and nearbyintf64 intrinsics
 rm tests/ui/target-feature/missing-plusminus.rs # error not implemented
 rm -r tests/run-make/emit-named-files # requires full --emit support
 rm -r tests/run-make/repr128-dwarf # debuginfo test
@@ -124,8 +123,6 @@ rm -r tests/run-make/emit-to-stdout
 rm -r tests/run-make/compressed-debuginfo
 
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
-
-rm tests/ui/codegen/subtyping-enforces-type-equality.rs # assert_assignable bug with Coroutine's
 
 # bugs in the test suite
 # ======================
