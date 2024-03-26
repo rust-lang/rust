@@ -4,6 +4,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use either::Either;
+use hir::Path;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
@@ -30,12 +31,14 @@ use rustc_span::def_id::DefId;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::FileName;
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::FindExprBySpan;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use std::iter;
+use std::path::PathBuf;
 
 use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
@@ -469,18 +472,95 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     self.suggest_cloning(err, ty, expr, move_span);
                 }
             }
+
+            self.suggest_ref_for_dbg_args(expr, span, move_span, err);
+
             if let Some(pat) = finder.pat {
-                *in_pattern = true;
-                let mut sugg = vec![(pat.span.shrink_to_lo(), "ref ".to_string())];
-                if let Some(pat) = finder.parent_pat {
-                    sugg.insert(0, (pat.span.shrink_to_lo(), "ref ".to_string()));
-                }
-                err.multipart_suggestion_verbose(
-                    "borrow this binding in the pattern to avoid moving the value",
-                    sugg,
-                    Applicability::MachineApplicable,
+                // FIXME: any better way to check this?
+                let from_std = self.infcx.tcx.sess.opts.real_rust_source_base_dir.clone().map_or(
+                    false,
+                    |root| {
+                        let file_path =
+                            match self.infcx.tcx.sess.source_map().span_to_filename(move_span) {
+                                FileName::Real(name) => {
+                                    name.clone().into_local_path().unwrap_or_default()
+                                }
+                                other => PathBuf::from(other.prefer_local().to_string()),
+                            };
+                        file_path.starts_with(&root.join("library/std/"))
+                    },
                 );
+                // it's useless to suggest inserting `ref` when the span comes from std library
+                // anyway, user can not modify std library in most cases, so let's keep it quite?
+                if !from_std {
+                    *in_pattern = true;
+                    let mut sugg = vec![(pat.span.shrink_to_lo(), "ref ".to_string())];
+                    if let Some(pat) = finder.parent_pat {
+                        sugg.insert(0, (pat.span.shrink_to_lo(), "ref ".to_string()));
+                    }
+                    err.multipart_suggestion_verbose(
+                        "borrow this binding in the pattern to avoid moving the value",
+                        sugg,
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
+        }
+    }
+
+    // for dbg!(x) which may take onwership, suggest dbg!(&x) instead
+    // but here we actually does not checking the macro name is `dbg!`
+    // so that we may extend the scope a bit larger to cover more cases
+    fn suggest_ref_for_dbg_args(
+        &self,
+        body: &hir::Expr<'_>,
+        span: Option<Span>,
+        move_span: Span,
+        err: &mut Diag<'tcx>,
+    ) {
+        // only suggest for macro
+        if move_span.source_callsite() == move_span {
+            return;
+        }
+        let sm = self.infcx.tcx.sess.source_map();
+        let arg_code = if let Some(span) = span
+            && let Ok(code) = sm.span_to_snippet(span)
+        {
+            code
+        } else {
+            return;
+        };
+        struct MatchArgFinder {
+            expr_span: Span,
+            match_arg_span: Option<Span>,
+            arg_code: String,
+        }
+        impl Visitor<'_> for MatchArgFinder {
+            fn visit_expr(&mut self, e: &hir::Expr<'_>) {
+                // dbg! is expanded into a match pattern, we need to find the right argument span
+                if let hir::ExprKind::Match(expr, ..) = &e.kind
+                    && let hir::ExprKind::Path(hir::QPath::Resolved(
+                        _,
+                        path @ Path { segments: [seg], .. },
+                    )) = &expr.kind
+                    && seg.ident.name.as_str() == &self.arg_code
+                    && self.expr_span.source_callsite().contains(expr.span)
+                {
+                    self.match_arg_span = Some(path.span);
+                }
+                hir::intravisit::walk_expr(self, e);
+            }
+        }
+
+        let mut finder = MatchArgFinder { expr_span: move_span, match_arg_span: None, arg_code };
+        finder.visit_expr(body);
+        if let Some(macro_arg_span) = finder.match_arg_span {
+            err.span_suggestion_verbose(
+                macro_arg_span.shrink_to_lo(),
+                "consider borrowing instead of transferring ownership",
+                "&",
+                Applicability::MachineApplicable,
+            );
         }
     }
 
