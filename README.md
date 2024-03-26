@@ -1,27 +1,33 @@
-# The Rust Programming Language
-
-[![Rust Community](https://img.shields.io/badge/Rust_Community%20-Join_us-brightgreen?style=plastic&logo=rust)](https://www.rust-lang.org/community)
+<p align="center">
+  <img alt="The Rust Programming Language: A language empowering everyone to build reliable and efficient software" src="https://www.rust-lang.org/static/images/rust-social-wide.jpg">
+  <br>
+  <a href="https://www.rust-lang.org/">Website</a> |
+  <a href="https://www.rust-lang.org/learn/get-started">Getting started</a> |
+  <a href="https://www.rust-lang.org/learn">Learn</a> |
+  <a href="https://www.rust-lang.org/learn#learn-use">Documentation</a> |
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
 This is the main source code repository for [Rust]. It contains the compiler,
 standard library, and documentation.
 
 [Rust]: https://www.rust-lang.org/
 
-**Note: this README is for _users_ rather than _contributors_.**
-If you wish to _contribute_ to the compiler, you should read
-[CONTRIBUTING.md](CONTRIBUTING.md) instead.
+## Why Rust?
 
-<details>
-<summary>Table of Contents</summary>
+### Performance
 
-- [Quick Start](#quick-start)
-- [Installing from Source](#installing-from-source)
-- [Getting Help](#getting-help)
-- [Contributing](#contributing)
-- [License](#license)
-- [Trademark](#trademark)
+Rust is blazingly fast and memory-efficient: with no runtime or garbage collector, it can power performance-critical services, run on embedded devices, and easily integrate with other languages.
 
-</details>
+### Reliability
+
+Rust’s rich type system and ownership model guarantee memory-safety and thread-safety — enabling you to eliminate many classes of bugs at compile-time.
+
+### Productivity
+
+Rust has great documentation, a friendly compiler with useful error messages, and top-notch tooling — an integrated package manager and build tool, smart multi-editor support with auto-completion and type inspections, an auto-formatter, and more.
+
+-----
 
 ## Quick Start
 
