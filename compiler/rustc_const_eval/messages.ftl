@@ -146,6 +146,8 @@ const_eval_intern_kind = {$kind ->
     *[other] {""}
 }
 
+const_eval_interrupted = compilation was interrupted
+
 const_eval_invalid_align_details =
     invalid align passed to `{$name}`: {$align} is {$err_kind ->
         [not_power_of_two] not a power of 2

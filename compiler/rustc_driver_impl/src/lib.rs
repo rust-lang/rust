@@ -19,6 +19,7 @@ extern crate tracing;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
+use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_data_structures::profiling::{
     get_resident_set_size, print_time_passes_entry, TimePassesFormat,
 };
@@ -1518,6 +1519,22 @@ pub fn init_logger(early_dcx: &EarlyDiagCtxt, cfg: rustc_log::LoggerConfig) {
     }
 }
 
+/// Install our usual `ctrlc` handler, which sets [`rustc_const_eval::CTRL_C_RECEIVED`].
+/// Making this handler optional lets tools can install a different handler, if they wish.
+pub fn install_ctrlc_handler() {
+    ctrlc::set_handler(move || {
+        // Indicate that we have been signaled to stop. If we were already signaled, exit
+        // immediately. In our interpreter loop we try to consult this value often, but if for
+        // whatever reason we don't get to that check or the cleanup we do upon finding that
+        // this bool has become true takes a long time, the exit here will promptly exit the
+        // process on the second Ctrl-C.
+        if CTRL_C_RECEIVED.swap(true, Ordering::Relaxed) {
+            std::process::exit(1);
+        }
+    })
+    .expect("Unable to install ctrlc handler");
+}
+
 pub fn main() -> ! {
     let start_time = Instant::now();
     let start_rss = get_resident_set_size();
@@ -1528,6 +1545,8 @@ pub fn main() -> ! {
     signal_handler::install();
     let mut callbacks = TimePassesCallbacks::default();
     let using_internal_features = install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
+    install_ctrlc_handler();
+
     let exit_code = catch_with_exit_code(|| {
         RunCompiler::new(&args::raw_args(&early_dcx)?, &mut callbacks)
             .set_using_internal_features(using_internal_features)

@@ -208,6 +208,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
     "cfg-if",
+    "cfg_aliases",
     "compiler_builtins",
     "cpufeatures",
     "crc32fast",
@@ -216,6 +217,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "crossbeam-epoch",
     "crossbeam-utils",
     "crypto-common",
+    "ctrlc",
     "darling",
     "darling_core",
     "darling_macro",
@@ -281,6 +283,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "memmap2",
     "memoffset",
     "miniz_oxide",
+    "nix",
     "nu-ansi-term",
     "num-conv",
     "num_cpus",
