@@ -14,13 +14,13 @@ mod filter_map;
 mod flatten;
 mod fuse;
 mod inspect;
-mod intersperse;
 mod map;
 mod map_while;
 mod map_windows;
 mod peekable;
 mod rev;
 mod scan;
+mod separate;
 mod skip;
 mod skip_while;
 mod step_by;
@@ -54,7 +54,7 @@ pub use self::flatten::Flatten;
 pub use self::copied::Copied;
 
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-pub use self::intersperse::{Separate, SeparateWith};
+pub use self::separate::{Separate, SeparateWith};
 
 #[stable(feature = "iter_map_while", since = "1.57.0")]
 pub use self::map_while::MapWhile;
