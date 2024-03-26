@@ -388,8 +388,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !pat_adjustments.is_empty() {
             debug!("default binding mode is now {:?}", def_bm);
-            self.inh
-                .typeck_results
+            self.typeck_results
                 .borrow_mut()
                 .pat_adjustments_mut()
                 .insert(pat.hir_id, pat_adjustments);
@@ -614,7 +613,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => BindingMode::convert(ba),
         };
         // ...and store it in a side table:
-        self.inh.typeck_results.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);
+        self.typeck_results.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);
 
         debug!("check_pat_ident: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 

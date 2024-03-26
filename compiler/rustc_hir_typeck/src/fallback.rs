@@ -347,7 +347,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 .any(|n| roots_reachable_from_non_diverging.visited(n));
 
             let infer_var_infos: UnordBag<_> = self
-                .inh
                 .infer_var_info
                 .borrow()
                 .items()
