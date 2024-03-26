@@ -516,11 +516,11 @@ mod spurious_read {
         let source = LocStateProtPair {
             xy_rel: RelPosXY::MutuallyForeign,
             x: LocStateProt {
-                state: LocationState::new(Permission::new_frozen()).with_access(),
+                state: LocationState::new_init(Permission::new_frozen()),
                 prot: true,
             },
             y: LocStateProt {
-                state: LocationState::new(Permission::new_reserved(false)),
+                state: LocationState::new_uninit(Permission::new_reserved(false)),
                 prot: true,
             },
         };
