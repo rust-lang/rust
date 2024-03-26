@@ -1,4 +1,5 @@
-//@ compile-flags: -C no-prepopulate-passes -Zmir-opt-level=0
+//@ compile-flags: -C no-prepopulate-passes -Zmir-opt-level=0 -O
+
 #![crate_type = "lib"]
 #![feature(generic_nonzero)]
 
