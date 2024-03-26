@@ -76,6 +76,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             this.source_info(then_span)
                         };
 
+                        // If MCDC is enabled AND we are not in a nested decision,
+                        // Mark the decision's root, true and false outcomes.
+                        this.begin_mcdc_decision_coverage(expr_id, block);
+
                         // Lower the condition, and have it branch into `then` and `else` blocks.
                         let (then_block, else_block) =
                             this.in_if_then_scope(condition_scope, then_span, |this| {
@@ -87,9 +91,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     true, // Declare `let` bindings normally
                                 ));
 
+                                // If MCDC is enabled, inject an outcome marker.
+                                let then_blk = this.mcdc_decision_outcome_block(then_blk, true);
+
                                 // Lower the `then` arm into its block.
                                 this.expr_into_dest(destination, then_blk, then)
                             });
+
+                        // If MCDC is enabled and decision was instrumented, exit the
+                        // decision scope and inject an MCDC decision output marker
+                        // in the then and else blocks.
+                        let else_block = this.mcdc_decision_outcome_block(else_block, false);
+                        this.end_mcdc_decision_coverage();
 
                         // Pack `(then_block, else_block)` into `BlockAnd<BasicBlock>`.
                         then_block.and(else_block)

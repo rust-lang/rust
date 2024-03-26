@@ -13,6 +13,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 
 use crate::build::Builder;
+use crate::errors::MCDCNestedDecision;
 
 pub(crate) struct BranchInfoBuilder {
     /// Maps condition expressions to their enclosing `!`, for better instrumentation.
@@ -20,6 +21,16 @@ pub(crate) struct BranchInfoBuilder {
 
     num_block_markers: usize,
     branch_spans: Vec<BranchSpan>,
+
+    // MCDC decision stuff
+    /// ID of the current decision.
+    /// Do not use directly. Use the function instead, as it will hide
+    /// the decision in the scope of nested decisions.
+    current_decision_id: Option<DecisionMarkerId>,
+    /// Track the nesting level of decision to avoid MCDC instrumentation of
+    /// nested decisions.
+    nested_decision_level: u32,
+    /// Vector for storing all the decisions with their span
     decisions: IndexVec<DecisionMarkerId, Span>,
 }
 
@@ -44,6 +55,8 @@ impl BranchInfoBuilder {
                 nots: FxHashMap::default(),
                 num_block_markers: 0,
                 branch_spans: vec![],
+                current_decision_id: None,
+                nested_decision_level: 0,
                 decisions: IndexVec::new(),
             })
         } else {
@@ -98,7 +111,7 @@ impl BranchInfoBuilder {
     }
 
     pub(crate) fn into_done(self) -> Option<Box<mir::coverage::BranchInfo>> {
-        let Self { nots: _, num_block_markers, branch_spans, decisions } = self;
+        let Self { nots: _, num_block_markers, branch_spans, decisions, .. } = self;
 
         if num_block_markers == 0 {
             assert!(branch_spans.is_empty());
@@ -122,6 +135,32 @@ impl BranchInfoBuilder {
             decision_spans,
         }))
     }
+
+    /// Increase the nested decision level and return true if the
+    /// decision can be instrumented (not in a nested condition).
+    pub fn enter_decision(&mut self, span: Span) -> bool {
+        self.nested_decision_level += 1;
+        let can_mcdc = !self.in_nested_condition();
+
+        if can_mcdc {
+            self.current_decision_id = Some(self.decisions.push(span));
+        }
+
+        can_mcdc
+    }
+
+    pub fn exit_decision(&mut self) {
+        self.nested_decision_level -= 1;
+    }
+
+    /// Return true if the current decision is located inside another decision.
+    pub fn in_nested_condition(&self) -> bool {
+        self.nested_decision_level > 1
+    }
+
+    pub fn current_decision_id(&self) -> Option<DecisionMarkerId> {
+        if self.in_nested_condition() { None } else { self.current_decision_id }
+    }
 }
 
 impl Builder<'_, '_> {
@@ -132,7 +171,6 @@ impl Builder<'_, '_> {
         mut expr_id: ExprId,
         mut then_block: BasicBlock,
         mut else_block: BasicBlock,
-        decision_id: Option<DecisionMarkerId>, // If MCDC is enabled
     ) {
         // Bail out if branch coverage is not enabled for this function.
         let Some(branch_info) = self.coverage_branch_info.as_ref() else { return };
@@ -153,7 +191,7 @@ impl Builder<'_, '_> {
         let mut inject_branch_marker = |block: BasicBlock| {
             let id = branch_info.next_block_marker_id();
 
-            let cov_kind = if let Some(decision_id) = decision_id {
+            let cov_kind = if let Some(decision_id) = branch_info.current_decision_id() {
                 CoverageKind::MCDCBlockMarker { id, decision_id }
             } else {
                 CoverageKind::BlockMarker { id }
@@ -171,30 +209,35 @@ impl Builder<'_, '_> {
 
         branch_info.branch_spans.push(BranchSpan {
             span: source_info.span,
-            // FIXME: Handle case when MCDC is disabled better than just putting 0.
-            decision_id: decision_id.unwrap_or(DecisionMarkerId::from_u32(0)),
+            // FIXME(dprn): Handle case when MCDC is disabled better than just putting 0.
+            decision_id: branch_info.current_decision_id.unwrap_or(DecisionMarkerId::from_u32(0)),
             true_marker,
             false_marker,
         });
     }
 
-    /// If MCDC coverage is enabled, inject a marker in all the decisions
-    /// (boolean expressions)
-    pub(crate) fn visit_coverage_decision(
-        &mut self,
-        expr_id: ExprId,
-        block: BasicBlock,
-    ) -> Option<DecisionMarkerId> {
+    /// If MCDC coverage is enabled, inject a decision entry marker in the given decision.
+    /// return true
+    pub(crate) fn begin_mcdc_decision_coverage(&mut self, expr_id: ExprId, block: BasicBlock) {
         // Early return if MCDC coverage is not enabled.
         if !self.tcx.sess.instrument_coverage_mcdc() {
-            return None;
+            return;
         }
         let Some(branch_info) = self.coverage_branch_info.as_mut() else {
-            return None;
+            return;
         };
 
         let span = self.thir[expr_id].span;
-        let decision_id = branch_info.decisions.push(span);
+
+        // enter_decision returns false if it detects nested decisions.
+        if !branch_info.enter_decision(span) {
+            // FIXME(dprn): do WARNING for nested decision.
+            debug!("MCDC: Unsupported nested decision");
+            self.tcx.dcx().emit_warn(MCDCNestedDecision { span });
+            return;
+        }
+
+        let decision_id = branch_info.current_decision_id().expect("Should have returned.");
 
         // Inject a decision marker
         let source_info = self.source_info(span);
@@ -205,7 +248,58 @@ impl Builder<'_, '_> {
             }),
         };
         self.cfg.push(block, marker_statement);
+    }
 
-        Some(decision_id)
+    /// If MCDC is enabled, and function is instrumented,
+    pub(crate) fn end_mcdc_decision_coverage(&mut self) {
+        // Early return if MCDC coverage is not enabled.
+        if !self.tcx.sess.instrument_coverage_mcdc() {
+            return;
+        }
+        let Some(branch_info) = self.coverage_branch_info.as_mut() else {
+            return;
+        };
+
+        // Exit decision now so we can drop &mut to branch info
+        branch_info.exit_decision();
+    }
+
+    /// If MCDC is enabled and the current decision is being instrumented,
+    /// inject an `MCDCDecisionOutputMarker` to the given basic block.
+    /// `outcome` should be true for the then block and false for the else block.
+    pub(crate) fn mcdc_decision_outcome_block(
+        &mut self,
+        bb: BasicBlock,
+        outcome: bool,
+    ) -> BasicBlock {
+        let Some(branch_info) = self.coverage_branch_info.as_mut() else {
+            // Coverage instrumentation is not enabled.
+            return bb;
+        };
+        let Some(decision_id) = branch_info.current_decision_id() else {
+            // Decision is not instrumented
+            return bb;
+        };
+
+        let span = branch_info.decisions[decision_id];
+        let source_info = self.source_info(span);
+        let marker_statement = mir::Statement {
+            source_info,
+            kind: mir::StatementKind::Coverage(CoverageKind::MCDCDecisionOutputMarker {
+                id: decision_id,
+                outcome,
+            }),
+        };
+
+        // Insert statements at the beginning of the following basic block
+        self.cfg.block_data_mut(bb).statements.insert(0, marker_statement);
+
+        // Create a new block to return
+        let new_bb = self.cfg.start_new_block();
+
+        // Set bb -> new_bb
+        self.cfg.goto(bb, source_info, new_bb);
+
+        new_bb
     }
 }

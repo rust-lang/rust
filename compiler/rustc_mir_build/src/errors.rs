@@ -850,6 +850,13 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub misc_suggestion: Option<MiscPatternSuggestion>,
 }
 
+#[derive(Diagnostic)]
+#[diag(mir_build_mcdc_nested_decision)]
+pub(crate) struct MCDCNestedDecision {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[note(mir_build_inform_irrefutable)]
 #[note(mir_build_more_information)]
