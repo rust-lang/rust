@@ -434,7 +434,7 @@ fn make_elided_region_spans_suggs<'a>(
                 consecutive_brackets += 1;
             } else if let Some(bracket_span) = bracket_span.take() {
                 let sugg = std::iter::once("<")
-                    .chain(std::iter::repeat(name).take(consecutive_brackets).intersperse(", "))
+                    .chain(std::iter::repeat(name).take(consecutive_brackets).separate(", "))
                     .chain([">"])
                     .collect();
                 spans_suggs.push((bracket_span.shrink_to_hi(), sugg));

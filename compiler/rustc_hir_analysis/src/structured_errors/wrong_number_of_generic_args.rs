@@ -478,7 +478,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 }
                 _ => param.name.as_str(),
             })
-            .intersperse(", ")
+            .separate(", ")
             .collect()
     }
 

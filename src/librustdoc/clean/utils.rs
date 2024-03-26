@@ -410,7 +410,7 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
 
     num_chars[..num_start_index]
         .iter()
-        .chain(num_chars[num_start_index..].rchunks(chunk_size).rev().intersperse(&['_']).flatten())
+        .chain(num_chars[num_start_index..].rchunks(chunk_size).rev().separate(&['_']).flatten())
         .collect()
 }
 

@@ -2771,11 +2771,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     // Check `-C link-self-contained` for consistency: individual components cannot be both enabled
     // and disabled at the same time.
     if let Some(erroneous_components) = cg.link_self_contained.check_consistency() {
-        let names: String = erroneous_components
-            .into_iter()
-            .map(|c| c.as_str().unwrap())
-            .intersperse(", ")
-            .collect();
+        let names: String =
+            erroneous_components.into_iter().map(|c| c.as_str().unwrap()).separate(", ").collect();
         early_dcx.early_fatal(format!(
             "some `-C link-self-contained` components were both enabled and disabled: {names}"
         ));

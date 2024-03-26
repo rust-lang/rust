@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for NumberedFields {
                     expr_spans
                         .into_iter_sorted()
                         .map(|(_, span)| snippet_with_applicability(cx, span, "..", &mut appl))
-                        .intersperse(Cow::Borrowed(", "))
+                        .separate(Cow::Borrowed(", "))
                         .collect::<String>()
                 );
                 span_lint_and_sugg(

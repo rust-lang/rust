@@ -381,7 +381,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                 features
                                     .iter()
                                     .map(|f| f.as_str())
-                                    .intersperse(", ")
+                                    .separate(", ")
                                     .collect::<String>(),
                             );
                             self.tcx.dcx().span_err(*op_sp, msg);
