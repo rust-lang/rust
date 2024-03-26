@@ -98,7 +98,10 @@ LL | |         yield;
 LL | |         x;
    | |         - coroutine captures itself here
 LL | |     }
-   | |_____- returning here with type `{coroutine@$DIR/recursive-impl-trait-type-indirect.rs:60:5: 60:12}`
+   | |     -
+   | |     |
+   | |_____returning here with type `{coroutine@$DIR/recursive-impl-trait-type-indirect.rs:60:5: 60:12}`
+   |       coroutine captures itself here
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:66:35

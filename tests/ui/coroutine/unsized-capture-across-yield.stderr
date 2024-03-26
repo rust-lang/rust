@@ -8,16 +8,26 @@ LL | #![feature(unsized_locals)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/unsized-capture-across-yield.rs:11:27
+  --> $DIR/unsized-capture-across-yield.rs:12:27
    |
 LL |     move || {
    |          -- this closure captures all values by move
+LL |
 LL |         println!("{:?}", &b);
    |                           ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
    = note: all values captured by value by a closure must have a statically known size
 
-error: aborting due to 1 previous error; 1 warning emitted
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-capture-across-yield.rs:10:5
+   |
+LL |     move || {
+   |     ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: all values live across `yield` must have a statically known size
+
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

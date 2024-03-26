@@ -26,9 +26,8 @@ pub fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 
+#[instrument(level = "debug", skip(tcx))]
 fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'tcx> {
-    debug!("make_shim({:?})", instance);
-
     let mut result = match instance {
         ty::InstanceDef::Item(..) => bug!("item {:?} passed to make_shim", instance),
         ty::InstanceDef::VTableShim(def_id) => {
@@ -206,9 +205,8 @@ fn local_decls_for_sig<'tcx>(
         .collect()
 }
 
+#[instrument(level = "debug", skip(tcx))]
 fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>) -> Body<'tcx> {
-    debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
-
     assert!(!matches!(ty, Some(ty) if ty.is_coroutine()));
 
     let args = if let Some(ty) = ty {

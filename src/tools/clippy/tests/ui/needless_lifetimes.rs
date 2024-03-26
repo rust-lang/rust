@@ -527,7 +527,7 @@ mod in_macro {
 }
 
 mod issue5787 {
-    use std::sync::MutexGuard;
+    struct MutexGuard<'a, T>(std::marker::PhantomData<fn() -> &'a T>);
 
     struct Foo;
 

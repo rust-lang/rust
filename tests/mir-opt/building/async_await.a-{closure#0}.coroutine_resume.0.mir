@@ -1,11 +1,13 @@
 // MIR for `a::{closure#0}` 0 coroutine_resume
 /* coroutine_layout = CoroutineLayout {
+    upvar_start: _0,
     field_tys: {},
     variant_fields: {
         Unresumed(0): [],
         Returned (1): [],
         Panicked (2): [],
     },
+    field_names: {},
     storage_conflicts: BitMatrix(0x0) {},
 } */
 

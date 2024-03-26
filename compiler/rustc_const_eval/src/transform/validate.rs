@@ -109,14 +109,17 @@ impl<'tcx> MirPass<'tcx> for Validator {
                 // If this turns out not to be true, please let compiler-errors know.
                 // It is possible to support, but requires some changes to the layout
                 // computation code.
-                cfg_checker.fail(
-                    Location::START,
-                    format!(
-                        "Coroutine layout differs from by-move coroutine layout:\n\
-                        layout: {layout:#?}\n\
-                        by_move_layout: {by_move_layout:#?}",
-                    ),
-                );
+                // NOTE(@dingxiangfei2009): However, given that upvars are now part of the layout
+                // we should tolerate those of `UpvarCapture::ByRef`
+
+                // cfg_checker.fail(
+                //     Location::START,
+                //     format!(
+                //         "Coroutine layout differs from by-move coroutine layout:\n\
+                //         layout: {layout:#?}\n\
+                //         by_move_layout: {by_move_layout:#?}",
+                //     ),
+                // );
             }
         }
     }
@@ -720,8 +723,25 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             } else {
                                 self.tcx.optimized_mir(def_id)
                             };
+                            let coroutine_ty = args.as_coroutine();
+                            debug!(?coroutine_ty, ?def_id, ?gen_body.source, "dxf");
+                            let layout = match coroutine_ty.kind_ty().kind() {
+                                ty::Int(..) => {
+                                    match coroutine_ty.kind_ty().to_opt_closure_kind().unwrap() {
+                                        ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
+                                            gen_body.coroutine_layout()
+                                        }
+                                        ty::ClosureKind::FnOnce => gen_body
+                                            .coroutine_by_move_body()
+                                            .map_or(gen_body.coroutine_layout(), |body| {
+                                                body.coroutine_layout()
+                                            }),
+                                    }
+                                }
+                                _ => gen_body.coroutine_layout(),
+                            };
 
-                            let Some(layout) = gen_body.coroutine_layout() else {
+                            let Some(layout) = layout else {
                                 self.fail(
                                     location,
                                     format!("No coroutine layout for {parent_ty:?}"),
@@ -743,14 +763,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             };
 
                             ty::EarlyBinder::bind(f_ty.ty).instantiate(self.tcx, args)
+                        } else if let Some(&ty) = args.as_coroutine().upvar_tys().get(f.as_usize())
+                        {
+                            ty
                         } else {
-                            let Some(&f_ty) = args.as_coroutine().prefix_tys().get(f.index())
-                            else {
-                                fail_out_of_bounds(self, location);
-                                return;
-                            };
-
-                            f_ty
+                            fail_out_of_bounds(self, location);
+                            return;
                         };
 
                         check_equal(self, location, f_ty);

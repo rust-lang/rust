@@ -677,12 +677,14 @@ fn coroutine_saved_local_eligibility(
     // Next, check every pair of eligible locals to see if they
     // conflict.
     for local_a in info.storage_conflicts.rows() {
+        debug!(?local_a, "coroutine_saved_local_eligibility");
         let conflicts_a = info.storage_conflicts.count(local_a);
         if ineligible_locals.contains(local_a) {
             continue;
         }
 
         for local_b in info.storage_conflicts.iter(local_a) {
+            debug!(?local_b, "coroutine_saved_local_eligibility");
             // local_a and local_b are storage live at the same time, therefore they
             // cannot overlap in the coroutine layout. The only way to guarantee
             // this is if they are in the same variant, or one is ineligible
@@ -702,6 +704,7 @@ fn coroutine_saved_local_eligibility(
             trace!("removing local {:?} due to conflict with {:?}", remove, other);
         }
     }
+    debug!("coroutine_saved_local_eligibility A");
 
     // Count the number of variants in use. If only one of them, then it is
     // impossible to overlap any locals in our layout. In this case it's
@@ -735,6 +738,7 @@ fn coroutine_saved_local_eligibility(
 }
 
 /// Compute the full coroutine layout.
+#[instrument(level = "debug", skip(cx))]
 fn coroutine_layout<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     ty: Ty<'tcx>,
@@ -745,7 +749,19 @@ fn coroutine_layout<'tcx>(
     let tcx = cx.tcx;
     let instantiate_field = |ty: Ty<'tcx>| EarlyBinder::bind(ty).instantiate(tcx, args);
 
-    let Some(info) = tcx.coroutine_layout(def_id) else {
+    let coroutine_body = tcx.optimized_mir(def_id);
+    let coroutine_ty = args.as_coroutine();
+    let info = if let ty::Int(..) = coroutine_ty.kind_ty().kind() {
+        match coroutine_ty.kind_ty().to_opt_closure_kind().unwrap() {
+            ty::ClosureKind::Fn | ty::ClosureKind::FnMut => coroutine_body.coroutine_layout(),
+            ty::ClosureKind::FnOnce => coroutine_body
+                .coroutine_by_move_body()
+                .map_or(coroutine_body.coroutine_layout(), |body| body.coroutine_layout()),
+        }
+    } else {
+        coroutine_body.coroutine_layout()
+    };
+    let Some(info) = info else {
         return Err(error(cx, LayoutError::Unknown(ty)));
     };
     let (ineligible_locals, assignments) = coroutine_saved_local_eligibility(info);
@@ -753,7 +769,7 @@ fn coroutine_layout<'tcx>(
     // Build a prefix layout, including "promoting" all ineligible
     // locals as part of the prefix. We compute the layout of all of
     // these fields at once to get optimal packing.
-    let tag_index = args.as_coroutine().prefix_tys().len();
+    let tag_index = 0;
 
     // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
     let max_discr = (info.variant_fields.len() - 1) as u128;
@@ -769,14 +785,8 @@ fn coroutine_layout<'tcx>(
         let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty);
         Ok(cx.spanned_layout_of(uninit_ty, info.field_tys[local].source_info.span)?.layout)
     });
-    let prefix_layouts = args
-        .as_coroutine()
-        .prefix_tys()
-        .iter()
-        .map(|ty| Ok(cx.layout_of(ty)?.layout))
-        .chain(iter::once(Ok(tag_layout)))
-        .chain(promoted_layouts)
-        .try_collect::<IndexVec<_, _>>()?;
+    let prefix_layouts: IndexVec<_, _> =
+        [Ok(tag_layout)].into_iter().chain(promoted_layouts).try_collect()?;
     let prefix = univariant_uninterned(
         cx,
         ty,
@@ -831,6 +841,7 @@ fn coroutine_layout<'tcx>(
         .iter_enumerated()
         .map(|(index, variant_fields)| {
             // Only include overlap-eligible fields when we compute our variant layout.
+            // Each variant will actually store `MaybeUninit<T>`s.
             let variant_only_tys = variant_fields
                 .iter()
                 .filter(|local| match assignments[**local] {
@@ -969,11 +980,10 @@ fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: T
             record(adt_kind.into(), adt_packed, opt_discr_size, variant_infos);
         }
 
-        ty::Coroutine(def_id, args) => {
+        ty::Coroutine(def_id, _args) => {
             debug!("print-type-size t: `{:?}` record coroutine", layout.ty);
             // Coroutines always have a begin/poisoned/end state with additional suspend points
-            let (variant_infos, opt_discr_size) =
-                variant_info_for_coroutine(cx, layout, def_id, args);
+            let (variant_infos, opt_discr_size) = variant_info_for_coroutine(cx, layout, def_id);
             record(DataTypeKind::Coroutine, false, opt_discr_size, variant_infos);
         }
 
@@ -1064,38 +1074,12 @@ fn variant_info_for_coroutine<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     layout: TyAndLayout<'tcx>,
     def_id: DefId,
-    args: ty::GenericArgsRef<'tcx>,
 ) -> (Vec<VariantInfo>, Option<Size>) {
-    use itertools::Itertools;
-
     let Variants::Multiple { tag, ref tag_encoding, tag_field, .. } = layout.variants else {
         return (vec![], None);
     };
 
     let coroutine = cx.tcx.optimized_mir(def_id).coroutine_layout().unwrap();
-    let upvar_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
-
-    let mut upvars_size = Size::ZERO;
-    let upvar_fields: Vec<_> = args
-        .as_coroutine()
-        .upvar_tys()
-        .iter()
-        .zip_eq(upvar_names)
-        .enumerate()
-        .map(|(field_idx, (_, name))| {
-            let field_layout = layout.field(cx, field_idx);
-            let offset = layout.fields.offset(field_idx);
-            upvars_size = upvars_size.max(offset + field_layout.size);
-            FieldInfo {
-                kind: FieldKind::Upvar,
-                name: *name,
-                offset: offset.bytes(),
-                size: field_layout.size.bytes(),
-                align: field_layout.align.abi.bytes(),
-                type_name: None,
-            }
-        })
-        .collect();
 
     let mut variant_infos: Vec<_> = coroutine
         .variant_fields
@@ -1127,13 +1111,7 @@ fn variant_info_for_coroutine<'tcx>(
                             .then(|| Symbol::intern(&field_layout.ty.to_string())),
                     }
                 })
-                .chain(upvar_fields.iter().copied())
                 .collect();
-
-            // If the variant has no state-specific fields, then it's the size of the upvars.
-            if variant_size == Size::ZERO {
-                variant_size = upvars_size;
-            }
 
             // This `if` deserves some explanation.
             //

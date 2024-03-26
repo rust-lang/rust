@@ -11,16 +11,16 @@
 
 // gdb-command:run
 // gdb-command:print b
-// gdb-check:$1 = coroutine_objects::main::{coroutine_env#0}::Unresumed{_ref__a: 0x[...]}
+// gdb-check:$1 = coroutine_objects::main::{coroutine_env#0}::Unresumed{a: 0x[...]}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$2 = coroutine_objects::main::{coroutine_env#0}::Suspend0{c: 6, d: 7, _ref__a: 0x[...]}
+// gdb-check:$2 = coroutine_objects::main::{coroutine_env#0}::Suspend0{c: 6, d: 7, a: 0x[...]}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$3 = coroutine_objects::main::{coroutine_env#0}::Suspend1{c: 7, d: 8, _ref__a: 0x[...]}
+// gdb-check:$3 = coroutine_objects::main::{coroutine_env#0}::Suspend1{c: 7, d: 8, a: 0x[...]}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$4 = coroutine_objects::main::{coroutine_env#0}::Returned{_ref__a: 0x[...]}
+// gdb-check:$4 = coroutine_objects::main::{coroutine_env#0}::Returned
 
 // === LLDB TESTS ==================================================================================
 

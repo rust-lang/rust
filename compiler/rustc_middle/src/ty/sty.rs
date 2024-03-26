@@ -609,7 +609,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
                 witness: witness.expect_ty(),
                 tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
             },
-            _ => bug!("coroutine args missing synthetics"),
+            _ => bug!("coroutine args missing synthetics, got {:?}", self.args),
         }
     }
 
@@ -754,19 +754,22 @@ impl<'tcx> CoroutineArgs<'tcx> {
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item: Iterator<Item = Ty<'tcx>> + Captures<'tcx>> {
-        let layout = tcx.coroutine_layout(def_id).unwrap();
+        let kind_ty = self.kind_ty();
+        let body = tcx.optimized_mir(def_id);
+        let layout = if let Int(..) = kind_ty.kind()
+            && let Some(ty::ClosureKind::FnOnce) = kind_ty.to_opt_closure_kind()
+            && let Some(body) = body.coroutine_by_move_body()
+            && let Some(layout) = body.coroutine.as_ref().unwrap().coroutine_layout.as_ref()
+        {
+            layout
+        } else {
+            body.coroutine_layout().unwrap()
+        };
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {
                 ty::EarlyBinder::bind(layout.field_tys[*field].ty).instantiate(tcx, self.args)
             })
         })
-    }
-
-    /// This is the types of the fields of a coroutine which are not stored in a
-    /// variant.
-    #[inline]
-    pub fn prefix_tys(self) -> &'tcx List<Ty<'tcx>> {
-        self.upvar_tys()
     }
 }
 

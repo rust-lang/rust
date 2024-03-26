@@ -114,6 +114,9 @@ pub struct CoroutineLayout<'tcx> {
     /// await).
     pub variant_source_info: IndexVec<VariantIdx, SourceInfo>,
 
+    /// The starting index of upvars.
+    pub upvar_start: CoroutineSavedLocal,
+
     /// Which saved locals are storage-live at the same time. Locals that do not
     /// have conflicts with each other are allowed to overlap in the computed
     /// layout.
@@ -164,6 +167,7 @@ impl Debug for CoroutineLayout<'_> {
         }
 
         fmt.debug_struct("CoroutineLayout")
+            .field("upvar_start", &self.upvar_start)
             .field("field_tys", &MapPrinter::new(self.field_tys.iter_enumerated()))
             .field(
                 "variant_fields",
@@ -173,6 +177,7 @@ impl Debug for CoroutineLayout<'_> {
                         .map(|(k, v)| (GenVariantPrinter(k), OneLinePrinter(v))),
                 ),
             )
+            .field("field_names", &MapPrinter::new(self.field_names.iter_enumerated()))
             .field("storage_conflicts", &self.storage_conflicts)
             .finish()
     }
