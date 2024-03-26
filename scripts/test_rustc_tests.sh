@@ -123,7 +123,6 @@ rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 
 # bugs in the test suite
 # ======================
-rm tests/ui/backtrace.rs # TODO warning
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
