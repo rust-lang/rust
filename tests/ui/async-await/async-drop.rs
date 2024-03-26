@@ -6,23 +6,29 @@
 
 //@ edition: 2021
 
-use core::future::{async_drop_in_place, poll_fn, AsyncDrop, Future};
+use core::future::{async_drop_in_place, AsyncDrop, Future};
 use core::hint::black_box;
 use core::mem::{self, ManuallyDrop};
 use core::pin::{pin, Pin};
 use core::task::{Context, Poll, Waker};
 
-// TODO: Check idempotency of async_drop
 async fn test_async_drop<T>(x: T) {
     let mut x = mem::MaybeUninit::new(x);
-    let mut dtor = pin!(unsafe { async_drop_in_place(x.as_mut_ptr()) });
-    poll_fn(|cx| {
-        assert_eq!(dtor.as_mut().poll(cx), Poll::Ready(()));
-        // Check for idempotency
-        assert_eq!(dtor.as_mut().poll(cx), Poll::Ready(()));
-        Poll::Ready(())
-    }).await;
+    let dtor = pin!(unsafe { async_drop_in_place(x.as_mut_ptr()) });
+    test_idempotency(dtor).await;
 }
+
+fn test_idempotency<T>(mut x: Pin<&mut T>) -> impl Future<Output = ()> + '_
+where
+    T: Future<Output = ()>,
+{
+    core::future::poll_fn(move |cx| {
+        assert_eq!(x.as_mut().poll(cx), Poll::Ready(()));
+        assert_eq!(x.as_mut().poll(cx), Poll::Ready(()));
+        Poll::Ready(())
+    })
+}
+
 
 fn main() {
     let waker = Waker::noop();
@@ -50,12 +56,16 @@ fn main() {
         test_async_drop(AsyncEnum::A(AsyncInt(12))).await;
         test_async_drop(AsyncEnum::B(SyncInt(13))).await;
 
+        test_async_drop(SyncInt(14)).await;
         test_async_drop(SyncThenAsync {
-            i: 14,
-            a: AsyncInt(15),
-            b: SyncInt(16),
-            c: AsyncInt(17),
+            i: 15,
+            a: AsyncInt(16),
+            b: SyncInt(17),
+            c: AsyncInt(18),
         }).await;
+
+        let async_drop_fut = pin!(core::future::async_drop(AsyncInt(19)));
+        test_idempotency(async_drop_fut).await;
     });
     let res = fut.poll(&mut cx);
     assert_eq!(res, Poll::Ready(()));

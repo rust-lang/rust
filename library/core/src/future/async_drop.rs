@@ -3,19 +3,48 @@
 use crate::fmt;
 use crate::future::{Future, IntoFuture};
 use crate::intrinsics::discriminant_value;
-use crate::marker::DiscriminantKind;
+use crate::marker::{DiscriminantKind, PhantomPinned};
 use crate::mem::MaybeUninit;
 use crate::pin::Pin;
 use crate::task::{ready, Context, Poll};
 
 /// Asynchronously drops a value by running `AsyncDrop::async_drop`
 /// on a value and its fields recursively.
-// TODO: fuse the output future
 #[unstable(feature = "async_drop", issue = "none")]
-pub async fn async_drop<T>(value: T) {
-    let mut value = MaybeUninit::new(value);
-    // SAFETY: value pointer stays valid when needed
-    unsafe { async_drop_in_place(value.as_mut_ptr()) }.await;
+pub fn async_drop<T>(value: T) -> AsyncDropOwning<T> {
+    AsyncDropOwning { value: MaybeUninit::new(value), dtor: None, _pinned: PhantomPinned }
+}
+
+/// A future returned by the [`async_drop`].
+#[unstable(feature = "async_drop", issue = "none")]
+pub struct AsyncDropOwning<T> {
+    value: MaybeUninit<T>,
+    dtor: Option<<T as AsyncDestruct>::AsyncDestructor>,
+    _pinned: PhantomPinned,
+}
+
+#[unstable(feature = "async_drop", issue = "none")]
+impl<T> fmt::Debug for AsyncDropOwning<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AsyncDropOwning").finish_non_exhaustive()
+    }
+}
+
+#[unstable(feature = "async_drop", issue = "none")]
+impl<T> Future for AsyncDropOwning<T> {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // SAFETY: Self is pinned thus it is ok to store references to self
+        unsafe {
+            let this = self.get_unchecked_mut();
+            let dtor = Pin::new_unchecked(
+                this.dtor.get_or_insert_with(|| async_drop_in_place_raw(this.value.as_mut_ptr())),
+            );
+            // AsyncDestuctors are idempotent so Self gets idempotency as well
+            dtor.poll(cx)
+        }
+    }
 }
 
 #[lang = "async_drop_in_place"]
@@ -51,9 +80,11 @@ unsafe fn async_drop_in_place_raw<T: ?Sized>(
 ///
 /// * While `async_drop_in_place` is executing or the returned async
 ///   destructor is alive, the only way to access parts of `to_drop`
-///   is through the `self: Pin<&mut Self>` references supplied to the
-///   `AsyncDrop::async_drop` methods that `async_drop_in_place` or
-///   `AsyncDropInPlace<T>::poll` invokes.
+///   is through the `self: Pin<&mut Self>` references supplied to
+///   the `AsyncDrop::async_drop` methods that `async_drop_in_place`
+///   or `AsyncDropInPlace<T>::poll` invokes. This usually means the
+///   returned future stores the `to_drop` pointer and user is required
+///   to guarantee that dropped value doesn't move.
 ///
 #[unstable(feature = "async_drop", issue = "none")]
 pub unsafe fn async_drop_in_place<T: ?Sized>(to_drop: *mut T) -> AsyncDropInPlace<T> {
@@ -88,7 +119,6 @@ impl<T: ?Sized> Future for AsyncDropInPlace<T> {
 pub trait AsyncDrop {
     /// A future returned by the [`AsyncDrop::async_drop`] to be part
     /// of the async destructor.
-    // FIXME: should this future be always be `!Unpin`?
     #[unstable(feature = "async_drop", issue = "none")]
     type Dropper<'a>: Future<Output = ()>
     where
@@ -159,7 +189,6 @@ where
 }
 
 /// Async destructor for arrays and slices.
-// NOTE: Returned future should be `!Unpin`.
 #[lang = "async_drop_slice"]
 async unsafe fn slice<T>(s: *mut [T]) {
     let len = s.len();
@@ -218,7 +247,6 @@ where
 ///
 /// Same as `async_drop_in_place` except is lazy to avoid creating
 /// multiple mutable refernces.
-// NOTE: Returned future should be `!Unpin`.
 #[lang = "async_drop_defer"]
 async unsafe fn defer<T: ?Sized>(to_drop: *mut T) {
     // SAFETY: same safety requirements as `async_drop_in_place`
@@ -235,7 +263,6 @@ async unsafe fn defer<T: ?Sized>(to_drop: *mut T) {
 /// discriminant.
 // TODO: Wrap this with `Fuse`
 // TODO: Send and Sync
-// NOTE: Returned future should be `!Unpin`.
 #[lang = "async_drop_either"]
 async unsafe fn either<O: IntoFuture<Output = ()>, M: IntoFuture<Output = ()>, T>(
     other: O,

@@ -12,7 +12,9 @@ AsyncEnum(A)::Dropper::poll: 12
 SyncInt::drop: 12
 AsyncEnum(B)::Dropper::poll: 13
 AsyncInt::Dropper::poll: 13
-SyncThenAsync::drop: 14
-AsyncInt::Dropper::poll: 15
-SyncInt::drop: 16
-AsyncInt::Dropper::poll: 17
+SyncInt::drop: 14
+SyncThenAsync::drop: 15
+AsyncInt::Dropper::poll: 16
+SyncInt::drop: 17
+AsyncInt::Dropper::poll: 18
+AsyncInt::Dropper::poll: 19
