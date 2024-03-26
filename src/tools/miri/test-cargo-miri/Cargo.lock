@@ -3,12 +3,6 @@
 version = 3
 
 [[package]]
-name = "anyhow"
-version = "1.0.81"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0952808a6c2afd1aa8947271f3a60f1a6763c7b912d210184c5149b5cf147247"
-
-[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -30,7 +24,6 @@ checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 name = "cargo-miri-test"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "autocfg",
  "byteorder 0.5.3",
  "byteorder 1.4.3",
@@ -42,6 +35,7 @@ dependencies = [
  "issue_1705",
  "issue_1760",
  "issue_rust_86261",
+ "proc-macro2",
  "serde_derive",
 ]
 
