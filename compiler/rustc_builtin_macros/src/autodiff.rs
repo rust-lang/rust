@@ -204,7 +204,10 @@ pub fn expand(
         tokens: ts,
     });
     attr.kind = ast::AttrKind::Normal(rustc_ad_attr);
-    let d_fn = ecx.item(span, d_ident, thin_vec![attr], asdf);
+    let mut d_fn = ecx.item(span, d_ident, thin_vec![attr], asdf);
+
+    // Copy visibility from original function
+    d_fn.vis = orig_item.vis.clone();
 
     let orig_annotatable = Annotatable::Item(orig_item);
     let d_annotatable = Annotatable::Item(d_fn);

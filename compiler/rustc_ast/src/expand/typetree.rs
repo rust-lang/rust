@@ -14,6 +14,18 @@ pub enum Kind {
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct TypeTree(pub Vec<Type>);
 
+impl TypeTree {
+    pub fn new() -> Self {
+        Self(Vec::new())
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+pub struct FncTree {
+    pub args: Vec<TypeTree>,
+    pub ret: TypeTree,
+}
+
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Type {
     pub offset: isize,

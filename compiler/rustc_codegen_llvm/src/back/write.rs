@@ -48,7 +48,6 @@ use crate::DiffTypeTree;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
 use llvm::LLVMRustDISetInstMetadata;
-//use llvm::LLVMGetValueName2;
 use llvm::{
     LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols, LLVMGetNextBasicBlock,
 };
@@ -906,6 +905,11 @@ pub(crate) unsafe fn differentiate(
     let diag_handler = cgcx.create_dcx();
 
     llvm::set_strict_aliasing(false);
+
+    if std::env::var("ENZYME_LOOSE_TYPES").is_ok() {
+        dbg!("Setting loose types to true");
+        llvm::set_loose_types(true);
+    }
 
     if std::env::var("ENZYME_PRINT_MOD").is_ok() {
         unsafe {

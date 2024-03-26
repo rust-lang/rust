@@ -10,6 +10,10 @@
 //! ["The `ty` module: representing types"]: https://rustc-dev-guide.rust-lang.org/ty.html
 
 #![allow(rustc::usage_of_ty_tykind)]
+#![allow(unused_imports)]
+
+use rustc_ast::expand::typetree::{Type, Kind, TypeTree, FncTree};
+use rustc_target::abi::FieldsShape;
 
 pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
@@ -17,7 +21,7 @@ pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::Variance::*;
-use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
+use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason, UnsupportedUnion};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout};
@@ -2714,4 +2718,217 @@ mod size_asserts {
     static_assert_size!(PredicateKind<'_>, 32);
     static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 56);
     // tidy-alphabetical-end
+}
+
+pub fn typetree_from<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
+    let mut visited = vec![];
+    let ty = typetree_from_ty(ty, tcx, 0, false, &mut visited);
+    let tt = Type { offset: -1, kind: Kind::Pointer, size: 8, child: ty };
+    return TypeTree(vec![tt]);
+}
+
+pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>) -> FncTree {
+    if !fn_ty.is_fn() {
+        return FncTree { args: vec![], ret: TypeTree::new() };
+    }
+    let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
+
+    // TODO: verify.
+    let x: ty::FnSig<'_> = match fnc_binder.no_bound_vars() {
+        Some(x) => x,
+        None => return FncTree { args: vec![], ret: TypeTree::new() },
+    };
+
+    let mut visited = vec![];
+    let mut args = vec![];
+    for arg in x.inputs() {
+        visited.clear();
+        let arg_tt = typetree_from_ty(*arg, tcx, 0, false, &mut visited);
+        args.push(arg_tt);
+    }
+
+    visited.clear();
+    let ret = typetree_from_ty(x.output(), tcx, 0, false, &mut visited);
+
+    FncTree { args, ret }
+}
+
+pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize, safety: bool, visited: &mut Vec<Ty<'a>>) -> TypeTree {
+    if depth > 20 {
+        dbg!(&ty);
+    }
+    if visited.contains(&ty) {
+        // recursive type
+        dbg!("recursive type");
+        dbg!(&ty);
+        return TypeTree::new();
+    }
+    visited.push(ty);
+
+    if ty.is_unsafe_ptr() || ty.is_ref() || ty.is_box() {
+        if ty.is_fn_ptr() {
+            unimplemented!("what to do whith fn ptr?");
+        }
+        let inner_ty = ty.builtin_deref(true).unwrap().ty;
+        //visited.push(inner_ty);
+        let child = typetree_from_ty(inner_ty, tcx, depth + 1, safety, visited);
+        let tt = Type { offset: -1, kind: Kind::Pointer, size: 8, child };
+        visited.pop();
+        return TypeTree(vec![tt]);
+    }
+
+
+    if ty.is_closure() || ty.is_coroutine() || ty.is_fresh() || ty.is_fn() {
+        visited.pop();
+        return TypeTree::new();
+    }
+
+    if ty.is_scalar() {
+        let (kind, size) = if ty.is_integral() || ty.is_char() || ty.is_bool() {
+            (Kind::Integer, ty.primitive_size(tcx).bytes_usize())
+        } else if ty.is_floating_point() {
+            match ty {
+                x if x == tcx.types.f32 => (Kind::Float, 4),
+                x if x == tcx.types.f64 => (Kind::Double, 8),
+                _ => panic!("floatTy scalar that is neither f32 nor f64"),
+            }
+        } else {
+            panic!("scalar that is neither integral nor floating point");
+        };
+        visited.pop();
+        return TypeTree(vec![Type { offset: -1, child: TypeTree::new(), kind, size }]);
+    }
+
+    let param_env_and = ParamEnvAnd { param_env: ParamEnv::empty(), value: ty };
+
+    let layout = tcx.layout_of(param_env_and);
+    assert!(layout.is_ok());
+
+    let layout = layout.unwrap().layout;
+    let fields = layout.fields();
+    let max_size = layout.size();
+
+
+
+    if ty.is_adt() && !ty.is_simd() {
+        let adt_def = ty.ty_adt_def().unwrap();
+
+        if adt_def.is_struct() {
+            let (offsets, _memory_index) = match fields {
+                // Manuel TODO:
+                FieldsShape::Arbitrary { offsets: o, memory_index: m } => (o, m),
+                FieldsShape::Array { .. } => {return TypeTree::new();}, //e.g. core::arch::x86_64::__m128i, TODO: later
+                FieldsShape::Union(_) => {return TypeTree::new();},
+                FieldsShape::Primitive => {return TypeTree::new();},
+                //_ => {dbg!(&adt_def); panic!("")},
+            };
+
+            let substs = match ty.kind() {
+                Adt(_, subst_ref) => subst_ref,
+                _ => panic!(""),
+            };
+
+            let fields = adt_def.all_fields();
+            let fields = fields
+                .into_iter()
+                .zip(offsets.into_iter())
+                .filter_map(|(field, offset)| {
+                    let field_ty: Ty<'_> = field.ty(tcx, substs);
+                    let field_ty: Ty<'_> =
+                        tcx.normalize_erasing_regions(ParamEnv::empty(), field_ty);
+
+                    if field_ty.is_phantom_data() {
+                        return None;
+                    }
+
+                    //visited.push(field_ty);
+                    let mut child = typetree_from_ty(field_ty, tcx, depth + 1, safety, visited).0;
+
+                    for c in &mut child {
+                        if c.offset == -1 {
+                            c.offset = offset.bytes() as isize
+                        } else {
+                            c.offset += offset.bytes() as isize;
+                        }
+                    }
+
+                    Some(child)
+                })
+                .flatten()
+                .collect::<Vec<Type>>();
+
+            visited.pop();
+            let ret_tt = TypeTree(fields);
+            return ret_tt;
+        } else if adt_def.is_enum() {
+            // Enzyme can't represent enums, so let it figure it out itself, without seeeding
+            // typetree
+            //unimplemented!("adt that is an enum");
+        } else {
+            //let ty_name = tcx.def_path_debug_str(adt_def.did());
+            //tcx.sess.emit_fatal(UnsupportedUnion { ty_name });
+        }
+    }
+
+    if ty.is_simd() {
+        trace!("simd");
+        let (_size, inner_ty) = ty.simd_size_and_type(tcx);
+        //visited.push(inner_ty);
+        let _sub_tt = typetree_from_ty(inner_ty, tcx, depth + 1, safety, visited);
+        //let tt = TypeTree(
+        //    std::iter::repeat(subtt)
+        //        .take(*count as usize)
+        //        .enumerate()
+        //        .map(|(idx, x)| x.0.into_iter().map(move |x| x.add_offset((idx * size) as isize)))
+        //        .flatten()
+        //        .collect(),
+        //);
+        // TODO
+        visited.pop();
+        return TypeTree::new();
+    }
+
+    if ty.is_array() {
+        let (stride, count) = match fields {
+            FieldsShape::Array { stride: s, count: c } => (s, c),
+            _ => panic!(""),
+        };
+        let byte_stride = stride.bytes_usize();
+        let byte_max_size = max_size.bytes_usize();
+
+        assert!(byte_stride * *count as usize == byte_max_size);
+        if (*count as usize) == 0 {
+            return TypeTree::new();
+        }
+        let sub_ty = ty.builtin_index().unwrap();
+        //visited.push(sub_ty);
+        let subtt = typetree_from_ty(sub_ty, tcx, depth + 1, safety, visited);
+
+        // calculate size of subtree
+        let param_env_and = ParamEnvAnd { param_env: ParamEnv::empty(), value: sub_ty };
+        let size = tcx.layout_of(param_env_and).unwrap().size.bytes() as usize;
+        let tt = TypeTree(
+            std::iter::repeat(subtt)
+                .take(*count as usize)
+                .enumerate()
+                .map(|(idx, x)| x.0.into_iter().map(move |x| x.add_offset((idx * size) as isize)))
+                .flatten()
+                .collect(),
+        );
+
+        visited.pop();
+        return tt;
+    }
+
+    if ty.is_slice() {
+        let sub_ty = ty.builtin_index().unwrap();
+        //visited.push(sub_ty);
+        let subtt = typetree_from_ty(sub_ty, tcx, depth + 1, safety, visited);
+
+        visited.pop();
+        return subtt;
+    }
+
+    visited.pop();
+    TypeTree::new()
 }

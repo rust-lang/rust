@@ -1,6 +1,5 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
-//#![allow(unexpected_cfgs)]
 
 use rustc_ast::expand::autodiff_attrs::DiffActivity;
 
@@ -1827,6 +1826,12 @@ extern "C" {
         AttrsLen: size_t,
     );
 
+    pub fn LLVMRustAddParamAttr<'a>(
+        Instr: &'a Value,
+        index: c_uint,
+        Attr: &'a Attribute
+    );
+
     pub fn LLVMRustBuildInvoke<'a>(
         B: &Builder<'a>,
         Ty: &'a Type,
@@ -2648,6 +2653,7 @@ pub mod Fallback_AD {
     pub fn set_print_type(print: bool) { unimplemented!() }
     pub fn set_print(print: bool) { unimplemented!() }
     pub fn set_strict_aliasing(strict: bool) { unimplemented!() }
+    pub fn set_loose_types(loose: bool) { unimplemented!() }
 
     pub fn EnzymeCreatePrimalAndGradient<'a>(
         arg1: EnzymeLogicRef,
@@ -2979,6 +2985,7 @@ extern "C" {
     static mut EnzymePrintType: c_void;
     static mut EnzymePrint: c_void;
     static mut EnzymeStrictAliasing: c_void;
+    static mut looseTypeAnalysis: c_void;
 }
 pub fn set_max_int_offset(offset: u64) {
     let offset = offset.try_into().unwrap();
@@ -3023,6 +3030,12 @@ pub fn set_strict_aliasing(strict: bool) {
         EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymeStrictAliasing), strict as u8);
     }
 }
+pub fn set_loose_types(loose: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(looseTypeAnalysis), loose as u8);
+    }
+}
+
 extern "C" {
     pub fn EnzymeCreatePrimalAndGradient<'a>(
         arg1: EnzymeLogicRef,
@@ -3108,7 +3121,7 @@ extern "C" {
         max_size: i64,
         add_offset: u64,
     );
-    pub(super) fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
-    pub(super) fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
+    pub fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
+    pub fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
 }
 }

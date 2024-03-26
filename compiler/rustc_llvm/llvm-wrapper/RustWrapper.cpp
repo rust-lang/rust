@@ -871,6 +871,13 @@ extern "C" LLVMMetadataRef LLVMRustDIGetInstMetadataOfTy(LLVMValueRef x,
   return nullptr;
 }
 
+extern "C" void LLVMRustAddParamAttr(LLVMValueRef call, unsigned i,
+                                     LLVMAttributeRef RustAttr) {
+  if (auto *CI = dyn_cast<CallInst>(unwrap<Value>(call))) {
+    CI->addParamAttr(i, unwrap(RustAttr));
+  }
+}
+
 extern "C" void LLVMRustDISetInstMetadata(LLVMValueRef Inst,
                                           LLVMMetadataRef Desc) {
   if (auto *I = dyn_cast<Instruction>(unwrap<Value>(Inst))) {
