@@ -1056,7 +1056,12 @@ impl<'tcx> TyCtxt<'tcx> {
         if stable_crate_id == self.stable_crate_id(LOCAL_CRATE) {
             LOCAL_CRATE
         } else {
-            self.cstore_untracked().stable_crate_id_to_crate_num(stable_crate_id)
+            *self
+                .untracked()
+                .stable_crate_ids
+                .read()
+                .get(&stable_crate_id)
+                .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"))
         }
     }
 
@@ -1076,7 +1081,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // If this is a DefPathHash from an upstream crate, let the CrateStore map
             // it to a DefId.
             let cstore = &*self.cstore_untracked();
-            let cnum = cstore.stable_crate_id_to_crate_num(stable_crate_id);
+            let cnum = self.stable_crate_id_to_crate_num(stable_crate_id);
             cstore.def_path_hash_to_def_id(cnum, hash)
         }
     }
