@@ -387,7 +387,7 @@ impl Generics {
         self.params.type_or_consts.len()
     }
 
-    /// (parent total, self param, type param list, const param list, impl trait)
+    /// (parent total, self param, type params, const params, impl trait list, lifetimes)
     pub(crate) fn provenance_split(&self) -> (usize, usize, usize, usize, usize, usize) {
         let mut self_params = 0;
         let mut type_params = 0;
