@@ -99,9 +99,6 @@ rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
 rm tests/ui/consts/const-mut-refs-crate.rs # same
 
-# rustdoc-clif passes extra args, suppressing the help message when no args are passed
-rm -r tests/run-make/issue-88756-default-output
-
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
 # ============================================================
