@@ -12,7 +12,7 @@ fn is_identity(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Applicabili
         return Some(Applicability::MachineApplicable);
     }
     if is_expr_identity_function(cx, expr) {
-        return Some(Applicability::MaybeIncorrect);
+        return Some(Applicability::Unspecified);
     }
     None
 }
