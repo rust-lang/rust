@@ -12,20 +12,20 @@ edition = "2018"
 byteorder = "1.0"
 cdylib = { path = "cdylib" }
 exported_symbol = { path = "exported-symbol" }
+proc_macro_crate = { path = "proc-macro-crate" }
 issue_1567 = { path = "issue-1567" }
 issue_1691 = { path = "issue-1691" }
 issue_1705 = { path = "issue-1705" }
-issue_1760 = { path = "issue-1760" }
 issue_rust_86261 = { path = "issue-rust-86261" }
 
 [dev-dependencies]
 byteorder_2 = { package = "byteorder", version = "0.5" } # to test dev-dependencies behave as expected, with renaming
-# Not actually used, but exercises some unique code path (`--extern` .so file).
-serde_derive = "1.0.185"
-# Not actually used, but uses a custom build probe so let's make sure that works.
+## More dependencies that we don't actually use, but add just for extra test coverage.
+# These use custom build probes, let's make sure they don't explode.
 # (Ideally we'd check if the probe was successful, but that's not easily possible.)
-anyhow = "1.0"
-# Same as anyhow.
+# proc-macro2 is extra exciting because it is both a host-dependency (of proc_macro_crate above)
+# and a target-dependency.
+proc-macro2 = "1.0"
 eyre = "0.6"
 
 [build-dependencies]
