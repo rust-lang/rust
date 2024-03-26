@@ -113,6 +113,8 @@ impl<T: ?Sized> Future for AsyncDropInPlace<T> {
     }
 }
 
+// TODO: Add same restrictions on AsyncDrop impls as
+//   with Drop impls
 /// Custom code within the asynchronous destructor.
 #[unstable(feature = "async_drop", issue = "none")]
 #[lang = "async_drop"]

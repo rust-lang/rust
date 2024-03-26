@@ -1102,27 +1102,23 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         };
 
         match self_ty.kind() {
-            ty::Array(elem_ty, _) => {
-                self.build_slice(true, *elem_ty)
-            }
-            ty::Slice(elem_ty) => {
-                self.build_slice(false, *elem_ty)
-            }
+            ty::Array(elem_ty, _) => self.build_slice(true, *elem_ty),
+            ty::Slice(elem_ty) => self.build_slice(false, *elem_ty),
 
-            ty::Tuple(elem_tys) => {
-                self.build_chain(None, elem_tys.iter())
-            }
+            ty::Tuple(elem_tys) => self.build_chain(None, elem_tys.iter()),
             ty::Adt(adt_def, args) if adt_def.is_struct() => {
                 if adt_def.is_manually_drop() {
                     return self.build_nop();
                 }
 
                 debug_assert_eq!(adt_def.variants().len(), 1);
-                let field_tys = adt_def.variant(VariantIdx::new(0)).fields.iter().map(|f| f.ty(tcx, args));
+                let field_tys =
+                    adt_def.variant(VariantIdx::new(0)).fields.iter().map(|f| f.ty(tcx, args));
                 self.build_chain(surface_drop_kind(), field_tys)
             }
-            ty::Closure(_, args) => {
-                self.build_chain(None, args.as_closure().upvar_tys().iter())
+            ty::Closure(_, args) => self.build_chain(None, args.as_closure().upvar_tys().iter()),
+            ty::CoroutineClosure(_, args) => {
+                self.build_chain(None, args.as_coroutine_closure().upvar_tys().iter())
             }
 
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
@@ -1130,26 +1126,6 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             }
 
             ty::Never => self.build_unreachable(),
-
-            ty::Foreign(_)
-            // TODO: implement enums, disallow unions
-            | ty::Adt(_, _)
-            | ty::Dynamic(_, _, _)
-            | ty::CoroutineClosure(_, _)
-            | ty::Coroutine(_, _)
-            | ty::CoroutineWitness(_, _)
-            | ty::Alias(_, _)
-            | ty::Param(_)
-            | ty::Bound(_, _)
-            | ty::Placeholder(_)
-            | ty::Infer(_)
-            | ty::Error(_) => {
-                match surface_drop_kind() {
-                    Some(SurfaceDropKind::Async) => self.build_fused_surface(),
-                    Some(SurfaceDropKind::Sync) => self.build_fused_sync_surface(),
-                    None => self.build_nop(),
-                }
-            }
 
             ty::Bool
             | ty::Char
@@ -1160,7 +1136,33 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             | ty::RawPtr(_)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(_) => self.build_nop(),
+            | ty::FnPtr(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Error(_) => self.build_nop(),
+
+            ty::Adt(adt_def, _) => {
+                assert!(adt_def.is_union());
+                match surface_drop_kind() {
+                    Some(SurfaceDropKind::Async) => self.build_fused_surface(),
+                    Some(SurfaceDropKind::Sync) => self.build_fused_sync_surface(),
+                    None => self.build_nop(),
+                }
+            }
+
+            ty::Dynamic(..) | ty::CoroutineWitness(..) | ty::Coroutine(..) => {
+                bug!(
+                    "Building async destructor constructor shim is not yet implemented for type: {self_ty:?}"
+                )
+            }
+
+            ty::Bound(..)
+            | ty::Foreign(_)
+            | ty::Placeholder(_)
+            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) | ty::TyVar(_))
+            | ty::Param(_)
+            | ty::Alias(..) => {
+                bug!("Building async destructor for unexpected type: {self_ty:?}")
+            }
         }
     }
 

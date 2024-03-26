@@ -2353,6 +2353,12 @@ impl<'tcx> Ty<'tcx> {
                 self.chain_async_destructor_ty(tcx, args.as_closure().upvar_tys().iter(), param_env)
             }
 
+            ty::CoroutineClosure(_, args) => self.chain_async_destructor_ty(
+                tcx,
+                args.as_coroutine_closure().upvar_tys().iter(),
+                param_env,
+            ),
+
             ty::Never => tcx
                 .type_of(tcx.require_lang_item(LangItem::AsyncDropNever, None))
                 .instantiate_identity(),
@@ -2420,54 +2426,32 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
-            | ty::Infer(IntVar(_) | FloatVar(_)) => tcx
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Error(_) => tcx
                 .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
                 .instantiate_identity()
                 .output()
                 .no_bound_vars()
                 .unwrap(),
 
-            ty::Adt(adt_def, _) if adt_def.is_union() => tcx
-                .fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
-                .instantiate_identity()
-                .output()
-                .no_bound_vars()
-                .unwrap(),
-
-            ty::Dynamic(..)
-            | ty::CoroutineClosure(..)
-            | ty::CoroutineWitness(..)
-            | ty::Error(_)
-            | ty::Coroutine(..) => {
-                // TODO: This branch should emit a bug for some cases
-                //   or be implemented for other cases
-
-                // This condition is conservative, evaluating to false
-                // in some unclear cases. However `AsyncDrop` as with
-                // `Drop` impl must not contain any new bounds that
-                // don't exist for struct definition, thus it is not
-                // ambiguous with any parameters.
-                // TODO: Add same restrictions on AsyncDrop impls as
-                //   with Drop impls
-                if let Some(dropper_ty) = self.surface_async_dropper_ty(tcx, param_env) {
-                    tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
-                        .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
-                        .instantiate(tcx, &[dropper_ty.into()])
-                } else {
-                    tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
-                        .instantiate_identity()
-                        .output()
-                        .no_bound_vars()
-                        .unwrap()
-                }
+            ty::Adt(adt_def, _) => {
+                assert!(adt_def.is_union());
+                tcx.fn_sig(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                    .instantiate_identity()
+                    .output()
+                    .no_bound_vars()
+                    .unwrap()
             }
 
-            ty::Adt(..)
-            | ty::Bound(..)
+            ty::Dynamic(..) | ty::CoroutineWitness(..) | ty::Coroutine(..) => {
+                bug!("`async_destructor_ty` is not yet implemented for type: {self:?}")
+            }
+
+            ty::Bound(..)
             | ty::Foreign(_)
             | ty::Placeholder(_)
-            | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-                bug!("`async_destructor_ty` applied to unexpected type: {:?}", self)
+            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("`async_destructor_ty` applied to unexpected type: {self:?}")
             }
         }
     }
