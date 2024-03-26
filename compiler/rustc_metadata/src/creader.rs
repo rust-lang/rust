@@ -168,25 +168,21 @@ impl CStore {
         tcx: TyCtxt<'tcx>,
     ) -> Result<CrateNum, CrateError> {
         assert_eq!(self.metas.len(), tcx.untracked().stable_crate_ids.read().len());
-        if let Some(&existing) =
-            tcx.untracked().stable_crate_ids.read().get(&root.stable_crate_id())
-        {
+        let num = tcx.create_crate_num(root.stable_crate_id()).map_err(|existing| {
             // Check for (potential) conflicts with the local crate
             if existing == LOCAL_CRATE {
-                Err(CrateError::SymbolConflictsCurrent(root.name()))
+                CrateError::SymbolConflictsCurrent(root.name())
             } else if let Some(crate_name1) = self.metas[existing].as_ref().map(|data| data.name())
             {
                 let crate_name0 = root.name();
-                Err(CrateError::StableCrateIdCollision(crate_name0, crate_name1))
+                CrateError::StableCrateIdCollision(crate_name0, crate_name1)
             } else {
-                Err(CrateError::NotFound(root.name()))
+                CrateError::NotFound(root.name())
             }
-        } else {
-            self.metas.push(None);
-            let num = CrateNum::new(tcx.untracked().stable_crate_ids.read().len());
-            tcx.untracked().stable_crate_ids.write().insert(root.stable_crate_id(), num);
-            Ok(num)
-        }
+        })?;
+
+        self.metas.push(None);
+        Ok(num)
     }
 
     pub fn has_crate_data(&self, cnum: CrateNum) -> bool {
