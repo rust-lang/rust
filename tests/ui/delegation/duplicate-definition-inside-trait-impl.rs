@@ -1,5 +1,5 @@
 #![feature(fn_delegation)]
-//~^ WARN the feature `fn_delegation` is incomplete
+#![allow(incomplete_features)]
 
 trait Trait {
     fn foo(&self) -> u32 { 0 }
