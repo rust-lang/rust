@@ -391,6 +391,7 @@ FormatArgsExpr =
 FormatArgsArg =
   (Name '=')? Expr
 
+# MacroCallExpr
 MacroExpr =
   MacroCall
 
