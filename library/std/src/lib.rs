@@ -283,6 +283,8 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
+#![feature(f128)]
+#![feature(f16)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(lang_items)]
@@ -558,6 +560,10 @@ pub use core::u8;
 #[allow(deprecated, deprecated_in_future)]
 pub use core::usize;
 
+#[unstable(feature = "f128", issue = "116909")]
+pub mod f128;
+#[unstable(feature = "f16", issue = "116909")]
+pub mod f16;
 pub mod f32;
 pub mod f64;
 
