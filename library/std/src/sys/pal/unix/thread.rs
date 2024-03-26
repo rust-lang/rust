@@ -424,7 +424,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                     if !set.is_null() {
                         let mut count: usize = 0;
                         if libc::pthread_getaffinity_np(libc::pthread_self(), libc::_cpuset_size(set), set) == 0 {
-                            for i in 0..u64::MAX {
+                            for i in 0..libc::cpuid_t::MAX {
                                 match libc::_cpuset_isset(i, set) {
                                     -1 => break,
                                     0 => continue,
