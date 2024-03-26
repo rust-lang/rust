@@ -133,6 +133,7 @@ use bind_instead_of_map::BindInsteadOfMap;
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
@@ -4087,12 +4088,14 @@ declare_clippy_lint! {
     suspicious,
     "is_empty() called on strings known at compile time"
 }
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
     allow_expect_in_tests: bool,
     allow_unwrap_in_tests: bool,
     allowed_dotfiles: FxHashSet<String>,
+    format_args: FormatArgsStorage,
 }
 
 impl Methods {
@@ -4103,6 +4106,7 @@ impl Methods {
         allow_expect_in_tests: bool,
         allow_unwrap_in_tests: bool,
         mut allowed_dotfiles: FxHashSet<String>,
+        format_args: FormatArgsStorage,
     ) -> Self {
         allowed_dotfiles.extend(DEFAULT_ALLOWED_DOTFILES.iter().map(ToString::to_string));
 
@@ -4112,6 +4116,7 @@ impl Methods {
             allow_expect_in_tests,
             allow_unwrap_in_tests,
             allowed_dotfiles,
+            format_args,
         }
     }
 }
@@ -4281,7 +4286,15 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
                 or_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), receiver, args);
-                expect_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), receiver, args);
+                expect_fun_call::check(
+                    cx,
+                    &self.format_args,
+                    expr,
+                    method_span,
+                    method_call.ident.as_str(),
+                    receiver,
+                    args,
+                );
                 clone_on_copy::check(cx, expr, method_call.ident.name, receiver, args);
                 clone_on_ref_ptr::check(cx, expr, method_call.ident.name, receiver, args);
                 inefficient_to_string::check(cx, expr, method_call.ident.name, receiver, args);

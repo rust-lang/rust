@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::macros::{find_format_arg_expr, find_format_args, root_macro_call_first_node};
+use clippy_utils::macros::{find_format_arg_expr, root_macro_call_first_node, FormatArgsStorage};
 use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use rustc_ast::{FormatArgsPiece, FormatOptions, FormatTrait};
@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
@@ -39,13 +39,24 @@ declare_clippy_lint! {
     "useless use of `format!`"
 }
 
-declare_lint_pass!(UselessFormat => [USELESS_FORMAT]);
+#[allow(clippy::module_name_repetitions)]
+pub struct UselessFormat {
+    format_args: FormatArgsStorage,
+}
+
+impl UselessFormat {
+    pub fn new(format_args: FormatArgsStorage) -> Self {
+        Self { format_args }
+    }
+}
+
+impl_lint_pass!(UselessFormat => [USELESS_FORMAT]);
 
 impl<'tcx> LateLintPass<'tcx> for UselessFormat {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let Some(macro_call) = root_macro_call_first_node(cx, expr)
             && cx.tcx.is_diagnostic_item(sym::format_macro, macro_call.def_id)
-            && let Some(format_args) = find_format_args(cx, expr, macro_call.expn)
+            && let Some(format_args) = self.format_args.get(cx, expr, macro_call.expn)
         {
             let mut applicability = Applicability::MachineApplicable;
             let call_site = macro_call.span;
