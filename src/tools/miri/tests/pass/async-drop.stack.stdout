@@ -18,3 +18,4 @@ AsyncInt::Dropper::poll: 16
 SyncInt::drop: 17
 AsyncInt::Dropper::poll: 18
 AsyncInt::Dropper::poll: 19
+AsyncInt::Dropper::poll: 20

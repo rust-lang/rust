@@ -1,7 +1,7 @@
 //@ run-pass
 //@ check-run-results
 
-#![feature(async_drop, impl_trait_in_assoc_type, noop_waker)]
+#![feature(async_drop, impl_trait_in_assoc_type, noop_waker, async_closure)]
 #![allow(incomplete_features, dead_code)]
 
 //@ edition: 2021
@@ -29,7 +29,6 @@ where
     })
 }
 
-
 fn main() {
     let waker = Waker::noop();
     let mut cx = Context::from_waker(&waker);
@@ -51,7 +50,11 @@ fn main() {
         test_async_drop(AsyncReference { foo: &foo }).await;
 
         let foo = AsyncInt(11);
-        test_async_drop(|| black_box(foo)).await;
+        test_async_drop(|| {
+            black_box(foo);
+            let foo = AsyncInt(10);
+            foo
+        }).await;
 
         test_async_drop(AsyncEnum::A(AsyncInt(12))).await;
         test_async_drop(AsyncEnum::B(SyncInt(13))).await;
@@ -66,6 +69,15 @@ fn main() {
 
         let async_drop_fut = pin!(core::future::async_drop(AsyncInt(19)));
         test_idempotency(async_drop_fut).await;
+
+        let foo = AsyncInt(20);
+        test_async_drop(async || {
+            black_box(foo);
+            let foo = AsyncInt(19);
+            // Await point there, but this is async closure so it's fine
+            black_box(core::future::ready(())).await;
+            foo
+        }).await;
     });
     let res = fut.poll(&mut cx);
     assert_eq!(res, Poll::Ready(()));
