@@ -7,6 +7,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::type_variable::TypeVariableOriginKind;
 use rustc_infer::infer::InferCtxt;
+use rustc_lint_defs::builtin::UNCOVERED_PARAM_IN_PROJECTION;
 use rustc_middle::ty::{self, AliasKind, Ty, TyCtxt};
 use rustc_middle::ty::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
@@ -22,17 +23,18 @@ pub(crate) fn orphan_check_impl(
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
     trait_ref.error_reported()?;
 
-    let trait_def_id = trait_ref.def_id;
-
     match traits::orphan_check(tcx, impl_def_id.to_def_id()) {
-        Ok(()) => {}
-        Err(err) => {
+        traits::OrphanCheckResult::Ok => {}
+        traits::OrphanCheckResult::Issue99554(data, infcx) => {
+            lint_uncovered_ty_params(&infcx, data.ty, data.local_ty, impl_def_id);
+        }
+        traits::OrphanCheckResult::Err(err, infcx) => {
             let item = tcx.hir().expect_item(impl_def_id);
             let impl_ = item.expect_impl();
             let hir_trait_ref = impl_.of_trait.as_ref().unwrap();
 
             emit_orphan_check_error(
-                tcx,
+                &infcx,
                 tcx.def_span(impl_def_id),
                 item.span,
                 hir_trait_ref.path.span,
@@ -43,6 +45,8 @@ pub(crate) fn orphan_check_impl(
             )?
         }
     }
+
+    let trait_def_id = trait_ref.def_id;
 
     // In addition to the above rules, we restrict impls of auto traits
     // so that they can only be implemented on nominal types, such as structs,
@@ -273,7 +277,7 @@ pub(crate) fn orphan_check_impl(
 }
 
 fn emit_orphan_check_error<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
     sp: Span,
     full_impl_span: Span,
     trait_span: Span,
@@ -282,9 +286,12 @@ fn emit_orphan_check_error<'tcx>(
     generics: &'tcx ty::Generics,
     err: traits::OrphanCheckErr<'tcx>,
 ) -> Result<!, ErrorGuaranteed> {
-    let self_ty = trait_ref.self_ty();
-    Err(match err.kind {
-        traits::OrphanCheckErrKind::NonLocalInputType(tys) => {
+    let tcx = infcx.tcx;
+
+    Err(match err {
+        traits::OrphanCheckErr::NonLocalInputType(tys) => {
+            let self_ty = trait_ref.self_ty();
+
             let (mut opaque, mut foreign, mut name, mut pointer, mut ty_diag) =
                 (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
             let mut sugg = None;
@@ -297,11 +304,9 @@ fn emit_orphan_check_error<'tcx>(
                     trait_span
                 };
 
-                if let Some(infcx) = &err.infcx {
-                    ty = ty.fold_with(&mut TyVarReplacer { infcx, generics });
-                }
-
+                ty = ty.fold_with(&mut TyVarReplacer { infcx, generics });
                 ty = tcx.erase_regions(ty);
+
                 ty = match ty.kind() {
                     // Remove the type arguments from the output, as they are not relevant.
                     // You can think of this as the reverse of `resolve_vars_if_possible`.
@@ -410,16 +415,14 @@ fn emit_orphan_check_error<'tcx>(
             };
             tcx.dcx().emit_err(err_struct)
         }
-        traits::OrphanCheckErrKind::UncoveredTyParams { ty, local_ty } => {
-            let mut collector = UncoveredTyParamCollector {
-                infcx: &err.infcx.unwrap(), // FIXME: might be reachable
-                uncovered_params: Default::default(),
-            };
-            ty.visit_with(&mut collector);
+        traits::OrphanCheckErr::UncoveredTyParams(err) => {
+            let mut collector =
+                UncoveredTyParamCollector { infcx, uncovered_params: Default::default() };
+            err.ty.visit_with(&mut collector);
 
             let mut reported = None;
             for (param, span) in collector.uncovered_params {
-                reported.get_or_insert(match local_ty {
+                reported.get_or_insert(match err.local_ty {
                     Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
                         span,
                         note: (),
@@ -429,10 +432,41 @@ fn emit_orphan_check_error<'tcx>(
                     None => tcx.dcx().emit_err(errors::TyParamSome { span, note: (), param }),
                 });
             }
-            // FIXME: might be reachable
-            reported.unwrap_or_else(|| bug!("failed to find ty param in `{ty}`"))
+            // FIXME: possibly reachable
+            reported.unwrap_or_else(|| bug!("failed to find ty param in `{}`", err.ty))
         }
     })
+}
+
+fn lint_uncovered_ty_params<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    uncovered_ty_params: Ty<'tcx>,
+    local_ty: Option<Ty<'tcx>>,
+    impl_def_id: LocalDefId,
+) {
+    let tcx = infcx.tcx;
+    let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);
+
+    let mut collector = UncoveredTyParamCollector { infcx, uncovered_params: Default::default() };
+    uncovered_ty_params.visit_with(&mut collector);
+    debug_assert!(!collector.uncovered_params.is_empty()); // FIXME: possibly reachable
+
+    for (param, span) in collector.uncovered_params {
+        match local_ty {
+            Some(local_type) => tcx.emit_node_span_lint(
+                UNCOVERED_PARAM_IN_PROJECTION,
+                hir_id,
+                span,
+                errors::TyParamFirstLocalLint { span, note: (), param, local_type },
+            ),
+            None => tcx.emit_node_span_lint(
+                UNCOVERED_PARAM_IN_PROJECTION,
+                hir_id,
+                span,
+                errors::TyParamSomeLint { span, note: (), param },
+            ),
+        };
+    }
 }
 
 struct TyVarReplacer<'cx, 'tcx> {

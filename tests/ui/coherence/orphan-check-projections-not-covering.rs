@@ -4,6 +4,7 @@
 //@ revisions: classic next
 //@[next] compile-flags: -Znext-solver
 
+//@ check-pass
 //@ compile-flags: --crate-type=lib
 //@ aux-crate:foreign=parametrized-trait.rs
 //@ edition:2021
@@ -19,10 +20,13 @@ impl<T> Identity for T {
 struct Local;
 
 impl<T> foreign::Trait0<Local, T, ()> for <T as Identity>::Output {}
-//~^ ERROR type parameter `T` must be covered by another type
+//~^ WARNING type parameter `T` must be covered by another type
+//~| WARNING this was previously accepted by the compiler
+
 
 impl<T> foreign::Trait0<<T as Identity>::Output, Local, T> for Option<T> {}
-//~^ ERROR type parameter `T` must be covered by another type
+//~^ WARNING type parameter `T` must be covered by another type
+//~| WARNING this was previously accepted by the compiler
 
 pub trait Deferred {
     type Output;
@@ -34,4 +38,5 @@ pub trait Deferred {
 //     struct Type<T>(T);
 //
 impl<T: Deferred> foreign::Trait1<Local, T> for <T as Deferred>::Output {}
-//~^ ERROR type parameter `T` must be covered by another type
+//~^ WARNING type parameter `T` must be covered by another type
+//~| WARNING this was previously accepted by the compiler

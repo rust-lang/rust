@@ -6,6 +6,7 @@
 //@ revisions: classic next
 //@[next] compile-flags: -Znext-solver
 
+//@ check-pass
 //@ aux-crate:foreign=parametrized-trait.rs
 //@ edition:2021
 
@@ -25,7 +26,8 @@ where
 struct LocalTy;
 
 impl<T> foreign::Trait1<LocalTy, T> for <Wrapper<T> as Discard>::Output
-//~^ ERROR type parameter `T` must be covered by another type
+//~^ WARNING type parameter `T` must be covered by another type
+//~| WARNING this was previously accepted by the compiler
 where
     Wrapper<T>: Bound
 {}
