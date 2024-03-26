@@ -1,6 +1,6 @@
 use rustc_hir as hir;
 use rustc_hir::Expr;
-use rustc_hir_typeck::{cast, FnCtxt, Inherited};
+use rustc_hir_typeck::{cast, FnCtxt, TypeckRootCtxt};
 use rustc_lint::LateContext;
 use rustc_middle::ty::cast::CastKind;
 use rustc_middle::ty::Ty;
@@ -34,8 +34,8 @@ pub(super) fn check_cast<'tcx>(
     let hir_id = e.hir_id;
     let local_def_id = hir_id.owner.def_id;
 
-    let inherited = Inherited::new(cx.tcx, local_def_id);
-    let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, local_def_id);
+    let root_ctxt = TypeckRootCtxt::new(cx.tcx, local_def_id);
+    let fn_ctxt = FnCtxt::new(&root_ctxt, cx.param_env, local_def_id);
 
     if let Ok(check) = cast::CastCheck::new(
         &fn_ctxt,
