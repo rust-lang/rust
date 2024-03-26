@@ -388,6 +388,7 @@
 #![feature(const_format_args)]
 #![feature(custom_test_frameworks)]
 #![feature(edition_panic)]
+#![feature(fn_ptr_trait)]
 #![feature(format_args_nl)]
 #![feature(get_many_mut)]
 #![feature(lazy_cell)]
@@ -415,10 +416,11 @@
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.
+#[allow(unused_imports)]
+use crate::marker::FnPtr;
 #[prelude_import]
 #[allow(unused)]
 use prelude::rust_2021::*;
-
 // Access to Bencher, etc.
 #[cfg(test)]
 extern crate test;

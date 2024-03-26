@@ -1654,6 +1654,7 @@ mod prim_ref {}
 /// * [`Clone`]
 /// * [`Copy`]
 /// * [`Send`]
+/// * [`Sized`]
 /// * [`Sync`]
 /// * [`Unpin`]
 /// * [`UnwindSafe`]
@@ -1678,3 +1679,38 @@ mod prim_fn {}
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
 #[doc(hidden)]
 impl<Ret, T> fn(T) -> Ret {}
+
+// Fake impl that's only really used for docs.
+#[cfg(doc)]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(fake_variadic)]
+/// This trait is implemented on all function pointers.
+impl<Ret, T> Clone for fn(T) -> Ret {
+    fn clone(&self) -> Self {
+        loop {}
+    }
+}
+
+// Fake impl that's only really used for docs.
+#[cfg(doc)]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(fake_variadic)]
+/// This trait is implemented on all function pointers.
+impl<Ret, T> Copy for fn(T) -> Ret {
+    // empty
+}
+
+// Fake impl that's only really used for docs.
+#[cfg(doc)]
+#[unstable(
+    feature = "fn_ptr_trait",
+    issue = "none",
+    reason = "internal trait for implementing various traits for all function pointers"
+)]
+#[doc(fake_variadic)]
+/// This trait is implemented on all function pointers.
+impl<Ret, T> FnPtr for fn(T) -> Ret {
+    fn addr(self) -> *const () {
+        // empty
+    }
+}

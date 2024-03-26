@@ -283,10 +283,11 @@
 #[allow(unused_extern_crates)]
 extern crate self as core;
 
+#[allow(unused_imports)]
+use crate::marker::FnPtr;
 #[prelude_import]
 #[allow(unused)]
 use prelude::v1::*;
-
 #[cfg(not(test))] // See #65860
 #[macro_use]
 mod macros;
@@ -468,5 +469,4 @@ pub mod simd {
     #[unstable(feature = "portable_simd", issue = "86656")]
     pub use crate::core_simd::simd::*;
 }
-
 include!("primitive_docs.rs");
