@@ -233,12 +233,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        _outputs: &OutputFilenames,
+        outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
-        ongoing_codegen
-            .downcast::<driver::aot::OngoingCodegen>()
-            .unwrap()
-            .join(sess, self.config.borrow().as_ref().unwrap())
+        ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(
+            sess,
+            outputs,
+            self.config.borrow().as_ref().unwrap(),
+        )
     }
 
     fn link(

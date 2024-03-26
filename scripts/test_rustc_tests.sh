@@ -50,12 +50,9 @@ rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg sup
 rm -r tests/run-pass-valgrind/unsized-locals
 
 # misc unimplemented things
-rm tests/ui/intrinsics/intrinsic-nearby.rs # unimplemented nearbyintf32 and nearbyintf64 intrinsics
 rm tests/ui/target-feature/missing-plusminus.rs # error not implemented
-rm -r tests/run-make/emit-named-files # requires full --emit support
 rm -r tests/run-make/repr128-dwarf # debuginfo test
 rm -r tests/run-make/split-debuginfo # same
-rm -r tests/run-make/symbols-include-type-name # --emit=asm not supported
 rm -r tests/run-make/target-specs # i686 not supported by Cranelift
 rm -r tests/run-make/mismatching-target-triples # same
 rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
@@ -93,15 +90,23 @@ rm tests/ui/abi/stack-protector.rs # requires stack protector support
 rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
 rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
 
+# requires asm, llvm-ir and/or llvm-bc emit support
+# =============================================
+rm -r tests/run-make/emit-named-files
+rm -r tests/run-make/issue-30063
+rm -r tests/run-make/multiple-emits
+rm -r tests/run-make/output-type-permutations
+rm -r tests/run-make/emit-to-stdout
+rm -r tests/run-make/compressed-debuginfo
+rm -r tests/run-make/symbols-include-type-name
+
+
 # giving different but possibly correct results
 # =============================================
 rm tests/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
 rm tests/ui/consts/const-mut-refs-crate.rs # same
-
-# rustdoc-clif passes extra args, suppressing the help message when no args are passed
-rm -r tests/run-make/issue-88756-default-output
 
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
@@ -113,23 +118,11 @@ rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contain
 # ============
 rm tests/incremental/spike-neg1.rs # errors out for some reason
 rm tests/incremental/spike-neg2.rs # same
-
-rm -r tests/run-make/issue-51671 # wrong filename given in case of --emit=obj
-rm -r tests/run-make/issue-30063 # same
-rm -r tests/run-make/multiple-emits # same
-rm -r tests/run-make/output-type-permutations # same
-rm -r tests/run-make/used # same
-rm -r tests/run-make/no-alloc-shim
-rm -r tests/run-make/emit-to-stdout
-rm -r tests/run-make/compressed-debuginfo
-
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
-
-rm tests/ui/codegen/subtyping-enforces-type-equality.rs # assert_assignable bug with Coroutine's
+rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 
 # bugs in the test suite
 # ======================
-rm tests/ui/backtrace.rs # TODO warning
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd

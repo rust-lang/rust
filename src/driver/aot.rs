@@ -1,22 +1,25 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
-use std::fs::File;
-use std::path::PathBuf;
+use std::fs::{self, File};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use rustc_codegen_ssa::assert_module_sources::CguReuse;
+use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::metadata::create_compressed_metadata_file;
 use rustc_codegen_ssa::base::determine_cgu_reuse;
+use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_metadata::fs::copy_to_stdout;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::mir::mono::{CodegenUnit, MonoItem};
-use rustc_session::config::{DebugInfo, OutputFilenames, OutputType};
+use rustc_session::config::{DebugInfo, OutFileName, OutputFilenames, OutputType};
 use rustc_session::Session;
 
 use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
@@ -53,6 +56,7 @@ impl OngoingCodegen {
     pub(crate) fn join(
         self,
         sess: &Session,
+        outputs: &OutputFilenames,
         backend_config: &BackendConfig,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
         let mut work_products = FxIndexMap::default();
@@ -110,17 +114,183 @@ impl OngoingCodegen {
 
         sess.dcx().abort_if_errors();
 
-        (
-            CodegenResults {
-                modules,
-                allocator_module: self.allocator_module,
-                metadata_module: self.metadata_module,
-                metadata: self.metadata,
-                crate_info: self.crate_info,
-            },
-            work_products,
-        )
+        let codegen_results = CodegenResults {
+            modules,
+            allocator_module: self.allocator_module,
+            metadata_module: self.metadata_module,
+            metadata: self.metadata,
+            crate_info: self.crate_info,
+        };
+
+        produce_final_output_artifacts(sess, &codegen_results, outputs);
+
+        (codegen_results, work_products)
     }
+}
+
+// Adapted from https://github.com/rust-lang/rust/blob/73476d49904751f8d90ce904e16dfbc278083d2c/compiler/rustc_codegen_ssa/src/back/write.rs#L547C1-L706C2
+fn produce_final_output_artifacts(
+    sess: &Session,
+    codegen_results: &CodegenResults,
+    crate_output: &OutputFilenames,
+) {
+    let user_wants_bitcode = false;
+    let mut user_wants_objects = false;
+
+    // Produce final compile outputs.
+    let copy_gracefully = |from: &Path, to: &OutFileName| match to {
+        OutFileName::Stdout => {
+            if let Err(e) = copy_to_stdout(from) {
+                sess.dcx().emit_err(ssa_errors::CopyPath::new(from, to.as_path(), e));
+            }
+        }
+        OutFileName::Real(path) => {
+            if let Err(e) = fs::copy(from, path) {
+                sess.dcx().emit_err(ssa_errors::CopyPath::new(from, path, e));
+            }
+        }
+    };
+
+    let copy_if_one_unit = |output_type: OutputType, keep_numbered: bool| {
+        if codegen_results.modules.len() == 1 {
+            // 1) Only one codegen unit. In this case it's no difficulty
+            //    to copy `foo.0.x` to `foo.x`.
+            let module_name = Some(&codegen_results.modules[0].name[..]);
+            let path = crate_output.temp_path(output_type, module_name);
+            let output = crate_output.path(output_type);
+            if !output_type.is_text_output() && output.is_tty() {
+                sess.dcx()
+                    .emit_err(ssa_errors::BinaryOutputToTty { shorthand: output_type.shorthand() });
+            } else {
+                copy_gracefully(&path, &output);
+            }
+            if !sess.opts.cg.save_temps && !keep_numbered {
+                // The user just wants `foo.x`, not `foo.#module-name#.x`.
+                ensure_removed(sess.dcx(), &path);
+            }
+        } else {
+            let extension = crate_output
+                .temp_path(output_type, None)
+                .extension()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned();
+
+            if crate_output.outputs.contains_explicit_name(&output_type) {
+                // 2) Multiple codegen units, with `--emit foo=some_name`. We have
+                //    no good solution for this case, so warn the user.
+                sess.dcx().emit_warn(ssa_errors::IgnoringEmitPath { extension });
+            } else if crate_output.single_output_file.is_some() {
+                // 3) Multiple codegen units, with `-o some_name`. We have
+                //    no good solution for this case, so warn the user.
+                sess.dcx().emit_warn(ssa_errors::IgnoringOutput { extension });
+            } else {
+                // 4) Multiple codegen units, but no explicit name. We
+                //    just leave the `foo.0.x` files in place.
+                // (We don't have to do any work in this case.)
+            }
+        }
+    };
+
+    // Flag to indicate whether the user explicitly requested bitcode.
+    // Otherwise, we produced it only as a temporary output, and will need
+    // to get rid of it.
+    for output_type in crate_output.outputs.keys() {
+        match *output_type {
+            OutputType::Bitcode => {
+                // Cranelift doesn't have bitcode
+                // user_wants_bitcode = true;
+                // // Copy to .bc, but always keep the .0.bc. There is a later
+                // // check to figure out if we should delete .0.bc files, or keep
+                // // them for making an rlib.
+                // copy_if_one_unit(OutputType::Bitcode, true);
+            }
+            OutputType::LlvmAssembly => {
+                // Cranelift IR text already emitted during codegen
+                // copy_if_one_unit(OutputType::LlvmAssembly, false);
+            }
+            OutputType::Assembly => {
+                // Currently no support for emitting raw assembly files
+                // copy_if_one_unit(OutputType::Assembly, false);
+            }
+            OutputType::Object => {
+                user_wants_objects = true;
+                copy_if_one_unit(OutputType::Object, true);
+            }
+            OutputType::Mir | OutputType::Metadata | OutputType::Exe | OutputType::DepInfo => {}
+        }
+    }
+
+    // Clean up unwanted temporary files.
+
+    // We create the following files by default:
+    //  - #crate#.#module-name#.bc
+    //  - #crate#.#module-name#.o
+    //  - #crate#.crate.metadata.bc
+    //  - #crate#.crate.metadata.o
+    //  - #crate#.o (linked from crate.##.o)
+    //  - #crate#.bc (copied from crate.##.bc)
+    // We may create additional files if requested by the user (through
+    // `-C save-temps` or `--emit=` flags).
+
+    if !sess.opts.cg.save_temps {
+        // Remove the temporary .#module-name#.o objects. If the user didn't
+        // explicitly request bitcode (with --emit=bc), and the bitcode is not
+        // needed for building an rlib, then we must remove .#module-name#.bc as
+        // well.
+
+        // Specific rules for keeping .#module-name#.bc:
+        //  - If the user requested bitcode (`user_wants_bitcode`), and
+        //    codegen_units > 1, then keep it.
+        //  - If the user requested bitcode but codegen_units == 1, then we
+        //    can toss .#module-name#.bc because we copied it to .bc earlier.
+        //  - If we're not building an rlib and the user didn't request
+        //    bitcode, then delete .#module-name#.bc.
+        // If you change how this works, also update back::link::link_rlib,
+        // where .#module-name#.bc files are (maybe) deleted after making an
+        // rlib.
+        let needs_crate_object = crate_output.outputs.contains_key(&OutputType::Exe);
+
+        let keep_numbered_bitcode = user_wants_bitcode && sess.codegen_units().as_usize() > 1;
+
+        let keep_numbered_objects =
+            needs_crate_object || (user_wants_objects && sess.codegen_units().as_usize() > 1);
+
+        for module in codegen_results.modules.iter() {
+            if let Some(ref path) = module.object {
+                if !keep_numbered_objects {
+                    ensure_removed(sess.dcx(), path);
+                }
+            }
+
+            if let Some(ref path) = module.dwarf_object {
+                if !keep_numbered_objects {
+                    ensure_removed(sess.dcx(), path);
+                }
+            }
+
+            if let Some(ref path) = module.bytecode {
+                if !keep_numbered_bitcode {
+                    ensure_removed(sess.dcx(), path);
+                }
+            }
+        }
+
+        if !user_wants_bitcode {
+            if let Some(ref allocator_module) = codegen_results.allocator_module {
+                if let Some(ref path) = allocator_module.bytecode {
+                    ensure_removed(sess.dcx(), path);
+                }
+            }
+        }
+    }
+
+    // We leave the following files around by default:
+    //  - #crate#.o
+    //  - #crate#.crate.metadata.o
+    //  - #crate#.bc
+    // These are used in linking steps and will be cleaned up afterward.
 }
 
 fn make_module(sess: &Session, backend_config: &BackendConfig, name: String) -> ObjectModule {
