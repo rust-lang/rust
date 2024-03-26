@@ -457,6 +457,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         // Special handling for pointers to statics (irrespective of their type).
                         assert!(!self.ecx.tcx.is_thread_local_static(did));
                         assert!(self.ecx.tcx.is_static(did));
+                        let DefKind::Static { mutability, nested } = self.ecx.tcx.def_kind(did)
+                        else {
+                            bug!()
+                        };
                         // Mode-specific checks
                         match self.ctfe_mode {
                             Some(
@@ -471,7 +475,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                                 // trigger cycle errors if we try to compute the value of the other static
                                 // and that static refers back to us (potentially through a promoted).
                                 // This could miss some UB, but that's fine.
-                                skip_recursive_check = true;
+                                // We still walk nested allocations, as they are fundamentally part of this validation run.
+                                // This means we will also recurse into nested statics of *other*
+                                // statics, even though we do not recurse into other statics directly.
+                                // That's somewhat inconsistent but harmless.
+                                skip_recursive_check = !nested;
                             }
                             Some(CtfeValidationMode::Const { .. }) => {
                                 // We can't recursively validate `extern static`, so we better reject them.
@@ -483,10 +491,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         }
                         // Return alloc mutability. For "root" statics we look at the type to account for interior
                         // mutability; for nested statics we have no type and directly use the annotated mutability.
-                        let DefKind::Static { mutability, nested } = self.ecx.tcx.def_kind(did)
-                        else {
-                            bug!()
-                        };
                         match (mutability, nested) {
                             (Mutability::Mut, _) => Mutability::Mut,
                             (Mutability::Not, true) => Mutability::Not,
@@ -709,8 +713,16 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         if let Some(mplace) = op.as_mplace_or_imm().left() {
             if let Some(alloc_id) = mplace.ptr().provenance.and_then(|p| p.get_alloc_id()) {
                 let mutability = match self.ecx.tcx.global_alloc(alloc_id) {
-                    GlobalAlloc::Static(_) => {
-                        self.ecx.memory.alloc_map.get(alloc_id).unwrap().1.mutability
+                    GlobalAlloc::Static(did) => {
+                        let DefKind::Static { mutability, nested } = self.ecx.tcx.def_kind(did)
+                        else {
+                            bug!()
+                        };
+                        if nested {
+                            mutability
+                        } else {
+                            self.ecx.memory.alloc_map.get(alloc_id).unwrap().1.mutability
+                        }
                     }
                     GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
                     _ => span_bug!(self.ecx.tcx.span, "not a memory allocation"),
