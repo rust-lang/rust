@@ -1,4 +1,3 @@
-use super::TryFrom;
 use crate::num::TryFromIntError;
 
 mod private {
@@ -323,7 +322,6 @@ impl_try_from_lower_bounded!(isize => usize);
 #[cfg(target_pointer_width = "16")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
-    use crate::convert::TryFrom;
 
     impl_try_from_upper_bounded!(usize => u8);
     impl_try_from_unbounded!(usize => u16, u32, u64, u128);
@@ -346,7 +344,6 @@ mod ptr_try_from_impls {
 #[cfg(target_pointer_width = "32")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
-    use crate::convert::TryFrom;
 
     impl_try_from_upper_bounded!(usize => u8, u16);
     impl_try_from_unbounded!(usize => u32, u64, u128);
@@ -372,7 +369,6 @@ mod ptr_try_from_impls {
 #[cfg(target_pointer_width = "64")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
-    use crate::convert::TryFrom;
 
     impl_try_from_upper_bounded!(usize => u8, u16, u32);
     impl_try_from_unbounded!(usize => u64, u128);

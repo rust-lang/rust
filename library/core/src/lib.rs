@@ -270,6 +270,7 @@
 #![feature(arm_target_feature)]
 #![feature(avx512_target_feature)]
 #![feature(hexagon_target_feature)]
+#![feature(loongarch_target_feature)]
 #![feature(mips_target_feature)]
 #![feature(powerpc_target_feature)]
 #![feature(riscv_target_feature)]
@@ -285,7 +286,7 @@ extern crate self as core;
 
 #[prelude_import]
 #[allow(unused)]
-use prelude::v1::*;
+use prelude::rust_2021::*;
 
 #[cfg(not(test))] // See #65860
 #[macro_use]

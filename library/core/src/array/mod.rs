@@ -6,7 +6,7 @@
 
 use crate::borrow::{Borrow, BorrowMut};
 use crate::cmp::Ordering;
-use crate::convert::{Infallible, TryFrom};
+use crate::convert::Infallible;
 use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};

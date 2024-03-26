@@ -24,9 +24,8 @@ pub unsafe fn swap_i32(x: &mut i32, y: &mut i32) {
     // CHECK-NOT: alloca
 
     // CHECK: %[[TEMP:.+]] = load i32, ptr %x, align 4
-    // CHECK-SAME: !noundef
+    // OPT3-SAME: !noundef
     // OPT0: %[[TEMP2:.+]] = load i32, ptr %y, align 4
-    // OPT0-SAME: !noundef
     // OPT0: store i32 %[[TEMP2]], ptr %x, align 4
     // OPT0-NOT: memcpy
     // OPT3-NOT: load
@@ -42,9 +41,9 @@ pub unsafe fn swap_pair(x: &mut (i32, u32), y: &mut (i32, u32)) {
     // CHECK-NOT: alloca
 
     // CHECK: load i32
-    // CHECK-SAME: !noundef
+    // OPT3-SAME: !noundef
     // CHECK: load i32
-    // CHECK-SAME: !noundef
+    // OPT3-SAME: !noundef
     // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 %y, i64 8, i1 false)
     // CHECK: store i32
     // CHECK: store i32
@@ -57,10 +56,10 @@ pub unsafe fn swap_str<'a>(x: &mut &'a str, y: &mut &'a str) {
     // CHECK-NOT: alloca
 
     // CHECK: load ptr
-    // CHECK-SAME: !nonnull
-    // CHECK-SAME: !noundef
+    // OPT3-SAME: !nonnull
+    // OPT3-SAME: !noundef
     // CHECK: load i64
-    // CHECK-SAME: !noundef
+    // OPT3-SAME: !noundef
     // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 8 %x, ptr align 8 %y, i64 16, i1 false)
     // CHECK: store ptr
     // CHECK: store i64

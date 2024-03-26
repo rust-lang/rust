@@ -1,5 +1,4 @@
 use crate::ascii::Char as AsciiChar;
-use crate::convert::TryFrom;
 use crate::mem;
 use crate::net::{Ipv4Addr, Ipv6Addr};
 use crate::num::NonZero;

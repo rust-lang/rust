@@ -7,6 +7,7 @@
 //@ force-host
 //@ no-prefer-dynamic
 //@ needs-dynamic-linking
+//@ needs-unwind compiling proc macros with panic=abort causes a warning
 
 #![crate_type = "proc-macro"]
 

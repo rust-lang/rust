@@ -73,10 +73,10 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
 
         self.inlined_check_id(id);
         debug!("early context: enter_attrs({:?})", attrs);
-        lint_callback!(self, enter_lint_attrs, attrs);
+        lint_callback!(self, check_attributes, attrs);
         ensure_sufficient_stack(|| f(self));
         debug!("early context: exit_attrs({:?})", attrs);
-        lint_callback!(self, exit_lint_attrs, attrs);
+        lint_callback!(self, check_attributes_post, attrs);
         self.context.builder.pop(push);
     }
 }

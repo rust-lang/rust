@@ -557,6 +557,11 @@ impl OutputTypes {
         self.0.contains_key(key)
     }
 
+    /// Returns `true` if user specified a name and not just produced type
+    pub fn contains_explicit_name(&self, key: &OutputType) -> bool {
+        self.0.get(key).map_or(false, |f| f.is_some())
+    }
+
     pub fn iter(&self) -> BTreeMapIter<'_, OutputType, Option<OutFileName>> {
         self.0.iter()
     }

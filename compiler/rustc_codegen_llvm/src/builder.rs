@@ -20,6 +20,7 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_symbol_mangling::typeid::{
     kcfi_typeid_for_fnabi, kcfi_typeid_for_instance, typeid_for_fnabi, typeid_for_instance,
@@ -551,6 +552,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             layout: TyAndLayout<'tcx>,
             offset: Size,
         ) {
+            if bx.cx.sess().opts.optimize == OptLevel::No {
+                // Don't emit metadata we're not going to use
+                return;
+            }
+
             if !scalar.is_uninit_valid() {
                 bx.noundef_metadata(load);
             }
@@ -664,6 +670,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             // split into a v2i32, halving the bitwidth LLVM expects,
             // tripping an assertion. So, for now, just disable this
             // optimization.
+            return;
+        }
+
+        if self.cx.sess().opts.optimize == OptLevel::No {
+            // Don't emit metadata we're not going to use
             return;
         }
 
@@ -1630,7 +1641,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             }
 
             let typeid = if let Some(instance) = instance {
-                typeid_for_instance(self.tcx, &instance, options)
+                typeid_for_instance(self.tcx, instance, options)
             } else {
                 typeid_for_fnabi(self.tcx, fn_abi, options)
             };
@@ -1678,7 +1689,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             }
 
             let kcfi_typeid = if let Some(instance) = instance {
-                kcfi_typeid_for_instance(self.tcx, &instance, options)
+                kcfi_typeid_for_instance(self.tcx, instance, options)
             } else {
                 kcfi_typeid_for_fnabi(self.tcx, fn_abi, options)
             };
