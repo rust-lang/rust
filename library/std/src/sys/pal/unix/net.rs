@@ -453,6 +453,17 @@ impl Socket {
         Ok(raw as u32)
     }
 
+    #[cfg(any(target_os = "android", target_os = "linux",))]
+    pub fn set_syncnt(&self, count: u8) -> io::Result<()> {
+        setsockopt(self, libc::IPPROTO_TCP, libc::TCP_SYNCNT, count as c_int)
+    }
+
+    #[cfg(any(target_os = "android", target_os = "linux",))]
+    pub fn syncnt(&self) -> io::Result<u8> {
+        let raw: c_int = getsockopt(self, libc::IPPROTO_TCP, libc::TCP_SYNCNT)?;
+        Ok(raw as u8)
+    }
+
     #[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
     pub fn set_acceptfilter(&self, name: &CStr) -> io::Result<()> {
         if !name.to_bytes().is_empty() {
