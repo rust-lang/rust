@@ -396,36 +396,17 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             self.out.extend(obligations);
         }
 
-        self.out.extend(
-            trait_ref
-                .args
-                .iter()
-                .enumerate()
-                .filter(|(_, arg)| {
-                    matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
-                })
-                .filter(|(_, arg)| !arg.has_escaping_bound_vars())
-                .map(|(i, arg)| {
-                    let mut cause = traits::ObligationCause::misc(self.span, self.body_id);
-                    // The first arg is the self ty - use the correct span for it.
-                    if i == 0 {
-                        if let Some(hir::ItemKind::Impl(hir::Impl { self_ty, .. })) =
-                            item.map(|i| &i.kind)
-                        {
-                            cause.span = self_ty.span;
-                        }
-                    }
-                    traits::Obligation::with_depth(
-                        tcx,
-                        cause,
-                        depth,
-                        param_env,
-                        ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
-                            arg,
-                        ))),
-                    )
-                }),
-        );
+        if let Some(hir::ItemKind::Impl(hir::Impl { self_ty, .. })) = item.map(|i| &i.kind) {
+            // FIXME: Could generalize this hack.
+            let span = std::mem::replace(&mut self.span, self_ty.span);
+            // make sure that the trait ref is WF.
+            trait_ref.args[0].visit_with(self);
+            self.span = span;
+            (&trait_ref.args[1..]).visit_with(self);
+        } else {
+            // make sure that the trait ref is WF.
+            trait_ref.visit_with(self);
+        }
     }
 
     // Compute the obligations that are required for `trait_ref` to be WF,
@@ -463,7 +444,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         let obligations = self.nominal_obligations(data.def_id, data.args);
         self.out.extend(obligations);
 
-        self.compute_projection_args(data.args);
+        // Make sure that projection args are WF.
+        data.visit_with(self);
     }
 
     /// Pushes the obligations required for an inherent alias to be WF
@@ -493,33 +475,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             self.out.extend(obligations);
         }
 
-        self.compute_projection_args(data.args);
-    }
-
-    fn compute_projection_args(&mut self, args: GenericArgsRef<'tcx>) {
-        let tcx = self.tcx();
-        let cause = self.cause(traits::WellFormed(None));
-        let param_env = self.param_env;
-        let depth = self.recursion_depth;
-
-        self.out.extend(
-            args.iter()
-                .filter(|arg| {
-                    matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
-                })
-                .filter(|arg| !arg.has_escaping_bound_vars())
-                .map(|arg| {
-                    traits::Obligation::with_depth(
-                        tcx,
-                        cause.clone(),
-                        depth,
-                        param_env,
-                        ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
-                            arg,
-                        ))),
-                    )
-                }),
-        );
+        // Make sure that projection args are WF.
+        data.visit_with(self);
     }
 
     fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {
