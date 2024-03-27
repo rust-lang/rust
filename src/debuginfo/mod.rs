@@ -215,7 +215,6 @@ impl DebugContext {
             entry.set(gimli::DW_AT_linkage_name, AttributeValue::StringRef(linkage_name_id));
         }
         // Gdb requires DW_AT_name. Otherwise the DW_TAG_subprogram is skipped.
-        // FIXME only include the function name and not the full mangled symbol
         entry.set(gimli::DW_AT_name, AttributeValue::StringRef(name_id));
 
         entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
@@ -224,8 +223,6 @@ impl DebugContext {
         if tcx.is_reachable_non_generic(instance.def_id()) {
             entry.set(gimli::DW_AT_external, AttributeValue::FlagPresent);
         }
-
-        // FIXME set DW_AT_external as appropriate
 
         FunctionDebugContext {
             entry_id,
