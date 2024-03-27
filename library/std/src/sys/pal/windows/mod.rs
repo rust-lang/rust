@@ -325,6 +325,7 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
 /// that function for more information on `__fastfail`
 #[cfg(not(miri))] // inline assembly does not work in Miri
 pub fn abort_internal() -> ! {
+    #[allow(unused_unsafe)]
     unsafe {
         cfg_if::cfg_if! {
             if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
@@ -334,6 +335,7 @@ pub fn abort_internal() -> ! {
             } else if #[cfg(target_arch = "aarch64")] {
                 core::arch::asm!("brk 0xF003", in("x0") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
             } else {
+                // This is currently used for ARM64EC since we don't support inline assembly.
                 core::intrinsics::abort();
             }
         }

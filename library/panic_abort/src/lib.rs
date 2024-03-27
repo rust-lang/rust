@@ -81,6 +81,7 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
                     } else if #[cfg(target_arch = "aarch64")] {
                         core::arch::asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
                     } else {
+                        // This is currently used for ARM64EC since we don't support inline assembly.
                         core::intrinsics::abort();
                     }
                 }
