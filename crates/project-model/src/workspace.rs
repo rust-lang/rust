@@ -22,7 +22,7 @@ use crate::{
     build_scripts::BuildScriptOutput,
     cargo_workspace::{DepKind, PackageData, RustLibSource},
     cfg_flag::CfgFlag,
-    project_json::Crate,
+    project_json::{Crate, CrateArrayIdx},
     rustc_cfg::{self, RustcCfgConfig},
     sysroot::{SysrootCrate, SysrootMode},
     target_data_layout::{self, RustcDataLayoutConfig},
@@ -878,12 +878,13 @@ fn project_json_to_crate_graph(
 
     let r_a_cfg_flag = CfgFlag::Atom("rust_analyzer".to_owned());
     let mut cfg_cache: FxHashMap<&str, Vec<CfgFlag>> = FxHashMap::default();
-    let crates: FxHashMap<CrateId, CrateId> = project
+
+    let idx_to_crate_id: FxHashMap<CrateArrayIdx, CrateId> = project
         .crates()
-        .filter_map(|(crate_id, krate)| Some((crate_id, krate, load(&krate.root_module)?)))
+        .filter_map(|(idx, krate)| Some((idx, krate, load(&krate.root_module)?)))
         .map(
             |(
-                crate_id,
+                idx,
                 Crate {
                     display_name,
                     edition,
@@ -939,13 +940,13 @@ fn project_json_to_crate_graph(
                         proc_macros.insert(crate_graph_crate_id, node);
                     }
                 }
-                (crate_id, crate_graph_crate_id)
+                (idx, crate_graph_crate_id)
             },
         )
         .collect();
 
-    for (from, krate) in project.crates() {
-        if let Some(&from) = crates.get(&from) {
+    for (from_idx, krate) in project.crates() {
+        if let Some(&from) = idx_to_crate_id.get(&from_idx) {
             if let Some((public_deps, libproc_macro)) = &sysroot_deps {
                 public_deps.add_to_crate_graph(crate_graph, from);
                 if let Some(proc_macro) = libproc_macro {
@@ -954,8 +955,8 @@ fn project_json_to_crate_graph(
             }
 
             for dep in &krate.deps {
-                if let Some(&to) = crates.get(&dep.crate_id) {
-                    add_dep(crate_graph, from, dep.name.clone(), to)
+                if let Some(&to) = idx_to_crate_id.get(&dep.krate) {
+                    add_dep(crate_graph, from, dep.name.clone(), to);
                 }
             }
         }

@@ -49,8 +49,7 @@
 //! user explores them belongs to that extension (it's totally valid to change
 //! rust-project.json over time via configuration request!)
 
-use base_db::{CrateDisplayName, CrateId, CrateName, Dependency};
-use la_arena::RawIdx;
+use base_db::{CrateDisplayName, CrateName};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::{de, Deserialize};
@@ -77,7 +76,7 @@ pub struct Crate {
     pub root_module: AbsPathBuf,
     pub(crate) edition: Edition,
     pub(crate) version: Option<String>,
-    pub(crate) deps: Vec<Dependency>,
+    pub(crate) deps: Vec<Dep>,
     pub(crate) cfg: Vec<CfgFlag>,
     pub(crate) target: Option<String>,
     pub(crate) env: FxHashMap<String, String>,
@@ -128,16 +127,7 @@ impl ProjectJson {
                         root_module,
                         edition: crate_data.edition.into(),
                         version: crate_data.version.as_ref().map(ToString::to_string),
-                        deps: crate_data
-                            .deps
-                            .into_iter()
-                            .map(|dep_data| {
-                                Dependency::new(
-                                    dep_data.name,
-                                    CrateId::from_raw(RawIdx::from(dep_data.krate as u32)),
-                                )
-                            })
-                            .collect::<Vec<_>>(),
+                        deps: crate_data.deps,
                         cfg: crate_data.cfg,
                         target: crate_data.target,
                         env: crate_data.env,
@@ -161,11 +151,8 @@ impl ProjectJson {
     }
 
     /// Returns an iterator over the crates in the project.
-    pub fn crates(&self) -> impl Iterator<Item = (CrateId, &Crate)> + '_ {
-        self.crates
-            .iter()
-            .enumerate()
-            .map(|(idx, krate)| (CrateId::from_raw(RawIdx::from(idx as u32)), krate))
+    pub fn crates(&self) -> impl Iterator<Item = (CrateArrayIdx, &Crate)> {
+        self.crates.iter().enumerate().map(|(idx, krate)| (CrateArrayIdx(idx), krate))
     }
 
     /// Returns the path to the project's root folder.
@@ -188,7 +175,7 @@ struct CrateData {
     edition: EditionData,
     #[serde(default)]
     version: Option<semver::Version>,
-    deps: Vec<DepData>,
+    deps: Vec<Dep>,
     #[serde(default)]
     cfg: Vec<CfgFlag>,
     target: Option<String>,
@@ -227,13 +214,21 @@ impl From<EditionData> for Edition {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
-struct DepData {
+/// Identifies a crate by position in the crates array.
+///
+/// This will differ from `CrateId` when multiple `ProjectJson`
+/// workspaces are loaded.
+#[derive(Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[serde(transparent)]
+pub struct CrateArrayIdx(pub usize);
+
+#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
+pub(crate) struct Dep {
     /// Identifies a crate by position in the crates array.
     #[serde(rename = "crate")]
-    krate: usize,
+    pub(crate) krate: CrateArrayIdx,
     #[serde(deserialize_with = "deserialize_crate_name")]
-    name: CrateName,
+    pub(crate) name: CrateName,
 }
 
 #[derive(Deserialize, Debug, Clone)]
