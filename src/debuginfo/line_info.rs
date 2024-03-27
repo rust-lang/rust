@@ -5,13 +5,12 @@ use std::path::{Component, Path};
 
 use cranelift_codegen::binemit::CodeOffset;
 use cranelift_codegen::MachSrcLoc;
-use gimli::write::{
-    Address, AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable,
-};
+use gimli::write::{AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable};
 use rustc_span::{
     FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHash, SourceFileHashAlgorithm,
 };
 
+use crate::debuginfo::emit::address_for_func;
 use crate::debuginfo::FunctionDebugContext;
 use crate::prelude::*;
 
@@ -143,7 +142,7 @@ impl FunctionDebugContext {
     pub(super) fn create_debug_lines(
         &mut self,
         debug_context: &mut DebugContext,
-        symbol: usize,
+        func_id: FuncId,
         context: &Context,
     ) -> CodeOffset {
         let create_row_for_span =
@@ -156,11 +155,7 @@ impl FunctionDebugContext {
                 debug_context.dwarf.unit.line_program.generate_row();
             };
 
-        debug_context
-            .dwarf
-            .unit
-            .line_program
-            .begin_sequence(Some(Address::Symbol { symbol, addend: 0 }));
+        debug_context.dwarf.unit.line_program.begin_sequence(Some(address_for_func(func_id)));
 
         let mut func_end = 0;
 
@@ -183,10 +178,7 @@ impl FunctionDebugContext {
         assert_ne!(func_end, 0);
 
         let entry = debug_context.dwarf.unit.get_mut(self.entry_id);
-        entry.set(
-            gimli::DW_AT_low_pc,
-            AttributeValue::Address(Address::Symbol { symbol, addend: 0 }),
-        );
+        entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(address_for_func(func_id)));
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(func_end)));
 
         func_end

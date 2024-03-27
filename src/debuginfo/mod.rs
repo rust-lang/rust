@@ -20,6 +20,7 @@ use rustc_span::{SourceFileHash, StableSourceFileId};
 
 pub(crate) use self::emit::{DebugReloc, DebugRelocName};
 pub(crate) use self::unwind::UnwindContext;
+use crate::debuginfo::emit::address_for_func;
 use crate::prelude::*;
 
 pub(crate) fn producer(sess: &Session) -> String {
@@ -174,7 +175,6 @@ impl DebugContext {
     ) -> FunctionDebugContext {
         let (file_id, line, column) = self.get_span_loc(tcx, function_span, function_span);
 
-        // FIXME: add to appropriate scope instead of root
         let scope = self.item_namespace(tcx, tcx.parent(instance.def_id()));
 
         let mut name = String::new();
@@ -240,21 +240,16 @@ impl FunctionDebugContext {
         func_id: FuncId,
         context: &Context,
     ) {
-        let symbol = func_id.as_u32() as usize;
+        let end = self.create_debug_lines(debug_context, func_id, context);
 
-        let end = self.create_debug_lines(debug_context, symbol, context);
-
-        debug_context.unit_range_list.0.push(Range::StartLength {
-            begin: Address::Symbol { symbol, addend: 0 },
-            length: u64::from(end),
-        });
+        debug_context
+            .unit_range_list
+            .0
+            .push(Range::StartLength { begin: address_for_func(func_id), length: u64::from(end) });
 
         let func_entry = debug_context.dwarf.unit.get_mut(self.entry_id);
         // Gdb requires both DW_AT_low_pc and DW_AT_high_pc. Otherwise the DW_TAG_subprogram is skipped.
-        func_entry.set(
-            gimli::DW_AT_low_pc,
-            AttributeValue::Address(Address::Symbol { symbol, addend: 0 }),
-        );
+        func_entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(address_for_func(func_id)));
         // Using Udata for DW_AT_high_pc requires at least DWARF4
         func_entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(end)));
     }
