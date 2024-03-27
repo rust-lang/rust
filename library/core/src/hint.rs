@@ -237,7 +237,7 @@ pub fn spin_loop() {
         crate::arch::riscv64::pause();
     }
 
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         // SAFETY: the `cfg` attr ensures that we only execute this on aarch64 targets.
         unsafe { crate::arch::aarch64::__isb(crate::arch::aarch64::SY) };

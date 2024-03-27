@@ -415,6 +415,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
                 members.as_ptr() as *const &_,
                 true,
                 kind,
+                self.sess.target.arch == "arm64ec",
             );
             let ret = if r.into_result().is_err() {
                 let err = llvm::LLVMRustGetLastError();
