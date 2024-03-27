@@ -43,7 +43,7 @@ pub(crate) struct FunctionDebugContext {
 }
 
 impl DebugContext {
-    pub(crate) fn new(tcx: TyCtxt<'_>, isa: &dyn TargetIsa) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'_>, isa: &dyn TargetIsa, cgu_name: &str) -> Self {
         let encoding = Encoding {
             format: Format::Dwarf32,
             // FIXME this should be configurable
@@ -108,7 +108,7 @@ impl DebugContext {
         dwarf.unit.line_program = line_program;
 
         {
-            let name = dwarf.strings.add(name);
+            let name = dwarf.strings.add(format!("{name}/@/{cgu_name}"));
             let comp_dir = dwarf.strings.add(comp_dir);
 
             let root = dwarf.unit.root();
@@ -116,6 +116,12 @@ impl DebugContext {
             root.set(gimli::DW_AT_producer, AttributeValue::StringRef(dwarf.strings.add(producer)));
             root.set(gimli::DW_AT_language, AttributeValue::Language(gimli::DW_LANG_Rust));
             root.set(gimli::DW_AT_name, AttributeValue::StringRef(name));
+
+            // This will be replaced when emitting the debuginfo. It is only
+            // defined here to ensure that the order of the attributes matches
+            // rustc.
+            root.set(gimli::DW_AT_stmt_list, AttributeValue::Udata(0));
+
             root.set(gimli::DW_AT_comp_dir, AttributeValue::StringRef(comp_dir));
             root.set(gimli::DW_AT_low_pc, AttributeValue::Address(Address::Constant(0)));
         }
