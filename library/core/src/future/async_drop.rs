@@ -19,7 +19,7 @@ pub fn async_drop<T>(value: T) -> AsyncDropOwning<T> {
 #[unstable(feature = "async_drop", issue = "none")]
 pub struct AsyncDropOwning<T> {
     value: MaybeUninit<T>,
-    dtor: Option<<T as AsyncDestruct>::AsyncDestructor>,
+    dtor: Option<AsyncDropInPlace<T>>,
     _pinned: PhantomPinned,
 }
 
@@ -39,7 +39,7 @@ impl<T> Future for AsyncDropOwning<T> {
         unsafe {
             let this = self.get_unchecked_mut();
             let dtor = Pin::new_unchecked(
-                this.dtor.get_or_insert_with(|| async_drop_in_place_raw(this.value.as_mut_ptr())),
+                this.dtor.get_or_insert_with(|| async_drop_in_place(this.value.as_mut_ptr())),
             );
             // AsyncDestuctors are idempotent so Self gets idempotency as well
             dtor.poll(cx)
@@ -107,9 +107,10 @@ impl<T: ?Sized> fmt::Debug for AsyncDropInPlace<T> {
 impl<T: ?Sized> Future for AsyncDropInPlace<T> {
     type Output = ();
 
+    #[inline(always)]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // SAFETY: This code simply forwards poll call to the inner future
-        unsafe { self.map_unchecked_mut(|p| &mut p.0).poll(cx) }
+        unsafe { Pin::new_unchecked(&mut self.get_unchecked_mut().0) }.poll(cx)
     }
 }
 
