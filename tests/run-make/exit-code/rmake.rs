@@ -1,0 +1,43 @@
+// Test that we exit with the correct exit code for successful / unsuccessful / ICE compilations
+
+extern crate run_make_support;
+
+use run_make_support::{rustc, rustdoc, out_dir};
+
+fn main() {
+    rustc()
+        .arg("success.rs")
+        .run();
+
+    rustc()
+        .arg("--invalid-arg-foo")
+        .run_fail_assert_exit_code(1);
+
+    rustc()
+        .arg("compile-error.rs")
+        .run_fail_assert_exit_code(1);
+
+    rustc()
+        .env("RUSTC_ICE", "0")
+        .arg("-Ztreat-err-as-bug")
+        .arg("compile-error.rs")
+        .run_fail_assert_exit_code(101);
+
+    std::fs::remove_file(out_dir().join("success")).unwrap();
+
+    rustdoc()
+        .arg("success.rs")
+        .run();
+
+    rustdoc()
+        .arg("--invalid-arg-foo")
+        .run_fail_assert_exit_code(1);
+
+    rustdoc()
+        .arg("compile-error.rs")
+        .run_fail_assert_exit_code(1);
+
+    rustdoc()
+        .arg("lint-failure.rs")
+        .run_fail_assert_exit_code(1);
+}

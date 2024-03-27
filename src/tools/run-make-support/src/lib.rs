@@ -5,13 +5,31 @@ use std::process::{Command, Output};
 pub use object;
 pub use wasmparser;
 
+pub fn add_host_rpath_env(cmd: &mut Command) {
+    let ld_lib_path_envvar = env::var("LD_LIB_PATH_ENVVAR").unwrap();
+    let ld_lib_path_value = env::var(&ld_lib_path_envvar).unwrap();
+
+    let temp = env::var_os("TMPDIR").unwrap();
+    let host_rpath_dir = env::var_os("HOST_RPATH_DIR").unwrap();
+
+    let mut paths = Vec::from([temp, host_rpath_dir]);
+    for p in env::split_paths(&ld_lib_path_value) {
+        paths.push(p.into_os_string());
+    }
+
+    let path = std::env::join_paths(paths).unwrap();
+
+    cmd.env(ld_lib_path_envvar, path);
+}
+
 pub fn out_dir() -> PathBuf {
     env::var_os("TMPDIR").unwrap().into()
 }
 
 fn setup_common_build_cmd(command: &str) -> Command {
-    let rustc = env::var(command).unwrap();
+    let rustc = env::var_os(command).unwrap();
     let mut cmd = Command::new(rustc);
+    add_host_rpath_env(&mut cmd);
     cmd.arg("--out-dir").arg(out_dir()).arg("-L").arg(out_dir());
     cmd
 }
@@ -58,6 +76,11 @@ impl RustcInvocationBuilder {
         self
     }
 
+    pub fn env(&mut self, key: &str, value: &str) -> &mut RustcInvocationBuilder {
+        self.cmd.env(key, value);
+        self
+    }
+
     #[track_caller]
     pub fn run(&mut self) -> Output {
         let caller_location = std::panic::Location::caller();
@@ -65,6 +88,30 @@ impl RustcInvocationBuilder {
 
         let output = self.cmd.output().unwrap();
         if !output.status.success() {
+            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+        }
+        output
+    }
+
+    #[track_caller]
+    pub fn run_fail(&mut self) -> Output {
+        let caller_location = std::panic::Location::caller();
+        let caller_line_number = caller_location.line();
+
+        let output = self.cmd.output().unwrap();
+        if output.status.success() {
+            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+        }
+        output
+    }
+
+    #[track_caller]
+    pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
+        let caller_location = std::panic::Location::caller();
+        let caller_line_number = caller_location.line();
+
+        let output = self.cmd.output().unwrap();
+        if output.status.code().unwrap() != code {
             handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
         }
         output
@@ -117,6 +164,11 @@ impl Rustdoc {
         self
     }
 
+    pub fn arg_file(&mut self, arg: &Path) -> &mut Self {
+        self.cmd.arg(arg);
+        self
+    }
+
     #[track_caller]
     pub fn run(&mut self) -> Output {
         let caller_location = std::panic::Location::caller();
@@ -124,6 +176,18 @@ impl Rustdoc {
 
         let output = self.cmd.output().unwrap();
         if !output.status.success() {
+            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+        }
+        output
+    }
+
+    #[track_caller]
+    pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
+        let caller_location = std::panic::Location::caller();
+        let caller_line_number = caller_location.line();
+
+        let output = self.cmd.output().unwrap();
+        if output.status.code().unwrap() != code {
             handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
         }
         output
