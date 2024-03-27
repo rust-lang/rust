@@ -143,13 +143,12 @@ impl<'tcx> Queries<'tcx> {
             )) as _);
             let definitions = FreezeLock::new(Definitions::new(stable_crate_id));
 
-            let mut stable_crate_ids = StableCrateIdMap::default();
-            stable_crate_ids.insert(stable_crate_id, LOCAL_CRATE);
+            let stable_crate_ids = FreezeLock::new(StableCrateIdMap::default());
             let untracked = Untracked {
                 cstore,
                 source_span: AppendOnlyIndexVec::new(),
                 definitions,
-                stable_crate_ids: FreezeLock::new(stable_crate_ids),
+                stable_crate_ids,
             };
 
             let qcx = passes::create_global_ctxt(
@@ -164,7 +163,8 @@ impl<'tcx> Queries<'tcx> {
             );
 
             qcx.enter(|tcx| {
-                let feed = tcx.feed_local_crate();
+                let feed = tcx.create_crate_num(stable_crate_id).unwrap();
+                assert_eq!(feed.key(), LOCAL_CRATE);
                 feed.crate_name(crate_name);
 
                 let feed = tcx.feed_unit_query();

@@ -565,13 +565,6 @@ impl<'tcx> TyCtxt<'tcx> {
         TyCtxtFeed { tcx: self, key: () }
     }
 
-    /// Can only be fed before queries are run, and is thus exempt from any
-    /// incremental issues. Do not use except for the initial query feeding.
-    pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
-        self.dep_graph.assert_ignored();
-        TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
-    }
-
     /// Only used in the resolver to register the `CRATE_DEF_ID` `DefId` and feed
     /// some queries for it. It will panic if used twice.
     pub fn create_local_crate_def_id(self, span: Span) -> TyCtxtFeed<'tcx, LocalDefId> {
