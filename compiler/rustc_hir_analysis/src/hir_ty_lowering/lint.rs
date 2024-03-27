@@ -11,7 +11,7 @@ use super::HirTyLowerer;
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Prohibit or lint against *bare* trait object types depending on the edition.
     ///
-    /// *Bare* trait object types are ones that aren't preceeded by the keyword `dyn`.
+    /// *Bare* trait object types are ones that aren't preceded by the keyword `dyn`.
     /// In edition 2021 and onward we emit a hard error for them.
     pub(super) fn prohibit_or_lint_bare_trait_object_ty(
         &self,

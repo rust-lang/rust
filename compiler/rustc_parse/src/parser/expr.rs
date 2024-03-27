@@ -2768,7 +2768,7 @@ impl<'a> Parser<'a> {
                 };
                 return if self.token.kind == token::CloseDelim(Delimiter::Parenthesis) {
                     // We know for sure we have seen `for ($SOMETHING in $EXPR)`, so we recover the
-                    // parser state and emit a targetted suggestion.
+                    // parser state and emit a targeted suggestion.
                     let span = vec![start_span, self.token.span];
                     let right = self.prev_token.span.between(self.look_ahead(1, |t| t.span));
                     self.bump(); // )
