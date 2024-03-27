@@ -190,8 +190,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let casted_args: Vec<_> = param_types
             .into_iter()
             .zip(args.iter())
-            .enumerate()
-            .map(|(_i, (expected_ty, &actual_val))| {
+            .map(|(expected_ty, &actual_val)| {
                 let actual_ty = actual_val.get_type();
                 if expected_ty != actual_ty {
                     self.bitcast(actual_val, expected_ty)
