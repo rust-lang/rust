@@ -106,7 +106,7 @@ fn has_typeck_results(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 
     if let Some(def_id) = def_id.as_local() {
-        primary_body_of(tcx.hir_node_by_def_id(def_id)).is_some()
+        tcx.hir_node_by_def_id(def_id).body_id().is_some()
     } else {
         false
     }
