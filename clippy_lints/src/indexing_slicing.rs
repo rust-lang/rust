@@ -262,11 +262,6 @@ fn ty_has_appliciable_get_function<'tcx>(
         && cx.tcx.is_diagnostic_item(sym::Option, def.0.did)
         && let Some(option_generic_param) = args.get(0)
         && let generic_ty = option_generic_param.expect_ty().peel_refs()
-        && let _ = println!(
-            "{}, {}",
-            cx.typeck_results().expr_ty(index_expr).peel_refs(),
-            generic_ty.peel_refs()
-        )
         && cx.typeck_results().expr_ty(index_expr).peel_refs() == generic_ty.peel_refs()
     {
         true

@@ -47,6 +47,45 @@ impl<T> BoolMapWithGet<T> {
     }
 }
 
+struct S<T>(T);
+impl S<i32> {
+    fn get() -> Option<i32> {
+        unimplemented!()
+    }
+}
+impl<T> Index<i32> for S<T> {
+    type Output = T;
+    fn index(&self, _index: i32) -> &Self::Output {
+        &self.0
+    }
+}
+
+struct Y<T>(T);
+impl Y<i32> {
+    fn get<U>() -> Option<U> {
+        unimplemented!()
+    }
+}
+impl<T> Index<i32> for Y<T> {
+    type Output = T;
+    fn index(&self, _index: i32) -> &Self::Output {
+        &self.0
+    }
+}
+
+struct Z<T>(T);
+impl<T> Z<T> {
+    fn get<T2>() -> T2 {
+        todo!()
+    }
+}
+impl<T> Index<i32> for Z<T> {
+    type Output = T;
+    fn index(&self, _index: i32) -> &Self::Output {
+        &self.0
+    }
+}
+
 fn main() {
     let x = [1, 2, 3, 4];
     let index: usize = 1;
@@ -109,4 +148,13 @@ fn main() {
 
     // Lint on this, because `get` does exist with same signature
     map_with_get[true];
+
+    let s = S::<i32>(1);
+    s[0];
+
+    let y = Y::<i32>(1);
+    y[0];
+
+    let z = Z::<i32>(1);
+    z[0];
 }
