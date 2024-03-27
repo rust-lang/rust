@@ -1229,3 +1229,20 @@ fn benchmark_syntax_highlighting_parser() {
     };
     assert_eq!(hash, 1169);
 }
+
+#[test]
+fn highlight_trait_with_lifetimes_regression_16958() {
+    let (analysis, file_id) = fixture::file(
+        r#"
+pub trait Deserialize<'de> {
+    fn deserialize();
+}
+
+fn f<'de, T: Deserialize<'de>>() {
+    T::deserialize();
+}
+"#
+        .trim(),
+    );
+    let _ = analysis.highlight(HL_CONFIG, file_id).unwrap();
+}
