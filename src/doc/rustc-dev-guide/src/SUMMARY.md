@@ -148,6 +148,7 @@
     - [Opaque Types](./opaque-types-type-alias-impl-trait.md)
         - [Inference details](./opaque-types-impl-trait-inference.md)
         - [Return Position Impl Trait In Trait](./return-position-impl-trait-in-trait.md)
+        - [Region inference restrictions][opaque-infer]
 - [Effect checking](./effects.md)
 - [Pattern and Exhaustiveness Checking](./pat-exhaustive-checking.md)
 - [Unsafety Checking](./unsafety-checking.md)
@@ -208,3 +209,4 @@
 ---
 
 [pau]: ./borrow_check/region_inference/placeholders_and_universes.md
+[opaque-infer]: ./borrow_check/opaque-types-region-inference-restrictions.md
