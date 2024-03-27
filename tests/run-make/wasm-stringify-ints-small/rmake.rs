@@ -2,16 +2,16 @@
 
 extern crate run_make_support;
 
-use run_make_support::{out_dir, rustc};
+use run_make_support::{rustc, tmp_dir};
 
 fn main() {
     if std::env::var("TARGET").unwrap() != "wasm32-wasip1" {
         return;
     }
 
-    rustc().arg("foo.rs").arg("--target=wasm32-wasip1").arg("-Clto").arg("-O").run();
+    rustc().input("foo.rs").target("wasm32-wasip1").arg("-Clto").opt().run();
 
-    let bytes = std::fs::read(&out_dir().join("foo.wasm")).unwrap();
+    let bytes = std::fs::read(&tmp_dir().join("foo.wasm")).unwrap();
     println!("{}", bytes.len());
     assert!(bytes.len() < 50_000);
 }

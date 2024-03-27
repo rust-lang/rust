@@ -18,7 +18,7 @@ use run_make_support::object::read::Object;
 use run_make_support::object::ObjectSection;
 use run_make_support::object::ObjectSymbol;
 use run_make_support::object::RelocationTarget;
-use run_make_support::out_dir;
+use run_make_support::tmp_dir;
 use std::collections::HashSet;
 
 const MANIFEST: &str = r#"
@@ -31,7 +31,7 @@ edition = "2021"
 path = "lib.rs""#;
 
 fn main() {
-    let target_dir = out_dir().join("target");
+    let target_dir = tmp_dir().join("target");
     let target = std::env::var("TARGET").unwrap();
     if target.starts_with("wasm") || target.starts_with("nvptx") {
         // wasm and nvptx targets don't produce rlib files that object can parse.
@@ -41,9 +41,9 @@ fn main() {
     println!("Testing compiler_builtins for {}", target);
 
     // Set up the tiniest Cargo project: An empty no_std library. Just enough to run -Zbuild-std.
-    let manifest_path = out_dir().join("Cargo.toml");
+    let manifest_path = tmp_dir().join("Cargo.toml");
     std::fs::write(&manifest_path, MANIFEST.as_bytes()).unwrap();
-    std::fs::write(out_dir().join("lib.rs"), b"#![no_std]").unwrap();
+    std::fs::write(tmp_dir().join("lib.rs"), b"#![no_std]").unwrap();
 
     let path = std::env::var("PATH").unwrap();
     let rustc = std::env::var("RUSTC").unwrap();
