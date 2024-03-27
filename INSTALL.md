@@ -151,8 +151,8 @@ toolchain.
    directory and uncomment the line `MSYS2_PATH_TYPE=inherit`.
 
    You could install and use MSYS2's version of git instead with `pacman`,
-   however this is not recommended as it's excrutiatingly slow, and not frequently
-   tested for compatability.
+   however this is not recommended as it's excruciatingly slow, and not frequently
+   tested for compatibility.
 
 3. Start a MINGW64 or MINGW32 shell (depending on whether you want 32-bit
    or 64-bit Rust) either from your start menu, or by running `mingw64.exe`
