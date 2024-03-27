@@ -291,12 +291,17 @@ struct Unpacked {
 // 0..M    length of the edge
 // M..M+N  bytes per index
 // M+N..16 kind
+const MAX_INLINE_LEN: usize = 30;
 impl<D: Deps> SerializedNodeHeader<D> {
     const TOTAL_BITS: usize = std::mem::size_of::<DepKind>() * 8;
     const LEN_BITS: usize = Self::TOTAL_BITS - Self::KIND_BITS - Self::WIDTH_BITS;
     const WIDTH_BITS: usize = DEP_NODE_WIDTH_BITS;
     const KIND_BITS: usize = Self::TOTAL_BITS - D::DEP_KIND_MAX.leading_zeros() as usize;
-    const MAX_INLINE_LEN: usize = (u16::MAX as usize >> (Self::TOTAL_BITS - Self::LEN_BITS)) - 1;
+    const MAX_INLINE_LEN: usize = {
+        let v = (u16::MAX as usize >> (Self::TOTAL_BITS - Self::LEN_BITS)) - 1;
+        assert!(v == MAX_INLINE_LEN);
+        v
+    };
 
     #[inline]
     fn new(node_info: &NodeInfo) -> Self {
@@ -394,18 +399,57 @@ struct NodeInfo {
 impl NodeInfo {
     fn encode<D: Deps>(&self, e: &mut FileEncoder) {
         let header = SerializedNodeHeader::<D>::new(self);
+
+        let bytes_per_index = header.bytes_per_index();
+
+        // We special-case a fast path for small nodes
+        if self.edges.len() <= MAX_INLINE_LEN {
+            // FIXME: Add a check that this length fits in LEN_BITS
+            e.write_with(|dest: &mut [u8; 34 + 4 * MAX_INLINE_LEN]| {
+                let (head, tail) = dest.split_at_mut(34);
+                let head: &mut [u8; 34] = head.try_into().unwrap();
+                let tail: &mut [u8; 4 * MAX_INLINE_LEN] = tail.try_into().unwrap();
+                *head = header.bytes;
+
+                for (i, node_index) in self.edges.iter().enumerate() {
+                    let start = i * bytes_per_index;
+                    let d: &mut [u8; 4] =
+                        unsafe { tail.get_unchecked_mut(start..start + 4).try_into().unwrap() };
+                    *d = node_index.as_u32().to_le_bytes();
+                }
+                34 + self.edges.len() * bytes_per_index
+            });
+            return;
+        }
+
         e.write_array(header.bytes);
 
         if header.len().is_none() {
             e.emit_usize(self.edges.len());
         }
-
-        let bytes_per_index = header.bytes_per_index();
-        for node_index in self.edges.iter() {
-            e.write_with(|dest| {
-                *dest = node_index.as_u32().to_le_bytes();
-                bytes_per_index
+        let mut edges = &*self.edges;
+        loop {
+            e.write_with_spare(|dest| {
+                if dest.len() < 4 {
+                    return 0;
+                }
+                let usable_len = dest.len() - 4;
+                let (edges_to_encode, remaining) =
+                    edges.split_at((usable_len / bytes_per_index).min(edges.len()));
+                for (i, node_index) in edges_to_encode.iter().enumerate() {
+                    let start = i * bytes_per_index;
+                    let d: &mut [u8; 4] =
+                        unsafe { dest.get_unchecked_mut(start..start + 4).try_into().unwrap() };
+                    *d = node_index.as_u32().to_le_bytes();
+                }
+                edges = remaining;
+                edges_to_encode.len() * bytes_per_index
             });
+
+            if edges.is_empty() {
+                break;
+            }
+            e.flush();
         }
     }
 }
