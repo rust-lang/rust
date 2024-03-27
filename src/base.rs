@@ -95,7 +95,6 @@ pub(crate) fn codegen_fn<'tcx>(
         caller_location: None, // set by `codegen_fn_prelude`
 
         clif_comments,
-        last_source_file: None,
         next_ssa_var: 0,
     };
 

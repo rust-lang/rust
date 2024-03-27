@@ -31,10 +31,16 @@ impl ConstantCx {
     }
 }
 
-pub(crate) fn codegen_static(tcx: TyCtxt<'_>, module: &mut dyn Module, def_id: DefId) {
+pub(crate) fn codegen_static(tcx: TyCtxt<'_>, module: &mut dyn Module, def_id: DefId) -> DataId {
     let mut constants_cx = ConstantCx::new();
     constants_cx.todo.push(TodoItem::Static(def_id));
     constants_cx.finalize(tcx, module);
+
+    data_id_for_static(
+        tcx, module, def_id, false,
+        // For a declaration the stated mutability doesn't matter.
+        false,
+    )
 }
 
 pub(crate) fn codegen_tls_ref<'tcx>(
