@@ -1,4 +1,5 @@
 //@ only-wasm32-wasip1
+//@ needs-wasmtime
 
 extern crate run_make_support;
 
@@ -10,15 +11,6 @@ fn main() {
     rustc().input("foo.rs").target("wasm32-wasip1").run();
 
     let file = tmp_dir().join("foo.wasm");
-
-    let has_wasmtime = match Command::new("wasmtime").arg("--version").output() {
-        Ok(s) => s.status.success(),
-        _ => false,
-    };
-    if !has_wasmtime {
-        println!("skipping test, wasmtime isn't available");
-        return;
-    }
 
     run(&file, "return_two_i32", "1\n2\n");
     run(&file, "return_two_i64", "3\n4\n");

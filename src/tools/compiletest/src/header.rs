@@ -837,6 +837,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-sanitizer-thread",
     "needs-threads",
     "needs-unwind",
+    "needs-wasmtime",
     "needs-xray",
     "no-prefer-dynamic",
     "normalize-stderr-32bit",
