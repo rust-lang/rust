@@ -684,26 +684,11 @@ where
 impl_stable_traits_for_trivial_type!(::std::path::Path);
 impl_stable_traits_for_trivial_type!(::std::path::PathBuf);
 
-impl<K, V, R, HCX> HashStable<HCX> for ::std::collections::HashMap<K, V, R>
-where
-    K: ToStableHashKey<HCX> + Eq,
-    V: HashStable<HCX>,
-    R: BuildHasher,
-{
-    #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        stable_hash_reduce(hcx, hasher, self.iter(), self.len(), |hasher, hcx, (key, value)| {
-            let key = key.to_stable_hash_key(hcx);
-            key.hash_stable(hcx, hasher);
-            value.hash_stable(hcx, hasher);
-        });
-    }
-}
-
-// It is not safe to implement HashStable for HashSet or any other collection type
+// It is not safe to implement HashStable for HashSet, HashMap or any other collection type
 // with unstable but observable iteration order.
 // See https://github.com/rust-lang/compiler-team/issues/533 for further information.
 impl<V, HCX> !HashStable<HCX> for std::collections::HashSet<V> {}
+impl<K, V, HCX> !HashStable<HCX> for std::collections::HashMap<K, V> {}
 
 impl<K, V, HCX> HashStable<HCX> for ::std::collections::BTreeMap<K, V>
 where
@@ -726,35 +711,6 @@ where
         self.len().hash_stable(hcx, hasher);
         for entry in self.iter() {
             entry.hash_stable(hcx, hasher);
-        }
-    }
-}
-
-fn stable_hash_reduce<HCX, I, C, F>(
-    hcx: &mut HCX,
-    hasher: &mut StableHasher,
-    mut collection: C,
-    length: usize,
-    hash_function: F,
-) where
-    C: Iterator<Item = I>,
-    F: Fn(&mut StableHasher, &mut HCX, I),
-{
-    length.hash_stable(hcx, hasher);
-
-    match length {
-        1 => {
-            hash_function(hasher, hcx, collection.next().unwrap());
-        }
-        _ => {
-            let hash = collection
-                .map(|value| {
-                    let mut hasher = StableHasher::new();
-                    hash_function(&mut hasher, hcx, value);
-                    hasher.finish::<Hash128>()
-                })
-                .reduce(|accum, value| accum.wrapping_add(value));
-            hash.hash_stable(hcx, hasher);
         }
     }
 }
