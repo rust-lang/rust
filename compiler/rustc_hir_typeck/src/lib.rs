@@ -192,10 +192,20 @@ fn typeck_with_fallback<'tcx>(
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params);
     } else {
         let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = body_ty {
-            Some(fcx.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::TypeInference,
-                span,
-            }))
+            if let Some(item) = tcx.opt_associated_item(def_id.into())
+                && let ty::AssocKind::Const = item.kind
+                && let ty::ImplContainer = item.container
+                && let Some(trait_item) = item.trait_item_def_id
+            {
+                let args =
+                    tcx.impl_trait_ref(item.container_id(tcx)).unwrap().instantiate_identity().args;
+                Some(tcx.type_of(trait_item).instantiate(tcx, args))
+            } else {
+                Some(fcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span,
+                }))
+            }
         } else if let Node::AnonConst(_) = node {
             match tcx.parent_hir_node(id) {
                 Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), .. })
