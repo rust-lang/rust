@@ -1728,6 +1728,8 @@ fn item_variants(
         }
         w.write_str("</h3></section>");
 
+        write!(w, "{}", document(cx, variant, Some(it), HeadingOffset::H4));
+
         let heading_and_fields = match &variant_data.kind {
             clean::VariantKind::Struct(s) => {
                 // If there is no field to display, no need to add the heading.
@@ -1789,8 +1791,6 @@ fn item_variants(
             }
             w.write_str("</div>");
         }
-
-        write!(w, "{}", document(cx, variant, Some(it), HeadingOffset::H4));
     }
     write!(w, "</div>");
 }
