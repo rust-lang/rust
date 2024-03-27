@@ -385,7 +385,7 @@ impl File {
     /// See the [`OpenOptions::open`] function for more details.
     ///
     /// See also [`std::fs::write()`][self::write] for a simple function to
-    /// create a file with a given data.
+    /// create a file with some given data.
     ///
     /// # Examples
     ///
@@ -1036,7 +1036,7 @@ impl OpenOptions {
     /// [`OpenOptions::append`] access must be used.
     ///
     /// See also [`std::fs::write()`][self::write] for a simple function to
-    /// create a file with a given data.
+    /// create a file with some given data.
     ///
     /// # Examples
     ///
