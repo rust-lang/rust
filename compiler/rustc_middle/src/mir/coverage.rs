@@ -123,13 +123,6 @@ pub enum CoverageKind {
     /// Has no effect during codegen.
     MCDCDecisionOutputMarker { id: DecisionMarkerId, outcome: bool },
 
-    /// Declares the number of bytes needed to store the test-vector bitmaps of
-    /// all the decisions in the function body.
-    ///
-    /// In LLVM backend, this is done by inserting a call to the
-    /// `instrprof.mcdc.parameters` intrinsic.
-    MCDCBitmapRequire { needed_bytes: u32 },
-
     /// Marks the point in MIR control flow represented by a coverage counter.
     ///
     /// This is eventually lowered to `llvm.instrprof.increment` in LLVM IR.
@@ -147,6 +140,22 @@ pub enum CoverageKind {
     /// mappings. Intermediate expressions with no direct mappings are
     /// retained/zeroed based on whether they are transitively used.)
     ExpressionUsed { id: ExpressionId },
+
+    /// Declares the number of bytes needed to store the test-vector bitmaps of
+    /// all the decisions in the function body.
+    ///
+    /// In LLVM backend, this is done by inserting a call to the
+    /// `instrprof.mcdc.parameters` intrinsic.
+    MCDCBitmapRequire { needed_bytes: u32 },
+
+    /// Marks a point where the condition bitmap should be set to 0.
+    MCDCCondBitmapReset,
+
+    /// Marks a point where a bit of the condition bitmap should be set.
+    MCDCCondBitmapUpdate { condition_id: u32, bool_value: bool },
+
+    /// Marks a point where a bit of the global Test Vector bitmap should be set to one.
+    MCDCTestBitmapUpdate { needed_bytes: u32, decision_index: u32 },
 }
 
 impl Debug for CoverageKind {
@@ -161,14 +170,23 @@ impl Debug for CoverageKind {
             MCDCDecisionEntryMarker { id } => {
                 write!(fmt, "MCDCDecisionEntryMarker({:?})", id.index())
             }
-            &MCDCDecisionOutputMarker { id, outcome } => {
+            MCDCDecisionOutputMarker { id, outcome } => {
                 write!(fmt, "MCDCDecisionOutputMarker({:?}, {})", id.index(), outcome)
-            }
-            MCDCBitmapRequire { needed_bytes } => {
-                write!(fmt, "MCDCBitmapRequire({needed_bytes} bytes)")
             }
             CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
             ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
+            MCDCBitmapRequire { needed_bytes } => {
+                write!(fmt, "MCDCBitmapRequire({needed_bytes} bytes)")
+            }
+            MCDCCondBitmapReset => {
+                write!(fmt, "MCDCCondBitmapReset()")
+            }
+            MCDCCondBitmapUpdate { condition_id, bool_value } => {
+                write!(fmt, "MCDCCondBitmapUpdate({condition_id}, {bool_value})")
+            }
+            MCDCTestBitmapUpdate { needed_bytes, decision_index } => {
+                write!(fmt, "MCDCTVBitmapUpdate({needed_bytes} bytes, {decision_index})")
+            }
         }
     }
 }
