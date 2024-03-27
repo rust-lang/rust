@@ -167,6 +167,7 @@ pub(crate) fn comma_sep<T: Display>(
 
 pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
     bounds: &'a [clean::GenericBound],
+    ambiguity_table: &'a AmbiguityTable<'_>,
     cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
@@ -176,7 +177,7 @@ pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
             if i > 0 {
                 f.write_str(" + ")?;
             }
-            bound.print(cx).fmt(f)?;
+            bound.print(ambiguity_table, cx).fmt(f)?;
         }
         Ok(())
     })
@@ -225,6 +226,11 @@ struct AmbiguityTable<'a> {
 }
 
 impl<'a> AmbiguityTable<'a> {
+    fn empty() -> Self {
+        Self {
+            inner: FxHashMap::default()
+        }
+    }
     fn build() -> AmbiguityTableBuilder<'a> {
         AmbiguityTableBuilder { inner: FxHashMap::default() }
     }
@@ -368,7 +374,7 @@ impl clean::GenericParamDef {
 
                 if !bounds.is_empty() {
                     f.write_str(": ")?;
-                    print_generic_bounds(bounds, cx).fmt(f)?;
+                    print_generic_bounds(bounds, ambiguity_table, cx).fmt(f)?;
                 }
 
                 if let Some(ref ty) = default {
@@ -456,12 +462,12 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
 
                     match pred {
                         clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
-                            print_higher_ranked_params_with_space(bound_params, cx).fmt(f)?;
+                            print_higher_ranked_params_with_space(bound_params, ambiguity_table, cx).fmt(f)?;
                             ty.print(ambiguity_table, cx).fmt(f)?;
                             f.write_str(":")?;
                             if !bounds.is_empty() {
                                 f.write_str(" ")?;
-                                print_generic_bounds(bounds, cx).fmt(f)?;
+                                print_generic_bounds(bounds, ambiguity_table,cx).fmt(f)?;
                             }
                             Ok(())
                         }
@@ -470,7 +476,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                             // the lifetime nor the bounds contain any characters which need escaping.
                             write!(f, "{}:", lifetime.print())?;
                             if !bounds.is_empty() {
-                                write!(f, " {}", print_generic_bounds(bounds, cx))?;
+                                write!(f, " {}", print_generic_bounds(bounds, ambiguity_table,cx))?;
                             }
                             Ok(())
                         }
@@ -480,10 +486,10 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                                     f,
                                     "{:#} == {:#}",
                                     lhs.print(ambiguity_table, cx),
-                                    rhs.print(cx)
+                                    rhs.print(ambiguity_table, cx)
                                 )
                             } else {
-                                write!(f, "{} == {}", lhs.print(ambiguity_table, cx), rhs.print(cx))
+                                write!(f, "{} == {}", lhs.print(ambiguity_table, cx), rhs.print(ambiguity_table, cx))
                             }
                         }
                     }
@@ -565,11 +571,11 @@ impl clean::Constant {
 impl clean::PolyTrait {
     fn print<'a, 'tcx: 'a>(
         &'a self,
-        ambiguity_table: &AmbiguityTable<'_>,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
-            print_higher_ranked_params_with_space(&self.generic_params, cx).fmt(f)?;
+            print_higher_ranked_params_with_space(&self.generic_params, ambiguity_table, cx).fmt(f)?;
             self.trait_.print(ambiguity_table, cx).fmt(f)
         })
     }
@@ -578,6 +584,7 @@ impl clean::PolyTrait {
 impl clean::GenericBound {
     pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self {
@@ -590,7 +597,7 @@ impl clean::GenericBound {
                     // `const` and `~const` trait bounds are experimental; don't render them.
                     hir::TraitBoundModifier::Const | hir::TraitBoundModifier::MaybeConst => "",
                 })?;
-                ty.print(cx).fmt(f)
+                ty.print(ambiguity_table, cx).fmt(f)
             }
         })
     }
@@ -599,7 +606,7 @@ impl clean::GenericBound {
 impl clean::GenericArgs {
     fn print<'a, 'tcx: 'a>(
         &'a self,
-        ambiguity_table: &AmbiguityTable<'_>,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
@@ -618,9 +625,9 @@ impl clean::GenericArgs {
                             }
                             comma = true;
                             if f.alternate() {
-                                write!(f, "{:#}", arg.print(cx))?;
+                                write!(f, "{:#}", arg.print(ambiguity_table, cx))?;
                             } else {
-                                write!(f, "{}", arg.print(cx))?;
+                                write!(f, "{}", arg.print(ambiguity_table, cx))?;
                             }
                         }
                         for binding in bindings.iter() {
@@ -1021,7 +1028,7 @@ fn resolved_path<'cx>(
         }
     }
     if w.alternate() {
-        write!(w, "{}{:#}", &last.name, last.args.print(cx))?;
+        write!(w, "{}{:#}", &last.name, last.args.print(ambiguity_table, cx))?;
     } else {
         let path = if use_absolute {
             if let Ok((_, _, fqp)) = href(did, cx) {
@@ -1129,6 +1136,7 @@ fn primitive_link_fragment(
 fn tybounds<'a, 'tcx: 'a>(
     bounds: &'a [clean::PolyTrait],
     lt: &'a Option<clean::Lifetime>,
+    ambiguity_table: &'a AmbiguityTable<'_>,
     cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
@@ -1136,7 +1144,7 @@ fn tybounds<'a, 'tcx: 'a>(
             if i > 0 {
                 write!(f, " + ")?;
             }
-            bound.print(cx).fmt(f)?;
+            bound.print(ambiguity_table, cx).fmt(f)?;
         }
         if let Some(lt) = lt {
             // We don't need to check `alternate` since we can be certain that
@@ -1149,12 +1157,13 @@ fn tybounds<'a, 'tcx: 'a>(
 
 fn print_higher_ranked_params_with_space<'a, 'tcx: 'a>(
     params: &'a [clean::GenericParamDef],
+    ambiguity_table: &'a AmbiguityTable<'_>,
     cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
         if !params.is_empty() {
             f.write_str(if f.alternate() { "for<" } else { "for&lt;" })?;
-            comma_sep(params.iter().map(|lt| lt.print(cx)), true).fmt(f)?;
+            comma_sep(params.iter().map(|lt| lt.print(ambiguity_table, cx)), true).fmt(f)?;
             f.write_str(if f.alternate() { "> " } else { "&gt; " })?;
         }
         Ok(())
@@ -1208,7 +1217,7 @@ fn fmt_type<'cx>(
             primitive_link(f, prim, format_args!("{}", prim.as_sym().as_str()), cx)
         }
         clean::BareFunction(ref decl) => {
-            print_higher_ranked_params_with_space(&decl.generic_params, cx).fmt(f)?;
+            print_higher_ranked_params_with_space(&decl.generic_params, ambiguity_table, cx).fmt(f)?;
             decl.unsafety.print_with_space().fmt(f)?;
             print_abi_with_space(decl.abi).fmt(f)?;
             if f.alternate() {
@@ -1251,7 +1260,7 @@ fn fmt_type<'cx>(
                         if i != 0 {
                             write!(f, ", ")?;
                         }
-                        item.print(cx).fmt(f)?;
+                        item.print(ambiguity_table, cx).fmt(f)?;
                     }
                     write!(f, ")")
                 }
@@ -1263,7 +1272,7 @@ fn fmt_type<'cx>(
             }
             _ => {
                 write!(f, "[")?;
-                t.print(cx).fmt(f)?;
+                t.print(ambiguity_table, cx).fmt(f)?;
                 write!(f, "]")
             }
         },
@@ -1276,7 +1285,7 @@ fn fmt_type<'cx>(
             ),
             _ => {
                 write!(f, "[")?;
-                t.print(cx).fmt(f)?;
+                t.print(ambiguity_table, cx).fmt(f)?;
                 if f.alternate() {
                     write!(f, "; {n}")?;
                 } else {
@@ -1298,7 +1307,7 @@ fn fmt_type<'cx>(
             };
 
             if matches!(**t, clean::Generic(_)) || t.is_assoc_ty() {
-                let ty = t.print(cx);
+                let ty = t.print(ambiguity_table, cx);
                 if f.alternate() {
                     primitive_link(
                         f,
@@ -1316,7 +1325,7 @@ fn fmt_type<'cx>(
                 }
             } else {
                 primitive_link(f, clean::PrimitiveType::RawPointer, format_args!("*{m} "), cx)?;
-                t.print(cx).fmt(f)
+                t.print(ambiguity_table, cx).fmt(f)
             }
         }
         clean::BorrowedRef { lifetime: ref l, mutability, type_: ref ty } => {
@@ -1350,7 +1359,7 @@ fn fmt_type<'cx>(
             if needs_parens {
                 f.write_str("(")?;
             }
-            fmt_type(ty, f, use_absolute, cx)?;
+            fmt_type(ty, f, use_absolute, ambiguity_table, cx)?;
             if needs_parens {
                 f.write_str(")")?;
             }
@@ -1358,7 +1367,7 @@ fn fmt_type<'cx>(
         }
         clean::ImplTrait(ref bounds) => {
             f.write_str("impl ")?;
-            print_generic_bounds(bounds, cx).fmt(f)
+            print_generic_bounds(bounds, ambiguity_table,cx).fmt(f)
         }
         clean::QPath(box clean::QPathData {
             ref assoc,
@@ -1373,17 +1382,17 @@ fn fmt_type<'cx>(
                 if let Some(trait_) = trait_
                     && should_show_cast
                 {
-                    write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
+                    write!(f, "<{:#} as {:#}>::", self_type.print(ambiguity_table, cx), trait_.print(ambiguity_table, cx))?
                 } else {
-                    write!(f, "{:#}::", self_type.print(cx))?
+                    write!(f, "{:#}::", self_type.print(ambiguity_table, cx))?
                 }
             } else {
                 if let Some(trait_) = trait_
                     && should_show_cast
                 {
-                    write!(f, "&lt;{} as {}&gt;::", self_type.print(cx), trait_.print(cx))?
+                    write!(f, "&lt;{} as {}&gt;::", self_type.print(ambiguity_table, cx), trait_.print(ambiguity_table, cx))?
                 } else {
-                    write!(f, "{}::", self_type.print(cx))?
+                    write!(f, "{}::", self_type.print(ambiguity_table, cx))?
                 }
             };
             // It's pretty unsightly to look at `<A as B>::C` in output, and
@@ -1430,7 +1439,7 @@ fn fmt_type<'cx>(
                 write!(f, "{}", assoc.name)
             }?;
 
-            assoc.args.print(cx).fmt(f)
+            assoc.args.print(ambiguity_table, cx).fmt(f)
         }
     }
 }
@@ -1466,7 +1475,7 @@ impl clean::Impl {
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             f.write_str("impl")?;
-            self.generics.print(cx).fmt(f)?;
+            self.generics.print(ambiguity_table, cx).fmt(f)?;
             f.write_str(" ")?;
 
             if let Some(ref ty) = self.trait_ {
@@ -1499,7 +1508,7 @@ impl clean::Impl {
                 // Hardcoded anchor library/core/src/primitive_docs.rs
                 // Link should match `# Trait implementations`
 
-                print_higher_ranked_params_with_space(&bare_fn.generic_params, cx).fmt(f)?;
+                print_higher_ranked_params_with_space(&bare_fn.generic_params, ambiguity_table, cx).fmt(f)?;
                 bare_fn.unsafety.print_with_space().fmt(f)?;
                 print_abi_with_space(bare_fn.abi).fmt(f)?;
                 let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
@@ -1521,7 +1530,7 @@ impl clean::Impl {
                 fmt_type(&self.for_, f, use_absolute, ambiguity_table, cx)?;
             }
 
-            print_where_clause(&self.generics, cx, 0, Ending::Newline).fmt(f)
+            print_where_clause(&self.generics, ambiguity_table, cx, 0, Ending::Newline).fmt(f)
         })
     }
 }
@@ -1529,12 +1538,13 @@ impl clean::Impl {
 impl clean::Arguments {
     pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             for (i, input) in self.values.iter().enumerate() {
                 write!(f, "{}: ", input.name)?;
-                input.type_.print(cx).fmt(f)?;
+                input.type_.print(ambiguity_table, cx).fmt(f)?;
                 if i + 1 < self.values.len() {
                     write!(f, ", ")?;
                 }
@@ -1569,6 +1579,7 @@ impl Display for Indent {
 impl clean::FnDecl {
     pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'b + Captures<'tcx> {
         display_fn(move |f| {
@@ -1577,17 +1588,17 @@ impl clean::FnDecl {
                 write!(
                     f,
                     "({args:#}{ellipsis}){arrow:#}",
-                    args = self.inputs.print(cx),
+                    args = self.inputs.print(ambiguity_table, cx),
                     ellipsis = ellipsis,
-                    arrow = self.print_output(cx)
+                    arrow = self.print_output(ambiguity_table, cx)
                 )
             } else {
                 write!(
                     f,
                     "({args}{ellipsis}){arrow}",
-                    args = self.inputs.print(cx),
+                    args = self.inputs.print(ambiguity_table, cx),
                     ellipsis = ellipsis,
-                    arrow = self.print_output(cx)
+                    arrow = self.print_output(ambiguity_table, cx)
                 )
             }
         })
@@ -1603,6 +1614,7 @@ impl clean::FnDecl {
         &'a self,
         header_len: usize,
         indent: usize,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
@@ -1672,6 +1684,7 @@ impl clean::FnDecl {
         // the declaration will be line-wrapped, with an indent of n spaces.
         line_wrapping_indent: Option<usize>,
         f: &mut fmt::Formatter<'_>,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &Context<'_>,
     ) -> fmt::Result {
         let amp = if f.alternate() { "&" } else { "&amp;" };
@@ -1682,11 +1695,6 @@ impl clean::FnDecl {
         {
             write!(f, "\n{}", Indent(n + 4))?;
         }
-        let mut ambiguity_table_builder = AmbiguityTable::build();
-        for inpt in &self.inputs.values {
-            ambiguity_table_builder.add_type(&inpt.type_)
-        }
-        let ambiguity_table = ambiguity_table_builder.finnish();
         for (i, input) in self.inputs.values.iter().enumerate() {
             if i > 0 {
                 match line_wrapping_indent {
@@ -1716,7 +1724,7 @@ impl clean::FnDecl {
                     }
                     clean::SelfExplicit(ref typ) => {
                         write!(f, "self: ")?;
-                        typ.print(cx).fmt(f)?;
+                        typ.print(&ambiguity_table, cx).fmt(f)?;
                     }
                 }
             } else {
@@ -1725,13 +1733,7 @@ impl clean::FnDecl {
                 }
                 write!(f, "{}: ", input.name)?;
 
-                let use_absolute = input
-                    .type_
-                    .def_id(cx.cache())
-                    .and_then(|did| ambiguities.get(&did))
-                    .map(|rcb| rcb.get())
-                    .unwrap_or(false);
-                fmt_type(&input.type_, f, use_absolute, cx)?;
+                fmt_type(&input.type_, f, false, &ambiguity_table, cx)?;
             }
         }
 
@@ -1747,19 +1749,20 @@ impl clean::FnDecl {
             Some(n) => write!(f, "\n{})", Indent(n))?,
         };
 
-        self.print_output(cx).fmt(f)
+        self.print_output(&ambiguity_table, cx).fmt(f)
     }
 
     fn print_output<'a, 'tcx: 'a>(
         &'a self,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match &self.output {
             clean::Tuple(tys) if tys.is_empty() => Ok(()),
             ty if f.alternate() => {
-                write!(f, " -> {:#}", ty.print(cx))
+                write!(f, " -> {:#}", ty.print(ambiguity_table, cx))
             }
-            ty => write!(f, " -&gt; {}", ty.print(cx)),
+            ty => write!(f, " -&gt; {}", ty.print(ambiguity_table, cx)),
         })
     }
 }
@@ -1906,21 +1909,22 @@ pub(crate) fn print_constness_with_space(
 impl clean::Import {
     pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self.kind {
             clean::ImportKind::Simple(name) => {
                 if name == self.source.path.last() {
-                    write!(f, "use {};", self.source.print(cx))
+                    write!(f, "use {};", self.source.print(ambiguity_table, cx))
                 } else {
-                    write!(f, "use {source} as {name};", source = self.source.print(cx))
+                    write!(f, "use {source} as {name};", source = self.source.print(ambiguity_table, cx))
                 }
             }
             clean::ImportKind::Glob => {
                 if self.source.path.segments.is_empty() {
                     write!(f, "use *;")
                 } else {
-                    write!(f, "use {}::*;", self.source.print(cx))
+                    write!(f, "use {}::*;", self.source.print(ambiguity_table, cx))
                 }
             }
         })
@@ -1930,10 +1934,11 @@ impl clean::Import {
 impl clean::ImportSource {
     pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self.did {
-            Some(did) => resolved_path(f, did, &self.path, true, false, cx),
+            Some(did) => resolved_path(f, did, &self.path, true, false, ambiguity_table, cx),
             _ => {
                 for seg in &self.path.segments[..self.path.segments.len() - 1] {
                     write!(f, "{}::", seg.name)?;
@@ -1958,7 +1963,7 @@ impl clean::ImportSource {
 impl clean::TypeBinding {
     pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
-        ambiguity_table: &AmbiguityTable<'_>,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
@@ -1967,7 +1972,7 @@ impl clean::TypeBinding {
             match self.kind {
                 clean::TypeBindingKind::Equality { ref term } => {
                     f.write_str(" = ")?;
-                    term.print(cx).fmt(f)?;
+                    term.print(ambiguity_table, cx).fmt(f)?;
                 }
                 clean::TypeBindingKind::Constraint { ref bounds } => {
                     if !bounds.is_empty() {
@@ -1998,11 +2003,12 @@ pub(crate) fn print_default_space<'a>(v: bool) -> &'a str {
 impl clean::GenericArg {
     pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self {
             clean::GenericArg::Lifetime(lt) => lt.print().fmt(f),
-            clean::GenericArg::Type(ty) => ty.print(cx).fmt(f),
+            clean::GenericArg::Type(ty) => ty.print(ambiguity_table, cx).fmt(f),
             clean::GenericArg::Const(ct) => ct.print(cx.tcx()).fmt(f),
             clean::GenericArg::Infer => Display::fmt("_", f),
         })
@@ -2012,10 +2018,11 @@ impl clean::GenericArg {
 impl clean::Term {
     pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
+        ambiguity_table: &'a AmbiguityTable<'_>,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self {
-            clean::Term::Type(ty) => ty.print(cx).fmt(f),
+            clean::Term::Type(ty) => ty.print(ambiguity_table, cx).fmt(f),
             clean::Term::Constant(ct) => ct.print(cx.tcx()).fmt(f),
         })
     }
