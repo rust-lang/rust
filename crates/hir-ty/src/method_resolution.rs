@@ -644,7 +644,8 @@ pub fn is_dyn_method(
     let ItemContainerId::TraitId(trait_id) = func.lookup(db.upcast()).container else {
         return None;
     };
-    let trait_params = db.generic_params(trait_id.into()).type_or_consts.len();
+    let generic_params = db.generic_params(trait_id.into());
+    let trait_params = generic_params.type_or_consts.len() + generic_params.lifetimes.len();
     let fn_params = fn_subst.len(Interner) - trait_params;
     let trait_ref = TraitRef {
         trait_id: to_chalk_trait_id(trait_id),
@@ -686,7 +687,8 @@ pub(crate) fn lookup_impl_method_query(
     let ItemContainerId::TraitId(trait_id) = func.lookup(db.upcast()).container else {
         return (func, fn_subst);
     };
-    let trait_params = db.generic_params(trait_id.into()).type_or_consts.len();
+    let generic_params = db.generic_params(trait_id.into());
+    let trait_params = generic_params.type_or_consts.len() + generic_params.lifetimes.len();
     let fn_params = fn_subst.len(Interner) - trait_params;
     let trait_ref = TraitRef {
         trait_id: to_chalk_trait_id(trait_id),
