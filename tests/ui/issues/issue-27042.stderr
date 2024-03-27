@@ -40,6 +40,12 @@ error[E0308]: mismatched types
 LL | /         'c:
 LL | |         for _ in None { break }; // but here we cite the whole loop
    | |_______________________________^ expected `i32`, found `()`
+   |
+help: consider returning a value here
+   |
+LL ~         while let Some(_) = None { break };
+LL +     /* `i32` value */
+   |
 
 error[E0308]: mismatched types
   --> $DIR/issue-27042.rs:15:9

@@ -15,6 +15,7 @@ fn a() -> Option<()> {
         f();
     }
     //~^ HELP try adding an expression
+    //~| HELP consider returning a value here
 }
 
 fn b() -> Result<(), ()> {
@@ -29,6 +30,7 @@ fn c() -> Option<()> {
         f();
     }
     //~^ HELP try adding an expression
+    //~| HELP consider returning a value here
 }
 
 fn d() -> Option<()> {
@@ -63,6 +65,7 @@ fn main() {
     let _ = Foo { bar };
     //~^ ERROR mismatched types
     //~| HELP try wrapping
+    //~| HELP consider returning a value here
 }
 
 enum A {
