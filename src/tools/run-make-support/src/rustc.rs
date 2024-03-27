@@ -92,6 +92,13 @@ impl Rustc {
         self
     }
 
+    /// Specify `--crate-type`.
+    pub fn crate_type(&mut self, crate_type: &str) -> &mut Self {
+        assert!(!crate_type.contains(char::is_whitespace), "crate_type cannot contain whitespace");
+        self.cmd.arg(format!("--crate-type={crate_type}"));
+        self
+    }
+
     /// Generic command argument provider. Use `.arg("-Zname")` over `.arg("-Z").arg("arg")`.
     /// This method will panic if a plain `-Z` or `-C` is passed, or if `-Z <name>` or `-C <name>`
     /// is passed (note the space).
@@ -121,11 +128,6 @@ impl Rustc {
 
     // Command inspection, output and running helper methods
 
-    /// Get the [`Output`][std::process::Output] of the finished `rustc` process.
-    pub fn output(&mut self) -> Output {
-        self.cmd.output().unwrap()
-    }
-
     /// Run the constructed `rustc` command and assert that it is successfully run.
     #[track_caller]
     pub fn run(&mut self) -> Output {
@@ -137,6 +139,11 @@ impl Rustc {
             handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
         }
         output
+    }
+
+    /// Get the [`Output`][std::process::Output] of the finished `rustc` process.
+    pub fn output(&mut self) -> Output {
+        self.cmd.output().unwrap()
     }
 
     /// Inspect what the underlying [`Command`] is up to the current construction.
