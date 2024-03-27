@@ -226,9 +226,10 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
             // Block markers are used for branch coverage, so ignore them here.
             CoverageKind::BlockMarker {..}
             // Ignore MCDC markers as well
-            | CoverageKind::MCDCBlockMarker{ .. }
             | CoverageKind::MCDCDecisionEntryMarker{ .. }
             | CoverageKind::MCDCDecisionOutputMarker { .. }
+            | CoverageKind::MCDCConditionEntryMarker { .. }
+            | CoverageKind::MCDCConditionOutputMarker { .. }
         ) => None,
 
         // These coverage statements should not exist prior to coverage instrumentation.
@@ -389,14 +390,8 @@ pub(super) fn extract_branch_mappings(
     // Fill out the mapping from block marker IDs to their enclosing blocks.
     for (bb, data) in mir_body.basic_blocks.iter_enumerated() {
         for statement in &data.statements {
-            if let StatementKind::Coverage(kind) = &statement.kind {
-                match kind {
-                    CoverageKind::BlockMarker { id }
-                    | CoverageKind::MCDCBlockMarker { id, decision_id: _ } => {
-                        block_markers[*id] = Some(bb);
-                    }
-                    _ => (),
-                }
+            if let StatementKind::Coverage(CoverageKind::BlockMarker { id }) = &statement.kind {
+                block_markers[*id] = Some(bb);
             }
         }
     }

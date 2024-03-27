@@ -18,8 +18,15 @@ rustc_index::newtype_index! {
 rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
-    #[debug_format = "DecisionMarkerId({})"]
-    pub struct DecisionMarkerId {}
+    #[debug_format = "DecisionId({})"]
+    pub struct DecisionId {}
+}
+
+rustc_index::newtype_index! {
+    #[derive(HashStable)]
+    #[encodable]
+    #[debug_format = "ConditionId({})"]
+    pub struct ConditionId {}
 }
 
 rustc_index::newtype_index! {
@@ -104,24 +111,31 @@ pub enum CoverageKind {
     /// Should be erased before codegen (at some point after `InstrumentCoverage`).
     BlockMarker { id: BlockMarkerId },
 
-    /// Same as BlockMarker, but carries a reference to its parent decision for
-    /// MCDC coverage.
-    ///
-    /// Has no effect during codegen.
-    MCDCBlockMarker { id: BlockMarkerId, decision_id: DecisionMarkerId },
-
     /// Marks the first condition of a decision (boolean expression). All
     /// conditions in the same decision will reference this id.
     ///
     /// Has no effect during codegen.
-    MCDCDecisionEntryMarker { id: DecisionMarkerId },
+    MCDCDecisionEntryMarker { id: DecisionId },
 
     /// Marks one of the basic blocks following the decision referenced with `id`.
     /// the outcome bool designates which branch of the decision it is:
     /// `true` for the then block, `false` for the else block.
     ///
     /// Has no effect during codegen.
-    MCDCDecisionOutputMarker { id: DecisionMarkerId, outcome: bool },
+    MCDCDecisionOutputMarker { id: DecisionId, outcome: bool },
+
+    /// Marks a basic block where a condition evaluation occurs
+    /// The block may end with a SwitchInt where the 2 successors BBs have a
+    /// MCDCConditionOutcomeMarker statement with a matching ID.
+    ///
+    /// Has no effect during codegen.
+    MCDCConditionEntryMarker { decision_id: DecisionId, id: ConditionId },
+
+    /// Marks a basic block that is branched from a condition evaluation.
+    /// The block may have a predecessor with a matching ID.
+    ///
+    /// Has no effect during codegen.
+    MCDCConditionOutputMarker { decision_id: DecisionId, id: ConditionId, outcome: bool },
 
     /// Marks the point in MIR control flow represented by a coverage counter.
     ///
@@ -164,14 +178,23 @@ impl Debug for CoverageKind {
         match self {
             SpanMarker => write!(fmt, "SpanMarker"),
             BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
-            MCDCBlockMarker { id, decision_id } => {
-                write!(fmt, "MCDCBlockMarker({:?}, {:?})", id.index(), decision_id.index())
-            }
             MCDCDecisionEntryMarker { id } => {
                 write!(fmt, "MCDCDecisionEntryMarker({:?})", id.index())
             }
             MCDCDecisionOutputMarker { id, outcome } => {
                 write!(fmt, "MCDCDecisionOutputMarker({:?}, {})", id.index(), outcome)
+            }
+            MCDCConditionEntryMarker { decision_id, id } => {
+                write!(fmt, "MCDCConditionEntryMarker({:?}, {:?})", decision_id.index(), id.index())
+            }
+            MCDCConditionOutputMarker { decision_id, id, outcome } => {
+                write!(
+                    fmt,
+                    "MCDCConditionOutcomeMarker({:?}, {:?}, {})",
+                    decision_id.index(),
+                    id.index(),
+                    outcome
+                )
             }
             CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
             ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
@@ -300,7 +323,7 @@ pub struct BranchInfo {
 
     /// Associate a span for every decision in the function body.
     /// Empty if MCDC coverage is disabled.
-    pub decision_spans: IndexVec<DecisionMarkerId, DecisionSpan>,
+    pub decision_spans: IndexVec<DecisionId, DecisionSpan>,
 }
 
 #[derive(Clone, Debug)]
@@ -319,7 +342,7 @@ pub struct BranchSpan {
     pub span: Span,
     /// ID of Decision structure the branch is part of. Only used in
     /// the MCDC coverage.
-    pub decision_id: DecisionMarkerId,
+    pub decision_id: DecisionId,
     pub true_marker: BlockMarkerId,
     pub false_marker: BlockMarkerId,
 }

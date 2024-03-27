@@ -4,7 +4,7 @@ use std::collections::hash_map::Entry;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{
-    BlockMarkerId, BranchSpan, CoverageKind, DecisionMarkerId, DecisionSpan,
+    BlockMarkerId, BranchSpan, CoverageKind, DecisionId, DecisionSpan,
 };
 use rustc_middle::mir::{self, BasicBlock, UnOp};
 use rustc_middle::thir::{ExprId, ExprKind, Thir};
@@ -26,12 +26,12 @@ pub(crate) struct BranchInfoBuilder {
     /// ID of the current decision.
     /// Do not use directly. Use the function instead, as it will hide
     /// the decision in the scope of nested decisions.
-    current_decision_id: Option<DecisionMarkerId>,
+    current_decision_id: Option<DecisionId>,
     /// Track the nesting level of decision to avoid MCDC instrumentation of
     /// nested decisions.
     nested_decision_level: u32,
     /// Vector for storing all the decisions with their span
-    decisions: IndexVec<DecisionMarkerId, Span>,
+    decisions: IndexVec<DecisionId, Span>,
 }
 
 #[derive(Clone, Copy)]
@@ -158,7 +158,7 @@ impl BranchInfoBuilder {
         self.nested_decision_level > 1
     }
 
-    pub fn current_decision_id(&self) -> Option<DecisionMarkerId> {
+    pub fn current_decision_id(&self) -> Option<DecisionId> {
         if self.in_nested_condition() { None } else { self.current_decision_id }
     }
 }
@@ -191,14 +191,10 @@ impl Builder<'_, '_> {
         let mut inject_branch_marker = |block: BasicBlock| {
             let id = branch_info.next_block_marker_id();
 
-            let cov_kind = if let Some(decision_id) = branch_info.current_decision_id() {
-                CoverageKind::MCDCBlockMarker { id, decision_id }
-            } else {
-                CoverageKind::BlockMarker { id }
+            let marker_statement = mir::Statement {
+                source_info,
+                kind: mir::StatementKind::Coverage(CoverageKind::BlockMarker { id }),
             };
-
-            let marker_statement =
-                mir::Statement { source_info, kind: mir::StatementKind::Coverage(cov_kind) };
             self.cfg.push(block, marker_statement);
 
             id
@@ -210,7 +206,7 @@ impl Builder<'_, '_> {
         branch_info.branch_spans.push(BranchSpan {
             span: source_info.span,
             // FIXME(dprn): Handle case when MCDC is disabled better than just putting 0.
-            decision_id: branch_info.current_decision_id.unwrap_or(DecisionMarkerId::from_u32(0)),
+            decision_id: branch_info.current_decision_id.unwrap_or(DecisionId::from_u32(0)),
             true_marker,
             false_marker,
         });

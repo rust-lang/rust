@@ -106,9 +106,10 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         match *kind {
             CoverageKind::SpanMarker
             | CoverageKind::BlockMarker { .. }
-            | CoverageKind::MCDCBlockMarker { .. }
             | CoverageKind::MCDCDecisionEntryMarker { .. }
-            | CoverageKind::MCDCDecisionOutputMarker { .. } => unreachable!(
+            | CoverageKind::MCDCDecisionOutputMarker { .. }
+            | CoverageKind::MCDCConditionEntryMarker { .. }
+            | CoverageKind::MCDCConditionOutputMarker { .. } => unreachable!(
                 "marker statement {kind:?} should have been removed by CleanupPostBorrowck"
             ),
             CoverageKind::CounterIncrement { id } => {

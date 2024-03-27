@@ -37,9 +37,10 @@ impl<'tcx> MirPass<'tcx> for CleanupPostBorrowck {
                         // MIR building, and are not needed after InstrumentCoverage.
                         CoverageKind::BlockMarker { .. }
                         | CoverageKind::SpanMarker { .. }
-                        | CoverageKind::MCDCBlockMarker { .. }
                         | CoverageKind::MCDCDecisionEntryMarker { .. }
-                        | CoverageKind::MCDCDecisionOutputMarker { .. },
+                        | CoverageKind::MCDCDecisionOutputMarker { .. }
+                        | CoverageKind::MCDCConditionEntryMarker { .. }
+                        | CoverageKind::MCDCConditionOutputMarker { .. },
                     )
                     | StatementKind::FakeRead(..) => statement.make_nop(),
                     _ => (),
