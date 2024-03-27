@@ -75,7 +75,7 @@ pub(crate) struct FixupContext {
 }
 
 /// The default amount of fixing is minimal fixing. Fixups should be turned on
-/// in a targetted fashion where needed.
+/// in a targeted fashion where needed.
 impl Default for FixupContext {
     fn default() -> Self {
         FixupContext {
