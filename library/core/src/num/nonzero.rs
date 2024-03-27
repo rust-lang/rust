@@ -20,7 +20,15 @@ use super::{IntErrorKind, ParseIntError};
 ///
 /// # Safety
 ///
-/// Types implementing this trait must be primitves that are valid when zeroed.
+/// Types implementing this trait must be primitives that are valid when zeroed.
+///
+/// The associated `Self::NonZeroInner` type must have the same size+align as `Self`,
+/// but with a niche and bit validity making it so the following `transmutes` are sound:
+///
+/// - `Self::NonZeroInner` to `Option<Self::NonZeroInner>`
+/// - `Option<Self::NonZeroInner>` to `Self`
+///
+/// (And, consequently, `Self::NonZeroInner` to `Self`.)
 #[unstable(
     feature = "nonzero_internals",
     reason = "implementation detail which may disappear or be replaced at any time",
@@ -434,17 +442,11 @@ where
         // of some not-inlined function, LLVM don't have range metadata
         // to understand that the value cannot be zero.
         //
-        // SAFETY: `Self` is guaranteed to have the same layout as `Option<Self>`.
-        match unsafe { intrinsics::transmute_unchecked(self) } {
-            None => {
-                // SAFETY: `NonZero` is guaranteed to only contain non-zero values, so this is unreachable.
-                unsafe { intrinsics::unreachable() }
-            }
-            Some(Self(inner)) => {
-                // SAFETY: `T::NonZeroInner` is guaranteed to have the same layout as `T`.
-                unsafe { intrinsics::transmute_unchecked(inner) }
-            }
-        }
+        // For now, using the transmute `assume`s the range at runtime.
+        //
+        // SAFETY: `ZeroablePrimitive` guarantees that the size and bit validity
+        // of `.0` is such that this transmute is sound.
+        unsafe { intrinsics::transmute_unchecked(self) }
     }
 }
 
