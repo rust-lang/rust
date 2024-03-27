@@ -1,17 +1,13 @@
 use crate::coercion::{AsCoercionSite, CoerceMany};
 use crate::{Diverges, Expectation, FnCtxt, Needs};
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::{
-    self as hir,
-    def::{CtorOf, DefKind, Res},
-    ExprKind, PatKind,
-};
+use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::{self as hir, ExprKind, PatKind};
 use rustc_hir_pretty::ty_to_string;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::traits::Obligation;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
@@ -91,10 +87,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let arm_ty = self.check_expr_with_expectation(arm.body, expected);
             all_arms_diverge &= self.diverges.get();
-
-            let opt_suggest_box_span = prior_arm.and_then(|(_, prior_arm_ty, _)| {
-                self.opt_suggest_box_span(prior_arm_ty, arm_ty, orig_expected)
-            });
+            let tail_defines_return_position_impl_trait =
+                self.return_position_impl_trait_from_match_expectation(orig_expected);
 
             let (arm_block_id, arm_span) = if let hir::ExprKind::Block(blk, _) = arm.body.kind {
                 (Some(blk.hir_id), self.find_block_span(blk))
@@ -120,7 +114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         scrut_span: scrut.span,
                         source: match_src,
                         prior_non_diverging_arms: prior_non_diverging_arms.clone(),
-                        opt_suggest_box_span,
+                        tail_defines_return_position_impl_trait,
                     })),
                 ),
             };
@@ -422,7 +416,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         else_expr: &'tcx hir::Expr<'tcx>,
         then_ty: Ty<'tcx>,
         else_ty: Ty<'tcx>,
-        opt_suggest_box_span: Option<Span>,
+        tail_defines_return_position_impl_trait: Option<LocalDefId>,
     ) -> ObligationCause<'tcx> {
         let mut outer_span = if self.tcx.sess.source_map().is_multiline(span) {
             // The `if`/`else` isn't in one line in the output, include some context to make it
@@ -513,7 +507,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 then_ty,
                 else_ty,
                 outer_span,
-                opt_suggest_box_span,
+                tail_defines_return_position_impl_trait,
             })),
         )
     }
@@ -593,96 +587,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// When we have a `match` as a tail expression in a `fn` with a returned `impl Trait`
-    /// we check if the different arms would work with boxed trait objects instead and
-    /// provide a structured suggestion in that case.
-    pub(crate) fn opt_suggest_box_span(
+    // Does the expectation of the match define an RPIT?
+    // (e.g. we're in the tail of a function body)
+    //
+    // Returns the `LocalDefId` of the RPIT, which is always identity-substituted.
+    pub fn return_position_impl_trait_from_match_expectation(
         &self,
-        first_ty: Ty<'tcx>,
-        second_ty: Ty<'tcx>,
-        orig_expected: Expectation<'tcx>,
-    ) -> Option<Span> {
-        // FIXME(compiler-errors): This really shouldn't need to be done during the
-        // "good" path of typeck, but here we are.
-        match orig_expected {
-            Expectation::ExpectHasType(expected) => {
-                let TypeVariableOrigin {
-                    span,
-                    kind: TypeVariableOriginKind::OpaqueTypeInference(rpit_def_id),
-                    ..
-                } = self.type_var_origin(expected)?
-                else {
-                    return None;
-                };
-
-                let Some(rpit_local_def_id) = rpit_def_id.as_local() else {
-                    return None;
-                };
-                if !matches!(
-                    self.tcx.hir().expect_item(rpit_local_def_id).expect_opaque_ty().origin,
-                    hir::OpaqueTyOrigin::FnReturn(..)
-                ) {
-                    return None;
-                }
-
-                let sig = self.body_fn_sig()?;
-
-                let args = sig.output().walk().find_map(|arg| {
-                    if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) = *ty.kind()
-                        && def_id == rpit_def_id
-                    {
-                        Some(args)
-                    } else {
-                        None
-                    }
-                })?;
-
-                if !self.can_coerce(first_ty, expected) || !self.can_coerce(second_ty, expected) {
-                    return None;
-                }
-
-                for ty in [first_ty, second_ty] {
-                    for (clause, _) in self
-                        .tcx
-                        .explicit_item_super_predicates(rpit_def_id)
-                        .iter_instantiated_copied(self.tcx, args)
-                    {
-                        let pred = clause.kind().rebind(match clause.kind().skip_binder() {
-                            ty::ClauseKind::Trait(trait_pred) => {
-                                assert!(matches!(
-                                    *trait_pred.trait_ref.self_ty().kind(),
-                                    ty::Alias(ty::Opaque, ty::AliasTy { def_id, args: alias_args, .. })
-                                    if def_id == rpit_def_id && args == alias_args
-                                ));
-                                ty::ClauseKind::Trait(trait_pred.with_self_ty(self.tcx, ty))
-                            }
-                            ty::ClauseKind::Projection(mut proj_pred) => {
-                                assert!(matches!(
-                                    *proj_pred.projection_ty.self_ty().kind(),
-                                    ty::Alias(ty::Opaque, ty::AliasTy { def_id, args: alias_args, .. })
-                                    if def_id == rpit_def_id && args == alias_args
-                                ));
-                                proj_pred = proj_pred.with_self_ty(self.tcx, ty);
-                                ty::ClauseKind::Projection(proj_pred)
-                            }
-                            _ => continue,
-                        });
-                        if !self.predicate_must_hold_modulo_regions(&Obligation::new(
-                            self.tcx,
-                            ObligationCause::misc(span, self.body_id),
-                            self.param_env,
-                            pred,
-                        )) {
-                            return None;
-                        }
-                    }
-                }
-
-                Some(span)
-            }
-            _ => None,
+        expectation: Expectation<'tcx>,
+    ) -> Option<LocalDefId> {
+        let expected_ty = expectation.to_option(self)?;
+        let (def_id, args) = match *expected_ty.kind() {
+            // FIXME: Could also check that the RPIT is not defined
+            ty::Alias(ty::Opaque, alias_ty) => (alias_ty.def_id.as_local()?, alias_ty.args),
+            // FIXME(-Znext-solver): Remove this branch once `replace_opaque_types_with_infer` is gone.
+            ty::Infer(ty::TyVar(_)) => self
+                .inner
+                .borrow()
+                .iter_opaque_types()
+                .find(|(_, v)| v.ty == expected_ty)
+                .map(|(k, _)| (k.def_id, k.args))?,
+            _ => return None,
+        };
+        let hir::OpaqueTyOrigin::FnReturn(parent_def_id) = self.tcx.opaque_type_origin(def_id)
+        else {
+            return None;
+        };
+        if &args[0..self.tcx.generics_of(parent_def_id).count()]
+            != ty::GenericArgs::identity_for_item(self.tcx, parent_def_id).as_slice()
+        {
+            return None;
         }
+        Some(def_id)
     }
 }
 

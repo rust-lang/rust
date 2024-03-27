@@ -73,7 +73,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // for opaque types, and then use that kind to fix the spans for type errors
                     // that we see later on.
                     let ty_var = self.next_ty_var(TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::OpaqueTypeInference(def_id),
+                        kind: TypeVariableOriginKind::MiscVariable,
                         span,
                     });
                     obligations.extend(
