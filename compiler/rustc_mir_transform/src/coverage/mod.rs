@@ -103,7 +103,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     ////////////////////////////////////////////////////
     // Add the MCDC instrumentation. This is a no-op if MCDC coverage is disabled.
-    mcdc::instrument_function_mcdc(tcx, mir_body);
+    mcdc::instrument_function_mcdc(tcx, mir_body, &basic_coverage_blocks);
 
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,

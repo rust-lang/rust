@@ -33,6 +33,15 @@ pub(crate) enum ConstMutate {
 }
 
 #[derive(Diagnostic)]
+#[diag(mir_transform_mcdc_too_many_conditions)]
+pub(crate) struct MCDCTooManyConditions {
+    #[primary_span]
+    pub span: Span,
+    pub num_conditions: u32,
+    pub max_conditions: u32,
+}
+
+#[derive(Diagnostic)]
 #[diag(mir_transform_unaligned_packed_ref, code = E0793)]
 #[note]
 #[note(mir_transform_note_ub)]
