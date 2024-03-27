@@ -16,6 +16,7 @@ use indexmap::IndexSet;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_hir::def_id::DefIdMap;
 use rustc_session::Session;
+use rustc_span::{SourceFileHash, StableSourceFileId};
 
 pub(crate) use self::emit::{DebugReloc, DebugRelocName};
 pub(crate) use self::unwind::UnwindContext;
@@ -30,6 +31,7 @@ pub(crate) struct DebugContext {
 
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
+    created_files: FxHashMap<(StableSourceFileId, SourceFileHash), FileId>,
     stack_pointer_register: Register,
     namespace_map: DefIdMap<UnitEntryId>,
 
@@ -130,6 +132,7 @@ impl DebugContext {
             endian,
             dwarf,
             unit_range_list: RangeList(Vec::new()),
+            created_files: FxHashMap::default(),
             stack_pointer_register,
             namespace_map: DefIdMap::default(),
             should_remap_filepaths,
@@ -169,9 +172,7 @@ impl DebugContext {
         linkage_name: &str,
         function_span: Span,
     ) -> FunctionDebugContext {
-        let (file, line, column) = DebugContext::get_span_loc(tcx, function_span, function_span);
-
-        let file_id = self.add_source_file(&file);
+        let (file_id, line, column) = self.get_span_loc(tcx, function_span, function_span);
 
         // FIXME: add to appropriate scope instead of root
         let scope = self.item_namespace(tcx, tcx.parent(instance.def_id()));
