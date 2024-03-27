@@ -20,7 +20,7 @@ use std::mem;
 use std::ops::Deref;
 
 use super::ops::{self, NonConstOp, Status};
-use super::qualifs::{self, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
+use super::qualifs::{self, NeedsDrop, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
@@ -31,7 +31,6 @@ type QualifResults<'mir, 'tcx, Q> =
 
 #[derive(Default)]
 pub(crate) struct Qualifs<'mir, 'tcx> {
-    has_mut_interior: Option<QualifResults<'mir, 'tcx, HasMutInterior>>,
     needs_drop: Option<QualifResults<'mir, 'tcx, NeedsDrop>>,
     needs_non_const_drop: Option<QualifResults<'mir, 'tcx, NeedsNonConstDrop>>,
 }
@@ -97,36 +96,6 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         needs_non_const_drop.get().contains(local)
     }
 
-    /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
-    ///
-    /// Only updates the cursor if absolutely necessary.
-    pub fn has_mut_interior(
-        &mut self,
-        ccx: &'mir ConstCx<'mir, 'tcx>,
-        local: Local,
-        location: Location,
-    ) -> bool {
-        let ty = ccx.body.local_decls[local].ty;
-        // Peeking into opaque types causes cycles if the current function declares said opaque
-        // type. Thus we avoid short circuiting on the type and instead run the more expensive
-        // analysis that looks at the actual usage within this function
-        if !ty.has_opaque_types() && !HasMutInterior::in_any_value_of_ty(ccx, ty) {
-            return false;
-        }
-
-        let has_mut_interior = self.has_mut_interior.get_or_insert_with(|| {
-            let ConstCx { tcx, body, .. } = *ccx;
-
-            FlowSensitiveAnalysis::new(HasMutInterior, ccx)
-                .into_engine(tcx, body)
-                .iterate_to_fixpoint()
-                .into_results_cursor(body)
-        });
-
-        has_mut_interior.seek_before_primary_effect(location);
-        has_mut_interior.get().contains(local)
-    }
-
     fn in_return_place(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
@@ -152,7 +121,6 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         ConstQualifs {
             needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc),
             needs_non_const_drop: self.needs_non_const_drop(ccx, RETURN_PLACE, return_loc),
-            has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
             tainted_by_errors,
         }
     }
@@ -373,6 +341,21 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             }
         }
     }
+
+    fn has_interior_mut(&self, ty: Ty<'tcx>) -> bool {
+        match ty.kind() {
+            // Empty arrays have no interior mutability no matter their element type.
+            ty::Array(_elem, count)
+                if count
+                    .try_eval_target_usize(self.tcx, self.param_env)
+                    .is_some_and(|v| v == 0) =>
+            {
+                false
+            }
+            // Fallback to checking `Freeze`.
+            _ => !ty.is_freeze(self.tcx, self.param_env),
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
@@ -484,20 +467,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake, place)
             | Rvalue::AddressOf(Mutability::Not, place) => {
-                let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
-                    self.ccx,
-                    &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
-                    place.as_ref(),
-                );
+                // We don't do value-based reasoning here, since the rules for interior mutability
+                // are not finalized yet and they seem likely to not be full value-based in the end.
+                let borrowed_place_has_mut_interior =
+                    self.has_interior_mut(place.ty(self.body, self.tcx).ty);
 
-                // If the place is indirect, this is basically a reborrow. We have a reborrow
-                // special case above, but for raw pointers and pointers/references to `static` and
-                // when the `*` is not the first projection, `place_as_reborrow` does not recognize
-                // them as such, so we end up here. This should probably be considered a
-                // `TransientCellBorrow` (we consider the equivalent mutable case a
-                // `TransientMutBorrow`), but such reborrows got accidentally stabilized already and
-                // it is too much of a breaking change to take back.
-                if borrowed_place_has_mut_interior && !place.is_indirect() {
+                if borrowed_place_has_mut_interior {
                     match self.const_kind() {
                         // In a const fn all borrows are transient or point to the places given via
                         // references in the arguments (so we already checked them with
@@ -508,6 +483,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         // to (interior) mutable memory.
                         hir::ConstContext::ConstFn => self.check_op(ops::TransientCellBorrow),
                         _ => {
+                            // For indirect places, we are not creating a new permanent borrow, it's just as
+                            // transient as the already existing one. For reborrowing references this is handled
+                            // at the top of `visit_rvalue`, but for raw pointers we handle it here.
+                            // Pointers/references to `static mut` and cases where the `*` is not the first
+                            // projection also end up here.
                             // Locals with StorageDead are definitely not part of the final constant value, and
                             // it is thus inherently safe to permit such locals to have their
                             // address taken as we can't end up with a reference to them in the
@@ -516,7 +496,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             // `StorageDead` in every control flow path leading to a `return` terminator.
                             // The good news is that interning will detect if any unexpected mutable
                             // pointer slips through.
-                            if self.local_has_storage_dead(place.local) {
+                            if place.is_indirect() || self.local_has_storage_dead(place.local) {
                                 self.check_op(ops::TransientCellBorrow);
                             } else {
                                 self.check_op(ops::CellBorrow);

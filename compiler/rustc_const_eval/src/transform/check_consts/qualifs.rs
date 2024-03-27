@@ -21,7 +21,6 @@ pub fn in_any_value_of_ty<'tcx>(
     tainted_by_errors: Option<ErrorGuaranteed>,
 ) -> ConstQualifs {
     ConstQualifs {
-        has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
         needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
         needs_non_const_drop: NeedsNonConstDrop::in_any_value_of_ty(cx, ty),
         tainted_by_errors,
@@ -81,39 +80,6 @@ pub trait Qualif {
     /// (This is currently `false` for all our instances, but that may change in the future. Also,
     /// by keeping it abstract, the handling of `Deref` in `in_place` becomes more clear.)
     fn deref_structural<'tcx>(cx: &ConstCx<'_, 'tcx>) -> bool;
-}
-
-/// Constant containing interior mutability (`UnsafeCell<T>`).
-/// This must be ruled out to make sure that evaluating the constant at compile-time
-/// and at *any point* during the run-time would produce the same result. In particular,
-/// promotion of temporaries must not change program behavior; if the promoted could be
-/// written to, that would be a problem.
-pub struct HasMutInterior;
-
-impl Qualif for HasMutInterior {
-    const ANALYSIS_NAME: &'static str = "flow_has_mut_interior";
-
-    fn in_qualifs(qualifs: &ConstQualifs) -> bool {
-        qualifs.has_mut_interior
-    }
-
-    fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        !ty.is_freeze(cx.tcx, cx.param_env)
-    }
-
-    fn in_adt_inherently<'tcx>(
-        _cx: &ConstCx<'_, 'tcx>,
-        adt: AdtDef<'tcx>,
-        _: GenericArgsRef<'tcx>,
-    ) -> bool {
-        // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
-        // It arises structurally for all other types.
-        adt.is_unsafe_cell()
-    }
-
-    fn deref_structural<'tcx>(_cx: &ConstCx<'_, 'tcx>) -> bool {
-        false
-    }
 }
 
 /// Constant containing an ADT that implements `Drop`.
