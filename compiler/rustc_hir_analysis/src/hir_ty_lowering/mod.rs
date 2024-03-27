@@ -2212,6 +2212,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             try_emit("delegation with early bound generics");
         }
 
+        // There is no way to instantiate `Self` param for caller if
+        // 1. callee is a trait method
+        // 2. delegation item isn't an associative item
+        if let DefKind::AssocFn = self.tcx().def_kind(sig_id)
+            && let DefKind::Fn = self.tcx().def_kind(self.item_def_id())
+            && self.tcx().associated_item(sig_id).container
+                == ty::AssocItemContainer::TraitContainer
+        {
+            try_emit("delegation to a trait method from a free function");
+        }
+
         if self.tcx().asyncness(sig_id) == ty::Asyncness::Yes {
             try_emit("delegation to async functions");
         }
