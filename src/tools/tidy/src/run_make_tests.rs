@@ -7,10 +7,8 @@ use std::path::{Path, PathBuf};
 
 pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
     let allowed_makefiles = {
-        // We use `include!` here which includes the file as Rust syntax because we want to have
-        // a comment that discourages people from adding entries to
-        // `allowed_run_make_makefiles.txt` unless *absolutely* necessary.
-        let allowed_makefiles = include!("allowed_run_make_makefiles.txt");
+        let allowed_makefiles = include_str!("allowed_run_make_makefiles.txt");
+        let allowed_makefiles = allowed_makefiles.lines().collect::<Vec<_>>();
         let is_sorted = allowed_makefiles.windows(2).all(|w| w[0] < w[1]);
         if !is_sorted && !bless {
             tidy_error!(
@@ -21,7 +19,7 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
             );
         }
         let allowed_makefiles_unique =
-            allowed_makefiles.into_iter().map(ToOwned::to_owned).collect::<BTreeSet<String>>();
+            allowed_makefiles.iter().map(ToString::to_string).collect::<BTreeSet<String>>();
         if allowed_makefiles_unique.len() != allowed_makefiles.len() {
             tidy_error!(
                 bad,
@@ -67,22 +65,13 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
     // `src/tools/tidy/src/allowed_run_make_makefiles.txt`.
     // This can be done automatically on --bless, or else a tidy error will be issued.
     if bless && !remaining_makefiles.is_empty() {
-        let header = r#"/*
-============================================================
-    ⚠️⚠️⚠️NOTHING SHOULD EVER BE ADDED TO THIS LIST⚠️⚠️⚠️
-============================================================
-*/
-[
-"#;
         let tidy_src = src_path.join("tools").join("tidy").join("src");
         let org_file_path = tidy_src.join("allowed_run_make_makefiles.txt");
         let temp_file_path = tidy_src.join("blessed_allowed_run_make_makefiles.txt");
         let mut temp_file = t!(File::create_new(&temp_file_path));
-        t!(write!(temp_file, "{}", header));
         for file in allowed_makefiles.difference(&remaining_makefiles) {
-            t!(write!(temp_file, "\"{file}\",\n"));
+            t!(writeln!(temp_file, "{file}"));
         }
-        t!(write!(temp_file, "]\n"));
         t!(std::fs::rename(&temp_file_path, &org_file_path));
     } else {
         for file in remaining_makefiles {
