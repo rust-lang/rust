@@ -191,52 +191,7 @@ fn typeck_with_fallback<'tcx>(
 
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params);
     } else {
-        let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = body_ty {
-            if let Some(item) = tcx.opt_associated_item(def_id.into())
-                && let ty::AssocKind::Const = item.kind
-                && let ty::ImplContainer = item.container
-                && let Some(trait_item) = item.trait_item_def_id
-            {
-                let args =
-                    tcx.impl_trait_ref(item.container_id(tcx)).unwrap().instantiate_identity().args;
-                Some(tcx.type_of(trait_item).instantiate(tcx, args))
-            } else {
-                Some(fcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span,
-                }))
-            }
-        } else if let Node::AnonConst(_) = node {
-            match tcx.parent_hir_node(id) {
-                Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), .. })
-                    if anon_const.hir_id == id =>
-                {
-                    Some(fcx.next_ty_var(TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::TypeInference,
-                        span,
-                    }))
-                }
-                Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), .. })
-                | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), .. }) => {
-                    asm.operands.iter().find_map(|(op, _op_sp)| match op {
-                        hir::InlineAsmOperand::Const { anon_const } if anon_const.hir_id == id => {
-                            // Inline assembly constants must be integers.
-                            Some(fcx.next_int_var())
-                        }
-                        hir::InlineAsmOperand::SymFn { anon_const } if anon_const.hir_id == id => {
-                            Some(fcx.next_ty_var(TypeVariableOrigin {
-                                kind: TypeVariableOriginKind::MiscVariable,
-                                span,
-                            }))
-                        }
-                        _ => None,
-                    })
-                }
-                _ => None,
-            }
-        } else {
-            None
-        };
+        let expected_type = infer_type_if_missing(body_ty, &fcx, node);
         let expected_type = expected_type.unwrap_or_else(fallback);
 
         let expected_type = fcx.normalize(body.value.span, expected_type);
@@ -304,6 +259,63 @@ fn typeck_with_fallback<'tcx>(
     assert_eq!(typeck_results.hir_owner, id.owner);
 
     typeck_results
+}
+
+fn infer_type_if_missing<'tcx>(
+    body_ty: Option<&hir::Ty<'tcx>>,
+    fcx: &FnCtxt<'_, 'tcx>,
+    node: Node<'tcx>,
+) -> Option<Ty<'tcx>> {
+    let tcx = fcx.tcx;
+    let def_id = fcx.body_id;
+    let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = body_ty {
+        if let Some(item) = tcx.opt_associated_item(def_id.into())
+            && let ty::AssocKind::Const = item.kind
+            && let ty::ImplContainer = item.container
+            && let Some(trait_item) = item.trait_item_def_id
+        {
+            let args =
+                tcx.impl_trait_ref(item.container_id(tcx)).unwrap().instantiate_identity().args;
+            Some(tcx.type_of(trait_item).instantiate(tcx, args))
+        } else {
+            Some(fcx.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::TypeInference,
+                span,
+            }))
+        }
+    } else if let Node::AnonConst(_) = node {
+        let id = tcx.local_def_id_to_hir_id(def_id);
+        match tcx.parent_hir_node(id) {
+            Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), span, .. })
+                if anon_const.hir_id == id =>
+            {
+                Some(fcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span,
+                }))
+            }
+            Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), span, .. })
+            | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), span, .. }) => {
+                asm.operands.iter().find_map(|(op, _op_sp)| match op {
+                    hir::InlineAsmOperand::Const { anon_const } if anon_const.hir_id == id => {
+                        // Inline assembly constants must be integers.
+                        Some(fcx.next_int_var())
+                    }
+                    hir::InlineAsmOperand::SymFn { anon_const } if anon_const.hir_id == id => {
+                        Some(fcx.next_ty_var(TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::MiscVariable,
+                            span,
+                        }))
+                    }
+                    _ => None,
+                })
+            }
+            _ => None,
+        }
+    } else {
+        None
+    };
+    expected_type
 }
 
 /// When `check_fn` is invoked on a coroutine (i.e., a body that
