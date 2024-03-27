@@ -641,15 +641,25 @@ fn encode_ty<'tcx>(
         }
 
         // Function types
-        ty::FnDef(def_id, args)
-        | ty::Closure(def_id, args)
-        | ty::CoroutineClosure(def_id, args) => {
+        ty::FnDef(def_id, args) | ty::Closure(def_id, args) => {
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
             let name = encode_ty_name(tcx, *def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
             s.push_str(&encode_args(tcx, args, dict, options));
+            compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
+            typeid.push_str(&s);
+        }
+
+        ty::CoroutineClosure(def_id, args) => {
+            // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
+            // as vendor extended type.
+            let mut s = String::new();
+            let name = encode_ty_name(tcx, *def_id);
+            let _ = write!(s, "u{}{}", name.len(), &name);
+            let parent_args = tcx.mk_args(args.as_coroutine_closure().parent_args());
+            s.push_str(&encode_args(tcx, parent_args, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
