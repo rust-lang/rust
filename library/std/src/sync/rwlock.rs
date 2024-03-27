@@ -31,13 +31,14 @@ use crate::sys::sync as sys;
 /// <details><summary>Potential deadlock example</summary>
 ///
 /// ```text
-/// // Thread 1             |  // Thread 2
-/// let _rg = lock.read();  |
-///                         |  // will block
-///                         |  let _wg = lock.write();
-/// // may deadlock         |
-/// let _rg = lock.read();  |
+/// // Thread 1              |  // Thread 2
+/// let _rg1 = lock.read();  |
+///                          |  // will block
+///                          |  let _wg = lock.write();
+/// // may deadlock          |
+/// let _rg2 = lock.read();  |
 /// ```
+///
 /// </details>
 ///
 /// The type parameter `T` represents the data that this lock protects. It is
