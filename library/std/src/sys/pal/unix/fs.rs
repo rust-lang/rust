@@ -10,6 +10,7 @@ use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt::{self, Write as _};
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
+use crate::ops::{BitAnd, BitAndAssign, BitOrAssign};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
@@ -357,7 +358,7 @@ pub struct DirEntry {
     entry: dirent64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OpenOptions {
     // generic
     read: bool,
@@ -368,12 +369,12 @@ pub struct OpenOptions {
     create_new: bool,
     // system-specific
     custom_flags: i32,
-    mode: mode_t,
+    mode: Mode,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FilePermissions {
-    mode: mode_t,
+    mode: Mode,
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -384,9 +385,9 @@ pub struct FileTimes {
     created: Option<SystemTime>,
 }
 
-#[derive(Copy, Clone, Eq)]
+#[derive(Copy, Clone, Eq, Debug)]
 pub struct FileType {
-    mode: mode_t,
+    mode: Mode,
 }
 
 impl PartialEq for FileType {
@@ -401,10 +402,12 @@ impl core::hash::Hash for FileType {
     }
 }
 
+#[derive(Debug)]
 pub struct DirBuilder {
-    mode: mode_t,
+    mode: Mode,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
 struct Mode(mode_t);
 
 cfg_has_statx! {{
@@ -456,11 +459,11 @@ impl FileAttr {
         self.stat.st_size as u64
     }
     pub fn perm(&self) -> FilePermissions {
-        FilePermissions { mode: (self.stat.st_mode as mode_t) }
+        FilePermissions { mode: Mode(self.stat.st_mode as mode_t) }
     }
 
     pub fn file_type(&self) -> FileType {
-        FileType { mode: self.stat.st_mode as mode_t }
+        FileType { mode: Mode(self.stat.st_mode as mode_t) }
     }
 }
 
@@ -638,7 +641,7 @@ impl FilePermissions {
         }
     }
     pub fn mode(&self) -> u32 {
-        self.mode as u32
+        self.mode.0 as u32
     }
 }
 
@@ -673,27 +676,13 @@ impl FileType {
     }
 
     fn masked(&self) -> mode_t {
-        self.mode & libc::S_IFMT
-    }
-}
-
-impl fmt::Debug for FileType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let FileType { mode } = self;
-        f.debug_struct("FileType").field("mode", &Mode(*mode)).finish()
+        self.mode.0 & libc::S_IFMT
     }
 }
 
 impl FromInner<u32> for FilePermissions {
     fn from_inner(mode: u32) -> FilePermissions {
-        FilePermissions { mode: mode as mode_t }
-    }
-}
-
-impl fmt::Debug for FilePermissions {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let FilePermissions { mode } = self;
-        f.debug_struct("FilePermissions").field("mode", &Mode(*mode)).finish()
+        FilePermissions { mode: Mode(mode as mode_t) }
     }
 }
 
@@ -940,13 +929,13 @@ impl DirEntry {
     )))]
     pub fn file_type(&self) -> io::Result<FileType> {
         match self.entry.d_type {
-            libc::DT_CHR => Ok(FileType { mode: libc::S_IFCHR }),
-            libc::DT_FIFO => Ok(FileType { mode: libc::S_IFIFO }),
-            libc::DT_LNK => Ok(FileType { mode: libc::S_IFLNK }),
-            libc::DT_REG => Ok(FileType { mode: libc::S_IFREG }),
-            libc::DT_SOCK => Ok(FileType { mode: libc::S_IFSOCK }),
-            libc::DT_DIR => Ok(FileType { mode: libc::S_IFDIR }),
-            libc::DT_BLK => Ok(FileType { mode: libc::S_IFBLK }),
+            libc::DT_CHR => Ok(FileType { mode: Mode(libc::S_IFCHR) }),
+            libc::DT_FIFO => Ok(FileType { mode: Mode(libc::S_IFIFO) }),
+            libc::DT_LNK => Ok(FileType { mode: Mode(libc::S_IFLNK) }),
+            libc::DT_REG => Ok(FileType { mode: Mode(libc::S_IFREG) }),
+            libc::DT_SOCK => Ok(FileType { mode: Mode(libc::S_IFSOCK) }),
+            libc::DT_DIR => Ok(FileType { mode: Mode(libc::S_IFDIR) }),
+            libc::DT_BLK => Ok(FileType { mode: Mode(libc::S_IFBLK) }),
             _ => self.metadata().map(|m| m.file_type()),
         }
     }
@@ -1068,7 +1057,7 @@ impl OpenOptions {
             create_new: false,
             // system-specific
             custom_flags: 0,
-            mode: 0o666,
+            mode: Mode(0o666),
         }
     }
 
@@ -1095,7 +1084,7 @@ impl OpenOptions {
         self.custom_flags = flags;
     }
     pub fn mode(&mut self, mode: u32) {
-        self.mode = mode as mode_t;
+        self.mode.0 = mode as mode_t;
     }
 
     fn get_access_mode(&self) -> io::Result<c_int> {
@@ -1134,23 +1123,6 @@ impl OpenOptions {
     }
 }
 
-impl fmt::Debug for OpenOptions {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let OpenOptions { read, write, append, truncate, create, create_new, custom_flags, mode } =
-            self;
-        f.debug_struct("OpenOptions")
-            .field("read", read)
-            .field("write", write)
-            .field("append", append)
-            .field("truncate", truncate)
-            .field("create", create)
-            .field("create_new", create_new)
-            .field("custom_flags", custom_flags)
-            .field("mode", &Mode(*mode))
-            .finish()
-    }
-}
-
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         run_path_with_cstr(path, &|path| File::open_c(path, opts))
@@ -1165,7 +1137,7 @@ impl File {
         // some platforms (like macOS, where `open64` is actually `open`), `mode_t` is `u16`.
         // However, since this is a variadic function, C integer promotion rules mean that on
         // the ABI level, this still gets passed as `c_int` (aka `u32` on Unix platforms).
-        let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
+        let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode.0 as c_int) })?;
         Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
     }
 
@@ -1329,7 +1301,7 @@ impl File {
     }
 
     pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
-        cvt_r(|| unsafe { libc::fchmod(self.as_raw_fd(), perm.mode) })?;
+        cvt_r(|| unsafe { libc::fchmod(self.as_raw_fd(), perm.mode.0) })?;
         Ok(())
     }
 
@@ -1425,22 +1397,15 @@ impl File {
 
 impl DirBuilder {
     pub fn new() -> DirBuilder {
-        DirBuilder { mode: 0o777 }
+        DirBuilder { mode: Mode(0o777) }
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        run_path_with_cstr(p, &|p| cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }).map(|_| ()))
+        run_path_with_cstr(p, &|p| cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode.0) }).map(|_| ()))
     }
 
     pub fn set_mode(&mut self, mode: u32) {
-        self.mode = mode as mode_t;
-    }
-}
-
-impl fmt::Debug for DirBuilder {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let DirBuilder { mode } = self;
-        f.debug_struct("DirBuilder").field("mode", &Mode(*mode)).finish()
+        self.mode.0 = mode as mode_t;
     }
 }
 
@@ -1672,6 +1637,31 @@ impl fmt::Debug for Mode {
     }
 }
 
+impl BitAnd<mode_t> for Mode {
+    type Output = Mode;
+    fn bitand(self, rhs: mode_t) -> Self::Output {
+        Mode(self.0 & rhs)
+    }
+}
+
+impl BitAndAssign<mode_t> for Mode {
+    fn bitand_assign(&mut self, rhs: mode_t) {
+        self.0 &= rhs;
+    }
+}
+
+impl BitOrAssign<mode_t> for Mode {
+    fn bitor_assign(&mut self, rhs: mode_t) {
+        self.0 |= rhs;
+    }
+}
+
+impl PartialEq<mode_t> for Mode {
+    fn eq(&self, rhs: &mode_t) -> bool {
+        self.0 == *rhs
+    }
+}
+
 pub fn readdir(path: &Path) -> io::Result<ReadDir> {
     let ptr = run_path_with_cstr(path, &|p| unsafe { Ok(libc::opendir(p.as_ptr())) })?;
     if ptr.is_null() {
@@ -1696,7 +1686,9 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    run_path_with_cstr(p, &|p| cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }).map(|_| ()))
+    run_path_with_cstr(p, &|p| {
+        cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode.0) }).map(|_| ())
+    })
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
