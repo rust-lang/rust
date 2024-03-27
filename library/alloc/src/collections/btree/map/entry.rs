@@ -354,7 +354,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
                 // SAFETY: There is no tree yet so no reference to it exists.
                 let map = unsafe { self.dormant_map.awaken() };
                 let mut root = NodeRef::new_leaf(self.alloc.clone());
-                let val_ptr = root.borrow_mut().push(self.key, value) as *mut V;
+                let val_ptr = root.borrow_mut().push(self.key, value);
                 map.root = Some(root.forget_type());
                 map.length = 1;
                 val_ptr

@@ -5,11 +5,15 @@
 //
 // This checks that the reified function pointer will have the expected alias set at its call-site.
 
-//@ needs-sanitizer-cfi
+//@ revisions: cfi kcfi
 // FIXME(#122848) Remove only-linux once OSX CFI binaries work
 //@ only-linux
-//@ compile-flags: --crate-type=bin -Cprefer-dynamic=off -Clto -Zsanitizer=cfi
-//@ compile-flags: -C target-feature=-crt-static -C codegen-units=1 -C opt-level=0
+//@ [cfi] needs-sanitizer-cfi
+//@ [kcfi] needs-sanitizer-kcfi
+//@ compile-flags: -C target-feature=-crt-static
+//@ [cfi] compile-flags: -C codegen-units=1 -C lto -C prefer-dynamic=off -C opt-level=0
+//@ [cfi] compile-flags: -Z sanitizer=cfi
+//@ [kcfi] compile-flags: -Z sanitizer=kcfi
 //@ run-pass
 
 pub fn main() {
