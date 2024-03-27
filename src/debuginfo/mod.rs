@@ -142,17 +142,25 @@ impl DebugContext {
         let entry_id = self.dwarf.unit.add(scope, gimli::DW_TAG_subprogram);
         let entry = self.dwarf.unit.get_mut(entry_id);
         let name_id = self.dwarf.strings.add(name);
-        // Gdb requires DW_AT_name. Otherwise the DW_TAG_subprogram is skipped.
-        entry.set(gimli::DW_AT_name, AttributeValue::StringRef(name_id));
-        entry.set(gimli::DW_AT_linkage_name, AttributeValue::StringRef(name_id));
+
+        // These will be replaced in FunctionDebugContext::finalize. They are
+        // only defined here to ensure that the order of the attributes matches
+        // rustc.
+        entry.set(gimli::DW_AT_low_pc, AttributeValue::Udata(0));
+        entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(0));
 
         let mut frame_base_expr = Expression::new();
         frame_base_expr.op_reg(self.stack_pointer_register);
         entry.set(gimli::DW_AT_frame_base, AttributeValue::Exprloc(frame_base_expr));
 
+        // Gdb requires DW_AT_name. Otherwise the DW_TAG_subprogram is skipped.
+        // FIXME only include the function name and not the full mangled symbol
+        entry.set(gimli::DW_AT_name, AttributeValue::StringRef(name_id));
+
         entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
         entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(line));
-        entry.set(gimli::DW_AT_decl_column, AttributeValue::Udata(column));
+
+        // FIXME set DW_AT_external as appropriate
 
         FunctionDebugContext {
             entry_id,
