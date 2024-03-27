@@ -8,10 +8,10 @@ mod unwind;
 use cranelift_codegen::ir::Endianness;
 use cranelift_codegen::isa::TargetIsa;
 use gimli::write::{
-    Address, AttributeValue, DwarfUnit, FileId, LineProgram, LineString, Range, RangeList,
-    UnitEntryId,
+    Address, AttributeValue, DwarfUnit, Expression, FileId, LineProgram, LineString, Range,
+    RangeList, UnitEntryId,
 };
-use gimli::{Encoding, Format, LineEncoding, RunTimeEndian};
+use gimli::{AArch64, Encoding, Format, LineEncoding, Register, RiscV, RunTimeEndian, X86_64};
 use indexmap::IndexSet;
 use rustc_session::Session;
 
@@ -28,6 +28,7 @@ pub(crate) struct DebugContext {
 
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
+    stack_pointer_register: Register,
 
     should_remap_filepaths: bool,
 }
@@ -58,6 +59,15 @@ impl DebugContext {
         let endian = match isa.endianness() {
             Endianness::Little => RunTimeEndian::Little,
             Endianness::Big => RunTimeEndian::Big,
+        };
+
+        let stack_pointer_register = match isa.triple().architecture {
+            target_lexicon::Architecture::Aarch64(_) => AArch64::SP,
+            target_lexicon::Architecture::Riscv64(_) => RiscV::SP,
+            target_lexicon::Architecture::X86_64 | target_lexicon::Architecture::X86_64h => {
+                X86_64::RSP
+            }
+            _ => Register(u16::MAX),
         };
 
         let mut dwarf = DwarfUnit::new(encoding);
@@ -111,6 +121,7 @@ impl DebugContext {
             endian,
             dwarf,
             unit_range_list: RangeList(Vec::new()),
+            stack_pointer_register,
             should_remap_filepaths,
         }
     }
@@ -134,6 +145,10 @@ impl DebugContext {
         // Gdb requires DW_AT_name. Otherwise the DW_TAG_subprogram is skipped.
         entry.set(gimli::DW_AT_name, AttributeValue::StringRef(name_id));
         entry.set(gimli::DW_AT_linkage_name, AttributeValue::StringRef(name_id));
+
+        let mut frame_base_expr = Expression::new();
+        frame_base_expr.op_reg(self.stack_pointer_register);
+        entry.set(gimli::DW_AT_frame_base, AttributeValue::Exprloc(frame_base_expr));
 
         entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
         entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(line));
