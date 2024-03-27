@@ -23,6 +23,7 @@ use rustc_session::config::{DebugInfo, OutFileName, OutputFilenames, OutputType}
 use rustc_session::Session;
 
 use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
+use crate::debuginfo::TypeDebugContext;
 use crate::global_asm::GlobalAsmConfig;
 use crate::{prelude::*, BackendConfig};
 
@@ -460,6 +461,7 @@ fn module_codegen(
                 tcx.sess.opts.debuginfo != DebugInfo::None,
                 cgu_name,
             );
+            let mut type_dbg = TypeDebugContext::default();
             super::predefine_mono_items(tcx, &mut module, &mono_items);
             let mut codegened_functions = vec![];
             for (mono_item, _) in mono_items {
@@ -475,7 +477,10 @@ fn module_codegen(
                         codegened_functions.push(codegened_function);
                     }
                     MonoItem::Static(def_id) => {
-                        crate::constant::codegen_static(tcx, &mut module, def_id)
+                        let data_id = crate::constant::codegen_static(tcx, &mut module, def_id);
+                        if let Some(debug_context) = &mut cx.debug_context {
+                            debug_context.define_static(tcx, &mut type_dbg, def_id, data_id);
+                        }
                     }
                     MonoItem::GlobalAsm(item_id) => {
                         crate::global_asm::codegen_global_asm_item(

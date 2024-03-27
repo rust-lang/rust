@@ -15,7 +15,6 @@ pub(super) fn address_for_func(func_id: FuncId) -> Address {
     Address::Symbol { symbol: symbol as usize, addend: 0 }
 }
 
-#[allow(dead_code)]
 pub(super) fn address_for_data(data_id: DataId) -> Address {
     let symbol = data_id.as_u32();
     assert!(symbol & 1 << 31 == 0);
