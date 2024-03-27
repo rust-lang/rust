@@ -470,6 +470,7 @@ fn module_codegen(
                         let codegened_function = crate::base::codegen_fn(
                             tcx,
                             &mut cx,
+                            &mut type_dbg,
                             Function::new(),
                             &mut module,
                             inst,

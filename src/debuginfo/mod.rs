@@ -20,6 +20,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdMap;
 use rustc_session::Session;
 use rustc_span::{SourceFileHash, StableSourceFileId};
+use rustc_target::abi::call::FnAbi;
 
 pub(crate) use self::emit::{DebugReloc, DebugRelocName};
 pub(crate) use self::types::TypeDebugContext;
@@ -188,7 +189,9 @@ impl DebugContext {
     pub(crate) fn define_function<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
+        type_dbg: &mut TypeDebugContext<'tcx>,
         instance: Instance<'tcx>,
+        fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
         linkage_name: &str,
         function_span: Span,
     ) -> FunctionDebugContext {
@@ -240,7 +243,14 @@ impl DebugContext {
         entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
         entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(line));
 
+        if !fn_abi.ret.is_ignore() {
+            let return_dw_ty = self.debug_type(tcx, type_dbg, fn_abi.ret.layout.ty);
+            let entry = self.dwarf.unit.get_mut(entry_id);
+            entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(return_dw_ty));
+        }
+
         if tcx.is_reachable_non_generic(instance.def_id()) {
+            let entry = self.dwarf.unit.get_mut(entry_id);
             entry.set(gimli::DW_AT_external, AttributeValue::FlagPresent);
         }
 
