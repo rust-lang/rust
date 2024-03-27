@@ -3,9 +3,10 @@
 use gimli::write::{AttributeValue, UnitEntryId};
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-use crate::{has_ptr_meta, DebugContext};
+use crate::{has_ptr_meta, DebugContext, RevealAllLayoutCx};
 
 #[derive(Default)]
 pub(crate) struct TypeDebugContext<'tcx> {
@@ -41,6 +42,7 @@ impl DebugContext {
             ty::Array(elem_ty, len) => self.array_type(
                 tcx,
                 type_dbg,
+                ty,
                 *elem_ty,
                 len.eval_target_usize(tcx, ty::ParamEnv::reveal_all()),
             ),
@@ -83,9 +85,7 @@ impl DebugContext {
         type_entry.set(gimli::DW_AT_encoding, AttributeValue::Encoding(encoding));
         type_entry.set(
             gimli::DW_AT_byte_size,
-            AttributeValue::Udata(
-                tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).expect("FIXME").size.bytes(),
-            ),
+            AttributeValue::Udata(RevealAllLayoutCx(tcx).layout_of(ty).size.bytes()),
         );
 
         type_id
@@ -95,12 +95,13 @@ impl DebugContext {
         &mut self,
         tcx: TyCtxt<'tcx>,
         type_dbg: &mut TypeDebugContext<'tcx>,
+        array_ty: Ty<'tcx>,
         elem_ty: Ty<'tcx>,
         len: u64,
     ) -> UnitEntryId {
         let elem_dw_ty = self.debug_type(tcx, type_dbg, elem_ty);
 
-        return_if_type_created_in_meantime!(type_dbg, elem_ty);
+        return_if_type_created_in_meantime!(type_dbg, array_ty);
 
         let array_type_id = self.dwarf.unit.add(self.dwarf.unit.root(), gimli::DW_TAG_array_type);
         let array_type_entry = self.dwarf.unit.get_mut(array_type_id);
@@ -152,11 +153,7 @@ impl DebugContext {
         self.debug_type(
             tcx,
             type_dbg,
-            Ty::new_array(
-                tcx,
-                tcx.types.u8,
-                tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap().size.bytes(),
-            ),
+            Ty::new_array(tcx, tcx.types.u8, RevealAllLayoutCx(tcx).layout_of(ty).size.bytes()),
         )
     }
 }
