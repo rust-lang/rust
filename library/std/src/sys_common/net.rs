@@ -107,13 +107,13 @@ where
 pub fn sockaddr_to_addr(storage: &c::sockaddr_storage, len: usize) -> io::Result<SocketAddr> {
     match storage.ss_family as c_int {
         c::AF_INET => {
-            assert!(len as usize >= mem::size_of::<c::sockaddr_in>());
+            assert!(len >= mem::size_of::<c::sockaddr_in>());
             Ok(SocketAddr::V4(FromInner::from_inner(unsafe {
                 *(storage as *const _ as *const c::sockaddr_in)
             })))
         }
         c::AF_INET6 => {
-            assert!(len as usize >= mem::size_of::<c::sockaddr_in6>());
+            assert!(len >= mem::size_of::<c::sockaddr_in6>());
             Ok(SocketAddr::V6(FromInner::from_inner(unsafe {
                 *(storage as *const _ as *const c::sockaddr_in6)
             })))
