@@ -221,6 +221,10 @@ impl DebugContext {
         entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
         entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(line));
 
+        if tcx.is_reachable_non_generic(instance.def_id()) {
+            entry.set(gimli::DW_AT_external, AttributeValue::FlagPresent);
+        }
+
         // FIXME set DW_AT_external as appropriate
 
         FunctionDebugContext {
