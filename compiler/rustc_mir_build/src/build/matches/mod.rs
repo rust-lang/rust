@@ -169,6 +169,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     then_block,
                     else_block,
                 );
+                // Record MCDC coverage info
+                // (Does nothing if mcdc coverage is not enabled.)
+                this.visit_mcdc_condition(
+                    expr_id,
+                    block,
+                    then_block,
+                    else_block,
+                );
 
                 let source_info = this.source_info(expr_span);
                 this.cfg.terminate(block, source_info, term);
