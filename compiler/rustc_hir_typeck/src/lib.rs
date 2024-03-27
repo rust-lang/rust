@@ -83,20 +83,6 @@ macro_rules! type_error_struct {
     })
 }
 
-/// If this `DefId` is a "primary tables entry", returns
-/// `Some((body_id, body_ty, fn_sig))`. Otherwise, returns `None`.
-///
-/// If this function returns `Some`, then `typeck_results(def_id)` will
-/// succeed; if it returns `None`, then `typeck_results(def_id)` may or
-/// may not succeed. In some cases where this function returns `None`
-/// (notably closures), `typeck_results(def_id)` would wind up
-/// redirecting to the owning function.
-fn primary_body_of(
-    node: Node<'_>,
-) -> Option<(hir::BodyId, Option<&hir::Ty<'_>>, Option<&hir::FnSig<'_>>)> {
-    Some((node.body_id()?, node.ty(), node.fn_sig()))
-}
-
 fn has_typeck_results(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     // Closures' typeck results come from their outermost function,
     // as they are part of the same "inference environment".
@@ -163,7 +149,7 @@ fn typeck_with_fallback<'tcx>(
     let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
-    let (body_id, body_ty, fn_sig) = primary_body_of(node).unwrap_or_else(|| {
+    let body_id = node.body_id().unwrap_or_else(|| {
         span_bug!(span, "can't type-check body of {:?}", def_id);
     });
     let body = tcx.hir().body(body_id);
@@ -176,7 +162,7 @@ fn typeck_with_fallback<'tcx>(
     }
     let mut fcx = FnCtxt::new(&inh, param_env, def_id);
 
-    if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
+    if let Some(hir::FnSig { header, decl, .. }) = node.fn_sig() {
         let fn_sig = if decl.output.get_infer_ret_ty().is_some() {
             fcx.lowerer().lower_fn_ty(id, header.unsafety, header.abi, decl, None, None)
         } else {
@@ -191,7 +177,7 @@ fn typeck_with_fallback<'tcx>(
 
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params);
     } else {
-        let expected_type = infer_type_if_missing(body_ty, &fcx, node);
+        let expected_type = infer_type_if_missing(&fcx, node);
         let expected_type = expected_type.unwrap_or_else(fallback);
 
         let expected_type = fcx.normalize(body.value.span, expected_type);
@@ -261,14 +247,10 @@ fn typeck_with_fallback<'tcx>(
     typeck_results
 }
 
-fn infer_type_if_missing<'tcx>(
-    body_ty: Option<&hir::Ty<'tcx>>,
-    fcx: &FnCtxt<'_, 'tcx>,
-    node: Node<'tcx>,
-) -> Option<Ty<'tcx>> {
+fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Option<Ty<'tcx>> {
     let tcx = fcx.tcx;
     let def_id = fcx.body_id;
-    let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = body_ty {
+    let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = node.ty() {
         if let Some(item) = tcx.opt_associated_item(def_id.into())
             && let ty::AssocKind::Const = item.kind
             && let ty::ImplContainer = item.container
