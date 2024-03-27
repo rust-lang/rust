@@ -496,7 +496,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.78.0"]
     pub MIXED_ATTRIBUTES_STYLE,
-    suspicious,
+    style,
     "item has both inner and outer attributes"
 }
 
