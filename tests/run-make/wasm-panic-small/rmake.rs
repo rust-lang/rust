@@ -1,3 +1,4 @@
+//@ only-wasm32-wasip1
 #![deny(warnings)]
 
 extern crate run_make_support;
@@ -5,10 +6,6 @@ extern crate run_make_support;
 use run_make_support::{rustc, tmp_dir};
 
 fn main() {
-    if std::env::var("TARGET").unwrap() != "wasm32-wasip1" {
-        return;
-    }
-
     test("a");
     test("b");
     test("c");
