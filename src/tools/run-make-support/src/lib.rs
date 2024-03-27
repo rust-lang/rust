@@ -3,8 +3,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 pub use object;
-// mod rustdoc;
-// pub use rustdoc::rustdoc;
 pub use wasmparser;
 
 pub fn add_host_rpath_env(cmd: &mut Command) {
