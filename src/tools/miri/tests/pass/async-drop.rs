@@ -4,9 +4,7 @@
 #![feature(async_drop, impl_trait_in_assoc_type, noop_waker, async_closure)]
 #![allow(incomplete_features, dead_code)]
 
-// TODO: remove when unwind is implemented
-//@ compile-flags: -Cpanic=abort
-
+// FIXME: unwind tests?
 use core::future::{async_drop_in_place, AsyncDrop, Future};
 use core::hint::black_box;
 use core::mem::{self, ManuallyDrop};

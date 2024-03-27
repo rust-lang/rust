@@ -1042,9 +1042,11 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
     self_ty: Ty<'tcx>,
     span: Span,
     source_info: SourceInfo,
+    param_env: ty::ParamEnv<'tcx>,
 
     stack: Vec<Operand<'tcx>>,
     last_bb: BasicBlock,
+    top_cleanup_bb: Option<BasicBlock>,
 
     locals: IndexVec<Local, LocalDecl<'tcx>>,
     bbs: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
@@ -1062,13 +1064,6 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     const MAX_STACK_LEN: usize = 2;
 
     fn new(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Self {
-        // TODO: Implement unwind
-        assert_eq!(
-            tcx.sess.panic_strategy(),
-            PanicStrategy::Abort,
-            "Async destructor shims are not implemented yet for unwind panic strategy",
-        );
-
         let span = tcx.def_span(def_id);
         let Some(sig) = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).no_bound_vars()
         else {
@@ -1080,18 +1075,36 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         debug_assert_eq!(sig.inputs().len(), Self::INPUT_COUNT);
         let locals = local_decls_for_sig(&sig, span);
 
+        // Usual case: nop() + unwind resume + return
+        let mut bbs = IndexVec::with_capacity(3);
+        let param_env = tcx.param_env_reveal_all_normalized(def_id);
         AsyncDestructorCtorShimBuilder {
             tcx,
             def_id,
             self_ty,
             span,
             source_info,
+            param_env,
 
             stack: Vec::with_capacity(Self::MAX_STACK_LEN),
-            last_bb: BasicBlock::new(0),
+            last_bb: bbs.push(BasicBlockData::new(None)),
+            top_cleanup_bb: match tcx.sess.panic_strategy() {
+                PanicStrategy::Unwind => {
+                    // Don't drop input arg because it's just a pointer
+                    Some(bbs.push(BasicBlockData {
+                        statements: Vec::new(),
+                        terminator: Some(Terminator {
+                            source_info,
+                            kind: TerminatorKind::UnwindResume,
+                        }),
+                        is_cleanup: true,
+                    }))
+                }
+                PanicStrategy::Abort => None,
+            },
 
             locals,
-            bbs: IndexVec::from([BasicBlockData::new(None)]),
+            bbs,
         }
     }
 
@@ -1361,15 +1374,16 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     fn put_temp_rvalue(&mut self, rvalue: Rvalue<'tcx>) {
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
+        let source_info = self.source_info;
 
         let local_ty = rvalue.ty(&self.locals, self.tcx);
         // We need to create a new local to be able to "consume" it with
         // a combinator
-        let local = self.locals.push(LocalDecl::with_source_info(local_ty, self.source_info));
+        let local = self.locals.push(LocalDecl::with_source_info(local_ty, source_info));
         last_bb.statements.extend_from_slice(&[
-            Statement { source_info: self.source_info, kind: StatementKind::StorageLive(local) },
+            Statement { source_info, kind: StatementKind::StorageLive(local) },
             Statement {
-                source_info: self.source_info,
+                source_info,
                 kind: StatementKind::Assign(Box::new((local.into(), rvalue))),
             },
         ]);
@@ -1379,6 +1393,57 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
     /// Puts operand on top of the stack.
     fn put_operand(&mut self, operand: Operand<'tcx>) {
+        if let Some(top_cleanup_bb) = &mut self.top_cleanup_bb {
+            let source_info = self.source_info;
+            self.bbs.raw.reserve(2);
+            match &operand {
+                Operand::Copy(_) | Operand::Constant(_) => {
+                    for _ in 0..2 {
+                        *top_cleanup_bb = self.bbs.push(BasicBlockData {
+                            statements: Vec::new(),
+                            terminator: Some(Terminator {
+                                source_info,
+                                kind: TerminatorKind::Goto { target: *top_cleanup_bb },
+                            }),
+                            is_cleanup: true,
+                        });
+                    }
+                }
+                Operand::Move(place) => {
+                    let local = place.as_local().unwrap();
+                    *top_cleanup_bb = self.bbs.push(BasicBlockData {
+                        statements: vec![Statement {
+                            source_info,
+                            kind: StatementKind::StorageDead(local),
+                        }],
+                        terminator: Some(Terminator {
+                            source_info,
+                            kind: TerminatorKind::Goto { target: *top_cleanup_bb },
+                        }),
+                        is_cleanup: true,
+                    });
+                    *top_cleanup_bb = self.bbs.push(BasicBlockData {
+                        statements: Vec::new(),
+                        terminator: Some(Terminator {
+                            source_info,
+                            kind: if self.locals[local].ty.needs_drop(self.tcx, self.param_env) {
+                                TerminatorKind::Drop {
+                                    place: local.into(),
+                                    target: *top_cleanup_bb,
+                                    unwind: UnwindAction::Terminate(
+                                        UnwindTerminateReason::InCleanup,
+                                    ),
+                                    replace: false,
+                                }
+                            } else {
+                                TerminatorKind::Goto { target: *top_cleanup_bb }
+                            },
+                        }),
+                        is_cleanup: true,
+                    });
+                }
+            };
+        }
         self.stack.push(operand);
     }
 
@@ -1448,6 +1513,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     fn return_(mut self) -> Body<'tcx> {
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
+        let source_info = self.source_info;
 
         let (1, Some(output)) = (self.stack.len(), self.stack.pop()) else {
             span_bug!(
@@ -1459,26 +1525,22 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         const RETURN_LOCAL: Local = Local::from_u32(0);
 
         let dead_storage = match &output {
-            Operand::Move(Place { local, projection }) => {
-                assert!(projection.is_empty());
-                Some(Statement {
-                    source_info: self.source_info,
-                    kind: StatementKind::StorageDead(*local),
-                })
-            }
+            Operand::Move(place) => Some(Statement {
+                source_info,
+                kind: StatementKind::StorageDead(place.as_local().unwrap()),
+            }),
             _ => None,
         };
 
         last_bb.statements.extend(
             iter::once(Statement {
-                source_info: self.source_info,
+                source_info,
                 kind: StatementKind::Assign(Box::new((RETURN_LOCAL.into(), Rvalue::Use(output)))),
             })
             .chain(dead_storage),
         );
 
-        last_bb.terminator =
-            Some(Terminator { source_info: self.source_info, kind: TerminatorKind::Return });
+        last_bb.terminator = Some(Terminator { source_info, kind: TerminatorKind::Return });
 
         let source = MirSource::from_instance(ty::InstanceDef::AsyncDropGlueCtorShim(
             self.def_id,
@@ -1494,12 +1556,12 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         args: &[ty::GenericArg<'tcx>],
     ) -> Ty<'tcx> {
         let function = self.tcx.require_lang_item(function, Some(self.span));
-        let operands_range = self
+        let operands_split = self
             .stack
             .len()
             .checked_sub(arity)
-            .expect("async destructor ctor shim combinator tried to consume too many items")..;
-        let operands = &self.stack[operands_range.clone()];
+            .expect("async destructor ctor shim combinator tried to consume too many items");
+        let operands = &self.stack[operands_split..];
 
         let func_ty = Ty::new_fn_def(self.tcx, function, args.iter().copied());
         let func_sig = func_ty.fn_sig(self.tcx).no_bound_vars().unwrap();
@@ -1533,6 +1595,16 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         let dest =
             self.locals.push(LocalDecl::with_source_info(dest_ty, self.source_info).immutable());
 
+        let unwind = if let Some(top_cleanup_bb) = &mut self.top_cleanup_bb {
+            for _ in 0..2 * arity {
+                *top_cleanup_bb =
+                    self.bbs[*top_cleanup_bb].terminator().successors().next().unwrap();
+            }
+            UnwindAction::Cleanup(*top_cleanup_bb)
+        } else {
+            UnwindAction::Unreachable
+        };
+
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
         last_bb.statements.push(Statement {
@@ -1549,15 +1621,14 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 })),
                 destination: dest.into(),
                 target: Some(target),
-                // TODO: Figure out unwind (even tho they shouldn't panic?)
-                unwind: UnwindAction::Unreachable,
+                unwind,
                 call_source: CallSource::Misc,
                 fn_span: self.span,
-                args: self.stack.drain(operands_range).map(|o| respan(self.span, o)).collect(),
+                args: self.stack.drain(operands_split..).map(|o| respan(self.span, o)).collect(),
             },
         });
 
-        self.stack.push(Operand::Move(dest.into()));
+        self.put_operand(Operand::Move(dest.into()));
         self.last_bb = target;
 
         dest_ty
