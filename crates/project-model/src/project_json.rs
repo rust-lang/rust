@@ -74,7 +74,7 @@ pub struct ProjectJson {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Crate {
     pub(crate) display_name: Option<CrateDisplayName>,
-    pub(crate) root_module: AbsPathBuf,
+    pub root_module: AbsPathBuf,
     pub(crate) edition: Edition,
     pub(crate) version: Option<String>,
     pub(crate) deps: Vec<Dependency>,

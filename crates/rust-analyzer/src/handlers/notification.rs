@@ -296,10 +296,9 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                         })
                     }
                     project_model::ProjectWorkspace::Json { project, .. } => {
-                        if !project
-                            .crates()
-                            .any(|(c, _)| crate_ids.iter().any(|&crate_id| crate_id == c))
-                        {
+                        if !project.crates().any(|(_, krate)| {
+                            crate_root_paths.contains(&krate.root_module.as_path())
+                        }) {
                             return None;
                         }
                         None
