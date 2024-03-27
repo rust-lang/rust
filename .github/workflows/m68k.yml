@@ -88,6 +88,13 @@ jobs:
         sudo mount debian-m68k.img vm
         sudo cp $(which qemu-m68k-static) vm/usr/bin/
 
+    - name: Build sample project with target defined as JSON spec
+      run: |
+        ./y.sh prepare --only-libcore --cross
+        ./y.sh build --target-triple m68k-unknown-linux-gnu --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
+        ./y.sh cargo build --manifest-path=./tests/hello-world/Cargo.toml --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
+        ./y.sh clean all
+
     - name: Build
       run: |
         ./y.sh prepare --only-libcore --cross
