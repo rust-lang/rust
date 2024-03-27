@@ -29,6 +29,8 @@ impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b 
 trait Freeze { }
 #[lang="drop_in_place"]
 fn drop_in_place_fn<T>() { }
+#[lang="drop"]
+trait Drop { fn drop(&mut self); }
 
 pub trait Trait1 {
     fn foo(&self);
