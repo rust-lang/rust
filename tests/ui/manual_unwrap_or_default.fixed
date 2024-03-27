@@ -26,3 +26,10 @@ unsafe fn no_deref_ptr(a: Option<i32>, b: *const Option<i32>) -> i32 {
         _ => 0,
     }
 }
+
+const fn issue_12568(opt: Option<bool>) -> bool {
+    match opt {
+        Some(s) => s,
+        None => false,
+    }
+}
