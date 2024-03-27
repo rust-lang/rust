@@ -29,5 +29,6 @@ where
 }
 
 fn main() {
-    Race::new(|race| race.when()); //~ ERROR overflow assigning `_` to `Option<_>`
+    Race::new(|race| race.when());
+    //~^ ERROR the method `when` exists for struct `RaceBuilder<_, Never<_>>`, but its trait bounds were not satisfied
 }
