@@ -80,61 +80,81 @@ pub fn suggest_new_overflow_limit<'tcx, G: EmissionGuarantee>(
 
 #[extension(pub trait TypeErrCtxtExt<'tcx>)]
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+    #[instrument(skip(self), level = "debug")]
     fn report_fulfillment_errors(
         &self,
         mut errors: Vec<FulfillmentError<'tcx>>,
     ) -> ErrorGuaranteed {
+        if errors.is_empty() {
+            bug!("attempted to report fulfillment errors, but there we no errors");
+        }
+
         self.sub_relations
             .borrow_mut()
             .add_constraints(self, errors.iter().map(|e| e.obligation.predicate));
 
+        let mut reported = None;
+
+        // We want to ignore desugarings when filtering errors: spans are equivalent even
+        // if one is the result of a desugaring and the other is not.
+        let strip_desugaring = |span: Span| {
+            let expn_data = span.ctxt().outer_expn_data();
+            if let ExpnKind::Desugaring(_) = expn_data.kind { expn_data.call_site } else { span }
+        };
+
         #[derive(Debug)]
-        struct ErrorDescriptor<'tcx> {
+        struct ErrorDescriptor<'tcx, 'err> {
             predicate: ty::Predicate<'tcx>,
-            index: Option<usize>, // None if this is an old error
+            source: Option<(usize, &'err FulfillmentError<'tcx>)>, // None if this is an old error
         }
 
         let mut error_map: FxIndexMap<_, Vec<_>> = self
             .reported_trait_errors
             .borrow()
             .iter()
-            .map(|(&span, predicates)| {
-                (
-                    span,
-                    predicates
-                        .0
-                        .iter()
-                        .map(|&predicate| ErrorDescriptor { predicate, index: None })
-                        .collect(),
-                )
+            .map(|(&span, &(ref predicates, guar))| {
+                reported = Some(guar);
+                let span = strip_desugaring(span);
+                let reported_errors = predicates
+                    .iter()
+                    .map(|&predicate| ErrorDescriptor { predicate, source: None })
+                    .collect();
+                (span, reported_errors)
             })
             .collect();
 
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+        enum ErrorOrd {
+            Default,
+            Sized,
+            Metadata,
+            Coerce,
+            WellFormed,
+        }
+
         // Ensure `T: Sized` and `T: WF` obligations come last. This lets us display diagnostics
-        // with more relevant type information and hide redundant E0282 errors.
+        // with more relevant type information and hide redundant E0282 ("type annotations needed") errors.
         errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
                 if Some(pred.def_id()) == self.tcx.lang_items().sized_trait() =>
             {
-                1
+                ErrorOrd::Sized
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
-            ty::PredicateKind::Coerce(_) => 2,
-            _ => 0,
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred))
+                if Some(pred.def_id()) == self.tcx.lang_items().metadata_type() =>
+            {
+                ErrorOrd::Metadata
+            }
+            ty::PredicateKind::Coerce(_) => ErrorOrd::Coerce,
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => ErrorOrd::WellFormed,
+            _ => ErrorOrd::Default,
         });
 
         for (index, error) in errors.iter().enumerate() {
-            // We want to ignore desugarings here: spans are equivalent even
-            // if one is the result of a desugaring and the other is not.
-            let mut span = error.obligation.cause.span;
-            let expn_data = span.ctxt().outer_expn_data();
-            if let ExpnKind::Desugaring(_) = expn_data.kind {
-                span = expn_data.call_site;
-            }
-
+            let span = strip_desugaring(error.obligation.cause.span);
             error_map.entry(span).or_default().push(ErrorDescriptor {
                 predicate: error.obligation.predicate,
-                index: Some(index),
+                source: Some((index, error)),
             });
         }
 
@@ -144,59 +164,63 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         for (_, error_set) in error_map.iter() {
             // We want to suppress "duplicate" errors with the same span.
             for error in error_set {
-                if let Some(index) = error.index {
+                let Some((index, error_source)) = error.source else {
+                    continue;
+                };
+
+                for error2 in error_set {
                     // Suppress errors that are either:
                     // 1) strictly implied by another error.
                     // 2) implied by an error with a smaller index.
-                    for error2 in error_set {
-                        if error2.index.is_some_and(|index2| is_suppressed[index2]) {
-                            // Avoid errors being suppressed by already-suppressed
-                            // errors, to prevent all errors from being suppressed
-                            // at once.
-                            continue;
-                        }
+                    if self.error_implied_by(error.predicate, error2.predicate)
+                        && (!error2.source.is_some_and(|(index2, _)| index2 >= index)
+                            || !self.error_implied_by(error2.predicate, error.predicate))
+                    {
+                        info!("skipping `{}` (implied by `{}`)", error.predicate, error2.predicate);
+                        is_suppressed[index] = true;
+                        break;
+                    }
 
-                        if self.error_implies(error2.predicate, error.predicate)
-                            && !(error2.index >= error.index
-                                && self.error_implies(error.predicate, error2.predicate))
-                        {
-                            info!("skipping {:?} (implied by {:?})", error, error2);
-                            is_suppressed[index] = true;
-                            break;
-                        }
+                    // Also suppress the error if we are absolutely certain that a different
+                    // error is the one that the user should fix. This will suppress errors
+                    // about `<T as Pointee>::Metadata == ()` that can be fixed by `T: Sized`.
+                    if error.predicate.to_opt_poly_projection_pred().is_some()
+                        && error2.predicate.to_opt_poly_trait_pred().is_some()
+                        && self.error_fixed_by(
+                            error_source.obligation.clone(),
+                            error2.predicate.expect_clause(),
+                        )
+                    {
+                        info!("skipping `{}` (fixed by `{}`)", error.predicate, error2.predicate);
+                        is_suppressed[index] = true;
+                        break;
                     }
                 }
             }
         }
-
-        let mut reported = None;
 
         for from_expansion in [false, true] {
-            for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
-                if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
-                    let guar = self.report_fulfillment_error(error);
-                    reported = Some(guar);
-                    // We want to ignore desugarings here: spans are equivalent even
-                    // if one is the result of a desugaring and the other is not.
-                    let mut span = error.obligation.cause.span;
-                    let expn_data = span.ctxt().outer_expn_data();
-                    if let ExpnKind::Desugaring(_) = expn_data.kind {
-                        span = expn_data.call_site;
-                    }
-                    self.reported_trait_errors
-                        .borrow_mut()
-                        .entry(span)
-                        .or_insert_with(|| (vec![], guar))
-                        .0
-                        .push(error.obligation.predicate);
+            for (error, &suppressed) in iter::zip(&errors, &is_suppressed) {
+                let span = error.obligation.cause.span;
+                if suppressed || span.from_expansion() != from_expansion {
+                    continue;
                 }
+
+                let guar = self.report_fulfillment_error(error);
+                reported = Some(guar);
+
+                self.reported_trait_errors
+                    .borrow_mut()
+                    .entry(span)
+                    .or_insert_with(|| (vec![], guar))
+                    .0
+                    .push(error.obligation.predicate);
             }
         }
 
-        // It could be that we don't report an error because we have seen an `ErrorReported` from
-        // another source. We should probably be able to fix most of these, but some are delayed
-        // bugs that get a proper error after this function.
-        reported.unwrap_or_else(|| self.dcx().delayed_bug("failed to report fulfillment errors"))
+        // If all errors are suppressed, then we must have reported at least one error
+        // from a previous call to this function.
+        reported.unwrap_or_else(|| bug!("failed to report fulfillment errors"))
     }
 
     /// Reports that an overflow has occurred and halts compilation. We
@@ -1465,10 +1489,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             && self.can_eq(param_env, goal.term, assumption.term)
     }
 
-    // returns if `cond` not occurring implies that `error` does not occur - i.e., that
-    // `error` occurring implies that `cond` occurs.
+    /// Returns whether `cond` not occurring implies that `error` does not occur - i.e., that
+    /// `error` occurring implies that `cond` occurs.
     #[instrument(level = "debug", skip(self), ret)]
-    fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool {
+    fn error_implied_by(&self, error: ty::Predicate<'tcx>, cond: ty::Predicate<'tcx>) -> bool {
         if cond == error {
             return true;
         }
@@ -1488,6 +1512,29 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         } else {
             false
         }
+    }
+
+    /// Returns whether fixing `cond` will also fix `error`.
+    #[instrument(level = "debug", skip(self), ret)]
+    fn error_fixed_by(&self, mut error: PredicateObligation<'tcx>, cond: ty::Clause<'tcx>) -> bool {
+        self.probe(|_| {
+            let ocx = ObligationCtxt::new(self);
+
+            let clauses = elaborate(self.tcx, std::iter::once(cond)).collect::<Vec<_>>();
+            let clauses = ocx.normalize(&error.cause, error.param_env, clauses);
+            let mut clauses = self.resolve_vars_if_possible(clauses);
+
+            if clauses.has_infer() {
+                return false;
+            }
+
+            clauses.extend(error.param_env.caller_bounds());
+            let clauses = self.tcx.mk_clauses(&clauses);
+            error.param_env = ty::ParamEnv::new(clauses, error.param_env.reveal());
+
+            ocx.register_obligation(error);
+            ocx.select_all_or_error().is_empty()
+        })
     }
 
     #[instrument(skip(self), level = "debug")]

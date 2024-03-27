@@ -23,7 +23,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{sym, Symbol};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{Obligation, ObligationCause};
+use rustc_trait_selection::traits::{self, Obligation, ObligationCause};
 
 use super::UNNECESSARY_TO_OWNED;
 
@@ -323,9 +323,10 @@ fn check_other_call_arg<'tcx>(
         && let (input, n_refs) = peel_mid_ty_refs(*input)
         && let (trait_predicates, _) = get_input_traits_and_projections(cx, callee_def_id, input)
         && let Some(sized_def_id) = cx.tcx.lang_items().sized_trait()
+        && let sized_super_def_ids = traits::supertrait_def_ids(cx.tcx, sized_def_id).collect::<Vec<_>>()
         && let [trait_predicate] = trait_predicates
             .iter()
-            .filter(|trait_predicate| trait_predicate.def_id() != sized_def_id)
+            .filter(|trait_predicate| !sized_super_def_ids.contains(&trait_predicate.def_id()))
             .collect::<Vec<_>>()[..]
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
