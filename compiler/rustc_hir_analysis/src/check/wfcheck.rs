@@ -2089,13 +2089,19 @@ fn lint_redundant_lifetimes<'tcx>(
     let mut shadowed = FxHashSet::default();
 
     for (idx, &candidate) in lifetimes.iter().enumerate() {
-        // Don't suggest removing a lifetime twice.
+        // Don't suggest removing a lifetime twice. We only need to check this
+        // here and not up in the `victim` loop because equality is transitive,
+        // so if A = C and B = C, then A must = B, so it'll be shadowed too in
+        // A's victim loop.
         if shadowed.contains(&candidate) {
             continue;
         }
 
         for &victim in &lifetimes[(idx + 1)..] {
-            // We only care about lifetimes that are "real", i.e. that have a def-id.
+            // We should only have late-bound lifetimes of the `BrNamed` variety,
+            // since we get these signatures straight from `hir_lowering`. And any
+            // other regions (ReError/ReStatic/etc.) shouldn't matter, since we
+            // can't really suggest to remove them.
             let (ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
             | ty::ReLateParam(ty::LateParamRegion {
                 bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
@@ -2113,7 +2119,7 @@ fn lint_redundant_lifetimes<'tcx>(
                 continue;
             }
 
-            // If there are no lifetime errors, then we have proven that `'candidate = 'victim`!
+            // If `candidate <: victim` and `victim <: candidate`, then they're equal.
             if outlives_env.free_region_map().sub_free_regions(tcx, candidate, victim)
                 && outlives_env.free_region_map().sub_free_regions(tcx, victim, candidate)
             {
