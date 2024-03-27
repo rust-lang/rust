@@ -380,3 +380,22 @@ macro_rules! assert_approx_eq {
         assert!((*a - *b).abs() < 1.0e-6, "{} is not approximately equal to {}", *a, *b);
     }};
 }
+
+/// This macro will read a value from the user input
+///
+/// Example:
+/// ```
+/// pub fn main() {
+///     let value: String = input!("enter value: ");
+///     println!("your value: {}", value);
+/// }
+/// ```
+macro_rules! input {
+    ($($arg:tt)*) => {{
+        $crate::io::_print($crate::format_args_nl!($($arg)*));
+        let _ = std::io::stdout().flush();
+        let mut buf = String::new();
+        std::io::stdin().read_line(&mut buf).expect("error: unable to read user input");
+        buf.replace("\n", "").replace("\r", "")
+    }};
+}
