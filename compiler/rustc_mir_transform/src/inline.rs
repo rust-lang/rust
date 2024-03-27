@@ -485,8 +485,6 @@ impl<'tcx> Inliner<'tcx> {
         callee_attrs: &CodegenFnAttrs,
         cross_crate_inlinable: bool,
     ) -> Result<(), &'static str> {
-        let tcx = self.tcx;
-
         let mut threshold = if cross_crate_inlinable {
             self.tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
         } else {
@@ -501,49 +499,25 @@ impl<'tcx> Inliner<'tcx> {
         }
         debug!("    final inline threshold = {}", threshold);
 
+        if callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set {
+            for blk in callee_body.basic_blocks.iter() {
+                if let TerminatorKind::InlineAsm { .. } = blk.terminator().kind {
+                    // During the attribute checking stage we allow a callee with no
+                    // instruction_set assigned to count as compatible with a function that does
+                    // assign one. However, during this stage we require an exact match when any
+                    // inline-asm is detected. LLVM will still possibly do an inline later on
+                    // if the no-attribute function ends up with the same instruction set anyway.
+                    return Err("Cannot move inline-asm across instruction sets");
+                }
+            }
+        }
+
         // FIXME: Give a bonus to functions with only a single caller
 
         let mut checker =
             CostChecker::new(self.tcx, self.param_env, Some(callsite.callee), callee_body);
 
-        // Traverse the MIR manually so we can account for the effects of inlining on the CFG.
-        let mut work_list = vec![START_BLOCK];
-        let mut visited = BitSet::new_empty(callee_body.basic_blocks.len());
-        while let Some(bb) = work_list.pop() {
-            if !visited.insert(bb.index()) {
-                continue;
-            }
-
-            let blk = &callee_body.basic_blocks[bb];
-            checker.visit_basic_block_data(bb, blk);
-
-            let term = blk.terminator();
-            if let TerminatorKind::Drop { ref place, target, unwind, replace: _ } = term.kind {
-                work_list.push(target);
-
-                // If the place doesn't actually need dropping, treat it like a regular goto.
-                let ty = callsite.callee.instantiate_mir(
-                    self.tcx,
-                    ty::EarlyBinder::bind(&place.ty(callee_body, tcx).ty),
-                );
-                if ty.needs_drop(tcx, self.param_env)
-                    && let UnwindAction::Cleanup(unwind) = unwind
-                {
-                    work_list.push(unwind);
-                }
-            } else if callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set
-                && matches!(term.kind, TerminatorKind::InlineAsm { .. })
-            {
-                // During the attribute checking stage we allow a callee with no
-                // instruction_set assigned to count as compatible with a function that does
-                // assign one. However, during this stage we require an exact match when any
-                // inline-asm is detected. LLVM will still possibly do an inline later on
-                // if the no-attribute function ends up with the same instruction set anyway.
-                return Err("Cannot move inline-asm across instruction sets");
-            } else {
-                work_list.extend(term.successors())
-            }
-        }
+        checker.visit_body(callee_body);
 
         // N.B. We still apply our cost threshold to #[inline(always)] functions.
         // That attribute is often applied to very large functions that exceed LLVM's (very
