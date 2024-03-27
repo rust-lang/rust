@@ -653,6 +653,13 @@ struct DiagMetadata<'ast> {
     current_elision_failures: Vec<MissingLifetime>,
 }
 
+#[derive(Debug, Default)]
+struct RedundantPolyTraitRef {
+    poly_trait: Span,
+    trait_ref: Span,
+    generic_param_idents: Vec<Ident>,
+}
+
 struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     r: &'b mut Resolver<'a, 'tcx>,
 
@@ -693,6 +700,9 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     /// Count the number of places a lifetime is used.
     lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
+
+    /// Record poly-trait-ref, only used for diagnostic.
+    with_poly_trait_ref: FxHashMap<NodeId, RedundantPolyTraitRef>,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -1197,6 +1207,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
 
     fn visit_where_predicate(&mut self, p: &'ast WherePredicate) {
         debug!("visit_where_predicate {:?}", p);
+        self.record_where_bound_predicate_with_poly_trait(p);
         let previous_value = replace(&mut self.diag_metadata.current_where_predicate, Some(p));
         self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
             if let WherePredicate::BoundPredicate(WhereBoundPredicate {
@@ -1306,6 +1317,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // errors at module scope should always be reported
             in_func_body: false,
             lifetime_uses: Default::default(),
+            with_poly_trait_ref: Default::default(),
         }
     }
 
@@ -4700,6 +4712,39 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 path_span: finalize.path_span,
                 removal_span: path[0].ident.span.until(seg.ident.span),
             });
+        }
+    }
+
+    fn record_where_bound_predicate_with_poly_trait(&mut self, p: &WherePredicate) {
+        if let ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+            bounded_ty,
+            bounds,
+            ..
+        }) = p
+        {
+            for bound in bounds {
+                if let ast::GenericBound::Trait(
+                    ast::PolyTraitRef {
+                        span: poly_span,
+                        trait_ref: ast::TraitRef { path: ast::Path { span, .. }, .. },
+                        bound_generic_params,
+                        ..
+                    },
+                    _,
+                ) = bound
+                {
+                    let names = bound_generic_params.iter().map(|v| v.ident).collect();
+                    self.with_poly_trait_ref.insert(
+                        bounded_ty.node_id(),
+                        RedundantPolyTraitRef {
+                            poly_trait: *poly_span,
+                            trait_ref: *span,
+                            generic_param_idents: names,
+                        },
+                    );
+                    break;
+                }
+            }
         }
     }
 }

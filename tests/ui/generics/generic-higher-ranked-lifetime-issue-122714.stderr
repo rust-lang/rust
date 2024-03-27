@@ -1,0 +1,16 @@
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/generic-higher-ranked-lifetime-issue-122714.rs:6:31
+   |
+LL |   where T: for<'a> Trait<T> + 'b { }
+   |                               ^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL -   where T: for<'a> Trait<T> + 'b { }
+LL +   where for<'a, 'b> T: Trait<T> + 'b { }
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0261`.

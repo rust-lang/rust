@@ -31,7 +31,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use rustc_middle::ty;
 
@@ -2718,10 +2718,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         suggest: impl Fn(&mut Diag<'_>, bool, Span, Cow<'static, str>, String) -> bool,
     ) {
         let mut suggest_note = true;
+
         for rib in self.lifetime_ribs.iter().rev() {
             let mut should_continue = true;
             match rib.kind {
-                LifetimeRibKind::Generics { binder: _, span, kind } => {
+                LifetimeRibKind::Generics { binder: node_id, span, kind } => {
                     // Avoid suggesting placing lifetime parameters on constant items unless the relevant
                     // feature is enabled. Suggest the parent item as a possible location if applicable.
                     if let LifetimeBinderKind::ConstItem = kind
@@ -2750,14 +2751,43 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             | LifetimeBinderKind::PolyTrait
                             | LifetimeBinderKind::WhereBound
                     );
-                    let (span, sugg) = if span.is_empty() {
+
+                    let (span, sugg, rm_poly_trait_span) = if span.is_empty() {
+                        let (generic_params, poly_trait_span, trait_ref_span) =
+                            if let Some(with_poly_trait_ref) =
+                                self.with_poly_trait_ref.get(&node_id)
+                                && higher_ranked
+                            {
+                                let generic_params = with_poly_trait_ref
+                                    .generic_param_idents
+                                    .iter()
+                                    .fold("".to_string(), |mut generic_params, x| {
+                                        generic_params += x.as_str();
+                                        generic_params += ", ";
+                                        generic_params
+                                    });
+                                (
+                                    generic_params,
+                                    with_poly_trait_ref.poly_trait,
+                                    with_poly_trait_ref.trait_ref,
+                                )
+                            } else {
+                                ("".to_string(), DUMMY_SP, DUMMY_SP)
+                            };
+
+                        let rm_poly_trait_span = if generic_params.is_empty() {
+                            DUMMY_SP
+                        } else {
+                            poly_trait_span.with_hi(trait_ref_span.lo())
+                        };
+
                         let sugg = format!(
                             "{}<{}>{}",
                             if higher_ranked { "for" } else { "" },
-                            name.unwrap_or("'a"),
+                            format!("{}{}", generic_params, name.unwrap_or("'a")),
                             if higher_ranked { " " } else { "" },
                         );
-                        (span, sugg)
+                        (span, sugg, rm_poly_trait_span)
                     } else {
                         let span = self
                             .r
@@ -2767,15 +2797,30 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             .span_through_char(span, '<')
                             .shrink_to_hi();
                         let sugg = format!("{}, ", name.unwrap_or("'a"));
-                        (span, sugg)
+                        (span, sugg, DUMMY_SP)
                     };
+
                     if higher_ranked {
                         let message = Cow::from(format!(
                             "consider making the {} lifetime-generic with a new `{}` lifetime",
                             kind.descr(),
                             name.unwrap_or("'a"),
                         ));
-                        should_continue = suggest(err, true, span, message, sugg);
+                        should_continue = if !rm_poly_trait_span.is_dummy() {
+                            // For poly-trait-ref like `for<'a> Trait<T>` in
+                            // `T: for<'a> Trait<T> + 'b { }`.
+                            // We should merge the higher-ranked lifetimes: existed `for<'a>` and suggestion `for<'b>`
+                            // or will get err:
+                            // `[E0316] nested quantification of lifetimes`.
+                            err.multipart_suggestion_verbose(
+                                message,
+                                vec![(span, sugg), (rm_poly_trait_span, "".to_string())],
+                                Applicability::MaybeIncorrect,
+                            );
+                            false
+                        } else {
+                            suggest(err, true, span, message.clone(), sugg.clone())
+                        };
                         err.note_once(
                             "for more information on higher-ranked polymorphism, visit \
                              https://doc.rust-lang.org/nomicon/hrtb.html",
@@ -3298,7 +3343,6 @@ fn mk_where_bound_predicate(
     poly_trait_ref: &ast::PolyTraitRef,
     ty: &Ty,
 ) -> Option<ast::WhereBoundPredicate> {
-    use rustc_span::DUMMY_SP;
     let modified_segments = {
         let mut segments = path.segments.clone();
         let [preceding @ .., second_last, last] = segments.as_mut_slice() else {
