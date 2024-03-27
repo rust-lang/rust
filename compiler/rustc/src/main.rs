@@ -35,7 +35,7 @@
 // to compare their performance, see
 // https://github.com/rust-lang/rust/commit/b90cfc887c31c3e7a9e6d462e2464db1fe506175#diff-43914724af6e464c1da2171e4a9b6c7e607d5bc1203fa95c0ab85be4122605ef
 // for an example of how to do so.
-
+/*
 use std::os::raw::{c_char, c_int, c_void};
 
 #[no_mangle]
@@ -72,11 +72,12 @@ unsafe extern "C" fn free(ptr: *mut c_void) {
 unsafe extern "C" fn strdup(ptr: *const c_char) -> *mut c_char {
     fjall::c::strdup(ptr)
 }
-
+*/
 #[unix_sigpipe = "sig_dfl"]
 fn main() {
     // See the comment at the top of this file for an explanation of this.
     {
+/*
         #[used]
         static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = calloc;
         #[used]
@@ -105,6 +106,7 @@ fn main() {
             #[used]
             static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
         }*/
+*/
     }
 
     rustc_driver::main()
