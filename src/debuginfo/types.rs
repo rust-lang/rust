@@ -56,7 +56,7 @@ impl DebugContext {
             // ty::FnDef(..) | ty::FnPtr(..)
             // ty::Closure(..)
             // ty::Adt(def, ..)
-            // ty::Tuple(_)
+            ty::Tuple(components) => self.tuple_type(tcx, type_dbg, ty, *components),
             // ty::Param(_)
             // FIXME implement remaining types and add unreachable!() to the fallback branch
             _ => self.placeholder_for_type(tcx, type_dbg, ty),
@@ -142,6 +142,51 @@ impl DebugContext {
             // FIXME implement debuginfo for fat pointers
             self.placeholder_for_type(tcx, type_dbg, ptr_type)
         }
+    }
+
+    fn tuple_type<'tcx>(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        type_dbg: &mut TypeDebugContext<'tcx>,
+        tuple_type: Ty<'tcx>,
+        components: &'tcx [Ty<'tcx>],
+    ) -> UnitEntryId {
+        let components = components
+            .into_iter()
+            .map(|&ty| (ty, self.debug_type(tcx, type_dbg, ty)))
+            .collect::<Vec<_>>();
+
+        return_if_type_created_in_meantime!(type_dbg, tuple_type);
+
+        let name = type_names::compute_debuginfo_type_name(tcx, tuple_type, false);
+        let layout = RevealAllLayoutCx(tcx).layout_of(tuple_type);
+
+        let tuple_type_id =
+            self.dwarf.unit.add(self.dwarf.unit.root(), gimli::DW_TAG_structure_type);
+        let tuple_entry = self.dwarf.unit.get_mut(tuple_type_id);
+        tuple_entry.set(gimli::DW_AT_name, AttributeValue::StringRef(self.dwarf.strings.add(name)));
+        tuple_entry.set(gimli::DW_AT_byte_size, AttributeValue::Udata(layout.size.bytes()));
+        tuple_entry.set(gimli::DW_AT_alignment, AttributeValue::Udata(layout.align.pref.bytes()));
+
+        for (i, (ty, dw_ty)) in components.into_iter().enumerate() {
+            let member_id = self.dwarf.unit.add(tuple_type_id, gimli::DW_TAG_member);
+            let member_entry = self.dwarf.unit.get_mut(member_id);
+            member_entry.set(
+                gimli::DW_AT_name,
+                AttributeValue::StringRef(self.dwarf.strings.add(format!("__{i}"))),
+            );
+            member_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(dw_ty));
+            member_entry.set(
+                gimli::DW_AT_alignment,
+                AttributeValue::Udata(RevealAllLayoutCx(tcx).layout_of(ty).align.pref.bytes()),
+            );
+            member_entry.set(
+                gimli::DW_AT_data_member_location,
+                AttributeValue::Udata(layout.fields.offset(i).bytes()),
+            );
+        }
+
+        tuple_type_id
     }
 
     fn placeholder_for_type<'tcx>(
