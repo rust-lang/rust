@@ -1379,6 +1379,25 @@ pub fn get_single_str_from_tts(
     tts: TokenStream,
     name: &str,
 ) -> ExpandResult<Result<Symbol, ErrorGuaranteed>, ()> {
+    let ExpandResult::Ready(ret) = get_single_expr_from_tts(cx, span, tts, name) else {
+        return ExpandResult::Retry(());
+    };
+    match ret {
+        Ok(ret) => {
+            expr_to_string(cx, ret, "argument must be a string literal").map(|s| s.map(|(s, _)| s))
+        }
+        Err(e) => ExpandResult::Ready(Err(e)),
+    }
+}
+
+/// Interpreting `tts` as a comma-separated sequence of expressions,
+/// expect exactly one expression, or emit an error and return `Err`.
+pub fn get_single_expr_from_tts(
+    cx: &mut ExtCtxt<'_>,
+    span: Span,
+    tts: TokenStream,
+    name: &str,
+) -> ExpandResult<Result<P<ast::Expr>, ErrorGuaranteed>, ()> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
         let guar = cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
@@ -1393,7 +1412,7 @@ pub fn get_single_str_from_tts(
     if p.token != token::Eof {
         cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
     }
-    expr_to_string(cx, ret, "argument must be a string literal").map(|s| s.map(|(s, _)| s))
+    ExpandResult::Ready(Ok(ret))
 }
 
 /// Extracts comma-separated expressions from `tts`.

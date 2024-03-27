@@ -114,6 +114,8 @@ builtin_macros_env_not_defined = environment variable `{$var}` not defined at co
     .cargo = Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead
     .custom = use `std::env::var({$var_expr})` to read the variable at run time
 
+builtin_macros_env_not_unicode = environment variable `{$var}` is not a valid Unicode string
+
 builtin_macros_env_takes_args = `env!()` takes 1 or 2 arguments
 
 builtin_macros_expected_one_cfg_pattern = expected 1 cfg-pattern
