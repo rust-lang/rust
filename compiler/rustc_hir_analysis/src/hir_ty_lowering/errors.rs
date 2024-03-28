@@ -1,6 +1,6 @@
 use crate::errors::{
     self, AssocTypeBindingNotAllowed, ManualImplementation, MissingTypeParams,
-    ParenthesizedFnTraitExpansion,
+    ParenthesizedFnTraitExpansion, TraitObjectDeclaredWithNoTraits,
 };
 use crate::fluent_generated as fluent;
 use crate::hir_ty_lowering::HirTyLowerer;
@@ -8,19 +8,26 @@ use crate::traits::error_reporting::report_object_safety_error;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
+use rustc_errors::MultiSpan;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed,
 };
 use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
 use rustc_middle::query::Key;
-use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, suggest_constraining_type_param};
+use rustc_middle::ty::{AdtDef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{Binder, TraitRef};
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::BytePos;
 use rustc_span::{Span, Symbol, DUMMY_SP};
-use rustc_trait_selection::traits::object_safety_violations_for_assoc_item;
+use rustc_trait_selection::traits::{
+    object_safety_violations_for_assoc_item, TraitAliasExpansionInfo,
+};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
@@ -1024,6 +1031,174 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Ok(())
         }
     }
+
+    pub fn report_prohibit_generics_error<'a>(
+        &self,
+        segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
+        args_visitors: impl Iterator<Item = &'a hir::GenericArg<'a>> + Clone,
+        opt_enum_variants_extend: Option<EnumVariantsGenericsErrExtend<'a>>,
+        extend: impl Fn(&mut Diag<'_>),
+    ) -> ErrorGuaranteed {
+        #[derive(PartialEq, Eq, Hash)]
+        enum ProhibitGenericsArg {
+            Lifetime,
+            Type,
+            Const,
+            Infer,
+        }
+
+        let mut prohibit_args = FxIndexSet::default();
+        args_visitors.for_each(|arg| {
+            match arg {
+                hir::GenericArg::Lifetime(_) => prohibit_args.insert(ProhibitGenericsArg::Lifetime),
+                hir::GenericArg::Type(_) => prohibit_args.insert(ProhibitGenericsArg::Type),
+                hir::GenericArg::Const(_) => prohibit_args.insert(ProhibitGenericsArg::Const),
+                hir::GenericArg::Infer(_) => prohibit_args.insert(ProhibitGenericsArg::Infer),
+            };
+        });
+
+        let types_and_spans: Vec<_> = segments
+            .clone()
+            .flat_map(|segment| {
+                if segment.args().args.is_empty() {
+                    None
+                } else {
+                    Some((
+                        match segment.res {
+                            hir::def::Res::PrimTy(ty) => {
+                                format!("{} `{}`", segment.res.descr(), ty.name())
+                            }
+                            hir::def::Res::Def(_, def_id)
+                                if let Some(name) = self.tcx().opt_item_name(def_id) =>
+                            {
+                                format!("{} `{name}`", segment.res.descr())
+                            }
+                            hir::def::Res::Err => "this type".to_string(),
+                            _ => segment.res.descr().to_string(),
+                        },
+                        segment.ident.span,
+                    ))
+                }
+            })
+            .collect();
+        let this_type = match &types_and_spans[..] {
+            [.., _, (last, _)] => format!(
+                "{} and {last}",
+                types_and_spans[..types_and_spans.len() - 1]
+                    .iter()
+                    .map(|(x, _)| x.as_str())
+                    .intersperse(", ")
+                    .collect::<String>()
+            ),
+            [(only, _)] => only.to_string(),
+            [] => "this type".to_string(),
+        };
+
+        let arg_spans: Vec<Span> = segments
+            .clone()
+            .flat_map(|segment| segment.args().args)
+            .map(|arg| arg.span())
+            .collect();
+
+        let mut kinds = Vec::with_capacity(4);
+        prohibit_args.iter().for_each(|arg| match arg {
+            ProhibitGenericsArg::Lifetime => kinds.push("lifetime"),
+            ProhibitGenericsArg::Type => kinds.push("type"),
+            ProhibitGenericsArg::Const => kinds.push("const"),
+            ProhibitGenericsArg::Infer => kinds.push("generic"),
+        });
+
+        let (kind, s) = match kinds[..] {
+            [.., _, last] => (
+                format!(
+                    "{} and {last}",
+                    kinds[..kinds.len() - 1]
+                        .iter()
+                        .map(|&x| x)
+                        .intersperse(", ")
+                        .collect::<String>()
+                ),
+                "s",
+            ),
+            [only] => (only.to_string(), ""),
+            [] => unreachable!("expected at least one generic to prohibit"),
+        };
+        let last_span = *arg_spans.last().unwrap();
+        let span: MultiSpan = arg_spans.into();
+        let mut err = struct_span_code_err!(
+            self.tcx().dcx(),
+            span,
+            E0109,
+            "{kind} arguments are not allowed on {this_type}",
+        );
+        err.span_label(last_span, format!("{kind} argument{s} not allowed"));
+        for (what, span) in types_and_spans {
+            err.span_label(span, format!("not allowed on {what}"));
+        }
+        extend(&mut err);
+        if let Some(enum_extend) = opt_enum_variants_extend {
+            enum_variants_generics_error_extend(&mut err, enum_extend);
+        }
+        let reported = err.emit();
+        self.set_tainted_by_errors(reported);
+        reported
+    }
+
+    pub fn report_trait_object_addition_traits_error(
+        &self,
+        regular_traits: &Vec<TraitAliasExpansionInfo<'_>>,
+    ) -> ErrorGuaranteed {
+        let tcx = self.tcx();
+        let first_trait = &regular_traits[0];
+        let additional_trait = &regular_traits[1];
+        let mut err = struct_span_code_err!(
+            tcx.dcx(),
+            additional_trait.bottom().1,
+            E0225,
+            "only auto traits can be used as additional traits in a trait object"
+        );
+        additional_trait.label_with_exp_info(
+            &mut err,
+            "additional non-auto trait",
+            "additional use",
+        );
+        first_trait.label_with_exp_info(&mut err, "first non-auto trait", "first use");
+        err.help(format!(
+            "consider creating a new trait with all of these as supertraits and using that \
+             trait here instead: `trait NewTrait: {} {{}}`",
+            regular_traits
+                .iter()
+                // FIXME: This should `print_sugared`, but also needs to integrate projection bounds...
+                .map(|t| t.trait_ref().print_only_trait_path().to_string())
+                .collect::<Vec<_>>()
+                .join(" + "),
+        ));
+        err.note(
+            "auto-traits like `Send` and `Sync` are traits that have special properties; \
+             for more information on them, visit \
+             <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>",
+        );
+        let reported = err.emit();
+        self.set_tainted_by_errors(reported);
+        reported
+    }
+
+    pub fn report_trait_object_with_no_traits_error(
+        &self,
+        span: Span,
+        trait_bounds: &Vec<(Binder<'tcx, TraitRef<'tcx>>, Span)>,
+    ) -> ErrorGuaranteed {
+        let tcx = self.tcx();
+        let trait_alias_span = trait_bounds
+            .iter()
+            .map(|&(trait_ref, _)| trait_ref.def_id())
+            .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
+            .map(|trait_ref| tcx.def_span(trait_ref));
+        let reported =
+            tcx.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
+        self.set_tainted_by_errors(reported);
+        reported
+    }
 }
 
 /// Emits an error regarding forbidden type binding associations
@@ -1031,8 +1206,8 @@ pub fn prohibit_assoc_item_binding(
     tcx: TyCtxt<'_>,
     span: Span,
     segment: Option<(&hir::PathSegment<'_>, Span)>,
-) {
-    tcx.dcx().emit_err(AssocTypeBindingNotAllowed {
+) -> ErrorGuaranteed {
+    return tcx.dcx().emit_err(AssocTypeBindingNotAllowed {
         span,
         fn_trait_expansion: if let Some((segment, span)) = segment
             && segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar
@@ -1098,4 +1273,98 @@ pub(crate) fn fn_trait_to_string(
     } else {
         format!("{}<{}, Output={}>", trait_segment.ident, args, ret)
     }
+}
+
+/// Used for extending enum variants generics error.
+pub struct EnumVariantsGenericsErrExtend<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+    pub qself: &'tcx hir::Ty<'tcx>,
+    pub assoc_segment: &'tcx hir::PathSegment<'tcx>,
+    pub adt_def: AdtDef<'tcx>,
+}
+
+pub fn enum_variants_generics_error_extend(
+    err: &mut Diag<'_>,
+    enum_variants_extend: EnumVariantsGenericsErrExtend<'_>,
+) {
+    err.note("enum variants can't have type parameters");
+    let type_name = enum_variants_extend.tcx.item_name(enum_variants_extend.adt_def.did());
+    let msg = format!(
+        "you might have meant to specify type parameters on enum \
+         `{type_name}`"
+    );
+    let Some(args) = enum_variants_extend.assoc_segment.args else {
+        return;
+    };
+    // Get the span of the generics args *including* the leading `::`.
+    // We do so by stretching args.span_ext to the left by 2. Earlier
+    // it was done based on the end of assoc segment but that sometimes
+    // led to impossible spans and caused issues like #116473
+    let args_span = args.span_ext.with_lo(args.span_ext.lo() - BytePos(2));
+    if enum_variants_extend.tcx.generics_of(enum_variants_extend.adt_def.did()).count() == 0 {
+        // FIXME(estebank): we could also verify that the arguments being
+        // work for the `enum`, instead of just looking if it takes *any*.
+        err.span_suggestion_verbose(
+            args_span,
+            format!("{type_name} doesn't have generic parameters"),
+            "",
+            Applicability::MachineApplicable,
+        );
+        return;
+    }
+    let Ok(snippet) = enum_variants_extend.tcx.sess.source_map().span_to_snippet(args_span) else {
+        err.note(msg);
+        return;
+    };
+    let (qself_sugg_span, is_self) = if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) =
+        &enum_variants_extend.qself.kind
+    {
+        // If the path segment already has type params, we want to overwrite
+        // them.
+        match &path.segments {
+            // `segment` is the previous to last element on the path,
+            // which would normally be the `enum` itself, while the last
+            // `_` `PathSegment` corresponds to the variant.
+            [.., hir::PathSegment { ident, args, res: Res::Def(DefKind::Enum, _), .. }, _] => (
+                // We need to include the `::` in `Type::Variant::<Args>`
+                // to point the span to `::<Args>`, not just `<Args>`.
+                ident
+                    .span
+                    .shrink_to_hi()
+                    .to(args.map_or(ident.span.shrink_to_hi(), |a| a.span_ext)),
+                false,
+            ),
+            [segment] => {
+                (
+                    // We need to include the `::` in `Type::Variant::<Args>`
+                    // to point the span to `::<Args>`, not just `<Args>`.
+                    segment
+                        .ident
+                        .span
+                        .shrink_to_hi()
+                        .to(segment.args.map_or(segment.ident.span.shrink_to_hi(), |a| a.span_ext)),
+                    kw::SelfUpper == segment.ident.name,
+                )
+            }
+            _ => {
+                err.note(msg);
+                return;
+            }
+        }
+    } else {
+        err.note(msg);
+        return;
+    };
+    let suggestion = vec![
+        if is_self {
+            // Account for people writing `Self::Variant::<Args>`, where
+            // `Self` is the enum, and suggest replacing `Self` with the
+            // appropriate type: `Type::<Args>::Variant`.
+            (enum_variants_extend.qself.span, format!("{type_name}{snippet}"))
+        } else {
+            (qself_sugg_span, snippet)
+        },
+        (args_span, String::new()),
+    ];
+    err.multipart_suggestion_verbose(msg, suggestion, Applicability::MaybeIncorrect);
 }
