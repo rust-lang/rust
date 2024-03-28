@@ -1618,7 +1618,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 .into_items()
                 .map(|(k, f)| (k, f.key()))
                 .collect(),
-            def_id_to_node_id: self.def_id_to_node_id,
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),

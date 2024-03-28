@@ -215,7 +215,6 @@ pub struct ResolverAstLowering {
     pub next_node_id: ast::NodeId,
 
     pub node_id_to_def_id: NodeMap<LocalDefId>,
-    pub def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
     pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
     /// List functions and methods for which lifetime elision was successful.

@@ -1,3 +1,5 @@
+//@ only-wasm32-wasip1
+
 extern crate run_make_support;
 
 use run_make_support::{tmp_dir, wasmparser, rustc};
@@ -6,10 +8,6 @@ use std::path::Path;
 use wasmparser::ExternalKind::*;
 
 fn main() {
-    if std::env::var("TARGET").unwrap() != "wasm32-wasip1" {
-        return;
-    }
-
     test(&[]);
     test(&["-O"]);
     test(&["-Clto"]);

@@ -865,7 +865,9 @@ trait UnusedDelimLint {
                 (iter, UnusedDelimsCtx::ForIterExpr, true, None, Some(body.span.lo()), true)
             }
 
-            Match(ref head, ..) if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX => {
+            Match(ref head, _, ast::MatchKind::Prefix)
+                if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX =>
+            {
                 let left = e.span.lo() + rustc_span::BytePos(5);
                 (head, UnusedDelimsCtx::MatchScrutineeExpr, true, Some(left), None, true)
             }

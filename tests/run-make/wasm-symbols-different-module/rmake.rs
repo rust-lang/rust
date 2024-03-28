@@ -1,13 +1,10 @@
+//@ only-wasm32-wasip1
 extern crate run_make_support;
 
 use run_make_support::{rustc, tmp_dir, wasmparser};
 use std::collections::{HashMap, HashSet};
 
 fn main() {
-    if std::env::var("TARGET").unwrap() != "wasm32-wasip1" {
-        return;
-    }
-
     test_file("foo.rs", &[("a", &["foo"]), ("b", &["foo"])]);
     test_file("bar.rs", &[("m1", &["f", "g"]), ("m2", &["f"])]);
     test_file("baz.rs", &[("sqlite", &["allocate", "deallocate"])]);
