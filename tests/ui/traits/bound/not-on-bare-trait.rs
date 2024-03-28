@@ -12,5 +12,28 @@ fn foo(_x: Foo + Send) {
 fn bar(_x: (dyn Foo + Send)) {
     //~^ ERROR the size for values of type
 }
+fn bat(x: &Foo) -> Foo {
+    //~^ ERROR return type cannot have an unboxed trait object
+    //~| WARN trait objects without an explicit `dyn` are deprecated
+    //~| WARN trait objects without an explicit `dyn` are deprecated
+    //~| WARN trait objects without an explicit `dyn` are deprecated
+    //~| WARN this is accepted in the current edition
+    //~| WARN this is accepted in the current edition
+    //~| WARN this is accepted in the current edition
+    x
+}
+fn bae(x: &Foo) -> &Foo {
+    //~^ WARN trait objects without an explicit `dyn` are deprecated
+    //~| WARN trait objects without an explicit `dyn` are deprecated
+    //~| WARN this is accepted in the current edition
+    //~| WARN this is accepted in the current edition
+    x
+}
+fn qux() -> Foo {
+    //~^ ERROR return type cannot have an unboxed trait object
+    //~| WARN trait objects without an explicit `dyn` are deprecated
+    //~| WARN this is accepted in the current edition
+    todo!()
+}
 
 fn main() {}

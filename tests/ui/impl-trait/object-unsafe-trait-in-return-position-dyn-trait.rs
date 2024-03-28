@@ -33,4 +33,10 @@ fn cat() -> Box<dyn NotObjectSafe> { //~ ERROR the trait `NotObjectSafe` cannot 
     Box::new(B) //~ ERROR cannot be made into an object
 }
 
+fn can(x: &A) -> dyn NotObjectSafe { //~ ERROR the trait `NotObjectSafe` cannot be made into an object
+//~^ ERROR return type cannot have an unboxed trait object
+    x
+}
+
+
 fn main() {}

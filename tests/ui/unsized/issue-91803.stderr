@@ -4,14 +4,18 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn or<'a>(first: &'static dyn Foo<'a>) -> dyn Foo<'a> {
    |                                           ^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+help: return an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn or<'a>(first: &'static dyn Foo<'a>) -> impl Foo<'a> {
    |                                           ~~~~
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: alternatively, box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
    |
 LL | fn or<'a>(first: &'static dyn Foo<'a>) -> Box<dyn Foo<'a>> {
    |                                           ++++           +
+help: finally, you might be able to borrow from the function's argument
+   |
+LL | fn or<'a>(first: &'static dyn Foo<'a>) -> &dyn Foo<'a> {
+   |                                           +
 
 error: aborting due to 1 previous error
 
