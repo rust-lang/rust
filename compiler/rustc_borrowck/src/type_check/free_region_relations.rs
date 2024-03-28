@@ -164,6 +164,13 @@ impl UniversalRegionRelations<'_> {
         self.outlives.contains(fr1, fr2)
     }
 
+    /// Returns `true` if fr1 is known to equal fr2.
+    ///
+    /// This will only ever be true for universally quantified regions.
+    pub(crate) fn equal(&self, fr1: RegionVid, fr2: RegionVid) -> bool {
+        self.outlives.contains(fr1, fr2) && self.outlives.contains(fr2, fr1)
+    }
+
     /// Returns a vector of free regions `x` such that `fr1: x` is
     /// known to hold.
     pub(crate) fn regions_outlived_by(&self, fr1: RegionVid) -> Vec<RegionVid> {

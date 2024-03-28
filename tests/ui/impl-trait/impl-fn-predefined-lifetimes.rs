@@ -2,10 +2,8 @@
 use std::fmt::Debug;
 
 fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
-    //~^ ERROR cannot resolve opaque type
-
     |x| x
-    //~^ ERROR concrete type differs from previous defining opaque type use
+    //~^ ERROR expected generic lifetime parameter, found `'_`
 }
 
 fn _b<'a>() -> impl Fn(&'a u8) -> (impl Debug + 'a) {
