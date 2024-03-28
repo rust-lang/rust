@@ -557,6 +557,14 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("no-run", |o| {
             o.optflagmulti("", "no-run", "Compile doctests without running them")
         }),
+        unstable("remap-path-prefix", |o| {
+            o.optmulti(
+                "",
+                "remap-path-prefix",
+                "Remap source names in compiler messages",
+                "FROM=TO",
+            )
+        }),
         unstable("show-type-layout", |o| {
             o.optflagmulti("", "show-type-layout", "Include the memory layout of types in the docs")
         }),
