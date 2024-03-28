@@ -28,7 +28,7 @@ use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 use core::sync::atomic;
-use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
@@ -354,7 +354,7 @@ impl<T: ?Sized> fmt::Debug for Weak<T> {
 // inner types.
 #[repr(C)]
 struct ArcInner<T: ?Sized> {
-    strong: atomic::AtomicUsize,
+    strong: StickyCounter,
 
     // the value usize::MAX acts as a sentinel for temporarily "locking" the
     // ability to upgrade weak pointers or downgrade strong ones; this is used
@@ -393,7 +393,7 @@ impl<T> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
         let x: Box<_> = Box::new(ArcInner {
-            strong: atomic::AtomicUsize::new(1),
+            strong: StickyCounter(atomic::AtomicUsize::new(1)),
             weak: atomic::AtomicUsize::new(1),
             data,
         });
@@ -461,7 +461,7 @@ impl<T> Arc<T> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let uninit_ptr: NonNull<_> = Box::leak(Box::new(ArcInner {
-            strong: atomic::AtomicUsize::new(0),
+            strong: StickyCounter(atomic::AtomicUsize::new(StickyCounter::ZERO_BIT)),
             weak: atomic::AtomicUsize::new(1),
             data: mem::MaybeUninit::<T>::uninit(),
         }))
@@ -496,8 +496,11 @@ impl<T> Arc<T> {
             //
             // These side effects do not impact us in any way, and no other side effects are
             // possible with safe code alone.
-            let prev_value = (*inner).strong.fetch_add(1, Release);
-            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
+            let prev_value = (*inner).strong.0.swap(1, Release);
+            debug_assert!(
+                StickyCounter::is_zero(prev_value),
+                "No prior strong references should exist"
+            );
 
             Arc::from_inner(init_ptr)
         };
@@ -608,7 +611,7 @@ impl<T> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
         let x: Box<_> = Box::try_new(ArcInner {
-            strong: atomic::AtomicUsize::new(1),
+            strong: StickyCounter(atomic::AtomicUsize::new(1)),
             weak: atomic::AtomicUsize::new(1),
             data,
         })?;
@@ -713,7 +716,7 @@ impl<T, A: Allocator> Arc<T, A> {
         // held by all the strong pointers (kinda), see std/rc.rs for more info
         let x = Box::new_in(
             ArcInner {
-                strong: atomic::AtomicUsize::new(1),
+                strong: StickyCounter(atomic::AtomicUsize::new(1)),
                 weak: atomic::AtomicUsize::new(1),
                 data,
             },
@@ -840,7 +843,7 @@ impl<T, A: Allocator> Arc<T, A> {
         // held by all the strong pointers (kinda), see std/rc.rs for more info
         let x = Box::try_new_in(
             ArcInner {
-                strong: atomic::AtomicUsize::new(1),
+                strong: StickyCounter(atomic::AtomicUsize::new(1)),
                 weak: atomic::AtomicUsize::new(1),
                 data,
             },
@@ -961,7 +964,7 @@ impl<T, A: Allocator> Arc<T, A> {
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
-        if this.inner().strong.compare_exchange(1, 0, Relaxed, Relaxed).is_err() {
+        if this.inner().strong.set_zero_if_one(Relaxed, Relaxed).is_err() {
             return Err(this);
         }
 
@@ -1080,7 +1083,7 @@ impl<T, A: Allocator> Arc<T, A> {
         let mut this = mem::ManuallyDrop::new(this);
 
         // Following the implementation of `drop` and `drop_slow`
-        if this.inner().strong.fetch_sub(1, Release) != 1 {
+        if this.inner().strong.decrement(SeqCst) != 1 {
             return None;
         }
 
@@ -1883,7 +1886,7 @@ impl<T: ?Sized> Arc<T> {
         debug_assert_eq!(unsafe { Layout::for_value_raw(inner) }, layout);
 
         unsafe {
-            ptr::addr_of_mut!((*inner).strong).write(atomic::AtomicUsize::new(1));
+            ptr::addr_of_mut!((*inner).strong).write(StickyCounter(atomic::AtomicUsize::new(1)));
             ptr::addr_of_mut!((*inner).weak).write(atomic::AtomicUsize::new(1));
         }
 
@@ -2072,7 +2075,7 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Arc<T, A> {
         // another must already provide any required synchronization.
         //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        let old_size = self.inner().strong.fetch_add(1, Relaxed);
+        let old_size = self.inner().strong.try_increment(SeqCst).unwrap();
 
         // However we need to guard against massive refcounts in case someone is `mem::forget`ing
         // Arcs. If we don't do this the count can overflow and users will use-after free. This
@@ -2176,7 +2179,7 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
         // before release writes (i.e., decrements) to `strong`. Since we hold a
         // weak count, there's no chance the ArcInner itself could be
         // deallocated.
-        if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
+        if this.inner().strong.set_zero_if_one(Acquire, Relaxed).is_err() {
             // Another strong pointer exists, so we must clone.
             // Pre-allocate memory to allow writing the cloned value directly.
             let mut arc = Self::new_uninit_in(this.alloc.clone());
@@ -2212,7 +2215,7 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
         } else {
             // We were the sole reference of either kind; bump back up the
             // strong ref count.
-            this.inner().strong.store(1, Release);
+            this.inner().strong.0.store(1, Release);
         }
 
         // As with `get_mut()`, the unsafety is ok because our reference was
@@ -2424,7 +2427,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
         // Because `fetch_sub` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
         // same logic applies to the below `fetch_sub` to the `weak` count.
-        if self.inner().strong.fetch_sub(1, Release) != 1 {
+        if self.inner().strong.decrement(SeqCst) != 1 {
             return;
         }
 
@@ -2600,7 +2603,7 @@ impl<T, A: Allocator> Weak<T, A> {
 /// making any assertions about the data field.
 struct WeakInner<'a> {
     weak: &'a atomic::AtomicUsize,
-    strong: &'a atomic::AtomicUsize,
+    strong: &'a StickyCounter,
 }
 
 impl<T: ?Sized> Weak<T> {
@@ -2825,6 +2828,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     where
         A: Clone,
     {
+        /*
         #[inline]
         fn checked_increment(n: usize) -> Option<usize> {
             // Any write of 0 we can observe leaves the field in permanently zero state.
@@ -2835,7 +2839,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
             assert!(n <= MAX_REFCOUNT, "{}", INTERNAL_OVERFLOW_ERROR);
             Some(n + 1)
         }
-
+        */
         // We use a CAS loop to increment the strong count instead of a
         // fetch_add as this function should never take the reference count
         // from zero to one.
@@ -2844,7 +2848,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         // Acquire is necessary for the success case to synchronise with `Arc::new_cyclic`, when the inner
         // value can be initialized after `Weak` references have already been created. In that case, we
         // expect to observe the fully initialized value.
-        if self.inner()?.strong.fetch_update(Acquire, Relaxed, checked_increment).is_ok() {
+        if self.inner()?.strong.try_increment(SeqCst).is_ok() {
             // SAFETY: pointer is not null, verified in checked_increment
             unsafe { Some(Arc::from_inner_in(self.ptr, self.alloc.clone())) }
         } else {
@@ -3649,5 +3653,70 @@ impl<T: core::error::Error + ?Sized> core::error::Error for Arc<T> {
 
     fn provide<'a>(&'a self, req: &mut core::error::Request<'a>) {
         core::error::Error::provide(&**self, req);
+    }
+}
+
+/// A counter that implements the wait-free "increment-if-not-zero" mechanism, as described in:
+/// https://dl.acm.org/doi/10.1145/3519939.3523730, section 4.3. The "help bit" and associated
+/// logic is omitted.
+///
+/// We assume that overflow to the zero bit will never occur, nor will any decrements past zero.
+struct StickyCounter(atomic::AtomicUsize);
+
+impl StickyCounter {
+    const ZERO_BIT: usize = 1 << (usize::BITS - 1);
+
+    /// Attempts a fetch_add with value 1 and returns a `Result` indicating whether it succeeded.
+    fn try_increment(&self, order: atomic::Ordering) -> Result<usize, usize> {
+        let before = self.0.fetch_add(1, order);
+        if Self::is_zero(before) {
+            // The user might attempt a lot of upgrades; we should undo them to prevent overflow.
+            self.0.fetch_sub(1, Relaxed);
+            Err(0)
+        } else if before == 0 {
+            // The stored value is zero, but the zero bit is not set, so a decrement is occurring.
+            // They will act as if our increment occurred before their decrement, so we should too.
+            Ok(1)
+        } else {
+            Ok(before)
+        }
+    }
+
+    // Performs a fetch_sub with value 1.
+    fn decrement(&self, order: atomic::Ordering) -> usize {
+        let before = self.0.fetch_sub(1, order);
+        if before == 1 {
+            match self.0.compare_exchange(0, Self::ZERO_BIT, SeqCst, SeqCst) {
+                Ok(_) => 1,
+                Err(val) => {
+                    // Someone else set the zero bit or an increment occurred first.
+                    // In the latter case, we simply act as if we never hit zero.
+                    if Self::is_zero(val) { 0 } else { val + 1 }
+                }
+            }
+        } else {
+            before
+        }
+    }
+
+    fn load(&self, order: atomic::Ordering) -> usize {
+        let mut val = self.0.load(order);
+        if val == 0 {
+            // We are racing with a decrement, so we try to help set the zero bit.
+            val = self.0.compare_exchange(0, Self::ZERO_BIT, SeqCst, SeqCst).unwrap_or_else(|x| x)
+        }
+        if Self::is_zero(val) { 0 } else { val }
+    }
+
+    fn set_zero_if_one(
+        &self,
+        success: atomic::Ordering,
+        failure: atomic::Ordering,
+    ) -> Result<usize, usize> {
+        self.0.compare_exchange(1, Self::ZERO_BIT, success, failure)
+    }
+
+    fn is_zero(val: usize) -> bool {
+        (val & Self::ZERO_BIT) != 0
     }
 }
