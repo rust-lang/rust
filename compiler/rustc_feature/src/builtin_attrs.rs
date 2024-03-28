@@ -822,6 +822,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
     ),
     rustc_attr!(
+        rustc_preserve_ub_checks, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
+        "`#![rustc_preserve_ub_checks]` prevents the designated crate from evaluating whether UB checks are enabled when optimizing MIR",
+    ),
+    rustc_attr!(
         rustc_deny_explicit_impl,
         AttributeType::Normal,
         template!(List: "implement_via_object = (true|false)"),
