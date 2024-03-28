@@ -8,6 +8,10 @@
 //! settings. Turning off optimizations and enabling debug assertions tends to produce the most
 //! dependence on core that is possible, so that is the configuration we test here.
 
+// wasm and nvptx targets don't produce rlib files that object can parse.
+//@ ignore-wasm
+//@ ignore-nvptx64
+
 #![deny(warnings)]
 
 extern crate run_make_support;
@@ -33,10 +37,6 @@ path = "lib.rs""#;
 fn main() {
     let target_dir = tmp_dir().join("target");
     let target = std::env::var("TARGET").unwrap();
-    if target.starts_with("wasm") || target.starts_with("nvptx") {
-        // wasm and nvptx targets don't produce rlib files that object can parse.
-        return;
-    }
 
     println!("Testing compiler_builtins for {}", target);
 

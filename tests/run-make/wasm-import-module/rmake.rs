@@ -1,3 +1,5 @@
+//@ only-wasm32-wasip1
+
 extern crate run_make_support;
 
 use run_make_support::{tmp_dir, wasmparser, rustc};
@@ -5,10 +7,6 @@ use std::collections::HashMap;
 use wasmparser::TypeRef::Func;
 
 fn main() {
-    if std::env::var("TARGET").unwrap() != "wasm32-wasip1" {
-        return;
-    }
-
     rustc().input("foo.rs").target("wasm32-wasip1").run();
     rustc()
         .input("bar.rs")

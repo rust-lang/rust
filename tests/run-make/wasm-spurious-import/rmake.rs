@@ -1,13 +1,11 @@
+//@ only-wasm32-wasip1
+
 extern crate run_make_support;
 
 use run_make_support::{rustc, tmp_dir, wasmparser};
 use std::collections::HashMap;
 
 fn main() {
-    if std::env::var("TARGET").unwrap() != "wasm32-wasip1" {
-        return;
-    }
-
     rustc()
         .input("main.rs")
         .target("wasm32-wasip1")

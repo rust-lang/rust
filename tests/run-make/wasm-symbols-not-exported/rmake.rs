@@ -1,13 +1,10 @@
+//@ only-wasm32-wasip1
 extern crate run_make_support;
 
 use run_make_support::{rustc, tmp_dir, wasmparser};
 use std::path::Path;
 
 fn main() {
-    if std::env::var("TARGET").unwrap() != "wasm32-wasip1" {
-        return;
-    }
-
     rustc().input("foo.rs").target("wasm32-wasip1").run();
     verify_symbols(&tmp_dir().join("foo.wasm"));
     rustc().input("foo.rs").target("wasm32-wasip1").opt().run();
