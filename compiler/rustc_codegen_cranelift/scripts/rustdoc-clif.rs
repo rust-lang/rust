@@ -26,11 +26,17 @@ fn main() {
         codegen_backend_arg.push(cg_clif_dylib_path);
         args.push(codegen_backend_arg);
     }
-    if !passed_args.iter().any(|arg| {
-        arg == "--sysroot" || arg.to_str().is_some_and(|s| s.starts_with("--sysroot="))
-    }) {
+    if !passed_args
+        .iter()
+        .any(|arg| arg == "--sysroot" || arg.to_str().is_some_and(|s| s.starts_with("--sysroot=")))
+    {
         args.push(OsString::from("--sysroot"));
         args.push(OsString::from(sysroot.to_str().unwrap()));
+    }
+    if passed_args.is_empty() {
+        // Don't pass any arguments when the user didn't pass any arguments
+        // either to ensure the help message is shown.
+        args.clear();
     }
     args.extend(passed_args);
 

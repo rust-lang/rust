@@ -11,7 +11,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_monomorphize::is_call_from_compiler_builtins_to_upstream_monomorphization;
 
 use crate::constant::ConstantCx;
-use crate::debuginfo::FunctionDebugContext;
+use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
 use crate::prelude::*;
 use crate::pretty_clif::CommentWriter;
 
@@ -26,6 +26,7 @@ pub(crate) struct CodegenedFunction {
 pub(crate) fn codegen_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     cx: &mut crate::CodegenCx,
+    type_dbg: &mut TypeDebugContext<'tcx>,
     cached_func: Function,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
@@ -69,8 +70,10 @@ pub(crate) fn codegen_fn<'tcx>(
     let pointer_type = target_config.pointer_type();
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
 
+    let fn_abi = RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty());
+
     let func_debug_cx = if let Some(debug_context) = &mut cx.debug_context {
-        Some(debug_context.define_function(tcx, &symbol_name, mir.span))
+        Some(debug_context.define_function(tcx, type_dbg, instance, fn_abi, &symbol_name, mir.span))
     } else {
         None
     };
@@ -87,7 +90,7 @@ pub(crate) fn codegen_fn<'tcx>(
         instance,
         symbol_name,
         mir,
-        fn_abi: Some(RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty())),
+        fn_abi,
 
         bcx,
         block_map,
@@ -95,7 +98,6 @@ pub(crate) fn codegen_fn<'tcx>(
         caller_location: None, // set by `codegen_fn_prelude`
 
         clif_comments,
-        last_source_file: None,
         next_ssa_var: 0,
     };
 
