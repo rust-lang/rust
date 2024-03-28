@@ -15,11 +15,13 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
 use rustc_middle::query::Key;
-use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, suggest_constraining_type_param, GenericParamCount, Ty, TyCtxt, TypeVisitableExt,
+};
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::traits::object_safety_violations_for_assoc_item;
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
@@ -1029,12 +1031,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 /// Emits an error regarding forbidden type binding associations
 pub fn prohibit_assoc_item_binding(
     tcx: TyCtxt<'_>,
-    span: Span,
-    segment: Option<(&hir::PathSegment<'_>, Span)>,
+    binding: &hir::TypeBinding<'_>,
+    segment: Option<(DefId, &hir::PathSegment<'_>, Span)>,
 ) {
-    tcx.dcx().emit_err(AssocTypeBindingNotAllowed {
-        span,
-        fn_trait_expansion: if let Some((segment, span)) = segment
+    let mut err = tcx.dcx().create_err(AssocTypeBindingNotAllowed {
+        span: binding.span,
+        fn_trait_expansion: if let Some((_, segment, span)) = segment
             && segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar
         {
             Some(ParenthesizedFnTraitExpansion {
@@ -1045,6 +1047,78 @@ pub fn prohibit_assoc_item_binding(
             None
         },
     });
+
+    // Emit a suggestion if possible
+    if let Some((def_id, segment, _)) = segment
+        && segment.args().parenthesized == hir::GenericArgsParentheses::No
+        && let hir::TypeBindingKind::Equality { term: binding_arg_ty } = binding.kind
+    {
+        // Suggests removal of the offending equality constraint
+        let suggest_removal = |e: &mut Diag<'_>| {
+            let mut suggestion_span = binding.span.with_hi(binding.span.hi() + BytePos(1)); // Include the comma or the angle bracket at the end
+            if segment.args().bindings.len() == 1 {
+                // If it is the only binding specified
+                // include the starting angle bracket as well
+                suggestion_span = suggestion_span.with_lo(suggestion_span.lo() - BytePos(1))
+            }
+            if let Ok(suggestion) = tcx.sess.source_map().span_to_snippet(suggestion_span) {
+                e.span_suggestion_verbose(
+                    suggestion_span,
+                    "try removing this type binding",
+                    suggestion,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        };
+
+        // Suggests replacing the quality constraint with
+        // normal type argument
+        let suggest_direct_use = |e: &mut Diag<'_>, sp: Span, is_ty: bool| {
+            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(sp) {
+                let ty_or_const = if is_ty { "generic" } else { "const" };
+                e.span_suggestion_verbose(
+                    binding.span,
+                    format!("to use `{snippet}` as a {ty_or_const} argument specify it directly"),
+                    snippet,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        };
+
+        // Get a sense of what generic args the type expects
+        let generics = tcx.generics_of(def_id);
+        let GenericParamCount { mut types, consts, .. } = generics.own_counts();
+        if generics.has_self && types > 0 {
+            types -= 1 // Ignore the `Self` type
+        }
+
+        // Now emit suggestion
+        if types == 0 && consts == 0 {
+            err.note(format!("`{0}` is not a generic type", segment.ident));
+            suggest_removal(&mut err);
+        } else {
+            match binding_arg_ty {
+                hir::Term::Ty(ty) => {
+                    if types > 0 {
+                        suggest_direct_use(&mut err, ty.span, true);
+                    } else {
+                        suggest_removal(&mut err);
+                    }
+                }
+                hir::Term::Const(c) if consts > 0 => {
+                    if consts > 0 {
+                        let span = tcx.hir().span(c.hir_id);
+                        suggest_direct_use(&mut err, span, false);
+                    } else {
+                        suggest_removal(&mut err);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    err.emit();
 }
 
 pub(crate) fn fn_trait_to_string(

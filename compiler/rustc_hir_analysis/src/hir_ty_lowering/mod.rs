@@ -322,7 +322,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::BoundConstness::NotConst,
         );
         if let Some(b) = item_segment.args().bindings.first() {
-            prohibit_assoc_item_binding(self.tcx(), b.span, Some((item_segment, span)));
+            prohibit_assoc_item_binding(self.tcx(), b, Some((def_id, item_segment, span)));
         }
         args
     }
@@ -619,7 +619,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::BoundConstness::NotConst,
         );
         if let Some(b) = item_segment.args().bindings.first() {
-            prohibit_assoc_item_binding(self.tcx(), b.span, Some((item_segment, span)));
+            prohibit_assoc_item_binding(self.tcx(), b, Some((item_def_id, item_segment, span)));
         }
         args
     }
@@ -758,7 +758,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             constness,
         );
         if let Some(b) = trait_segment.args().bindings.first() {
-            prohibit_assoc_item_binding(self.tcx(), b.span, Some((trait_segment, span)));
+            prohibit_assoc_item_binding(self.tcx(), b, Some((trait_def_id, trait_segment, span)));
         }
         ty::TraitRef::new(self.tcx(), trait_def_id, generic_args)
     }
@@ -1724,7 +1724,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         for segment in segments {
             // Only emit the first error to avoid overloading the user with error messages.
             if let Some(b) = segment.args().bindings.first() {
-                prohibit_assoc_item_binding(self.tcx(), b.span, None);
+                prohibit_assoc_item_binding(self.tcx(), b, None);
                 return true;
             }
         }
