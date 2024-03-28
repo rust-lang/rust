@@ -283,6 +283,11 @@ lint_improper_ctypes_box = box cannot be represented as a single pointer
 lint_improper_ctypes_char_help = consider using `u32` or `libc::wchar_t` instead
 
 lint_improper_ctypes_char_reason = the `char` type has no C equivalent
+
+lint_improper_ctypes_cstr_help =
+    consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+lint_improper_ctypes_cstr_reason = `CStr`/`CString` do not have a guaranteed layout
+
 lint_improper_ctypes_dyn = trait objects have no C equivalent
 
 lint_improper_ctypes_enum_repr_help =
