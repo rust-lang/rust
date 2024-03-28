@@ -776,3 +776,134 @@ fn test_send_vectored_with_ancillary_unix_datagram() {
         unreachable!("must be ScmRights");
     }
 }
+
+struct ControlMessagesBuf {
+    bytes: Vec<u8>,
+}
+
+impl ControlMessagesBuf {
+    fn new() -> Self {
+        Self { bytes: Vec::new() }
+    }
+
+    fn push(&mut self, cmsg: ControlMessage<'_>) {
+        let mut tmp = [core::mem::MaybeUninit::new(0u8); 100];
+        let size = cmsg.cmsg_space();
+        self.bytes.extend_from_slice(cmsg.copy_to_slice(&mut tmp[..size]));
+    }
+
+    fn messages(&self) -> &ControlMessages {
+        ControlMessages::from_bytes(&self.bytes)
+    }
+}
+
+#[test]
+fn control_messages() {
+    let mut buf = ControlMessagesBuf::new();
+
+    let cmsg_1 = ControlMessage::new(11, 22, &[3, 4, 5]);
+    assert_eq!(cmsg_1.cmsg_level(), 11);
+    assert_eq!(cmsg_1.cmsg_type(), 22);
+    assert_eq!(cmsg_1.data(), &[3, 4, 5]);
+    buf.push(cmsg_1);
+
+    let cmsg_2 = ControlMessage::new(66, 77, &[8, 9, 10]);
+    buf.push(cmsg_2);
+
+    let mut iter = buf.messages().iter();
+    assert_eq!(iter.next(), Some(cmsg_1));
+    assert_eq!(iter.next(), Some(cmsg_2));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn control_messages_truncated() {
+    let mut big_buf = ControlMessagesBuf::new();
+    big_buf.push(ControlMessage::new(11, 22, &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+    let big_bytes = big_buf.bytes;
+
+    let mut small_buf = ControlMessagesBuf::new();
+    small_buf.push(ControlMessage::new(11, 22, &[1]));
+    let small_bytes = small_buf.bytes;
+
+    let trunc_bytes = &big_bytes[..small_bytes.len()];
+    let mut iter = ControlMessages::from_bytes(trunc_bytes).iter();
+    let trunc_cmsg = iter.next().unwrap();
+    assert_eq!(iter.next(), None);
+
+    assert!(trunc_cmsg.truncated());
+
+    // Verify that the truncation state is preserved by ControlMessagesBuf.
+    let mut trunc_buf = ControlMessagesBuf::new();
+    trunc_buf.push(trunc_cmsg);
+    assert_eq!(trunc_buf.bytes, trunc_bytes);
+}
+
+#[test]
+fn control_messages_match_libc() {
+    // Message data lengths test behavior with 4-byte and 8-byte padding.
+    let MSG_DATA_LEN_3: &[u8] = &[31, 32, 33];
+    let MSG_DATA_LEN_4: &[u8] = &[41, 42, 43, 44];
+    let MSG_DATA_LEN_5: &[u8] = &[51, 52, 53, 54, 55];
+    let MSG_DATA_LEN_7: &[u8] = &[71, 72, 73, 74, 75, 76, 77];
+    let MSG_DATA_LEN_8: &[u8] = &[81, 82, 83, 84, 85, 86, 87, 88];
+    let MSG_DATA_LEN_9: &[u8] = &[91, 92, 93, 94, 95, 96, 97, 98, 99];
+
+    let mut buf = ControlMessagesBuf::new();
+    buf.push(ControlMessage::new(300, 301, MSG_DATA_LEN_3));
+    buf.push(ControlMessage::new(400, 401, MSG_DATA_LEN_4));
+    buf.push(ControlMessage::new(500, 501, MSG_DATA_LEN_5));
+    buf.push(ControlMessage::new(700, 701, MSG_DATA_LEN_7));
+    buf.push(ControlMessage::new(800, 801, MSG_DATA_LEN_8));
+    buf.push(ControlMessage::new(900, 901, MSG_DATA_LEN_9));
+
+    const LIBC_BUF_CAPACITY: usize = 500;
+    assert!(LIBC_BUF_CAPACITY >= buf.bytes.len());
+
+    union aligned_cmsgbuf {
+        _hdr: libc::cmsghdr,
+        buf: [u8; LIBC_BUF_CAPACITY],
+    }
+
+    let mut msg: libc::msghdr = unsafe { core::mem::zeroed() };
+    let mut cmsgbuf: aligned_cmsgbuf = unsafe { core::mem::zeroed() };
+
+    let libc_control_messages_bytes = unsafe {
+        msg.msg_control = (&mut cmsgbuf.buf).as_mut_ptr().cast();
+        msg.msg_controllen = core::mem::size_of_val(&cmsgbuf.buf);
+
+        let mut libc_buf_len: usize = 0;
+
+        let mut libc_push_cmsg = |cmsg, cmsg_level, cmsg_type, data: &[u8]| {
+            let cmsg: *mut libc::cmsghdr = cmsg;
+            (*cmsg).cmsg_len = libc::CMSG_LEN(data.len() as _) as _;
+            (*cmsg).cmsg_level = cmsg_level;
+            (*cmsg).cmsg_type = cmsg_type;
+            let cmsg_data = libc::CMSG_DATA(cmsg);
+            cmsg_data.copy_from(data.as_ptr(), data.len());
+            libc_buf_len += libc::CMSG_SPACE(data.len() as _) as usize;
+        };
+
+        let mut cmsg = libc::CMSG_FIRSTHDR(&msg);
+        libc_push_cmsg(cmsg, 300, 301, MSG_DATA_LEN_3);
+
+        cmsg = libc::CMSG_NXTHDR(&msg, cmsg);
+        libc_push_cmsg(cmsg, 400, 401, MSG_DATA_LEN_4);
+
+        cmsg = libc::CMSG_NXTHDR(&msg, cmsg);
+        libc_push_cmsg(cmsg, 500, 501, MSG_DATA_LEN_5);
+
+        cmsg = libc::CMSG_NXTHDR(&msg, cmsg);
+        libc_push_cmsg(cmsg, 700, 701, MSG_DATA_LEN_7);
+
+        cmsg = libc::CMSG_NXTHDR(&msg, cmsg);
+        libc_push_cmsg(cmsg, 800, 801, MSG_DATA_LEN_8);
+
+        cmsg = libc::CMSG_NXTHDR(&msg, cmsg);
+        libc_push_cmsg(cmsg, 900, 901, MSG_DATA_LEN_9);
+
+        &cmsgbuf.buf[..libc_buf_len]
+    };
+
+    assert_eq!(buf.bytes, libc_control_messages_bytes);
+}
