@@ -42,7 +42,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::InferOk;
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::{ObligationCause, TraitEngineExt as _};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{
     ExpectedFound,
@@ -61,8 +61,9 @@ use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
-use rustc_trait_selection::traits::ObligationCtxt;
-use rustc_trait_selection::traits::{self, ObligationCauseCode};
+use rustc_trait_selection::traits::{
+    self, ObligationCauseCode, ObligationCtxt, TraitEngine, TraitEngineExt,
+};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_expr_has_type_or_error(
@@ -2976,7 +2977,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // two-phase not needed because index_ty is never mutable
                     self.demand_coerce(idx, idx_t, index_ty, None, AllowTwoPhase::No);
                     self.select_obligations_where_possible(|errors| {
-                        self.point_at_index(errors, idx.span);
+                        self.point_at_index(errors, idx, expr, base, base_t);
                     });
                     element_ty
                 }
@@ -3150,7 +3151,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .ok()
     }
 
-    fn point_at_index(&self, errors: &mut Vec<traits::FulfillmentError<'tcx>>, span: Span) {
+    fn point_at_index(
+        &self,
+        errors: &mut Vec<traits::FulfillmentError<'tcx>>,
+        idx: &'tcx hir::Expr<'tcx>,
+        expr: &'tcx hir::Expr<'tcx>,
+        base: &'tcx hir::Expr<'tcx>,
+        base_t: Ty<'tcx>,
+    ) {
+        let idx_span = idx.span;
         let mut seen_preds = FxHashSet::default();
         // We re-sort here so that the outer most root obligations comes first, as we have the
         // subsequent weird logic to identify *every* relevant obligation for proper deduplication
@@ -3174,7 +3183,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (root, pred) if seen_preds.contains(&pred) || seen_preds.contains(&root) => {}
                 _ => continue,
             }
-            error.obligation.cause.span = span;
+            error.obligation.cause.span = idx_span;
+
+            // If the index value is a double borrow, that can cause typeck errors
+            // that can be easily resolved by removing the borrow from the expression.
+            // We check for that here and provide a suggestion in a custom obligation
+            // cause code.
+            if let hir::ExprKind::AddrOf(_, _, idx) = idx.kind {
+                let idx_t = self.typeck_results.borrow().expr_ty(idx);
+                let mut autoderef = self.autoderef(base.span, base_t);
+                let mut result = None;
+                while result.is_none() && autoderef.next().is_some() {
+                    result = self.try_index_step(expr, base, &autoderef, idx_t, idx);
+                }
+                let obligations = autoderef.into_obligations();
+                let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(&self.infcx);
+                fulfillment_cx.register_predicate_obligations(&self.infcx, obligations);
+                if let Some((index_ty, _element_ty)) = result {
+                    if self.can_coerce(idx_t, index_ty)
+                        && fulfillment_cx.select_where_possible(self).is_empty()
+                    {
+                        if let Some(pred) = error.obligation.predicate.to_opt_poly_trait_pred() {
+                            error.obligation.cause =
+                                error.obligation.cause.clone().derived_cause(pred, |cause| {
+                                    ObligationCauseCode::IndexExprDerivedObligation(Box::new((
+                                        cause,
+                                        idx_span.with_hi(idx.span.lo()),
+                                    )))
+                                });
+                        }
+                    }
+                }
+            }
         }
     }
 
