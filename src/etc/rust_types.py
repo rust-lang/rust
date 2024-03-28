@@ -32,6 +32,8 @@ class RustType(object):
     STD_REF_MUT = "StdRefMut"
     STD_REF_CELL = "StdRefCell"
     STD_NONZERO_NUMBER = "StdNonZeroNumber"
+    STD_PATH = "StdPath"
+    STD_PATHBUF = "StdPathBuf"
 
 
 STD_STRING_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)String$")
@@ -51,6 +53,8 @@ STD_REF_REGEX = re.compile(r"^(core::([a-z_]+::)+)Ref<.+>$")
 STD_REF_MUT_REGEX = re.compile(r"^(core::([a-z_]+::)+)RefMut<.+>$")
 STD_REF_CELL_REGEX = re.compile(r"^(core::([a-z_]+::)+)RefCell<.+>$")
 STD_NONZERO_NUMBER_REGEX = re.compile(r"^(core::([a-z_]+::)+)NonZero<.+>$")
+STD_PATHBUF_REGEX = re.compile(r"^(std::([a-z_]+::)+)PathBuf$")
+STD_PATH_REGEX =  re.compile(r"^&(mut )?(std::([a-z_]+::)+)Path$")
 
 TUPLE_ITEM_REGEX = re.compile(r"__\d+$")
 
@@ -75,6 +79,8 @@ STD_TYPE_TO_REGEX = {
     RustType.STD_REF_CELL: STD_REF_CELL_REGEX,
     RustType.STD_CELL: STD_CELL_REGEX,
     RustType.STD_NONZERO_NUMBER: STD_NONZERO_NUMBER_REGEX,
+    RustType.STD_PATHBUF: STD_PATHBUF_REGEX,
+    RustType.STD_PATH: STD_PATH_REGEX,
 }
 
 def is_tuple_fields(fields):
