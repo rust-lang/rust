@@ -1,9 +1,9 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
-use core::alloc::LayoutError;
 use core::cmp;
 use core::hint;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
+use core::ptr::Alignment;
 use core::ptr::{self, NonNull, Unique};
 
 #[cfg(not(no_global_oom_handling))]
@@ -435,7 +435,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// # Safety:
     ///
     /// `cap` must not exceed `isize::MAX`.
-    unsafe fn set_ptr_and_cap(&mut self, ptr: NonNull<[u8]>, cap: usize) {
+    unsafe fn set_ptr_and_cap(&mut self, ptr: NonNull<u8>, cap: usize) {
         // Allocators currently return a `NonNull<[u8]>` whose length matches
         // the size requested. If that ever changes, the capacity here should
         // change to `ptr.len() / mem::size_of::<T>()`.
@@ -460,18 +460,27 @@ impl<T, A: Allocator> RawVec<T, A> {
             return Err(CapacityOverflow.into());
         }
 
-        // Nothing we can really do about these checks, sadly.
-        let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
-
-        // This guarantees exponential growth. The doubling cannot overflow
-        // because `cap <= isize::MAX` and the type of `cap` is `usize`.
-        let cap = cmp::max(self.cap.0 * 2, required_cap);
-        let cap = cmp::max(Self::MIN_NON_ZERO_CAP, cap);
-
-        let new_layout = Layout::array::<T>(cap);
+        // We could use Layout::array here which ensures the absence of isize and usize overflows
+        // and could hypothetically handle differences between stride and size, but this memory
+        // has already been allocated so we know it can't overflow and currently Rust does not
+        // support such types. So we can do better by skipping some checks and avoid an unwrap.
+        const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
+        let current = unsafe {
+            let size = mem::size_of::<T>().unchecked_mul(self.cap.0);
+            let align = mem::align_of::<T>();
+            Layout::from_size_align_unchecked(size, align)
+        };
 
         // `finish_grow` is non-generic over `T`.
-        let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
+        let (ptr, cap) = finish_grow::<A, true>(
+            self.cap.0,
+            len,
+            additional,
+            mem::size_of::<T>(),
+            current,
+            self.ptr.cast().into(),
+            &mut self.alloc,
+        )?;
         // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than isize::MAX items
         unsafe { self.set_ptr_and_cap(ptr, cap) };
         Ok(())
@@ -487,11 +496,27 @@ impl<T, A: Allocator> RawVec<T, A> {
             return Err(CapacityOverflow.into());
         }
 
-        let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
-        let new_layout = Layout::array::<T>(cap);
+        // We could use Layout::array here which ensures the absence of isize and usize overflows
+        // and could hypothetically handle differences between stride and size, but this memory
+        // has already been allocated so we know it can't overflow and currently Rust does not
+        // support such types. So we can do better by skipping some checks and avoid an unwrap.
+        const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
+        let current = unsafe {
+            let align = mem::align_of::<T>();
+            let size = mem::size_of::<T>().unchecked_mul(self.cap.0);
+            Layout::from_size_align_unchecked(size, align)
+        };
 
         // `finish_grow` is non-generic over `T`.
-        let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
+        let (ptr, cap) = finish_grow::<A, false>(
+            self.cap.0,
+            len,
+            additional,
+            mem::size_of::<T>(),
+            current,
+            self.ptr.cast().into(),
+            &mut self.alloc,
+        )?;
         // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than isize::MAX items
         unsafe {
             self.set_ptr_and_cap(ptr, cap);
@@ -526,7 +551,7 @@ impl<T, A: Allocator> RawVec<T, A> {
             };
             // SAFETY: if the allocation is valid, then the capacity is too
             unsafe {
-                self.set_ptr_and_cap(ptr, cap);
+                self.set_ptr_and_cap(ptr.cast(), cap);
             }
         }
         Ok(())
@@ -538,31 +563,89 @@ impl<T, A: Allocator> RawVec<T, A> {
 // significant, because the number of different `A` types seen in practice is
 // much smaller than the number of `T` types.)
 #[inline(never)]
-fn finish_grow<A>(
-    new_layout: Result<Layout, LayoutError>,
-    current_memory: Option<(NonNull<u8>, Layout)>,
+fn finish_grow<A, const DOUBLE: bool>(
+    current_cap: usize,
+    len: usize,
+    additional: usize,
+    element_size: usize,
+    current: Layout,
+    current_ptr: NonNull<u8>,
     alloc: &mut A,
-) -> Result<NonNull<[u8]>, TryReserveError>
+) -> Result<(NonNull<u8>, usize), TryReserveError>
 where
     A: Allocator,
 {
+    #[inline]
+    fn layout_array(
+        element_size: usize,
+        align: Alignment,
+        n: usize,
+    ) -> Result<Layout, TryReserveError> {
+        // We need to check two things about the size:
+        //  - That the total size won't overflow a `usize`, and
+        //  - That the total size still fits in an `isize`.
+        // By using division we can check them both with a single threshold.
+        // That'd usually be a bad idea, but thankfully here the element size
+        // and alignment are constants, so the compiler will fold all of it.
+        let max_size_for_align = isize::MAX as usize - (align.as_usize() - 1);
+        if element_size != 0 && n > max_size_for_align / element_size {
+            return Err(CapacityOverflow.into());
+        }
+
+        // SAFETY: We just checked that we won't overflow `usize` when we multiply.
+        // This is a useless hint inside this function, but after inlining this helps
+        // deduplicate checks for whether the overall capacity is zero (e.g., in RawVec's
+        // allocation path) before/after this multiplication.
+        let array_size = unsafe { element_size.unchecked_mul(n) };
+
+        // SAFETY: We just checked above that the `array_size` will not
+        // exceed `isize::MAX` even when rounded up to the alignment.
+        // And `Alignment` guarantees it's a power of two.
+        unsafe { Ok(Layout::from_size_align_unchecked(array_size, align.as_usize())) }
+    }
+
+    // Nothing we can really do about these checks, sadly.
+    let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
+
+    let cap = if DOUBLE {
+        // This guarantees exponential growth. The doubling cannot overflow
+        // because `cap <= isize::MAX` and the type of `cap` is `usize`.
+        let cap = cmp::max(current_cap * 2, required_cap);
+        cmp::max(
+            if element_size == 1 {
+                8
+            } else if element_size <= 1024 {
+                4
+            } else {
+                1
+            },
+            cap,
+        )
+    } else {
+        required_cap
+    };
+
     // Check for the error here to minimize the size of `RawVec::grow_*`.
-    let new_layout = new_layout.map_err(|_| CapacityOverflow)?;
+    let new_layout =
+        layout_array(element_size, unsafe { Alignment::new_unchecked(current.align()) }, cap)
+            .map_err(|_| CapacityOverflow)?;
 
     alloc_guard(new_layout.size())?;
 
-    let memory = if let Some((ptr, old_layout)) = current_memory {
-        debug_assert_eq!(old_layout.align(), new_layout.align());
+    let memory = if current.size() != 0 {
+        debug_assert_eq!(current.align(), new_layout.align());
         unsafe {
             // The allocator checks for alignment equality
-            hint::assert_unchecked(old_layout.align() == new_layout.align());
-            alloc.grow(ptr, old_layout, new_layout)
+            hint::assert_unchecked(current.align() == new_layout.align());
+            alloc.grow(current_ptr, current, new_layout)
         }
     } else {
         alloc.allocate(new_layout)
     };
 
-    memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
+    memory
+        .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
+        .map(|p| (p.cast(), cap))
 }
 
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
