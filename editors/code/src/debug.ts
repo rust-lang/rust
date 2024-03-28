@@ -203,6 +203,10 @@ function getCCppDebugConfig(
         cwd: cargoWorkspace || runnable.args.workspaceRoot,
         sourceFileMap,
         env,
+        // See https://github.com/rust-lang/rust-analyzer/issues/16901#issuecomment-2024486941
+        osx: {
+            MIMode: "lldb",
+        },
     };
 }
 
