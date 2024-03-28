@@ -323,7 +323,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::ParamEnv<'tcx> {
     fn decode(d: &mut D) -> Self {
         let caller_bounds = Decodable::decode(d);
         let reveal = Decodable::decode(d);
-        ty::ParamEnv::new(caller_bounds, reveal)
+        ty::ParamEnv::from_elaborated_clauses(caller_bounds, reveal)
     }
 }
 
