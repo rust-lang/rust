@@ -124,7 +124,7 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         program = await toolchain.cargoPath();
     }
 
-    const definition: tasks.RustTargetDefinition = {
+    const definition: tasks.CargoTaskDefinition = {
         type: tasks.TASK_TYPE,
         program,
         args,

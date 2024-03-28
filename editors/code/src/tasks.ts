@@ -8,7 +8,7 @@ import { log } from "./util";
 export const TASK_TYPE = "cargo";
 export const TASK_SOURCE = "rust";
 
-export interface RustTargetDefinition extends vscode.TaskDefinition {
+export interface CargoTaskDefinition extends vscode.TaskDefinition {
     program: string;
     args: string[];
     cwd?: string;
@@ -62,7 +62,7 @@ class RustTaskProvider implements vscode.TaskProvider {
         // we need to inform VSCode how to execute that command by creating
         // a ShellExecution for it.
 
-        const definition = task.definition as RustTargetDefinition;
+        const definition = task.definition as CargoTaskDefinition;
 
         if (definition.type === TASK_TYPE) {
             return await buildRustTask(
@@ -80,7 +80,7 @@ class RustTaskProvider implements vscode.TaskProvider {
 
 export async function buildRustTask(
     scope: vscode.WorkspaceFolder | vscode.TaskScope | undefined,
-    definition: RustTargetDefinition,
+    definition: CargoTaskDefinition,
     name: string,
     problemMatcher: string[],
     customRunner?: string,
