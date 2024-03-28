@@ -305,6 +305,15 @@ pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
 }
 
 #[derive(Diagnostic)]
+#[diag(borrowck_must_define_opaque)]
+pub(crate) struct MustDefineOpaque {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub item_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(borrowck_opaque_type_lifetime_mismatch)]
 pub(crate) struct LifetimeMismatchOpaqueParam<'tcx> {
     pub arg: GenericArg<'tcx>,
