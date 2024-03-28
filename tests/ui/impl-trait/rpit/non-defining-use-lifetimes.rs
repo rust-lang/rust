@@ -1,5 +1,4 @@
 // issue: #111935
-// FIXME(aliemjay): outdated due to "once modulo regions" restriction.
 
 #![allow(unconditional_recursion)]
 

@@ -1,5 +1,5 @@
 error[E0792]: expected generic lifetime parameter, found `'static`
-  --> $DIR/defining-use-captured-non-universal-region.rs:10:18
+  --> $DIR/defining-use-captured-non-universal-region.rs:9:18
    |
 LL | fn foo<'a>() -> impl Sized + 'a {
    |                              -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type

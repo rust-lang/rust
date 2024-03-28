@@ -1,5 +1,4 @@
 // This was an ICE. See #110726.
-// FIXME(aliemjay): outdated due to "once modulo regions" restriction.
 
 //@ revisions: statik infer fixed
 //@ [fixed] check-pass
