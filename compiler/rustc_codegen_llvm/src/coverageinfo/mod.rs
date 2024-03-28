@@ -16,6 +16,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Instance;
+use rustc_target::abi::Align;
 
 use std::cell::RefCell;
 
@@ -23,7 +24,7 @@ pub(crate) mod ffi;
 pub(crate) mod map_data;
 pub mod mapgen;
 
-const VAR_ALIGN_BYTES: usize = 8;
+const VAR_ALIGN_BYTES: Align = Align::EIGHT;
 
 /// A context object for maintaining all state needed by the coverageinfo module.
 pub struct CrateCoverageContext<'ll, 'tcx> {
