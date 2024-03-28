@@ -421,6 +421,16 @@ fn instantiate_and_check_impossible_predicates<'tcx>(
     result
 }
 
+/// Checks whether an item is impossible to reference.
+#[instrument(level = "debug", skip(tcx), ret)]
+fn is_impossible_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    let param_env = tcx.param_env_reveal_all_normalized(def_id);
+    impossible_predicates(
+        tcx,
+        param_env.caller_bounds().iter().filter(|predicate| !predicate.has_param()).collect(),
+    )
+}
+
 /// Checks whether a trait's associated item is impossible to reference on a given impl.
 ///
 /// This only considers predicates that reference the impl's generics, and not
@@ -506,6 +516,7 @@ pub fn provide(providers: &mut Providers) {
         specializes: specialize::specializes,
         instantiate_and_check_impossible_predicates,
         check_tys_might_be_eq: misc::check_tys_might_be_eq,
+        is_impossible_item,
         is_impossible_associated_item,
         ..*providers
     };

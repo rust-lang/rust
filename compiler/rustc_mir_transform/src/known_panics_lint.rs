@@ -51,6 +51,11 @@ impl<'tcx> MirLint<'tcx> for KnownPanicsLint {
             return;
         }
 
+        if tcx.is_impossible_item(def_id) {
+            trace!("KnownPanicsLint skipped for impossible item {:?}", def_id);
+            return;
+        }
+
         trace!("KnownPanicsLint starting for {:?}", def_id);
 
         let mut linter = ConstPropagator::new(body, tcx);
