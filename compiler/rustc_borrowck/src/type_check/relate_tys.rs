@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::infer::{ObligationEmittingRelation, StructurallyRelateAliases};
 use rustc_infer::traits::{Obligation, PredicateObligations};
@@ -129,10 +129,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
         // the opaque.
         let mut enable_subtyping = |ty, opaque_is_expected| {
             let ty_vid = infcx.next_ty_var_id_in_universe(
-                TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span: self.span(),
-                },
+                TypeVariableOrigin { param_def_id: None, span: self.span() },
                 ty::UniverseIndex::ROOT,
             );
 

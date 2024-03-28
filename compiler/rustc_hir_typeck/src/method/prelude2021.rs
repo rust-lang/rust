@@ -7,7 +7,7 @@ use hir::HirId;
 use hir::ItemKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_middle::ty::{Adt, Array, Ref, Ty};
 use rustc_session::lint::builtin::RUST_2021_PRELUDE_COLLISIONS;
 use rustc_span::symbol::kw::{Empty, Underscore};
@@ -218,10 +218,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If we know it does not, we don't need to warn.
         if method_name.name == sym::from_iter {
             if let Some(trait_def_id) = self.tcx.get_diagnostic_item(sym::FromIterator) {
-                let any_type = self.infcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span,
-                });
+                let any_type =
+                    self.infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span });
                 if !self
                     .infcx
                     .type_implements_trait(trait_def_id, [self_ty, any_type], self.param_env)

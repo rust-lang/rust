@@ -10,7 +10,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeVisitableExt};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
@@ -1348,7 +1348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.next_ty_var(
                 // FIXME: `MiscVariable` for now -- obtaining the span and name information
                 // from all tuple elements isn't trivial.
-                TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span },
+                TypeVariableOrigin { param_def_id: None, span },
             )
         });
         let element_tys = tcx.mk_type_list_from_iter(element_tys_iter);
@@ -1976,10 +1976,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(()) => {
                 // Here, `demand::subtype` is good enough, but I don't
                 // think any errors can be introduced by using `demand::eqtype`.
-                let inner_ty = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span: inner.span,
-                });
+                let inner_ty =
+                    self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: inner.span });
                 let box_ty = Ty::new_box(tcx, inner_ty);
                 self.demand_eqtype_pat(span, expected, box_ty, pat_info.top_info);
                 (box_ty, inner_ty)
@@ -2056,7 +2054,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
                     _ => {
                         let inner_ty = self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
+                            param_def_id: None,
                             span: inner.span,
                         });
                         let ref_ty = self.new_ref_ty(pat.span, mutbl, inner_ty);
@@ -2105,8 +2103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         let len = before.len();
-        let ty_var_origin =
-            TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span };
+        let ty_var_origin = TypeVariableOrigin { param_def_id: None, span };
         let inner_ty = self.next_ty_var(ty_var_origin);
 
         Some(Ty::new_array(tcx, inner_ty, len.try_into().unwrap()))

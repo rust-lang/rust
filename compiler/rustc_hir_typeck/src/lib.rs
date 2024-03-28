@@ -59,7 +59,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirIdMap, Node};
 use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::query::Providers;
 use rustc_middle::traits;
@@ -192,19 +192,13 @@ fn typeck_with_fallback<'tcx>(
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params);
     } else {
         let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = body_ty {
-            Some(fcx.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::TypeInference,
-                span,
-            }))
+            Some(fcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span }))
         } else if let Node::AnonConst(_) = node {
             match tcx.parent_hir_node(id) {
                 Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), .. })
                     if anon_const.hir_id == id =>
                 {
-                    Some(fcx.next_ty_var(TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::TypeInference,
-                        span,
-                    }))
+                    Some(fcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span }))
                 }
                 Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), .. })
                 | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), .. }) => {
@@ -214,10 +208,7 @@ fn typeck_with_fallback<'tcx>(
                             Some(fcx.next_int_var())
                         }
                         hir::InlineAsmOperand::SymFn { anon_const } if anon_const.hir_id == id => {
-                            Some(fcx.next_ty_var(TypeVariableOrigin {
-                                kind: TypeVariableOriginKind::MiscVariable,
-                                span,
-                            }))
+                            Some(fcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span }))
                         }
                         _ => None,
                     })
