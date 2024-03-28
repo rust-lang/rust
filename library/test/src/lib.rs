@@ -140,7 +140,9 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
             });
             panic::set_hook(hook);
         }
-        match console::run_tests_console(&opts, tests) {
+        let res = console::run_tests_console(&opts, tests);
+        _ = panic::take_hook();
+        match res {
             Ok(true) => {}
             Ok(false) => process::exit(ERROR_EXIT_CODE),
             Err(e) => {
