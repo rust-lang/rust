@@ -1418,7 +1418,8 @@ impl Adt {
     }
 
     pub fn layout(self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
-        if db.generic_params(self.into()).iter().count() != 0 {
+        let generic_params = &db.generic_params(self.into());
+        if generic_params.iter().next().is_some() || generic_params.iter_lt().next().is_some() {
             return Err(LayoutError::HasPlaceholder);
         }
         let krate = self.krate(db).id;

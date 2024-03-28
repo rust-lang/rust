@@ -7856,3 +7856,25 @@ impl Iterator for S {
         "#]],
     );
 }
+
+#[test]
+fn hover_lifetime_regression_16963() {
+    check(
+        r#"
+struct Pedro$0<'a> {
+    hola: &'a str
+}
+"#,
+        expect![[r#"
+            *Pedro*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            struct Pedro<'a>
+            ```
+        "#]],
+    )
+}
