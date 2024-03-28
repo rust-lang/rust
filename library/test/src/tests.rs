@@ -893,7 +893,8 @@ fn should_sort_failures_before_printing_them() {
         test_type: TestType::Unknown,
     };
 
-    let mut out = PrettyFormatter::new(OutputLocation::Raw(Vec::new()), false, 10, false, None);
+    let mut output = Vec::new();
+    let mut out = PrettyFormatter::new(OutputLocation::Raw(&mut output), false, 10, false, None);
 
     let st = console::ConsoleTestState {
         log_out: None,
@@ -913,11 +914,8 @@ fn should_sort_failures_before_printing_them() {
     };
 
     out.write_failures(&st).unwrap();
-    let s = match out.output_location() {
-        &OutputLocation::Raw(ref m) => String::from_utf8_lossy(&m[..]),
-        &OutputLocation::Pretty(_) => unreachable!(),
-    };
 
+    let s = String::from_utf8_lossy(&output[..]);
     let apos = s.find("a").unwrap();
     let bpos = s.find("b").unwrap();
     assert!(apos < bpos);

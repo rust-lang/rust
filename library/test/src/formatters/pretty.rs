@@ -32,11 +32,6 @@ impl<T: Write> PrettyFormatter<T> {
         PrettyFormatter { out, use_color, max_name_len, is_multithreaded, time_options }
     }
 
-    #[cfg(test)]
-    pub fn output_location(&self) -> &OutputLocation<T> {
-        &self.out
-    }
-
     pub fn write_ok(&mut self) -> io::Result<()> {
         self.write_short_result("ok", term::color::GREEN)
     }
