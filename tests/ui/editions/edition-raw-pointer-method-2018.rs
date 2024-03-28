@@ -6,6 +6,6 @@
 fn main() {
     let x = 0;
     let y = &x as *const _;
+    //~^ error: type annotations needed
     let _ = y.is_null();
-    //~^ error: cannot call a method on a raw pointer with an unknown pointee type [E0699]
 }
