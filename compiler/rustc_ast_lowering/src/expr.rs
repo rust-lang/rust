@@ -730,7 +730,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     /// Desugar `<expr>.await` into:
     /// ```ignore (pseudo-rust)
-    /// match ::std::future::IntoFuture::into_future(<expr>) {
+    /// match (<expr>).<::std::future::IntoFuture::into_future>() {
     ///     mut __awaitee => loop {
     ///         match unsafe { ::std::future::Future::poll(
     ///             <::std::pin::Pin>::new_unchecked(&mut __awaitee),
@@ -930,13 +930,33 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // mut __awaitee => loop { ... }
         let awaitee_arm = self.arm(awaitee_pat, loop_expr);
 
-        // `match ::std::future::IntoFuture::into_future(<expr>) { ... }`
         let into_future_expr = match await_kind {
-            FutureKind::Future => self.expr_call_lang_item_fn(
-                span,
-                hir::LangItem::IntoFutureIntoFuture,
-                arena_vec![self; *expr],
-            ),
+            // `match (<expr>).<::std::future::IntoFuture::into_future>() { ... }`
+            // The `into_future` call is a little special,
+            // it resolves directly to the `into_future` lang item
+            // but goes through autoref/autoderef like any method call.
+            FutureKind::Future => {
+                let into_future_id = self
+                    .tcx
+                    .require_lang_item(hir::LangItem::IntoFutureIntoFuture, Some(await_kw_span));
+
+                let segment_hid = self.next_id();
+
+                self.arena.alloc(self.expr(
+                    span,
+                    hir::ExprKind::MethodCall(
+                        self.arena.alloc(hir::PathSegment::new(
+                            Ident::new(sym::into_future, await_kw_span),
+                            segment_hid,
+                            Res::Def(DefKind::AssocFn, into_future_id),
+                        )),
+                        self.arena.alloc(expr),
+                        &[],
+                        span,
+                    ),
+                ))
+            }
+
             // Not needed for `for await` because we expect to have already called
             // `IntoAsyncIterator::into_async_iter` on it.
             FutureKind::AsyncIterator => expr,
