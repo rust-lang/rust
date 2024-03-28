@@ -173,8 +173,14 @@ impl GlobalFileTable {
         // Since rustc generates coverage maps with relative paths, the
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
+        use rustc_session::config::RemapPathScopeComponents;
         use rustc_session::RemapFileNameExt;
-        let working_dir: &str = &tcx.sess.opts.working_dir.for_codegen(tcx.sess).to_string_lossy();
+        let working_dir: &str = &tcx
+            .sess
+            .opts
+            .working_dir
+            .for_scope(tcx.sess, RemapPathScopeComponents::MACRO)
+            .to_string_lossy();
 
         llvm::build_byte_buffer(|buffer| {
             coverageinfo::write_filenames_section_to_buffer(
