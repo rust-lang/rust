@@ -117,7 +117,7 @@ fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> P<ast::Expr> {
 }
 
 fn assert_ty_bounds(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     stmts: &mut ThinVec<ast::Stmt>,
     ty: P<ast::Ty>,
     span: Span,
