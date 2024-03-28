@@ -50,7 +50,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{spawn, Lrc};
 use rustc_errors::{DiagArgFromDisplay, DiagCtxt, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
@@ -446,9 +446,14 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
         .lower_node(def_id);
     }
 
-    // Drop AST to free memory
     drop(ast_index);
-    sess.time("drop_ast", || drop(krate));
+
+    // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
+    let prof = sess.prof.clone();
+    spawn(move || {
+        let _timer = prof.verbose_generic_activity("drop_ast");
+        drop(krate);
+    });
 
     // Don't hash unless necessary, because it's expensive.
     let opt_hir_hash =
