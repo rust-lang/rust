@@ -73,7 +73,7 @@ closure type. Closures are [currently unsound](https://github.com/rust-lang/rust
 ways that are closely related to the distinction between early/late bound
 parameters (more on this later)
 
-The early/late boundness of generic parameters is only relevent for the desugaring of
+The early/late boundness of generic parameters is only relevant for the desugaring of
 functions/closures into types with builtin `Fn*` impls. It does not make sense to talk about
 in other contexts.
 

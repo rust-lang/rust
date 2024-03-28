@@ -8,7 +8,7 @@ a few of them do not hold in Rust right now. This is either a fundamental to its
 caused by bugs and something that may change in the future.
 
 It is important to know about the things you can assume while working on - and with - the
-type system, so here's an incomplete and inofficial list of invariants of
+type system, so here's an incomplete and unofficial list of invariants of
 the core type system:
 
 - ✅: this invariant mostly holds, with some weird exceptions, you can rely on it outside

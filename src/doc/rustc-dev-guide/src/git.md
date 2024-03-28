@@ -170,7 +170,7 @@ error: Please commit or stash them.
 (See <https://git-scm.com/book/en/v2/Getting-Started-What-is-Git%3F#_the_three_states> for the difference between the two.)
 
 This means you have made changes since the last time you made a commit. To be able to rebase, either
-commit your changes, or make a temporary commit called a "stash" to have them still not be commited
+commit your changes, or make a temporary commit called a "stash" to have them still not be committed
 when you finish rebasing. You may want to configure git to make this "stash" automatically, which
 will prevent the "cannot rebase" error in nearly all cases:
 

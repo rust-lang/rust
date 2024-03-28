@@ -19,7 +19,7 @@ Example of case (1):
 ```rust
 type Opaque<X> = impl Sized;
 
-// `T` is a type paramter.
+// `T` is a type parameter.
 // Opaque<T> := ();
 fn good<T>() -> Opaque<T> {}
 
@@ -42,7 +42,7 @@ fn bad<T>(t: T) -> Opaque<T, T> { t } //~ ERROR
 ```
 **Motivation:** In the first case `Opaque<()> := ()`, the hidden type is ambiguous because
 it is compatible with two different interpretaions: `Opaque<X> := X` and `Opaque<X> := ()`.
-Similarily for the second case `Opaque<T, T> := T`, it is ambiguous whether it should be
+Similarly for the second case `Opaque<T, T> := T`, it is ambiguous whether it should be
 interpreted as `Opaque<X, Y> := X` or as `Opaque<X, Y> := Y`.
 Because of this ambiguity, both cases are rejected as invalid defining uses.
 

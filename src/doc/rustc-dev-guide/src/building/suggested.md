@@ -303,7 +303,7 @@ let
   ''
 pkgs.mkShell {
   /* ... */
-  # This environment varaible tells bootstrap where our config.toml is.
+  # This environment variable tells bootstrap where our config.toml is.
   RUST_BOOTSTRAP_CONFIG = config;
 }
 ```
