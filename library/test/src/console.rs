@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::Write;
 use std::time::Instant;
+use std::vec;
 
 use super::{
     bench::fmt_bench_samples,
@@ -34,14 +35,14 @@ impl<T: Write> Write for OutputLocation<T> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match *self {
             OutputLocation::Pretty(ref mut term) => term.write(buf),
-            OutputLocation::Raw(ref mut stdout) => stdout.write(buf),
+            OutputLocation::Raw(ref mut stdout_or_file) => stdout_or_file.write(buf),
         }
     }
 
     fn flush(&mut self) -> io::Result<()> {
         match *self {
             OutputLocation::Pretty(ref mut term) => term.flush(),
-            OutputLocation::Raw(ref mut stdout) => stdout.flush(),
+            OutputLocation::Raw(ref mut stdout_or_file) => stdout_or_file.flush(),
         }
     }
 }
@@ -68,8 +69,30 @@ impl<T: Write> Output for OutputLocation<T> {
     }
 }
 
+struct OutputMultiplexer {
+    pub outputs: Vec<Box<dyn Output>>,
+}
+
+impl Output for OutputMultiplexer {
+    fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
+        for output in &mut self.outputs {
+            output.write_pretty(word, color)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_plain(&mut self, word: &str) -> io::Result<()> {
+        for output in &mut self.outputs {
+            output.write_plain(word)?;
+        }
+
+        Ok(())
+    }
+}
+
 pub struct ConsoleTestDiscoveryState {
-    pub log_out: Option<File>,
+    log_out: OutputMultiplexer,
     pub tests: usize,
     pub benchmarks: usize,
     pub ignored: usize,
@@ -77,9 +100,12 @@ pub struct ConsoleTestDiscoveryState {
 
 impl ConsoleTestDiscoveryState {
     pub fn new(opts: &TestOpts) -> io::Result<ConsoleTestDiscoveryState> {
-        let log_out = match opts.logfile {
-            Some(ref path) => Some(File::create(path)?),
-            None => None,
+        let mut log_out = OutputMultiplexer { outputs: vec![] };
+        match opts.logfile {
+            Some(ref path) => {
+                log_out.outputs.push(Box::new(OutputLocation::Raw(File::create(path)?)))
+            }
+            None => (),
         };
 
         Ok(ConsoleTestDiscoveryState { log_out, tests: 0, benchmarks: 0, ignored: 0 })
@@ -90,14 +116,9 @@ impl ConsoleTestDiscoveryState {
         S: AsRef<str>,
         F: FnOnce() -> S,
     {
-        match self.log_out {
-            None => Ok(()),
-            Some(ref mut o) => {
-                let msg = msg();
-                let msg = msg.as_ref();
-                o.write_all(msg.as_bytes())
-            }
-        }
+        let msg = msg();
+        let msg = msg.as_ref();
+        self.log_out.write_plain(msg)
     }
 }
 
