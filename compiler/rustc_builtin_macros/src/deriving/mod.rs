@@ -40,7 +40,7 @@ pub mod partial_ord;
 pub mod generic;
 
 pub(crate) type BuiltinDeriveFn =
-    fn(&mut ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable), bool);
+    fn(&ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable), bool);
 
 pub(crate) struct BuiltinDerive(pub(crate) BuiltinDeriveFn);
 

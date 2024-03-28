@@ -10,7 +10,7 @@ use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
 
 pub fn expand_deriving_eq(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,

@@ -13,7 +13,7 @@ use smallvec::SmallVec;
 use thin_vec::{thin_vec, ThinVec};
 
 pub fn expand_deriving_default(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &ast::MetaItem,
     item: &Annotatable,
