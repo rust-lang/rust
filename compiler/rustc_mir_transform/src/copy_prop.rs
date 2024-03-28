@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::visit::*;
@@ -37,6 +38,8 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     let fully_moved = fully_moved_locals(&ssa, body);
     debug!(?fully_moved);
+    let const_locals = const_locals(&ssa, body);
+    debug!(?const_locals);
 
     let mut storage_to_remove = BitSet::new_empty(fully_moved.domain_size());
     for (local, &head) in ssa.copy_classes().iter_enumerated() {
@@ -45,12 +48,13 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         }
     }
 
-    let any_replacement = ssa.copy_classes().iter_enumerated().any(|(l, &h)| l != h);
+    let any_replacement = !storage_to_remove.is_empty() || !const_locals.is_empty();
 
     Replacer {
         tcx,
         copy_classes: ssa.copy_classes(),
         fully_moved,
+        const_locals,
         borrowed_locals,
         storage_to_remove,
     }
@@ -75,9 +79,7 @@ fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> BitSet<Local> {
     let mut fully_moved = BitSet::new_filled(body.local_decls.len());
 
     for (_, rvalue, _) in ssa.assignments(body) {
-        let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
-        | Rvalue::CopyForDeref(place)) = rvalue
-        else {
+        let (Rvalue::Use(Operand::Copy(place)) | Rvalue::CopyForDeref(place)) = rvalue else {
             continue;
         };
 
@@ -85,10 +87,7 @@ fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> BitSet<Local> {
         if !ssa.is_ssa(rhs) {
             continue;
         }
-
-        if let Rvalue::Use(Operand::Copy(_)) | Rvalue::CopyForDeref(_) = rvalue {
-            fully_moved.remove(rhs);
-        }
+        fully_moved.remove(rhs);
     }
 
     ssa.meet_copy_equivalence(&mut fully_moved);
@@ -96,10 +95,28 @@ fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> BitSet<Local> {
     fully_moved
 }
 
+/// Finds all locals that are only assigned to once with a deterministic constant
+#[instrument(level = "trace", skip(ssa, body))]
+fn const_locals<'body, 'tcx>(
+    ssa: &'body SsaLocals,
+    body: &'body Body<'tcx>,
+) -> FxIndexMap<Local, ConstOperand<'tcx>> {
+    let mut const_locals = FxIndexMap::default();
+    for (local, rvalue, _) in ssa.assignments(body) {
+        let Rvalue::Use(Operand::Constant(val)) = rvalue else { continue };
+        if !val.const_.is_deterministic() {
+            continue;
+        }
+        const_locals.insert(local, **val);
+    }
+    const_locals
+}
+
 /// Utility to help performing substitution of `*pattern` by `target`.
 struct Replacer<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     fully_moved: BitSet<Local>,
+    const_locals: FxIndexMap<Local, ConstOperand<'tcx>>,
     storage_to_remove: BitSet<Local>,
     borrowed_locals: BitSet<Local>,
     copy_classes: &'a IndexSlice<Local, Local>,
@@ -151,12 +168,15 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {
-        if let Operand::Move(place) = *operand
+        if let Operand::Move(place) = *operand {
             // A move out of a projection of a copy is equivalent to a copy of the original projection.
-            && !place.is_indirect_first_projection()
-            && !self.fully_moved.contains(place.local)
-        {
-            *operand = Operand::Copy(place);
+            if !place.is_indirect_first_projection() && !self.fully_moved.contains(place.local) {
+                *operand = Operand::Copy(place);
+            } else if let Some(local) = place.as_local()
+                && let Some(val) = self.const_locals.get(&local)
+            {
+                *operand = Operand::Constant(Box::new(*val))
+            }
         }
         self.super_operand(operand, loc);
     }
