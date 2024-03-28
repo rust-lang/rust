@@ -146,6 +146,18 @@ note: previous binding is here
 LL |     let y = 1;
    |         ^
 
+error: `x` is shadowed
+  --> tests/ui/shadow.rs:50:12
+   |
+LL |     reuse!(x);
+   |            ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:48:9
+   |
+LL |     let x = 1;
+   |         ^
+
 error: `x` shadows a previous, unrelated binding
   --> tests/ui/shadow.rs:55:9
    |
@@ -280,5 +292,5 @@ note: previous binding is here
 LL |         let x = 1;
    |             ^
 
-error: aborting due to 23 previous errors
+error: aborting due to 24 previous errors
 

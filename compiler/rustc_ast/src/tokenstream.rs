@@ -467,9 +467,6 @@ impl TokenStream {
 
     pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {
         match nt {
-            Nonterminal::NtIdent(ident, is_raw) => {
-                TokenStream::token_alone(token::Ident(ident.name, *is_raw), ident.span)
-            }
             Nonterminal::NtLifetime(ident) => {
                 TokenStream::token_alone(token::Lifetime(ident.name), ident.span)
             }
@@ -491,9 +488,6 @@ impl TokenStream {
 
     fn flatten_token(token: &Token, spacing: Spacing) -> TokenTree {
         match &token.kind {
-            token::Interpolated(nt) if let token::NtIdent(ident, is_raw) = nt.0 => {
-                TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span), spacing)
-            }
             token::Interpolated(nt) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
                 DelimSpacing::new(Spacing::JointHidden, spacing),

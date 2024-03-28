@@ -1,17 +1,17 @@
 error[E0412]: cannot find type `FromOutside` in this scope
-  --> $DIR/generate-mod.rs:35:13
+  --> $DIR/generate-mod.rs:9:18
    |
-LL |     genmod!(FromOutside, Outer);
-   |             ^^^^^^^^^^^ not found in this scope
+LL |         type A = $FromOutside; // `FromOutside` shouldn't be available from here
+   |                  ^^^^^^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `Outer` in this scope
-  --> $DIR/generate-mod.rs:35:26
+  --> $DIR/generate-mod.rs:11:22
    |
-LL |     genmod!(FromOutside, Outer);
-   |                          ^^^^^ not found in this scope
+LL |         type Inner = $Outer; // `Outer` shouldn't be available from here
+   |                      ^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `FromOutside` in this scope
-  --> $DIR/generate-mod.rs:19:18
+  --> $DIR/generate-mod.rs:21:18
    |
 LL |         type A = FromOutside;
    |                  ^^^^^^^^^^^ not found in this scope
@@ -22,7 +22,7 @@ LL |     genmod_transparent!();
    = note: this error originates in the macro `genmod_transparent` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `Outer` in this scope
-  --> $DIR/generate-mod.rs:20:22
+  --> $DIR/generate-mod.rs:22:22
    |
 LL |         type Inner = Outer;
    |                      ^^^^^ not found in this scope
@@ -33,7 +33,7 @@ LL |     genmod_transparent!();
    = note: this error originates in the macro `genmod_transparent` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `FromOutside` in this scope
-  --> $DIR/generate-mod.rs:28:18
+  --> $DIR/generate-mod.rs:30:18
    |
 LL |         type A = FromOutside;
    |                  ^^^^^^^^^^^ not found in this scope
@@ -44,7 +44,7 @@ LL |     genmod_legacy!();
    = note: this error originates in the macro `genmod_legacy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `Outer` in this scope
-  --> $DIR/generate-mod.rs:29:22
+  --> $DIR/generate-mod.rs:31:22
    |
 LL |         type Inner = Outer;
    |                      ^^^^^ not found in this scope

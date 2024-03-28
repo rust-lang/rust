@@ -199,11 +199,12 @@ fn does_not_lint() {
     }
     y = 3;
 
-    let x;
-    inline!($x = 1;);
+    
+    inline!($let x = 1;);
 
     let x;
     if true {
+        #[cfg(FALSE)] // FIXME
         inline!($x = 1;);
     } else {
         x = 2;

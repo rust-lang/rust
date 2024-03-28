@@ -173,18 +173,19 @@ LL |     nested1_tt_args_in_first_macro!();
    = note: this error originates in the macro `nested2_tt_args_in_first_macro` which comes from the expansion of the macro `nested1_tt_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0109]: type arguments are not allowed on this type
-  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:77:64
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:73:47
    |
+LL |     () => (nested2_ident_args_in_first_macro!(i32, u32));
+   |                                               ^^^  ^^^ type argument not allowed
+...
 LL |     ($arg1:ident, $arg2:ident) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
-   |                                                     --------   ^^^^^  ^^^^^ type argument not allowed
-   |                                                     |
-   |                                                     not allowed on this type
+   |                                                     -------- not allowed on this type
 ...
 LL |     nested1_ident_args_in_first_macro!();
    |     ------------------------------------ in this macro invocation
    |
    = note: enum variants can't have type parameters
-   = note: this error originates in the macro `nested2_ident_args_in_first_macro` which comes from the expansion of the macro `nested1_ident_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `nested1_ident_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -     ($arg1:ident, $arg2:ident) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
@@ -192,11 +193,11 @@ LL +     ($arg1:ident, $arg2:ident) => (if let EnumUnit::<$arg1, $arg2>::Variant
    |
 
 error[E0308]: mismatched types
-  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:77:43
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:78:43
    |
 LL |     ($arg1:ident, $arg2:ident) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected integer, found `Enum<(), ()>`
-...
+LL |
 LL |         = 5 { true } else { false });
    |           - this expression has type `{integer}`
 ...

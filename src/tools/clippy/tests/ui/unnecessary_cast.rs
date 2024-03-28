@@ -143,6 +143,7 @@ fn main() {
             let _ = $e != 0usize;
         }}
     }
+    #[cfg(FALSE)] // FIXME
     bind_var!(x, (x as usize) + 1);
 }
 

@@ -367,7 +367,7 @@ error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:214:13
    |
 LL |             let $n = if let Some(v) = $e { v } else { return };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some($n) = g() else { return };`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(w) = g() else { return };`
 ...
 LL |     create_binding_if_some!(w, g());
    |     ------------------------------- in this macro invocation

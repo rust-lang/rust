@@ -11,14 +11,8 @@ LL |     unsafe { ptr.read() };
 help: the accessed tag <TAG> was created here
   --> $DIR/return_pointer_aliasing.rs:LL:CC
    |
-LL | /     mir! {
-LL | |         {
-LL | |             let x = 0;
-LL | |             let ptr = &raw mut x;
-...  |
-LL | |         }
-LL | |     }
-   | |_____^
+LL |             let ptr = &raw mut x;
+   |                 ^^^^^^^^^^^^^^^^
 help: the protected tag <TAG> was created here, in the initial state Reserved
   --> $DIR/return_pointer_aliasing.rs:LL:CC
    |
@@ -37,7 +31,6 @@ note: inside `main`
    |
 LL |             Call(*ptr = myfun(ptr), ReturnTo(after_call), UnwindContinue())
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -9,14 +9,8 @@ LL |     unsafe { ptr.read() };
 help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
   --> $DIR/arg_inplace_observe_during.rs:LL:CC
    |
-LL | /     mir! {
-LL | |         let _unit: ();
-LL | |         {
-LL | |             let non_copy = S(42);
-...  |
-LL | |
-LL | |     }
-   | |_____^
+LL |             let ptr = std::ptr::addr_of_mut!(non_copy);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: <TAG> is this argument
   --> $DIR/arg_inplace_observe_during.rs:LL:CC
    |
@@ -29,7 +23,6 @@ note: inside `main`
    |
 LL |             Call(_unit = change_arg(Move(*ptr), ptr), ReturnTo(after_call), UnwindContinue())
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

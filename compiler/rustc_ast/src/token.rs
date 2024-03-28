@@ -314,9 +314,6 @@ pub enum TokenKind {
     Literal(Lit),
 
     /// Identifier token.
-    /// Do not forget about `NtIdent` when you want to match on identifiers.
-    /// It's recommended to use `Token::(ident,uninterpolate,uninterpolated_span)` to
-    /// treat regular and interpolated identifiers in the same way.
     Ident(Symbol, IdentIsRaw),
     /// Lifetime identifier token.
     /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
@@ -609,9 +606,6 @@ impl Token {
     pub fn uninterpolate(&self) -> Cow<'_, Token> {
         match &self.kind {
             Interpolated(nt) => match &nt.0 {
-                NtIdent(ident, is_raw) => {
-                    Cow::Owned(Token::new(Ident(ident.name, *is_raw), ident.span))
-                }
                 NtLifetime(ident) => Cow::Owned(Token::new(Lifetime(ident.name), ident.span)),
                 _ => Cow::Borrowed(self),
             },
@@ -625,10 +619,6 @@ impl Token {
         // We avoid using `Token::uninterpolate` here because it's slow.
         match &self.kind {
             &Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
-            Interpolated(nt) => match &nt.0 {
-                NtIdent(ident, is_raw) => Some((*ident, *is_raw)),
-                _ => None,
-            },
             _ => None,
         }
     }
@@ -855,7 +845,6 @@ pub enum Nonterminal {
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
-    NtIdent(Ident, IdentIsRaw),
     NtLifetime(Ident),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
@@ -951,7 +940,7 @@ impl Nonterminal {
             NtPat(pat) => pat.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
             NtTy(ty) => ty.span,
-            NtIdent(ident, _) | NtLifetime(ident) => ident.span,
+            NtLifetime(ident) => ident.span,
             NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
             NtVis(vis) => vis.span,
@@ -967,7 +956,6 @@ impl Nonterminal {
             NtExpr(..) => "expression",
             NtLiteral(..) => "literal",
             NtTy(..) => "type",
-            NtIdent(..) => "identifier",
             NtLifetime(..) => "lifetime",
             NtMeta(..) => "attribute",
             NtPath(..) => "path",
@@ -979,9 +967,6 @@ impl Nonterminal {
 impl PartialEq for Nonterminal {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
-            (NtIdent(ident_lhs, is_raw_lhs), NtIdent(ident_rhs, is_raw_rhs)) => {
-                ident_lhs == ident_rhs && is_raw_lhs == is_raw_rhs
-            }
             (NtLifetime(ident_lhs), NtLifetime(ident_rhs)) => ident_lhs == ident_rhs,
             // FIXME: Assume that all "complex" nonterminal are not equal, we can't compare them
             // correctly based on data from AST. This will prevent them from matching each other
@@ -1001,7 +986,6 @@ impl fmt::Debug for Nonterminal {
             NtPat(..) => f.pad("NtPat(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtTy(..) => f.pad("NtTy(..)"),
-            NtIdent(..) => f.pad("NtIdent(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),

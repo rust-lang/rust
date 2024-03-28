@@ -7,7 +7,9 @@ macro genmod($FromOutside: ident, $Outer: ident) {
     struct $Outer;
     mod inner {
         type A = $FromOutside; // `FromOutside` shouldn't be available from here
+                               //~^ ERROR cannot find type `FromOutside` in this scope
         type Inner = $Outer; // `Outer` shouldn't be available from here
+                             //~^ ERROR cannot find type `Outer` in this scope
     }
 }
 
@@ -32,8 +34,7 @@ macro_rules! genmod_legacy { () => {
 
 fn check() {
     struct FromOutside;
-    genmod!(FromOutside, Outer); //~ ERROR cannot find type `FromOutside` in this scope
-                                 //~| ERROR cannot find type `Outer` in this scope
+    genmod!(FromOutside, Outer);
 }
 
 fn check_transparent() {

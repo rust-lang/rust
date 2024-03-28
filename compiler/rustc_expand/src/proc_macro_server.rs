@@ -259,14 +259,6 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }));
                 }
 
-                Interpolated(ref nt) if let NtIdent(ident, is_raw) = &nt.0 => {
-                    trees.push(TokenTree::Ident(Ident {
-                        sym: ident.name,
-                        is_raw: matches!(is_raw, IdentIsRaw::Yes),
-                        span: ident.span,
-                    }))
-                }
-
                 Interpolated(nt) => {
                     let stream = TokenStream::from_nonterminal_ast(&nt.0);
                     // A hack used to pass AST fragments to attribute and derive
