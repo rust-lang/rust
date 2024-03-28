@@ -1,5 +1,3 @@
-#![feature(macro_metavar_expr)]
-
 macro_rules! metavar {
     ( $i:expr ) => {
         ${length(0)}

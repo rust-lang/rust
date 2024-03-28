@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(macro_metavar_expr)]
-
 #[derive(Debug)]
 struct Example<'a> {
     _indexes: &'a [(u32, u32)],

@@ -11,7 +11,7 @@
 #![feature(let_chains)]
 #![feature(if_let_guard)]
 #![feature(proc_macro_internals)]
-#![feature(macro_metavar_expr)]
+#![cfg_attr(bootstrap, feature(macro_metavar_expr))]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
 #![feature(try_blocks)]

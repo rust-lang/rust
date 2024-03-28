@@ -59,7 +59,7 @@
 #![feature(yeet_expr)]
 #![feature(const_option)]
 #![feature(ptr_alignment_type)]
-#![feature(macro_metavar_expr)]
+#![cfg_attr(bootstrap, feature(macro_metavar_expr))]
 #![allow(internal_features)]
 #![allow(rustc::potential_query_instability)]
 #![allow(rustc::diagnostic_outside_of_impl)]

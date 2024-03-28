@@ -1,5 +1,3 @@
-#![feature(macro_metavar_expr)]
-
 macro_rules! a {
     ( $( { $( [ $( ( $( $foo:ident )* ) )* ] )* } )* ) => {
         (

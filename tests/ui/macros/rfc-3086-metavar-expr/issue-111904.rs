@@ -1,5 +1,3 @@
-#![feature(macro_metavar_expr)]
-
 macro_rules! foo {
     ( $( $($t:ident),* );* ) => { ${count($t,)} }
     //~^ ERROR `count` followed by a comma must have an associated

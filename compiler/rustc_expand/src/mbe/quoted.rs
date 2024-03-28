@@ -183,11 +183,6 @@ fn parse_tree<'a>(
                                         return TokenTree::token(token::Dollar, span);
                                     }
                                     Ok(elem) => {
-                                        maybe_emit_macro_metavar_expr_feature(
-                                            features,
-                                            sess,
-                                            delim_span.entire(),
-                                        );
                                         return TokenTree::MetaVarExpr(delim_span, elem);
                                     }
                                 }

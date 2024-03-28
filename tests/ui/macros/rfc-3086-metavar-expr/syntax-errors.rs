@@ -1,5 +1,3 @@
-#![feature(macro_metavar_expr)]
-
 // `curly` = Right hand side curly brackets
 // `no_rhs_dollar` = No dollar sign at the right hand side meta variable "function"
 // `round` = Left hand side round brackets
