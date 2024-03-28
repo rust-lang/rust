@@ -471,7 +471,7 @@ impl Ord for SpanData {
         let SpanData {
             lo: s_lo,
             hi: s_hi,
-            ctxt: s_ctxt,
+            ctxt: _,
             // `LocalDefId` does not implement `Ord`.
             // The other fields are enough to determine in-file order.
             parent: _,
@@ -479,13 +479,13 @@ impl Ord for SpanData {
         let SpanData {
             lo: o_lo,
             hi: o_hi,
-            ctxt: o_ctxt,
+            ctxt: _,
             // `LocalDefId` does not implement `Ord`.
             // The other fields are enough to determine in-file order.
             parent: _,
         } = other;
 
-        (s_lo, s_hi, s_ctxt).cmp(&(o_lo, o_hi, o_ctxt))
+        (s_lo, s_hi).cmp(&(o_lo, o_hi))
     }
 }
 
