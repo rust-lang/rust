@@ -1,5 +1,4 @@
 #![feature(never_type)]
-#![feature(min_exhaustive_patterns)]
 #![feature(type_alias_impl_trait)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
 #![deny(unreachable_patterns)]
