@@ -2730,7 +2730,7 @@ pub(crate) fn import_candidates(
     );
 }
 
-type PathString<'a> = (String, &'a str, Option<DefId>, &'a Option<String>, bool);
+type PathString<'a> = (String, &'a str, Option<Span>, &'a Option<String>, bool);
 
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the
@@ -2762,7 +2762,7 @@ fn show_candidates(
                 accessible_path_strings.push((
                     pprust::path_to_string(&c.path),
                     c.descr,
-                    c.did,
+                    c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
                     &c.note,
                     c.via_import,
                 ))
@@ -2771,7 +2771,7 @@ fn show_candidates(
             inaccessible_path_strings.push((
                 pprust::path_to_string(&c.path),
                 c.descr,
-                c.did,
+                c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
                 &c.note,
                 c.via_import,
             ))
@@ -2889,15 +2889,14 @@ fn show_candidates(
     } else if !(inaccessible_path_strings.is_empty() || matches!(mode, DiagMode::Import { .. })) {
         let prefix =
             if let DiagMode::Pattern = mode { "you might have meant to match on " } else { "" };
-        if let [(name, descr, def_id, note, _)] = &inaccessible_path_strings[..] {
+        if let [(name, descr, source_span, note, _)] = &inaccessible_path_strings[..] {
             let msg = format!(
                 "{prefix}{descr} `{name}`{} exists but is inaccessible",
                 if let DiagMode::Pattern = mode { ", which" } else { "" }
             );
 
-            if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
-                let span = tcx.source_span(local_def_id);
-                let span = tcx.sess.source_map().guess_head_span(span);
+            if let Some(source_span) = source_span {
+                let span = tcx.sess.source_map().guess_head_span(*source_span);
                 let mut multi_span = MultiSpan::from_span(span);
                 multi_span.push_span_label(span, "not accessible");
                 err.span_note(multi_span, msg);
@@ -2925,10 +2924,9 @@ fn show_candidates(
             let mut has_colon = false;
 
             let mut spans = Vec::new();
-            for (name, _, def_id, _, _) in &inaccessible_path_strings {
-                if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
-                    let span = tcx.source_span(local_def_id);
-                    let span = tcx.sess.source_map().guess_head_span(span);
+            for (name, _, source_span, _, _) in &inaccessible_path_strings {
+                if let Some(source_span) = source_span {
+                    let span = tcx.sess.source_map().guess_head_span(*source_span);
                     spans.push((name, span));
                 } else {
                     if !has_colon {

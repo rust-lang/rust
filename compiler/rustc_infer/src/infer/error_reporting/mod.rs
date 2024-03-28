@@ -1038,7 +1038,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let (sig, reg) = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS)
                 .name_all_regions(sig)
                 .unwrap();
-            let lts: Vec<String> = reg.into_values().map(|kind| kind.to_string()).collect();
+            let lts: Vec<String> =
+                reg.into_items().map(|(_, kind)| kind.to_string()).into_sorted_stable_ord();
             (if lts.is_empty() { String::new() } else { format!("for<{}> ", lts.join(", ")) }, sig)
         };
 

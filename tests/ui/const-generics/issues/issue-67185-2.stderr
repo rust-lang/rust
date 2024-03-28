@@ -5,8 +5,8 @@ LL |     <u8 as Baz>::Quaks: Bar,
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `[u16; 3]`
    |
    = help: the following other types implement trait `Bar`:
-             [u16; 4]
              [[u16; 3]; 3]
+             [u16; 4]
    = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
@@ -20,8 +20,8 @@ LL |     [<u8 as Baz>::Quaks; 2]: Bar,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
    |
    = help: the following other types implement trait `Bar`:
-             [u16; 4]
              [[u16; 3]; 3]
+             [u16; 4]
    = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
@@ -35,8 +35,8 @@ LL | impl Foo for FooImpl {}
    |      ^^^ the trait `Bar` is not implemented for `[u16; 3]`, which is required by `<u8 as Baz>::Quaks: Bar`
    |
    = help: the following other types implement trait `Bar`:
-             [u16; 4]
              [[u16; 3]; 3]
+             [u16; 4]
 note: required by a bound in `Foo`
   --> $DIR/issue-67185-2.rs:15:25
    |
@@ -53,8 +53,8 @@ LL | impl Foo for FooImpl {}
    |      ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`, which is required by `[<u8 as Baz>::Quaks; 2]: Bar`
    |
    = help: the following other types implement trait `Bar`:
-             [u16; 4]
              [[u16; 3]; 3]
+             [u16; 4]
 note: required by a bound in `Foo`
   --> $DIR/issue-67185-2.rs:14:30
    |
@@ -71,8 +71,8 @@ LL | fn f(_: impl Foo) {}
    |              ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
    |
    = help: the following other types implement trait `Bar`:
-             [u16; 4]
              [[u16; 3]; 3]
+             [u16; 4]
 note: required by a bound in `Foo`
   --> $DIR/issue-67185-2.rs:14:30
    |
@@ -89,8 +89,8 @@ LL | fn f(_: impl Foo) {}
    |              ^^^ the trait `Bar` is not implemented for `[u16; 3]`
    |
    = help: the following other types implement trait `Bar`:
-             [u16; 4]
              [[u16; 3]; 3]
+             [u16; 4]
 note: required by a bound in `Foo`
   --> $DIR/issue-67185-2.rs:15:25
    |

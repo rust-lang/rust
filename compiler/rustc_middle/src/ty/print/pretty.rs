@@ -10,6 +10,7 @@ use crate::ty::{
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, ModDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -24,7 +25,6 @@ use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
 
 use std::cell::Cell;
-use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 use std::iter;
 use std::ops::{Deref, DerefMut};
@@ -2537,7 +2537,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 struct RegionFolder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     current_index: ty::DebruijnIndex,
-    region_map: BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
+    region_map: UnordMap<ty::BoundRegion, ty::Region<'tcx>>,
     name: &'a mut (
                 dyn FnMut(
         Option<ty::DebruijnIndex>, // Debruijn index of the folded late-bound region
@@ -2614,7 +2614,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
     pub fn name_all_regions<T>(
         &mut self,
         value: &ty::Binder<'tcx, T>,
-    ) -> Result<(T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>), fmt::Error>
+    ) -> Result<(T, UnordMap<ty::BoundRegion, ty::Region<'tcx>>), fmt::Error>
     where
         T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -2691,7 +2691,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                 write!(self, "{var:?}")?;
             }
             start_or_continue(self, "", "> ");
-            (value.clone().skip_binder(), BTreeMap::default())
+            (value.clone().skip_binder(), UnordMap::default())
         } else {
             let tcx = self.tcx;
 
@@ -2763,7 +2763,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                 tcx,
                 current_index: ty::INNERMOST,
                 name: &mut name,
-                region_map: BTreeMap::new(),
+                region_map: UnordMap::default(),
             };
             let new_value = value.clone().skip_binder().fold_with(&mut folder);
             let region_map = folder.region_map;

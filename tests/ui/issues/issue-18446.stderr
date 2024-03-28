@@ -4,17 +4,17 @@ error[E0034]: multiple applicable items in scope
 LL |     x.foo();
    |       ^^^ multiple `foo` found
    |
-note: candidate #1 is defined in an impl for the type `(dyn T + 'a)`
-  --> $DIR/issue-18446.rs:9:5
-   |
-LL |     fn foo(&self) {}
-   |     ^^^^^^^^^^^^^
-note: candidate #2 is defined in the trait `T`
+note: candidate #1 is defined in the trait `T`
   --> $DIR/issue-18446.rs:5:5
    |
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
-help: disambiguate the method for candidate #2
+note: candidate #2 is defined in an impl for the type `(dyn T + 'a)`
+  --> $DIR/issue-18446.rs:9:5
+   |
+LL |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
    |
 LL |     T::foo(&x);
    |     ~~~~~~~~~~

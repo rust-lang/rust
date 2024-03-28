@@ -65,7 +65,7 @@ pub mod rustc {
     use std::fmt::{self, Write};
 
     /// A reference in the layout.
-    #[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Clone, Copy)]
+    #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
     pub struct Ref<'tcx> {
         pub lifetime: ty::Region<'tcx>,
         pub ty: Ty<'tcx>,
