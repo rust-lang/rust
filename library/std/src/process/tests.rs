@@ -482,8 +482,11 @@ fn test_proc_thread_attributes() {
     let mut child_cmd = Command::new("cmd");
 
     unsafe {
-        child_cmd
-            .raw_attribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, parent.0.as_raw_handle() as isize);
+        child_cmd.raw_attribute(
+            PROC_THREAD_ATTRIBUTE_PARENT_PROCESS,
+            parent.0.as_raw_handle(),
+            mem::size_of::<HANDLE>(),
+        );
     }
 
     let child = ProcessDropGuard(child_cmd.spawn().unwrap());
