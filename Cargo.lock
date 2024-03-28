@@ -3597,6 +3597,7 @@ dependencies = [
  "rustc_fluent_macro",
  "rustc_graphviz",
  "rustc_hir",
+ "rustc_hir_typeck",
  "rustc_index",
  "rustc_infer",
  "rustc_lexer",
