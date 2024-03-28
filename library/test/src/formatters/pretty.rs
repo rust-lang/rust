@@ -69,29 +69,12 @@ impl<T: Write> PrettyFormatter<T> {
         self.write_pretty(result, color)
     }
 
-    pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
-        match self.out {
-            OutputLocation::Pretty(ref mut term) => {
-                if self.use_color {
-                    term.fg(color)?;
-                }
-                term.write_all(word.as_bytes())?;
-                if self.use_color {
-                    term.reset()?;
-                }
-                term.flush()
-            }
-            OutputLocation::Raw(ref mut stdout) => {
-                stdout.write_all(word.as_bytes())?;
-                stdout.flush()
-            }
-        }
+    fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
+        if self.use_color { self.out.write_pretty(word, color) } else { self.out.write_plain(word) }
     }
 
-    pub fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
-        let s = s.as_ref();
-        self.out.write_all(s.as_bytes())?;
-        self.out.flush()
+    fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
+        self.out.write_plain(s)
     }
 
     fn write_time(

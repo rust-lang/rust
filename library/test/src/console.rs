@@ -41,6 +41,29 @@ impl<T: Write> Write for OutputLocation<T> {
     }
 }
 
+impl<T: Write> OutputLocation<T> {
+    pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
+        match self {
+            OutputLocation::Pretty(ref mut term) => {
+                term.fg(color)?;
+                term.write_all(word.as_bytes())?;
+                term.reset()?;
+            }
+            OutputLocation::Raw(ref mut stdout) => {
+                stdout.write_all(word.as_bytes())?;
+            }
+        }
+
+        self.flush()
+    }
+
+    pub fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
+        let s = s.as_ref();
+        self.write_all(s.as_bytes())?;
+        self.flush()
+    }
+}
+
 pub struct ConsoleTestDiscoveryState {
     pub log_out: Option<File>,
     pub tests: usize,
