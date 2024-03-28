@@ -296,10 +296,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
         Region::new_anon_bound(self.interner(), self.binder_index, var)
     }
 
-    fn fold_ty(&mut self, t: I::Ty) -> I::Ty
-    where
-        I::Ty: TypeSuperFoldable<I>,
-    {
+    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         let kind = match t.kind() {
             ty::Infer(i) => match i {
                 ty::TyVar(vid) => {
@@ -378,10 +375,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
         Ty::new_anon_bound(self.interner(), self.binder_index, var)
     }
 
-    fn fold_const(&mut self, c: I::Const) -> I::Const
-    where
-        I::Const: TypeSuperFoldable<I>,
-    {
+    fn fold_const(&mut self, c: I::Const) -> I::Const {
         // We could canonicalize all consts with static types, but the only ones we
         // *really* need to worry about are the ones that we end up putting into `CanonicalVarKind`
         // since canonical vars can't reference other canonical vars.

@@ -85,7 +85,13 @@ pub trait Interner: Sized + Copy {
     type PlaceholderRegion: Copy + Debug + Hash + Eq + PlaceholderLike;
 
     // Predicates
-    type Predicate: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
+    type Predicate: Copy
+        + Debug
+        + Hash
+        + Eq
+        + TypeSuperVisitable<Self>
+        + TypeSuperFoldable<Self>
+        + Flags;
     type TraitPredicate: Copy + Debug + Hash + Eq;
     type RegionOutlivesPredicate: Copy + Debug + Hash + Eq;
     type TypeOutlivesPredicate: Copy + Debug + Hash + Eq;
