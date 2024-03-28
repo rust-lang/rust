@@ -8,6 +8,10 @@
 pub fn test(a: &mut [u8], offset: usize, bytes: &[u8]) {
     // CHECK-LABEL: @test(
     // CHECK-NOT: call
+    // CHECK: call void @llvm.assume
+    // CHECK-NOT: call
+    // CHECK: call void @llvm.assume
+    // CHECK-NOT: call
     // CHECK: call void @llvm.memcpy
     // CHECK-NOT: call
     // CHECK: }
