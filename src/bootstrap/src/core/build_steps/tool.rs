@@ -36,8 +36,9 @@ struct ToolBuild {
 
 impl Builder<'_> {
     #[track_caller]
-    fn msg_tool(
+    pub(crate) fn msg_tool(
         &self,
+        kind: Kind,
         mode: Mode,
         tool: &str,
         build_stage: u32,
@@ -47,7 +48,7 @@ impl Builder<'_> {
         match mode {
             // depends on compiler stage, different to host compiler
             Mode::ToolRustc => self.msg_sysroot_tool(
-                Kind::Build,
+                kind,
                 build_stage,
                 format_args!("tool {tool}"),
                 *host,
@@ -100,6 +101,7 @@ impl Step for ToolBuild {
             cargo.allow_features(self.allow_features);
         }
         let _guard = builder.msg_tool(
+            Kind::Build,
             self.mode,
             self.tool,
             self.compiler.stage,
@@ -485,6 +487,7 @@ impl Step for Rustdoc {
         }
 
         let _guard = builder.msg_tool(
+            Kind::Build,
             Mode::ToolRustc,
             "rustdoc",
             build_compiler.stage,
