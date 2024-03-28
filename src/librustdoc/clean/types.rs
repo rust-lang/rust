@@ -2192,7 +2192,7 @@ impl Path {
         self.segments
             .iter()
             .map(|s| if s.name == kw::PathRoot { "" } else { s.name.as_str() })
-            .intersperse("::")
+            .separate("::")
             .collect()
     }
 

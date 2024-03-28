@@ -485,7 +485,7 @@ fn run_test(
                 true
             }
         })
-        .intersperse_with(|| "\n")
+        .separate_with(|| "\n")
         .collect::<String>();
 
     // Add a \n to the end to properly terminate the last line,

@@ -458,7 +458,7 @@ pub use self::adapters::{
     Skip, SkipWhile, Take, TakeWhile, Zip,
 };
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-pub use self::adapters::{Intersperse, IntersperseWith};
+pub use self::adapters::{Separate, SeparateWith};
 
 pub(crate) use self::adapters::try_process;
 pub(crate) use self::traits::UncheckedIterator;

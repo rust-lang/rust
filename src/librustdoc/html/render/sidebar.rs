@@ -123,7 +123,7 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
     let sidebar_path =
         if it.is_mod() { &cx.current[..cx.current.len() - 1] } else { &cx.current[..] };
     let path: String = if sidebar_path.len() > 1 || !title.is_empty() {
-        let path = sidebar_path.iter().map(|s| s.as_str()).intersperse("::").collect();
+        let path = sidebar_path.iter().map(|s| s.as_str()).separate("::").collect();
         if sidebar_path.len() == 1 { format!("crate {path}") } else { path }
     } else {
         "".into()

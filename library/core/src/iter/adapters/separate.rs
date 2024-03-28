@@ -3,11 +3,11 @@ use crate::iter::{Fuse, FusedIterator};
 
 /// An iterator adapter that places a separator between all elements.
 ///
-/// This `struct` is created by [`Iterator::intersperse`]. See its documentation
+/// This `struct` is created by [`Iterator::separate`]. See its documentation
 /// for more information.
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 #[derive(Debug, Clone)]
-pub struct Intersperse<I: Iterator>
+pub struct Separate<I: Iterator>
 where
     I::Item: Clone,
 {
@@ -18,14 +18,14 @@ where
 }
 
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-impl<I> FusedIterator for Intersperse<I>
+impl<I> FusedIterator for Separate<I>
 where
     I: FusedIterator,
     I::Item: Clone,
 {
 }
 
-impl<I: Iterator> Intersperse<I>
+impl<I: Iterator> Separate<I>
 where
     I::Item: Clone,
 {
@@ -35,7 +35,7 @@ where
 }
 
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-impl<I> Iterator for Intersperse<I>
+impl<I> Iterator for Separate<I>
 where
     I: Iterator,
     I::Item: Clone,
@@ -63,7 +63,7 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        intersperse_size_hint(&self.iter, self.started, self.next_item.is_some())
+        separate_size_hint(&self.iter, self.started, self.next_item.is_some())
     }
 
     fn fold<B, F>(self, init: B, f: F) -> B
@@ -72,23 +72,16 @@ where
         F: FnMut(B, Self::Item) -> B,
     {
         let separator = self.separator;
-        intersperse_fold(
-            self.iter,
-            init,
-            f,
-            move || separator.clone(),
-            self.started,
-            self.next_item,
-        )
+        separate_fold(self.iter, init, f, move || separator.clone(), self.started, self.next_item)
     }
 }
 
 /// An iterator adapter that places a separator between all elements.
 ///
-/// This `struct` is created by [`Iterator::intersperse_with`]. See its
+/// This `struct` is created by [`Iterator::separate_with`]. See its
 /// documentation for more information.
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-pub struct IntersperseWith<I, G>
+pub struct SeparateWith<I, G>
 where
     I: Iterator,
 {
@@ -99,7 +92,7 @@ where
 }
 
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-impl<I, G> FusedIterator for IntersperseWith<I, G>
+impl<I, G> FusedIterator for SeparateWith<I, G>
 where
     I: FusedIterator,
     G: FnMut() -> I::Item,
@@ -107,14 +100,14 @@ where
 }
 
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-impl<I, G> fmt::Debug for IntersperseWith<I, G>
+impl<I, G> fmt::Debug for SeparateWith<I, G>
 where
     I: Iterator + fmt::Debug,
     I::Item: fmt::Debug,
     G: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("IntersperseWith")
+        f.debug_struct("SeparateWith")
             .field("started", &self.started)
             .field("separator", &self.separator)
             .field("iter", &self.iter)
@@ -124,7 +117,7 @@ where
 }
 
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-impl<I, G> Clone for IntersperseWith<I, G>
+impl<I, G> Clone for SeparateWith<I, G>
 where
     I: Iterator + Clone,
     I::Item: Clone,
@@ -140,7 +133,7 @@ where
     }
 }
 
-impl<I, G> IntersperseWith<I, G>
+impl<I, G> SeparateWith<I, G>
 where
     I: Iterator,
     G: FnMut() -> I::Item,
@@ -151,7 +144,7 @@ where
 }
 
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-impl<I, G> Iterator for IntersperseWith<I, G>
+impl<I, G> Iterator for SeparateWith<I, G>
 where
     I: Iterator,
     G: FnMut() -> I::Item,
@@ -179,7 +172,7 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        intersperse_size_hint(&self.iter, self.started, self.next_item.is_some())
+        separate_size_hint(&self.iter, self.started, self.next_item.is_some())
     }
 
     fn fold<B, F>(self, init: B, f: F) -> B
@@ -187,11 +180,11 @@ where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        intersperse_fold(self.iter, init, f, self.separator, self.started, self.next_item)
+        separate_fold(self.iter, init, f, self.separator, self.started, self.next_item)
     }
 }
 
-fn intersperse_size_hint<I>(iter: &I, started: bool, next_is_some: bool) -> (usize, Option<usize>)
+fn separate_size_hint<I>(iter: &I, started: bool, next_is_some: bool) -> (usize, Option<usize>)
 where
     I: Iterator,
 {
@@ -208,7 +201,7 @@ where
     )
 }
 
-fn intersperse_fold<I, B, F, G>(
+fn separate_fold<I, B, F, G>(
     mut iter: I,
     init: B,
     mut f: F,

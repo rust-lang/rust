@@ -286,7 +286,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             };
 
         let lines = original_text.lines().filter_map(|l| map_line(l).for_html());
-        let text = lines.intersperse("\n".into()).collect::<String>();
+        let text = lines.separate("\n".into()).collect::<String>();
 
         let explicit_edition = edition.is_some();
         let edition = edition.unwrap_or(self.edition);
@@ -300,7 +300,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             let test = original_text
                 .lines()
                 .map(|l| map_line(l).for_code())
-                .intersperse("\n".into())
+                .separate("\n".into())
                 .collect::<String>();
             let krate = krate.as_ref().map(|s| s.as_str());
 

@@ -1667,7 +1667,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     types_and_spans[..types_and_spans.len() - 1]
                         .iter()
                         .map(|(x, _)| x.as_str())
-                        .intersperse(", ")
+                        .separate(", ")
                         .collect::<String>()
                 ),
                 [(only, _)] => only.to_string(),
@@ -1696,7 +1696,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         kinds[..kinds.len() - 1]
                             .iter()
                             .map(|&x| x)
-                            .intersperse(", ")
+                            .separate(", ")
                             .collect::<String>()
                     ),
                     "s",

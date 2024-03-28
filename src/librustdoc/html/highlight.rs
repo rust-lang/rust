@@ -980,7 +980,7 @@ fn string_without_closing_tag<T: Display>(
 
     let mut text_s = text.to_string();
     if text_s.contains("::") {
-        text_s = text_s.split("::").intersperse("::").fold(String::new(), |mut path, t| {
+        text_s = text_s.split("::").separate("::").fold(String::new(), |mut path, t| {
             match t {
                 "self" | "Self" => write!(
                     &mut path,

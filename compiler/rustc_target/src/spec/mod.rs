@@ -387,7 +387,7 @@ impl LinkerFlavor {
                 .iter()
                 .filter(|cli| compatible(**cli))
                 .map(|cli| cli.desc())
-                .intersperse(", ")
+                .separate(", ")
                 .collect()
         })
     }

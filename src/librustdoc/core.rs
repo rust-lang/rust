@@ -486,7 +486,7 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
                 path.segments
                     .iter()
                     .map(|segment| segment.ident.as_str())
-                    .intersperse("::")
+                    .separate("::")
                     .collect::<String>()
             );
             rustc_errors::struct_span_code_err!(

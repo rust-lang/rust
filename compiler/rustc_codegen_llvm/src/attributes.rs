@@ -489,8 +489,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
 
     let global_features = cx.tcx.global_backend_features(()).iter().map(|s| s.as_str());
     let function_features = function_features.iter().map(|s| s.as_str());
-    let target_features: String =
-        global_features.chain(function_features).intersperse(",").collect();
+    let target_features: String = global_features.chain(function_features).separate(",").collect();
     if !target_features.is_empty() {
         to_add.push(llvm::CreateAttrStringValue(cx.llcx, "target-features", &target_features));
     }

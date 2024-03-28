@@ -3005,9 +3005,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
             MissingLifetimeKind::Brackets => {
                 let sugg: String = std::iter::once("<")
-                    .chain(
-                        std::iter::repeat(existing_name.as_str()).take(lt.count).intersperse(", "),
-                    )
+                    .chain(std::iter::repeat(existing_name.as_str()).take(lt.count).separate(", "))
                     .chain([">"])
                     .collect();
                 (lt.span.shrink_to_hi(), sugg)
