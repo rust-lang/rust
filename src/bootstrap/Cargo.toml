@@ -36,7 +36,7 @@ test = false
 # Most of the time updating these dependencies requires modifications
 # to the bootstrap codebase; otherwise, some targets will fail. That's
 # why these dependencies are explicitly pinned.
-cc = "=1.0.73"
+cc = "=1.0.80"
 cmake = "=0.1.48"
 
 build_helper = { path = "../tools/build_helper" }
