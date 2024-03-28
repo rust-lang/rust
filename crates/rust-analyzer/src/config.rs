@@ -1013,6 +1013,17 @@ impl Config {
         )
     }
 
+    pub fn did_change_watched_files_relative_pattern_support(&self) -> bool {
+        try_or_def!(
+            self.caps
+                .workspace
+                .as_ref()?
+                .did_change_watched_files
+                .as_ref()?
+                .relative_pattern_support?
+        )
+    }
+
     pub fn prefill_caches(&self) -> bool {
         self.data.cachePriming_enable
     }

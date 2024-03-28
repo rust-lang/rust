@@ -428,16 +428,16 @@ impl GlobalState {
         }
 
         if let FilesWatcher::Client = self.config.files().watcher {
-            let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
-                watchers: self
-                    .workspaces
-                    .iter()
-                    .flat_map(|ws| ws.to_roots())
-                    .filter(|it| it.is_local)
+            let filter =
+                self.workspaces.iter().flat_map(|ws| ws.to_roots()).filter(|it| it.is_local);
+
+            let watchers = if self.config.did_change_watched_files_relative_pattern_support() {
+                // When relative patterns are supported by the client, prefer using them
+                filter
                     .flat_map(|root| {
-                        root.include
-                            .into_iter()
-                            .flat_map(|it| [(it.clone(), "**/*.rs"), (it, "**/Cargo.{lock,toml}")])
+                        root.include.into_iter().flat_map(|base| {
+                            [(base.clone(), "**/*.rs"), (base, "**/Cargo.{lock,toml}")]
+                        })
                     })
                     .map(|(base, pat)| lsp_types::FileSystemWatcher {
                         glob_pattern: lsp_types::GlobPattern::Relative(
@@ -450,8 +450,24 @@ impl GlobalState {
                         ),
                         kind: None,
                     })
-                    .collect(),
+                    .collect()
+            } else {
+                // When they're not, integrate the base to make them into absolute patterns
+                filter
+                    .flat_map(|root| {
+                        root.include.into_iter().flat_map(|base| {
+                            [format!("{base}/**/*.rs"), format!("{base}/**/Cargo.{{lock,toml}}")]
+                        })
+                    })
+                    .map(|glob_pattern| lsp_types::FileSystemWatcher {
+                        glob_pattern: lsp_types::GlobPattern::String(glob_pattern),
+                        kind: None,
+                    })
+                    .collect()
             };
+
+            let registration_options =
+                lsp_types::DidChangeWatchedFilesRegistrationOptions { watchers };
             let registration = lsp_types::Registration {
                 id: "workspace/didChangeWatchedFiles".to_owned(),
                 method: "workspace/didChangeWatchedFiles".to_owned(),
