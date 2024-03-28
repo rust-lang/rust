@@ -3784,6 +3784,7 @@ impl<'test> TestCx<'test> {
             .env("TMPDIR", &tmpdir)
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
             .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
+            .env("LD_LIBRARY_PATH", cwd.join(&self.config.compile_lib_path))
             .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
             .env("LLVM_COMPONENTS", &self.config.llvm_components)
             // We for sure don't want these tests to run in parallel, so make
@@ -3838,6 +3839,7 @@ impl<'test> TestCx<'test> {
             .env("RUSTC", cwd.join(&self.config.rustc_path))
             .env("TMPDIR", &tmpdir)
             .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
+            .env("LD_LIBRARY_PATH", cwd.join(&self.config.compile_lib_path))
             .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
             .env("LLVM_COMPONENTS", &self.config.llvm_components)
             // We for sure don't want these tests to run in parallel, so make
