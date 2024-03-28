@@ -62,6 +62,8 @@ use core::str::pattern::Pattern;
 use core::str::Utf8Chunks;
 
 #[cfg(not(no_global_oom_handling))]
+use crate::alloc::Allocator;
+#[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
@@ -2153,8 +2155,8 @@ impl FromIterator<String> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
-impl FromIterator<Box<str>> for String {
-    fn from_iter<I: IntoIterator<Item = Box<str>>>(iter: I) -> String {
+impl<A: Allocator> FromIterator<Box<str, A>> for String {
+    fn from_iter<I: IntoIterator<Item = Box<str, A>>>(iter: I) -> String {
         let mut buf = String::new();
         buf.extend(iter);
         buf
@@ -2235,8 +2237,8 @@ impl<'a> Extend<&'a str> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
-impl Extend<Box<str>> for String {
-    fn extend<I: IntoIterator<Item = Box<str>>>(&mut self, iter: I) {
+impl<A: Allocator> Extend<Box<str, A>> for String {
+    fn extend<I: IntoIterator<Item = Box<str, A>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
 }
