@@ -69,6 +69,7 @@ string_enum! {
         Assembly => "assembly",
         CoverageMap => "coverage-map",
         CoverageRun => "coverage-run",
+        Crashes => "crashes",
     }
 }
 

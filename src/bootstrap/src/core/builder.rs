@@ -786,6 +786,7 @@ impl<'a> Builder<'a> {
                 test::ExpandYamlAnchors,
                 test::Tidy,
                 test::Ui,
+                test::Crashes,
                 test::RunPassValgrind,
                 test::Coverage,
                 test::CoverageMap,

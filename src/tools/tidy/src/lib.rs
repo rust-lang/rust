@@ -67,6 +67,7 @@ pub mod features;
 pub mod fluent_alphabetical;
 mod fluent_used;
 pub(crate) mod iter_header;
+pub mod known_bug;
 pub mod mir_opt_tests;
 pub mod pal;
 pub mod run_make_tests;
