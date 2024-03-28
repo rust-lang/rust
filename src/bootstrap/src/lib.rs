@@ -1668,10 +1668,23 @@ impl Build {
     /// You can neither rely on this being a copy nor it being a link,
     /// so do not write to dst.
     pub fn copy_link(&self, src: &Path, dst: &Path) {
-        self.copy_link_internal(src, dst, false);
+        self.copy_internal(src, dst, false, true);
     }
 
-    fn copy_link_internal(&self, src: &Path, dst: &Path, dereference_symlinks: bool) {
+    /// Links a file from `src` to `dst`.
+    /// Unlike, [`Build::copy_link`], this makes an actual copy, which is usually not required,
+    /// so `copy_link` should be used instead if possible.
+    pub fn copy(&self, src: &Path, dst: &Path) {
+        self.copy_internal(src, dst, false, false);
+    }
+
+    fn copy_internal(
+        &self,
+        src: &Path,
+        dst: &Path,
+        dereference_symlinks: bool,
+        link_if_possible: bool,
+    ) {
         if self.config.dry_run() {
             return;
         }
@@ -1691,7 +1704,7 @@ impl Build {
                 return;
             }
         }
-        if let Ok(()) = fs::hard_link(&src, dst) {
+        if link_if_possible && fs::hard_link(&src, dst).is_ok() {
             // Attempt to "easy copy" by creating a hard link
             // (symlinks don't work on windows), but if that fails
             // just fall back to a slow `copy` operation.
@@ -1722,6 +1735,28 @@ impl Build {
                 self.cp_link_r(&path, &dst);
             } else {
                 self.copy_link(&path, &dst);
+            }
+        }
+    }
+
+    /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
+    /// when this function is called.
+    /// Unlike, [`Build::cp_link_r`], this makes an actual copy, which is usually not required,
+    /// so `cp_link_r` should be used instead if possible.
+    pub fn cp_r(&self, src: &Path, dst: &Path) {
+        if self.config.dry_run() {
+            return;
+        }
+        for f in self.read_dir(src) {
+            let path = f.path();
+            let name = path.file_name().unwrap();
+            let dst = dst.join(name);
+            if t!(f.file_type()).is_dir() {
+                t!(fs::create_dir_all(&dst));
+                self.cp_r(&path, &dst);
+            } else {
+                let _ = fs::remove_file(&dst);
+                self.copy(&path, &dst);
             }
         }
     }
@@ -1779,7 +1814,9 @@ impl Build {
         if !src.exists() {
             panic!("ERROR: File \"{}\" not found!", src.display());
         }
-        self.copy_link_internal(src, &dst, true);
+
+        self.copy_internal(src, &dst, true, true);
+
         chmod(&dst, perms);
     }
 

@@ -11,10 +11,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "powerpc64-ibm-aix".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("64-bit AIX (7.2 and newer)".into()),
+            tier: Some(3),
+            host_tools: Some(true),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout: "E-m:a-Fi64-i64:64-n32:64-S128-v256:256:256-v512:512:512".into(),
