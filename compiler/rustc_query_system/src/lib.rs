@@ -13,6 +13,9 @@ extern crate rustc_data_structures;
 #[macro_use]
 extern crate rustc_macros;
 
+#[allow(unused_extern_crates)]
+extern crate hashbrown;
+
 pub mod cache;
 pub mod dep_graph;
 mod error;

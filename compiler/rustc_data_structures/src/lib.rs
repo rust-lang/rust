@@ -45,6 +45,9 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_macros;
 
+#[cfg(parallel_compiler)]
+extern crate hashbrown;
+
 use std::fmt;
 
 pub use rustc_index::static_assert_size;
