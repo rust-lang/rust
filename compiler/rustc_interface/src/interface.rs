@@ -10,7 +10,9 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
 use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_lint::LintStore;
+
 use rustc_middle::ty;
+use rustc_middle::ty::CurrentGcx;
 use rustc_middle::util::Providers;
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
@@ -39,6 +41,7 @@ pub struct Compiler {
     pub sess: Session,
     pub codegen_backend: Box<dyn CodegenBackend>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers)>,
+    pub(crate) current_gcx: CurrentGcx,
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
@@ -336,7 +339,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.unstable_opts.threads,
-        || {
+        |current_gcx| {
             crate::callbacks::setup_callbacks();
 
             let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
@@ -430,8 +433,12 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             }
             sess.lint_store = Some(Lrc::new(lint_store));
 
-            let compiler =
-                Compiler { sess, codegen_backend, override_queries: config.override_queries };
+            let compiler = Compiler {
+                sess,
+                codegen_backend,
+                override_queries: config.override_queries,
+                current_gcx,
+            };
 
             rustc_span::set_source_map(compiler.sess.psess.clone_source_map(), move || {
                 // There are two paths out of `f`.
