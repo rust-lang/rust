@@ -11,10 +11,12 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
+use std::rc::Rc;
 
 use rustc_ast as ast;
 use rustc_attr::{ConstStability, StabilityLevel};
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -1418,6 +1420,53 @@ impl clean::FnDecl {
         })
     }
 
+    fn ambiguities<'a>(
+        types: impl Iterator<Item = &'a clean::Type>,
+    ) -> FxHashMap<DefId, Rc<Cell<bool>>> {
+        fn inner(
+            ty: &clean::Type,
+            res_map: &mut FxHashMap<DefId, Rc<Cell<bool>>>,
+            conflict_map: &mut FxHashMap<Symbol, Rc<Cell<bool>>>,
+        ) {
+            match ty {
+                clean::Type::Path { path } => {
+                    res_map.entry(path.def_id()).or_insert_with(|| {
+                        let last = path.last();
+                        conflict_map
+                            .entry(last)
+                            .and_modify(|b| {
+                                b.replace(true);
+                            })
+                            .or_insert_with(|| Rc::new(Cell::new(false)))
+                            .clone()
+                    });
+                }
+                clean::Type::Tuple(types) => {
+                    for ty in types {
+                        inner(ty, res_map, conflict_map)
+                    }
+                }
+                clean::Type::Slice(ty)
+                | clean::Type::Array(ty, _)
+                | clean::Type::RawPointer(_, ty)
+                | clean::Type::BorrowedRef { type_: ty, .. } => inner(ty, res_map, conflict_map),
+                clean::Type::QPath(_)
+                | clean::Type::Infer
+                | clean::Type::ImplTrait(_)
+                | clean::Type::BareFunction(_)
+                | clean::Type::Primitive(_)
+                | clean::Type::Generic(_)
+                | clean::Type::DynTrait(_, _) => (),
+            }
+        }
+        let mut res_map = FxHashMap::default();
+        let mut conflict_map = FxHashMap::default();
+        for ty in types {
+            inner(ty, &mut res_map, &mut conflict_map)
+        }
+        res_map
+    }
+
     fn inner_full_print(
         &self,
         // For None, the declaration will not be line-wrapped. For Some(n),
@@ -1434,6 +1483,7 @@ impl clean::FnDecl {
         {
             write!(f, "\n{}", Indent(n + 4))?;
         }
+        let ambiguities = Self::ambiguities(self.inputs.values.iter().map(|inpt| &inpt.type_));
         for (i, input) in self.inputs.values.iter().enumerate() {
             if i > 0 {
                 match line_wrapping_indent {
@@ -1471,7 +1521,14 @@ impl clean::FnDecl {
                     write!(f, "const ")?;
                 }
                 write!(f, "{}: ", input.name)?;
-                input.type_.print(cx).fmt(f)?;
+
+                let use_absolute = input
+                    .type_
+                    .def_id(cx.cache())
+                    .and_then(|did| ambiguities.get(&did))
+                    .map(|rcb| rcb.get())
+                    .unwrap_or(false);
+                fmt_type(&input.type_, f, use_absolute, cx)?;
             }
         }
 
