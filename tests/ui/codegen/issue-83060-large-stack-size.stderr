@@ -1,0 +1,4 @@
+warning: Dangerous stack allocation of size: 1 GiB exceeds most architecture limits
+
+warning: 1 warning emitted
+

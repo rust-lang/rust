@@ -25,6 +25,8 @@ codegen_ssa_copy_path_buf = unable to copy {$source_file} to {$output_path}: {$e
 
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
+codegen_ssa_dangerous_stack_allocation = Dangerous stack allocation of size: {$output} exceeds most architecture limits
+
 codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$error}
 
 codegen_ssa_expected_coverage_symbol = expected `coverage(off)` or `coverage(on)`

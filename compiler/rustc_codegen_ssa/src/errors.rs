@@ -422,6 +422,12 @@ pub struct CheckInstalledVisualStudio;
 pub struct InsufficientVSCodeProduct;
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_dangerous_stack_allocation)]
+pub struct DangerousStackAllocation {
+    pub output: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_processing_dymutil_failed)]
 #[note]
 pub struct ProcessingDymutilFailed {
