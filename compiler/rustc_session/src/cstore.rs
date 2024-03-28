@@ -7,7 +7,9 @@ use crate::utils::NativeLibKind;
 use crate::Session;
 use rustc_ast as ast;
 use rustc_data_structures::sync::{self, AppendOnlyIndexVec, FreezeLock};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, StableCrateId, LOCAL_CRATE};
+use rustc_hir::def_id::{
+    CrateNum, DefId, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE,
+};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::symbol::Symbol;
@@ -219,7 +221,6 @@ pub trait CrateStore: std::fmt::Debug {
     // incr. comp. uses to identify a CrateNum.
     fn crate_name(&self, cnum: CrateNum) -> Symbol;
     fn stable_crate_id(&self, cnum: CrateNum) -> StableCrateId;
-    fn stable_crate_id_to_crate_num(&self, stable_crate_id: StableCrateId) -> CrateNum;
 
     /// Fetch a DefId from a DefPathHash for a foreign crate.
     fn def_path_hash_to_def_id(&self, cnum: CrateNum, hash: DefPathHash) -> DefId;
@@ -245,4 +246,6 @@ pub struct Untracked {
     /// Reference span for definitions.
     pub source_span: AppendOnlyIndexVec<LocalDefId, Span>,
     pub definitions: FreezeLock<Definitions>,
+    /// The interned [StableCrateId]s.
+    pub stable_crate_ids: FreezeLock<StableCrateIdMap>,
 }
