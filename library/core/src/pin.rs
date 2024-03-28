@@ -806,7 +806,7 @@
 //!
 //!     As a consequence, the struct *must not* be [`#[repr(packed)]`][packed].
 //!
-//! 3.  *Structural Notice of Destruction.* You must uphold the the
+//! 3.  *Structural Notice of Destruction.* You must uphold the
 //!     [`Drop` guarantee][drop-guarantee]: once your struct is pinned, the struct's storage cannot
 //!     be re-used without calling the structurally-pinned fields' destructors, as well.
 //!

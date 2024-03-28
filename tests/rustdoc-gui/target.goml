@@ -1,4 +1,4 @@
-// Check that the targetted element has the expected styles.
+// Check that the targeted element has the expected styles.
 go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html#method.a_method"
 show-text: true
 

@@ -1112,8 +1112,36 @@ pub fn typeid_for_instance<'tcx>(
     mut instance: Instance<'tcx>,
     options: TypeIdOptions,
 ) -> String {
-    if matches!(instance.def, ty::InstanceDef::Virtual(..)) {
-        instance.args = strip_receiver_auto(tcx, instance.args)
+    if (matches!(instance.def, ty::InstanceDef::Virtual(..))
+        && Some(instance.def_id()) == tcx.lang_items().drop_in_place_fn())
+        || matches!(instance.def, ty::InstanceDef::DropGlue(..))
+    {
+        // Adjust the type ids of DropGlues
+        //
+        // DropGlues may have indirect calls to one or more given types drop function. Rust allows
+        // for types to be erased to any trait object and retains the drop function for the original
+        // type, which means at the indirect call sites in DropGlues, when typeid_for_fnabi is
+        // called a second time, it only has information after type erasure and it could be a call
+        // on any arbitrary trait object. Normalize them to a synthesized Drop trait object, both on
+        // declaration/definition, and during code generation at call sites so they have the same
+        // type id and match.
+        //
+        // FIXME(rcvalle): This allows a drop call on any trait object to call the drop function of
+        //   any other type.
+        //
+        let def_id = tcx
+            .lang_items()
+            .drop_trait()
+            .unwrap_or_else(|| bug!("typeid_for_instance: couldn't get drop_trait lang item"));
+        let predicate = ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef {
+            def_id: def_id,
+            args: List::empty(),
+        });
+        let predicates = tcx.mk_poly_existential_predicates(&[ty::Binder::dummy(predicate)]);
+        let self_ty = Ty::new_dynamic(tcx, predicates, tcx.lifetimes.re_erased, ty::Dyn);
+        instance.args = tcx.mk_args_trait(self_ty, List::empty());
+    } else if matches!(instance.def, ty::InstanceDef::Virtual(..)) {
+        instance.args = strip_receiver_auto(tcx, instance.args);
     }
 
     if let Some(impl_id) = tcx.impl_of_method(instance.def_id())
