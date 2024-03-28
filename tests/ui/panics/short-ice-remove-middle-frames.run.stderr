@@ -1,3 +1,4 @@
+
 thread 'main' panicked at $DIR/short-ice-remove-middle-frames.rs:52:5:
 debug!!!
 stack backtrace:
