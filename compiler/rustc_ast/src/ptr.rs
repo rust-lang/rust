@@ -28,7 +28,8 @@ use std::{slice, vec};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-/// An owned smart pointer.
+
+/// An owned smart pointer. 
 pub struct P<T: ?Sized> {
     ptr: Box<T>,
 }
