@@ -258,6 +258,14 @@ impl<'hir> Map<'hir> {
         self.tcx.hir_node_by_def_id(id).body_id()
     }
 
+    /// Check if a given `LocalDefId` is in an impl block.
+    pub fn is_impl_block(self, id: LocalDefId) -> bool {
+        matches!(
+            self.get_if_local(id.to_def_id()),
+            Some(Node::Item(Item { kind: ItemKind::Impl(_), .. }))
+        )
+    }
+
     /// Given a body owner's id, returns the `BodyId` associated with it.
     #[track_caller]
     pub fn body_owned_by(self, id: LocalDefId) -> BodyId {
