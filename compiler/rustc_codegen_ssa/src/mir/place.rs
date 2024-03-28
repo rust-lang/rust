@@ -356,12 +356,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             layout.size
         };
 
+        let elem_sized_type = bx.type_array(bx.type_i8(), layout.size.bytes());
         PlaceRef {
-            llval: bx.inbounds_gep(
-                bx.cx().backend_type(self.layout),
-                self.llval,
-                &[bx.cx().const_usize(0), llindex],
-            ),
+            llval: bx.inbounds_gep(elem_sized_type, self.llval, &[llindex]),
             llextra: None,
             layout,
             align: self.align.restrict_for_offset(offset),
