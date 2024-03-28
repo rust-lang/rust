@@ -404,7 +404,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cast = bx.cx().layout_of(self.monomorphize(mir_cast_ty));
 
                 let val = match *kind {
-                    mir::CastKind::PointerExposeAddress => {
+                    mir::CastKind::PointerExpose => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let llptr = operand.immediate();
                         let llcast_ty = bx.cx().immediate_backend_type(cast);

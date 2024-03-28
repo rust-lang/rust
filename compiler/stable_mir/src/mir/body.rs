@@ -967,7 +967,7 @@ pub enum PointerCoercion {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CastKind {
-    PointerExposeAddress,
+    PointerExpose,
     PointerFromExposedAddress,
     PointerCoercion(PointerCoercion),
     DynStar,

@@ -1309,8 +1309,8 @@ pub enum Rvalue<'tcx> {
 pub enum CastKind {
     /// An exposing pointer to address cast. A cast between a pointer and an integer type, or
     /// between a function pointer and an integer type.
-    /// See the docs on `expose_addr` for more details.
-    PointerExposeAddress,
+    /// See the docs on `expose` for more details.
+    PointerExpose,
     /// An address-to-pointer cast that picks up an exposed provenance.
     /// See the docs on `from_exposed_addr` for more details.
     PointerFromExposedAddress,

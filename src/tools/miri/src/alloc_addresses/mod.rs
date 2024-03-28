@@ -18,7 +18,7 @@ use reuse_pool::ReusePool;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ProvenanceMode {
-    /// We support `expose_addr`/`from_exposed_addr` via "wildcard" provenance.
+    /// We support `expose`/`from_exposed_addr` via "wildcard" provenance.
     /// However, we want on `from_exposed_addr` to alert the user of the precision loss.
     Default,
     /// Like `Default`, but without the warning.
