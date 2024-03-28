@@ -20,7 +20,7 @@ use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
 use rustc_target::abi::Align;
-use rustc_target::spec::LinkSelfContainedComponents;
+use rustc_target::spec::{LinkSelfContainedComponents, StackProtector};
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TARGETS};
 use std::collections::btree_map::{
@@ -2696,6 +2696,22 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
             if !unstable_opts.unstable_options {
                 early_dcx.early_fatal(
                     "`-C symbol-mangling-version=hashed` requires `-Z unstable-options`",
+                );
+            }
+        }
+    }
+
+    // Check for unstable values of `-C stack-protector`.
+    // This is what prevents them from being used on stable compilers.
+    match cg.stack_protector {
+        // Stable values:
+        StackProtector::All | StackProtector::None => {}
+        // Unstable values:
+        StackProtector::Basic | StackProtector::Strong => {
+            if !unstable_opts.unstable_options {
+                early_dcx.early_fatal(
+                    "`-C stack-protector=basic` and `-C stack-protector=strong` \
+                    require `-Z unstable-options`",
                 );
             }
         }
