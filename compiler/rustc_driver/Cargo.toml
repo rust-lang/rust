@@ -8,5 +8,6 @@ crate-type = ["dylib"]
 
 [dependencies]
 # tidy-alphabetical-start
+fjall = { git = "https://github.com/Zoxc/fjall.git" }
 rustc_driver_impl = { path = "../rustc_driver_impl" }
 # tidy-alphabetical-end

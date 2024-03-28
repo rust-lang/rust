@@ -239,6 +239,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
     "field-offset",
+    "fjall",
     "flate2",
     "fluent-bundle",
     "fluent-langneg",
@@ -266,7 +267,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "intl_pluralrules",
     "itertools",
     "itoa",
-    "jemalloc-sys",
     "jobserver",
     "lazy_static",
     "leb128",
@@ -339,6 +339,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "shlex",
     "smallvec",
     "snap",
+    "sptr",
     "stable_deref_trait",
     "stacker",
     "static_assertions",

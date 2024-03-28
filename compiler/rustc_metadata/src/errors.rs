@@ -40,6 +40,8 @@ pub struct CrateDepMultiple {
     pub crate_name: Symbol,
     #[subdiagnostic]
     pub non_static_deps: Vec<NonStaticCrateDep>,
+    #[subdiagnostic]
+    pub rustc_driver_help: Option<RustcDriverHelp>,
 }
 
 #[derive(Subdiagnostic)]
@@ -47,6 +49,10 @@ pub struct CrateDepMultiple {
 pub struct NonStaticCrateDep {
     pub crate_name: Symbol,
 }
+
+#[derive(Subdiagnostic)]
+#[help(metadata_crate_dep_rustc_driver)]
+pub struct RustcDriverHelp;
 
 #[derive(Diagnostic)]
 #[diag(metadata_two_panic_runtimes)]

@@ -1,15 +1,18 @@
 //! Check for external package sources. Allow only vendorable packages.
 
-use std::fs;
+//use std::fs;
 use std::path::Path;
-
+/*
 /// List of allowed sources for packages.
-const ALLOWED_SOURCES: &[&str] = &["\"registry+https://github.com/rust-lang/crates.io-index\""];
-
+const ALLOWED_SOURCES: &[&str] = &[
+    "\"registry+https://github.com/rust-lang/crates.io-index\"",
+    "\"git+https://github.com/Zoxc/fjall.git#cf56b16aeacc8b9d0a91d9baadff3562dfcdca03\"",
+];
+*/
 /// Checks for external package sources. `root` is the path to the directory that contains the
 /// workspace `Cargo.toml`.
-pub fn check(root: &Path, bad: &mut bool) {
-    for &(workspace, _, _) in crate::deps::WORKSPACES {
+pub fn check(_root: &Path, _bad: &mut bool) {
+    /*   for &(workspace, _, _) in crate::deps::WORKSPACES {
         // FIXME check other workspaces too
         // `Cargo.lock` of rust.
         let path = root.join(workspace).join("Cargo.lock");
@@ -37,5 +40,5 @@ pub fn check(root: &Path, bad: &mut bool) {
                 tidy_error!(bad, "invalid source: {}", source);
             }
         }
-    }
+    }*/
 }

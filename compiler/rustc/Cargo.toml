@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 
+fjall = { git = "https://github.com/Zoxc/fjall.git" }
+
 # Make sure rustc_codegen_ssa ends up in the sysroot, because this
 # crate is intended to be used by codegen backends, which may not be in-tree.
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
@@ -20,14 +22,9 @@ rustc_smir = { path = "../rustc_smir" }
 stable_mir = { path = "../stable_mir" }
 # tidy-alphabetical-end
 
-[dependencies.jemalloc-sys]
-version = "0.5.0"
-optional = true
-features = ['unprefixed_malloc_on_supported_platforms']
-
 [features]
 # tidy-alphabetical-start
-jemalloc = ['jemalloc-sys']
+jemalloc = []
 llvm = ['rustc_driver_impl/llvm']
 max_level_info = ['rustc_driver_impl/max_level_info']
 rustc_use_parallel_compiler = ['rustc_driver_impl/rustc_use_parallel_compiler']

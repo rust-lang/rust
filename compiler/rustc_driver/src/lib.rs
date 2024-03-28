@@ -5,4 +5,8 @@
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 
+#[cfg(not(bootstrap))]
+#[global_allocator]
+static GLOBAL: fjall::Alloc = fjall::Alloc;
+
 pub use rustc_driver_impl::*;
