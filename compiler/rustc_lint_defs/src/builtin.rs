@@ -99,6 +99,7 @@ declare_lint_pass! {
         TYVAR_BEHIND_RAW_POINTER,
         UNCONDITIONAL_PANIC,
         UNCONDITIONAL_RECURSION,
+        UNCOVERED_PARAM_IN_PROJECTION,
         UNDEFINED_NAKED_FUNCTION_ABI,
         UNEXPECTED_CFGS,
         UNFULFILLED_LINT_EXPECTATIONS,
@@ -4672,4 +4673,63 @@ declare_lint! {
         reference: "issue #71871 <https://github.com/rust-lang/rust/issues/71871>",
     };
     crate_level_only
+}
+
+declare_lint! {
+    /// The `uncovered_param_in_projection` lint detects a violation of one of Rust's orphan rules
+    /// for foreign trait implementations that concerns the use of type parameters inside associated
+    /// type paths ("projections") whose output may not be a local type that "covers" said parameters.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (dependent)
+    /// // dependency.rs
+    /// #![crate_type = "lib"]
+    ///
+    /// pub trait Trait<T, U> {}
+    /// ```
+    ///
+    /// ```edition2021,ignore (needs dependency)
+    /// // dependent.rs
+    /// trait Identity {
+    ///     type Output;
+    /// }
+    ///
+    /// impl<T> Identity for T {
+    ///     type Output = T;
+    /// }
+    ///
+    /// struct Local;
+    ///
+    /// impl<T> dependency::Trait<Local, T> for <T as Identity>::Output {}
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+    ///   --> dependent.rs:11:6
+    ///    |
+    /// 11 | impl<T> dependency::Trait<Local, T> for <T as Identity>::Output {}
+    ///    |      ^ type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+    ///    |
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = note: for more information, see issue #99554 <https://github.com/rust-lang/rust/issues/99554>
+    ///    = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type
+    ///    = note: in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
+    ///    = note: `#[warn(uncovered_param_in_projection)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// FIXME(fmease): Write explainer.
+    pub UNCOVERED_PARAM_IN_PROJECTION,
+    Warn,
+    "impl contains type parameters that are not covered",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reference: "issue #99554 <https://github.com/rust-lang/rust/issues/99554>",
+    };
 }

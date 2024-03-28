@@ -2,12 +2,15 @@
 //! crate or pertains to a type defined in this crate.
 
 use crate::errors;
+
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
-use rustc_middle::ty::{self, AliasKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_lint_defs::builtin::UNCOVERED_PARAM_IN_PROJECTION;
+use rustc_middle::ty::TypeVisitableExt;
+use rustc_middle::ty::{self, AliasKind, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::Span;
-use rustc_trait_selection::traits::{self, IsFirstInputType};
+use rustc_span::{Span, Symbol};
+use rustc_trait_selection::traits::{self, IsFirstInputType, UncoveredTyParams};
 
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn orphan_check_impl(
@@ -17,30 +20,29 @@ pub(crate) fn orphan_check_impl(
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
     trait_ref.error_reported()?;
 
-    let trait_def_id = trait_ref.def_id;
-
     match traits::orphan_check(tcx, impl_def_id.to_def_id()) {
-        Ok(()) => {}
-        Err(err) => {
+        traits::OrphanCheckResult::Ok => {}
+        traits::OrphanCheckResult::Issue99554(data) => {
+            lint_uncovered_ty_params(tcx, data, impl_def_id);
+        }
+        traits::OrphanCheckResult::Err(err) => {
             let item = tcx.hir().expect_item(impl_def_id);
-            let hir::ItemKind::Impl(impl_) = item.kind else {
-                bug!("{:?} is not an impl: {:?}", impl_def_id, item);
-            };
-            let tr = impl_.of_trait.as_ref().unwrap();
-            let sp = tcx.def_span(impl_def_id);
+            let impl_ = item.expect_impl();
+            let hir_trait_ref = impl_.of_trait.as_ref().unwrap();
 
             emit_orphan_check_error(
                 tcx,
-                sp,
+                tcx.def_span(impl_def_id),
                 item.span,
-                tr.path.span,
+                hir_trait_ref.path.span,
                 trait_ref,
                 impl_.self_ty.span,
-                impl_.generics,
                 err,
             )?
         }
     }
+
+    let trait_def_id = trait_ref.def_id;
 
     // In addition to the above rules, we restrict impls of auto traits
     // so that they can only be implemented on nominal types, such as structs,
@@ -277,12 +279,12 @@ fn emit_orphan_check_error<'tcx>(
     trait_span: Span,
     trait_ref: ty::TraitRef<'tcx>,
     self_ty_span: Span,
-    generics: &hir::Generics<'tcx>,
-    err: traits::OrphanCheckErr<'tcx>,
+    err: traits::OrphanCheckErr<'tcx, FxIndexMap<Symbol, Span>>,
 ) -> Result<!, ErrorGuaranteed> {
-    let self_ty = trait_ref.self_ty();
     Err(match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
+            let self_ty = trait_ref.self_ty();
+
             let (mut opaque, mut foreign, mut name, mut pointer, mut ty_diag) =
                 (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
             let mut sugg = None;
@@ -404,23 +406,45 @@ fn emit_orphan_check_error<'tcx>(
             };
             tcx.dcx().emit_err(err_struct)
         }
-        traits::OrphanCheckErr::UncoveredTy(param_ty, local_type) => {
-            let mut sp = sp;
-            for param in generics.params {
-                if param.name.ident().to_string() == param_ty.to_string() {
-                    sp = param.span;
-                }
+        traits::OrphanCheckErr::UncoveredTyParams(UncoveredTyParams { uncovered, local_ty }) => {
+            let mut reported = None;
+            for (param, span) in uncovered {
+                reported.get_or_insert(match local_ty {
+                    Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
+                        span,
+                        note: (),
+                        param,
+                        local_type,
+                    }),
+                    None => tcx.dcx().emit_err(errors::TyParamSome { span, note: (), param }),
+                });
             }
-
-            match local_type {
-                Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
-                    span: sp,
-                    note: (),
-                    param_ty,
-                    local_type,
-                }),
-                None => tcx.dcx().emit_err(errors::TyParamSome { span: sp, note: (), param_ty }),
-            }
+            reported.unwrap() // FIXME: possibly reachable
         }
     })
+}
+
+fn lint_uncovered_ty_params<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    UncoveredTyParams { uncovered, local_ty }: UncoveredTyParams<'tcx, FxIndexMap<Symbol, Span>>,
+    impl_def_id: LocalDefId,
+) {
+    let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);
+
+    for (param, span) in uncovered {
+        match local_ty {
+            Some(local_type) => tcx.emit_node_span_lint(
+                UNCOVERED_PARAM_IN_PROJECTION,
+                hir_id,
+                span,
+                errors::TyParamFirstLocalLint { span, note: (), param, local_type },
+            ),
+            None => tcx.emit_node_span_lint(
+                UNCOVERED_PARAM_IN_PROJECTION,
+                hir_id,
+                span,
+                errors::TyParamSomeLint { span, note: (), param },
+            ),
+        };
+    }
 }
