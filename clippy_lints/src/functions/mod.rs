@@ -371,6 +371,8 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// struct A(u32);
+    ///
     /// impl From<A> for String {
     ///     fn from(a: A) -> Self {
     ///         a.0.to_string()
@@ -379,6 +381,8 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```rust
+    /// struct A(u32);
+    ///
     /// impl From<A> for String {
     ///     fn from(value: A) -> Self {
     ///         value.0.to_string()
