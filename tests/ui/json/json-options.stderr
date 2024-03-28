@@ -1,1 +1,2 @@
+{"$message_type":"artifact","artifact":"$TEST_BUILD_DIR/json/json-options/json-options.json_options.HASH-cgu.0.rcgu.o","emit":"obj"}
 {"$message_type":"artifact","artifact":"$TEST_BUILD_DIR/json/json-options/libjson_options.rlib","emit":"link"}

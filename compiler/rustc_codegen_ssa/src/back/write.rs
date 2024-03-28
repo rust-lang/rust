@@ -106,6 +106,7 @@ pub struct ModuleConfig {
     pub emit_asm: bool,
     pub emit_obj: EmitObj,
     pub emit_thin_lto: bool,
+    pub json_artifact_notifications: bool,
     pub bc_cmdline: String,
 
     // Miscellaneous flags. These are mostly copied from command-line
@@ -276,6 +277,7 @@ impl ModuleConfig {
             inline_threshold: sess.opts.cg.inline_threshold,
             emit_lifetime_markers: sess.emit_lifetime_markers(),
             llvm_plugins: if_regular!(sess.opts.unstable_opts.llvm_plugins.clone(), vec![]),
+            json_artifact_notifications: sess.opts.json_artifact_notifications,
         }
     }
 
@@ -926,6 +928,11 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
             cgcx.create_dcx().emit_fatal(errors::NoSavedObjectFile { cgu_name: &module.name })
         }),
     );
+    if module_config.json_artifact_notifications {
+        if let Some(path) = object.as_deref() {
+            cgcx.create_dcx().emit_artifact_notification(path, "obj");
+        }
+    }
     let dwarf_object =
         module.source.saved_files.get("dwo").as_ref().and_then(|saved_dwarf_object_file| {
             let dwarf_obj_out = cgcx
@@ -1795,6 +1802,7 @@ enum SharedEmitterMessage {
     Diagnostic(Diagnostic),
     InlineAsmError(u32, String, Level, Option<(String, Vec<InnerSpan>)>),
     Fatal(String),
+    Artifact(PathBuf, String),
 }
 
 #[derive(Clone)]
@@ -1862,6 +1870,13 @@ impl Emitter for SharedEmitter {
                 args,
             })),
         );
+    }
+
+    fn emit_artifact_notification(&mut self, path: &Path, artifact_type: &str) {
+        drop(
+            self.sender
+                .send(SharedEmitterMessage::Artifact(path.to_owned(), artifact_type.to_owned())),
+        )
     }
 
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
@@ -1938,6 +1953,9 @@ impl SharedEmitterMain {
                 }
                 Ok(SharedEmitterMessage::Fatal(msg)) => {
                     sess.dcx().fatal(msg);
+                }
+                Ok(SharedEmitterMessage::Artifact(path, artifact_type)) => {
+                    sess.dcx().emit_artifact_notification(&path, &artifact_type);
                 }
                 Err(_) => {
                     break;

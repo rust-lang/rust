@@ -58,6 +58,9 @@ pub(crate) unsafe fn codegen(
                 context.add_command_line_option("-flto-partition=one");
                 context
                     .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
+                if config.json_artifact_notifications {
+                    dcx.emit_artifact_notification(&bc_out, "llvm-bc");
+                }
             }
 
             if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
@@ -73,12 +76,18 @@ pub(crate) unsafe fn codegen(
                 // TODO(antoyo): Send -plugin/usr/lib/gcc/x86_64-pc-linux-gnu/11.1.0/liblto_plugin.so to linker (this should be done when specifying the appropriate rustc cli argument).
                 context
                     .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
+                if config.json_artifact_notifications {
+                    dcx.emit_artifact_notification(&bc_out, "llvm-bc");
+                }
             }
         }
 
         if config.emit_ir {
             let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
-            std::fs::write(out, "").expect("write file");
+            std::fs::write(&out, "").expect("write file");
+            if config.json_artifact_notifications {
+                dcx.emit_artifact_notification(&out, "llvm-ir");
+            }
         }
 
         if config.emit_asm {
@@ -86,6 +95,9 @@ pub(crate) unsafe fn codegen(
                 cgcx.prof.generic_activity_with_arg("GCC_module_codegen_emit_asm", &*module.name);
             let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
             context.compile_to_file(OutputKind::Assembler, path.to_str().expect("path to str"));
+            if config.json_artifact_notifications {
+                dcx.emit_artifact_notification(&path, "asm");
+            }
         }
 
         match config.emit_obj {
@@ -135,6 +147,9 @@ pub(crate) unsafe fn codegen(
                         OutputKind::ObjectFile,
                         obj_out.to_str().expect("path to str"),
                     );
+                }
+                if config.json_artifact_notifications {
+                    dcx.emit_artifact_notification(&obj_out, "obj");
                 }
             }
 
