@@ -12,6 +12,7 @@
 #![feature(linkage)]
 #![feature(naked_functions)]
 #![feature(repr_simd)]
+#![feature(c_unwind)]
 #![no_builtins]
 #![no_std]
 #![allow(unused_features)]
