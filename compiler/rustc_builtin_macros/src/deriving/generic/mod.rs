@@ -330,7 +330,7 @@ pub enum SubstructureFields<'a> {
 /// Combine the values of all the fields together. The last argument is
 /// all the fields of all the structures.
 pub type CombineSubstructureFunc<'a> =
-    Box<dyn FnMut(&mut ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
+    Box<dyn FnMut(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
 
 pub fn combine_substructure(
     f: CombineSubstructureFunc<'_>,
@@ -454,7 +454,7 @@ fn find_type_parameters(
 impl<'a> TraitDef<'a> {
     pub fn expand(
         self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
         item: &'a Annotatable,
         push: &mut dyn FnMut(Annotatable),
@@ -464,7 +464,7 @@ impl<'a> TraitDef<'a> {
 
     pub fn expand_ext(
         self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
         item: &'a Annotatable,
         push: &mut dyn FnMut(Annotatable),
@@ -802,7 +802,7 @@ impl<'a> TraitDef<'a> {
 
     fn expand_struct_def(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         struct_def: &'a VariantData,
         type_ident: Ident,
         generics: &Generics,
@@ -856,7 +856,7 @@ impl<'a> TraitDef<'a> {
 
     fn expand_enum_def(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         enum_def: &'a EnumDef,
         type_ident: Ident,
         generics: &Generics,
@@ -914,7 +914,7 @@ impl<'a> TraitDef<'a> {
 impl<'a> MethodDef<'a> {
     fn call_substructure_method(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         nonselflike_args: &[P<Expr>],
@@ -1077,7 +1077,7 @@ impl<'a> MethodDef<'a> {
     /// ```
     fn expand_struct_method_body<'b>(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'b>,
         struct_def: &'b VariantData,
         type_ident: Ident,
@@ -1100,7 +1100,7 @@ impl<'a> MethodDef<'a> {
 
     fn expand_static_struct_method_body(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         struct_def: &VariantData,
         type_ident: Ident,
@@ -1154,7 +1154,7 @@ impl<'a> MethodDef<'a> {
     /// `Unify`), and possibly a default arm.
     fn expand_enum_method_body<'b>(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
         type_ident: Ident,
@@ -1403,7 +1403,7 @@ impl<'a> MethodDef<'a> {
 
     fn expand_static_enum_method_body(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         enum_def: &EnumDef,
         type_ident: Ident,
@@ -1668,13 +1668,13 @@ pub enum CsFold<'a> {
 /// Statics may not be folded over.
 pub fn cs_fold<F>(
     use_foldl: bool,
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     trait_span: Span,
     substructure: &Substructure<'_>,
     mut f: F,
 ) -> P<Expr>
 where
-    F: FnMut(&mut ExtCtxt<'_>, CsFold<'_>) -> P<Expr>,
+    F: FnMut(&ExtCtxt<'_>, CsFold<'_>) -> P<Expr>,
 {
     match substructure.fields {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {

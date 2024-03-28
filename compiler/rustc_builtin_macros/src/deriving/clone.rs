@@ -157,14 +157,14 @@ fn cs_clone_simple(
 
 fn cs_clone(
     name: &str,
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {
     let ctor_path;
     let all_fields;
     let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
-    let subcall = |cx: &mut ExtCtxt<'_>, field: &FieldInfo| {
+    let subcall = |cx: &ExtCtxt<'_>, field: &FieldInfo| {
         let args = thin_vec![field.self_expr.clone()];
         cx.expr_call_global(field.span, fn_path.clone(), args)
     };

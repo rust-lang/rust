@@ -69,7 +69,7 @@ pub fn expand_deriving_partial_ord(
 }
 
 fn cs_partial_cmp(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     span: Span,
     substr: &Substructure<'_>,
     tag_then_data: bool,
