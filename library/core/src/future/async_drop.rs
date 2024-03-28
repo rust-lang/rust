@@ -141,12 +141,10 @@ trait AsyncDestruct {
 /// Basically calls `AsyncDrop::async_drop` with pointer. Used to simplify
 /// generation of the code for `async_drop_in_place_raw`
 #[lang = "surface_async_drop_in_place"]
-unsafe fn surface_async_drop_in_place<T: AsyncDrop + ?Sized>(
-    ptr: *mut T,
-) -> <T as AsyncDrop>::Dropper<'static> {
+async unsafe fn surface_async_drop_in_place<T: AsyncDrop + ?Sized>(ptr: *mut T) {
     // SAFETY: We call this from async drop `async_drop_in_place_raw`
     //   which has the same safety requirements
-    unsafe { <T as AsyncDrop>::async_drop(Pin::new_unchecked(&mut *ptr)) }
+    unsafe { <T as AsyncDrop>::async_drop(Pin::new_unchecked(&mut *ptr)).await }
 }
 
 /// Basically calls `Drop::drop` with pointer. Used to simplify generation
