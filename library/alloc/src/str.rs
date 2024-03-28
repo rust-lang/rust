@@ -410,9 +410,9 @@ impl str {
         }
 
         fn case_ignorable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
-            use core::unicode::{Case_Ignorable, Cased};
+            use core::unicode::Case_Ignorable;
             match iter.skip_while(|&c| Case_Ignorable(c)).next() {
-                Some(c) => Cased(c),
+                Some(c) => c.is_cased(),
                 None => false,
             }
         }

@@ -742,8 +742,73 @@ impl char {
     #[inline]
     pub fn is_alphabetic(self) -> bool {
         match self {
-            'a'..='z' | 'A'..='Z' => true,
-            c => c > '\x7f' && unicode::Alphabetic(c),
+            'A'..='Z' | 'a'..='z' => true,
+            '\0'..='\u{A9}' => false,
+            _ => unicode::Alphabetic(self),
+        }
+    }
+
+    /// Returns `true` if this `char` has the `Cased` property.
+    /// A character is cased if and only if it is uppercase, lowercase, or titlecase.
+    ///
+    /// `Cased` is described in Chapter 3 (Conformance) of the [Unicode Standard] and
+    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// assert!('A'.is_cased());
+    /// assert!('a'.is_cased());
+    /// assert!(!'京'.is_cased());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[inline]
+    pub fn is_cased(self) -> bool {
+        match self {
+            'A'..='Z' | 'a'..='z' => true,
+            '\0'..='\u{A9}' => false,
+            _ => unicode::Cased(self),
+        }
+    }
+
+    /// Returns the case of this character:
+    /// [`Some(CharCase::Upper)`][`CharCase::Upper`] if [`self.is_uppercase()`][`char::is_uppercase`],
+    /// [`Some(CharCase::Lower)`][`CharCase::Lower`] if [`self.is_lowercase()`][`char::is_lowercase`],
+    /// [`Some(CharCase::Title)`][`CharCase::Title`] if [`self.is_titlecase()`][`char::is_titlecase`], and
+    /// `None` if [`!self.is_cased()`][`char::is_cased`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// use core::char::CharCase;
+    /// assert_eq!('a'.case(), Some(CharCase::Lower));
+    /// assert_eq!('δ'.case(), Some(CharCase::Lower));
+    /// assert_eq!('A'.case(), Some(CharCase::Upper));
+    /// assert_eq!('Δ'.case(), Some(CharCase::Upper));
+    /// assert_eq!('ǅ'.case(), Some(CharCase::Title));
+    /// assert_eq!('中'.case(), None);
+    /// ```
+    #[must_use]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[inline]
+    pub fn case(self) -> Option<CharCase> {
+        match self {
+            'A'..='Z' => Some(CharCase::Upper),
+            'a'..='z' => Some(CharCase::Lower),
+            '\0'..='\u{A9}' => None,
+            _ if !self.is_cased() => None,
+            _ if self.is_lowercase() => Some(CharCase::Lower),
+            _ if self.is_uppercase() => Some(CharCase::Upper),
+            _ => Some(CharCase::Title),
         }
     }
 
@@ -785,7 +850,41 @@ impl char {
     pub const fn is_lowercase(self) -> bool {
         match self {
             'a'..='z' => true,
-            c => c > '\x7f' && unicode::Lowercase(c),
+            '\0'..='\u{A9}' => false,
+            _ => unicode::Lowercase(self),
+        }
+    }
+
+    /// Returns `true` if this `char` has the general category for titlecase letters.
+    ///
+    /// Titlecase letters (code points with the general category of `Lt`) are described in Chapter 4
+    /// (Character Properties) of the [Unicode Standard] and specified in the [Unicode Character
+    /// Database][ucd] [`UnicodeData.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// assert!('ǅ'.is_titlecase());
+    /// assert!('ᾨ'.is_titlecase());
+    /// assert!(!'D'.is_titlecase());
+    /// assert!(!'z'.is_titlecase());
+    /// assert!(!'中'.is_titlecase());
+    /// assert!(!' '.is_titlecase());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[inline]
+    pub fn is_titlecase(self) -> bool {
+        match self {
+            '\0'..='\u{01C4}' => false,
+            _ => self.is_cased() && !self.is_lowercase() && !self.is_uppercase(),
         }
     }
 
@@ -827,7 +926,8 @@ impl char {
     pub const fn is_uppercase(self) -> bool {
         match self {
             'A'..='Z' => true,
-            c => c > '\x7f' && unicode::Uppercase(c),
+            '\0'..='\u{BF}' => false,
+            _ => unicode::Uppercase(self),
         }
     }
 
@@ -859,7 +959,8 @@ impl char {
     pub fn is_whitespace(self) -> bool {
         match self {
             ' ' | '\x09'..='\x0d' => true,
-            c => c > '\x7f' && unicode::White_Space(c),
+            '\0'..='\u{84}' => false,
+            _ => unicode::White_Space(self),
         }
     }
 
@@ -927,7 +1028,7 @@ impl char {
     #[must_use]
     #[inline]
     pub(crate) fn is_grapheme_extended(self) -> bool {
-        self > '\x7f' && unicode::Grapheme_Extend(self)
+        self > '\u{02FF}' && unicode::Grapheme_Extend(self)
     }
 
     /// Returns `true` if this `char` has one of the general categories for numbers.
@@ -969,12 +1070,14 @@ impl char {
     pub fn is_numeric(self) -> bool {
         match self {
             '0'..='9' => true,
-            c => c > '\x7f' && unicode::N(c),
+            '\0'..='\u{B1}' => false,
+            _ => unicode::N(self),
         }
     }
 
     /// Returns an iterator that yields the lowercase mapping of this `char` as one or more
-    /// `char`s.
+    /// `char`s. The iterator also has implementations of [`Display`][core::fmt::Display]
+    /// and [`PartialEq`].
     ///
     /// If this `char` does not have a lowercase mapping, the iterator yields the same `char`.
     ///
@@ -1032,7 +1135,14 @@ impl char {
     /// // convert into themselves.
     /// assert_eq!('山'.to_lowercase().to_string(), "山");
     /// ```
-    #[must_use = "this returns the lowercase character as a new iterator, \
+    ///
+    /// Check if a string is in lowercase:
+    ///
+    /// ```
+    /// let s = "abcde\u{0301} 山";
+    /// assert!(s.chars().all(|c| c.to_lowercase() == c));
+    /// ```
+    #[must_use = "this returns the lowercased character as a new iterator, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1040,8 +1150,123 @@ impl char {
         ToLowercase(CaseMappingIter::new(conversions::to_lower(self)))
     }
 
+    /// Returns an iterator that yields the titlecase mapping of this `char` as one or more
+    /// `char`s. The iterator also has implementations of [`Display`][core::fmt::Display]
+    /// and [`PartialEq`].
+    ///
+    /// If this `char` does not have an titlecase mapping, the iterator yields the same `char`.
+    ///
+    /// If this `char` has a one-to-one titlecase mapping given by the [Unicode Character
+    /// Database][ucd] [`UnicodeData.txt`], the iterator yields that `char`.
+    ///
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    ///
+    /// If this `char` requires special considerations (e.g. multiple `char`s) the iterator yields
+    /// the `char`(s) given by [`SpecialCasing.txt`].
+    ///
+    /// [`SpecialCasing.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
+    ///
+    /// This operation performs an unconditional mapping without tailoring. That is, the conversion
+    /// is independent of context and language.
+    ///
+    /// In the [Unicode Standard], Chapter 4 (Character Properties) discusses case mapping in
+    /// general and Chapter 3 (Conformance) discusses the default algorithm for case conversion.
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    ///
+    /// # Examples
+    ///
+    /// As an iterator:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// for c in 'ß'.to_titlecase() {
+    ///     print!("{c}");
+    /// }
+    /// println!();
+    /// ```
+    ///
+    /// Using `println!` directly:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// println!("{}", 'ß'.to_titlecase());
+    /// ```
+    ///
+    /// Both are equivalent to:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// println!("Ss");
+    /// ```
+    ///
+    /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// assert_eq!('c'.to_titlecase().to_string(), "C");
+    ///
+    /// // Sometimes the result is more than one character:
+    /// assert_eq!('ß'.to_titlecase().to_string(), "Ss");
+    ///
+    /// // Characters that do not have separate cased forms
+    /// // convert into themselves.
+    /// assert_eq!('山'.to_titlecase().to_string(), "山");
+    /// ```
+    ///
+    /// Check if a word is in titlecase:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let word = "Dross";
+    /// let mut chars = word.chars();
+    /// let first_cased_char = chars.find(|c| c.is_cased());
+    /// let word_is_in_titlecase = if let Some(f) = first_cased_char {
+    ///     f.to_titlecase() == f && chars.all(|c| c.to_lowercase() == c)
+    /// } else {
+    ///     true
+    /// };
+    /// assert!(word_is_in_titlecase);
+    /// ```
+    ///
+    /// # Note on locale
+    ///
+    /// In Turkish and Azeri, the equivalent of 'i' in Latin has five forms instead of two:
+    ///
+    /// * 'Dotless': I / ı, sometimes written ï
+    /// * 'Dotted': İ / i
+    ///
+    /// Note that the lowercase dotted 'i' is the same as the Latin. Therefore:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let upper_i = 'i'.to_titlecase().to_string();
+    /// ```
+    ///
+    /// The value of `upper_i` here relies on the language of the text: if we're
+    /// in `en-US`, it should be `"I"`, but if we're in `tr-TR` or `az-AZ`, it should
+    /// be `"İ"`. `to_titlecase()` does not take this into account, and so:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let upper_i = 'i'.to_titlecase().to_string();
+    ///
+    /// assert_eq!(upper_i, "I");
+    /// ```
+    ///
+    /// holds across languages.
+    #[must_use = "this returns the titlecased character as a new iterator, \
+                  without modifying the original"]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[inline]
+    pub fn to_titlecase(self) -> ToTitlecase {
+        ToTitlecase(CaseMappingIter::new(conversions::to_title(self)))
+    }
+
     /// Returns an iterator that yields the uppercase mapping of this `char` as one or more
-    /// `char`s.
+    /// `char`s. The iterator also has implementations of [`Display`][core::fmt::Display]
+    /// and [`PartialEq`].
     ///
     /// If this `char` does not have an uppercase mapping, the iterator yields the same `char`.
     ///
@@ -1100,9 +1325,16 @@ impl char {
     /// assert_eq!('山'.to_uppercase().to_string(), "山");
     /// ```
     ///
+    /// Check if a string is in uppercase:
+    ///
+    /// ```
+    /// let s = "ABCDE\u{0301} 山";
+    /// assert!(s.chars().all(|c| c.to_uppercase() == c));
+    /// ```
+    ///
     /// # Note on locale
     ///
-    /// In Turkish, the equivalent of 'i' in Latin has five forms instead of two:
+    /// In Turkish and Azeri, the equivalent of 'i' in Latin has five forms instead of two:
     ///
     /// * 'Dotless': I / ı, sometimes written ï
     /// * 'Dotted': İ / i
@@ -1114,7 +1346,7 @@ impl char {
     /// ```
     ///
     /// The value of `upper_i` here relies on the language of the text: if we're
-    /// in `en-US`, it should be `"I"`, but if we're in `tr_TR`, it should
+    /// in `en-US`, it should be `"I"`, but if we're in `tr-TR` or `az-AZ`, it should
     /// be `"İ"`. `to_uppercase()` does not take this into account, and so:
     ///
     /// ```
@@ -1124,7 +1356,7 @@ impl char {
     /// ```
     ///
     /// holds across languages.
-    #[must_use = "this returns the uppercase character as a new iterator, \
+    #[must_use = "this returns the uppercased character as a new iterator, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
