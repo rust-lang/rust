@@ -1,5 +1,5 @@
 #![allow(rustc::bad_opt_access)]
-use crate::interface::parse_cfg;
+use crate::interface::{initialize_checked_jobserver, parse_cfg};
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::{
@@ -16,6 +16,7 @@ use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use rustc_session::{build_session, filesearch, getopts, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
+use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
 use rustc_span::symbol::sym;
 use rustc_span::{FileName, SourceFileHashAlgorithm};
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, RelocModel};
@@ -25,42 +26,52 @@ use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
+fn sess_and_cfg<F>(args: &[&'static str], f: F)
+where
+    F: FnOnce(Session, Cfg),
+{
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
-    early_dcx.initialize_checked_jobserver();
+    initialize_checked_jobserver(&early_dcx);
 
-    let registry = registry::Registry::new(&[]);
+    let matches = optgroups().parse(args).unwrap();
     let sessopts = build_session_options(&mut early_dcx, &matches);
-    let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
-    let io = CompilerIO {
-        input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
-        output_dir: None,
-        output_file: None,
-        temps_dir,
-    };
-
     let sysroot = filesearch::materialize_sysroot(sessopts.maybe_sysroot.clone());
-
     let target = rustc_session::config::build_target_config(&early_dcx, &sessopts, &sysroot);
+    let hash_kind = sessopts.unstable_opts.src_hash_algorithm(&target);
+    let sm_inputs = Some(SourceMapInputs {
+        file_loader: Box::new(RealFileLoader) as _,
+        path_mapping: sessopts.file_path_mapping(),
+        hash_kind,
+    });
 
-    let sess = build_session(
-        early_dcx,
-        sessopts,
-        io,
-        None,
-        registry,
-        vec![],
-        Default::default(),
-        None,
-        target,
-        sysroot,
-        "",
-        None,
-        Arc::default(),
-        Default::default(),
-    );
-    let cfg = parse_cfg(&sess.dcx(), matches.opt_strs("cfg"));
-    (sess, cfg)
+    rustc_span::create_session_globals_then(DEFAULT_EDITION, sm_inputs, || {
+        let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
+        let io = CompilerIO {
+            input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
+            output_dir: None,
+            output_file: None,
+            temps_dir,
+        };
+
+        let sess = build_session(
+            early_dcx,
+            sessopts,
+            io,
+            None,
+            registry::Registry::new(&[]),
+            vec![],
+            Default::default(),
+            target,
+            sysroot,
+            "",
+            None,
+            Arc::default(),
+            Default::default(),
+        );
+        let cfg = parse_cfg(&sess.dcx(), matches.opt_strs("cfg"));
+        let cfg = build_configuration(&sess, cfg);
+        f(sess, cfg)
+    });
 }
 
 fn new_public_extern_entry<S, I>(locations: I) -> ExternEntry
@@ -125,21 +136,15 @@ fn assert_non_crate_hash_different(x: &Options, y: &Options) {
 // When the user supplies --test we should implicitly supply --cfg test
 #[test]
 fn test_switch_implies_cfg_test() {
-    rustc_span::create_default_session_globals_then(|| {
-        let matches = optgroups().parse(&["--test".to_string()]).unwrap();
-        let (sess, cfg) = mk_session(matches);
-        let cfg = build_configuration(&sess, cfg);
+    sess_and_cfg(&["--test"], |_sess, cfg| {
         assert!(cfg.contains(&(sym::test, None)));
-    });
+    })
 }
 
 // When the user supplies --test and --cfg test, don't implicitly add another --cfg test
 #[test]
 fn test_switch_implies_cfg_test_unless_cfg_test() {
-    rustc_span::create_default_session_globals_then(|| {
-        let matches = optgroups().parse(&["--test".to_string(), "--cfg=test".to_string()]).unwrap();
-        let (sess, cfg) = mk_session(matches);
-        let cfg = build_configuration(&sess, cfg);
+    sess_and_cfg(&["--test", "--cfg=test"], |_sess, cfg| {
         let mut test_items = cfg.iter().filter(|&&(name, _)| name == sym::test);
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());
@@ -148,22 +153,15 @@ fn test_switch_implies_cfg_test_unless_cfg_test() {
 
 #[test]
 fn test_can_print_warnings() {
-    rustc_span::create_default_session_globals_then(|| {
-        let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
-        let (sess, _) = mk_session(matches);
+    sess_and_cfg(&["-Awarnings"], |sess, _cfg| {
         assert!(!sess.dcx().can_emit_warnings());
     });
 
-    rustc_span::create_default_session_globals_then(|| {
-        let matches =
-            optgroups().parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()]).unwrap();
-        let (sess, _) = mk_session(matches);
+    sess_and_cfg(&["-Awarnings", "-Dwarnings"], |sess, _cfg| {
         assert!(sess.dcx().can_emit_warnings());
     });
 
-    rustc_span::create_default_session_globals_then(|| {
-        let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
-        let (sess, _) = mk_session(matches);
+    sess_and_cfg(&["-Adead_code"], |sess, _cfg| {
         assert!(sess.dcx().can_emit_warnings());
     });
 }

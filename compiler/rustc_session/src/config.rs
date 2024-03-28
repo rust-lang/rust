@@ -1093,7 +1093,7 @@ impl Options {
             || self.unstable_opts.query_dep_graph
     }
 
-    pub(crate) fn file_path_mapping(&self) -> FilePathMapping {
+    pub fn file_path_mapping(&self) -> FilePathMapping {
         file_path_mapping(self.remap_path_prefix.clone(), &self.unstable_opts)
     }
 
@@ -1129,6 +1129,16 @@ impl UnstableOptions {
             deduplicate_diagnostics: self.deduplicate_diagnostics,
             track_diagnostics: self.track_diagnostics,
         }
+    }
+
+    pub fn src_hash_algorithm(&self, target: &Target) -> SourceFileHashAlgorithm {
+        self.src_hash_algorithm.unwrap_or_else(|| {
+            if target.is_like_msvc {
+                SourceFileHashAlgorithm::Sha256
+            } else {
+                SourceFileHashAlgorithm::Md5
+            }
+        })
     }
 }
 
