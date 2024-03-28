@@ -302,6 +302,7 @@
 #![feature(never_type)]
 #![feature(no_sanitize)]
 #![feature(prelude_import)]
+#![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(staged_api)]
@@ -400,7 +401,7 @@
 //
 // Only for const-ness:
 // tidy-alphabetical-start
-#![feature(const_collections_with_hasher)]
+#![cfg_attr(bootstrap, feature(const_collections_with_hasher))]
 #![feature(const_hash)]
 #![feature(const_io_structs)]
 #![feature(const_ip)]
