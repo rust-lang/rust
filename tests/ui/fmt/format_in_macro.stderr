@@ -1,0 +1,53 @@
+error: format argument must be a string literal
+  --> $DIR/format_in_macro.rs:3:10
+   |
+LL | #[derive(format_in_macro::derive)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `format_in_macro::derive` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might be missing a string literal to format with
+   |
+LL | #[derive("{}", format_in_macro::derive)]
+   |          +++++
+
+error: format argument must be a string literal
+  --> $DIR/format_in_macro.rs:7:1
+   |
+LL | format_in_macro::function!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `format_in_macro::function` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might be missing a string literal to format with
+   |
+LL | "{}", format_in_macro::function!();
+   | +++++
+
+error: format argument must be a string literal
+  --> $DIR/format_in_macro.rs:10:1
+   |
+LL | #[format_in_macro::attribute]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `format_in_macro::attribute` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might be missing a string literal to format with
+   |
+LL | "{}", #[format_in_macro::attribute]
+   | +++++
+
+error: format argument must be a string literal
+  --> $DIR/format_in_macro.rs:16:9
+   |
+LL |         format_in_macro::function!();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     indirect!();
+   |     ----------- in this macro invocation
+   |
+   = note: this error originates in the macro `format_in_macro::function` which comes from the expansion of the macro `indirect` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might be missing a string literal to format with
+   |
+LL |         "{}", format_in_macro::function!();
+   |         +++++
+
+error: aborting due to 4 previous errors
+

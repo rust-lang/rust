@@ -1,0 +1,30 @@
+error: format argument must be a string literal
+  --> $DIR/format_in_declarative_macro.rs:7:22
+   |
+LL |             println!(test);
+   |                      ^^^^
+...
+LL | by_example!();
+   | ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `by_example` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might be missing a string literal to format with
+   |
+LL |             println!("{}", test);
+   |                      +++++
+
+error: format argument must be a string literal
+  --> $DIR/format_in_declarative_macro.rs:15:1
+   |
+LL | format_in_declarative_macro::external_decl!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `format_in_declarative_macro::external_decl` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might be missing a string literal to format with
+  --> $DIR/auxiliary/format_in_declarative_macro.rs:7:22
+   |
+LL |             println!("{}", test);
+   |                      +++++
+
+error: aborting due to 2 previous errors
+
