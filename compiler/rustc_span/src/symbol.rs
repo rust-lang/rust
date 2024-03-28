@@ -1306,6 +1306,7 @@ symbols! {
         panic_location,
         panic_misaligned_pointer_dereference,
         panic_nounwind,
+        panic_occupied_niche,
         panic_runtime,
         panic_str,
         panic_unwind,

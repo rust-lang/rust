@@ -111,6 +111,8 @@ use rustc_middle::mir::mono::{
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
+use rustc_middle::ty::Mutability;
+use rustc_middle::ty::Ty;
 use rustc_middle::ty::{self, visit::TypeVisitableExt, InstanceDef, TyCtxt};
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_session::CodegenUnits;
@@ -284,6 +286,52 @@ where
 
     let mut codegen_units: Vec<_> = codegen_units.into_values().collect();
     codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
+
+    let tcx = cx.tcx;
+    if tcx.may_insert_niche_checks() && !tcx.is_compiler_builtins(LOCAL_CRATE) {
+        for cgu in &mut codegen_units {
+            for ty in [
+                tcx.types.u8,
+                tcx.types.u16,
+                tcx.types.u32,
+                tcx.types.u64,
+                tcx.types.u128,
+                Ty::new_ptr(tcx, tcx.types.unit, Mutability::Not),
+            ] {
+                let Some(def_id) = tcx.lang_items().get(rustc_hir::LangItem::PanicOccupiedNiche)
+                else {
+                    continue;
+                };
+                let instance = rustc_middle::ty::Instance::new(def_id, tcx.mk_args(&[ty.into()]));
+                let mono_item = MonoItem::Fn(instance.polymorphize(tcx));
+                cgu.items_mut().insert(
+                    mono_item,
+                    MonoItemData {
+                        inlined: false,
+                        linkage: Linkage::Internal,
+                        visibility: Visibility::Default,
+                        size_estimate: mono_item.size_estimate(tcx),
+                    },
+                );
+
+                let mut reachable_inlined_items = FxHashSet::default();
+                get_reachable_inlined_items(
+                    cx.tcx,
+                    mono_item,
+                    cx.usage_map,
+                    &mut reachable_inlined_items,
+                );
+                for inlined_item in reachable_inlined_items {
+                    cgu.items_mut().entry(inlined_item).or_insert_with(|| MonoItemData {
+                        inlined: true,
+                        linkage: Linkage::Internal,
+                        visibility: Visibility::Default,
+                        size_estimate: inlined_item.size_estimate(cx.tcx),
+                    });
+                }
+            }
+        }
+    }
 
     for cgu in codegen_units.iter_mut() {
         cgu.compute_size_estimate();
@@ -804,6 +852,11 @@ fn mono_item_visibility<'tcx>(
     //
     //        This may be fixable with a new `InstanceDef` perhaps? Unsure!
     if tcx.lang_items().start_fn() == Some(def_id) {
+        *can_be_internalized = false;
+        return Visibility::Hidden;
+    }
+
+    if tcx.lang_items().get(rustc_hir::LangItem::PanicOccupiedNiche) == Some(def_id) {
         *can_be_internalized = false;
         return Visibility::Hidden;
     }

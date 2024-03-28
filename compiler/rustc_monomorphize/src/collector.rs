@@ -220,6 +220,7 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::Mutability;
 use rustc_middle::ty::{
     self, AssocKind, GenericParamDefKind, Instance, InstanceDef, Ty, TyCtxt, TypeFoldable,
     TypeVisitableExt, VtblEntry,
@@ -228,6 +229,7 @@ use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_session::config::EntryFnType;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_session::Limit;
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::{dummy_spanned, respan, Spanned};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
@@ -1530,6 +1532,25 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
 
         for id in crate_items.impl_items() {
             collector.process_impl_item(id);
+        }
+
+        if tcx.may_insert_niche_checks() && !tcx.is_compiler_builtins(LOCAL_CRATE) {
+            for ty in [
+                tcx.types.u8,
+                tcx.types.u16,
+                tcx.types.u32,
+                tcx.types.u64,
+                tcx.types.u128,
+                Ty::new_ptr(tcx, tcx.types.unit, Mutability::Not),
+            ] {
+                let Some(def_id) = tcx.lang_items().get(rustc_hir::LangItem::PanicOccupiedNiche)
+                else {
+                    continue;
+                };
+                let instance = rustc_middle::ty::Instance::new(def_id, tcx.mk_args(&[ty.into()]));
+                let mono_item = create_fn_mono_item(tcx, instance, DUMMY_SP);
+                collector.output.push(mono_item)
+            }
         }
 
         collector.push_extra_entry_roots();
