@@ -222,17 +222,15 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
         Spread(Vec<Option<CValue<'tcx>>>),
     }
 
-    let fn_abi = fx.fn_abi.take().unwrap();
-
     // FIXME implement variadics in cranelift
-    if fn_abi.c_variadic {
+    if fx.fn_abi.c_variadic {
         fx.tcx.dcx().span_fatal(
             fx.mir.span,
             "Defining variadic functions is not yet supported by Cranelift",
         );
     }
 
-    let mut arg_abis_iter = fn_abi.args.iter();
+    let mut arg_abis_iter = fx.fn_abi.args.iter();
 
     let func_params = fx
         .mir
@@ -279,7 +277,6 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
     }
 
     assert!(arg_abis_iter.next().is_none(), "ArgAbi left behind");
-    fx.fn_abi = Some(fn_abi);
     assert!(block_params_iter.next().is_none(), "arg_value left behind");
 
     self::comments::add_locals_header_comment(fx);

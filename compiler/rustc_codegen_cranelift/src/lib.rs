@@ -148,7 +148,7 @@ impl CodegenCx {
         let unwind_context =
             UnwindContext::new(isa, matches!(backend_config.codegen_mode, CodegenMode::Aot));
         let debug_context = if debug_info && !tcx.sess.target.options.is_like_windows {
-            Some(DebugContext::new(tcx, isa))
+            Some(DebugContext::new(tcx, isa, cgu_name.as_str()))
         } else {
             None
         };
@@ -233,12 +233,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        _outputs: &OutputFilenames,
+        outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
-        ongoing_codegen
-            .downcast::<driver::aot::OngoingCodegen>()
-            .unwrap()
-            .join(sess, self.config.borrow().as_ref().unwrap())
+        ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(
+            sess,
+            outputs,
+            self.config.borrow().as_ref().unwrap(),
+        )
     }
 
     fn link(

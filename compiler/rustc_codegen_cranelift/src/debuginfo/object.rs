@@ -1,4 +1,4 @@
-use cranelift_module::FuncId;
+use cranelift_module::{DataId, FuncId};
 use cranelift_object::ObjectProduct;
 use gimli::SectionId;
 use object::write::{Relocation, StandardSegment};
@@ -57,10 +57,13 @@ impl WriteDebugInfo for ObjectProduct {
         let (symbol, symbol_offset) = match reloc.name {
             DebugRelocName::Section(id) => (section_map.get(&id).unwrap().1, 0),
             DebugRelocName::Symbol(id) => {
-                let symbol_id = self.function_symbol(FuncId::from_u32(id.try_into().unwrap()));
-                self.object
-                    .symbol_section_and_offset(symbol_id)
-                    .expect("Debug reloc for undef sym???")
+                let id = id.try_into().unwrap();
+                let symbol_id = if id & 1 << 31 == 0 {
+                    self.function_symbol(FuncId::from_u32(id))
+                } else {
+                    self.data_symbol(DataId::from_u32(id & !(1 << 31)))
+                };
+                self.object.symbol_section_and_offset(symbol_id).unwrap_or((symbol_id, 0))
             }
         };
         self.object
