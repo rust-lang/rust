@@ -1799,6 +1799,9 @@ impl<'a> Builder<'a> {
 
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
+        // In addition, we enable Cargo's `-Zpublic-dependency` so that every
+        // build runs `exported-private-dependencies` and suppress unstable warnings.
+        cargo.arg("-Zpublic-dependency");
 
         if self.config.dump_bootstrap_shims {
             prepare_behaviour_dump_dir(self.build);
