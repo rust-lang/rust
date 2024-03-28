@@ -337,7 +337,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     fn suggest_ref_or_clone(
-        &mut self,
+        &self,
         mpi: MovePathIndex,
         move_span: Span,
         err: &mut Diag<'tcx>,
@@ -1125,7 +1125,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     pub(crate) fn report_use_while_mutably_borrowed(
-        &mut self,
+        &self,
         location: Location,
         (place, _span): (Place<'tcx>, Span),
         borrow: &BorrowData<'tcx>,
@@ -1174,7 +1174,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     pub(crate) fn report_conflicting_borrow(
-        &mut self,
+        &self,
         location: Location,
         (place, span): (Place<'tcx>, Span),
         gen_borrow_kind: BorrowKind,
@@ -2463,7 +2463,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     fn report_local_value_does_not_live_long_enough(
-        &mut self,
+        &self,
         location: Location,
         name: &str,
         borrow: &BorrowData<'tcx>,
@@ -2642,7 +2642,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     fn report_thread_local_value_does_not_live_long_enough(
-        &mut self,
+        &self,
         drop_span: Span,
         borrow_span: Span,
     ) -> Diag<'tcx> {
@@ -2663,7 +2663,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn report_temporary_value_does_not_live_long_enough(
-        &mut self,
+        &self,
         location: Location,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
@@ -2921,7 +2921,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn report_escaping_closure_capture(
-        &mut self,
+        &self,
         use_span: UseSpans<'tcx>,
         var_span: Span,
         fr_name: &RegionName,
@@ -3031,7 +3031,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     fn report_escaping_data(
-        &mut self,
+        &self,
         borrow_span: Span,
         name: &Option<String>,
         upvar_span: Span,
@@ -3065,7 +3065,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     fn get_moved_indexes(
-        &mut self,
+        &self,
         location: Location,
         mpi: MovePathIndex,
     ) -> (Vec<MoveSite>, Vec<Location>) {
@@ -3854,7 +3854,7 @@ enum AnnotatedBorrowFnSignature<'tcx> {
 impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
     /// Annotate the provided diagnostic with information about borrow from the fn signature that
     /// helps explain.
-    pub(crate) fn emit(&self, cx: &mut MirBorrowckCtxt<'_, 'tcx>, diag: &mut Diag<'_>) -> String {
+    pub(crate) fn emit(&self, cx: &MirBorrowckCtxt<'_, 'tcx>, diag: &mut Diag<'_>) -> String {
         match self {
             &AnnotatedBorrowFnSignature::Closure { argument_ty, argument_span } => {
                 diag.span_label(
