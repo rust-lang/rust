@@ -443,7 +443,7 @@ lint_non_local_definitions_impl = non-local `impl` definition, they should be av
             [one] `{$body_name}`
            *[other] `{$body_name}` and up {$depth} bodies
         }
-    .non_local = an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
+    .non_local = an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block and should not impact code outside of that item
     .exception = one exception to the rule are anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module and anon-const at the same nesting as the trait or type
     .const_anon = use a const-anon item to suppress this lint
 

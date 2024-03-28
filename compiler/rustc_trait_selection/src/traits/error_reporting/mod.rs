@@ -1,6 +1,6 @@
 // ignore-tidy-filelength :(
 
-mod ambiguity;
+pub mod ambiguity;
 mod infer_ctxt_ext;
 pub mod on_unimplemented;
 pub mod suggestions;
