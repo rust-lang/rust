@@ -1,4 +1,6 @@
 #![feature(unix_sigpipe)]
+// We need this feature as it changes `dylib` linking behavior and allows us to link to `rustc_driver`.
+#![feature(rustc_private)]
 
 // A note about jemalloc: rustc uses jemalloc when built for CI and
 // distribution. The obvious way to do this is with the `#[global_allocator]`
