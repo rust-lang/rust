@@ -1106,6 +1106,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn dcx(self) -> &'tcx DiagCtxt {
         self.sess.dcx()
     }
+
+    pub fn building_mir_only_rlib(self) -> bool {
+        self.sess.opts.unstable_opts.mir_only_rlibs && self.crate_types() == &[CrateType::Rlib]
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {

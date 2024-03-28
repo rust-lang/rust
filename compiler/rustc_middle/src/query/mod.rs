@@ -2251,6 +2251,11 @@ rustc_queries! {
     query find_field((def_id, ident): (DefId, rustc_span::symbol::Ident)) -> Option<rustc_target::abi::FieldIdx> {
         desc { |tcx| "find the index of maybe nested field `{ident}` in `{}`", tcx.def_path_str(def_id) }
     }
+
+    query mir_only_crates(_: ()) -> &'tcx [CrateNum] {
+        eval_always
+        desc { "fetching all foreign crates built in mir-only mode" }
+    }
 }
 
 rustc_query_append! { define_callbacks! }

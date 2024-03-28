@@ -8,9 +8,6 @@ repository = "https://github.com/rust-lang/rust.git"
 description = "The Rust Standard Library"
 edition = "2021"
 
-[lib]
-crate-type = ["dylib", "rlib"]
-
 [dependencies]
 alloc = { path = "../alloc", public = true }
 cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }

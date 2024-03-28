@@ -99,6 +99,17 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
+        // Always do LocalCopy codegen when building a MIR-only rlib
+        if tcx.building_mir_only_rlib() {
+            return InstantiationMode::LocalCopy;
+        }
+        // If this is a monomorphization from a MIR-only rlib and we are building another lib, do
+        // local codegen.
+        if tcx.mir_only_crates(()).iter().any(|c| *c == self.def_id().krate)
+            && tcx.crate_types() == &[rustc_session::config::CrateType::Rlib]
+        {
+            return InstantiationMode::LocalCopy;
+        }
         let generate_cgu_internal_copies = tcx
             .sess
             .opts

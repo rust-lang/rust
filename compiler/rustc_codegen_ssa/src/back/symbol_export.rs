@@ -218,8 +218,14 @@ fn exported_symbols_provider_local(
     if allocator_kind_for_codegen(tcx).is_some() {
         for symbol_name in ALLOCATOR_METHODS
             .iter()
-            .map(|method| format!("__rust_{}", method.name))
-            .chain(["__rust_alloc_error_handler".to_string(), OomStrategy::SYMBOL.to_string()])
+            .flat_map(|method| {
+                [format!("__rust_{}", method.name), format!("__rdl_{}", method.name)]
+            })
+            .chain([
+                "__rust_alloc_error_handler".to_string(),
+                OomStrategy::SYMBOL.to_string(),
+                "__rg_oom".to_string(),
+            ])
         {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
@@ -367,6 +373,30 @@ fn exported_symbols_provider_local(
                     // Any other symbols don't qualify for sharing
                 }
             }
+        }
+    }
+
+    if tcx.building_mir_only_rlib() {
+        for def_id in tcx.mir_keys(()) {
+            if !matches!(tcx.def_kind(def_id.to_def_id()), DefKind::Static { .. }) {
+                continue;
+            }
+            if tcx.is_reachable_non_generic(def_id.to_def_id()) {
+                continue;
+            }
+            let codegen_attrs = tcx.codegen_fn_attrs(def_id.to_def_id());
+            symbols.push((
+                ExportedSymbol::NonGeneric(def_id.to_def_id()),
+                SymbolExportInfo {
+                    level: symbol_export_level(tcx, def_id.to_def_id()),
+                    kind: if codegen_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
+                        SymbolExportKind::Tls
+                    } else {
+                        SymbolExportKind::Data
+                    },
+                    used: true,
+                },
+            ));
         }
     }
 
