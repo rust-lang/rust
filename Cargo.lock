@@ -1322,7 +1322,7 @@ dependencies = [
 [[package]]
 name = "fjall"
 version = "0.1.0"
-source = "git+https://github.com/Zoxc/fjall.git#0f8f8a43ac60eb762268b0408d99d650609be0e8"
+source = "git+https://github.com/Zoxc/fjall.git#be776b7055771ee2713491b2ef73040591432dc6"
 dependencies = [
  "bitflags 2.5.0",
  "libc",
