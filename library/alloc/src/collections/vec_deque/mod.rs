@@ -663,6 +663,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.push_back(6);
     /// assert_eq!(buf.get(1), Some(&4));
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self, index: usize) -> Option<&T> {
         if index < self.len {
@@ -693,6 +696,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// }
     /// assert_eq!(buf[1], 7);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         if index < self.len {
@@ -726,6 +732,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.swap(0, 2);
     /// assert_eq!(buf, [5, 4, 3]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time and `O(1)` space using tmp variable.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap(&mut self, i: usize, j: usize) {
         assert!(i < self.len());
@@ -746,6 +755,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let buf: VecDeque<i32> = VecDeque::with_capacity(10);
     /// assert!(buf.capacity() >= 10);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
@@ -772,6 +784,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.reserve_exact(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(n)` time to resize and copy.
     ///
     /// [`reserve`]: VecDeque::reserve
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -803,6 +818,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.reserve(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
+    /// # Complexity
+    //
+    /// Takes `O(n)` time as it copies array to new location.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
         let new_cap = self.len.checked_add(additional).expect("capacity overflow");
@@ -855,6 +873,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// }
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
+    /// # Complexity
+    //
+    /// Takes `O(n)` time as it copies array to new location.
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
         let new_cap =
@@ -903,6 +924,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// }
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
+    /// # Complexity
+    //
+    /// Takes `O(n)` time as it copies array to new location.
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         let new_cap =
@@ -934,6 +958,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.shrink_to_fit();
     /// assert!(buf.capacity() >= 4);
     /// ```
+    /// # Complexity
+    //
+    /// Takes `O(n)` time as it copies values to rotate into smaller size.
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn shrink_to_fit(&mut self) {
         self.shrink_to(0);
@@ -959,6 +986,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.shrink_to(0);
     /// assert!(buf.capacity() >= 4);
     /// ```
+    /// # Complexity
+    //
+    /// Takes `O(n)` time as it copies values to rotate into smaller size.
     #[stable(feature = "shrink_to", since = "1.56.0")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         let target_cap = min_capacity.max(self.len);
@@ -1055,6 +1085,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.truncate(1);
     /// assert_eq!(buf, [5]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(n)` time to drop each truncated element.
     #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn truncate(&mut self, len: usize) {
         /// Runs the destructor for all items in the slice when it gets dropped (normally or
@@ -1232,6 +1265,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// deque.push_back(1);
     /// assert_eq!(deque.len(), 1);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("length", "size")]
     pub fn len(&self) -> usize {
@@ -1250,6 +1286,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// deque.push_front(1);
     /// assert!(!deque.is_empty());
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
         self.len == 0
@@ -1461,6 +1500,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// deque.clear();
     /// assert!(deque.is_empty());
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(n)` time using [`truncate`] to drop elements.
+    ///
+    /// [`truncate`]: VecDeque::truncate
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn clear(&mut self) {
@@ -1491,6 +1535,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque.contains(&1), true);
     /// assert_eq!(deque.contains(&10), false);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(k*n)` time iterating over all elements and performing comparisons in `O(k) time`.
     #[stable(feature = "vec_deque_contains", since = "1.12.0")]
     pub fn contains(&self, x: &T) -> bool
     where
@@ -1515,6 +1562,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// d.push_back(2);
     /// assert_eq!(d.front(), Some(&1));
     /// ```
+    ///
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("first")]
     pub fn front(&self) -> Option<&T> {
@@ -1540,6 +1591,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// }
     /// assert_eq!(d.front(), Some(&9));
     /// ```
+    ///
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front_mut(&mut self) -> Option<&mut T> {
         self.get_mut(0)
@@ -1560,6 +1615,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// d.push_back(2);
     /// assert_eq!(d.back(), Some(&2));
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("last")]
     pub fn back(&self) -> Option<&T> {
@@ -1585,6 +1643,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// }
     /// assert_eq!(d.back(), Some(&9));
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back_mut(&mut self) -> Option<&mut T> {
         self.get_mut(self.len.wrapping_sub(1))
@@ -1606,6 +1667,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.pop_front(), Some(2));
     /// assert_eq!(d.pop_front(), None);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1) time`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop_front(&mut self) -> Option<T> {
         if self.is_empty() {
@@ -1632,6 +1696,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.push_back(3);
     /// assert_eq!(buf.pop_back(), Some(3));
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop_back(&mut self) -> Option<T> {
         if self.is_empty() {
@@ -1654,6 +1721,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// d.push_front(2);
     /// assert_eq!(d.front(), Some(&2));
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_front(&mut self, value: T) {
         if self.is_full() {
@@ -1680,6 +1750,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.push_back(3);
     /// assert_eq!(3, *buf.back().unwrap());
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push", "put", "append")]
     pub fn push_back(&mut self, value: T) {
@@ -1721,6 +1794,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf.swap_remove_front(2), Some(3));
     /// assert_eq!(buf, [2, 1]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time by doing [`swap`] with front and using [`pop_front`].
+    ///
+    /// [`swap`]: VecDeque::swap
+    /// [`pop_front`]: VecDeque::pop_front
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {
         let length = self.len;
@@ -1756,6 +1835,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf.swap_remove_back(0), Some(1));
     /// assert_eq!(buf, [3, 2]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1)` time by doing [`swap`] with back and using [`pop_back`].
+    ///
+    /// [`swap`]: VecDeque::swap
+    /// [`pop_back`]: VecDeque::pop_front
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {
         let length = self.len;
@@ -1790,6 +1875,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// vec_deque.insert(1, 'd');
     /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c']);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(n)` time to shifts all elements after the index to open gap.
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn insert(&mut self, index: usize, value: T) {
         assert!(index <= self.len(), "index out of bounds");
@@ -1840,6 +1928,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf.remove(1), Some(2));
     /// assert_eq!(buf, [1, 3]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(n)` time to copy elements to fill interior gap.
+    /// For removal from front and back in `O(1)` time
+    /// use [`pop_front`] or [`pop_back`].
+    ///
+    /// [`pop_front`]: VecDeque::pop_front
+    /// [`pop_back`]: VecDeque::pop_back
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("delete", "take")]
     pub fn remove(&mut self, index: usize) -> Option<T> {
@@ -1891,6 +1987,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [1]);
     /// assert_eq!(buf2, [2, 3]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(n)` time.
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
@@ -1958,6 +2057,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [1, 2, 3, 4]);
     /// assert_eq!(buf2, []);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(n)` time, where `n` is the size of the other VecDeque.
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
@@ -2014,6 +2116,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.retain(|_| *iter.next().unwrap());
     /// assert_eq!(buf, [2, 3, 5]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(n)` time.
     #[stable(feature = "vec_deque_retain", since = "1.4.0")]
     pub fn retain<F>(&mut self, mut f: F)
     where
@@ -2043,6 +2148,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// });
     /// assert_eq!(buf, [3, 5]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(n)` time.
     #[stable(feature = "vec_retain_mut", since = "1.61.0")]
     pub fn retain_mut<F>(&mut self, mut f: F)
     where
@@ -2119,6 +2227,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.resize_with(5, || { state += 1; state });
     /// assert_eq!(buf, [5, 10, 101, 102, 103]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(n)` time.
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
     pub fn resize_with(&mut self, new_len: usize, generator: impl FnMut() -> T) {
         let len = self.len;
@@ -2185,6 +2296,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///     assert_eq!(slice, &[3, 2, 1] as &[_]);
     /// }
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(n)` time to copy elements into contiguous section.
     #[stable(feature = "deque_make_contiguous", since = "1.48.0")]
     pub fn make_contiguous(&mut self) -> &mut [T] {
         if T::IS_ZST {
@@ -2326,7 +2440,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// # Complexity
     ///
-    /// Takes `*O*(min(n, len() - n))` time and no extra space.
+    /// Takes `O(min(n, len() - n))` time and no extra space.
     ///
     /// # Examples
     ///
@@ -2369,7 +2483,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// # Complexity
     ///
-    /// Takes `*O*(min(n, len() - n))` time and no extra space.
+    /// Takes `O(min(n, len() - n))` time and no extra space.
     ///
     /// # Examples
     ///
@@ -2469,6 +2583,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// deque.insert(idx, num);
     /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(k*log(n))` time where comparison takes `O(k)` time.
     #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     #[inline]
     pub fn binary_search(&self, x: &T) -> Result<usize, usize>
@@ -2516,6 +2633,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let r = deque.binary_search_by(|x| x.cmp(&1));
     /// assert!(matches!(r, Ok(1..=4)));
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(k*log(n))` time where comparison takes `O(k)` time,
     #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     pub fn binary_search_by<'a, F>(&'a self, mut f: F) -> Result<usize, usize>
     where
@@ -2573,6 +2693,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let r = deque.binary_search_by_key(&1, |&(a, b)| b);
     /// assert!(matches!(r, Ok(1..=4)));
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(k*log(n))` time where comparison and key extraction takes `O(k)` time.
     #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     #[inline]
     pub fn binary_search_by_key<'a, B, F>(&'a self, b: &B, mut f: F) -> Result<usize, usize>
@@ -2626,6 +2749,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// deque.insert(idx, num);
     /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(k*log(n))` time where comparison takes `O(k)` time.
     #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     pub fn partition_point<P>(&self, mut pred: P) -> usize
     where
@@ -2663,6 +2789,9 @@ impl<T: Clone, A: Allocator> VecDeque<T, A> {
     /// buf.resize(5, 20);
     /// assert_eq!(buf, [5, 10, 20, 20, 20]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(n)` time.
     #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         if new_len > self.len() {
