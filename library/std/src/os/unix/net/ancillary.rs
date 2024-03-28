@@ -3,7 +3,7 @@
 use super::{sockaddr_un, SocketAddr};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::marker::PhantomData;
-use crate::mem::{size_of, zeroed};
+use crate::mem::zeroed;
 use crate::os::unix::io::RawFd;
 use crate::path::Path;
 use crate::ptr::{eq, read_unaligned};

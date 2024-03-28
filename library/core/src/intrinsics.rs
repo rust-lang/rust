@@ -65,7 +65,6 @@
 
 use crate::marker::DiscriminantKind;
 use crate::marker::Tuple;
-use crate::mem::align_of;
 use crate::ptr;
 use crate::ub_checks;
 
