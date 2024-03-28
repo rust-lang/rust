@@ -3,7 +3,6 @@ use crate::errors::CtorIsPrivate;
 use crate::method::{self, MethodCallee, SelfSource};
 use crate::rvalue_scopes;
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey};
 use rustc_hir as hir;
@@ -46,7 +45,7 @@ use std::slice;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
-    pub(in super::super) fn warn_if_unreachable(&self, id: hir::HirId, span: Span, kind: &str) {
+    pub(crate) fn warn_if_unreachable(&self, id: hir::HirId, span: Span, kind: &str) {
         // FIXME: Combine these two 'if' expressions into one once
         // let chains are implemented
         if let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() {
@@ -86,7 +85,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // FIXME(-Znext-solver): A lot of the calls to this method should
     // probably be `try_structurally_resolve_type` or `structurally_resolve_type` instead.
     #[instrument(skip(self), level = "debug", ret)]
-    pub(in super::super) fn resolve_vars_with_obligations(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn resolve_vars_with_obligations(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
         // No Infer()? Nothing needs doing.
         if !ty.has_non_region_infer() {
             debug!("no inference var, nothing needs doing");
@@ -108,7 +107,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.resolve_vars_if_possible(ty)
     }
 
-    pub(in super::super) fn record_deferred_call_resolution(
+    pub(crate) fn record_deferred_call_resolution(
         &self,
         closure_def_id: LocalDefId,
         r: DeferredCallResolution<'tcx>,
@@ -117,7 +116,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         deferred_call_resolutions.entry(closure_def_id).or_default().push(r);
     }
 
-    pub(in super::super) fn remove_deferred_call_resolutions(
+    pub(crate) fn remove_deferred_call_resolutions(
         &self,
         closure_def_id: LocalDefId,
     ) -> Vec<DeferredCallResolution<'tcx>> {
@@ -171,7 +170,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(in super::super) fn write_resolution(
+    pub(crate) fn write_resolution(
         &self,
         hir_id: hir::HirId,
         r: Result<(DefKind, DefId), ErrorGuaranteed>,
@@ -322,7 +321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Instantiates and normalizes the bounds for a given item
-    pub(in super::super) fn instantiate_bounds(
+    pub(crate) fn instantiate_bounds(
         &self,
         span: Span,
         def_id: DefId,
@@ -335,7 +334,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         result
     }
 
-    pub(in super::super) fn normalize<T>(&self, span: Span, value: T) -> T
+    pub(crate) fn normalize<T>(&self, span: Span, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -523,7 +522,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.normalize(span, field.ty(self.tcx, args))
     }
 
-    pub(in super::super) fn resolve_rvalue_scopes(&self, def_id: DefId) {
+    pub(crate) fn resolve_rvalue_scopes(&self, def_id: DefId) {
         let scope_tree = self.tcx.region_scope_tree(def_id);
         let rvalue_scopes = { rvalue_scopes::resolve_rvalue_scopes(self, scope_tree, def_id) };
         let mut typeck_results = self.typeck_results.borrow_mut();
@@ -539,7 +538,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// We must not attempt to select obligations after this method has run, or risk query cycle
     /// ICE.
     #[instrument(level = "debug", skip(self))]
-    pub(in super::super) fn resolve_coroutine_interiors(&self) {
+    pub(crate) fn resolve_coroutine_interiors(&self) {
         // Try selecting all obligations that are not blocked on inference variables.
         // Once we start unifying coroutine witnesses, trying to select obligations on them will
         // trigger query cycle ICEs, as doing so requires MIR.
@@ -580,7 +579,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub(in super::super) fn report_ambiguity_errors(&self) {
+    pub(crate) fn report_ambiguity_errors(&self) {
         let mut errors = self.fulfillment_cx.borrow_mut().collect_remaining_errors(self);
 
         if !errors.is_empty() {
@@ -595,7 +594,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Select as many obligations as we can at present.
-    pub(in super::super) fn select_obligations_where_possible(
+    pub(crate) fn select_obligations_where_possible(
         &self,
         mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
@@ -611,7 +610,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// returns a type of `&T`, but the actual type we assign to the
     /// *expression* is `T`. So this function just peels off the return
     /// type by one layer to yield `T`.
-    pub(in super::super) fn make_overloaded_place_return_type(
+    pub(crate) fn make_overloaded_place_return_type(
         &self,
         method: MethodCallee<'tcx>,
     ) -> ty::TypeAndMut<'tcx> {
@@ -622,67 +621,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ret_ty.builtin_deref(true).unwrap()
     }
 
-    #[instrument(skip(self), level = "debug")]
-    fn self_type_matches_expected_vid(&self, self_ty: Ty<'tcx>, expected_vid: ty::TyVid) -> bool {
-        let self_ty = self.shallow_resolve(self_ty);
-        debug!(?self_ty);
-
-        match *self_ty.kind() {
-            ty::Infer(ty::TyVar(found_vid)) => {
-                let found_vid = self.root_var(found_vid);
-                debug!("self_type_matches_expected_vid - found_vid={:?}", found_vid);
-                expected_vid == found_vid
-            }
-            _ => false,
-        }
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    pub(in super::super) fn obligations_for_self_ty<'b>(
-        &'b self,
-        self_ty: ty::TyVid,
-    ) -> impl DoubleEndedIterator<Item = traits::PredicateObligation<'tcx>> + Captures<'tcx> + 'b
-    {
-        let ty_var_root = self.root_var(self_ty);
-        trace!("pending_obligations = {:#?}", self.fulfillment_cx.borrow().pending_obligations());
-
-        self.fulfillment_cx.borrow().pending_obligations().into_iter().filter_map(
-            move |obligation| match &obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Projection(data))
-                    if self.self_type_matches_expected_vid(
-                        data.projection_ty.self_ty(),
-                        ty_var_root,
-                    ) =>
-                {
-                    Some(obligation)
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(data))
-                    if self.self_type_matches_expected_vid(data.self_ty(), ty_var_root) =>
-                {
-                    Some(obligation)
-                }
-
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
-                | ty::PredicateKind::Subtype(..)
-                | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
-                | ty::PredicateKind::ObjectSafe(..)
-                | ty::PredicateKind::NormalizesTo(..)
-                | ty::PredicateKind::AliasRelate(..)
-                | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
-                | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::Ambiguous => None,
-            },
-        )
-    }
-
-    pub(in super::super) fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
+    pub(crate) fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
         let sized_did = self.tcx.lang_items().sized_trait();
-        self.obligations_for_self_ty(self_ty).any(|obligation| {
+        self.obligations_for_self_ty(self_ty).into_iter().any(|obligation| {
             match obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
                     Some(data.def_id()) == sized_did
@@ -692,7 +633,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    pub(in super::super) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
+    pub(crate) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
         let ty_error = Ty::new_misc_error(self.tcx);
         vec![ty_error; len]
     }
@@ -700,7 +641,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Unifies the output type with the expected type early, for more coercions
     /// and forward type information on the input expressions.
     #[instrument(skip(self, call_span), level = "debug")]
-    pub(in super::super) fn expected_inputs_for_expected_output(
+    pub(crate) fn expected_inputs_for_expected_output(
         &self,
         call_span: Span,
         expected_ret: Expectation<'tcx>,
@@ -760,7 +701,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expect_args
     }
 
-    pub(in super::super) fn resolve_lang_item_path(
+    pub(crate) fn resolve_lang_item_path(
         &self,
         lang_item: hir::LangItem,
         span: Span,
@@ -939,7 +880,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// but we often want access to the parent function's signature.
     ///
     /// Otherwise, return false.
-    pub(in super::super) fn get_node_fn_decl(
+    pub(crate) fn get_node_fn_decl(
         &self,
         node: Node<'tcx>,
     ) -> Option<(hir::HirId, &'tcx hir::FnDecl<'tcx>, Ident, bool)> {
@@ -1027,7 +968,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    pub(in super::super) fn note_internal_mutation_in_method(
+    pub(crate) fn note_internal_mutation_in_method(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
@@ -1571,7 +1512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(in super::super) fn with_breakable_ctxt<F: FnOnce() -> R, R>(
+    pub(crate) fn with_breakable_ctxt<F: FnOnce() -> R, R>(
         &self,
         id: hir::HirId,
         ctxt: BreakableCtxt<'tcx>,
@@ -1597,7 +1538,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Instantiate a QueryResponse in a probe context, without a
     /// good ObligationCause.
-    pub(in super::super) fn probe_instantiate_query_response(
+    pub(crate) fn probe_instantiate_query_response(
         &self,
         span: Span,
         original_values: &OriginalQueryValues<'tcx>,
@@ -1612,7 +1553,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Returns `true` if an expression is contained inside the LHS of an assignment expression.
-    pub(in super::super) fn expr_in_place(&self, mut expr_id: hir::HirId) -> bool {
+    pub(crate) fn expr_in_place(&self, mut expr_id: hir::HirId) -> bool {
         let mut contained_in_place = false;
 
         while let hir::Node::Expr(parent_expr) = self.tcx.parent_hir_node(expr_id) {

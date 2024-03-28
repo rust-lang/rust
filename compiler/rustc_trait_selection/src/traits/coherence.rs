@@ -1156,5 +1156,5 @@ fn search_ambiguity_causes<'tcx>(
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     causes: &mut FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 ) {
-    infcx.visit_proof_tree(goal, &mut AmbiguityCausesVisitor { causes });
+    infcx.probe(|_| infcx.visit_proof_tree(goal, &mut AmbiguityCausesVisitor { causes }));
 }
