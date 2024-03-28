@@ -336,7 +336,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             Box::new(TerseFormatter::new(output, opts.use_color(), max_name_len, is_multithreaded))
         }
         OutputFormat::Json => Box::new(JsonFormatter::new(&mut output)),
-        OutputFormat::Junit => Box::new(JunitFormatter::new(output)),
+        OutputFormat::Junit => Box::new(JunitFormatter::new(&mut output)),
     };
     let mut st = ConsoleTestState::new(opts)?;
 

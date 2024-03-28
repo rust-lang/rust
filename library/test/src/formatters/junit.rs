@@ -1,28 +1,28 @@
-use std::io::{self, prelude::Write};
+use std::io;
 use std::time::Duration;
 
 use super::OutputFormatter;
 use crate::{
-    console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation},
+    console::{ConsoleTestDiscoveryState, ConsoleTestState, Output},
     test_result::TestResult,
     time,
     types::{TestDesc, TestType},
 };
 
-pub struct JunitFormatter<T> {
-    out: OutputLocation<T>,
+pub struct JunitFormatter<'a> {
+    out: &'a mut dyn Output,
     results: Vec<(TestDesc, TestResult, Duration, Vec<u8>)>,
 }
 
-impl<T: Write> JunitFormatter<T> {
-    pub fn new(out: OutputLocation<T>) -> Self {
+impl<'a> JunitFormatter<'a> {
+    pub fn new(out: &'a mut dyn Output) -> Self {
         Self { out, results: Vec::new() }
     }
 
     fn write_message(&mut self, s: &str) -> io::Result<()> {
         assert!(!s.contains('\n'));
 
-        self.out.write_all(s.as_ref())
+        self.out.write_plain(s)
     }
 }
 
@@ -38,7 +38,7 @@ fn str_to_cdata(s: &str) -> String {
     format!("<![CDATA[{}]]>", escaped_output)
 }
 
-impl<T: Write> OutputFormatter for JunitFormatter<T> {
+impl OutputFormatter for JunitFormatter<'_> {
     fn write_discovery_start(&mut self) -> io::Result<()> {
         Err(io::Error::new(io::ErrorKind::NotFound, "Not yet implemented!"))
     }
@@ -179,7 +179,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
         self.write_message("</testsuite>")?;
         self.write_message("</testsuites>")?;
 
-        self.out.write_all(b"\n")?;
+        self.out.write_plain("\n")?;
 
         Ok(state.failed == 0)
     }
