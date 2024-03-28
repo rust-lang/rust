@@ -726,6 +726,7 @@ pub const UI_EXTENSIONS: &[&str] = &[
     UI_STDERR_32,
     UI_STDERR_16,
     UI_COVERAGE,
+    UI_COVERAGE_HTML,
     UI_COVERAGE_MAP,
 ];
 pub const UI_STDERR: &str = "stderr";
@@ -739,6 +740,7 @@ pub const UI_STDERR_64: &str = "64bit.stderr";
 pub const UI_STDERR_32: &str = "32bit.stderr";
 pub const UI_STDERR_16: &str = "16bit.stderr";
 pub const UI_COVERAGE: &str = "coverage";
+pub const UI_COVERAGE_HTML: &str = "coverage.html";
 pub const UI_COVERAGE_MAP: &str = "cov-map";
 
 /// Absolute path to the directory where all output for all tests in the given
