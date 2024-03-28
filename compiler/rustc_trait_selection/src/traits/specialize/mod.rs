@@ -402,10 +402,6 @@ fn report_conflicting_impls<'tcx>(
         impl_span: Span,
         err: &mut Diag<'_, G>,
     ) {
-        if (overlap.trait_ref, overlap.self_ty).references_error() {
-            err.downgrade_to_delayed_bug();
-        }
-
         match tcx.span_of_impl(overlap.with_impl) {
             Ok(span) => {
                 err.span_label(span, "first implementation here");
@@ -457,6 +453,11 @@ fn report_conflicting_impls<'tcx>(
             }
         )
     });
+
+    // Don't report overlap errors if the header references error
+    if let Err(err) = (overlap.trait_ref, overlap.self_ty).error_reported() {
+        return Err(err);
+    }
 
     match used_to_be_allowed {
         None => {
