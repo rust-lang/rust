@@ -47,6 +47,7 @@ fn c() {
     //~| NOTE cannot move out of here
     //~| NOTE move occurs because
     //~| HELP consider borrowing here
+    //~| HELP consider cloning
 }
 
 fn d() {
@@ -66,6 +67,7 @@ fn d() {
     //~| NOTE cannot move out of here
     //~| NOTE move occurs because
     //~| HELP consider borrowing here
+    //~| HELP consider cloning
 }
 
 fn e() {
@@ -86,6 +88,7 @@ fn e() {
     //~| NOTE cannot move out of here
     //~| NOTE move occurs because
     //~| HELP consider borrowing here
+    //~| HELP consider cloning
 }
 
 fn main() {}

@@ -7,6 +7,11 @@ LL |        expect_fn(|| drop(x.0));
    |                  --      ^^^ move occurs because `x.0` has type `Vec<i32>`, which does not implement the `Copy` trait
    |                  |
    |                  captured by this `Fn` closure
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |        expect_fn(|| drop(x.0.clone()));
+   |                             ++++++++
 
 error: aborting due to 1 previous error
 

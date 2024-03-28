@@ -3,12 +3,24 @@ error[E0507]: cannot move out of a shared reference
    |
 LL | static Y: usize = get(*&X);
    |                       ^^^ move occurs because value has type `Foo`, which does not implement the `Copy` trait
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/move-in-static-initializer-issue-38520.rs:5:1
+   |
+LL | struct Foo(usize);
+   | ^^^^^^^^^^
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/move-in-static-initializer-issue-38520.rs:13:22
    |
 LL | const Z: usize = get(*&X);
    |                      ^^^ move occurs because value has type `Foo`, which does not implement the `Copy` trait
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/move-in-static-initializer-issue-38520.rs:5:1
+   |
+LL | struct Foo(usize);
+   | ^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

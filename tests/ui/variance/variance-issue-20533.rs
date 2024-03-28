@@ -19,7 +19,14 @@ fn baz<'a, T>(_x: &'a T) -> Baked<'a> {
     Baked(PhantomData)
 }
 
+fn bat(x: &AffineU32) -> &u32 {
+    &x.0
+}
+
 struct AffineU32(u32);
+
+#[derive(Clone)]
+struct ClonableAffineU32(u32);
 
 fn main() {
     {
@@ -37,6 +44,18 @@ fn main() {
     {
         let a = AffineU32(1);
         let x = baz(&a);
+        drop(a); //~ ERROR cannot move out of `a`
+        drop(x);
+    }
+    {
+        let a = AffineU32(1);
+        let x = bat(&a);
+        drop(a); //~ ERROR cannot move out of `a`
+        drop(x);
+    }
+    {
+        let a = ClonableAffineU32(1);
+        let x = foo(&a);
         drop(a); //~ ERROR cannot move out of `a`
         drop(x);
     }
