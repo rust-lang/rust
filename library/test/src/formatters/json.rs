@@ -1,19 +1,19 @@
-use std::{borrow::Cow, io, io::prelude::Write};
+use std::{borrow::Cow, io};
 
 use super::OutputFormatter;
 use crate::{
-    console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation},
+    console::{ConsoleTestDiscoveryState, ConsoleTestState, Output},
     test_result::TestResult,
     time,
     types::TestDesc,
 };
 
-pub(crate) struct JsonFormatter<T> {
-    out: OutputLocation<T>,
+pub(crate) struct JsonFormatter<'a> {
+    out: &'a mut dyn Output,
 }
 
-impl<T: Write> JsonFormatter<T> {
-    pub fn new(out: OutputLocation<T>) -> Self {
+impl<'a> JsonFormatter<'a> {
+    pub fn new(out: &'a mut dyn Output) -> Self {
         Self { out }
     }
 
@@ -23,7 +23,7 @@ impl<T: Write> JsonFormatter<T> {
         // by issuing `write_all` calls line-by-line.
         assert_eq!(s.chars().last(), Some('\n'));
 
-        self.out.write_all(s.as_ref())
+        self.out.write_plain(s)
     }
 
     fn write_event(
@@ -56,7 +56,7 @@ impl<T: Write> JsonFormatter<T> {
     }
 }
 
-impl<T: Write> OutputFormatter for JsonFormatter<T> {
+impl OutputFormatter for JsonFormatter<'_> {
     fn write_discovery_start(&mut self) -> io::Result<()> {
         self.writeln_message(concat!(r#"{ "type": "suite", "event": "discovery" }"#, "\n"))
     }
