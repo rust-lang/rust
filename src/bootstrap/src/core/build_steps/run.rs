@@ -121,7 +121,6 @@ impl Step for ReplaceVersionPlaceholder {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
-    stage: u32,
     host: TargetSelection,
     target: TargetSelection,
 }
@@ -135,22 +134,17 @@ impl Step for Miri {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Miri {
-            stage: run.builder.top_stage,
-            host: run.build_triple(),
-            target: run.target,
-        });
+        run.builder.ensure(Miri { host: run.build_triple(), target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
+        let stage = builder.top_stage;
         let host = self.host;
         let target = self.target;
         let compiler = builder.compiler(stage, host);
 
-        let miri =
-            builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
-        let miri_sysroot = test::Miri::build_miri_sysroot(builder, compiler, &miri, target);
+        let compiler_std = builder.compiler(if stage < 2 { stage + 1 } else { stage }, host);
+        let miri_sysroot = test::Miri::build_miri_sysroot(builder, compiler_std, target);
 
         // # Run miri.
         // Running it via `cargo run` as that figures out the right dylib path.

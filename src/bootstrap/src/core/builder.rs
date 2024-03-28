@@ -1253,6 +1253,30 @@ impl<'a> Builder<'a> {
         cmd
     }
 
+    pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> Command {
+        assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
+        let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
+
+        let miri = self.ensure(tool::Miri {
+            compiler: build_compiler,
+            target: self.build.build,
+            extra_features: Vec::new(),
+        });
+        let cargo_miri = self.ensure(tool::CargoMiri {
+            compiler: build_compiler,
+            target: self.build.build,
+            extra_features: Vec::new(),
+        });
+        // Invoke cargo-miri, make sure we can find miri and cargo.
+        let mut cmd = Command::new(cargo_miri);
+        cmd.env("MIRI", &miri);
+        cmd.env("CARGO", &self.initial_cargo);
+        // Need to add the run_compiler libs. Not entirely sure why that has to be one stage up from
+        // what Miri was built for.
+        self.add_rustc_lib_path(run_compiler, &mut cmd);
+        cmd
+    }
+
     pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
         let mut cmd = Command::new(self.bootstrap_out.join("rustdoc"));
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
@@ -1296,18 +1320,24 @@ impl<'a> Builder<'a> {
         target: TargetSelection,
         cmd: &str,
     ) -> Command {
-        let mut cargo = if cmd == "clippy" {
-            self.cargo_clippy_cmd(compiler)
+        let mut cargo;
+        if cmd == "clippy" {
+            cargo = self.cargo_clippy_cmd(compiler);
+            cargo.arg(cmd);
+        } else if let Some(subcmd) = cmd.strip_prefix("miri-") {
+            cargo = self.cargo_miri_cmd(compiler);
+            cargo.arg("miri").arg(subcmd);
         } else {
-            Command::new(&self.initial_cargo)
-        };
+            cargo = Command::new(&self.initial_cargo);
+            cargo.arg(cmd);
+        }
 
         // Run cargo from the source root so it can find .cargo/config.
         // This matters when using vendoring and the working directory is outside the repository.
         cargo.current_dir(&self.src);
 
         let out_dir = self.stage_out(compiler, mode);
-        cargo.env("CARGO_TARGET_DIR", &out_dir).arg(cmd);
+        cargo.env("CARGO_TARGET_DIR", &out_dir);
 
         // Found with `rg "init_env_logger\("`. If anyone uses `init_env_logger`
         // from out of tree it shouldn't matter, since x.py is only used for
@@ -1337,7 +1367,8 @@ impl<'a> Builder<'a> {
 
         if self.config.rust_optimize.is_release() {
             // FIXME: cargo bench/install do not accept `--release`
-            if cmd != "bench" && cmd != "install" {
+            // and miri doesn't want it
+            if cmd != "bench" && cmd != "install" && !cmd.starts_with("miri-") {
                 cargo.arg("--release");
             }
         }
@@ -1353,7 +1384,8 @@ impl<'a> Builder<'a> {
     /// Cargo. This cargo will be configured to use `compiler` as the actual
     /// rustc compiler, its output will be scoped by `mode`'s output directory,
     /// it will pass the `--target` flag for the specified `target`, and will be
-    /// executing the Cargo command `cmd`.
+    /// executing the Cargo command `cmd`. `cmd` can be `miri-cmd` for commands
+    /// to be run with Miri.
     fn cargo(
         &self,
         compiler: Compiler,

@@ -493,7 +493,6 @@ impl Step for RustDemangler {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
-    stage: u32,
     host: TargetSelection,
     target: TargetSelection,
 }
@@ -502,41 +501,31 @@ impl Miri {
     /// Run `cargo miri setup` for the given target, return where the Miri sysroot was put.
     pub fn build_miri_sysroot(
         builder: &Builder<'_>,
-        compiler: Compiler,
-        miri: &Path,
+        compiler_std: Compiler,
         target: TargetSelection,
     ) -> String {
-        let miri_sysroot = builder.out.join(compiler.host.triple).join("miri-sysroot");
-        let mut cargo = tool::prepare_tool_cargo(
+        let miri_sysroot = builder.out.join(compiler_std.host.triple).join("miri-sysroot");
+        let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
-            Mode::ToolRustc,
-            compiler.host,
-            "run",
-            "src/tools/miri/cargo-miri",
-            SourceType::InTree,
-            &[],
+            compiler_std, // this is compiler+1; cargo_miri_cmd will do -1 again
+            Mode::Std,
+            SourceType::Submodule,
+            target,
+            "miri-setup",
         );
-        cargo.add_rustc_lib_path(builder);
-        cargo.arg("--").arg("miri").arg("setup");
-        cargo.arg("--target").arg(target.rustc_target_arg());
 
         // Tell `cargo miri setup` where to find the sources.
         cargo.env("MIRI_LIB_SRC", builder.src.join("library"));
-        // Tell it where to find Miri.
-        cargo.env("MIRI", miri);
         // Tell it where to put the sysroot.
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
-        // Debug things.
-        cargo.env("RUST_BACKTRACE", "1");
 
         let mut cargo = Command::from(cargo);
         let _guard = builder.msg(
             Kind::Build,
-            compiler.stage + 1,
+            compiler_std.stage,
             "miri sysroot",
-            compiler.host,
-            compiler.host,
+            compiler_std.host,
+            compiler_std.host,
         );
         builder.run(&mut cargo);
 
@@ -574,16 +563,12 @@ impl Step for Miri {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Miri {
-            stage: run.builder.top_stage,
-            host: run.build_triple(),
-            target: run.target,
-        });
+        run.builder.ensure(Miri { host: run.build_triple(), target: run.target });
     }
 
     /// Runs `cargo test` for miri.
     fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
+        let stage = builder.top_stage;
         let host = self.host;
         let target = self.target;
         let compiler = builder.compiler(stage, host);
@@ -592,18 +577,15 @@ impl Step for Miri {
         let compiler_std = builder.compiler(if stage < 2 { stage + 1 } else { stage }, host);
 
         let miri =
-            builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
-        let _cargo_miri = builder.ensure(tool::CargoMiri {
-            compiler,
-            target: self.host,
-            extra_features: Vec::new(),
-        });
+            builder.ensure(tool::Miri { compiler, target: host, extra_features: Vec::new() });
+        // the ui tests also assume cargo-miri has been built
+        builder.ensure(tool::CargoMiri { compiler, target: host, extra_features: Vec::new() });
         // The stdlib we need might be at a different stage. And just asking for the
         // sysroot does not seem to populate it, so we do that first.
         builder.ensure(compile::Std::new(compiler_std, host));
         let sysroot = builder.sysroot(compiler_std);
         // We also need a Miri sysroot.
-        let miri_sysroot = Miri::build_miri_sysroot(builder, compiler, &miri, target);
+        let miri_sysroot = Miri::build_miri_sysroot(builder, compiler_std, target);
 
         // # Run `cargo test`.
         let mut cargo = tool::prepare_tool_cargo(
@@ -616,9 +598,12 @@ impl Step for Miri {
             SourceType::InTree,
             &[],
         );
-        let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "miri", host, target);
 
         cargo.add_rustc_lib_path(builder);
+
+        // We can NOT use `run_cargo_test` since Miri's integration tests do not use the usual test
+        // harness and therefore do not understand the flags added by `add_flags_and_try_run_test`.
+        let mut cargo = prepare_cargo_test(cargo, &[], &[], "miri", compiler, target, builder);
 
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
@@ -632,10 +617,8 @@ impl Step for Miri {
         // Set the target.
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
 
-        // This can NOT be `run_cargo_test` since the Miri test runner
-        // does not understand the flags added by `add_flags_and_try_run_test`.
-        let mut cargo = prepare_cargo_test(cargo, &[], &[], "miri", compiler, target, builder);
         {
+            let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "miri", host, target);
             let _time = helpers::timeit(builder);
             builder.run(&mut cargo);
         }
@@ -650,8 +633,14 @@ impl Step for Miri {
             // Optimizations can change error locations and remove UB so don't run `fail` tests.
             cargo.args(["tests/pass", "tests/panic"]);
 
-            let mut cargo = prepare_cargo_test(cargo, &[], &[], "miri", compiler, target, builder);
             {
+                let _guard = builder.msg_sysroot_tool(
+                    Kind::Test,
+                    compiler.stage,
+                    "miri (mir-opt-level 4)",
+                    host,
+                    target,
+                );
                 let _time = helpers::timeit(builder);
                 builder.run(&mut cargo);
             }
@@ -660,28 +649,20 @@ impl Step for Miri {
         // # Run `cargo miri test`.
         // This is just a smoke test (Miri's own CI invokes this in a bunch of different ways and ensures
         // that we get the desired output), but that is sufficient to make sure that the libtest harness
-        // itself executes properly under Miri.
+        // itself executes properly under Miri, and that all the logic in `cargo-miri` does not explode.
+        // Everything here needs `compiler_std` to be actually testing the Miri in the current stage.
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            compiler,
-            Mode::ToolRustc,
-            host,
-            "run",
-            "src/tools/miri/cargo-miri",
+            compiler_std,  // this is compiler+1; cargo_miri_cmd will do -1 again
+            Mode::ToolStd, // it's unclear what to use here, we're not building anything just doing a smoke test!
+            target,
+            "miri-test",
+            "src/tools/miri/test-cargo-miri",
             SourceType::Submodule,
             &[],
         );
-        cargo.add_rustc_lib_path(builder);
-        cargo.arg("--").arg("miri").arg("test");
-        if builder.config.locked_deps {
-            cargo.arg("--locked");
-        }
-        cargo
-            .arg("--manifest-path")
-            .arg(builder.src.join("src/tools/miri/test-cargo-miri/Cargo.toml"));
-        cargo.arg("--target").arg(target.rustc_target_arg());
 
-        // `prepare_tool_cargo` sets RUSTDOC to the bootstrap wrapper and RUSTDOC_REAL to a dummy path as this is a "run", not a "test".
+        // `prepare_tool_cargo` sets RUSTDOC to the bootstrap wrapper and RUSTDOC_REAL to a dummy path as this is a "miri", not a "test".
         // Also, we want the rustdoc from the "next" stage for the same reason that we build a std from the next stage.
         // So let's just set that here, and bypass bootstrap's RUSTDOC (just like cargo-miri already ignores bootstrap's RUSTC_WRAPPER).
         if builder.doc_tests != DocTests::No {
@@ -697,17 +678,16 @@ impl Step for Miri {
             }
         }
 
-        // Tell `cargo miri` where to find things.
+        // Tell `cargo miri` where to find the sysroots.
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", sysroot);
-        cargo.env("MIRI", &miri);
-        // Debug things.
-        cargo.env("RUST_BACKTRACE", "1");
 
         // Finally, pass test-args and run everything.
         cargo.arg("--").args(builder.config.test_args());
         let mut cargo = Command::from(cargo);
         {
+            let _guard =
+                builder.msg_sysroot_tool(Kind::Test, compiler.stage, "cargo-miri", host, target);
             let _time = helpers::timeit(builder);
             builder.run(&mut cargo);
         }
