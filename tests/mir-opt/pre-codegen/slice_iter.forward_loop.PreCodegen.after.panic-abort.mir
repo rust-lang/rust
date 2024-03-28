@@ -26,31 +26,28 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
             let _3: usize;
             let mut _5: std::ptr::NonNull<[T]>;
             let mut _8: bool;
-            let mut _9: *mut T;
-            let mut _10: *mut T;
-            let mut _12: *const T;
+            let mut _10: std::ptr::NonNull<T>;
+            let mut _12: usize;
             scope 5 {
                 debug len => _3;
                 let _7: std::ptr::NonNull<T>;
                 scope 6 {
                     debug ptr => _7;
                     scope 7 {
-                        let _11: *const T;
+                        let _11: usize;
                         scope 8 {
-                            debug end_or_len => _11;
+                            debug end_addr_or_len => _11;
                         }
-                        scope 14 (inlined without_provenance::<T>) {
-                            debug addr => _3;
+                        scope 14 (inlined NonNull::<T>::add) {
+                            debug self => _7;
+                            debug count => _3;
+                            let mut _9: *const T;
                             scope 15 {
                             }
                         }
-                        scope 16 (inlined NonNull::<T>::as_ptr) {
-                            debug self => _7;
-                        }
-                        scope 17 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
-                            debug self => _9;
-                            debug count => _3;
-                            scope 18 {
+                        scope 16 (inlined core::slice::iter::addr_usize::<T>) {
+                            debug p => _10;
+                            scope 17 {
                             }
                         }
                     }
@@ -73,12 +70,11 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
             }
         }
     }
-    scope 19 (inlined <std::slice::Iter<'_, T> as IntoIterator>::into_iter) {
+    scope 18 (inlined <std::slice::Iter<'_, T> as IntoIterator>::into_iter) {
         debug self => _13;
     }
 
     bb0: {
-        StorageLive(_3);
         StorageLive(_7);
         StorageLive(_4);
         StorageLive(_6);
@@ -98,16 +94,16 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     bb1: {
         StorageLive(_10);
         StorageLive(_9);
-        _9 = _4 as *mut T (PtrToPtr);
-        _10 = Offset(_9, _3);
+        _9 = Offset(_6, _3);
+        _10 = NonNull::<T> { pointer: move _9 };
         StorageDead(_9);
-        _11 = move _10 as *const T (PointerCoercion(MutToConstPointer));
+        _11 = _10 as usize (Transmute);
         StorageDead(_10);
         goto -> bb3;
     }
 
     bb2: {
-        _11 = _3 as *const T (Transmute);
+        _11 = _3;
         goto -> bb3;
     }
 
@@ -115,13 +111,12 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_8);
         StorageLive(_12);
         _12 = _11;
-        _13 = std::slice::Iter::<'_, T> { ptr: _7, end_or_len: move _12, _marker: const ZeroSized: PhantomData<&T> };
+        _13 = std::slice::Iter::<'_, T> { ptr: _7, end_addr_or_len: move _12, _marker: const ZeroSized: PhantomData<&T> };
         StorageDead(_12);
         StorageDead(_11);
         StorageDead(_6);
         StorageDead(_4);
         StorageDead(_7);
-        StorageDead(_3);
         StorageLive(_14);
         _14 = _13;
         goto -> bb4;

@@ -1,24 +1,38 @@
 //! Macros used by iterators of slice.
 
-/// Convenience & performance macro for consuming the `end_or_len` field, by
+/// Convenience macro for updating the `end_addr_or_len` field for non-ZSTs.
+macro_rules! set_end {
+    ($this:ident . end = $new_end:expr) => {{
+        $this.end_addr_or_len = addr_usize($new_end);
+    }};
+}
+
+/// Convenience & performance macro for consuming the `end_addr_or_len` field, by
 /// giving a `(&mut) usize` or `(&mut) NonNull<T>` depending whether `T` is
 /// or is not a ZST respectively.
 ///
-/// Internally, this reads the `end` through a pointer-to-`NonNull` so that
-/// it'll get the appropriate non-null metadata in the backend without needing
-/// to call `assume` manually.
+/// When giving a `NonNull<T>` for the end, it creates it by offsetting from the
+/// `ptr` so that the backend knows that both pointers have the same provenance.
 macro_rules! if_zst {
     (mut $this:ident, $len:ident => $zst_body:expr, $end:ident => $other_body:expr,) => {{
         #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
 
         if T::IS_ZST {
-            // SAFETY: for ZSTs, the pointer is storing a provenance-free length,
-            // so consuming and updating it as a `usize` is fine.
-            let $len = unsafe { &mut *ptr::addr_of_mut!($this.end_or_len).cast::<usize>() };
+            let $len = &mut $this.end_addr_or_len;
             $zst_body
         } else {
-            // SAFETY: for non-ZSTs, the type invariant ensures it cannot be null
-            let $end = unsafe { &mut *ptr::addr_of_mut!($this.end_or_len).cast::<NonNull<T>>() };
+            // SAFETY: By type invariant `end >= ptr`, and thus the subtraction
+            // cannot overflow, and the iter represents a single allocated
+            // object so the `add` will also be in-range.
+            let $end = unsafe {
+                let ptr_addr = addr_usize($this.ptr);
+                // Need to load as `NonZero` to get `!range` metadata
+                let end_addr: NonZero<usize> = *ptr::addr_of!($this.end_addr_or_len).cast();
+                // Not using `with_addr` because we have ordering information that
+                // we can take advantage of here that `with_addr` cannot.
+                let byte_diff = intrinsics::unchecked_sub(end_addr.get(), ptr_addr);
+                $this.ptr.byte_add(byte_diff)
+            };
             $other_body
         }
     }};
@@ -26,11 +40,21 @@ macro_rules! if_zst {
         #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
 
         if T::IS_ZST {
-            let $len = $this.end_or_len.addr();
+            let $len = $this.end_addr_or_len;
             $zst_body
         } else {
-            // SAFETY: for non-ZSTs, the type invariant ensures it cannot be null
-            let $end = unsafe { *ptr::addr_of!($this.end_or_len).cast::<NonNull<T>>() };
+            // SAFETY: By type invariant `end >= ptr`, and thus the subtraction
+            // cannot overflow, and the iter represents a single allocated
+            // object so the `add` will also be in-range.
+            let $end = unsafe {
+                let ptr_addr = addr_usize($this.ptr);
+                // Need to load as `NonZero` to get `!range` metadata
+                let end_addr: NonZero<usize> = *ptr::addr_of!($this.end_addr_or_len).cast();
+                // Not using `with_addr` because we have ordering information that
+                // we can take advantage of here that `with_addr` cannot.
+                let byte_diff = intrinsics::unchecked_sub(end_addr.get(), ptr_addr);
+                $this.ptr.byte_add(byte_diff)
+            };
             $other_body
         }
     }};
@@ -128,8 +152,9 @@ macro_rules! iterator {
                     // which is guaranteed to not overflow an `isize`. Also, the resulting pointer
                     // is in bounds of `slice`, which fulfills the other requirements for `offset`.
                     end => unsafe {
-                        *end = end.sub(offset);
-                        *end
+                        let new_end = end.sub(offset);
+                        set_end!(self.end = new_end);
+                        new_end
                     },
                 )
             }
@@ -184,7 +209,7 @@ macro_rules! iterator {
                     // This iterator is now empty.
                     if_zst!(mut self,
                         len => *len = 0,
-                        end => self.ptr = *end,
+                        end => self.ptr = end,
                     );
                     return None;
                 }
@@ -409,7 +434,7 @@ macro_rules! iterator {
                     // This iterator is now empty.
                     if_zst!(mut self,
                         len => *len = 0,
-                        end => *end = self.ptr,
+                        _end => set_end!(self.end = self.ptr),
                     );
                     return None;
                 }

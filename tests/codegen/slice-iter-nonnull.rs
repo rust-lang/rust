@@ -10,19 +10,23 @@
 // needed as the code changed to read it as a `NonNull`, and thus gets the
 // appropriate `!nonnull` annotations naturally.
 
+// Well, now that the end is stored without provenance, the end pointer gets a
+// `!range` annotation instead of a `!nonnull` one.
+
 // CHECK-LABEL: @slice_iter_next(
 #[no_mangle]
 pub fn slice_iter_next<'a>(it: &mut std::slice::Iter<'a, u32>) -> Option<&'a u32> {
-    // CHECK: %[[ENDP:.+]] = getelementptr inbounds i8, ptr %it, {{i32 4|i64 8}}
-    // CHECK: %[[END:.+]] = load ptr, ptr %[[ENDP]]
-    // CHECK-SAME: !nonnull
-    // CHECK-SAME: !noundef
     // CHECK: %[[START:.+]] = load ptr, ptr %it,
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef
-    // CHECK: icmp eq ptr %[[START]], %[[END]]
+    // CHECK: %[[START_ADDR:.+]] = ptrtoint ptr %[[START]] to [[USIZE:i32|i64]]
+    // CHECK: %[[ENDP:.+]] = getelementptr inbounds i8, ptr %it, {{i32 4|i64 8}}
+    // CHECK: %[[END_ADDR:.+]] = load [[USIZE]], ptr %[[ENDP]]
+    // CHECK-SAME: !range ![[NONZERO_META:[0-9]+]]
+    // CHECK-SAME: !noundef
+    // CHECK: icmp eq [[USIZE]] %[[END_ADDR]], %[[START_ADDR]]
 
-    // CHECK: store ptr{{.+}}, ptr %it,
+    // CHECK: store ptr {{.+}}, ptr %it,
 
     it.next()
 }
@@ -30,16 +34,17 @@ pub fn slice_iter_next<'a>(it: &mut std::slice::Iter<'a, u32>) -> Option<&'a u32
 // CHECK-LABEL: @slice_iter_next_back(
 #[no_mangle]
 pub fn slice_iter_next_back<'a>(it: &mut std::slice::Iter<'a, u32>) -> Option<&'a u32> {
-    // CHECK: %[[ENDP:.+]] = getelementptr inbounds i8, ptr %it, {{i32 4|i64 8}}
-    // CHECK: %[[END:.+]] = load ptr, ptr %[[ENDP]]
-    // CHECK-SAME: !nonnull
-    // CHECK-SAME: !noundef
     // CHECK: %[[START:.+]] = load ptr, ptr %it,
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef
-    // CHECK: icmp eq ptr %[[START]], %[[END]]
+    // CHECK: %[[START_ADDR:.+]] = ptrtoint ptr %[[START]] to [[USIZE]]
+    // CHECK: %[[ENDP:.+]] = getelementptr inbounds i8, ptr %it, {{i32 4|i64 8}}
+    // CHECK: %[[END_ADDR:.+]] = load [[USIZE]], ptr %[[ENDP]]
+    // CHECK-SAME: !range ![[NONZERO_META]]
+    // CHECK-SAME: !noundef
+    // CHECK: icmp eq [[USIZE]] %[[END_ADDR]], %[[START_ADDR]]
 
-    // CHECK: store ptr{{.+}}, ptr %[[ENDP]],
+    // CHECK: store [[USIZE]] {{.+}}, ptr %[[ENDP]],
 
     it.next_back()
 }
@@ -54,11 +59,12 @@ pub fn slice_iter_next_back<'a>(it: &mut std::slice::Iter<'a, u32>) -> Option<&'
 #[no_mangle]
 pub fn slice_iter_new(slice: &[u32]) -> std::slice::Iter<'_, u32> {
     // CHECK-NOT: slice
-    // CHECK: %[[END:.+]] = getelementptr inbounds i32{{.+}} %slice.0{{.+}} %slice.1
+    // CHECK: %[[END_PTR:.+]] = getelementptr inbounds i32{{.+}} %slice.0{{.+}} %slice.1
+    // CHECK: %[[END_ADDR:.+]] = ptrtoint ptr %[[END_PTR]] to [[USIZE]]
     // CHECK-NOT: slice
     // CHECK: insertvalue {{.+}} ptr %slice.0, 0
     // CHECK-NOT: slice
-    // CHECK: insertvalue {{.+}} ptr %[[END]], 1
+    // CHECK: insertvalue {{.+}} [[USIZE]] %[[END_ADDR]], 1
     // CHECK-NOT: slice
     // CHECK: }
     slice.iter()
@@ -69,11 +75,12 @@ pub fn slice_iter_new(slice: &[u32]) -> std::slice::Iter<'_, u32> {
 #[no_mangle]
 pub fn slice_iter_mut_new(slice: &mut [u32]) -> std::slice::IterMut<'_, u32> {
     // CHECK-NOT: slice
-    // CHECK: %[[END:.+]] = getelementptr inbounds i32{{.+}} %slice.0{{.+}} %slice.1
+    // CHECK: %[[END_PTR:.+]] = getelementptr inbounds i32{{.+}} %slice.0{{.+}} %slice.1
+    // CHECK: %[[END_ADDR:.+]] = ptrtoint ptr %[[END_PTR]] to [[USIZE]]
     // CHECK-NOT: slice
     // CHECK: insertvalue {{.+}} ptr %slice.0, 0
     // CHECK-NOT: slice
-    // CHECK: insertvalue {{.+}} ptr %[[END]], 1
+    // CHECK: insertvalue {{.+}} [[USIZE]] %[[END_ADDR]], 1
     // CHECK-NOT: slice
     // CHECK: }
     slice.iter_mut()
@@ -82,15 +89,16 @@ pub fn slice_iter_mut_new(slice: &mut [u32]) -> std::slice::IterMut<'_, u32> {
 // CHECK-LABEL: @slice_iter_is_empty
 #[no_mangle]
 pub fn slice_iter_is_empty(it: &std::slice::Iter<'_, u32>) -> bool {
-    // CHECK: %[[ENDP:.+]] = getelementptr inbounds i8, ptr %it, {{i32 4|i64 8}}
-    // CHECK: %[[END:.+]] = load ptr, ptr %[[ENDP]]
-    // CHECK-SAME: !nonnull
-    // CHECK-SAME: !noundef
     // CHECK: %[[START:.+]] = load ptr, ptr %it,
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef
+    // CHECK: %[[START_ADDR:.+]] = ptrtoint ptr %[[START]] to [[USIZE]]
+    // CHECK: %[[ENDP:.+]] = getelementptr inbounds i8, ptr %it, {{i32 4|i64 8}}
+    // CHECK: %[[END_ADDR:.+]] = load [[USIZE]], ptr %[[ENDP]]
+    // CHECK-SAME: !range ![[NONZERO_META:[0-9]+]]
+    // CHECK-SAME: !noundef
 
-    // CHECK: %[[RET:.+]] = icmp eq ptr %[[START]], %[[END]]
+    // CHECK: %[[RET:.+]] = icmp eq i64 %[[END_ADDR]], %[[START_ADDR]]
     // CHECK: ret i1 %[[RET]]
     it.is_empty()
 }
@@ -98,17 +106,19 @@ pub fn slice_iter_is_empty(it: &std::slice::Iter<'_, u32>) -> bool {
 // CHECK-LABEL: @slice_iter_len
 #[no_mangle]
 pub fn slice_iter_len(it: &std::slice::Iter<'_, u32>) -> usize {
-    // CHECK: %[[ENDP:.+]] = getelementptr inbounds i8, ptr %it, {{i32 4|i64 8}}
-    // CHECK: %[[END:.+]] = load ptr, ptr %[[ENDP]]
-    // CHECK-SAME: !nonnull
-    // CHECK-SAME: !noundef
     // CHECK: %[[START:.+]] = load ptr, ptr %it,
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef
+    // CHECK: %[[START_ADDR:.+]] = ptrtoint ptr %[[START]] to [[USIZE]]
+    // CHECK: %[[ENDP:.+]] = getelementptr inbounds i8, ptr %it, {{i32 4|i64 8}}
+    // CHECK: %[[END_ADDR:.+]] = load [[USIZE]], ptr %[[ENDP]]
+    // CHECK-SAME: !range ![[NONZERO_META:[0-9]+]]
+    // CHECK-SAME: !noundef
 
-    // CHECK: ptrtoint
-    // CHECK: ptrtoint
-    // CHECK: sub nuw
-    // CHECK: lshr exact
+    // CHECK: %[[BYTE_DIFF:.+]] = sub nuw [[USIZE]] %[[END_ADDR]], %[[START_ADDR]]
+    // CHECK: %[[ELEM_DIFF:.+]] = lshr exact [[USIZE]] %[[BYTE_DIFF]], 2
+    // CHECK: ret [[USIZE]] %[[ELEM_DIFF]]
     it.len()
 }
+
+// CHECK: ![[NONZERO_META]] = !{[[USIZE]] 1, [[USIZE]] 0}
