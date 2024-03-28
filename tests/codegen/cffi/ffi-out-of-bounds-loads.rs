@@ -1,8 +1,21 @@
+//@ revisions: linux apple
+//@ compile-flags: -C opt-level=0 -C no-prepopulate-passes
+
+//@[linux] compile-flags: --target x86_64-unknown-linux-gnu
+//@[linux] needs-llvm-components: x86
+//@[apple] compile-flags: --target x86_64-apple-darwin
+//@[apple] needs-llvm-components: x86
+
 // Regression test for #29988
 
-//@ compile-flags: -C no-prepopulate-passes
-//@ only-x86_64
-//@ ignore-windows
+#![feature(no_core, lang_items)]
+#![crate_type = "lib"]
+#![no_std]
+#![no_core]
+
+#[lang="sized"] trait Sized { }
+#[lang="freeze"] trait Freeze { }
+#[lang="copy"] trait Copy { }
 
 #[repr(C)]
 struct S {
@@ -15,11 +28,14 @@ extern "C" {
     fn foo(s: S);
 }
 
-fn main() {
+// CHECK-LABEL: @test
+#[no_mangle]
+pub fn test() {
     let s = S { f1: 1, f2: 2, f3: 3 };
     unsafe {
-        // CHECK: load { i64, i32 }, {{.*}}, align 4
-        // CHECK: call void @foo({ i64, i32 } {{.*}})
+        // CHECK: [[ALLOCA:%.+]] = alloca { i64, i32 }, align 8
+        // CHECK: [[LOAD:%.+]] = load { i64, i32 }, ptr [[ALLOCA]], align 8
+        // CHECK: call void @foo({ i64, i32 } [[LOAD]])
         foo(s);
     }
 }

@@ -251,9 +251,9 @@ pub struct Uniform {
     /// The total size of the argument, which can be:
     /// * equal to `unit.size` (one scalar/vector),
     /// * a multiple of `unit.size` (an array of scalar/vectors),
-    /// * if `unit.kind` is `Integer`, the last element
-    ///   can be shorter, i.e., `{ i64, i64, i32 }` for
-    ///   64-bit integers with a total size of 20 bytes.
+    /// * if `unit.kind` is `Integer`, the last element can be shorter, i.e., `{ i64, i64, i32 }`
+    ///   for 64-bit integers with a total size of 20 bytes. When the argument is actually passed,
+    ///   this size will be rounded up to the nearest multiple of `unit.size`.
     pub total: Size,
 }
 
@@ -319,14 +319,17 @@ impl CastTarget {
     }
 
     pub fn size<C: HasDataLayout>(&self, _cx: &C) -> Size {
-        let mut size = self.rest.total;
-        for i in 0..self.prefix.iter().count() {
-            match self.prefix[i] {
-                Some(v) => size += v.size,
-                None => {}
-            }
-        }
-        return size;
+        // Prefix arguments are passed in specific designated registers
+        let prefix_size = self
+            .prefix
+            .iter()
+            .filter_map(|x| x.map(|reg| reg.size))
+            .fold(Size::ZERO, |acc, size| acc + size);
+        // Remaining arguments are passed in chunks of the unit size
+        let rest_size =
+            self.rest.unit.size * self.rest.total.bytes().div_ceil(self.rest.unit.size.bytes());
+
+        prefix_size + rest_size
     }
 
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
