@@ -247,7 +247,7 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 ///         // cast the Rc<Task> into a `LocalWaker`
 ///         let local_waker: LocalWaker = task.clone().into();
 ///         // Build the context using `ContextBuilder`
-///         let mut cx = ContextBuilder::from_waker(Waker::noop())
+///         let mut cx = ContextBuilder::from_waker(Waker::NOOP)
 ///             .local_waker(&local_waker)
 ///             .build();
 ///

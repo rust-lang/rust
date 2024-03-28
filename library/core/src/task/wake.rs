@@ -284,7 +284,7 @@ impl fmt::Debug for Context<'_> {
 /// use std::future::Future;
 ///
 /// let local_waker = LocalWaker::noop();
-/// let waker = Waker::noop();
+/// let waker = Waker::NOOP;
 ///
 /// let mut cx = ContextBuilder::from_waker(&waker)
 ///     .local_waker(&local_waker)
@@ -465,7 +465,7 @@ impl Waker {
         Waker { waker }
     }
 
-    /// Returns a reference to a `Waker` that does nothing when used.
+    /// A reference to a `Waker` that does nothing when used.
     ///
     /// This is mostly useful for writing tests that need a [`Context`] to poll
     /// some futures, but are not expecting those futures to wake the waker or
@@ -481,18 +481,13 @@ impl Waker {
     /// use std::future::Future;
     /// use std::task;
     ///
-    /// let mut cx = task::Context::from_waker(task::Waker::noop());
+    /// let mut cx = task::Context::from_waker(task::Waker::NOOP);
     ///
     /// let mut future = Box::pin(async { 10 });
     /// assert_eq!(future.as_mut().poll(&mut cx), task::Poll::Ready(10));
     /// ```
-    #[inline]
-    #[must_use]
     #[unstable(feature = "noop_waker", issue = "98286")]
-    pub const fn noop() -> &'static Waker {
-        const WAKER: &Waker = &Waker { waker: RawWaker::NOOP };
-        WAKER
-    }
+    pub const NOOP: &'static Waker = &Waker { waker: RawWaker::NOOP };
 
     /// Get a reference to the underlying [`RawWaker`].
     #[inline]
@@ -697,7 +692,7 @@ impl LocalWaker {
     /// use std::future::Future;
     /// use std::task::{ContextBuilder, LocalWaker, Waker, Poll};
     ///
-    /// let mut cx = ContextBuilder::from_waker(Waker::noop())
+    /// let mut cx = ContextBuilder::from_waker(Waker::NOOP)
     ///     .local_waker(LocalWaker::noop())
     ///     .build();
     ///

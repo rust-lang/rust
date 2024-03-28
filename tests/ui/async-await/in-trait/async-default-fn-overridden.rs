@@ -40,7 +40,7 @@ fn main() {
     let mut fut = pin!(async_main());
 
     // Poll loop, just to test the future...
-    let ctx = &mut Context::from_waker(Waker::noop());
+    let ctx = &mut Context::from_waker(Waker::NOOP);
 
     loop {
         match fut.as_mut().poll(ctx) {
