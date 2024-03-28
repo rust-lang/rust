@@ -1,5 +1,5 @@
-- // MIR for `otherwise_t2` before UninhabitedEnumBranching
-+ // MIR for `otherwise_t2` after UninhabitedEnumBranching
+- // MIR for `otherwise_t2` before UnreachableEnumBranching
++ // MIR for `otherwise_t2` after UnreachableEnumBranching
   
   fn otherwise_t2() -> () {
       let mut _0: ();

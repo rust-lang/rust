@@ -44,7 +44,7 @@ pub enum SimplifyCfg {
     PreOptimizations,
     Final,
     MakeShim,
-    AfterUninhabitedEnumBranching,
+    AfterUnreachableEnumBranching,
 }
 
 impl SimplifyCfg {
@@ -57,8 +57,8 @@ impl SimplifyCfg {
             SimplifyCfg::PreOptimizations => "SimplifyCfg-pre-optimizations",
             SimplifyCfg::Final => "SimplifyCfg-final",
             SimplifyCfg::MakeShim => "SimplifyCfg-make_shim",
-            SimplifyCfg::AfterUninhabitedEnumBranching => {
-                "SimplifyCfg-after-uninhabited-enum-branching"
+            SimplifyCfg::AfterUnreachableEnumBranching => {
+                "SimplifyCfg-after-unreachable-enum-branching"
             }
         }
     }

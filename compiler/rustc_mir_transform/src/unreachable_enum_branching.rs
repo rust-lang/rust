@@ -1,4 +1,4 @@
-//! A pass that eliminates branches on uninhabited enum variants.
+//! A pass that eliminates branches on uninhabited or unreachable enum variants.
 
 use crate::MirPass;
 use rustc_data_structures::fx::FxHashSet;
@@ -11,7 +11,7 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::{Abi, Variants};
 
-pub struct UninhabitedEnumBranching;
+pub struct UnreachableEnumBranching;
 
 fn get_discriminant_local(terminator: &TerminatorKind<'_>) -> Option<Local> {
     if let TerminatorKind::SwitchInt { discr: Operand::Move(p), .. } = terminator {
@@ -71,13 +71,13 @@ fn variant_discriminants<'tcx>(
     }
 }
 
-impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
+impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        trace!("UninhabitedEnumBranching starting for {:?}", body.source);
+        trace!("UnreachableEnumBranching starting for {:?}", body.source);
 
         let mut unreachable_targets = Vec::new();
         let mut patch = MirPatch::new(body);
@@ -96,8 +96,10 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
             );
 
             let mut allowed_variants = if let Ok(layout) = layout {
+                // Find allowed variants based on uninhabited.
                 variant_discriminants(&layout, discriminant_ty, tcx)
             } else if let Some(variant_range) = discriminant_ty.variant_range(tcx) {
+                // If there are some generics, we can still get the allowed variants.
                 variant_range
                     .map(|variant| {
                         discriminant_ty.discriminant_for_variant(tcx, variant).unwrap().val
@@ -121,9 +123,26 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
             }
             let otherwise_is_empty_unreachable =
                 body.basic_blocks[targets.otherwise()].is_empty_unreachable();
-            // After resolving https://github.com/llvm/llvm-project/issues/78578,
-            // we can remove the limit on the number of successors.
             fn check_successors(basic_blocks: &BasicBlocks<'_>, bb: BasicBlock) -> bool {
+                // After resolving https://github.com/llvm/llvm-project/issues/78578,
+                // We can remove this check.
+                // The main issue here is that `early-tailduplication` causes compile time overhead
+                // and potential performance problems.
+                // Simply put, when encounter a switch (indirect branch) statement,
+                // `early-tailduplication` tries to duplicate the switch branch statement with BB
+                // into (each) predecessors. This makes CFG very complex.
+                // We can understand it as it transforms the following code
+                // ```rust
+                // match a { ... many cases };
+                // match b { ... many cases };
+                // ```
+                // into
+                // ```rust
+                // match a { ... many match b { goto BB cases } }
+                // ... BB cases
+                // ```
+                // Abandon this transformation when it is possible (the best effort)
+                // to encounter the problem.
                 let mut successors = basic_blocks[bb].terminator().successors();
                 let Some(first_successor) = successors.next() else { return true };
                 if successors.next().is_some() {
@@ -136,11 +155,32 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
                 };
                 true
             }
+            // If and only if there is a variant that does not have a branch set,
+            // change the current of otherwise as the variant branch and set otherwise to unreachable.
+            // It transforms following code
+            // ```rust
+            // match c {
+            //     Ordering::Less => 1,
+            //     Ordering::Equal => 2,
+            //     _ => 3,
+            // }
+            // ```
+            // to
+            // ```rust
+            // match c {
+            //     Ordering::Less => 1,
+            //     Ordering::Equal => 2,
+            //     Ordering::Greater => 3,
+            // }
+            // ```
             let otherwise_is_last_variant = !otherwise_is_empty_unreachable
                 && allowed_variants.len() == 1
-                && check_successors(&body.basic_blocks, targets.otherwise());
+                // Despite the LLVM issue, we hope that small enum can still be transformed.
+                // This is valuable for both `a <= b` and `if let Some/Ok(v)`.
+                && (targets.all_targets().len() <= 3
+                    || check_successors(&body.basic_blocks, targets.otherwise()));
             let replace_otherwise_to_unreachable = otherwise_is_last_variant
-                || !otherwise_is_empty_unreachable && allowed_variants.is_empty();
+                || (!otherwise_is_empty_unreachable && allowed_variants.is_empty());
 
             if unreachable_targets.is_empty() && !replace_otherwise_to_unreachable {
                 continue;
@@ -150,6 +190,7 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
             let mut targets = targets.clone();
             if replace_otherwise_to_unreachable {
                 if otherwise_is_last_variant {
+                    // We have checked that `allowed_variants` has only one element.
                     #[allow(rustc::potential_query_instability)]
                     let last_variant = *allowed_variants.iter().next().unwrap();
                     targets.add_target(last_variant, targets.otherwise());

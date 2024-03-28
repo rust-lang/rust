@@ -1,7 +1,7 @@
-- // MIR for `otherwise_t5_uninhabited_default` before UninhabitedEnumBranching
-+ // MIR for `otherwise_t5_uninhabited_default` after UninhabitedEnumBranching
+- // MIR for `otherwise_t5_unreachable_default` before UnreachableEnumBranching
++ // MIR for `otherwise_t5_unreachable_default` after UnreachableEnumBranching
   
-  fn otherwise_t5_uninhabited_default() -> () {
+  fn otherwise_t5_unreachable_default() -> () {
       let mut _0: ();
       let _1: &str;
       let mut _2: Test5<T>;
@@ -16,7 +16,7 @@
           _2 = Test5::<T>::C;
           _3 = discriminant(_2);
 -         switchInt(move _3) -> [255: bb2, 0: bb3, 5: bb4, otherwise: bb1];
-+         switchInt(move _3) -> [255: bb2, 0: bb3, 5: bb4, 3: bb1, otherwise: bb8];
++         switchInt(move _3) -> [255: bb2, 0: bb3, 5: bb4, 3: bb1, otherwise: bb7];
       }
   
       bb1: {
@@ -49,7 +49,7 @@
       }
   
       bb5: {
-          drop(_2) -> [return: bb6, unwind: bb7];
+          drop(_2) -> [return: bb6, unwind unreachable];
       }
   
       bb6: {
@@ -57,13 +57,9 @@
           StorageDead(_1);
           _0 = const ();
           return;
-      }
-  
-      bb7 (cleanup): {
-          resume;
 +     }
 + 
-+     bb8: {
++     bb7: {
 +         unreachable;
       }
   }

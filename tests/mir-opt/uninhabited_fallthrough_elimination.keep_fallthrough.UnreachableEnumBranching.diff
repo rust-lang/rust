@@ -1,15 +1,15 @@
-- // MIR for `eliminate_fallthrough` before UninhabitedEnumBranching
-+ // MIR for `eliminate_fallthrough` after UninhabitedEnumBranching
+- // MIR for `keep_fallthrough` before UnreachableEnumBranching
++ // MIR for `keep_fallthrough` after UnreachableEnumBranching
   
-  fn eliminate_fallthrough(_1: S) -> u32 {
+  fn keep_fallthrough(_1: S) -> u32 {
       debug s => _1;
       let mut _0: u32;
       let mut _2: isize;
   
       bb0: {
           _2 = discriminant(_1);
--         switchInt(move _2) -> [1: bb3, 2: bb2, otherwise: bb1];
-+         switchInt(move _2) -> [1: bb3, 2: bb2, otherwise: bb5];
+-         switchInt(move _2) -> [0: bb2, 1: bb3, otherwise: bb1];
++         switchInt(move _2) -> [0: bb5, 1: bb3, 2: bb1, otherwise: bb5];
       }
   
       bb1: {
