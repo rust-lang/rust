@@ -1,4 +1,6 @@
-// FIXME: description
+// Normally we do not allow equal lifetimes in opaque type generic args at
+// their defining sites. An exception to this rule, however, is when the bounds
+// of the opaque type *require* the lifetimes to be equal.
 // issue: #113916
 //@ check-pass
 
