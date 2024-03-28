@@ -23,7 +23,8 @@
 #![allow(internal_features)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
-#![allow(elided_lifetimes_in_paths)]
+#![cfg_attr(bootstrap, allow(elided_lifetimes_in_paths))]
+#![cfg_attr(not(bootstrap), allow(lifetimes_hidden_in_paths))]
 
 mod data {
     include!("data/mod.rs");
