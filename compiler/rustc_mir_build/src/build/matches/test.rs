@@ -650,12 +650,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            // FIXME(#29623): return `Some(1)` when the values are different.
-            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val })
-                if test_val == case_val =>
-            {
-                fully_matched = true;
-                Some(TestBranch::Success)
+            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val }) => {
+                if test_val == case_val {
+                    fully_matched = true;
+                    Some(TestBranch::Success)
+                } else {
+                    fully_matched = false;
+                    Some(TestBranch::Failure)
+                }
             }
 
             (
