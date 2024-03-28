@@ -18,6 +18,7 @@ mod intersperse;
 mod map;
 mod map_while;
 mod map_windows;
+mod peek_map;
 mod peekable;
 mod rev;
 mod scan;
@@ -31,8 +32,9 @@ mod zip;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{
     chain::Chain, cycle::Cycle, enumerate::Enumerate, filter::Filter, filter_map::FilterMap,
-    flatten::FlatMap, fuse::Fuse, inspect::Inspect, map::Map, peekable::Peekable, rev::Rev,
-    scan::Scan, skip::Skip, skip_while::SkipWhile, take::Take, take_while::TakeWhile, zip::Zip,
+    flatten::FlatMap, fuse::Fuse, inspect::Inspect, map::Map, peek_map::PeekMap,
+    peekable::Peekable, rev::Rev, scan::Scan, skip::Skip, skip_while::SkipWhile, take::Take,
+    take_while::TakeWhile, zip::Zip,
 };
 
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
