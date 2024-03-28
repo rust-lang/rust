@@ -262,6 +262,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn expr_field(&self, span: Span, expr: P<Expr>, field: Ident) -> P<ast::Expr> {
+        debug_assert_ne!(field.name, kw::Underscore);
         self.expr(span, ast::ExprKind::Field(expr, field))
     }
 
@@ -325,6 +326,9 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             is_placeholder: false,
         }
+    }
+    pub fn expr_err(&self, span: Span) -> P<ast::Expr> {
+        self.expr(span, ast::ExprKind::Err)
     }
     pub fn expr_struct(
         &self,

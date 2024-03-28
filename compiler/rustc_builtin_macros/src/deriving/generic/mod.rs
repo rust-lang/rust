@@ -481,6 +481,26 @@ impl<'a> TraitDef<'a> {
                     false
                 });
 
+                if let ast::ItemKind::Struct(struct_def, _) | ast::ItemKind::Union(struct_def, _) =
+                    &item.kind
+                    && let Some(&trait_name) = self.path.components().last()
+                    && !(trait_name == sym::Copy || trait_name == sym::Clone)
+                {
+                    let unnamed = struct_def
+                        .fields()
+                        .iter()
+                        .filter(|f| f.ident.is_some_and(|i| i.name == kw::Underscore))
+                        .map(|f| f.span)
+                        .collect::<Vec<_>>();
+                    if !unnamed.is_empty() {
+                        cx.dcx().emit_err(errors::UnnamedFieldDerive {
+                            span: self.span,
+                            fields: unnamed,
+                        });
+                        return;
+                    }
+                };
+
                 let newitem = match &item.kind {
                     ast::ItemKind::Struct(struct_def, generics) => self.expand_struct_def(
                         cx,
@@ -1583,14 +1603,12 @@ impl<'a> TraitDef<'a> {
                     // `unwrap_or_else` case otherwise the hygiene is wrong and we get
                     // "field `0` of struct `Point` is private" errors on tuple
                     // structs.
-                    let mut field_expr = cx.expr(
+                    let mut field_expr = cx.expr_field(
                         sp,
-                        ast::ExprKind::Field(
-                            selflike_arg.clone(),
-                            struct_field.ident.unwrap_or_else(|| {
-                                Ident::from_str_and_span(&i.to_string(), struct_field.span)
-                            }),
-                        ),
+                        selflike_arg.clone(),
+                        struct_field.ident.unwrap_or_else(|| {
+                            Ident::from_str_and_span(&i.to_string(), struct_field.span)
+                        }),
                     );
                     if is_packed {
                         // In general, fields in packed structs are copied via a
