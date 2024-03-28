@@ -103,6 +103,10 @@ impl Span {
         ctxt: SyntaxContext,
         parent: Option<LocalDefId>,
     ) -> Self {
+        if cfg!(debug_assertions) {
+            assert!(hi > lo, "low end of span is after high");
+        }
+
         if lo > hi {
             std::mem::swap(&mut lo, &mut hi);
         }
