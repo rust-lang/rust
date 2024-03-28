@@ -15,10 +15,8 @@ pub fn opts() -> TargetOptions {
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
 
-        // Currently this is the only supported method of debuginfo on MSVC
-        // where `*.pdb` files show up next to the final artifact.
         split_debuginfo: SplitDebuginfo::Packed,
-        supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Packed]),
+        supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Packed, SplitDebuginfo::Off]),
         debuginfo_kind: DebuginfoKind::Pdb,
 
         ..Default::default()

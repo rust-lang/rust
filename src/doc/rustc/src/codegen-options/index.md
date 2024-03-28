@@ -521,8 +521,9 @@ platforms. Possible values are:
 * `off` - This is the default for platforms with ELF binaries and windows-gnu
   (not Windows MSVC and not macOS). This typically means that DWARF debug
   information can be found in the final artifact in sections of the executable.
-  This option is not supported on Windows MSVC. On macOS this options prevents
-  the final execution of `dsymutil` to generate debuginfo.
+  On Windows MSVC this option has the same effect as `packed`, unless strip is
+  enabled. On macOS this option prevents the final execution of `dsymutil` to
+  generate debuginfo.
 
 * `packed` - This is the default for Windows MSVC and macOS. The term
   "packed" here means that all the debug information is packed into a separate
@@ -536,10 +537,9 @@ platforms. Possible values are:
   debug information. On other Unix platforms this means that `*.dwo` files will
   contain debug information.
 
-Note that all three options are supported on Linux and Apple platforms,
-`packed` is supported on Windows-MSVC, and all other platforms support `off`.
-Attempting to use an unsupported option requires using the nightly channel
-with the `-Z unstable-options` flag.
+Note that all three options are supported on Linux and Apple platforms, and all
+other platforms support `off`. Attempting to use an unsupported option requires
+using the nightly channel with the `-Z unstable-options` flag.
 
 ## strip
 
@@ -549,13 +549,15 @@ data from binaries during linking.
 Supported values for this option are:
 
 - `none` - debuginfo and symbols (if they exist) are copied to the produced
-  binary or separate files depending on the target (e.g. `.pdb` files in case
-  of MSVC).
+  binary.
 - `debuginfo` - debuginfo sections and debuginfo symbols from the symbol table
-  section are stripped at link time and are not copied to the produced binary
-  or separate files.
+  section are stripped at link time and are not copied to the produced binary.
 - `symbols` - same as `debuginfo`, but the rest of the symbol table section is
   stripped as well if the linker supports it.
+
+Note that on MSVC, this option prevents the `*.pdb` file from being created
+only if `-C split-debuginfo=off`. Prior to 1.76, this option was not affected
+by the value of `-C split-debuginfo`.
 
 ## symbol-mangling-version
 
