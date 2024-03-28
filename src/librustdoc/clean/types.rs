@@ -38,7 +38,7 @@ use rustc_target::spec::abi::Abi;
 use crate::clean::cfg::Cfg;
 use crate::clean::clean_middle_path;
 use crate::clean::inline::{self, print_inlined_const};
-use crate::clean::utils::{is_literal_expr, print_evaluated_const};
+use crate::clean::utils::{inherits_doc_hidden, is_literal_expr, print_evaluated_const};
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -2510,6 +2510,15 @@ impl Import {
     pub(crate) fn imported_item_is_doc_hidden(&self, tcx: TyCtxt<'_>) -> bool {
         self.source.did.is_some_and(|did| tcx.is_doc_hidden(did))
     }
+
+    pub(crate) fn inherits_doc_hidden(&self, tcx: TyCtxt<'_>) -> bool {
+        self.imported_item_is_doc_hidden(tcx)
+            || self
+                .source
+                .did
+                .and_then(|did| did.as_local())
+                .map_or(false, |did| inherits_doc_hidden(tcx, did, None))
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -2518,6 +2527,12 @@ pub(crate) enum ImportKind {
     Simple(Symbol),
     // use source::*;
     Glob,
+}
+
+impl ImportKind {
+    pub fn is_glob(&self) -> bool {
+        matches!(self, Self::Glob)
+    }
 }
 
 #[derive(Clone, Debug)]
