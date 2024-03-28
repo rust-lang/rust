@@ -328,7 +328,7 @@ pub fn suggest_constraining_type_params<'a>(
         //          --
         //          |
         //          replace with: `T: Bar +`
-        if let Some(span) = generics.bounds_span_for_suggestions(param.def_id) {
+        if let Some((span, _)) = generics.bounds_span_for_suggestions(param.def_id) {
             suggest_restrict(span, true);
             continue;
         }

@@ -644,13 +644,53 @@ impl<'hir> Generics<'hir> {
         })
     }
 
-    pub fn bounds_span_for_suggestions(&self, param_def_id: LocalDefId) -> Option<Span> {
+    /// Returns bounds span for suggestions.
+    /// If the span including lifetime bound needs parentheses, it returns a span to the open parenthese at the second item.
+    /// e.g. `dyn Future<Output = ()> + 'static` needs parentheses `(dyn Future<Output = ()>) + 'static`
+    pub fn bounds_span_for_suggestions(
+        &self,
+        param_def_id: LocalDefId,
+    ) -> Option<(Span, Option<Span>)> {
+        fn get_inner_ty<'a, 'b>(bound: &'a GenericBound<'b>) -> Option<&'a Ty<'b>> {
+            match bound {
+                GenericBound::Trait(data, _) => {
+                    let segment = data.trait_ref.path.segments.first()?;
+                    let binding = segment.args().bindings.first()?;
+                    if let TypeBindingKind::Equality { term: Term::Ty(ty) } = binding.kind {
+                        Some(ty)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }
+        }
+
         self.bounds_for_param(param_def_id).flat_map(|bp| bp.bounds.iter().rev()).find_map(
             |bound| {
-                // We include bounds that come from a `#[derive(_)]` but point at the user's code,
-                // as we use this method to get a span appropriate for suggestions.
-                let bs = bound.span();
-                bs.can_be_used_for_suggestions().then(|| bs.shrink_to_hi())
+                let span_for_parentheses = get_inner_ty(bound).and_then(|ty| {
+                    if let TyKind::TraitObject(
+                        _,
+                        _,
+                        TraitObjectSyntax::Dyn | TraitObjectSyntax::DynStar,
+                    ) = ty.kind
+                    {
+                        let span = ty.span;
+                        span.can_be_used_for_suggestions().then(|| span)
+                    } else {
+                        None
+                    }
+                });
+
+                span_for_parentheses.map_or_else(
+                    || {
+                        // We include bounds that come from a `#[derive(_)]` but point at the user's code,
+                        // as we use this method to get a span appropriate for suggestions.
+                        let bs = bound.span();
+                        bs.can_be_used_for_suggestions().then(|| (bs.shrink_to_hi(), None))
+                    },
+                    |span| Some((span.shrink_to_hi(), Some(span.shrink_to_lo()))),
+                )
             },
         )
     }

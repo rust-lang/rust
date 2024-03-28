@@ -3278,14 +3278,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 param.name.ident(),
                             ));
                             let bounds_span = hir_generics.bounds_span_for_suggestions(def_id);
-                            if rcvr_ty.is_ref() && param.is_impl_trait() && bounds_span.is_some() {
+                            if rcvr_ty.is_ref()
+                                && param.is_impl_trait()
+                                && let Some((bounds_span, _)) = bounds_span
+                            {
                                 err.multipart_suggestions(
                                     msg,
                                     candidates.iter().map(|t| {
                                         vec![
                                             (param.span.shrink_to_lo(), "(".to_string()),
                                             (
-                                                bounds_span.unwrap(),
+                                                bounds_span,
                                                 format!(" + {})", self.tcx.def_path_str(t.def_id)),
                                             ),
                                         ]
@@ -3295,7 +3298,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 return;
                             }
 
-                            let (sp, introducer) = if let Some(span) = bounds_span {
+                            let (sp, introducer) = if let Some((span, _)) = bounds_span {
                                 (span, Introducer::Plus)
                             } else if let Some(colon_span) = param.colon_span {
                                 (colon_span.shrink_to_hi(), Introducer::Nothing)
