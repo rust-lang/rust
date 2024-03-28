@@ -1,6 +1,6 @@
 //@ignore-target-windows: No libc on Windows
 
-#![feature(pointer_is_aligned)]
+#![feature(pointer_is_aligned_to)]
 #![feature(strict_provenance)]
 
 use core::ptr;
