@@ -32,6 +32,13 @@ pub struct Instance<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(TyEncodable, TyDecodable, HashStable)]
+pub enum ReifyReason {
+    FnPtr,
+    Vtable,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub enum InstanceDef<'tcx> {
     /// A user-defined callable item.
@@ -67,7 +74,13 @@ pub enum InstanceDef<'tcx> {
     /// Because this is a required part of the function's ABI but can't be tracked
     /// as a property of the function pointer, we use a single "caller location"
     /// (the definition of the function itself).
-    ReifyShim(DefId),
+    ///
+    /// The second field encodes *why* this shim was created. This allows distinguishing between
+    /// a `ReifyShim` that appears in a vtable vs one that appears as a function pointer.
+    ///
+    /// This field will only be populated if we are compiling in a mode that needs these shims
+    /// to be separable, currently only when KCFI is enabled.
+    ReifyShim(DefId, Option<ReifyReason>),
 
     /// `<fn() as FnTrait>::call_*` (generated `FnTrait` implementation for `fn()` pointers).
     ///
@@ -194,7 +207,7 @@ impl<'tcx> InstanceDef<'tcx> {
         match self {
             InstanceDef::Item(def_id)
             | InstanceDef::VTableShim(def_id)
-            | InstanceDef::ReifyShim(def_id)
+            | InstanceDef::ReifyShim(def_id, _)
             | InstanceDef::FnPtrShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
             | InstanceDef::Intrinsic(def_id)
@@ -354,7 +367,9 @@ fn fmt_instance(
     match instance.def {
         InstanceDef::Item(_) => Ok(()),
         InstanceDef::VTableShim(_) => write!(f, " - shim(vtable)"),
-        InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
+        InstanceDef::ReifyShim(_, None) => write!(f, " - shim(reify)"),
+        InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr)) => write!(f, " - shim(reify-fnptr)"),
+        InstanceDef::ReifyShim(_, Some(ReifyReason::Vtable)) => write!(f, " - shim(reify-vtable)"),
         InstanceDef::ThreadLocalShim(_) => write!(f, " - shim(tls)"),
         InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
         InstanceDef::Virtual(_, num) => write!(f, " - virtual#{num}"),
@@ -476,15 +491,24 @@ impl<'tcx> Instance<'tcx> {
         debug!("resolve(def_id={:?}, args={:?})", def_id, args);
         // Use either `resolve_closure` or `resolve_for_vtable`
         assert!(!tcx.is_closure_like(def_id), "Called `resolve_for_fn_ptr` on closure: {def_id:?}");
+        let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::FnPtr);
         Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceDef::Item(def) if resolved.def.requires_caller_location(tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
-                    resolved.def = InstanceDef::ReifyShim(def);
+                    resolved.def = InstanceDef::ReifyShim(def, reason);
                 }
                 InstanceDef::Virtual(def_id, _) => {
                     debug!(" => fn pointer created for virtual call");
-                    resolved.def = InstanceDef::ReifyShim(def_id);
+                    resolved.def = InstanceDef::ReifyShim(def_id, reason);
+                }
+                // FIXME(maurer) only shim it if it is a vtable-safe function
+                _ if tcx.sess.is_sanitizer_kcfi_enabled()
+                    && tcx.associated_item(def_id).trait_item_def_id.is_some() =>
+                {
+                    // If this function could also go in a vtable, we need to `ReifyShim` it with
+                    // KCFI because it can only attach one type per function.
+                    resolved.def = InstanceDef::ReifyShim(resolved.def_id(), reason)
                 }
                 _ => {}
             }
@@ -508,6 +532,7 @@ impl<'tcx> Instance<'tcx> {
             debug!(" => associated item with unsizeable self: Self");
             Some(Instance { def: InstanceDef::VTableShim(def_id), args })
         } else {
+            let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::Vtable);
             Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
                 match resolved.def {
                     InstanceDef::Item(def) => {
@@ -544,18 +569,18 @@ impl<'tcx> Instance<'tcx> {
                                 // Create a shim for the `FnOnce/FnMut/Fn` method we are calling
                                 // - unlike functions, invoking a closure always goes through a
                                 // trait.
-                                resolved = Instance { def: InstanceDef::ReifyShim(def_id), args };
+                                resolved = Instance { def: InstanceDef::ReifyShim(def_id, reason), args };
                             } else {
                                 debug!(
                                     " => vtable fn pointer created for function with #[track_caller]: {:?}", def
                                 );
-                                resolved.def = InstanceDef::ReifyShim(def);
+                                resolved.def = InstanceDef::ReifyShim(def, reason);
                             }
                         }
                     }
                     InstanceDef::Virtual(def_id, _) => {
                         debug!(" => vtable fn pointer created for virtual call");
-                        resolved.def = InstanceDef::ReifyShim(def_id);
+                        resolved.def = InstanceDef::ReifyShim(def_id, reason)
                     }
                     _ => {}
                 }

@@ -1144,7 +1144,8 @@ pub fn typeid_for_instance<'tcx>(
         instance.args = strip_receiver_auto(tcx, instance.args);
     }
 
-    if let Some(impl_id) = tcx.impl_of_method(instance.def_id())
+    if !options.contains(EncodeTyOptions::NO_SELF_TYPE_ERASURE)
+        && let Some(impl_id) = tcx.impl_of_method(instance.def_id())
         && let Some(trait_ref) = tcx.impl_trait_ref(impl_id)
     {
         let impl_method = tcx.associated_item(instance.def_id());
