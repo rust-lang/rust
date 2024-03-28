@@ -11,7 +11,7 @@ use std::fmt::Debug;
 use std::hint;
 use std::iter::InPlaceIterable;
 use std::mem;
-use std::mem::{size_of, swap};
+use std::mem::swap;
 use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
