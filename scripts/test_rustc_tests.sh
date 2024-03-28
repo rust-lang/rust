@@ -145,6 +145,19 @@ index ea06b620c4c..b969d0009c6 100644
  ifdef RUSTC_LINKER
  RUSTC := \$(RUSTC) -Clinker='\$(RUSTC_LINKER)'
  RUSTDOC := \$(RUSTDOC) -Clinker='\$(RUSTC_LINKER)'
+diff --git a/src/tools/run-make-support/src/rustdoc.rs b/src/tools/run-make-support/src/rustdoc.rs
+index 9607ff02f96..b7d97caf9a2 100644
+--- a/src/tools/run-make-support/src/rustdoc.rs
++++ b/src/tools/run-make-support/src/rustdoc.rs
+@@ -34,8 +34,6 @@ pub fn bare() -> Self {
+     /// Construct a \`rustdoc\` invocation with \`-L \$(TARGET_RPATH_DIR)\` set.
+     pub fn new() -> Self {
+         let mut cmd = setup_common();
+-        let target_rpath_dir = env::var_os("TARGET_RPATH_DIR").unwrap();
+-        cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
+         Self { cmd }
+     }
+
 EOF
 
 echo "[TEST] rustc test suite"
