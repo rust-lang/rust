@@ -57,9 +57,8 @@ impl<T: Write> OutputLocation<T> {
         self.flush()
     }
 
-    pub fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
-        let s = s.as_ref();
-        self.write_all(s.as_bytes())?;
+    pub fn write_plain(&mut self, word: &str) -> io::Result<()> {
+        self.write_all(word.as_bytes())?;
         self.flush()
     }
 }

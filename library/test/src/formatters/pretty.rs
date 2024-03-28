@@ -69,6 +69,7 @@ impl<T: Write> PrettyFormatter<T> {
     }
 
     fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
+        let s = s.as_ref();
         self.out.write_plain(s)
     }
 
