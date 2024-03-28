@@ -2084,11 +2084,29 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
         self.to_vec_in(alloc).into_boxed_slice()
     }
 
-    fn clone_from(&mut self, other: &Self) {
-        if self.len() == other.len() {
-            self.clone_from_slice(&other);
+    /// Copies `source`'s contents into `self` without creating a new allocation,
+    /// so long as the two are of the same length.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Box::new([5, 6, 7]);
+    /// let mut y = Box::new([8, 9, 10]);
+    /// let yp: *const [i32] = &*y;
+    ///
+    /// y.clone_from(&x);
+    ///
+    /// // The value is the same
+    /// assert_eq!(x, y);
+    ///
+    /// // And no allocation occurred
+    /// assert_eq!(yp, &*y);
+    /// ```
+    fn clone_from(&mut self, source: &Self) {
+        if self.len() == source.len() {
+            self.clone_from_slice(&source);
         } else {
-            *self = other.clone();
+            *self = source.clone();
         }
     }
 }

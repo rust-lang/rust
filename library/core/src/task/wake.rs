@@ -515,6 +515,42 @@ impl Clone for Waker {
         }
     }
 
+    /// Assigns a clone of `source` to `self`, unless [`self.will_wake(source)`][Waker::will_wake] anyway.
+    ///
+    /// This method is preferred over simply assigning `source.clone()` to `self`,
+    /// as it avoids cloning the waker if `self` is already the same waker.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::future::Future;
+    /// use std::pin::Pin;
+    /// use std::sync::{Arc, Mutex};
+    /// use std::task::{Context, Poll, Waker};
+    ///
+    /// struct Waiter {
+    ///     shared: Arc<Mutex<Shared>>,
+    /// }
+    ///
+    /// struct Shared {
+    ///     waker: Waker,
+    ///     // ...
+    /// }
+    ///
+    /// impl Future for Waiter {
+    ///     type Output = ();
+    ///     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+    ///         let mut shared = self.shared.lock().unwrap();
+    ///
+    ///         // update the waker
+    ///         shared.waker.clone_from(cx.waker());
+    ///
+    ///         // readiness logic ...
+    /// #       Poll::Ready(())
+    ///     }
+    /// }
+    ///
+    /// ```
     #[inline]
     fn clone_from(&mut self, source: &Self) {
         if !self.will_wake(source) {
