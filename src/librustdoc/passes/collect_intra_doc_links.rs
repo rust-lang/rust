@@ -491,6 +491,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             ty::Str => Res::Primitive(Str),
             ty::Tuple(tys) if tys.is_empty() => Res::Primitive(Unit),
             ty::Tuple(_) => Res::Primitive(Tuple),
+            ty::Pat(..) => Res::Primitive(Pat),
             ty::Array(..) => Res::Primitive(Array),
             ty::Slice(_) => Res::Primitive(Slice),
             ty::RawPtr(_, _) => Res::Primitive(RawPointer),

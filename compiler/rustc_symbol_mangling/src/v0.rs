@@ -369,6 +369,10 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 ty.print(self)?;
             }
 
+            ty::Pat(ty, _pat) => {
+                ty.print(self)?;
+            }
+
             ty::Array(ty, len) => {
                 self.push("A");
                 ty.print(self)?;

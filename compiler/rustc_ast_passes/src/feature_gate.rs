@@ -332,6 +332,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::Never => {
                 gate!(&self, never_type, ty.span, "the `!` type is experimental");
             }
+            ast::TyKind::Pat(..) => {
+                gate!(&self, pattern_types, ty.span, "pattern types are unstable");
+            }
             _ => {}
         }
         visit::walk_ty(self, ty)

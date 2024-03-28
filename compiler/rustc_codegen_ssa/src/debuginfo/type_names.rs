@@ -202,6 +202,16 @@ fn push_debuginfo_type_name<'tcx>(
                 }
             }
         }
+        ty::Pat(inner_type, pat) => {
+            if cpp_like_debuginfo {
+                output.push_str("pat$<");
+                push_debuginfo_type_name(tcx, inner_type, true, output, visited);
+                // FIXME(wg-debugging): implement CPP like printing for patterns.
+                write!(output, ",{:?}>", pat).unwrap();
+            } else {
+                write!(output, "{:?}", t).unwrap();
+            }
+        }
         ty::Slice(inner_type) => {
             if cpp_like_debuginfo {
                 output.push_str("slice2$<");
