@@ -1,0 +1,46 @@
+error[E0277]: the trait bound `Query: LendingIterator` is not satisfied
+  --> $DIR/leaked-vars-issue-122098.rs:10:31
+   |
+LL |     LendingIterator::for_each(Query, Box::new);
+   |     ------------------------- ^^^^^ the trait `LendingIterator` is not implemented for `Query`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/leaked-vars-issue-122098.rs:2:1
+   |
+LL | trait LendingIterator: Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/leaked-vars-issue-122098.rs:10:38
+   |
+LL |     LendingIterator::for_each(Query, Box::new);
+   |     -------------------------        ^^^^^^^^ expected `Box<dyn FnMut(...)>`, found fn item
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Box<(dyn for<'a> FnMut(<Query as LendingIterator>::Item<'a>) + 'static)>`
+             found fn item `fn(_) -> Box<_> {Box::<_>::new}`
+note: method defined here
+  --> $DIR/leaked-vars-issue-122098.rs:5:8
+   |
+LL |     fn for_each(self, f: Box<dyn FnMut(Self::Item<'_>)>) {}
+   |        ^^^^^^^^       ---------------------------------
+
+error[E0277]: the trait bound `Query: LendingIterator` is not satisfied
+  --> $DIR/leaked-vars-issue-122098.rs:10:38
+   |
+LL |     LendingIterator::for_each(Query, Box::new);
+   |                                      ^^^^^^^^ the trait `LendingIterator` is not implemented for `Query`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/leaked-vars-issue-122098.rs:2:1
+   |
+LL | trait LendingIterator: Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

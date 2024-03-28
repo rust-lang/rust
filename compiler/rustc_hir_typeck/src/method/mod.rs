@@ -16,6 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
+use rustc_infer::trivial_no_snapshot_leaks;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, GenericParamDefKind, Ty, TypeVisitableExt};
@@ -43,6 +44,8 @@ pub struct MethodCallee<'tcx> {
     pub sig: ty::FnSig<'tcx>,
 }
 
+// FIXME(#122188): This is wrong, as this type may leak inference vars.
+trivial_no_snapshot_leaks!('tcx, MethodError<'tcx>);
 #[derive(Debug)]
 pub enum MethodError<'tcx> {
     // Did not find an applicable method, but we did find various near-misses that may work.
@@ -79,8 +82,9 @@ pub struct NoMatchData<'tcx> {
     pub mode: probe::Mode,
 }
 
-// A pared down enum describing just the places from which a method
-// candidate can arise. Used for error reporting only.
+trivial_no_snapshot_leaks!('tcx, CandidateSource);
+/// A pared down enum describing just the places from which a method
+/// candidate can arise. Used for error reporting only.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CandidateSource {
     Impl(DefId),

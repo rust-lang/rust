@@ -36,6 +36,7 @@ use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::infer::BoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::TraitObligation;
+use rustc_infer::trivial_no_snapshot_leaks;
 use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -3078,6 +3079,7 @@ impl<'o, 'tcx> fmt::Debug for TraitObligationStack<'o, 'tcx> {
     }
 }
 
+trivial_no_snapshot_leaks!('tcx, ProjectionMatchesProjection);
 pub enum ProjectionMatchesProjection {
     Yes,
     Ambiguous,
