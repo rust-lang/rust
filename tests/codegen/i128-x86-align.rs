@@ -6,7 +6,6 @@
 // correctly.
 
 // CHECK: %ScalarPair = type { i32, [3 x i32], i128 }
-// CHECK: %Struct = type { i32, i32, [2 x i32], i128 }
 
 #![feature(core_intrinsics)]
 
@@ -43,7 +42,7 @@ pub fn store(x: &mut ScalarPair) {
 #[no_mangle]
 pub fn alloca() {
     // CHECK-LABEL: @alloca(
-    // CHECK:      [[X:%.*]] = alloca %ScalarPair, align 16
+    // CHECK:      [[X:%.*]] = alloca [32 x i8], align 16
     // CHECK:      store i32 1, ptr %x, align 16
     // CHECK-NEXT: [[GEP:%.*]] = getelementptr inbounds i8, ptr %x, i64 16
     // CHECK-NEXT: store i128 2, ptr [[GEP]], align 16
@@ -55,7 +54,7 @@ pub fn alloca() {
 pub fn load_volatile(x: &ScalarPair) -> ScalarPair {
     // CHECK-LABEL: @load_volatile(
     // CHECK-SAME: align 16 dereferenceable(32) %x
-    // CHECK:      [[TMP:%.*]] = alloca %ScalarPair, align 16
+    // CHECK:      [[TMP:%.*]] = alloca [32 x i8], align 16
     // CHECK:      [[LOAD:%.*]] = load volatile %ScalarPair, ptr %x, align 16
     // CHECK-NEXT: store %ScalarPair [[LOAD]], ptr [[TMP]], align 16
     // CHECK-NEXT: [[A:%.*]] = load i32, ptr [[TMP]], align 16
@@ -67,7 +66,7 @@ pub fn load_volatile(x: &ScalarPair) -> ScalarPair {
 #[no_mangle]
 pub fn transmute(x: ScalarPair) -> (std::mem::MaybeUninit<i128>, i128) {
     // CHECK-LABEL: define { i128, i128 } @transmute(i32 noundef %x.0, i128 noundef %x.1)
-    // CHECK:       [[TMP:%.*]] = alloca { i128, i128 }, align 16
+    // CHECK:       [[TMP:%.*]] = alloca [32 x i8], align 16
     // CHECK-NEXT:  store i32 %x.0, ptr [[TMP]], align 16
     // CHECK-NEXT:  [[GEP:%.*]] = getelementptr inbounds i8, ptr [[TMP]], i64 16
     // CHECK-NEXT:  store i128 %x.1, ptr [[GEP]], align 16
@@ -92,7 +91,7 @@ pub struct Struct {
 pub fn store_struct(x: &mut Struct) {
     // CHECK-LABEL: @store_struct(
     // CHECK-SAME: align 16 dereferenceable(32) %x
-    // CHECK:      [[TMP:%.*]] = alloca %Struct, align 16
+    // CHECK:      [[TMP:%.*]] = alloca [32 x i8], align 16
     // CHECK:      store i32 1, ptr [[TMP]], align 16
     // CHECK-NEXT: [[GEP1:%.*]] = getelementptr inbounds i8, ptr [[TMP]], i64 4
     // CHECK-NEXT: store i32 2, ptr [[GEP1]], align 4

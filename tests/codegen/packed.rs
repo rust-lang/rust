@@ -51,7 +51,7 @@ pub struct BigPacked2 {
 // CHECK-LABEL: @call_pkd1
 #[no_mangle]
 pub fn call_pkd1(f: fn() -> Array) -> BigPacked1 {
-// CHECK: [[ALLOCA:%[_a-z0-9]+]] = alloca %Array
+// CHECK: [[ALLOCA:%[_a-z0-9]+]] = alloca [32 x i8]
 // CHECK: call void %{{.*}}(ptr noalias nocapture noundef sret{{.*}} dereferenceable(32) [[ALLOCA]])
 // CHECK: call void @llvm.memcpy.{{.*}}(ptr align 1 %{{.*}}, ptr align 4 %{{.*}}, i{{[0-9]+}} 32, i1 false)
     // check that calls whose destination is a field of a packed struct
@@ -63,7 +63,7 @@ pub fn call_pkd1(f: fn() -> Array) -> BigPacked1 {
 // CHECK-LABEL: @call_pkd2
 #[no_mangle]
 pub fn call_pkd2(f: fn() -> Array) -> BigPacked2 {
-// CHECK: [[ALLOCA:%[_a-z0-9]+]] = alloca %Array
+// CHECK: [[ALLOCA:%[_a-z0-9]+]] = alloca [32 x i8]
 // CHECK: call void %{{.*}}(ptr noalias nocapture noundef sret{{.*}} dereferenceable(32) [[ALLOCA]])
 // CHECK: call void @llvm.memcpy.{{.*}}(ptr align 2 %{{.*}}, ptr align 4 %{{.*}}, i{{[0-9]+}} 32, i1 false)
     // check that calls whose destination is a field of a packed struct

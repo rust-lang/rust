@@ -14,9 +14,9 @@ pub struct ExtraSlice<'input> {
 #[no_mangle]
 pub fn extra(s: &[u8]) {
 // CHECK: void @extra(
-// CHECK: %slice.dbg.spill1 = alloca i32,
-// CHECK: %slice.dbg.spill = alloca { ptr, i64 },
-// CHECK: %s.dbg.spill = alloca { ptr, i64 },
+// CHECK: %slice.dbg.spill1 = alloca [4 x i8],
+// CHECK: %slice.dbg.spill = alloca [16 x i8],
+// CHECK: %s.dbg.spill = alloca [16 x i8],
 // CHECK: call void @llvm.dbg.declare(metadata ptr %s.dbg.spill, metadata ![[S_EXTRA:.*]], metadata !DIExpression()),
 // CHECK: call void @llvm.dbg.declare(metadata ptr %slice.dbg.spill, metadata ![[SLICE_EXTRA:.*]], metadata !DIExpression(DW_OP_LLVM_fragment, 0, 128)),
 // CHECK: call void @llvm.dbg.declare(metadata ptr %slice.dbg.spill1, metadata ![[SLICE_EXTRA]], metadata !DIExpression(DW_OP_LLVM_fragment, 128, 32)),
