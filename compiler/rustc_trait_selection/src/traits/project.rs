@@ -508,7 +508,7 @@ pub(super) fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 /// because it contains `[type error]`. Yuck! (See issue #29857 for
 /// one case where this arose.)
 fn normalize_to_error<'a, 'tcx>(
-    selcx: &mut SelectionContext<'a, 'tcx>,
+    selcx: &SelectionContext<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     projection_ty: ty::AliasTy<'tcx>,
     cause: ObligationCause<'tcx>,
