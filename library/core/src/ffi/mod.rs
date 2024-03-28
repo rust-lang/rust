@@ -609,3 +609,13 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
 }
+
+// Link the MSVC default lib
+#[cfg(all(windows, target_env = "msvc"))]
+#[link(
+    name = "/defaultlib:msvcrt",
+    modifiers = "+verbatim",
+    cfg(not(target_feature = "crt-static"))
+)]
+#[link(name = "/defaultlib:libcmt", modifiers = "+verbatim", cfg(target_feature = "crt-static"))]
+extern "C" {}

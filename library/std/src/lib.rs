@@ -427,6 +427,7 @@ extern crate test;
 #[macro_use]
 extern crate alloc as alloc_crate;
 #[doc(masked)]
+#[cfg(not(all(windows, target_env = "msvc")))]
 #[allow(unused_extern_crates)]
 extern crate libc;
 
