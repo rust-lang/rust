@@ -475,6 +475,7 @@ impl<'a> TestRunner<'a> {
         cmd.arg("-Zunstable-options");
         cmd.arg("--check-cfg=cfg(no_unstable_features)");
         cmd.arg("--check-cfg=cfg(jit)");
+        cmd.arg("--emit=metadata,link");
         cmd.args(args);
         cmd
     }
