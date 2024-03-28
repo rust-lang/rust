@@ -121,6 +121,24 @@ unsafe fn configure_llvm(sess: &Session) {
         for arg in sess_args {
             add(&(*arg), true);
         }
+
+        if let Some(threshold) = sess.opts.unstable_opts.small_data_threshold {
+            // Set up the small-data optimization limit for architectures that use
+            // an LLVM argument to control this.
+            match sess.target.arch.as_ref() {
+                "hexagon" => add(&format!("--hexagon-small-data-threshold={threshold}"), false),
+                // m68k accepts the --m68k-ssection-threshold argument but then
+                // ignores it, so this currently has no effect on m68k
+                "m68k" => add(&format!("--m68k-ssection-threshold={threshold}"), false),
+                // There's currently no rustc support for the Lanai architecture, so this is untested
+                "lanai" => add(&format!("--lanai-ssection-threshold={threshold}"), false),
+                arch @ _ => {
+                    if arch.starts_with("mips") {
+                        add(&format!("--mips-ssection-threshold={threshold}"), false);
+                    }
+                }
+            }
+        }
     }
 
     if sess.opts.unstable_opts.llvm_time_trace {

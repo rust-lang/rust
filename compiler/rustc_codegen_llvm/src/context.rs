@@ -308,6 +308,19 @@ pub unsafe fn create_module<'ll>(
         )
     }
 
+    if let Some(threshold) = sess.opts.unstable_opts.small_data_threshold {
+        // Set up the small-data optimization limit for architectures that use
+        // an LLVM module flag to control this.
+        if sess.target.arch.starts_with("riscv") {
+            llvm::LLVMRustAddModuleFlag(
+                llmod,
+                llvm::LLVMModFlagBehavior::Error,
+                "SmallDataLimit\0".as_ptr().cast(),
+                threshold as u32,
+            )
+        }
+    }
+
     // Insert `llvm.ident` metadata.
     //
     // On the wasm targets it will get hooked up to the "producer" sections
