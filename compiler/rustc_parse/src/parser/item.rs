@@ -2768,6 +2768,33 @@ impl<'a> Parser<'a> {
             };
             Ok((eself, eself_ident, eself_hi))
         };
+        let expect_self_ident_not_typed =
+            |this: &mut Self, modifier: &SelfKind, modifier_span: Span| {
+                let eself_ident = expect_self_ident(this);
+
+                // Recover `: Type` after a qualified self
+                if this.may_recover() && this.check_noexpect(&token::Colon) {
+                    this.bump();
+                    let snap = this.create_snapshot_for_diagnostic();
+                    match this.parse_ty() {
+                        Ok(ty) => {
+                            this.dcx().emit_err(errors::IncorrectTypeOnSelf {
+                                span: ty.span,
+                                move_self_modifier: errors::MoveSelfModifier {
+                                    removal_span: modifier_span,
+                                    insertion_span: ty.span.shrink_to_lo(),
+                                    modifier: modifier.as_suggestion(),
+                                },
+                            });
+                        }
+                        Err(diag) => {
+                            diag.cancel();
+                            this.restore_snapshot(snap);
+                        }
+                    }
+                }
+                eself_ident
+            };
         // Recover for the grammar `*self`, `*const self`, and `*mut self`.
         let recover_self_ptr = |this: &mut Self| {
             this.dcx().emit_err(errors::SelfArgumentPointer { span: this.token.span });
@@ -2781,6 +2808,7 @@ impl<'a> Parser<'a> {
         let eself_lo = self.token.span;
         let (eself, eself_ident, eself_hi) = match self.token.uninterpolate().kind {
             token::BinOp(token::And) => {
+                let lo = self.token.span;
                 let eself = if is_isolated_self(self, 1) {
                     // `&self`
                     self.bump();
@@ -2805,7 +2833,9 @@ impl<'a> Parser<'a> {
                     // `&not_self`
                     return Ok(None);
                 };
-                (eself, expect_self_ident(self), self.prev_token.span)
+                let hi = self.token.span;
+                let self_ident = expect_self_ident_not_typed(self, &eself, lo.until(hi));
+                (eself, self_ident, hi)
             }
             // `*self`
             token::BinOp(token::Star) if is_isolated_self(self, 1) => {

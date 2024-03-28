@@ -1,0 +1,50 @@
+error: type not allowed for shorthand `self` parameter
+  --> $DIR/typed-self-param.rs:4:17
+   |
+LL |     fn a(&self: Self) {}
+   |                 ^^^^
+   |
+help: move the modifiers on `self` to the type
+   |
+LL -     fn a(&self: Self) {}
+LL +     fn a(self: &Self) {}
+   |
+
+error: type not allowed for shorthand `self` parameter
+  --> $DIR/typed-self-param.rs:6:21
+   |
+LL |     fn b(&mut self: Self) {}
+   |                     ^^^^
+   |
+help: move the modifiers on `self` to the type
+   |
+LL -     fn b(&mut self: Self) {}
+LL +     fn b(self: &mut Self) {}
+   |
+
+error: type not allowed for shorthand `self` parameter
+  --> $DIR/typed-self-param.rs:8:28
+   |
+LL |     fn c<'c>(&'c mut self: Self) {}
+   |                            ^^^^
+   |
+help: move the modifiers on `self` to the type
+   |
+LL -     fn c<'c>(&'c mut self: Self) {}
+LL +     fn c<'c>(self: &'c mut Self) {}
+   |
+
+error: type not allowed for shorthand `self` parameter
+  --> $DIR/typed-self-param.rs:10:24
+   |
+LL |     fn d<'d>(&'d self: Self) {}
+   |                        ^^^^
+   |
+help: move the modifiers on `self` to the type
+   |
+LL -     fn d<'d>(&'d self: Self) {}
+LL +     fn d<'d>(self: &'d Self) {}
+   |
+
+error: aborting due to 4 previous errors
+
