@@ -42,6 +42,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::char::MAX_LEN_UTF8;
 use core::error::Error;
 use core::fmt;
 use core::hash;
@@ -1358,7 +1359,7 @@ impl String {
     pub fn push(&mut self, ch: char) {
         match ch.len_utf8() {
             1 => self.vec.push(ch as u8),
-            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; 4]).as_bytes()),
+            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; MAX_LEN_UTF8]).as_bytes()),
         }
     }
 
@@ -1657,7 +1658,7 @@ impl String {
     #[rustc_confusables("set")]
     pub fn insert(&mut self, idx: usize, ch: char) {
         assert!(self.is_char_boundary(idx));
-        let mut bits = [0; 4];
+        let mut bits = [0; MAX_LEN_UTF8];
         let bits = ch.encode_utf8(&mut bits).as_bytes();
 
         unsafe {
@@ -2575,7 +2576,7 @@ impl ToString for core::ascii::Char {
 impl ToString for char {
     #[inline]
     fn to_string(&self) -> String {
-        String::from(self.encode_utf8(&mut [0; 4]))
+        String::from(self.encode_utf8(&mut [0; MAX_LEN_UTF8]))
     }
 }
 

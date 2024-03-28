@@ -8,6 +8,7 @@
 #![feature(async_iterator)]
 #![feature(bigint_helper_methods)]
 #![feature(cell_update)]
+#![feature(char_max_len)]
 #![feature(const_align_offset)]
 #![feature(const_align_of_val_raw)]
 #![feature(const_black_box)]
