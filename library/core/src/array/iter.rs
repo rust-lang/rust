@@ -38,7 +38,7 @@ pub struct IntoIter<T, const N: usize> {
     alive: IndexRange,
 }
 
-// Note: the `#[rustc_skip_array_during_method_dispatch]` on `trait IntoIterator`
+// Note: the `#[rustc_skip_during_method_dispatch(array)]` on `trait IntoIterator`
 // hides this implementation from explicit `.into_iter()` calls on editions < 2021,
 // so those calls will still resolve to the slice implementation, by reference.
 #[stable(feature = "array_into_iter_impl", since = "1.53.0")]

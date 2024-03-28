@@ -39,10 +39,15 @@ pub struct TraitDef {
     /// also have already switched to the new trait solver.
     pub is_coinductive: bool,
 
-    /// If `true`, then this trait has the `#[rustc_skip_array_during_method_dispatch]`
+    /// If `true`, then this trait has the `#[rustc_skip_during_method_dispatch(array)]`
     /// attribute, indicating that editions before 2021 should not consider this trait
     /// during method dispatch if the receiver is an array.
     pub skip_array_during_method_dispatch: bool,
+
+    /// If `true`, then this trait has the `#[rustc_skip_during_method_dispatch(boxed_slice)]`
+    /// attribute, indicating that editions before 2021 should not consider this trait
+    /// during method dispatch if the receiver is a boxed slice.
+    pub skip_boxed_slice_during_method_dispatch: bool,
 
     /// Used to determine whether the standard library is allowed to specialize
     /// on this trait.
