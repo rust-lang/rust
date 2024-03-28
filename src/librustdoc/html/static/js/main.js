@@ -468,7 +468,7 @@ function preLoadCss(cssUrl) {
         if (!window.SIDEBAR_ITEMS) {
             return;
         }
-        const sidebar = document.getElementsByClassName("sidebar-elems")[0];
+        const sidebar = document.querySelector("#ModNav section");
 
         /**
          * Append to the sidebar a "block" of links - a heading along with a list (`<ul>`) of items.
@@ -504,11 +504,12 @@ function preLoadCss(cssUrl) {
                 }
                 const link = document.createElement("a");
                 link.href = path;
-                if (path === current_page) {
-                    link.className = "current";
-                }
                 link.textContent = name;
                 const li = document.createElement("li");
+                if (link.href.toString() === current_page) {
+                    link.className = "current";
+                    li.className = "current";
+                }
                 li.appendChild(link);
                 ul.appendChild(li);
             }
@@ -853,7 +854,7 @@ function preLoadCss(cssUrl) {
         if (!window.ALL_CRATES) {
             return;
         }
-        const sidebarElems = document.getElementsByClassName("sidebar-elems")[0];
+        const sidebarElems = document.querySelector("#ModNav section");
         if (!sidebarElems) {
             return;
         }
@@ -1519,6 +1520,15 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     // At half-way past the minimum size, vanish the sidebar entirely
     const SIDEBAR_VANISH_THRESHOLD = SIDEBAR_MIN / 2;
 
+    // When running in grid layout mode, we have to change sizes
+    // on the parent element. Otherwise, we can resize the sidebar
+    // independently.
+    //
+    // This is less bad than it otherwise would be, since if you are in grid
+    // mode, resizing the sidebar will resize the floating TOC, not the huge
+    // content area.
+    let gridMode = window.getComputedStyle(document.querySelector(".rustdoc")).display === "grid";
+
     // Toolbar button to show the sidebar.
     //
     // On small, "mobile-sized" viewports, it's not persistent and it
@@ -1639,6 +1649,9 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             updateLocalStorage("desktop-sidebar-width", size);
             sidebar.style.setProperty("--desktop-sidebar-width", size + "px");
             resizer.style.setProperty("--desktop-sidebar-width", size + "px");
+            if (gridMode) {
+                document.documentElement.style.setProperty("--desktop-sidebar-width", size + "px");
+            }
         }
     }
 
@@ -1690,6 +1703,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         if (window.innerWidth < RUSTDOC_MOBILE_BREAKPOINT) {
             return;
         }
+        gridMode = window.getComputedStyle(document.querySelector(".rustdoc")).display === "grid";
         stopResize();
         if (desiredSidebarSize >= (window.innerWidth - BODY_MIN)) {
             changeSidebarSize(window.innerWidth - BODY_MIN);
