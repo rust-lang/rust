@@ -36,6 +36,7 @@ mod y {
         //[cfail2]~| ERROR `type_of(y)` should be dirty but is not
         //[cfail2]~| ERROR `fn_sig(y)` should be dirty but is not
         //[cfail2]~| ERROR `typeck(y)` should be clean but is not
+        //[cfail2]~| ERROR `optimized_mir(y)` should be clean but is not
         x::x();
     }
 }

@@ -1,0 +1,23 @@
+error[E0080]: evaluation of `Fail::<i32>::C` failed
+  --> $DIR/collect-roots-dead-fn1.rs:15:19
+   |
+LL |     const C: () = panic!();
+   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-roots-dead-fn1.rs:15:19
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/collect-roots-dead-fn1.rs:31:5
+   |
+LL |     Fail::<T>::C;
+   |     ^^^^^^^^^^^^
+
+note: the above error was encountered while instantiating `fn h::<i32>`
+  --> $DIR/collect-roots-dead-fn1.rs:24:5
+   |
+LL |     h::<i32>()
+   |     ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

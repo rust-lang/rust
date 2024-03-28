@@ -8,13 +8,13 @@ extern crate a;
 
 use a::*;
 
-#[rustc_clean(except="typeck", cfg="rpass2")]
+#[rustc_clean(except="typeck,optimized_mir", cfg="rpass2")]
 pub fn use_X() -> u32 {
     let x: X = X { x: 22 };
     x.x as u32
 }
 
-#[rustc_clean(except="typeck", cfg="rpass2")]
+#[rustc_clean(except="typeck,optimized_mir", cfg="rpass2")]
 pub fn use_EmbedX(embed: EmbedX) -> u32 {
     embed.x.x as u32
 }

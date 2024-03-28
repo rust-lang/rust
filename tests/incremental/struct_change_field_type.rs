@@ -24,13 +24,13 @@ pub struct Y {
     pub y: char
 }
 
-#[rustc_clean(except="typeck", cfg="rpass2")]
+#[rustc_clean(except="typeck,optimized_mir", cfg="rpass2")]
 pub fn use_X() -> u32 {
     let x: X = X { x: 22 };
     x.x as u32
 }
 
-#[rustc_clean(except="typeck", cfg="rpass2")]
+#[rustc_clean(except="typeck,optimized_mir", cfg="rpass2")]
 pub fn use_EmbedX(x: EmbedX) -> u32 {
     let x: X = X { x: 22 };
     x.x as u32

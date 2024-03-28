@@ -6,7 +6,7 @@
 
 extern crate a;
 
-#[rustc_clean(except="typeck", cfg="rpass2")]
+#[rustc_clean(except="typeck,optimized_mir", cfg="rpass2")]
 #[rustc_clean(cfg="rpass3")]
 pub fn use_X() -> u32 {
     let x: a::X = 22;
