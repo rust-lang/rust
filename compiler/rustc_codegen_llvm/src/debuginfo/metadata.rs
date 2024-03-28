@@ -211,6 +211,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     Stub::Struct,
                     unique_type_id,
                     &ptr_type_debuginfo_name,
+                    None,
                     cx.size_and_align_of(ptr_type),
                     NO_SCOPE_METADATA,
                     DIFlags::FlagZero,
@@ -264,6 +265,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                             layout.fields.offset(abi::FAT_PTR_ADDR),
                             DIFlags::FlagZero,
                             data_ptr_type_di_node,
+                            None,
                         ),
                         build_field_di_node(
                             cx,
@@ -273,6 +275,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                             layout.fields.offset(abi::FAT_PTR_EXTRA),
                             DIFlags::FlagZero,
                             type_di_node(cx, extra_field.ty),
+                            None,
                         ),
                     ]
                 },
@@ -376,6 +379,7 @@ fn build_dyn_type_di_node<'ll, 'tcx>(
                 Stub::Struct,
                 unique_type_id,
                 &type_name,
+                None,
                 cx.size_and_align_of(dyn_type),
                 NO_SCOPE_METADATA,
                 DIFlags::FlagZero,
@@ -798,6 +802,7 @@ fn build_foreign_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &compute_debuginfo_type_name(cx.tcx, t, false),
+            None,
             cx.size_and_align_of(t),
             Some(get_namespace_for_item(cx, def_id)),
             DIFlags::FlagZero,
@@ -969,15 +974,22 @@ fn build_field_di_node<'ll, 'tcx>(
     offset: Size,
     flags: DIFlags,
     type_di_node: &'ll DIType,
+    def_id: Option<DefId>,
 ) -> &'ll DIType {
+    let (file_metadata, line_number) = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers
+    {
+        file_metadata_from_def_id(cx, def_id)
+    } else {
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+    };
     unsafe {
         llvm::LLVMRustDIBuilderCreateMemberType(
             DIB(cx),
             owner,
             name.as_ptr().cast(),
             name.len(),
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            file_metadata,
+            line_number,
             size_and_align.0.bits(),
             size_and_align.1.bits() as u32,
             offset.bits(),
@@ -1021,6 +1033,11 @@ fn build_struct_type_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, adt_def.did());
     let struct_type_and_layout = cx.layout_of(struct_type);
     let variant_def = adt_def.non_enum_variant();
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+        Some(file_metadata_from_def_id(cx, Some(adt_def.did())))
+    } else {
+        None
+    };
 
     type_map::build_type_with_children(
         cx,
@@ -1029,6 +1046,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &compute_debuginfo_type_name(cx.tcx, struct_type, false),
+            def_location,
             size_and_align_of(struct_type_and_layout),
             Some(containing_scope),
             visibility_di_flags(cx, adt_def.did(), adt_def.did()),
@@ -1048,6 +1066,11 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         Cow::Borrowed(f.name.as_str())
                     };
                     let field_layout = struct_type_and_layout.field(cx, i);
+                    let def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+                        Some(f.did)
+                    } else {
+                        None
+                    };
                     build_field_di_node(
                         cx,
                         owner,
@@ -1056,6 +1079,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         struct_type_and_layout.fields.offset(i),
                         visibility_di_flags(cx, f.did, adt_def.did()),
                         type_di_node(cx, field_layout.ty),
+                        def_id,
                     )
                 })
                 .collect()
@@ -1107,6 +1131,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
                 layout.fields.offset(index),
                 DIFlags::FlagZero,
                 type_di_node(cx, up_var_ty),
+                None,
             )
         })
         .collect()
@@ -1132,6 +1157,7 @@ fn build_tuple_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &type_name,
+            None,
             size_and_align_of(tuple_type_and_layout),
             NO_SCOPE_METADATA,
             DIFlags::FlagZero,
@@ -1150,6 +1176,7 @@ fn build_tuple_type_di_node<'ll, 'tcx>(
                         tuple_type_and_layout.fields.offset(index),
                         DIFlags::FlagZero,
                         type_di_node(cx, component_type),
+                        None,
                     )
                 })
                 .collect()
@@ -1171,6 +1198,12 @@ fn build_closure_env_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, def_id);
     let type_name = compute_debuginfo_type_name(cx.tcx, closure_env_type, false);
 
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+        Some(file_metadata_from_def_id(cx, Some(def_id)))
+    } else {
+        None
+    };
+
     type_map::build_type_with_children(
         cx,
         type_map::stub(
@@ -1178,6 +1211,7 @@ fn build_closure_env_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &type_name,
+            def_location,
             cx.size_and_align_of(closure_env_type),
             Some(containing_scope),
             DIFlags::FlagZero,
@@ -1201,6 +1235,11 @@ fn build_union_type_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, union_def_id);
     let union_ty_and_layout = cx.layout_of(union_type);
     let type_name = compute_debuginfo_type_name(cx.tcx, union_type, false);
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+        Some(file_metadata_from_def_id(cx, Some(union_def_id)))
+    } else {
+        None
+    };
 
     type_map::build_type_with_children(
         cx,
@@ -1209,6 +1248,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
             Stub::Union,
             unique_type_id,
             &type_name,
+            def_location,
             size_and_align_of(union_ty_and_layout),
             Some(containing_scope),
             DIFlags::FlagZero,
@@ -1221,6 +1261,11 @@ fn build_union_type_di_node<'ll, 'tcx>(
                 .enumerate()
                 .map(|(i, f)| {
                     let field_layout = union_ty_and_layout.field(cx, i);
+                    let def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+                        Some(f.did)
+                    } else {
+                        None
+                    };
                     build_field_di_node(
                         cx,
                         owner,
@@ -1229,6 +1274,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
                         Size::ZERO,
                         DIFlags::FlagZero,
                         type_di_node(cx, field_layout.ty),
+                        def_id,
                     )
                 })
                 .collect()
@@ -1300,14 +1346,7 @@ pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, glo
     // We may want to remove the namespace scope if we're in an extern block (see
     // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952).
     let var_scope = get_namespace_for_item(cx, def_id);
-    let span = tcx.def_span(def_id);
-
-    let (file_metadata, line_number) = if !span.is_dummy() {
-        let loc = cx.lookup_debug_loc(span.lo());
-        (file_metadata(cx, &loc.file), loc.line)
-    } else {
-        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
-    };
+    let (file_metadata, line_number) = file_metadata_from_def_id(cx, Some(def_id));
 
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
 
@@ -1397,6 +1436,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
             Stub::VTableTy { vtable_holder },
             unique_type_id,
             &vtable_type_name,
+            None,
             (size, pointer_align),
             NO_SCOPE_METADATA,
             DIFlags::FlagArtificial,
@@ -1434,6 +1474,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
                         field_offset,
                         DIFlags::FlagZero,
                         field_type_di_node,
+                        None,
                     ))
                 })
                 .collect()
@@ -1588,4 +1629,21 @@ pub fn tuple_field_name(field_index: usize) -> Cow<'static, str> {
         .get(field_index)
         .map(|s| Cow::from(*s))
         .unwrap_or_else(|| Cow::from(format!("__{field_index}")))
+}
+
+pub type DefinitionLocation<'ll> = (&'ll DIFile, c_uint);
+
+pub fn file_metadata_from_def_id<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    def_id: Option<DefId>,
+) -> DefinitionLocation<'ll> {
+    if let Some(def_id) = def_id
+        && let span = cx.tcx.def_span(def_id)
+        && !span.is_dummy()
+    {
+        let loc = cx.lookup_debug_loc(span.lo());
+        (file_metadata(cx, &loc.file), loc.line)
+    } else {
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+    }
 }

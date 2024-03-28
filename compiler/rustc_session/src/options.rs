@@ -1591,6 +1591,8 @@ options! {
         "threshold to allow cross crate inlining of functions"),
     debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
         "emit discriminators and other data necessary for AutoFDO"),
+    debug_info_type_line_numbers: bool = (false, parse_bool, [TRACKED],
+        "emit type and line information for additional data types (default: no)"),
     debug_macros: bool = (false, parse_bool, [TRACKED],
         "emit line numbers debug info inside macros (default: no)"),
     debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
