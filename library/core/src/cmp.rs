@@ -401,12 +401,18 @@ impl Ordering {
     /// assert_eq!(Ordering::Equal.is_eq(), true);
     /// assert_eq!(Ordering::Greater.is_eq(), false);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[must_use]
     #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
     #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_eq(self) -> bool {
-        matches!(self, Equal)
+        // Implementation note: It appears (as of 2022-12) that LLVM has an
+        // easier time with a comparison against zero like this, as opposed
+        // to looking for the `Less` value (-1) specifically, maybe because
+        // it's not always obvious to it that -2 isn't possible.
+        // Thus this and its siblings below are written this way, rather
+        // than the potentially-more-obvious `matches!` version.
+        (self as i8) == 0
     }
 
     /// Returns `true` if the ordering is not the `Equal` variant.
@@ -420,12 +426,12 @@ impl Ordering {
     /// assert_eq!(Ordering::Equal.is_ne(), false);
     /// assert_eq!(Ordering::Greater.is_ne(), true);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[must_use]
     #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
     #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_ne(self) -> bool {
-        !matches!(self, Equal)
+        (self as i8) != 0
     }
 
     /// Returns `true` if the ordering is the `Less` variant.
@@ -439,12 +445,12 @@ impl Ordering {
     /// assert_eq!(Ordering::Equal.is_lt(), false);
     /// assert_eq!(Ordering::Greater.is_lt(), false);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[must_use]
     #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
     #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_lt(self) -> bool {
-        matches!(self, Less)
+        (self as i8) < 0
     }
 
     /// Returns `true` if the ordering is the `Greater` variant.
@@ -458,12 +464,12 @@ impl Ordering {
     /// assert_eq!(Ordering::Equal.is_gt(), false);
     /// assert_eq!(Ordering::Greater.is_gt(), true);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[must_use]
     #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
     #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_gt(self) -> bool {
-        matches!(self, Greater)
+        (self as i8) > 0
     }
 
     /// Returns `true` if the ordering is either the `Less` or `Equal` variant.
@@ -477,12 +483,12 @@ impl Ordering {
     /// assert_eq!(Ordering::Equal.is_le(), true);
     /// assert_eq!(Ordering::Greater.is_le(), false);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[must_use]
     #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
     #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_le(self) -> bool {
-        !matches!(self, Greater)
+        (self as i8) <= 0
     }
 
     /// Returns `true` if the ordering is either the `Greater` or `Equal` variant.
@@ -496,12 +502,12 @@ impl Ordering {
     /// assert_eq!(Ordering::Equal.is_ge(), true);
     /// assert_eq!(Ordering::Greater.is_ge(), true);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[must_use]
     #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
     #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_ge(self) -> bool {
-        !matches!(self, Less)
+        (self as i8) >= 0
     }
 
     /// Reverses the `Ordering`.
@@ -1169,7 +1175,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lt(&self, other: &Rhs) -> bool {
-        matches!(self.partial_cmp(other), Some(Less))
+        if let Some(ordering) = self.partial_cmp(other) { ordering.is_lt() } else { false }
     }
 
     /// This method tests less than or equal to (for `self` and `other`) and is used by the `<=`
@@ -1186,7 +1192,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn le(&self, other: &Rhs) -> bool {
-        matches!(self.partial_cmp(other), Some(Less | Equal))
+        if let Some(ordering) = self.partial_cmp(other) { ordering.is_le() } else { false }
     }
 
     /// This method tests greater than (for `self` and `other`) and is used by the `>` operator.
@@ -1202,7 +1208,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn gt(&self, other: &Rhs) -> bool {
-        matches!(self.partial_cmp(other), Some(Greater))
+        if let Some(ordering) = self.partial_cmp(other) { ordering.is_gt() } else { false }
     }
 
     /// This method tests greater than or equal to (for `self` and `other`) and is used by the `>=`
@@ -1219,7 +1225,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn ge(&self, other: &Rhs) -> bool {
-        matches!(self.partial_cmp(other), Some(Greater | Equal))
+        if let Some(ordering) = self.partial_cmp(other) { ordering.is_ge() } else { false }
     }
 }
 
@@ -1563,12 +1569,31 @@ mod impls {
             impl Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &$t) -> Ordering {
-                    // The order here is important to generate more optimal assembly.
-                    // See <https://github.com/rust-lang/rust/issues/63758> for more info.
-                    if *self < *other { Less }
-                    else if *self == *other { Equal }
-                    else { Greater }
+                    let mut res = 0i8;
+                    res -= (*self < *other) as i8;
+                    res += (*self > *other) as i8;
+                    // SAFETY: The discriminants of Ord were chosen to permit this
+                    unsafe { crate::mem::transmute(res) }
                 }
+
+                #[inline]
+                fn max(self, other: Self) -> Self {
+                    if self > other {
+                        self
+                    } else {
+                        other
+                    }
+                }
+
+                #[inline]
+                fn min(self, other: Self) -> Self {
+                    if self > other {
+                        other
+                    } else {
+                        self
+                    }
+                }
+
             }
         )*)
     }
