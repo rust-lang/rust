@@ -1368,6 +1368,10 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             | TerminatorKind::Call { .. }
             | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Assert { .. } => return true,
+
+            TerminatorKind::TailCall { .. } => {
+                unreachable!("tail calls can't be present in generators")
+            }
         }
     }
 
@@ -1881,6 +1885,7 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
             | TerminatorKind::Assert { .. }

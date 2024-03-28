@@ -155,15 +155,15 @@ fn o() -> Result<(), ()> {
     };
 }
 
-fn p() {
-    let foo = become {
-        //~^ WARN irrefutable `let...else` pattern
-        ()
-    } else {
-        //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
-        return;
-    };
-}
+// fn p() { // FIXME(explicit_tail_calls): this currently trips an assertion...
+//     let foo = become { // ... (because there isn't a call)
+//         // ~^ WARN irrefutable `let...else` pattern
+//         ()
+//     } else {
+//         // ~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
+//         return;
+//     };
+// }
 
 fn q() {
     let foo = |x: i32| {

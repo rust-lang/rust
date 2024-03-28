@@ -28,7 +28,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // We are unwinding and this fn has no cleanup code.
             // Just go on unwinding.
             trace!("unwinding: skipping frame");
-            self.pop_stack_frame(/* unwinding */ true)?;
+            self.return_from_current_stack_frame(/* unwinding */ true)?;
             return Ok(true);
         };
         let basic_block = &self.body().basic_blocks[loc.block];

@@ -813,6 +813,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
             | TerminatorKind::Yield { .. }
