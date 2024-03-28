@@ -1,17 +1,17 @@
-use std::{io, io::prelude::Write};
+use std::io;
 
 use super::OutputFormatter;
 use crate::{
     bench::fmt_bench_samples,
-    console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation},
+    console::{ConsoleTestDiscoveryState, ConsoleTestState, Output},
     term,
     test_result::TestResult,
     time,
     types::TestDesc,
 };
 
-pub(crate) struct PrettyFormatter<T> {
-    out: OutputLocation<T>,
+pub(crate) struct PrettyFormatter<'a> {
+    out: &'a mut dyn Output,
     use_color: bool,
     time_options: Option<time::TestTimeOptions>,
 
@@ -21,9 +21,9 @@ pub(crate) struct PrettyFormatter<T> {
     is_multithreaded: bool,
 }
 
-impl<T: Write> PrettyFormatter<T> {
+impl<'a> PrettyFormatter<'a> {
     pub fn new(
-        out: OutputLocation<T>,
+        out: &'a mut dyn Output,
         use_color: bool,
         max_name_len: usize,
         is_multithreaded: bool,
@@ -159,7 +159,7 @@ impl<T: Write> PrettyFormatter<T> {
     }
 }
 
-impl<T: Write> OutputFormatter for PrettyFormatter<T> {
+impl OutputFormatter for PrettyFormatter<'_> {
     fn write_discovery_start(&mut self) -> io::Result<()> {
         Ok(())
     }

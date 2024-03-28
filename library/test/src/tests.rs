@@ -894,7 +894,8 @@ fn should_sort_failures_before_printing_them() {
     };
 
     let mut output = Vec::new();
-    let mut out = PrettyFormatter::new(OutputLocation::Raw(&mut output), false, 10, false, None);
+    let mut raw = OutputLocation::Raw(&mut output);
+    let mut out = PrettyFormatter::new(&mut raw, false, 10, false, None);
 
     let st = console::ConsoleTestState {
         log_out: None,

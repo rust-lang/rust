@@ -19,6 +19,11 @@ use super::{
     types::{NamePadding, TestDesc, TestDescAndFn},
 };
 
+pub trait Output {
+    fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()>;
+    fn write_plain(&mut self, word: &str) -> io::Result<()>;
+}
+
 /// Generic wrapper over stdout.
 pub enum OutputLocation<T> {
     Pretty(Box<term::StdoutTerminal>),
@@ -41,8 +46,8 @@ impl<T: Write> Write for OutputLocation<T> {
     }
 }
 
-impl<T: Write> OutputLocation<T> {
-    pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
+impl<T: Write> Output for OutputLocation<T> {
+    fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
         match self {
             OutputLocation::Pretty(ref mut term) => {
                 term.fg(color)?;
@@ -57,7 +62,7 @@ impl<T: Write> OutputLocation<T> {
         self.flush()
     }
 
-    pub fn write_plain(&mut self, word: &str) -> io::Result<()> {
+    fn write_plain(&mut self, word: &str) -> io::Result<()> {
         self.write_all(word.as_bytes())?;
         self.flush()
     }
@@ -193,14 +198,14 @@ impl ConsoleTestState {
 
 // List the tests to console, and optionally to logfile. Filters are honored.
 pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<()> {
-    let output = match term::stdout() {
+    let mut output = match term::stdout() {
         None => OutputLocation::Raw(io::stdout().lock()),
         Some(t) => OutputLocation::Pretty(t),
     };
 
     let mut out: Box<dyn OutputFormatter> = match opts.format {
         OutputFormat::Pretty | OutputFormat::Junit => {
-            Box::new(PrettyFormatter::new(output, false, 0, false, None))
+            Box::new(PrettyFormatter::new(&mut output, false, 0, false, None))
         }
         OutputFormat::Terse => Box::new(TerseFormatter::new(output, false, 0, false)),
         OutputFormat::Json => Box::new(JsonFormatter::new(output)),
@@ -306,7 +311,7 @@ fn on_test_event(
 /// A simple console test runner.
 /// Runs provided tests reporting process and results to the stdout.
 pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
-    let output = match term::stdout() {
+    let mut output = match term::stdout() {
         None => OutputLocation::Raw(io::stdout()),
         Some(t) => OutputLocation::Pretty(t),
     };
@@ -321,7 +326,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
 
     let mut out: Box<dyn OutputFormatter> = match opts.format {
         OutputFormat::Pretty => Box::new(PrettyFormatter::new(
-            output,
+            &mut output,
             opts.use_color(),
             max_name_len,
             is_multithreaded,
