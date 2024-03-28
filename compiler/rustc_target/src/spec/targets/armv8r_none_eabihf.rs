@@ -30,7 +30,7 @@ pub fn target() -> Target {
             // Reference:
             // Arm Cortex-R52 Processor Technical Reference Manual
             // - Chapter 15 Advanced SIMD and floating-point support
-            features: "+fp-armv8,-fp64,-d32".into(),
+            features: "+fp-armv8d16sp".into(),
             max_atomic_width: Some(64),
             emit_debug_gdb_scripts: false,
             // GCC defaults to 8 for arm-none here.
