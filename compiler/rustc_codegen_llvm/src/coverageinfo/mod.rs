@@ -173,8 +173,54 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                     .borrow_mut()
                     .insert(instance, cond_bitmap_addr);
             }
-            CoverageKind::MCDCCondBitmapReset => todo!(),
-            CoverageKind::MCDCCondBitmapUpdate { condition_id: _, bool_value: _ } => todo!(),
+            CoverageKind::MCDCCondBitmapReset => {
+                // Drop unused coverage_map, which prevents us to use bx.
+                drop(coverage_map);
+
+                let cond_bitmap_addr = match coverage_context
+                    .mcdc_condbitmap_map
+                    .borrow()
+                    .get(&instance)
+                {
+                    Some(addr) => *addr,
+                    None => bug!(
+                        "Condition bitmap reset instruction was encountered without a condition bitmap being declared."
+                    ),
+                };
+
+                bx.store(
+                    bx.const_i32(0),
+                    cond_bitmap_addr,
+                    Align::from_bytes(4).expect("4 bytes alignement failed"),
+                );
+            }
+            CoverageKind::MCDCCondBitmapUpdate { condition_id, bool_value } => {
+                // Drop unused coverage_map, which prevents us to use bx.
+                drop(coverage_map);
+
+                let fn_name = bx.get_pgo_func_name_var(instance);
+                let hash = bx.const_u64(function_coverage_info.function_source_hash);
+                let cond_id = bx.const_u32(condition_id);
+                let cond_bitmap_addr = match coverage_context
+                    .mcdc_condbitmap_map
+                    .borrow()
+                    .get(&instance)
+                {
+                    Some(addr) => *addr,
+                    None => bug!(
+                        "Condition bitmap reset instruction was encountered without a condition bitmap being declared."
+                    ),
+                };
+                let cond_result = bx.const_bool(bool_value);
+
+                bx.instrprof_mcdc_condbitmap_update(
+                    fn_name,
+                    hash,
+                    cond_id,
+                    cond_bitmap_addr,
+                    cond_result,
+                )
+            }
             CoverageKind::MCDCTestBitmapUpdate { needed_bytes: _, decision_index: _ } => todo!(),
         }
     }
