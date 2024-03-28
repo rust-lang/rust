@@ -150,6 +150,20 @@ pub trait FromIterator<A>: Sized {
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }
 
+#[stable(feature = "from_iterator_for_tuple", since = "CURRENT_RUSTC_VERSION")]
+impl<A, B, AE, BE> FromIterator<(AE, BE)> for (A, B)
+where
+    A: Default + Extend<AE>,
+    B: Default + Extend<BE>,
+{
+    fn from_iter<I: IntoIterator<Item = (AE, BE)>>(iter: I) -> Self {
+        let mut res = <(A, B)>::default();
+        res.extend(iter);
+
+        res
+    }
+}
+
 /// Conversion into an [`Iterator`].
 ///
 /// By implementing `IntoIterator` for a type, you define how it will be
