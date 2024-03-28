@@ -833,6 +833,32 @@ rustc_queries! {
         desc { |tcx| "comparing impl items against trait for `{}`", tcx.def_path_str(impl_id) }
     }
 
+    /// Maps from associated items on the impl specified by `impl_id`
+    /// to the corresponding associated item on the trait.
+    ///
+    /// For example, with the following code
+    ///
+    /// ```
+    /// struct Type {}
+    ///                         // DefId
+    /// trait Trait {           // trait_id
+    ///     fn f();             // trait_f
+    ///     fn g() {}           // trait_g
+    /// }
+    ///
+    /// impl Trait for Type {   // impl_id
+    ///     fn f() {}           // impl_f
+    ///     fn g() {}           // impl_g
+    /// }
+    /// ```
+    ///
+    /// The map returned for `tcx.impl_item_trait_item_ids(impl_id)` would be
+    ///`{ impl_f: trait_f, impl_g: trait_g }`
+    query impl_item_trait_item_ids(impl_id: DefId) -> &'tcx DefIdMap<DefId> {
+        arena_cache
+        desc { |tcx| "comparing impl items against trait for `{}`", tcx.def_path_str(impl_id) }
+    }
+
     /// Given `fn_def_id` of a trait or of an impl that implements a given trait:
     /// if `fn_def_id` is the def id of a function defined inside a trait, then it creates and returns
     /// the associated items that correspond to each impl trait in return position for that trait.

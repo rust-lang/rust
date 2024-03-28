@@ -25,6 +25,7 @@ mod inner {
     // having a struct of the same name as the trait in-scope, while *also*
     // implementing the trait for that struct but **without** importing the
     // trait itself into scope
+    #[allow(dead_code)]
     struct TryIntoU32;
 
     impl super::TryIntoU32 for TryIntoU32 {

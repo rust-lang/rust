@@ -15,6 +15,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         associated_types_for_impl_traits_in_associated_fn,
         associated_type_for_impl_trait_in_trait,
         impl_item_implementor_ids,
+        impl_item_trait_item_ids,
         ..*providers
     };
 }
@@ -89,6 +90,13 @@ fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> DefIdMap<DefId>
     tcx.associated_items(impl_id)
         .in_definition_order()
         .filter_map(|item| item.trait_item_def_id.map(|trait_item| (trait_item, item.def_id)))
+        .collect()
+}
+
+fn impl_item_trait_item_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> DefIdMap<DefId> {
+    tcx.associated_items(impl_id)
+        .in_definition_order()
+        .filter_map(|item| item.trait_item_def_id.map(|trait_item| (item.def_id, trait_item)))
         .collect()
 }
 
