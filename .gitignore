@@ -35,6 +35,7 @@ Session.vim
 config.mk
 config.stamp
 no_llvm_build
+rust-project.json
 
 ## Build
 /dl/

@@ -12,5 +12,6 @@ pub(crate) mod helpers;
 pub(crate) mod job;
 #[cfg(feature = "build-metrics")]
 pub(crate) mod metrics;
+pub(crate) mod ra_project;
 pub(crate) mod render_tests;
 pub(crate) mod tarball;
