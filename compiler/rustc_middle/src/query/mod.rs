@@ -2116,6 +2116,13 @@ rustc_queries! {
         }
     }
 
+    query is_impossible_item(def_id: DefId) -> bool {
+        desc { |tcx|
+            "checking if `{}` has predicates that are impossible to satisfy",
+            tcx.def_path_str(def_id),
+        }
+    }
+
     query is_impossible_associated_item(key: (DefId, DefId)) -> bool {
         desc { |tcx|
             "checking if `{}` is impossible to reference within `{}`",
