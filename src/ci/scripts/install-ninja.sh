@@ -8,7 +8,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isWindows; then
     mkdir ninja
-    curl -o ninja.zip "${MIRRORS_BASE}/2017-03-15-ninja-win.zip"
+    curl -o ninja.zip "${MIRRORS_BASE}/2024-03-28-v1.11.1-ninja-win.zip"
     7z x -oninja ninja.zip
     rm ninja.zip
     ciCommandSetEnv "RUST_CONFIGURE_ARGS" "${RUST_CONFIGURE_ARGS} --enable-ninja"
