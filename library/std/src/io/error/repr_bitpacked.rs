@@ -104,7 +104,7 @@
 
 use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
 use core::marker::PhantomData;
-use core::mem::{align_of, size_of};
+use core::mem::align_of;
 use core::ptr::{self, NonNull};
 
 // The 2 least-significant bits are used as tag.

@@ -2,7 +2,6 @@ use super::{const_io_error, Custom, Error, ErrorData, ErrorKind, Repr, SimpleMes
 use crate::assert_matches::assert_matches;
 use crate::error;
 use crate::fmt;
-use crate::mem::size_of;
 use crate::sys::decode_error_kind;
 use crate::sys::os::error_string;
 
