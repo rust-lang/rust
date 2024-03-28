@@ -807,7 +807,10 @@ impl<T, A: Allocator> Arc<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn pin_in(data: T, alloc: A) -> Pin<Arc<T, A>> {
+    pub fn pin_in(data: T, alloc: A) -> Pin<Arc<T, A>>
+    where
+        A: 'static,
+    {
         unsafe { Pin::new_unchecked(Arc::new_in(data, alloc)) }
     }
 
@@ -815,7 +818,10 @@ impl<T, A: Allocator> Arc<T, A> {
     /// fails.
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn try_pin_in(data: T, alloc: A) -> Result<Pin<Arc<T, A>>, AllocError> {
+    pub fn try_pin_in(data: T, alloc: A) -> Result<Pin<Arc<T, A>>, AllocError>
+    where
+        A: 'static,
+    {
         unsafe { Ok(Pin::new_unchecked(Arc::try_new_in(data, alloc)?)) }
     }
 
