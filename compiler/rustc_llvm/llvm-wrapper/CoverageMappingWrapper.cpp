@@ -205,5 +205,7 @@ extern "C" void LLVMRustCoverageWriteMappingVarNameToString(RustStringRef Str) {
 }
 
 extern "C" uint32_t LLVMRustCoverageMappingVersion() {
-  return coverage::CovMapVersion::Version6;
+  // This should always be `CurrentVersion`, because that's the version LLVM
+  // will use when encoding the data we give it.
+  return coverage::CovMapVersion::CurrentVersion;
 }
