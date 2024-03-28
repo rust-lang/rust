@@ -90,7 +90,7 @@ fn check_redundant_explicit_link<'md>(
 ) -> Option<()> {
     let mut broken_line_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
     let mut offset_iter = Parser::new_with_broken_link_callback(
-        &doc,
+        doc,
         main_body_opts(),
         Some(&mut broken_line_callback),
     )
@@ -264,6 +264,7 @@ fn collect_link_data(offset_iter: &mut OffsetIter<'_, '_>) -> LinkData {
     let mut resolvable_link = None;
     let mut resolvable_link_range = None;
     let mut display_link = String::new();
+    let mut is_resolvable = true;
 
     while let Some((event, range)) = offset_iter.next() {
         match event {
@@ -281,11 +282,21 @@ fn collect_link_data(offset_iter: &mut OffsetIter<'_, '_>) -> LinkData {
                 resolvable_link = Some(code);
                 resolvable_link_range = Some(range);
             }
+            Event::Start(_) => {
+                // If there is anything besides backticks, it's not considered as an intra-doc link
+                // so we ignore it.
+                is_resolvable = false;
+            }
             Event::End(_) => {
                 break;
             }
             _ => {}
         }
+    }
+
+    if !is_resolvable {
+        resolvable_link_range = None;
+        resolvable_link = None;
     }
 
     LinkData { resolvable_link, resolvable_link_range, display_link }
