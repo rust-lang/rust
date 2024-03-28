@@ -1533,6 +1533,16 @@ extern "C" LLVMValueRef LLVMRustGetInstrProfMCDCParametersIntrinsic(LLVMModuleRe
               (llvm::Intrinsic::ID)llvm::Intrinsic::instrprof_mcdc_parameters));
 }
 
+extern "C" LLVMValueRef LLVMRustGetInstrProfMCDCCondBitmapUpdateIntrinsic(LLVMModuleRef M) {
+  return wrap(llvm::Intrinsic::getDeclaration(unwrap(M),
+              (llvm::Intrinsic::ID)llvm::Intrinsic::instrprof_mcdc_condbitmap_update));
+}
+
+extern "C" LLVMValueRef LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(LLVMModuleRef M) {
+  return wrap(llvm::Intrinsic::getDeclaration(unwrap(M),
+              (llvm::Intrinsic::ID)llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
+}
+
 extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,
                                             LLVMValueRef Dst, unsigned DstAlign,
                                             LLVMValueRef Src, unsigned SrcAlign,
