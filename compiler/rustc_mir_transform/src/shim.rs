@@ -1189,7 +1189,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         args: ty::GenericArgsRef<'tcx>,
         surface_drop: Option<SurfaceDropKind>,
     ) -> Body<'tcx> {
-        let (tcx, self_ty) = (self.tcx, self.self_ty);
+        let tcx = self.tcx;
 
         if adt_def.variants().is_empty() {
             return self.build_unreachable();
@@ -1200,8 +1200,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             Some(kind) => {
                 self.put_self();
                 Some(match kind {
-                    SurfaceDropKind::Async => self.combine_surface(self_ty),
-                    SurfaceDropKind::Sync => self.combine_sync_surface(self_ty),
+                    SurfaceDropKind::Async => self.combine_surface(),
+                    SurfaceDropKind::Sync => self.combine_sync_surface(),
                 })
             }
         };
@@ -1248,14 +1248,14 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
     fn build_fused_surface(mut self) -> Body<'tcx> {
         self.put_self();
-        let surface = self.combine_surface(self.self_ty);
+        let surface = self.combine_surface();
         self.combine_fuse(surface);
         self.return_()
     }
 
     fn build_fused_sync_surface(mut self) -> Body<'tcx> {
         self.put_self();
-        let surface = self.combine_sync_surface(self.self_ty);
+        let surface = self.combine_sync_surface();
         self.combine_fuse(surface);
         self.return_()
     }
@@ -1288,8 +1288,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             Some(kind) => {
                 self.put_self();
                 match kind {
-                    SurfaceDropKind::Async => self.combine_surface(self.self_ty),
-                    SurfaceDropKind::Sync => self.combine_sync_surface(self.self_ty),
+                    SurfaceDropKind::Async => self.combine_surface(),
+                    SurfaceDropKind::Sync => self.combine_sync_surface(),
                 }
             }
             None => {
@@ -1452,12 +1452,12 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.apply_combinator(0, LangItem::AsyncDropNop, &[])
     }
 
-    fn combine_surface(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::SurfaceAsyncDropInPlace, &[to_drop_ty.into()])
+    fn combine_surface(&mut self) -> Ty<'tcx> {
+        self.apply_combinator(1, LangItem::SurfaceAsyncDropInPlace, &[self.self_ty.into()])
     }
 
-    fn combine_sync_surface(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::AsyncDropSurfaceDropInPlace, &[to_drop_ty.into()])
+    fn combine_sync_surface(&mut self) -> Ty<'tcx> {
+        self.apply_combinator(1, LangItem::AsyncDropSurfaceDropInPlace, &[self.self_ty.into()])
     }
 
     fn combine_deep(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
