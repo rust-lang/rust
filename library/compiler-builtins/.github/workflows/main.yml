@@ -6,6 +6,7 @@ jobs:
     name: Test
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
         - target: aarch64-unknown-linux-gnu
