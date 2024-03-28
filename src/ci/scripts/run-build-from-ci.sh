@@ -7,6 +7,8 @@ IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
+export RUSTC_BACKTRACE_ON_ICE=1
+export RUST_BACKTRACE=1
 export CI="true"
 export SRC=.
 
