@@ -130,6 +130,7 @@ struct LoweringContext<'a, 'hir> {
     node_id_to_local_id: NodeMap<hir::ItemLocalId>,
 
     allow_try_trait: Lrc<[Symbol]>,
+    allow_convert_absurd: Lrc<[Symbol]>,
     allow_gen_future: Lrc<[Symbol]>,
     allow_async_iterator: Lrc<[Symbol]>,
     allow_for_await: Lrc<[Symbol]>,
@@ -173,6 +174,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
             allow_try_trait: [sym::try_trait_v2, sym::yeet_desugar_details].into(),
+            allow_convert_absurd: [sym::convert_absurd].into(),
             allow_gen_future: if tcx.features().async_fn_track_caller {
                 [sym::gen_future, sym::closure_track_caller].into()
             } else {

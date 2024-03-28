@@ -1758,9 +1758,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///     ControlFlow::Break(residual) =>
     ///         #[allow(unreachable_code)]
     ///         // If there is an enclosing `try {...}`:
-    ///         break 'catch_target Try::from_residual(residual),
+    ///         absurd(break 'catch_target Try::from_residual(residual)),
     ///         // Otherwise:
-    ///         return Try::from_residual(residual),
+    ///         absurd(return Try::from_residual(residual)),
     /// }
     /// ```
     fn lower_expr_try(&mut self, span: Span, sub_expr: &Expr) -> hir::ExprKind<'hir> {
@@ -1769,6 +1769,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span,
             Some(self.allow_try_trait.clone()),
         );
+
+        let absurd_allowed_span = self.mark_span_with_reason(
+            DesugaringKind::QuestionMark,
+            span,
+            Some(self.allow_convert_absurd.clone()),
+        );
+
         let try_span = self.tcx.sess.source_map().end_point(span);
         let try_span = self.mark_span_with_reason(
             DesugaringKind::QuestionMark,
@@ -1810,7 +1817,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `ControlFlow::Break(residual) =>
         //     #[allow(unreachable_code)]
-        //     return Try::from_residual(residual),`
+        //     absurd(return Try::from_residual(residual)),`
         let break_arm = {
             let residual_ident = Ident::with_dummy_span(sym::residual);
             let (residual_local, residual_local_nid) = self.pat_ident(try_span, residual_ident);
@@ -1823,20 +1830,27 @@ impl<'hir> LoweringContext<'_, 'hir> {
             );
             let ret_expr = if let Some(catch_node) = self.catch_scope {
                 let target_id = Ok(self.lower_node_id(catch_node));
-                self.arena.alloc(self.expr(
+                self.expr(
                     try_span,
                     hir::ExprKind::Break(
                         hir::Destination { label: None, target_id },
                         Some(from_residual_expr),
                     ),
-                ))
+                )
             } else {
-                self.arena.alloc(self.expr(try_span, hir::ExprKind::Ret(Some(from_residual_expr))))
+                self.expr(try_span, hir::ExprKind::Ret(Some(from_residual_expr)))
             };
-            self.lower_attrs(ret_expr.hir_id, &attrs);
+
+            let absurd_expr = self.expr_call_lang_item_fn(
+                absurd_allowed_span,
+                hir::LangItem::Absurd,
+                arena_vec![self; ret_expr],
+            );
+
+            self.lower_attrs(absurd_expr.hir_id, &attrs);
 
             let break_pat = self.pat_cf_break(try_span, residual_local);
-            self.arm(break_pat, ret_expr)
+            self.arm(break_pat, absurd_expr)
         };
 
         hir::ExprKind::Match(
