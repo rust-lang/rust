@@ -965,7 +965,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        sym::simd_expose_addr | sym::simd_from_exposed_addr | sym::simd_cast_ptr => {
+        sym::simd_expose_addr | sym::simd_with_exposed_provenance | sym::simd_cast_ptr => {
             intrinsic_args!(fx, args => (arg); intrinsic);
             ret.write_cvalue_transmute(fx, arg);
         }

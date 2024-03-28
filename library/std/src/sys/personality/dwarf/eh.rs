@@ -125,7 +125,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
                 // Can never have null landing pad for sjlj -- that would have
                 // been indicated by a -1 call site index.
                 // FIXME(strict provenance)
-                let lpad = ptr::from_exposed_addr((cs_lpad + 1) as usize);
+                let lpad = ptr::with_exposed_provenance((cs_lpad + 1) as usize);
                 return Ok(interpret_cs_action(action_table, cs_action_entry, lpad));
             }
         }

@@ -16,7 +16,7 @@
           _3 = main as fn() (PointerCoercion(ReifyFnPointer));
           _2 = move _3 as usize (PointerExposeAddress);
           StorageDead(_3);
-          _1 = move _2 as *const fn() (PointerFromExposedAddress);
+          _1 = move _2 as *const fn() (PointerWithExposedProvenance);
           StorageDead(_2);
           StorageDead(_1);
           _0 = const ();

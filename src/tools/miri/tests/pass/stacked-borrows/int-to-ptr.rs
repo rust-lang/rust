@@ -39,7 +39,7 @@ fn example(variant: bool) {
         // 4 is the "obvious" choice (topmost tag, what we used to do with untagged pointers).
         // And indeed if `variant == true` it is the only possible choice.
         // But if `variant == false` then 2 is the only possible choice!
-        let x_wildcard = ptr::from_exposed_addr_mut::<i32>(x_raw2_addr);
+        let x_wildcard = ptr::with_exposed_provenance_mut::<i32>(x_raw2_addr);
 
         if variant {
             // If we picked 2, this will invalidate 3.

@@ -1312,8 +1312,8 @@ pub enum CastKind {
     /// See the docs on `expose_addr` for more details.
     PointerExposeAddress,
     /// An address-to-pointer cast that picks up an exposed provenance.
-    /// See the docs on `from_exposed_addr` for more details.
-    PointerFromExposedAddress,
+    /// See the docs on `with_exposed_provenance` for more details.
+    PointerWithExposedProvenance,
     /// Pointer related casts that are done by coercions. Note that reference-to-raw-ptr casts are
     /// translated into `&raw mut/const *r`, i.e., they are not actually casts.
     PointerCoercion(PointerCoercion),

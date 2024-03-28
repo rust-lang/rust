@@ -9,7 +9,7 @@ fn main() {
 
     // Expose the allocation and use the exposed pointer, creating an unknown bottom
     unsafe {
-        let p: *mut u8 = ptr::from_exposed_addr::<u8>(ptr.expose_addr()) as *mut u8;
+        let p: *mut u8 = ptr::with_exposed_provenance::<u8>(ptr.expose_addr()) as *mut u8;
         *p = 1;
     }
 
