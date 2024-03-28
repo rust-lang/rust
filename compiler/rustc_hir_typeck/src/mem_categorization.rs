@@ -206,7 +206,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     .get(pat.hir_id)
                     .expect("missing binding mode");
 
-                if let ty::BindByReference(_) = bm {
+                if matches!(bm.0, hir::ByRef::Yes(_)) {
                     // a bind-by-ref means that the base_ty will be the type of the ident itself,
                     // but what we want here is the type of the underlying value being borrowed.
                     // So peel off one-level, turning the &T into T.

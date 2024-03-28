@@ -2,11 +2,11 @@ use std::borrow::Cow;
 
 use crate::build::ExprCategory;
 use crate::errors::*;
-use rustc_middle::thir::visit::Visitor;
 
 use rustc_errors::DiagArgValue;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, BindingAnnotation, ByRef, Mutability};
 use rustc_middle::mir::BorrowKind;
+use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
@@ -289,22 +289,22 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     visit::walk_pat(self, pat);
                 }
             }
-            PatKind::Binding { mode: BindingMode::ByRef(borrow_kind), ty, .. } => {
+            PatKind::Binding { mode: BindingAnnotation(ByRef::Yes(rm), _), ty, .. } => {
                 if self.inside_adt {
                     let ty::Ref(_, ty, _) = ty.kind() else {
                         span_bug!(
                             pat.span,
-                            "BindingMode::ByRef in pattern, but found non-reference type {}",
+                            "ByRef::Yes in pattern, but found non-reference type {}",
                             ty
                         );
                     };
-                    match borrow_kind {
-                        BorrowKind::Fake | BorrowKind::Shared => {
+                    match rm {
+                        Mutability::Not => {
                             if !ty.is_freeze(self.tcx, self.param_env) {
                                 self.requires_unsafe(pat.span, BorrowOfLayoutConstrainedField);
                             }
                         }
-                        BorrowKind::Mut { .. } => {
+                        Mutability::Mut { .. } => {
                             self.requires_unsafe(pat.span, MutationOfLayoutConstrainedField);
                         }
                     }

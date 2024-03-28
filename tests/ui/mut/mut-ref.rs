@@ -1,4 +1,11 @@
+//@ check-pass
+#![allow(incomplete_features)]
+#![feature(mut_ref)]
 fn main() {
-    let mut ref x = 10; //~ ERROR the order of `mut` and `ref` is incorrect
-    let ref mut y = 11;
+    let mut ref x = 10;
+    x = &11;
+    let ref mut y = 12;
+    *y = 13;
+    let mut ref mut z = 14;
+    z = &mut 15;
 }

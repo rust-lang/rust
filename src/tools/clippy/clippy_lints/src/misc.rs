@@ -129,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
             if !is_lint_allowed(cx, REF_PATTERNS, arg.pat.hir_id) {
                 return;
             }
-            if let PatKind::Binding(BindingAnnotation(ByRef::Yes, _), ..) = arg.pat.kind {
+            if let PatKind::Binding(BindingAnnotation(ByRef::Yes(_), _), ..) = arg.pat.kind {
                 span_lint(
                     cx,
                     TOPLEVEL_REF_ARG,
@@ -144,7 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if !in_external_macro(cx.tcx.sess, stmt.span)
             && let StmtKind::Let(local) = stmt.kind
-            && let PatKind::Binding(BindingAnnotation(ByRef::Yes, mutabl), .., name, None) = local.pat.kind
+            && let PatKind::Binding(BindingAnnotation(ByRef::Yes(mutabl), _), .., name, None) = local.pat.kind
             && let Some(init) = local.init
             // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.
             && is_lint_allowed(cx, REF_PATTERNS, local.pat.hir_id)

@@ -97,7 +97,7 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Destination, Expr,
+    self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, ByRef, Closure, Destination, Expr,
     ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item,
     ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment, PrimTy,
     QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
@@ -107,7 +107,6 @@ use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::Const;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
-use rustc_middle::ty::binding::BindingMode;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
@@ -1006,11 +1005,12 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
             .typeck_results()
             .extract_binding_mode(cx.sess(), id, span)
             .unwrap()
+            .0
         {
-            BindingMode::BindByValue(_) if !is_copy(cx, cx.typeck_results().node_type(id)) => {
+            ByRef::No if !is_copy(cx, cx.typeck_results().node_type(id)) => {
                 capture = CaptureKind::Value;
             },
-            BindingMode::BindByReference(Mutability::Mut) if capture != CaptureKind::Value => {
+            ByRef::Yes(Mutability::Mut) if capture != CaptureKind::Value => {
                 capture = CaptureKind::Ref(Mutability::Mut);
             },
             _ => (),
@@ -2035,7 +2035,7 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
             .typeck_results()
             .pat_binding_modes()
             .get(pat.hir_id)
-            .is_some_and(|mode| matches!(mode, BindingMode::BindByReference(_)))
+            .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
         {
             // If a tuple `(x, y)` is of type `&(i32, i32)`, then due to match ergonomics,
             // the inner patterns become references. Don't consider this the identity function

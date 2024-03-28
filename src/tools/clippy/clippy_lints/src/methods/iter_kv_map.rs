@@ -60,8 +60,6 @@ pub(super) fn check<'tcx>(
                 applicability,
             );
         } else {
-            let ref_annotation = if annotation.0 == ByRef::Yes { "ref " } else { "" };
-            let mut_annotation = if annotation.1 == Mutability::Mut { "mut " } else { "" };
             span_lint_and_sugg(
                 cx,
                 ITER_KV_MAP,
@@ -69,7 +67,8 @@ pub(super) fn check<'tcx>(
                 &format!("iterating on a map's {replacement_kind}s"),
                 "try",
                 format!(
-                    "{recv_snippet}.{into_prefix}{replacement_kind}s().map(|{ref_annotation}{mut_annotation}{bound_ident}| {})",
+                    "{recv_snippet}.{into_prefix}{replacement_kind}s().map(|{}{bound_ident}| {})",
+                    annotation.prefix_str(),
                     snippet_with_applicability(cx, body_expr.span, "/* body */", &mut applicability)
                 ),
                 applicability,

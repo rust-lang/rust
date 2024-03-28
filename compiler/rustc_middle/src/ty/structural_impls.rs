@@ -402,6 +402,7 @@ TrivialTypeTraversalImpls! {
     ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
     ::rustc_hir::def_id::LocalDefId,
+    ::rustc_hir::ByRef,
     ::rustc_hir::HirId,
     ::rustc_hir::MatchSource,
     ::rustc_target::asm::InlineAsmRegOrRegClass,

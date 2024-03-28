@@ -1185,6 +1185,7 @@ symbols! {
         multiple_supertrait_upcastable,
         must_not_suspend,
         must_use,
+        mut_ref,
         naked,
         naked_functions,
         name,

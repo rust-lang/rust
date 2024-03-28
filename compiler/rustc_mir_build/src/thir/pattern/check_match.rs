@@ -13,10 +13,9 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
     codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
 };
-use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::HirId;
+use rustc_hir::{self as hir, BindingAnnotation, ByRef, HirId};
 use rustc_middle::middle::limits::get_limit_size;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
@@ -723,13 +722,14 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
     let sess = cx.tcx.sess;
 
     // Get the binding move, extract the mutability if by-ref.
-    let mut_outer = match mode {
-        BindingMode::ByValue if is_binding_by_move(ty) => {
+    let mut_outer = match mode.0 {
+        ByRef::No if is_binding_by_move(ty) => {
             // We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
             let mut conflicts_ref = Vec::new();
-            sub.each_binding(|_, mode, _, span| match mode {
-                BindingMode::ByValue => {}
-                BindingMode::ByRef(_) => conflicts_ref.push(span),
+            sub.each_binding(|_, mode, _, span| {
+                if matches!(mode, ByRef::Yes(_)) {
+                    conflicts_ref.push(span)
+                }
             });
             if !conflicts_ref.is_empty() {
                 sess.dcx().emit_err(BorrowOfMovedValue {
@@ -742,8 +742,8 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
             }
             return;
         }
-        BindingMode::ByValue => return,
-        BindingMode::ByRef(m) => m.mutability(),
+        ByRef::No => return,
+        ByRef::Yes(m) => m,
     };
 
     // We now have `ref $mut_outer binding @ sub` (semantically).
@@ -753,7 +753,7 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
     let mut conflicts_mut_ref = Vec::new();
     sub.each_binding(|name, mode, ty, span| {
         match mode {
-            BindingMode::ByRef(mut_inner) => match (mut_outer, mut_inner.mutability()) {
+            ByRef::Yes(mut_inner) => match (mut_outer, mut_inner) {
                 // Both sides are `ref`.
                 (Mutability::Not, Mutability::Not) => {}
                 // 2x `ref mut`.
@@ -767,10 +767,10 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
                     conflicts_mut_ref.push(Conflict::Ref { span, name })
                 }
             },
-            BindingMode::ByValue if is_binding_by_move(ty) => {
+            ByRef::No if is_binding_by_move(ty) => {
                 conflicts_move.push(Conflict::Moved { span, name }) // `ref mut?` + by-move conflict.
             }
-            BindingMode::ByValue => {} // `ref mut?` + by-copy is fine.
+            ByRef::No => {} // `ref mut?` + by-copy is fine.
         }
     });
 
@@ -813,8 +813,7 @@ fn check_for_bindings_named_same_as_variants(
 ) {
     if let PatKind::Binding {
         name,
-        mode: BindingMode::ByValue,
-        mutability: Mutability::Not,
+        mode: BindingAnnotation(ByRef::No, Mutability::Not),
         subpattern: None,
         ty,
         ..

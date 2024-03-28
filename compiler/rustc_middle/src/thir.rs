@@ -12,12 +12,12 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::RangeEnd;
+use rustc_hir::{BindingAnnotation, ByRef, RangeEnd};
 use rustc_index::newtype_index;
 use rustc_index::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::{AllocId, Scalar};
-use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Mutability, UnOp};
+use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
@@ -581,12 +581,6 @@ pub enum InlineAsmOperand<'tcx> {
     },
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
-pub enum BindingMode {
-    ByValue,
-    ByRef(BorrowKind),
-}
-
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub struct FieldPat<'tcx> {
     pub field: FieldIdx,
@@ -607,19 +601,22 @@ impl<'tcx> Pat<'tcx> {
 
     pub fn simple_ident(&self) -> Option<Symbol> {
         match self.kind {
-            PatKind::Binding { name, mode: BindingMode::ByValue, subpattern: None, .. } => {
-                Some(name)
-            }
+            PatKind::Binding {
+                name,
+                mode: BindingAnnotation(ByRef::No, _),
+                subpattern: None,
+                ..
+            } => Some(name),
             _ => None,
         }
     }
 
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
-    pub fn each_binding(&self, mut f: impl FnMut(Symbol, BindingMode, Ty<'tcx>, Span)) {
+    pub fn each_binding(&self, mut f: impl FnMut(Symbol, ByRef, Ty<'tcx>, Span)) {
         self.walk_always(|p| {
             if let PatKind::Binding { name, mode, ty, .. } = p.kind {
-                f(name, mode, ty, p.span);
+                f(name, mode.0, ty, p.span);
             }
         });
     }
@@ -730,10 +727,9 @@ pub enum PatKind<'tcx> {
 
     /// `x`, `ref x`, `x @ P`, etc.
     Binding {
-        mutability: Mutability,
         name: Symbol,
         #[type_visitable(ignore)]
-        mode: BindingMode,
+        mode: BindingAnnotation,
         #[type_visitable(ignore)]
         var: LocalVarId,
         ty: Ty<'tcx>,
@@ -1073,17 +1069,8 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
             PatKind::Wild => write!(f, "_"),
             PatKind::Never => write!(f, "!"),
             PatKind::AscribeUserType { ref subpattern, .. } => write!(f, "{subpattern}: _"),
-            PatKind::Binding { mutability, name, mode, ref subpattern, .. } => {
-                let is_mut = match mode {
-                    BindingMode::ByValue => mutability == Mutability::Mut,
-                    BindingMode::ByRef(bk) => {
-                        write!(f, "ref ")?;
-                        matches!(bk, BorrowKind::Mut { .. })
-                    }
-                };
-                if is_mut {
-                    write!(f, "mut ")?;
-                }
+            PatKind::Binding { name, mode, ref subpattern, .. } => {
+                f.write_str(mode.prefix_str())?;
                 write!(f, "{name}")?;
                 if let Some(ref subpattern) = *subpattern {
                     write!(f, " @ {subpattern}")?;

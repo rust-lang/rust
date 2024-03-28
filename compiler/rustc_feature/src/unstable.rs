@@ -529,6 +529,8 @@ declare_features! (
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// Allows the `#[must_not_suspend]` attribute.
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
+    /// Allows `mut ref` and `mut ref mut` identifier patterns.
+    (incomplete, mut_ref, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// Allows using `#[naked]` on functions.
     (unstable, naked_functions, "1.9.0", Some(90957)),
     /// Allows specifying the as-needed link modifier

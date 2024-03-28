@@ -7,10 +7,9 @@ use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::Node;
+use rustc_hir::{self as hir, BindingAnnotation, ByRef, Node};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -19,9 +18,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::thir::{
-    self, BindingMode, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir,
-};
+use rustc_middle::thir::{self, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -337,7 +334,7 @@ struct GuardFrameLocal {
 }
 
 impl GuardFrameLocal {
-    fn new(id: LocalVarId, _binding_mode: BindingMode) -> Self {
+    fn new(id: LocalVarId) -> Self {
         GuardFrameLocal { id }
     }
 }
@@ -967,9 +964,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             match pat.kind {
                 // Don't introduce extra copies for simple bindings
                 PatKind::Binding {
-                    mutability,
                     var,
-                    mode: BindingMode::ByValue,
+                    mode: BindingAnnotation(ByRef::No, mutability),
                     subpattern: None,
                     ..
                 } => {
@@ -979,7 +975,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         if let Some(kind) = param.self_kind {
                             LocalInfo::User(BindingForm::ImplicitSelf(kind))
                         } else {
-                            let binding_mode = ty::BindingMode::BindByValue(mutability);
+                            let binding_mode = BindingAnnotation(ByRef::No, mutability);
                             LocalInfo::User(BindingForm::Var(VarBindingForm {
                                 binding_mode,
                                 opt_ty_info: param.ty_span,
