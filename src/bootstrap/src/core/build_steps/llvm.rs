@@ -1237,7 +1237,7 @@ impl Step for Libunwind {
         }
 
         let out_dir = builder.native_dir(self.target).join("libunwind");
-        let root = builder.src.join("src/llvm-project/libunwind");
+        let root = builder.src.join("src").join("llvm-project").join("libunwind");
 
         if up_to_date(&root, &out_dir.join("libunwind.a")) {
             return out_dir;
@@ -1271,6 +1271,7 @@ impl Step for Libunwind {
             cfg.flag("-fvisibility=hidden");
             cfg.define("_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS", None);
             cfg.include(root.join("include"));
+            cfg.include(root.join("src"));
             cfg.cargo_metadata(false);
             cfg.out_dir(&out_dir);
 
