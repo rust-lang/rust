@@ -22,7 +22,7 @@ master = ["gccjit/master"]
 default = ["master"]
 
 [dependencies]
-gccjit = { git = "https://github.com/antoyo/gccjit.rs" }
+gccjit = "2.0"
 
 # Local copy.
 #gccjit = { path = "../gccjit.rs" }
