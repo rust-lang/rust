@@ -493,6 +493,7 @@ impl<'tcx> Stable<'tcx> for mir::BinOp {
             BinOp::Ne => stable_mir::mir::BinOp::Ne,
             BinOp::Ge => stable_mir::mir::BinOp::Ge,
             BinOp::Gt => stable_mir::mir::BinOp::Gt,
+            BinOp::Cmp => stable_mir::mir::BinOp::Cmp,
             BinOp::Offset => stable_mir::mir::BinOp::Offset,
         }
     }

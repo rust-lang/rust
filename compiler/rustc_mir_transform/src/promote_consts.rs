@@ -525,6 +525,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     | BinOp::Lt
                     | BinOp::Ge
                     | BinOp::Gt
+                    | BinOp::Cmp
                     | BinOp::Offset
                     | BinOp::Add
                     | BinOp::AddUnchecked
