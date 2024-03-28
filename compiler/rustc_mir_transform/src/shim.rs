@@ -1160,7 +1160,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             ty::Adt(adt_def, _) => {
                 assert!(adt_def.is_union());
                 match surface_drop_kind() {
-                    Some(SurfaceDropKind::Async) => self.build_fused_surface(),
+                    Some(SurfaceDropKind::Async) => self.build_fused_async_surface(),
                     Some(SurfaceDropKind::Sync) => self.build_fused_sync_surface(),
                     None => self.build_nop(),
                 }
@@ -1200,7 +1200,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             Some(kind) => {
                 self.put_self();
                 Some(match kind {
-                    SurfaceDropKind::Async => self.combine_surface(),
+                    SurfaceDropKind::Async => self.combine_async_surface(),
                     SurfaceDropKind::Sync => self.combine_sync_surface(),
                 })
             }
@@ -1246,9 +1246,9 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.return_()
     }
 
-    fn build_fused_surface(mut self) -> Body<'tcx> {
+    fn build_fused_async_surface(mut self) -> Body<'tcx> {
         self.put_self();
-        let surface = self.combine_surface();
+        let surface = self.combine_async_surface();
         self.combine_fuse(surface);
         self.return_()
     }
@@ -1277,7 +1277,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     {
         if elem_tys.len() == 0 {
             return match surface_drop {
-                Some(SurfaceDropKind::Async) => self.build_fused_surface(),
+                Some(SurfaceDropKind::Async) => self.build_fused_async_surface(),
                 Some(SurfaceDropKind::Sync) => self.build_fused_sync_surface(),
                 None => self.build_nop(),
             };
@@ -1288,7 +1288,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             Some(kind) => {
                 self.put_self();
                 match kind {
-                    SurfaceDropKind::Async => self.combine_surface(),
+                    SurfaceDropKind::Async => self.combine_async_surface(),
                     SurfaceDropKind::Sync => self.combine_sync_surface(),
                 }
             }
@@ -1452,7 +1452,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.apply_combinator(0, LangItem::AsyncDropNop, &[])
     }
 
-    fn combine_surface(&mut self) -> Ty<'tcx> {
+    fn combine_async_surface(&mut self) -> Ty<'tcx> {
         self.apply_combinator(1, LangItem::SurfaceAsyncDropInPlace, &[self.self_ty.into()])
     }
 
