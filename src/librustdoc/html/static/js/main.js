@@ -468,7 +468,7 @@ function preLoadCss(cssUrl) {
         if (!window.SIDEBAR_ITEMS) {
             return;
         }
-        const sidebar = document.getElementsByClassName("sidebar-elems")[0];
+        const sidebar = document.getElementById("ModNav");
 
         /**
          * Append to the sidebar a "block" of links - a heading along with a list (`<ul>`) of items.
@@ -853,7 +853,7 @@ function preLoadCss(cssUrl) {
         if (!window.ALL_CRATES) {
             return;
         }
-        const sidebarElems = document.getElementsByClassName("sidebar-elems")[0];
+        const sidebarElems = document.getElementById("ModNav");
         if (!sidebarElems) {
             return;
         }
