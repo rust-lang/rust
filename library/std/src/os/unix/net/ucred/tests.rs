@@ -11,6 +11,7 @@ use libc::{getegid, geteuid, getpid};
     target_os = "tvos",
     target_os = "macos",
     target_os = "watchos",
+    target_os = "visionos",
     target_os = "openbsd"
 ))]
 fn test_socket_pair() {
@@ -32,6 +33,7 @@ fn test_socket_pair() {
     target_os = "ios",
     target_os = "macos",
     target_os = "watchos",
+    target_os = "visionos",
     target_os = "tvos",
 ))]
 fn test_socket_pair_pids(arg: Type) -> RetType {
