@@ -13,7 +13,7 @@ use ut::UnifyKey;
 use std::ops::Range;
 
 fn vars_since_snapshot<'tcx, T>(
-    table: &mut UnificationTable<'_, 'tcx, T>,
+    table: &UnificationTable<'_, 'tcx, T>,
     snapshot_var_len: usize,
 ) -> Range<T>
 where
@@ -124,11 +124,11 @@ impl<'tcx> InferCtxt<'tcx> {
                     let type_vars =
                         inner.type_variables().vars_since_snapshot(variable_lengths.type_var_len);
                     let int_vars = vars_since_snapshot(
-                        &mut inner.int_unification_table(),
+                        &inner.int_unification_table(),
                         variable_lengths.int_var_len,
                     );
                     let float_vars = vars_since_snapshot(
-                        &mut inner.float_unification_table(),
+                        &inner.float_unification_table(),
                         variable_lengths.float_var_len,
                     );
                     let region_vars = inner

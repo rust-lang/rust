@@ -2010,7 +2010,7 @@ pub fn parse_crate_edition(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches
 }
 
 fn check_error_format_stability(
-    early_dcx: &mut EarlyDiagCtxt,
+    early_dcx: &EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
     error_format: ErrorOutputType,
 ) {
@@ -2574,7 +2574,7 @@ fn parse_remap_path_prefix(
 }
 
 fn parse_logical_env(
-    early_dcx: &mut EarlyDiagCtxt,
+    early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
 ) -> FxIndexMap<String, String> {
     let mut vars = FxIndexMap::default();
