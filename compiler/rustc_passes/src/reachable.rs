@@ -24,7 +24,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ExistentialTraitRef, TyCtxt};
 use rustc_privacy::DefIdVisitor;
 use rustc_session::config::CrateType;
-use rustc_target::spec::abi::Abi;
 
 /// Determines whether this item is recursive for reachability. See `is_recursively_reachable_local`
 /// below for details.
@@ -164,16 +163,6 @@ impl<'tcx> ReachableContext<'tcx> {
         if !self.any_library {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
-            let reachable =
-                if let Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. })
-                | Node::ImplItem(hir::ImplItem {
-                    kind: hir::ImplItemKind::Fn(sig, ..), ..
-                }) = *node
-                {
-                    sig.header.abi != Abi::Rust
-                } else {
-                    false
-                };
             let codegen_attrs = if self.tcx.def_kind(search_item).has_codegen_attrs() {
                 self.tcx.codegen_fn_attrs(search_item)
             } else {
@@ -182,7 +171,7 @@ impl<'tcx> ReachableContext<'tcx> {
             let is_extern = codegen_attrs.contains_extern_indicator();
             let std_internal =
                 codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
-            if reachable || is_extern || std_internal {
+            if is_extern || std_internal {
                 self.reachable_symbols.insert(search_item);
             }
         } else {
