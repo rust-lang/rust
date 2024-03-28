@@ -236,6 +236,67 @@ impl<'a, K: Ord, V, A: Allocator + Clone> Entry<'a, K, V, A> {
         }
     }
 
+    /// Offers a mutable reference to this entry's key.
+    ///
+    /// # Safety
+    ///
+    /// Mutating this key *does not* change the position of the entry, meaning that any mutation
+    /// should preserve the ordering of the key with respect to all the others in the map.
+    ///
+    /// This means that you must assert either that any portions of the key you mutate are
+    /// completely independent from its [`Ord`] implementation, or that you know the values of all
+    /// keys in the map before and after the current one and that the mutation does not change the
+    /// ordering with relation to these keys.
+    ///
+    /// Even if this entry is vacant, this must be upheld even if no value is actually inserted.
+    /// While a current implementation may allow for improperly ordered keys if the entry is
+    /// discarded before insertion, the API may change to render this unsafe at any time, and so it
+    /// must be upheld regardless.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_entry_key_mut)]
+    /// use std::collections::BTreeMap;
+    /// use std::cmp::Ordering;
+    ///
+    /// struct MyKey<'a> {
+    ///     value: &'a str,
+    ///     tag: &'a str,
+    /// }
+    /// impl PartialEq for MyKey<'_> {
+    ///     fn eq(&self, rhs: &MyKey<'_>) -> bool {
+    ///         self.value == rhs.value
+    ///     }
+    /// }
+    /// impl Eq for MyKey<'_> {}
+    /// impl PartialOrd for MyKey<'_> {
+    ///     fn partial_cmp(&self, rhs: &MyKey<'_>) -> Option<Ordering> {
+    ///         self.value.partial_cmp(&rhs.value)
+    ///     }
+    /// }
+    /// impl Ord for MyKey<'_> {
+    ///     fn cmp(&self, rhs: &MyKey<'_>) -> Ordering {
+    ///         self.value.cmp(&rhs.value)
+    ///     }
+    /// }
+    ///
+    /// let mut map: BTreeMap<MyKey<'_>, usize> = BTreeMap::new();
+    /// let mut entry = map.entry(MyKey { value: "key", tag: "" });
+    /// assert_eq!(entry.key().tag, "");
+    /// unsafe { entry.key_mut().tag = "tagged"; }
+    /// assert_eq!(entry.key().tag, "tagged");
+    /// ```
+    #[unstable(feature = "btree_entry_key_mut", issue = "107540")]
+    pub unsafe fn key_mut(&mut self) -> &mut K {
+        match *self {
+            // SAFETY: Inherited by caller.
+            Occupied(ref mut entry) => unsafe { entry.key_mut() },
+            // SAFETY: Inherited by caller.
+            Vacant(ref mut entry) => unsafe { entry.key_mut() },
+        }
+    }
+
     /// Provides in-place mutable access to an occupied entry before any
     /// potential inserts into the map.
     ///
@@ -309,6 +370,63 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         &self.key
+    }
+
+    /// Offers a mutable reference to this entry's key.
+    ///
+    /// # Safety
+    ///
+    /// Mutating this key *does not* change the position of the entry, meaning that any mutation
+    /// should preserve the ordering of the key with respect to all the others in the map.
+    ///
+    /// This means that you must assert either that any portions of the key you mutate are
+    /// completely independent from its [`Ord`] implementation, or that you know the values of all
+    /// keys in the map before and after the current one and that the mutation does not change the
+    /// ordering with relation to these keys.
+    ///
+    /// Even though this entry is vacant, this must be upheld even if no value is actually inserted.
+    /// While a current implementation may allow for improperly ordered keys if the entry is
+    /// discarded before insertion, the API may change to render this unsafe at any time, and so it
+    /// must be upheld regardless.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_entry_key_mut)]
+    /// use std::collections::btree_map::{BTreeMap, Entry};
+    /// use std::cmp::Ordering;
+    ///
+    /// struct MyKey<'a> {
+    ///     value: &'a str,
+    ///     tag: &'a str,
+    /// }
+    /// impl PartialEq for MyKey<'_> {
+    ///     fn eq(&self, rhs: &MyKey<'_>) -> bool {
+    ///         self.value == rhs.value
+    ///     }
+    /// }
+    /// impl Eq for MyKey<'_> {}
+    /// impl PartialOrd for MyKey<'_> {
+    ///     fn partial_cmp(&self, rhs: &MyKey<'_>) -> Option<Ordering> {
+    ///         self.value.partial_cmp(&rhs.value)
+    ///     }
+    /// }
+    /// impl Ord for MyKey<'_> {
+    ///     fn cmp(&self, rhs: &MyKey<'_>) -> Ordering {
+    ///         self.value.cmp(&rhs.value)
+    ///     }
+    /// }
+    ///
+    /// let mut map: BTreeMap<MyKey<'_>, usize> = BTreeMap::new();
+    /// if let Entry::Vacant(mut entry) = map.entry(MyKey { value: "key", tag: "" }) {
+    ///     assert_eq!(entry.key().tag, "");
+    ///     unsafe { entry.key_mut().tag = "tagged"; }
+    ///     assert_eq!(entry.key().tag, "tagged");
+    /// }
+    /// ```
+    #[unstable(feature = "btree_entry_key_mut", issue = "107540")]
+    pub unsafe fn key_mut(&mut self) -> &mut K {
+        &mut self.key
     }
 
     /// Take ownership of the key.
@@ -402,6 +520,60 @@ impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         self.handle.reborrow().into_kv().0
+    }
+
+    /// Offers a mutable reference to this entry's key.
+    ///
+    /// # Safety
+    ///
+    /// Mutating this key *does not* change the position of the entry, meaning that any mutation
+    /// should preserve the ordering of the key with respect to all the others in the map.
+    ///
+    /// This means that you must assert either that any portions of the key you mutate are
+    /// completely independent from its [`Ord`] implementation, or that you know the values of all
+    /// keys in the map before and after the current one and that the mutation does not change the
+    /// ordering with relation to these keys.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_entry_key_mut)]
+    /// use std::collections::btree_map::{BTreeMap, Entry};
+    /// use std::cmp::Ordering;
+    ///
+    /// struct MyKey<'a> {
+    ///     value: &'a str,
+    ///     tag: &'a str,
+    /// }
+    /// impl PartialEq for MyKey<'_> {
+    ///     fn eq(&self, rhs: &MyKey<'_>) -> bool {
+    ///         self.value == rhs.value
+    ///     }
+    /// }
+    /// impl Eq for MyKey<'_> {}
+    /// impl PartialOrd for MyKey<'_> {
+    ///     fn partial_cmp(&self, rhs: &MyKey<'_>) -> Option<Ordering> {
+    ///         self.value.partial_cmp(&rhs.value)
+    ///     }
+    /// }
+    /// impl Ord for MyKey<'_> {
+    ///     fn cmp(&self, rhs: &MyKey<'_>) -> Ordering {
+    ///         self.value.cmp(&rhs.value)
+    ///     }
+    /// }
+    ///
+    /// let mut map: BTreeMap<MyKey<'_>, usize> = BTreeMap::new();
+    /// map.entry(MyKey { value: "key", tag: "inserted" }).or_insert(12);
+    /// if let Entry::Occupied(mut entry) = map.entry(MyKey { value: "key", tag: "first" }) {
+    ///     assert_eq!(entry.key().tag, "inserted");
+    ///     unsafe { entry.key_mut().tag = "modified"; }
+    ///     assert_eq!(entry.key().tag, "modified");
+    /// }
+    /// assert_eq!(map.entry(MyKey { value: "key", tag: "second" }).key().tag, "modified");
+    /// ```
+    #[unstable(feature = "btree_entry_key_mut", issue = "107540")]
+    pub unsafe fn key_mut(&mut self) -> &mut K {
+        self.handle.key_mut()
     }
 
     /// Take ownership of the key and value from the map.
