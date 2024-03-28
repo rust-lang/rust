@@ -274,7 +274,6 @@ test_abi_compatible!(isize_int, isize, i64);
 
 // Compatibility of 1-ZST.
 test_abi_compatible!(zst_unit, Zst, ());
-#[cfg(not(any(target_arch = "sparc64")))]
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
 test_abi_compatible!(nonzero_int, NonZero<i32>, i32);
 
@@ -315,7 +314,7 @@ test_transparent!(zst, Zst);
 test_transparent!(unit, ());
 test_transparent!(enum_, Option<i32>);
 test_transparent!(enum_niched, Option<&'static i32>);
-#[cfg(not(any(target_arch = "mips64", target_arch = "sparc64")))]
+#[cfg(not(target_arch = "mips64"))]
 mod tuples {
     use super::*;
     // mixing in some floats since they often get special treatment
@@ -329,7 +328,7 @@ mod tuples {
     test_transparent!(tuple, (i32, f32, i64, f64));
 }
 // Some targets have special rules for arrays.
-#[cfg(not(any(target_arch = "mips64", target_arch = "sparc64")))]
+#[cfg(not(target_arch = "mips64"))]
 mod arrays {
     use super::*;
     test_transparent!(empty_array, [u32; 0]);
@@ -351,7 +350,7 @@ macro_rules! test_transparent_unsized {
     };
 }
 
-#[cfg(not(any(target_arch = "mips64", target_arch = "sparc64")))]
+#[cfg(not(target_arch = "mips64"))]
 mod unsized_ {
     use super::*;
     test_transparent_unsized!(str_, str);
