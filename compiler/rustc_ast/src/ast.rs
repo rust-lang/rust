@@ -3091,6 +3091,7 @@ pub struct Delegation {
     /// Path resolution id.
     pub id: NodeId,
     pub qself: Option<P<QSelf>>,
+    pub rename: Option<Ident>,
     pub path: Path,
     pub body: Option<P<Block>>,
 }
