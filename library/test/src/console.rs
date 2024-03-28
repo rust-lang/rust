@@ -3,6 +3,7 @@
 use std::fs::File;
 use std::io;
 use std::io::prelude::Write;
+use std::path::PathBuf;
 use std::time::Instant;
 use std::vec;
 
@@ -73,6 +74,33 @@ struct OutputMultiplexer {
     pub outputs: Vec<Box<dyn Output>>,
 }
 
+impl OutputMultiplexer {
+    pub fn new(lock_stdout: bool, logfile: &Option<PathBuf>) -> io::Result<Self> {
+        let mut outputs: Vec<Box<dyn Output>> = vec![];
+
+        if lock_stdout {
+            let output = match term::stdout() {
+                None => OutputLocation::Raw(io::stdout().lock()),
+                Some(t) => OutputLocation::Pretty(t),
+            };
+            outputs.push(Box::new(output))
+        } else {
+            let output = match term::stdout() {
+                None => OutputLocation::Raw(io::stdout()),
+                Some(t) => OutputLocation::Pretty(t),
+            };
+            outputs.push(Box::new(output))
+        }
+
+        match logfile {
+            Some(ref path) => outputs.push(Box::new(OutputLocation::Raw(File::create(path)?))),
+            None => (),
+        };
+
+        Ok(Self { outputs })
+    }
+}
+
 impl Output for OutputMultiplexer {
     fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
         for output in &mut self.outputs {
@@ -92,33 +120,14 @@ impl Output for OutputMultiplexer {
 }
 
 pub struct ConsoleTestDiscoveryState {
-    log_out: OutputMultiplexer,
     pub tests: usize,
     pub benchmarks: usize,
     pub ignored: usize,
 }
 
 impl ConsoleTestDiscoveryState {
-    pub fn new(opts: &TestOpts) -> io::Result<ConsoleTestDiscoveryState> {
-        let mut log_out = OutputMultiplexer { outputs: vec![] };
-        match opts.logfile {
-            Some(ref path) => {
-                log_out.outputs.push(Box::new(OutputLocation::Raw(File::create(path)?)))
-            }
-            None => (),
-        };
-
-        Ok(ConsoleTestDiscoveryState { log_out, tests: 0, benchmarks: 0, ignored: 0 })
-    }
-
-    pub fn write_log<F, S>(&mut self, msg: F) -> io::Result<()>
-    where
-        S: AsRef<str>,
-        F: FnOnce() -> S,
-    {
-        let msg = msg();
-        let msg = msg.as_ref();
-        self.log_out.write_plain(msg)
+    pub fn new() -> io::Result<ConsoleTestDiscoveryState> {
+        Ok(ConsoleTestDiscoveryState { tests: 0, benchmarks: 0, ignored: 0 })
     }
 }
 
@@ -219,21 +228,18 @@ impl ConsoleTestState {
 
 // List the tests to console, and optionally to logfile. Filters are honored.
 pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<()> {
-    let mut output = match term::stdout() {
-        None => OutputLocation::Raw(io::stdout().lock()),
-        Some(t) => OutputLocation::Pretty(t),
-    };
-
+    let mut multiplexer = OutputMultiplexer::new(true, &opts.logfile)?;
     let mut out: Box<dyn OutputFormatter> = match opts.format {
         OutputFormat::Pretty | OutputFormat::Junit => {
-            Box::new(PrettyFormatter::new(&mut output, false, 0, false, None))
+            Box::new(PrettyFormatter::new(&mut multiplexer, false, 0, false, None))
         }
-        OutputFormat::Terse => Box::new(TerseFormatter::new(&mut output, false, 0, false)),
-        OutputFormat::Json => Box::new(JsonFormatter::new(&mut output)),
+        OutputFormat::Terse => Box::new(TerseFormatter::new(&mut multiplexer, false, 0, false)),
+        OutputFormat::Json => Box::new(JsonFormatter::new(&mut multiplexer)),
     };
-    let mut st = ConsoleTestDiscoveryState::new(opts)?;
 
     out.write_discovery_start()?;
+
+    let mut st = ConsoleTestDiscoveryState::new()?;
     for test in filter_tests(opts, tests).into_iter() {
         use crate::TestFn::*;
 
@@ -253,7 +259,6 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         st.ignored += if desc.ignore { 1 } else { 0 };
 
         out.write_test_discovered(&desc, fntype)?;
-        st.write_log(|| format!("{fntype} {}\n", desc.name))?;
     }
 
     out.write_discovery_finish(&st)

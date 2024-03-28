@@ -994,7 +994,7 @@ fn test_discovery_logfile_format() {
     // Split output at line breaks to make the comparison platform-agnostic regarding newline style.
     let contents_lines = contents.as_str().lines().collect::<Vec<&str>>();
 
-    assert_eq!(contents_lines, vec!["test whatever"]);
+    assert_eq!(contents_lines, vec!["whatever: test", "", "1 test, 0 benchmarks"]);
 }
 
 #[test]
