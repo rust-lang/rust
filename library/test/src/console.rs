@@ -207,7 +207,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         OutputFormat::Pretty | OutputFormat::Junit => {
             Box::new(PrettyFormatter::new(&mut output, false, 0, false, None))
         }
-        OutputFormat::Terse => Box::new(TerseFormatter::new(output, false, 0, false)),
+        OutputFormat::Terse => Box::new(TerseFormatter::new(&mut output, false, 0, false)),
         OutputFormat::Json => Box::new(JsonFormatter::new(&mut output)),
     };
     let mut st = ConsoleTestDiscoveryState::new(opts)?;
@@ -332,9 +332,12 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             is_multithreaded,
             opts.time_options,
         )),
-        OutputFormat::Terse => {
-            Box::new(TerseFormatter::new(output, opts.use_color(), max_name_len, is_multithreaded))
-        }
+        OutputFormat::Terse => Box::new(TerseFormatter::new(
+            &mut output,
+            opts.use_color(),
+            max_name_len,
+            is_multithreaded,
+        )),
         OutputFormat::Json => Box::new(JsonFormatter::new(&mut output)),
         OutputFormat::Junit => Box::new(JunitFormatter::new(&mut output)),
     };

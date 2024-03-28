@@ -1,9 +1,9 @@
-use std::{io, io::prelude::Write};
+use std::io;
 
 use super::OutputFormatter;
 use crate::{
     bench::fmt_bench_samples,
-    console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation},
+    console::{ConsoleTestDiscoveryState, ConsoleTestState, Output},
     term,
     test_result::TestResult,
     time,
@@ -15,8 +15,8 @@ use crate::{
 // result chars leaves 12 chars for a progress count like " 11704/12853".
 const QUIET_MODE_MAX_COLUMN: usize = 88;
 
-pub(crate) struct TerseFormatter<T> {
-    out: OutputLocation<T>,
+pub(crate) struct TerseFormatter<'a> {
+    out: &'a mut dyn Output,
     use_color: bool,
     is_multithreaded: bool,
     /// Number of columns to fill when aligning names
@@ -27,9 +27,9 @@ pub(crate) struct TerseFormatter<T> {
     total_test_count: usize,
 }
 
-impl<T: Write> TerseFormatter<T> {
+impl<'a> TerseFormatter<'a> {
     pub fn new(
-        out: OutputLocation<T>,
+        out: &'a mut dyn Output,
         use_color: bool,
         max_name_len: usize,
         is_multithreaded: bool,
@@ -98,29 +98,13 @@ impl<T: Write> TerseFormatter<T> {
         Ok(())
     }
 
-    pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
-        match self.out {
-            OutputLocation::Pretty(ref mut term) => {
-                if self.use_color {
-                    term.fg(color)?;
-                }
-                term.write_all(word.as_bytes())?;
-                if self.use_color {
-                    term.reset()?;
-                }
-                term.flush()
-            }
-            OutputLocation::Raw(ref mut stdout) => {
-                stdout.write_all(word.as_bytes())?;
-                stdout.flush()
-            }
-        }
+    fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
+        if self.use_color { self.out.write_pretty(word, color) } else { self.out.write_plain(word) }
     }
 
-    pub fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
+    fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
         let s = s.as_ref();
-        self.out.write_all(s.as_bytes())?;
-        self.out.flush()
+        self.out.write_plain(s)
     }
 
     pub fn write_outputs(&mut self, state: &ConsoleTestState) -> io::Result<()> {
@@ -187,7 +171,7 @@ impl<T: Write> TerseFormatter<T> {
     }
 }
 
-impl<T: Write> OutputFormatter for TerseFormatter<T> {
+impl OutputFormatter for TerseFormatter<'_> {
     fn write_discovery_start(&mut self) -> io::Result<()> {
         Ok(())
     }
