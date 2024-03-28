@@ -72,7 +72,11 @@ ENV CC_wasm32_wasip1=clang-11 \
     CFLAGS_wasm32_wasip1="--sysroot /wasm32-wasip1" \
     AR_wasm32_wasip1=llvm-ar-11
 
-ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
+ENV NVPTX_TARGETS=nvptx64-nvidia-cuda \
+    CC_nvptx64_nvidia_cuda=clang-11 \
+    CXX_nvptx64_nvidia_cuda=clang++-11 \
+    CFLAGS_nvptx64_nvidia_cuda=-flto \
+    CXXFLAGS_nvptx64_nvidia_cuda=-flto
 ENV NVPTX_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $NVPTX_TARGETS \
   tests/run-make \
   tests/assembly
