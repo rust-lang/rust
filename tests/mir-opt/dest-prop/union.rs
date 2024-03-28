@@ -2,6 +2,7 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //! Tests that we can propagate into places that are projections into unions
 //@ compile-flags: -Zunsound-mir-opts
+//@ unit-test: DestinationPropagation
 fn val() -> u32 {
     1
 }
