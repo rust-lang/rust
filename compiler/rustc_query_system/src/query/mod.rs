@@ -20,7 +20,7 @@ use rustc_data_structures::stable_hasher::Hash64;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::DiagInner;
 use rustc_hir::def::DefKind;
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 use thin_vec::ThinVec;
 
@@ -86,21 +86,31 @@ pub struct QuerySideEffects {
     /// Stores any diagnostics emitted during query execution.
     /// These diagnostics will be re-emitted if we mark
     /// the query as green.
-    pub(super) diagnostics: ThinVec<DiagInner>,
+    pub diagnostics: ThinVec<DiagInner>,
+    /// Stores any `DefId`s that were created during query execution.
+    /// These `DefId`s will be re-created when we mark the query as green.
+    pub definitions: ThinVec<DefIdInfo>,
+}
+
+#[derive(Debug, Clone, Encodable, Decodable, PartialEq)]
+pub struct DefIdInfo {
+    pub parent: LocalDefId,
+    pub data: rustc_hir::definitions::DefPathData,
 }
 
 impl QuerySideEffects {
     /// Returns true if there might be side effects.
     #[inline]
     pub fn maybe_any(&self) -> bool {
-        let QuerySideEffects { diagnostics } = self;
+        let QuerySideEffects { diagnostics, definitions } = self;
         // Use `has_capacity` so that the destructor for `self.diagnostics` can be skipped
         // if `maybe_any` is known to be false.
-        diagnostics.has_capacity()
+        diagnostics.has_capacity() || definitions.has_capacity()
     }
     pub fn append(&mut self, other: QuerySideEffects) {
-        let QuerySideEffects { diagnostics } = self;
+        let QuerySideEffects { diagnostics, definitions } = self;
         diagnostics.extend(other.diagnostics);
+        definitions.extend(other.definitions);
     }
 }
 
@@ -118,6 +128,9 @@ pub trait QueryContext: HasDepContext {
     /// Register diagnostics for the given node, for use in next session.
     fn store_side_effects(self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects);
 
+    /// Actually execute the side effects
+    fn apply_side_effects(self, side_effects: QuerySideEffects);
+
     /// Register diagnostics for the given node, for use in next session.
     fn store_side_effects_for_anon_node(
         self,
@@ -132,7 +145,7 @@ pub trait QueryContext: HasDepContext {
         self,
         token: QueryJobId,
         depth_limit: bool,
-        diagnostics: Option<&Lock<ThinVec<DiagInner>>>,
+        side_effects: Option<&Lock<QuerySideEffects>>,
         compute: impl FnOnce() -> R,
     ) -> R;
 

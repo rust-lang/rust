@@ -32,8 +32,9 @@ fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
 fn track_diagnostic<R>(diagnostic: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {
     tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
-            if let Some(diagnostics) = icx.diagnostics {
-                diagnostics.lock().extend(Some(diagnostic.clone()));
+            if let Some(side_effects) = icx.side_effects {
+                let diagnostic = diagnostic.clone();
+                side_effects.lock().diagnostics.push(diagnostic);
             }
 
             // Diagnostics are tracked, we can ignore the dependency.
