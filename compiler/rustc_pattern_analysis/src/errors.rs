@@ -1,5 +1,5 @@
 use rustc_errors::{Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic};
-use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::thir::Pat;
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
@@ -147,4 +147,13 @@ pub(crate) struct NonExhaustiveOmittedPatternLintOnArm {
     pub suggest_lint_on_match: Option<Span>,
     pub lint_level: &'static str,
     pub lint_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(pattern_analysis_too_complex)]
+#[help]
+#[note]
+pub(crate) struct TooComplex {
+    #[primary_span]
+    pub span: Span,
 }

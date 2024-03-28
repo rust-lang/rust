@@ -405,7 +405,10 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         scrut_ty: Ty<'tcx>,
     ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
         let pattern_complexity_limit =
-            get_limit_size(cx.tcx.hir().krate_attrs(), cx.tcx.sess, sym::pattern_complexity);
+            get_limit_size(cx.tcx.hir().krate_attrs(), cx.tcx.sess, sym::pattern_complexity)
+                // Default value to emit the warning for "too complex" match. We picked it to warn
+                // after a second or two.
+                .or(Some(10_000_000));
         let report =
             rustc_pattern_analysis::analyze_match(&cx, &arms, scrut_ty, pattern_complexity_limit)
                 .map_err(|err| {

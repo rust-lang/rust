@@ -745,6 +745,8 @@ impl<'a, Cx: PatCx> UsefulnessCtxt<'a, Cx> {
             .complexity_limit
             .is_some_and(|complexity_limit| complexity_limit < self.complexity_level)
         {
+            // We change it to `None` to prevent it from being called more than once.
+            self.complexity_limit = None;
             return self.tycx.complexity_exceeded();
         }
         Ok(())
