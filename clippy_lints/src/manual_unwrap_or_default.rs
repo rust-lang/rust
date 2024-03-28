@@ -7,9 +7,9 @@ use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_default_equivalent;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
+use clippy_utils::{in_constant, is_default_equivalent};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -172,7 +172,7 @@ fn handle_if_let<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
 
 impl<'tcx> LateLintPass<'tcx> for ManualUnwrapOrDefault {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if expr.span.from_expansion() {
+        if expr.span.from_expansion() || in_constant(cx, expr.hir_id) {
             return;
         }
         if !handle_match(cx, expr) {
