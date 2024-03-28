@@ -1,9 +1,20 @@
 error: unknown directive
-.intel_syntax noprefix
-^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:1
+   |
+LL | .intel_syntax noprefix
+   | ^
+
 error: unknown directive
-.intel_syntax noprefix
-^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:1
+   |
+LL | .intel_syntax noprefix
+   | ^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: unknown directive
    |
 note: instantiated into assembly here
@@ -84,5 +95,5 @@ note: instantiated into assembly here
 LL |             .intel_syntax noprefix
    |             ^
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 
