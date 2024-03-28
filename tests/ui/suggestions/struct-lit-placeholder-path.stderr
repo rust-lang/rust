@@ -1,0 +1,20 @@
+error: the placeholder `_` is not allowed for the path in struct literals
+  --> $DIR/struct-lit-placeholder-path.rs:9:20
+   |
+LL |     blah::do_stuff(_ { x: 10 });
+   |                    -^^^^^^^^^^
+   |                    |
+   |                    not allowed in struct literals
+   |                    help: replace it with the correct type: `Stuff`
+
+error: the placeholder `_` is not allowed for the path in struct literals
+  --> $DIR/struct-lit-placeholder-path.rs:17:20
+   |
+LL |     blah::do_stuff(_ { x: 10 });
+   |                    ^^^^^^^^^^^
+   |                    |
+   |                    not allowed in struct literals
+   |                    help: replace it with an appropriate type: `/*Type*/`
+
+error: aborting due to 2 previous errors
+

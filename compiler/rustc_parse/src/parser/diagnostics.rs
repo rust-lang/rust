@@ -951,6 +951,10 @@ impl<'a> Parser<'a> {
                             return None;
                         }
                     } else {
+                        // FIXME(fmease): Under certain conditions return a struct literal
+                        // here and stash this diagnostic under StructLitNoType.
+                        // FIXME(fmease): Furthermore don't suggest redundant curly braces
+                        // around the potential struct literal if possible.
                         self.dcx().emit_err(StructLiteralBodyWithoutPath {
                             span: expr.span,
                             sugg: StructLiteralBodyWithoutPathSugg {
