@@ -13,6 +13,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
@@ -81,7 +82,7 @@ pub(crate) struct DepGraphData<D: Deps> {
 
     /// The dep-graph from the previous compilation session. It contains all
     /// nodes and edges as well as all fingerprints of nodes that have them.
-    previous: SerializedDepGraph,
+    previous: Arc<SerializedDepGraph>,
 
     colors: DepNodeColorMap,
 
@@ -113,7 +114,7 @@ where
 impl<D: Deps> DepGraph<D> {
     pub fn new(
         profiler: &SelfProfilerRef,
-        prev_graph: SerializedDepGraph,
+        prev_graph: Arc<SerializedDepGraph>,
         prev_work_products: WorkProductMap,
         encoder: FileEncoder,
         record_graph: bool,
