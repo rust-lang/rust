@@ -1,0 +1,23 @@
+error[E0277]: `?` couldn't convert the error to `bool`
+  --> $DIR/closure-ok-or.rs:6:24
+   |
+LL | fn main() -> Result<(), bool> {
+   |              ---------------- expected `bool` because of this
+LL |     None.ok_or(|| true)?
+   |          --------------^ the trait `From<{closure@$DIR/closure-ok-or.rs:6:16: 6:18}>` is not implemented for `bool`
+   |          |
+   |          this can't be annotated with `?` because it has type `Result<_, {closure@$DIR/closure-ok-or.rs:6:16: 6:18}>`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = help: the following other types implement trait `FromResidual<R>`:
+             <Result<T, F> as FromResidual<Yeet<E>>>
+             <Result<T, F> as FromResidual<Result<Infallible, E>>>
+   = note: required for `Result<(), bool>` to implement `FromResidual<Result<Infallible, {closure@$DIR/closure-ok-or.rs:6:16: 6:18}>>`
+help: `?` expected `bool` for `Err` variant but found `"{closure@$DIR/closure-ok-or.rs:6:16: 6:18}"`. Use the `ok_or_else` method to pass a closure
+   |
+LL |     None.ok_or_else(|| true)?
+   |          ~~~~~~~~~~
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
