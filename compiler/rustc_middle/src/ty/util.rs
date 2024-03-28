@@ -1608,16 +1608,18 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
 /// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
 /// folder.tcx().intern_*(&v)
 /// ```
-pub fn fold_list<'tcx, F, T>(
-    list: &'tcx ty::List<T>,
+pub fn fold_list<'tcx, F, L, T>(
+    list: L,
     folder: &mut F,
-    intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> &'tcx ty::List<T>,
-) -> Result<&'tcx ty::List<T>, F::Error>
+    intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> L,
+) -> Result<L, F::Error>
 where
     F: FallibleTypeFolder<TyCtxt<'tcx>>,
+    L: AsRef<[T]>,
     T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy,
 {
-    let mut iter = list.iter();
+    let slice = list.as_ref();
+    let mut iter = slice.iter().copied();
     // Look for the first element that changed
     match iter.by_ref().enumerate().find_map(|(i, t)| match t.try_fold_with(folder) {
         Ok(new_t) if new_t == t => None,
@@ -1625,8 +1627,8 @@ where
     }) {
         Some((i, Ok(new_t))) => {
             // An element changed, prepare to intern the resulting list
-            let mut new_list = SmallVec::<[_; 8]>::with_capacity(list.len());
-            new_list.extend_from_slice(&list[..i]);
+            let mut new_list = SmallVec::<[_; 8]>::with_capacity(slice.len());
+            new_list.extend_from_slice(&slice[..i]);
             new_list.push(new_t);
             for t in iter {
                 new_list.push(t.try_fold_with(folder)?)
@@ -1647,8 +1649,8 @@ pub struct AlwaysRequiresDrop;
 /// with their underlying types.
 pub fn reveal_opaque_types_in_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    val: &'tcx ty::List<ty::Clause<'tcx>>,
-) -> &'tcx ty::List<ty::Clause<'tcx>> {
+    val: ty::Clauses<'tcx>,
+) -> ty::Clauses<'tcx> {
     let mut visitor = OpaqueTypeExpander {
         seen_opaque_tys: FxHashSet::default(),
         expanded_cache: FxHashMap::default(),
