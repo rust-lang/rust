@@ -1,10 +1,12 @@
-use std::ops::AddAssign;
+use std::{fmt, ops};
 
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::fn_has_unsatisfiable_preds;
+use clippy_utils::source::snippet_opt;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
+use rustc_lexer::is_ident;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -108,13 +110,25 @@ impl Space {
     }
 }
 
-impl AddAssign<u64> for Space {
-    fn add_assign(&mut self, rhs: u64) {
-        if let Self::Used(lhs) = self {
-            match lhs.checked_add(rhs) {
-                Some(sum) => *self = Self::Used(sum),
-                None => *self = Self::Overflow,
-            }
+impl fmt::Display for Space {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Space::Used(1) => write!(f, "1 byte"),
+            Space::Used(n) => write!(f, "{n} bytes"),
+            Space::Overflow => write!(f, "over 2⁶⁴-1 bytes"),
+        }
+    }
+}
+
+impl ops::Add<u64> for Space {
+    type Output = Self;
+    fn add(self, rhs: u64) -> Self {
+        match self {
+            Self::Used(lhs) => match lhs.checked_add(rhs) {
+                Some(sum) => Self::Used(sum),
+                None => Self::Overflow,
+            },
+            Self::Overflow => self,
         }
     }
 }
@@ -123,10 +137,10 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
-        _: FnKind<'tcx>,
+        fn_kind: FnKind<'tcx>,
         _: &'tcx FnDecl<'tcx>,
         _: &'tcx Body<'tcx>,
-        span: Span,
+        entire_fn_span: Span,
         local_def_id: LocalDefId,
     ) {
         let def_id = local_def_id.to_def_id();
@@ -138,22 +152,68 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
         let mir = cx.tcx.optimized_mir(def_id);
         let param_env = cx.tcx.param_env(def_id);
 
-        let mut frame_size = Space::Used(0);
+        let sizes_of_locals = || {
+            mir.local_decls.iter().filter_map(|local| {
+                let layout = cx.tcx.layout_of(param_env.and(local.ty)).ok()?;
+                Some((local, layout.size.bytes()))
+            })
+        };
 
-        for local in &mir.local_decls {
-            if let Ok(layout) = cx.tcx.layout_of(param_env.and(local.ty)) {
-                frame_size += layout.size.bytes();
-            }
-        }
+        let frame_size = sizes_of_locals().fold(Space::Used(0), |sum, (_, size)| sum + size);
 
-        if frame_size.exceeds_limit(self.maximum_allowed_size) {
-            span_lint_and_note(
+        let limit = self.maximum_allowed_size;
+        if frame_size.exceeds_limit(limit) {
+            // Point at just the function name if possible, because lints that span
+            // the entire body and don't have to are less legible.
+            let fn_span = match fn_kind {
+                FnKind::ItemFn(ident, _, _) | FnKind::Method(ident, _) => ident.span,
+                FnKind::Closure => entire_fn_span,
+            };
+
+            span_lint_and_then(
                 cx,
                 LARGE_STACK_FRAMES,
-                span,
-                "this function allocates a large amount of stack space",
-                None,
-                "allocating large amounts of stack space can overflow the stack",
+                fn_span,
+                &format!("this function may allocate {frame_size} on the stack"),
+                |diag| {
+                    // Point out the largest individual contribution to this size, because
+                    // it is the most likely to be unintentionally large.
+                    if let Some((local, size)) = sizes_of_locals().max_by_key(|&(_, size)| size) {
+                        let local_span: Span = local.source_info.span;
+                        let size = Space::Used(size); // pluralizes for us
+                        let ty = local.ty;
+
+                        // TODO: Is there a cleaner, robust way to ask this question?
+                        // The obvious `LocalDecl::is_user_variable()` panics on "unwrapping cross-crate data",
+                        // and that doesn't get us the true name in scope rather than the span text either.
+                        if let Some(name) = snippet_opt(cx, local_span)
+                            && is_ident(&name)
+                        {
+                            // If the local is an ordinary named variable,
+                            // print its name rather than relying solely on the span.
+                            diag.span_label(
+                                local_span,
+                                format!("`{name}` is the largest part, at {size} for type `{ty}`"),
+                            );
+                        } else {
+                            diag.span_label(
+                                local_span,
+                                format!("this is the largest part, at {size} for type `{ty}`"),
+                            );
+                        }
+                    }
+
+                    // Explain why we are linting this and not other functions.
+                    diag.note(format!(
+                        "{frame_size} is larger than Clippy's configured `stack-size-threshold` of {limit}"
+                    ));
+
+                    // Explain why the user should care, briefly.
+                    diag.note_once(
+                        "allocating large amounts of stack space can overflow the stack \
+                        and cause the program to abort",
+                    );
+                },
             );
         }
     }
