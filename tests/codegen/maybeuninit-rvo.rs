@@ -1,4 +1,5 @@
 //@ compile-flags: -O
+//@ min-llvm-version: 18
 #![feature(c_unwind)]
 #![crate_type = "lib"]
 
@@ -24,7 +25,7 @@ extern "C-unwind" {
 
 pub fn new_from_uninit_unwind() -> Foo {
     // CHECK-LABEL: new_from_uninit
-    // CHECK: call void @llvm.memcpy.
+    // CHECK-NOT: call void @llvm.memcpy.
     let mut x = std::mem::MaybeUninit::uninit();
     unsafe {
         init_unwind(x.as_mut_ptr());
