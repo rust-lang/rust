@@ -871,12 +871,14 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
     where
         Cx: 'a,
     {
+        debug!(?self.ty);
         if self.private_uninhabited {
             // Skip the whole column
             return Ok((smallvec![Constructor::PrivateUninhabited], vec![]));
         }
 
         let ctors_for_ty = cx.ctors_for_ty(&self.ty)?;
+        debug!(?ctors_for_ty);
 
         // We treat match scrutinees of type `!` or `EmptyEnum` differently.
         let is_toplevel_exception =
@@ -895,6 +897,7 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
 
         // Analyze the constructors present in this column.
         let mut split_set = ctors_for_ty.split(ctors);
+        debug!(?split_set);
         let all_missing = split_set.present.is_empty();
 
         // Build the set of constructors we will specialize with. It must cover the whole type, so
@@ -1254,7 +1257,7 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
 /// + true  + [Second(true)]    +
 /// + false + [_]               +
 /// + _     + [_, _, tail @ ..] +
-/// | ✓     | ?                 | // column validity
+/// | ✓     | ?                 | // validity
 /// ```
 impl<'p, Cx: PatCx> fmt::Debug for Matrix<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1285,7 +1288,7 @@ impl<'p, Cx: PatCx> fmt::Debug for Matrix<'p, Cx> {
                 write!(f, " {sep}")?;
             }
             if is_validity_row {
-                write!(f, " // column validity")?;
+                write!(f, " // validity")?;
             }
             write!(f, "\n")?;
         }
@@ -1617,7 +1620,6 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
     };
 
     // Analyze the constructors present in this column.
-    debug!("ty: {:?}", place.ty);
     let ctors = matrix.heads().map(|p| p.ctor());
     let (split_ctors, missing_ctors) = place.split_column_ctors(mcx.tycx, ctors)?;
 
@@ -1669,7 +1671,10 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
     for row in matrix.rows() {
         if row.useful {
             if let PatOrWild::Pat(pat) = row.head() {
-                mcx.useful_subpatterns.insert(pat.uid);
+                let newly_useful = mcx.useful_subpatterns.insert(pat.uid);
+                if newly_useful {
+                    debug!("newly useful: {pat:?}");
+                }
             }
         }
     }
@@ -1768,6 +1773,7 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
         .map(|arm| {
             debug!(?arm);
             let usefulness = collect_pattern_usefulness(&cx.useful_subpatterns, arm.pat);
+            debug!(?usefulness);
             (arm, usefulness)
         })
         .collect();

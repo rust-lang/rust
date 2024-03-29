@@ -974,7 +974,6 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
     /// any) are missing; 2/ split constructors to handle non-trivial intersections e.g. on ranges
     /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation
     /// and its invariants.
-    #[instrument(level = "debug", skip(self, ctors), ret)]
     pub fn split<'a>(
         &self,
         ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
