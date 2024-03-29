@@ -27,10 +27,12 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::mono::{Linkage, Visibility};
-use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::SanitizerSet;
+
+use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::ty::{ParamEnv, TyCtxt, fnc_typetrees};
 
 use std::time::Instant;
 
@@ -86,6 +88,15 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
             for &(mono_item, data) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(&cx, data.linkage, data.visibility);
+                let inst = match mono_item {
+                    MonoItem::Fn(instance) => instance,
+                    _ => continue,
+                };
+                let fn_ty = inst.ty(tcx, ParamEnv::empty());
+                let _fnc_tree = fnc_typetrees(tcx, fn_ty, &mut vec![]);
+                //trace!("codegen_module: predefine fn {}", inst);
+                //trace!("{} \n {:?} \n {:?}", inst, fn_ty, _fnc_tree);
+                // Manuel: TODO
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.

@@ -945,6 +945,10 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     // We don't support volatile / extern / (global?) values.
     // Just because I didn't had time to test them, and it seems less urgent.
     let args_uncacheable = vec![0; input_tts.len()];
+    if args_uncacheable.len() != input_activity.len() {
+        dbg!("args_uncacheable.len(): {}", args_uncacheable.len());
+        dbg!("input_activity.len(): {}", input_activity.len());
+    }
     assert!(args_uncacheable.len() == input_activity.len());
     let num_fnc_args = LLVMCountParams(fnc);
     println!("num_fnc_args: {}", num_fnc_args);
