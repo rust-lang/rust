@@ -3656,11 +3656,13 @@ impl<T: core::error::Error + ?Sized> core::error::Error for Arc<T> {
     }
 }
 
-/// A counter that implements the wait-free "increment-if-not-zero" mechanism, as described in:
-/// https://dl.acm.org/doi/10.1145/3519939.3523730, section 4.3. The "help bit" and associated
+/// A counter that implements the wait-free "increment-if-not-zero" mechanism, as described in
+/// section 4.3 of this paper [1]. The "help bit" and associated
 /// logic is omitted.
 ///
 /// We assume that overflow to the zero bit will never occur, nor will any decrements past zero.
+///
+/// [1]: (https://dl.acm.org/doi/10.1145/3519939.3523730)
 struct StickyCounter(atomic::AtomicUsize);
 
 impl StickyCounter {
