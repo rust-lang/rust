@@ -28,6 +28,11 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// clamp is much shorter, easier to read, and doesn't use any control flow.
     ///
+    /// ### Limitations
+    ///
+    /// This lint will only trigger if max and min are known at compile time, and max is
+    /// greater than min.
+    ///
     /// ### Known issue(s)
     /// If the clamped variable is NaN this suggestion will cause the code to propagate NaN
     /// rather than returning either `max` or `min`.
@@ -145,9 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
                 .or_else(|| is_match_pattern(cx, expr))
                 .or_else(|| is_if_elseif_pattern(cx, expr));
             if let Some(suggestion) = suggestion {
-                if suggestion.min_less_than_max(cx) {
-                    emit_suggestion(cx, &suggestion);
-                }
+                maybe_emit_suggestion(cx, &suggestion);
             }
         }
     }
@@ -157,15 +160,16 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
             return;
         }
         for suggestion in is_two_if_pattern(cx, block) {
-            if suggestion.min_less_than_max(cx) {
-                emit_suggestion(cx, &suggestion);
-            }
+            maybe_emit_suggestion(cx, &suggestion);
         }
     }
     extract_msrv_attr!(LateContext);
 }
 
-fn emit_suggestion<'tcx>(cx: &LateContext<'tcx>, suggestion: &ClampSuggestion<'tcx>) {
+fn maybe_emit_suggestion<'tcx>(cx: &LateContext<'tcx>, suggestion: &ClampSuggestion<'tcx>) {
+    if !suggestion.min_less_than_max(cx) {
+        return;
+    }
     let ClampSuggestion {
         params: InputMinMax {
             input,
