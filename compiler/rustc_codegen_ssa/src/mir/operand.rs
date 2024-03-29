@@ -1,7 +1,6 @@
 use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
-use crate::base;
 use crate::size_of_val;
 use crate::traits::*;
 use crate::MemFlags;
@@ -398,7 +397,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
     }
 
-    fn store_with_flags<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    pub(crate) fn store_with_flags<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>,
@@ -410,16 +409,11 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
                 // value is through `undef`/`poison`, and the store itself is useless.
             }
-            OperandValue::Ref(r, None, source_align) => {
+            OperandValue::Ref(llval, llextra @ None, source_align) => {
                 assert!(dest.layout.is_sized(), "cannot directly store unsized values");
-                if flags.contains(MemFlags::NONTEMPORAL) {
-                    // HACK(nox): This is inefficient but there is no nontemporal memcpy.
-                    let ty = bx.backend_type(dest.layout);
-                    let val = bx.load(ty, r, source_align);
-                    bx.store_with_flags(val, dest.llval, dest.align, flags);
-                    return;
-                }
-                base::memcpy_ty(bx, dest.llval, dest.align, r, source_align, dest.layout, flags)
+                let source_place =
+                    PlaceRef { llval, llextra, align: source_align, layout: dest.layout };
+                bx.typed_place_copy_with_flags(dest, source_place, flags);
             }
             OperandValue::Ref(_, Some(_), _) => {
                 bug!("cannot directly store unsized values");

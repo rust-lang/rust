@@ -1459,7 +1459,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 _ => (op.immediate_or_packed_pair(bx), arg.layout.align.abi, false),
             },
-            Ref(llval, _, align) => match arg.mode {
+            Ref(llval, llextra, align) => match arg.mode {
                 PassMode::Indirect { attrs, .. } => {
                     let required_align = match attrs.pointee_align {
                         Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
@@ -1470,15 +1470,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // alignment requirements may be higher than the type's alignment, so copy
                         // to a higher-aligned alloca.
                         let scratch = PlaceRef::alloca_aligned(bx, arg.layout, required_align);
-                        base::memcpy_ty(
-                            bx,
-                            scratch.llval,
-                            scratch.align,
-                            llval,
-                            align,
-                            op.layout,
-                            MemFlags::empty(),
-                        );
+                        let op_place = PlaceRef { llval, llextra, layout: op.layout, align };
+                        bx.typed_place_copy(scratch, op_place);
                         (scratch.llval, scratch.align, true)
                     } else {
                         (llval, align, true)
