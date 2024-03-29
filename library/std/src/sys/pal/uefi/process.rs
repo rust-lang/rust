@@ -4,7 +4,6 @@ use crate::ffi::OsStr;
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::io;
-use crate::marker::PhantomData;
 use crate::num::NonZero;
 use crate::num::NonZeroI32;
 use crate::path::Path;
@@ -23,7 +22,7 @@ use super::helpers;
 
 pub struct Command {
     prog: OsString,
-    args: OsString,
+    args: Vec<OsString>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
 }
@@ -48,15 +47,14 @@ impl Command {
     pub fn new(program: &OsStr) -> Command {
         Command {
             prog: program.to_os_string(),
-            args: program.to_os_string(),
+            args: Vec::from([program.to_os_string()]),
             stdout: None,
             stderr: None,
         }
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
-        self.args.push(" ");
-        self.args.push(arg);
+        self.args.push(arg.to_os_string());
     }
 
     pub fn env_mut(&mut self) -> &mut CommandEnv {
@@ -80,11 +78,11 @@ impl Command {
     }
 
     pub fn get_program(&self) -> &OsStr {
-        panic!("unsupported")
+        self.prog.as_ref()
     }
 
     pub fn get_args(&self) -> CommandArgs<'_> {
-        panic!("unsupported")
+        CommandArgs { iter: self.args.iter() }
     }
 
     pub fn get_envs(&self) -> CommandEnvs<'_> {
@@ -153,8 +151,15 @@ impl Command {
             None => cmd.stderr_inherit(),
         };
 
-        if !self.args.is_empty() {
-            cmd.set_args(&self.args);
+        if self.args.len() > 1 {
+            let args = self.args.iter().fold(OsString::new(), |mut acc, arg| {
+                if !acc.is_empty() {
+                    acc.push(" ");
+                }
+                acc.push(arg);
+                acc
+            });
+            cmd.set_args(&args);
         }
 
         let stat = cmd.start_image()?;
@@ -293,24 +298,31 @@ impl Process {
 }
 
 pub struct CommandArgs<'a> {
-    _p: PhantomData<&'a ()>,
+    iter: crate::slice::Iter<'a, OsString>,
 }
 
 impl<'a> Iterator for CommandArgs<'a> {
     type Item = &'a OsStr;
     fn next(&mut self) -> Option<&'a OsStr> {
-        None
+        self.iter.next().map(|x| x.as_ref())
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(0))
+        self.iter.size_hint()
     }
 }
 
-impl<'a> ExactSizeIterator for CommandArgs<'a> {}
+impl<'a> ExactSizeIterator for CommandArgs<'a> {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
+}
 
 impl<'a> fmt::Debug for CommandArgs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().finish()
+        f.debug_list().entries(self.iter.clone()).finish()
     }
 }
 
