@@ -92,10 +92,15 @@ impl Command {
 
     pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
         let mut cmd = uefi_command_internal::Command::load_image(&self.prog)?;
+
         cmd.stdout_init()?;
+        cmd.stderr_init()?;
+
         let stat = cmd.start_image()?;
         let stdout = cmd.stdout()?;
-        Ok((ExitStatus(stat), stdout, Vec::new()))
+        let stderr = cmd.stderr()?;
+
+        Ok((ExitStatus(stat), stdout, stderr))
     }
 }
 
@@ -263,6 +268,7 @@ mod uefi_command_internal {
     pub struct Command {
         handle: NonNull<crate::ffi::c_void>,
         stdout: Option<helpers::Protocol<PipeProtocol>>,
+        stderr: Option<helpers::Protocol<PipeProtocol>>,
         st: Box<r_efi::efi::SystemTable>,
     }
 
@@ -271,7 +277,7 @@ mod uefi_command_internal {
             handle: NonNull<crate::ffi::c_void>,
             st: Box<r_efi::efi::SystemTable>,
         ) -> Self {
-            Self { handle, stdout: None, st }
+            Self { handle, stdout: None, stderr: None, st }
         }
 
         pub fn load_image(p: &OsStr) -> io::Result<Self> {
@@ -349,9 +355,35 @@ mod uefi_command_internal {
             Ok(())
         }
 
+        pub fn stderr_init(&mut self) -> io::Result<()> {
+            let mut protocol =
+                helpers::Protocol::create(PipeProtocol::new(), simple_text_output::PROTOCOL_GUID)?;
+
+            self.st.standard_error_handle = protocol.handle().as_ptr();
+            self.st.std_err =
+                protocol.as_mut() as *mut PipeProtocol as *mut simple_text_output::Protocol;
+
+            self.stderr = Some(protocol);
+
+            Ok(())
+        }
+
         pub fn stdout(&self) -> io::Result<Vec<u8>> {
             if let Some(stdout) = &self.stdout {
                 stdout
+                    .as_ref()
+                    .utf8()
+                    .into_string()
+                    .map_err(|_| const_io_error!(io::ErrorKind::Other, "utf8 conversion failed"))
+                    .map(Into::into)
+            } else {
+                Err(const_io_error!(io::ErrorKind::NotFound, "stdout not found"))
+            }
+        }
+
+        pub fn stderr(&self) -> io::Result<Vec<u8>> {
+            if let Some(stderr) = &self.stderr {
+                stderr
                     .as_ref()
                     .utf8()
                     .into_string()
