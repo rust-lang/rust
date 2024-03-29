@@ -2000,7 +2000,7 @@ pub fn parse_crate_edition(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches
 }
 
 fn check_error_format_stability(
-    early_dcx: &mut EarlyDiagCtxt,
+    early_dcx: &EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
     error_format: ErrorOutputType,
 ) {
@@ -2098,7 +2098,7 @@ fn should_override_cgus_and_disable_thinlto(
 fn collect_print_requests(
     early_dcx: &EarlyDiagCtxt,
     cg: &mut CodegenOptions,
-    unstable_opts: &mut UnstableOptions,
+    unstable_opts: &UnstableOptions,
     matches: &getopts::Matches,
 ) -> Vec<PrintRequest> {
     let mut prints = Vec::<PrintRequest>::new();
@@ -2564,7 +2564,7 @@ fn parse_remap_path_prefix(
 }
 
 fn parse_logical_env(
-    early_dcx: &mut EarlyDiagCtxt,
+    early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
 ) -> FxIndexMap<String, String> {
     let mut vars = FxIndexMap::default();
@@ -2722,6 +2722,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     }
 
     if let Ok(graphviz_font) = std::env::var("RUSTC_GRAPHVIZ_FONT") {
+        // FIXME: this is only mutation of UnstableOptions here, move into
+        // UnstableOptions::build?
         unstable_opts.graphviz_font = graphviz_font;
     }
 
@@ -2771,7 +2773,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         ));
     }
 
-    let prints = collect_print_requests(early_dcx, &mut cg, &mut unstable_opts, matches);
+    let prints = collect_print_requests(early_dcx, &mut cg, &unstable_opts, matches);
 
     let cg = cg;
 

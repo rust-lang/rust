@@ -4931,7 +4931,7 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
         let hir::WherePredicate::BoundPredicate(pred) = pred else {
             continue;
         };
-        let mut bounds = pred.bounds.iter().peekable();
+        let mut bounds = pred.bounds.iter();
         while let Some(bound) = bounds.next() {
             let Some(trait_ref) = bound.trait_ref() else {
                 continue;
