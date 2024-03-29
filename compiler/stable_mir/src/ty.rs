@@ -654,7 +654,7 @@ impl AdtDef {
         with(|cx| cx.def_ty(self.0))
     }
 
-    /// Retrieve the type of this Adt instantiating the type with the given arguments.
+    /// Retrieve the type of this Adt by instantiating and normalizing it with the given arguments.
     ///
     /// This will assume the type can be instantiated with these arguments.
     pub fn ty_with_args(&self, args: &GenericArgs) -> Ty {
@@ -733,7 +733,7 @@ pub struct FieldDef {
 }
 
 impl FieldDef {
-    /// Retrieve the type of this field instantiating the type with the given arguments.
+    /// Retrieve the type of this field instantiating and normalizing it with the given arguments.
     ///
     /// This will assume the type can be instantiated with these arguments.
     pub fn ty_with_args(&self, args: &GenericArgs) -> Ty {
