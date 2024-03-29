@@ -16,6 +16,10 @@ use rustc_target::abi::{
     WrappingRange,
 };
 
+use rustc_middle::ty::typetree_from;
+use rustc_ast::expand::typetree::{TypeTree, FncTree};
+use crate::rustc_middle::ty::layout::HasTyCtxt;
+
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     allow_overlap: bool,
@@ -25,15 +29,23 @@ fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     src: Bx::Value,
     count: Bx::Value,
 ) {
+    let tcx: TyCtxt<'_> = bx.cx().tcx();
+    let fnc_tree: TypeTree = typetree_from(tcx, ty);
+    let fnc_tree: FncTree = FncTree {
+        args: vec![fnc_tree.clone(), fnc_tree.clone()],
+        ret: TypeTree::new(),
+    };
+
     let layout = bx.layout_of(ty);
     let size = layout.size;
     let align = layout.align.abi;
     let size = bx.mul(bx.const_usize(size.bytes()), count);
     let flags = if volatile { MemFlags::VOLATILE } else { MemFlags::empty() };
+    trace!("copy: mir ty: {:?}, enzyme tt: {:?}", ty, fnc_tree);
     if allow_overlap {
-        bx.memmove(dst, align, src, align, size, flags);
+        bx.memmove(dst, align, src, align, size, flags, Some(fnc_tree));
     } else {
-        bx.memcpy(dst, align, src, align, size, flags);
+        bx.memcpy(dst, align, src, align, size, flags, Some(fnc_tree));
     }
 }
 
@@ -45,12 +57,19 @@ fn memset_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     val: Bx::Value,
     count: Bx::Value,
 ) {
+    let tcx: TyCtxt<'_> = bx.cx().tcx();
+    let fnc_tree: TypeTree = typetree_from(tcx, ty);
+    let fnc_tree: FncTree = FncTree {
+        args: vec![fnc_tree.clone(), fnc_tree.clone()],
+        ret: TypeTree::new(),
+    };
+
     let layout = bx.layout_of(ty);
     let size = layout.size;
     let align = layout.align.abi;
     let size = bx.mul(bx.const_usize(size.bytes()), count);
     let flags = if volatile { MemFlags::VOLATILE } else { MemFlags::empty() };
-    bx.memset(dst, val, size, align, flags);
+    bx.memset(dst, val, size, align, flags, Some(fnc_tree));
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {

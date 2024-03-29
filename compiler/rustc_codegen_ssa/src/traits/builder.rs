@@ -22,6 +22,8 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Abi, Align, Scalar, Size, WrappingRange};
 use rustc_target::spec::HasTargetSpec;
 
+use rustc_ast::expand::typetree::FncTree;
+
 #[derive(Copy, Clone)]
 pub enum OverflowOp {
     Add,
@@ -238,6 +240,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         src_align: Align,
         size: Self::Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     );
     fn memmove(
         &mut self,
@@ -247,6 +250,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         src_align: Align,
         size: Self::Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     );
     fn memset(
         &mut self,
@@ -255,6 +259,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         size: Self::Value,
         align: Align,
         flags: MemFlags,
+        tt: Option<FncTree>,
     );
 
     fn select(

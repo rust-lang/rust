@@ -44,6 +44,9 @@ use std::time::{Duration, Instant};
 
 use itertools::Itertools;
 
+use rustc_middle::ty::typetree_from;
+use rustc_ast::expand::typetree::{TypeTree, FncTree};
+
 pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind, signed: bool) -> IntPredicate {
     match op {
         hir::BinOpKind::Eq => IntPredicate::IntEQ,
@@ -357,6 +360,7 @@ pub fn wants_new_eh_instructions(sess: &Session) -> bool {
     wants_wasm_eh(sess) || wants_msvc_seh(sess)
 }
 
+// Manuel TODO
 pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     dst: Bx::Value,
@@ -370,6 +374,13 @@ pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     if size == 0 {
         return;
     }
+    let my_ty = layout.ty;
+    let tcx: TyCtxt<'_> = bx.cx().tcx();
+    let fnc_tree: TypeTree = typetree_from(tcx, my_ty);
+    let fnc_tree: FncTree = FncTree {
+        args: vec![fnc_tree.clone(), fnc_tree.clone()],
+        ret: TypeTree::new(),
+    };
 
     if flags == MemFlags::empty()
         && let Some(bty) = bx.cx().scalar_copy_backend_type(layout)
@@ -377,8 +388,11 @@ pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let temp = bx.load(bty, src, src_align);
         bx.store(temp, dst, dst_align);
     } else {
-        bx.memcpy(dst, dst_align, src, src_align, bx.cx().const_usize(size), flags);
+        trace!("my_ty: {:?}, enzyme tt: {:?}", my_ty, fnc_tree);
+        trace!("memcpy_ty: {:?} -> {:?} (size={}, align={:?})", src, dst, size, dst_align);
+        bx.memcpy(dst, dst_align, src, src_align, bx.cx().const_usize(size), flags, Some(fnc_tree));
     }
+    //let (_args, _ret): (Vec<TypeTree>, TypeTree) = (fnc_tree.args, fnc_tree.ret);
 }
 
 pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
