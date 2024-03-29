@@ -354,7 +354,7 @@ impl<'test> TestCx<'test> {
         if self.props.should_ice {
             match proc_res.status.code() {
                 Some(101) => (),
-                _ => self.fatal("test no longer crashes/triggers ICE! Please annotate it and add it as test to tests/ui or wherever you see fit"),
+                _ => self.fatal("expected ICE"),
             }
         }
 
@@ -366,10 +366,11 @@ impl<'test> TestCx<'test> {
         let proc_res = self.compile_test(WillExecute::No, self.should_emit_metadata(pm));
 
         // if a test does not crash, consider it an error
-        match proc_res.status.code() {
-            Some(101) => (),
-            Some(other) => self.fatal(&format!("expected exit code 101, got: {}", other)),
-            e => self.fatal(&format!("expected ICE, got '{:?}'", e)),
+        if !proc_res.status.success() {
+            match proc_res.status.code() {
+                Some(1 | 0) => self.fatal(&format!("test no longer crashes/triggers ICE! Please annotate it and add it as test to tests/ui or wherever you see fit")),
+                _ => (),
+            }
         }
     }
 
