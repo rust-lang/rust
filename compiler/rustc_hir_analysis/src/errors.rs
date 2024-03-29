@@ -1498,36 +1498,36 @@ pub struct StaticMutRef<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[subdiagnostic]
-    pub sugg: StaticMutRefSugg,
+    // #[subdiagnostic]
+    // pub sugg: StaticMutRefSugg,
     pub shared: &'a str,
 }
 
-#[derive(Subdiagnostic)]
-pub enum StaticMutRefSugg {
-    #[suggestion(
-        hir_analysis_suggestion,
-        style = "verbose",
-        code = "addr_of!({var})",
-        applicability = "maybe-incorrect"
-    )]
-    Shared {
-        #[primary_span]
-        span: Span,
-        var: String,
-    },
-    #[suggestion(
-        hir_analysis_suggestion_mut,
-        style = "verbose",
-        code = "addr_of_mut!({var})",
-        applicability = "maybe-incorrect"
-    )]
-    Mut {
-        #[primary_span]
-        span: Span,
-        var: String,
-    },
-}
+// #[derive(Subdiagnostic)]
+// pub enum StaticMutRefSugg {
+//     #[suggestion(
+//         hir_analysis_suggestion,
+//         style = "verbose",
+//         code = "addr_of!({var})",
+//         applicability = "maybe-incorrect"
+//     )]
+//     Shared {
+//         #[primary_span]
+//         span: Span,
+//         var: String,
+//     },
+//     #[suggestion(
+//         hir_analysis_suggestion_mut,
+//         style = "verbose",
+//         code = "addr_of_mut!({var})",
+//         applicability = "maybe-incorrect"
+//     )]
+//     Mut {
+//         #[primary_span]
+//         span: Span,
+//         var: String,
+//     },
+// }
 
 // STATIC_MUT_REF lint
 #[derive(LintDiagnostic)]
