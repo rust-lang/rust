@@ -408,7 +408,7 @@ impl CString {
                 fn strlen(s: *const c_char) -> usize;
             }
             let len = strlen(ptr) + 1; // Including the NUL byte
-            let slice = slice::from_raw_parts_mut(ptr, len as usize);
+            let slice = slice::from_raw_parts_mut(ptr, len);
             CString { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
         }
     }

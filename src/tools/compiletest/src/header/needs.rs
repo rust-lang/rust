@@ -149,6 +149,11 @@ pub(super) fn handle_needs(
             condition: config.target_cfg().relocation_model == "pic",
             ignore_reason: "ignored on targets without PIC relocation model",
         },
+        Need {
+            name: "needs-wasmtime",
+            condition: config.runner.as_ref().is_some_and(|r| r.contains("wasmtime")),
+            ignore_reason: "ignored when wasmtime runner is not available",
+        },
     ];
 
     let (name, comment) = match ln.split_once([':', ' ']) {

@@ -8,8 +8,8 @@ LL |     ()
    |     -- return type was inferred to be `()` here
    |
    = help: the following other types implement trait `Foo<A>`:
-             <() as Foo<u32>>
              <() as Foo<()>>
+             <() as Foo<u32>>
 
 error: aborting due to 1 previous error
 

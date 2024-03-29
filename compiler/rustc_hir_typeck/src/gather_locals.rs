@@ -95,8 +95,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
             Some(ref ty) => {
                 let o_ty = self.fcx.lower_ty(ty);
 
-                let c_ty =
-                    self.fcx.inh.infcx.canonicalize_user_type_annotation(UserType::Ty(o_ty.raw));
+                let c_ty = self.fcx.infcx.canonicalize_user_type_annotation(UserType::Ty(o_ty.raw));
                 debug!("visit_local: ty.hir_id={:?} o_ty={:?} c_ty={:?}", ty.hir_id, o_ty, c_ty);
                 self.fcx
                     .typeck_results

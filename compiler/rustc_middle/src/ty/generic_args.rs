@@ -17,7 +17,6 @@ use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
 
 use core::intrinsics;
-use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZero;
@@ -68,7 +67,7 @@ const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
 
-#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord, HashStable)]
+#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, HashStable)]
 pub enum GenericArgKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
@@ -97,18 +96,6 @@ impl<'tcx> GenericArgKind<'tcx> {
         };
 
         GenericArg { ptr: ptr.map_addr(|addr| addr | tag), marker: PhantomData }
-    }
-}
-
-impl<'tcx> Ord for GenericArg<'tcx> {
-    fn cmp(&self, other: &GenericArg<'tcx>) -> Ordering {
-        self.unpack().cmp(&other.unpack())
-    }
-}
-
-impl<'tcx> PartialOrd for GenericArg<'tcx> {
-    fn partial_cmp(&self, other: &GenericArg<'tcx>) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 

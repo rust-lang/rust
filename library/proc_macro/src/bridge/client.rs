@@ -2,6 +2,7 @@
 
 use super::*;
 
+use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::sync::atomic::AtomicU32;
 
@@ -189,61 +190,61 @@ struct Bridge<'a> {
 impl<'a> !Send for Bridge<'a> {}
 impl<'a> !Sync for Bridge<'a> {}
 
-enum BridgeState<'a> {
-    /// No server is currently connected to this client.
-    NotConnected,
+#[allow(unsafe_code)]
+mod state {
+    use super::Bridge;
+    use std::cell::{Cell, RefCell};
+    use std::ptr;
 
-    /// A server is connected and available for requests.
-    Connected(Bridge<'a>),
+    thread_local! {
+        static BRIDGE_STATE: Cell<*const ()> = const { Cell::new(ptr::null()) };
+    }
 
-    /// Access to the bridge is being exclusively acquired
-    /// (e.g., during `BridgeState::with`).
-    InUse,
-}
+    pub(super) fn set<'bridge, R>(state: &RefCell<Bridge<'bridge>>, f: impl FnOnce() -> R) -> R {
+        struct RestoreOnDrop(*const ());
+        impl Drop for RestoreOnDrop {
+            fn drop(&mut self) {
+                BRIDGE_STATE.set(self.0);
+            }
+        }
 
-enum BridgeStateL {}
+        let inner = ptr::from_ref(state).cast();
+        let outer = BRIDGE_STATE.replace(inner);
+        let _restore = RestoreOnDrop(outer);
 
-impl<'a> scoped_cell::ApplyL<'a> for BridgeStateL {
-    type Out = BridgeState<'a>;
-}
+        f()
+    }
 
-thread_local! {
-    static BRIDGE_STATE: scoped_cell::ScopedCell<BridgeStateL> =
-        const { scoped_cell::ScopedCell::new(BridgeState::NotConnected) };
-}
-
-impl BridgeState<'_> {
-    /// Take exclusive control of the thread-local
-    /// `BridgeState`, and pass it to `f`, mutably.
-    /// The state will be restored after `f` exits, even
-    /// by panic, including modifications made to it by `f`.
-    ///
-    /// N.B., while `f` is running, the thread-local state
-    /// is `BridgeState::InUse`.
-    fn with<R>(f: impl FnOnce(&mut BridgeState<'_>) -> R) -> R {
-        BRIDGE_STATE.with(|state| state.replace(BridgeState::InUse, f))
+    pub(super) fn with<R>(
+        f: impl for<'bridge> FnOnce(Option<&RefCell<Bridge<'bridge>>>) -> R,
+    ) -> R {
+        let state = BRIDGE_STATE.get();
+        // SAFETY: the only place where the pointer is set is in `set`. It puts
+        // back the previous value after the inner call has returned, so we know
+        // that as long as the pointer is not null, it came from a reference to
+        // a `RefCell<Bridge>` that outlasts the call to this function. Since `f`
+        // works the same for any lifetime of the bridge, including the actual
+        // one, we can lie here and say that the lifetime is `'static` without
+        // anyone noticing.
+        let bridge = unsafe { state.cast::<RefCell<Bridge<'static>>>().as_ref() };
+        f(bridge)
     }
 }
 
 impl Bridge<'_> {
     fn with<R>(f: impl FnOnce(&mut Bridge<'_>) -> R) -> R {
-        BridgeState::with(|state| match state {
-            BridgeState::NotConnected => {
-                panic!("procedural macro API is used outside of a procedural macro");
-            }
-            BridgeState::InUse => {
-                panic!("procedural macro API is used while it's already in use");
-            }
-            BridgeState::Connected(bridge) => f(bridge),
+        state::with(|state| {
+            let bridge = state.expect("procedural macro API is used outside of a procedural macro");
+            let mut bridge = bridge
+                .try_borrow_mut()
+                .expect("procedural macro API is used while it's already in use");
+            f(&mut bridge)
         })
     }
 }
 
 pub(crate) fn is_available() -> bool {
-    BridgeState::with(|state| match state {
-        BridgeState::Connected(_) | BridgeState::InUse => true,
-        BridgeState::NotConnected => false,
-    })
+    state::with(|s| s.is_some())
 }
 
 /// A client-side RPC entry-point, which may be using a different `proc_macro`
@@ -282,11 +283,7 @@ fn maybe_install_panic_hook(force_show_panics: bool) {
     HIDE_PANICS_DURING_EXPANSION.call_once(|| {
         let prev = panic::take_hook();
         panic::set_hook(Box::new(move |info| {
-            let show = BridgeState::with(|state| match state {
-                BridgeState::NotConnected => true,
-                BridgeState::Connected(_) | BridgeState::InUse => force_show_panics,
-            });
-            if show {
+            if force_show_panics || !is_available() {
                 prev(info)
             }
         }));
@@ -312,29 +309,24 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
         let (globals, input) = <(ExpnGlobals<Span>, A)>::decode(reader, &mut ());
 
         // Put the buffer we used for input back in the `Bridge` for requests.
-        let new_state =
-            BridgeState::Connected(Bridge { cached_buffer: buf.take(), dispatch, globals });
+        let state = RefCell::new(Bridge { cached_buffer: buf.take(), dispatch, globals });
 
-        BRIDGE_STATE.with(|state| {
-            state.set(new_state, || {
-                let output = f(input);
+        let output = state::set(&state, || f(input));
 
-                // Take the `cached_buffer` back out, for the output value.
-                buf = Bridge::with(|bridge| bridge.cached_buffer.take());
+        // Take the `cached_buffer` back out, for the output value.
+        buf = RefCell::into_inner(state).cached_buffer;
 
-                // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
-                // from encoding a panic (`Err(e: PanicMessage)`) to avoid
-                // having handles outside the `bridge.enter(|| ...)` scope, and
-                // to catch panics that could happen while encoding the success.
-                //
-                // Note that panics should be impossible beyond this point, but
-                // this is defensively trying to avoid any accidental panicking
-                // reaching the `extern "C"` (which should `abort` but might not
-                // at the moment, so this is also potentially preventing UB).
-                buf.clear();
-                Ok::<_, ()>(output).encode(&mut buf, &mut ());
-            })
-        })
+        // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
+        // from encoding a panic (`Err(e: PanicMessage)`) to avoid
+        // having handles outside the `bridge.enter(|| ...)` scope, and
+        // to catch panics that could happen while encoding the success.
+        //
+        // Note that panics should be impossible beyond this point, but
+        // this is defensively trying to avoid any accidental panicking
+        // reaching the `extern "C"` (which should `abort` but might not
+        // at the moment, so this is also potentially preventing UB).
+        buf.clear();
+        Ok::<_, ()>(output).encode(&mut buf, &mut ());
     }))
     .map_err(PanicMessage::from)
     .unwrap_or_else(|e| {

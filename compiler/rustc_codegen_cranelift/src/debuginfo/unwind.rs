@@ -3,9 +3,10 @@
 use cranelift_codegen::ir::Endianness;
 use cranelift_codegen::isa::{unwind::UnwindInfo, TargetIsa};
 use cranelift_object::ObjectProduct;
-use gimli::write::{Address, CieId, EhFrame, FrameTable, Section};
+use gimli::write::{CieId, EhFrame, FrameTable, Section};
 use gimli::RunTimeEndian;
 
+use super::emit::address_for_func;
 use super::object::WriteDebugInfo;
 use crate::prelude::*;
 
@@ -47,11 +48,8 @@ impl UnwindContext {
 
         match unwind_info {
             UnwindInfo::SystemV(unwind_info) => {
-                self.frame_table.add_fde(
-                    self.cie_id.unwrap(),
-                    unwind_info
-                        .to_fde(Address::Symbol { symbol: func_id.as_u32() as usize, addend: 0 }),
-                );
+                self.frame_table
+                    .add_fde(self.cie_id.unwrap(), unwind_info.to_fde(address_for_func(func_id)));
             }
             UnwindInfo::WindowsX64(_) => {
                 // FIXME implement this

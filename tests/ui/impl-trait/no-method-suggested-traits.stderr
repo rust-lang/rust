@@ -127,8 +127,8 @@ LL |     Foo.method();
    = note: the following traits define an item `method`, perhaps you need to implement one of them:
            candidate #1: `foo::Bar`
            candidate #2: `PubPub`
-           candidate #3: `no_method_suggested_traits::qux::PrivPub`
-           candidate #4: `Reexported`
+           candidate #3: `Reexported`
+           candidate #4: `no_method_suggested_traits::qux::PrivPub`
 
 error[E0599]: no method named `method` found for struct `Rc<&mut Box<&Foo>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:42:43
@@ -140,8 +140,8 @@ LL |     std::rc::Rc::new(&mut Box::new(&Foo)).method();
    = note: the following traits define an item `method`, perhaps you need to implement one of them:
            candidate #1: `foo::Bar`
            candidate #2: `PubPub`
-           candidate #3: `no_method_suggested_traits::qux::PrivPub`
-           candidate #4: `Reexported`
+           candidate #3: `Reexported`
+           candidate #4: `no_method_suggested_traits::qux::PrivPub`
 
 error[E0599]: no method named `method2` found for type `u64` in the current scope
   --> $DIR/no-method-suggested-traits.rs:45:10

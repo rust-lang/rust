@@ -1,44 +1,36 @@
 // ignore-tidy-linelength
 
+// Test that if we build `b` against a version of `a` that has one set of types, it will not run
+// with a dylib that has a different set of types.
+
 extern crate run_make_support;
 
 use run_make_support::{run, run_fail, rustc};
 
 fn main() {
     rustc()
-        .arg("a.rs")
-        .arg("--cfg")
-        .arg("x")
-        .arg("-C")
-        .arg("prefer-dynamic")
-        .arg("-Z")
-        .arg("unstable-options")
-        .arg("-C")
-        .arg("symbol-mangling-version=legacy")
+        .input("a.rs")
+        .cfg("x")
+        .arg("-Zunstable-options")
+        .arg("-Cprefer-dynamic")
+        .arg("-Csymbol-mangling-version=legacy")
         .run();
 
     rustc()
-       .arg("b.rs")
-       .arg("-C")
-       .arg("prefer-dynamic")
-       .arg("-Z")
-       .arg("unstable-options")
-       .arg("-C")
-       .arg("symbol-mangling-version=legacy")
-       .run();
+        .input("b.rs")
+        .arg("-Zunstable-options")
+        .arg("-Cprefer-dynamic")
+        .arg("-Csymbol-mangling-version=legacy")
+        .run();
 
     run("b");
 
     rustc()
-        .arg("a.rs")
-        .arg("--cfg")
-        .arg("y")
-        .arg("-C")
-        .arg("prefer-dynamic")
-        .arg("-Z")
-        .arg("unstable-options")
-        .arg("-C")
-        .arg("symbol-mangling-version=legacy")
+        .input("a.rs")
+        .cfg("y")
+        .arg("-Zunstable-options")
+        .arg("-Cprefer-dynamic")
+        .arg("-Csymbol-mangling-version=legacy")
         .run();
 
     run_fail("b");

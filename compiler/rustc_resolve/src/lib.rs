@@ -415,6 +415,19 @@ enum PathResult<'a> {
         label: String,
         suggestion: Option<Suggestion>,
         is_error_from_last_segment: bool,
+        /// The final module being resolved, for instance:
+        ///
+        /// ```compile_fail
+        /// mod a {
+        ///     mod b {
+        ///         mod c {}
+        ///     }
+        /// }
+        ///
+        /// use a::not_exist::c;
+        /// ```
+        ///
+        /// In this case, `module` will point to `a`.
         module: Option<ModuleOrUniformRoot<'a>>,
         /// The segment name of target
         segment_name: Symbol,
@@ -1605,7 +1618,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 .into_items()
                 .map(|(k, f)| (k, f.key()))
                 .collect(),
-            def_id_to_node_id: self.def_id_to_node_id,
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),

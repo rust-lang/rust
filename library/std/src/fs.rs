@@ -97,7 +97,7 @@ use crate::time::SystemTime;
 /// have been opened for asynchronous I/O (e.g. by using `FILE_FLAG_OVERLAPPED`).
 ///
 /// [`BufReader`]: io::BufReader
-/// [`BufWriter`]: io::BufReader
+/// [`BufWriter`]: io::BufWriter
 /// [`sync_all`]: File::sync_all
 /// [`write`]: File::write
 /// [`read`]: File::read
@@ -385,7 +385,7 @@ impl File {
     /// See the [`OpenOptions::open`] function for more details.
     ///
     /// See also [`std::fs::write()`][self::write] for a simple function to
-    /// create a file with a given data.
+    /// create a file with some given data.
     ///
     /// # Examples
     ///
@@ -1036,7 +1036,7 @@ impl OpenOptions {
     /// [`OpenOptions::append`] access must be used.
     ///
     /// See also [`std::fs::write()`][self::write] for a simple function to
-    /// create a file with a given data.
+    /// create a file with some given data.
     ///
     /// # Examples
     ///

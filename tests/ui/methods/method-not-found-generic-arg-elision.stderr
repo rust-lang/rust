@@ -35,10 +35,10 @@ LL |     wrapper.method();
    |             ^^^^^^ method not found in `Wrapper<bool>`
    |
    = note: the method was found for
-           - `Wrapper<i8>`
            - `Wrapper<i16>`
            - `Wrapper<i32>`
            - `Wrapper<i64>`
+           - `Wrapper<i8>`
            and 2 more types
 
 error[E0599]: no method named `other` found for struct `Wrapper` in the current scope
@@ -60,9 +60,9 @@ LL |     wrapper.method();
    |             ^^^^^^ method not found in `Wrapper2<'_, bool, 3>`
    |
    = note: the method was found for
-           - `Wrapper2<'a, i8, C>`
            - `Wrapper2<'a, i16, C>`
            - `Wrapper2<'a, i32, C>`
+           - `Wrapper2<'a, i8, C>`
 
 error[E0599]: no method named `other` found for struct `Wrapper2` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:98:13

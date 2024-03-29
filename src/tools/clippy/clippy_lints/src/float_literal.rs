@@ -83,7 +83,10 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                 LitFloatType::Unsuffixed => None,
             };
             let (is_whole, is_inf, mut float_str) = match fty {
-                FloatTy::F16 => unimplemented!("f16_f128"),
+                FloatTy::F16 => {
+                    // FIXME(f16_f128): do a check like the others when parsing is available
+                    return;
+                },
                 FloatTy::F32 => {
                     let value = sym_str.parse::<f32>().unwrap();
 
@@ -94,7 +97,10 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
 
                     (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
                 },
-                FloatTy::F128 => unimplemented!("f16_f128"),
+                FloatTy::F128 => {
+                    // FIXME(f16_f128): do a check like the others when parsing is available
+                    return;
+                },
             };
 
             if is_inf {
@@ -139,10 +145,11 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
 #[must_use]
 fn max_digits(fty: FloatTy) -> u32 {
     match fty {
-        FloatTy::F16 => unimplemented!("f16_f128"),
+        // FIXME(f16_f128): replace the magic numbers once `{f16,f128}::DIGITS` are available
+        FloatTy::F16 => 3,
         FloatTy::F32 => f32::DIGITS,
         FloatTy::F64 => f64::DIGITS,
-        FloatTy::F128 => unimplemented!("f16_f128"),
+        FloatTy::F128 => 33,
     }
 }
 

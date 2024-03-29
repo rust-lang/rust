@@ -1726,20 +1726,28 @@ pub(crate) mod builtin {
         builtin # deref($pat)
     }
 
-    /// Unstable implementation detail of the `rustc` compiler, do not use.
+    /// Derive macro for `rustc-serialize`. Should not be used in new code.
     #[rustc_builtin_macro]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow_internal_unstable(core_intrinsics, libstd_sys_internals, rt)]
+    #[unstable(
+        feature = "rustc_encodable_decodable",
+        issue = "none",
+        soft,
+        reason = "derive macro for `rustc-serialize`; should not be used in new code"
+    )]
     #[deprecated(since = "1.52.0", note = "rustc-serialize is deprecated and no longer supported")]
     #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
     pub macro RustcDecodable($item:item) {
         /* compiler built-in */
     }
 
-    /// Unstable implementation detail of the `rustc` compiler, do not use.
+    /// Derive macro for `rustc-serialize`. Should not be used in new code.
     #[rustc_builtin_macro]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow_internal_unstable(core_intrinsics, rt)]
+    #[unstable(
+        feature = "rustc_encodable_decodable",
+        issue = "none",
+        soft,
+        reason = "derive macro for `rustc-serialize`; should not be used in new code"
+    )]
     #[deprecated(since = "1.52.0", note = "rustc-serialize is deprecated and no longer supported")]
     #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
     pub macro RustcEncodable($item:item) {

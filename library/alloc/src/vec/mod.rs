@@ -2058,6 +2058,31 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
+    /// Removes and returns the last element in a vector if the predicate
+    /// returns `true`, or [`None`] if the predicate returns false or the vector
+    /// is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_pop_if)]
+    ///
+    /// let mut vec = vec![1, 2, 3, 4];
+    /// let pred = |x: &mut i32| *x % 2 == 0;
+    ///
+    /// assert_eq!(vec.pop_if(pred), Some(4));
+    /// assert_eq!(vec, [1, 2, 3]);
+    /// assert_eq!(vec.pop_if(pred), None);
+    /// ```
+    #[unstable(feature = "vec_pop_if", issue = "122741")]
+    pub fn pop_if<F>(&mut self, f: F) -> Option<T>
+    where
+        F: FnOnce(&mut T) -> bool,
+    {
+        let last = self.last_mut()?;
+        if f(last) { self.pop() } else { None }
+    }
+
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
     /// # Panics
@@ -2771,6 +2796,9 @@ impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
         unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) }
     }
 }
+
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T, A: Allocator> ops::DerefPure for Vec<T, A> {}
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]

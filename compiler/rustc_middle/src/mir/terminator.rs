@@ -149,44 +149,45 @@ impl<O> AssertKind<O> {
         matches!(self, OverflowNeg(..) | Overflow(Add | Sub | Mul | Shl | Shr, ..))
     }
 
-    /// Get the message that is printed at runtime when this assertion fails.
+    /// Get the lang item that is invoked to print a static message when this assert fires.
     ///
     /// The caller is expected to handle `BoundsCheck` and `MisalignedPointerDereference` by
     /// invoking the appropriate lang item (panic_bounds_check/panic_misaligned_pointer_dereference)
-    /// instead of printing a static message.
-    pub fn description(&self) -> &'static str {
+    /// instead of printing a static message. Those have dynamic arguments that aren't present for
+    /// the rest of the messages here.
+    pub fn panic_function(&self) -> LangItem {
         use AssertKind::*;
         match self {
-            Overflow(BinOp::Add, _, _) => "attempt to add with overflow",
-            Overflow(BinOp::Sub, _, _) => "attempt to subtract with overflow",
-            Overflow(BinOp::Mul, _, _) => "attempt to multiply with overflow",
-            Overflow(BinOp::Div, _, _) => "attempt to divide with overflow",
-            Overflow(BinOp::Rem, _, _) => "attempt to calculate the remainder with overflow",
-            OverflowNeg(_) => "attempt to negate with overflow",
-            Overflow(BinOp::Shr, _, _) => "attempt to shift right with overflow",
-            Overflow(BinOp::Shl, _, _) => "attempt to shift left with overflow",
+            Overflow(BinOp::Add, _, _) => LangItem::PanicAddOverflow,
+            Overflow(BinOp::Sub, _, _) => LangItem::PanicSubOverflow,
+            Overflow(BinOp::Mul, _, _) => LangItem::PanicMulOverflow,
+            Overflow(BinOp::Div, _, _) => LangItem::PanicDivOverflow,
+            Overflow(BinOp::Rem, _, _) => LangItem::PanicRemOverflow,
+            OverflowNeg(_) => LangItem::PanicNegOverflow,
+            Overflow(BinOp::Shr, _, _) => LangItem::PanicShrOverflow,
+            Overflow(BinOp::Shl, _, _) => LangItem::PanicShlOverflow,
             Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
-            DivisionByZero(_) => "attempt to divide by zero",
-            RemainderByZero(_) => "attempt to calculate the remainder with a divisor of zero",
-            ResumedAfterReturn(CoroutineKind::Coroutine(_)) => "coroutine resumed after completion",
+            DivisionByZero(_) => LangItem::PanicDivZero,
+            RemainderByZero(_) => LangItem::PanicRemZero,
+            ResumedAfterReturn(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumed,
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                "`async fn` resumed after completion"
+                LangItem::PanicAsyncFnResumed
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
-                "`async gen fn` resumed after completion"
+                LangItem::PanicAsyncGenFnResumed
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
-                "`gen fn` should just keep returning `None` after completion"
+                LangItem::PanicGenFnNone
             }
-            ResumedAfterPanic(CoroutineKind::Coroutine(_)) => "coroutine resumed after panicking",
+            ResumedAfterPanic(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumedPanic,
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                "`async fn` resumed after panicking"
+                LangItem::PanicAsyncFnResumedPanic
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
-                "`async gen fn` resumed after panicking"
+                LangItem::PanicAsyncGenFnResumedPanic
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
-                "`gen fn` should just keep returning `None` after panicking"
+                LangItem::PanicGenFnNonePanic
             }
 
             BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
@@ -198,7 +199,7 @@ impl<O> AssertKind<O> {
     /// Format the message arguments for the `assert(cond, msg..)` terminator in MIR printing.
     ///
     /// Needs to be kept in sync with the run-time behavior (which is defined by
-    /// `AssertKind::description` and the lang items mentioned in its docs).
+    /// `AssertKind::panic_function` and the lang items mentioned in its docs).
     /// Note that we deliberately show more details here than we do at runtime, such as the actual
     /// numbers that overflowed -- it is much easier to do so here than at runtime.
     pub fn fmt_assert_args<W: fmt::Write>(&self, f: &mut W) -> fmt::Result
@@ -246,20 +247,44 @@ impl<O> AssertKind<O> {
             Overflow(BinOp::Shl, _, r) => {
                 write!(f, "\"attempt to shift left by `{{}}`, which would overflow\", {r:?}")
             }
+            Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
             MisalignedPointerDereference { required, found } => {
                 write!(
                     f,
                     "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
                 )
             }
-            _ => write!(f, "\"{}\"", self.description()),
+            ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
+                write!(f, "\"coroutine resumed after completion\"")
+            }
+            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+                write!(f, "\"`async fn` resumed after completion\"")
+            }
+            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
+                write!(f, "\"`async gen fn` resumed after completion\"")
+            }
+            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
+                write!(f, "\"`gen fn` should just keep returning `None` after completion\"")
+            }
+            ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
+                write!(f, "\"coroutine resumed after panicking\"")
+            }
+            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+                write!(f, "\"`async fn` resumed after panicking\"")
+            }
+            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
+                write!(f, "\"`async gen fn` resumed after panicking\"")
+            }
+            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
+                write!(f, "\"`gen fn` should just keep returning `None` after panicking\"")
+            }
         }
     }
 
     /// Format the diagnostic message for use in a lint (e.g. when the assertion fails during const-eval).
     ///
     /// Needs to be kept in sync with the run-time behavior (which is defined by
-    /// `AssertKind::description` and the lang items mentioned in its docs).
+    /// `AssertKind::panic_function` and the lang items mentioned in its docs).
     /// Note that we deliberately show more details here than we do at runtime, such as the actual
     /// numbers that overflowed -- it is much easier to do so here than at runtime.
     pub fn diagnostic_message(&self) -> DiagMessage {

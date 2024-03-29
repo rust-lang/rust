@@ -784,7 +784,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 prior_arm_ty,
                 source,
                 ref prior_non_diverging_arms,
-                opt_suggest_box_span,
                 scrut_span,
                 ..
             }) => match source {
@@ -853,17 +852,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ) {
                         err.subdiagnostic(self.dcx(), subdiag);
                     }
-                    if let Some(ret_sp) = opt_suggest_box_span {
-                        // Get return type span and point to it.
-                        self.suggest_boxing_for_return_impl_trait(
-                            err,
-                            ret_sp,
-                            prior_non_diverging_arms
-                                .iter()
-                                .chain(std::iter::once(&arm_span))
-                                .copied(),
-                        );
-                    }
                 }
             },
             ObligationCauseCode::IfExpression(box IfExpressionCause {
@@ -872,7 +860,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 then_ty,
                 else_ty,
                 outer_span,
-                opt_suggest_box_span,
+                ..
             }) => {
                 let then_span = self.find_block_span_from_hir_id(then_id);
                 let else_span = self.find_block_span_from_hir_id(else_id);
@@ -889,30 +877,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     else_span,
                 ) {
                     err.subdiagnostic(self.dcx(), subdiag);
-                }
-                // don't suggest wrapping either blocks in `if .. {} else {}`
-                let is_empty_arm = |id| {
-                    let hir::Node::Block(blk) = self.tcx.hir_node(id) else {
-                        return false;
-                    };
-                    if blk.expr.is_some() || !blk.stmts.is_empty() {
-                        return false;
-                    }
-                    let Some((_, hir::Node::Expr(expr))) = self.tcx.hir().parent_iter(id).nth(1)
-                    else {
-                        return false;
-                    };
-                    matches!(expr.kind, hir::ExprKind::If(..))
-                };
-                if let Some(ret_sp) = opt_suggest_box_span
-                    && !is_empty_arm(then_id)
-                    && !is_empty_arm(else_id)
-                {
-                    self.suggest_boxing_for_return_impl_trait(
-                        err,
-                        ret_sp,
-                        [then_span, else_span].into_iter(),
-                    );
                 }
             }
             ObligationCauseCode::LetElse => {
@@ -1074,7 +1038,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let (sig, reg) = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS)
                 .name_all_regions(sig)
                 .unwrap();
-            let lts: Vec<String> = reg.into_values().map(|kind| kind.to_string()).collect();
+            let lts: Vec<String> =
+                reg.into_items().map(|(_, kind)| kind.to_string()).into_sorted_stable_ord();
             (if lts.is_empty() { String::new() } else { format!("for<{}> ", lts.join(", ")) }, sig)
         };
 

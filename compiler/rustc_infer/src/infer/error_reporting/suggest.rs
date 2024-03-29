@@ -19,9 +19,8 @@ use rustc_span::{sym, BytePos, Span};
 
 use crate::errors::{
     ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
-    FunctionPointerSuggestion, SuggestAccessingField, SuggestBoxingForReturnImplTrait,
-    SuggestRemoveSemiOrReturnBinding, SuggestTuplePatternMany, SuggestTuplePatternOne,
-    TypeErrorAdditionalDiags,
+    FunctionPointerSuggestion, SuggestAccessingField, SuggestRemoveSemiOrReturnBinding,
+    SuggestTuplePatternMany, SuggestTuplePatternOne, TypeErrorAdditionalDiags,
 };
 
 use super::TypeErrCtxt;
@@ -78,28 +77,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ret
             }
         }
-    }
-
-    pub(super) fn suggest_boxing_for_return_impl_trait(
-        &self,
-        err: &mut Diag<'_>,
-        return_sp: Span,
-        arm_spans: impl Iterator<Item = Span>,
-    ) {
-        let sugg = SuggestBoxingForReturnImplTrait::ChangeReturnType {
-            start_sp: return_sp.with_hi(return_sp.lo() + BytePos(4)),
-            end_sp: return_sp.shrink_to_hi(),
-        };
-        err.subdiagnostic(self.dcx(), sugg);
-
-        let mut starts = Vec::new();
-        let mut ends = Vec::new();
-        for span in arm_spans {
-            starts.push(span.shrink_to_lo());
-            ends.push(span.shrink_to_hi());
-        }
-        let sugg = SuggestBoxingForReturnImplTrait::BoxReturnExpr { starts, ends };
-        err.subdiagnostic(self.dcx(), sugg);
     }
 
     pub(super) fn suggest_tuple_pattern(

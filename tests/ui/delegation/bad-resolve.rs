@@ -1,5 +1,5 @@
 #![feature(fn_delegation)]
-//~^ WARN the feature `fn_delegation` is incomplete
+#![allow(incomplete_features)]
 
 trait Trait {
     const C: u32 = 0;
@@ -34,14 +34,6 @@ impl Trait for S {
 
     reuse foo { &self.0 }
     //~^ ERROR cannot find function `foo` in this scope
-    reuse F::foo { &self.0 }
-    //~^ ERROR cannot find function `foo` in `F`
-    //~| ERROR duplicate definitions with name `foo`
-}
-
-impl S {
-    reuse F::foo { &self.0 }
-    //~^ ERROR cannot find function `foo` in `F`
 }
 
 fn main() {}

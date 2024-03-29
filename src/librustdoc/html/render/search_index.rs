@@ -65,8 +65,9 @@ pub(crate) fn build_index<'tcx>(
     // Sort search index items. This improves the compressibility of the search index.
     cache.search_index.sort_unstable_by(|k1, k2| {
         // `sort_unstable_by_key` produces lifetime errors
-        let k1 = (&k1.path, k1.name.as_str(), &k1.ty, &k1.parent);
-        let k2 = (&k2.path, k2.name.as_str(), &k2.ty, &k2.parent);
+        // HACK(rustdoc): should not be sorting `CrateNum` or `DefIndex`, this will soon go away, too
+        let k1 = (&k1.path, k1.name.as_str(), &k1.ty, k1.parent.map(|id| (id.index, id.krate)));
+        let k2 = (&k2.path, k2.name.as_str(), &k2.ty, k2.parent.map(|id| (id.index, id.krate)));
         Ord::cmp(&k1, &k2)
     });
 

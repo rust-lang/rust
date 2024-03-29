@@ -1018,7 +1018,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             (Finite(mir::Const::Ty(a)), Finite(mir::Const::Ty(b)))
                 if matches!(ty.kind(), ty::Uint(_) | ty::Char) =>
             {
-                return Some(a.kind().cmp(&b.kind()));
+                return Some(a.to_valtree().cmp(&b.to_valtree()));
             }
             (
                 Finite(mir::Const::Val(mir::ConstValue::Scalar(Scalar::Int(a)), _)),

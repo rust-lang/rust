@@ -125,8 +125,12 @@ fn fn_sig_for_fn_abi<'tcx>(
                     coroutine_kind = ty::ClosureKind::FnOnce;
 
                     // Implementations of `FnMut` and `Fn` for coroutine-closures
-                    // still take their receiver by ref.
-                    if receiver_by_ref { Ty::new_mut_ptr(tcx, coroutine_ty) } else { coroutine_ty }
+                    // still take their receiver by (mut) ref.
+                    if receiver_by_ref {
+                        Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty)
+                    } else {
+                        coroutine_ty
+                    }
                 } else {
                     tcx.closure_env_ty(coroutine_ty, coroutine_kind, env_region)
                 };

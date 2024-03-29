@@ -82,7 +82,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     &*candidate.match_pairs
                 {
                     candidate.subcandidates = self.create_or_subcandidates(pats, has_guard);
-                    candidate.match_pairs.pop();
+                    let first_match_pair = candidate.match_pairs.pop().unwrap();
+                    candidate.or_span = Some(first_match_pair.pattern.span);
                 }
                 candidate
             })
