@@ -52,4 +52,4 @@ jobs:
       - name: test Enzyme/rustbook
         working-directory: rustbook
         run: |
-          cargo +enzyme test --examples
+          cargo +enzyme test --workspace
