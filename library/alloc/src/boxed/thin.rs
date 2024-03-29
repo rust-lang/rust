@@ -6,8 +6,10 @@ use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
 use core::marker::PhantomData;
 #[cfg(not(no_global_oom_handling))]
-use core::marker::Unsize;
-use core::mem::{self, SizedTypeProperties};
+use core::marker::{Freeze, Unsize};
+use core::mem;
+#[cfg(not(no_global_oom_handling))]
+use core::mem::{MaybeUninit, SizedTypeProperties};
 use core::ops::{Deref, DerefMut};
 use core::ptr::Pointee;
 use core::ptr::{self, NonNull};
@@ -91,6 +93,93 @@ impl<T> ThinBox<T> {
 
 #[unstable(feature = "thin_box", issue = "92791")]
 impl<Dyn: ?Sized> ThinBox<Dyn> {
+    #[cfg(not(no_global_oom_handling))]
+    fn new_unsize_zst<T>(value: T) -> Self
+    where
+        T: Unsize<Dyn>,
+    {
+        assert!(mem::size_of::<T>() == 0);
+
+        #[repr(C)]
+        struct ReprC<A, B> {
+            a: A,
+            b: B,
+        }
+
+        struct EmptyArray<T> {
+            _array: [T; 0],
+        }
+
+        // SAFETY: this is a zero-sized type, there can't be any mutable memory here.
+        // It's a private type so this can never leak to the user either.
+        // If the user tried to write through the shared reference to this type,
+        // they would be causing library UB as that's a write outside the memory
+        // inhabited by their type (which is zero-sized). Therefore making this
+        // language UB is justified.
+        unsafe impl<T> Freeze for EmptyArray<T> {}
+
+        // Allocate header with padding in the beginning:
+        // ```
+        // [ padding | header ]
+        // ```
+        // where the struct is aligned to both header and value.
+        #[repr(C)]
+        struct AlignedHeader<H: Copy, T> {
+            header_data: MaybeUninit<ReprC<H, EmptyArray<T>>>,
+        }
+
+        impl<H: Copy + Freeze, T> AlignedHeader<H, T> {
+            const fn make(header: H) -> Self {
+                let mut header_data = MaybeUninit::<ReprC<H, EmptyArray<T>>>::zeroed();
+                unsafe {
+                    header_data.as_mut_ptr().add(1).cast::<H>().sub(1).write(header);
+                }
+                AlignedHeader { header_data }
+            }
+        }
+
+        #[repr(C)]
+        struct DynZstAlloc<T, Dyn: ?Sized> {
+            header: AlignedHeader<<Dyn as Pointee>::Metadata, T>,
+            value: EmptyArray<T>,
+        }
+
+        impl<T, Dyn: ?Sized> DynZstAlloc<T, Dyn>
+        where
+            T: Unsize<Dyn>,
+        {
+            const ALLOCATION: DynZstAlloc<T, Dyn> = DynZstAlloc {
+                header: AlignedHeader::make(ptr::metadata::<Dyn>(
+                    ptr::dangling::<T>() as *const Dyn
+                )),
+                value: EmptyArray { _array: [] },
+            };
+
+            fn static_alloc<'a>() -> &'a DynZstAlloc<T, Dyn> {
+                &Self::ALLOCATION
+            }
+        }
+
+        let alloc: &DynZstAlloc<T, Dyn> = DynZstAlloc::<T, Dyn>::static_alloc();
+
+        let value_offset = mem::offset_of!(DynZstAlloc<T, Dyn>, value);
+        assert_eq!(value_offset, mem::size_of::<AlignedHeader<<Dyn as Pointee>::Metadata, T>>());
+
+        let ptr = WithOpaqueHeader(
+            NonNull::new(
+                // SAFETY: there's no overflow here because we add field offset.
+                unsafe {
+                    (alloc as *const DynZstAlloc<T, Dyn> as *mut u8).add(value_offset) as *mut _
+                },
+            )
+            .unwrap(),
+        );
+        let thin_box = ThinBox::<Dyn> { ptr, _marker: PhantomData };
+        // Forget the value to avoid double drop.
+        mem::forget(value);
+        thin_box
+    }
+
     /// Moves a type to the heap with its [`Metadata`] stored in the heap allocation instead of on
     /// the stack.
     ///
@@ -109,9 +198,13 @@ impl<Dyn: ?Sized> ThinBox<Dyn> {
     where
         T: Unsize<Dyn>,
     {
-        let meta = ptr::metadata(&value as &Dyn);
-        let ptr = WithOpaqueHeader::new(meta, value);
-        ThinBox { ptr, _marker: PhantomData }
+        if mem::size_of::<T>() == 0 {
+            Self::new_unsize_zst(value)
+        } else {
+            let meta = ptr::metadata(&value as &Dyn);
+            let ptr = WithOpaqueHeader::new(meta, value);
+            ThinBox { ptr, _marker: PhantomData }
+        }
     }
 }
 
@@ -300,20 +393,19 @@ impl<H> WithHeader<H> {
 
         impl<H> Drop for DropGuard<H> {
             fn drop(&mut self) {
+                // All ZST are allocated statically.
+                if self.value_layout.size() == 0 {
+                    return;
+                }
+
                 unsafe {
                     // SAFETY: Layout must have been computable if we're in drop
                     let (layout, value_offset) =
                         WithHeader::<H>::alloc_layout(self.value_layout).unwrap_unchecked();
 
-                    // Note: Don't deallocate if the layout size is zero, because the pointer
-                    // didn't come from the allocator.
-                    if layout.size() != 0 {
-                        alloc::dealloc(self.ptr.as_ptr().sub(value_offset), layout);
-                    } else {
-                        debug_assert!(
-                            value_offset == 0 && H::IS_ZST && self.value_layout.size() == 0
-                        );
-                    }
+                    // Since we only allocate for non-ZSTs, the layout size cannot be zero.
+                    debug_assert!(layout.size() != 0);
+                    alloc::dealloc(self.ptr.as_ptr().sub(value_offset), layout);
                 }
             }
         }
