@@ -1,3 +1,5 @@
+use r_efi::protocols::simple_text_output;
+
 use crate::ffi::OsStr;
 use crate::ffi::OsString;
 use crate::fmt;
@@ -13,12 +15,16 @@ use crate::sys_common::process::{CommandEnv, CommandEnvs};
 
 pub use crate::ffi::OsString as EnvKey;
 
+use super::helpers;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Command {
     prog: OsString,
+    stdout: Option<uefi_command_internal::PipeProtocol>,
+    stderr: Option<uefi_command_internal::PipeProtocol>,
 }
 
 // passed back to std::process with the pipes connected to the child, if any
@@ -39,7 +45,7 @@ pub enum Stdio {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        Command { prog: program.to_os_string() }
+        Command { prog: program.to_os_string(), stdout: None, stderr: None }
     }
 
     pub fn arg(&mut self, _arg: &OsStr) {
@@ -58,12 +64,20 @@ impl Command {
         panic!("unsupported")
     }
 
-    pub fn stdout(&mut self, _stdout: Stdio) {
-        panic!("unsupported")
+    pub fn stdout(&mut self, stdout: Stdio) {
+        self.stdout = match stdout {
+            Stdio::MakePipe => Some(uefi_command_internal::PipeProtocol::new()),
+            Stdio::Null => Some(uefi_command_internal::PipeProtocol::null()),
+            _ => None,
+        };
     }
 
-    pub fn stderr(&mut self, _stderr: Stdio) {
-        panic!("unsupported")
+    pub fn stderr(&mut self, stderr: Stdio) {
+        self.stderr = match stderr {
+            Stdio::MakePipe => Some(uefi_command_internal::PipeProtocol::new()),
+            Stdio::Null => Some(uefi_command_internal::PipeProtocol::null()),
+            _ => None,
+        };
     }
 
     pub fn get_program(&self) -> &OsStr {
@@ -93,8 +107,26 @@ impl Command {
     pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
         let mut cmd = uefi_command_internal::Command::load_image(&self.prog)?;
 
-        cmd.stdout_init()?;
-        cmd.stderr_init()?;
+        let stdout: helpers::Protocol<uefi_command_internal::PipeProtocol> =
+            match self.stdout.take() {
+                Some(s) => helpers::Protocol::create(s, simple_text_output::PROTOCOL_GUID),
+                None => helpers::Protocol::create(
+                    uefi_command_internal::PipeProtocol::new(),
+                    simple_text_output::PROTOCOL_GUID,
+                ),
+            }?;
+
+        let stderr: helpers::Protocol<uefi_command_internal::PipeProtocol> =
+            match self.stderr.take() {
+                Some(s) => helpers::Protocol::create(s, simple_text_output::PROTOCOL_GUID),
+                None => helpers::Protocol::create(
+                    uefi_command_internal::PipeProtocol::new(),
+                    simple_text_output::PROTOCOL_GUID,
+                ),
+            }?;
+
+        cmd.stdout_init(stdout)?;
+        cmd.stderr_init(stderr)?;
 
         let stat = cmd.start_image()?;
         let stdout = cmd.stdout()?;
@@ -342,10 +374,10 @@ mod uefi_command_internal {
             Ok(r)
         }
 
-        pub fn stdout_init(&mut self) -> io::Result<()> {
-            let mut protocol =
-                helpers::Protocol::create(PipeProtocol::new(), simple_text_output::PROTOCOL_GUID)?;
-
+        pub fn stdout_init(
+            &mut self,
+            mut protocol: helpers::Protocol<PipeProtocol>,
+        ) -> io::Result<()> {
             self.st.console_out_handle = protocol.handle().as_ptr();
             self.st.con_out =
                 protocol.as_mut() as *mut PipeProtocol as *mut simple_text_output::Protocol;
@@ -355,10 +387,10 @@ mod uefi_command_internal {
             Ok(())
         }
 
-        pub fn stderr_init(&mut self) -> io::Result<()> {
-            let mut protocol =
-                helpers::Protocol::create(PipeProtocol::new(), simple_text_output::PROTOCOL_GUID)?;
-
+        pub fn stderr_init(
+            &mut self,
+            mut protocol: helpers::Protocol<PipeProtocol>,
+        ) -> io::Result<()> {
             self.st.standard_error_handle = protocol.handle().as_ptr();
             self.st.std_err =
                 protocol.as_mut() as *mut PipeProtocol as *mut simple_text_output::Protocol;
@@ -368,29 +400,17 @@ mod uefi_command_internal {
             Ok(())
         }
 
-        pub fn stdout(&self) -> io::Result<Vec<u8>> {
-            if let Some(stdout) = &self.stdout {
-                stdout
-                    .as_ref()
-                    .utf8()
-                    .into_string()
-                    .map_err(|_| const_io_error!(io::ErrorKind::Other, "utf8 conversion failed"))
-                    .map(Into::into)
-            } else {
-                Err(const_io_error!(io::ErrorKind::NotFound, "stdout not found"))
+        pub fn stderr(&self) -> io::Result<Vec<u8>> {
+            match &self.stderr {
+                Some(stderr) => stderr.as_ref().utf8(),
+                None => Ok(Vec::new()),
             }
         }
 
-        pub fn stderr(&self) -> io::Result<Vec<u8>> {
-            if let Some(stderr) = &self.stderr {
-                stderr
-                    .as_ref()
-                    .utf8()
-                    .into_string()
-                    .map_err(|_| const_io_error!(io::ErrorKind::Other, "utf8 conversion failed"))
-                    .map(Into::into)
-            } else {
-                Err(const_io_error!(io::ErrorKind::NotFound, "stdout not found"))
+        pub fn stdout(&self) -> io::Result<Vec<u8>> {
+            match &self.stdout {
+                Some(stdout) => stdout.as_ref().utf8(),
+                None => Ok(Vec::new()),
             }
         }
     }
@@ -407,7 +427,7 @@ mod uefi_command_internal {
     }
 
     #[repr(C)]
-    struct PipeProtocol {
+    pub struct PipeProtocol {
         reset: simple_text_output::ProtocolReset,
         output_string: simple_text_output::ProtocolOutputString,
         test_string: simple_text_output::ProtocolTestString,
@@ -423,7 +443,7 @@ mod uefi_command_internal {
     }
 
     impl PipeProtocol {
-        fn new() -> Self {
+        pub fn new() -> Self {
             let mut mode = Box::new(simple_text_output::Mode {
                 max_mode: 0,
                 mode: 0,
@@ -448,8 +468,36 @@ mod uefi_command_internal {
             }
         }
 
-        fn utf8(&self) -> OsString {
+        pub fn null() -> Self {
+            let mut mode = Box::new(simple_text_output::Mode {
+                max_mode: 0,
+                mode: 0,
+                attribute: 0,
+                cursor_column: 0,
+                cursor_row: 0,
+                cursor_visible: r_efi::efi::Boolean::FALSE,
+            });
+            Self {
+                reset: Self::reset_null,
+                output_string: Self::output_string_null,
+                test_string: Self::test_string,
+                query_mode: Self::query_mode,
+                set_mode: Self::set_mode,
+                set_attribute: Self::set_attribute,
+                clear_screen: Self::clear_screen,
+                set_cursor_position: Self::set_cursor_position,
+                enable_cursor: Self::enable_cursor,
+                mode: mode.as_mut(),
+                _mode: mode,
+                _buffer: Vec::new(),
+            }
+        }
+
+        pub fn utf8(&self) -> io::Result<Vec<u8>> {
             OsString::from_wide(&self._buffer)
+                .into_string()
+                .map(Into::into)
+                .map_err(|_| const_io_error!(io::ErrorKind::Other, "utf8 conversion failed"))
         }
 
         extern "efiapi" fn reset(
@@ -460,6 +508,13 @@ mod uefi_command_internal {
             unsafe {
                 (*proto)._buffer.clear();
             }
+            r_efi::efi::Status::SUCCESS
+        }
+
+        extern "efiapi" fn reset_null(
+            _: *mut simple_text_output::Protocol,
+            _: r_efi::efi::Boolean,
+        ) -> r_efi::efi::Status {
             r_efi::efi::Status::SUCCESS
         }
 
@@ -481,6 +536,13 @@ mod uefi_command_internal {
                 (*proto)._buffer.extend_from_slice(buf_slice);
             };
 
+            r_efi::efi::Status::SUCCESS
+        }
+
+        extern "efiapi" fn output_string_null(
+            _: *mut simple_text_output::Protocol,
+            _: *mut r_efi::efi::Char16,
+        ) -> r_efi::efi::Status {
             r_efi::efi::Status::SUCCESS
         }
 
