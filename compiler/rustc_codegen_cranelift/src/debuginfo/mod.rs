@@ -42,7 +42,7 @@ pub(crate) struct DebugContext {
     namespace_map: DefIdMap<UnitEntryId>,
     array_size_type: UnitEntryId,
 
-    should_remap_filepaths: bool,
+    filename_display_preference: FileNameDisplayPreference,
 }
 
 pub(crate) struct FunctionDebugContext {
@@ -84,22 +84,18 @@ impl DebugContext {
 
         let mut dwarf = DwarfUnit::new(encoding);
 
-        let should_remap_filepaths = tcx.sess.should_prefer_remapped_for_codegen();
+        use rustc_session::config::RemapPathScopeComponents;
+
+        let filename_display_preference =
+            tcx.sess.filename_display_preference(RemapPathScopeComponents::DEBUGINFO);
 
         let producer = producer(tcx.sess);
-        let comp_dir = tcx
-            .sess
-            .opts
-            .working_dir
-            .to_string_lossy(if should_remap_filepaths {
-                FileNameDisplayPreference::Remapped
-            } else {
-                FileNameDisplayPreference::Local
-            })
-            .into_owned();
+        let comp_dir =
+            tcx.sess.opts.working_dir.to_string_lossy(filename_display_preference).to_string();
+
         let (name, file_info) = match tcx.sess.local_crate_source_file() {
             Some(path) => {
-                let name = path.to_string_lossy().into_owned();
+                let name = path.to_string_lossy(filename_display_preference).to_string();
                 (name, None)
             }
             None => (tcx.crate_name(LOCAL_CRATE).to_string(), None),
@@ -156,7 +152,7 @@ impl DebugContext {
             stack_pointer_register,
             namespace_map: DefIdMap::default(),
             array_size_type,
-            should_remap_filepaths,
+            filename_display_preference,
         }
     }
 

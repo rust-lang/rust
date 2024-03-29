@@ -990,22 +990,12 @@ bitflags::bitflags! {
         const MACRO = 1 << 0;
         /// Apply remappings to printed compiler diagnostics
         const DIAGNOSTICS = 1 << 1;
-        /// Apply remappings to debug information only when they are written to
-        /// compiled executables or libraries, but not when they are in split
-        /// debuginfo files
-        const UNSPLIT_DEBUGINFO = 1 << 2;
-        /// Apply remappings to debug information only when they are written to
-        /// split debug information files, but not in compiled executables or
-        /// libraries
-        const SPLIT_DEBUGINFO = 1 << 3;
-        /// Apply remappings to the paths pointing to split debug information
-        /// files. Does nothing when these files are not generated.
-        const SPLIT_DEBUGINFO_PATH = 1 << 4;
+        /// Apply remappings to debug informations
+        const DEBUGINFO = 1 << 3;
 
-        /// An alias for macro,unsplit-debuginfo,split-debuginfo-path. This
-        /// ensures all paths in compiled executables or libraries are remapped
-        /// but not elsewhere.
-        const OBJECT = Self::MACRO.bits() | Self::UNSPLIT_DEBUGINFO.bits() | Self::SPLIT_DEBUGINFO_PATH.bits();
+        /// An alias for `macro` and `debuginfo`. This ensures all paths in compiled
+        /// executables or libraries are remapped but not elsewhere.
+        const OBJECT = Self::MACRO.bits() | Self::DEBUGINFO.bits();
     }
 }
 
@@ -2852,13 +2842,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
     });
 
-    let remap = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
-    let (path, remapped) = remap.map_prefix(&working_dir);
-    let working_dir = if remapped {
-        RealFileName::Remapped { virtual_name: path.into_owned(), local_path: Some(working_dir) }
-    } else {
-        RealFileName::LocalPath(path.into_owned())
-    };
+    let file_mapping = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
+    let working_dir = file_mapping.to_real_filename(&working_dir);
 
     let verbose = matches.opt_present("verbose") || unstable_opts.verbose_internals;
 
