@@ -23,6 +23,7 @@ use super::helpers;
 
 pub struct Command {
     prog: OsString,
+    args: OsString,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
 }
@@ -45,11 +46,17 @@ pub enum Stdio {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        Command { prog: program.to_os_string(), stdout: None, stderr: None }
+        Command {
+            prog: program.to_os_string(),
+            args: program.to_os_string(),
+            stdout: None,
+            stderr: None,
+        }
     }
 
-    pub fn arg(&mut self, _arg: &OsStr) {
-        panic!("unsupported")
+    pub fn arg(&mut self, arg: &OsStr) {
+        self.args.push(" ");
+        self.args.push(arg);
     }
 
     pub fn env_mut(&mut self) -> &mut CommandEnv {
@@ -137,11 +144,17 @@ impl Command {
                 .map(Some),
             }?;
 
-        if let Some(stdout) = stdout {
-            cmd.stdout_init(stdout)?;
-        }
-        if let Some(stderr) = stderr {
-            cmd.stderr_init(stderr)?;
+        match stdout {
+            Some(stdout) => cmd.stdout_init(stdout),
+            None => cmd.stdout_inherit(),
+        };
+        match stderr {
+            Some(stderr) => cmd.stderr_init(stderr),
+            None => cmd.stderr_inherit(),
+        };
+
+        if !self.args.is_empty() {
+            cmd.set_args(&self.args);
         }
 
         let stat = cmd.start_image()?;
@@ -308,8 +321,8 @@ mod uefi_command_internal {
     use crate::ffi::{OsStr, OsString};
     use crate::io::{self, const_io_error};
     use crate::mem::MaybeUninit;
-    use crate::os::uefi::env::{boot_services, image_handle};
-    use crate::os::uefi::ffi::OsStringExt;
+    use crate::os::uefi::env::{boot_services, image_handle, system_table};
+    use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
     use crate::ptr::NonNull;
     use crate::slice;
     use crate::sys_common::wstr::WStrUnits;
@@ -319,6 +332,7 @@ mod uefi_command_internal {
         stdout: Option<helpers::Protocol<PipeProtocol>>,
         stderr: Option<helpers::Protocol<PipeProtocol>>,
         st: Box<r_efi::efi::SystemTable>,
+        args: Option<Vec<u16>>,
     }
 
     impl Command {
@@ -326,7 +340,7 @@ mod uefi_command_internal {
             handle: NonNull<crate::ffi::c_void>,
             st: Box<r_efi::efi::SystemTable>,
         ) -> Self {
-            Self { handle, stdout: None, stderr: None, st }
+            Self { handle, stdout: None, stderr: None, st, args: None }
         }
 
         pub fn load_image(p: &OsStr) -> io::Result<Self> {
@@ -391,30 +405,34 @@ mod uefi_command_internal {
             Ok(r)
         }
 
-        pub fn stdout_init(
-            &mut self,
-            mut protocol: helpers::Protocol<PipeProtocol>,
-        ) -> io::Result<()> {
+        pub fn stdout_init(&mut self, mut protocol: helpers::Protocol<PipeProtocol>) {
             self.st.console_out_handle = protocol.handle().as_ptr();
             self.st.con_out =
                 protocol.as_mut() as *mut PipeProtocol as *mut simple_text_output::Protocol;
 
             self.stdout = Some(protocol);
-
-            Ok(())
         }
 
-        pub fn stderr_init(
-            &mut self,
-            mut protocol: helpers::Protocol<PipeProtocol>,
-        ) -> io::Result<()> {
+        pub fn stdout_inherit(&mut self) {
+            let st: NonNull<r_efi::efi::SystemTable> = system_table().cast();
+
+            self.st.console_out_handle = unsafe { (*st.as_ptr()).console_out_handle };
+            self.st.con_out = unsafe { (*st.as_ptr()).con_out };
+        }
+
+        pub fn stderr_init(&mut self, mut protocol: helpers::Protocol<PipeProtocol>) {
             self.st.standard_error_handle = protocol.handle().as_ptr();
             self.st.std_err =
                 protocol.as_mut() as *mut PipeProtocol as *mut simple_text_output::Protocol;
 
             self.stderr = Some(protocol);
+        }
 
-            Ok(())
+        pub fn stderr_inherit(&mut self) {
+            let st: NonNull<r_efi::efi::SystemTable> = system_table().cast();
+
+            self.st.standard_error_handle = unsafe { (*st.as_ptr()).standard_error_handle };
+            self.st.std_err = unsafe { (*st.as_ptr()).std_err };
         }
 
         pub fn stderr(&self) -> io::Result<Vec<u8>> {
@@ -429,6 +447,22 @@ mod uefi_command_internal {
                 Some(stdout) => stdout.as_ref().utf8(),
                 None => Ok(Vec::new()),
             }
+        }
+
+        pub fn set_args(&mut self, args: &OsStr) {
+            let loaded_image: NonNull<loaded_image::Protocol> =
+                helpers::open_protocol(self.handle, loaded_image::PROTOCOL_GUID).unwrap();
+
+            let mut args = args.encode_wide().collect::<Vec<u16>>();
+            let args_size = (crate::mem::size_of::<u16>() * args.len()) as u32;
+
+            unsafe {
+                (*loaded_image.as_ptr()).load_options =
+                    args.as_mut_ptr() as *mut crate::ffi::c_void;
+                (*loaded_image.as_ptr()).load_options_size = args_size;
+            }
+
+            self.args = Some(args);
         }
     }
 
