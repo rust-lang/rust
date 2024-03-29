@@ -196,7 +196,7 @@ pub struct ClosureTypeInfo<'tcx> {
     kind_origin: Option<&'tcx (Span, HirPlace<'tcx>)>,
 }
 
-fn closure_typeinfo<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ClosureTypeInfo<'tcx> {
+fn closure_typeinfo<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> &'tcx ClosureTypeInfo<'tcx> {
     debug_assert!(tcx.is_closure_like(def.to_def_id()));
     let typeck_results = tcx.typeck(def);
     let user_provided_sig = typeck_results.user_provided_sigs[&def];
@@ -204,7 +204,7 @@ fn closure_typeinfo<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ClosureTypeInfo
     let captures = tcx.arena.alloc_from_iter(captures);
     let hir_id = tcx.local_def_id_to_hir_id(def);
     let kind_origin = typeck_results.closure_kind_origins().get(hir_id);
-    ClosureTypeInfo { user_provided_sig, captures, kind_origin }
+    tcx.arena.alloc(ClosureTypeInfo { user_provided_sig, captures, kind_origin })
 }
 
 impl<'tcx> TyCtxt<'tcx> {

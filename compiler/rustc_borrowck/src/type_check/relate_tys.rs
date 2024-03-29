@@ -216,6 +216,8 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
     where
         T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
+        assert_eq!(binder.bound_clauses(), ty::List::empty());
+
         if let Some(inner) = binder.no_bound_vars() {
             return inner;
         }

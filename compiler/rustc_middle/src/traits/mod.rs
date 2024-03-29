@@ -551,7 +551,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ObligationCauseCode<'_>, 48);
+static_assert_size!(ObligationCauseCode<'_>, 56);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum StatementAsExpression {

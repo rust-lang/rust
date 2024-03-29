@@ -1550,6 +1550,7 @@ nop_lift! {predicate; Clause<'a> => Clause<'tcx>}
 nop_lift! {layout; Layout<'a> => Layout<'tcx>}
 
 nop_list_lift! {type_lists; Ty<'a> => Ty<'tcx>}
+nop_list_lift! {clauses; Clause<'a> => Clause<'tcx>}
 nop_list_lift! {poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>}
 nop_list_lift! {bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariableKind}
 

@@ -348,7 +348,6 @@ tcx_lifetime! {
     rustc_middle::ty::AdtDef,
     rustc_middle::ty::AliasTy,
     rustc_middle::ty::ClauseKind,
-    rustc_middle::ty::ClosureTypeInfo,
     rustc_middle::ty::Const,
     rustc_middle::ty::DestructuredConst,
     rustc_middle::ty::ExistentialTraitRef,
