@@ -429,6 +429,8 @@ pub struct InferenceResult {
     /// Type of the result of `.into_iter()` on the for. `ExprId` is the one of the whole for loop.
     pub type_of_for_iterator: FxHashMap<ExprId, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
+    /// Whether there are any type-mismatching errors in the result.
+    pub(crate) has_errors: bool,
     /// Interned common types to return references to.
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
@@ -654,6 +656,7 @@ impl<'a> InferenceContext<'a> {
             type_of_rpit,
             type_of_for_iterator,
             type_mismatches,
+            has_errors,
             standard_types: _,
             pat_adjustments,
             binding_modes: _,
@@ -695,16 +698,33 @@ impl<'a> InferenceContext<'a> {
         for ty in type_of_for_iterator.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
+
+        *has_errors = !type_mismatches.is_empty();
+
         type_mismatches.retain(|_, mismatch| {
             mismatch.expected = table.resolve_completely(mismatch.expected.clone());
             mismatch.actual = table.resolve_completely(mismatch.actual.clone());
-            chalk_ir::zip::Zip::zip_with(
-                &mut UnknownMismatch(self.db),
-                Variance::Invariant,
-                &mismatch.expected,
-                &mismatch.actual,
-            )
-            .is_ok()
+            let unresolved_ty_mismatch = || {
+                chalk_ir::zip::Zip::zip_with(
+                    &mut UnknownMismatch(self.db, |ty| matches!(ty.kind(Interner), TyKind::Error)),
+                    Variance::Invariant,
+                    &mismatch.expected,
+                    &mismatch.actual,
+                )
+                .is_ok()
+            };
+
+            let unresolved_projections_mismatch = || {
+                chalk_ir::zip::Zip::zip_with(
+                    &mut UnknownMismatch(self.db, |ty| ty.contains_unknown() && ty.is_projection()),
+                    chalk_ir::Variance::Invariant,
+                    &mismatch.expected,
+                    &mismatch.actual,
+                )
+                .is_ok()
+            };
+
+            unresolved_ty_mismatch() && unresolved_projections_mismatch()
         });
         diagnostics.retain_mut(|diagnostic| {
             use InferenceDiagnostic::*;
@@ -1646,11 +1666,16 @@ impl std::ops::BitOrAssign for Diverges {
         *self = *self | other;
     }
 }
-/// A zipper that checks for unequal `{unknown}` occurrences in the two types. Used to filter out
-/// mismatch diagnostics that only differ in `{unknown}`. These mismatches are usually not helpful.
-/// As the cause is usually an underlying name resolution problem.
-struct UnknownMismatch<'db>(&'db dyn HirDatabase);
-impl chalk_ir::zip::Zipper<Interner> for UnknownMismatch<'_> {
+/// A zipper that checks for unequal `{unknown}` occurrences in the two types.
+/// Types that have different constructors are filtered out and tested by the
+/// provided closure `F`. Commonly used to filter out mismatch diagnostics that
+/// only differ in `{unknown}`. These mismatches are usually not helpful, as the
+/// cause is usually an underlying name resolution problem.
+///
+/// E.g. when F is `|ty| matches!(ty.kind(Interer), TyKind::Unknown)`, the zipper
+/// will skip over all mismatches that only differ in `{unknown}`.
+struct UnknownMismatch<'db, F: Fn(&Ty) -> bool>(&'db dyn HirDatabase, F);
+impl<F: Fn(&Ty) -> bool> chalk_ir::zip::Zipper<Interner> for UnknownMismatch<'_, F> {
     fn zip_tys(&mut self, variance: Variance, a: &Ty, b: &Ty) -> chalk_ir::Fallible<()> {
         let zip_substs = |this: &mut Self,
                           variances,
@@ -1721,7 +1746,7 @@ impl chalk_ir::zip::Zipper<Interner> for UnknownMismatch<'_> {
                 zip_substs(self, None, &fn_ptr_a.substitution.0, &fn_ptr_b.substitution.0)?
             }
             (TyKind::Error, TyKind::Error) => (),
-            (TyKind::Error, _) | (_, TyKind::Error) => return Err(chalk_ir::NoSolution),
+            _ if (self.1)(a) || (self.1)(b) => return Err(chalk_ir::NoSolution),
             _ => (),
         }
 
