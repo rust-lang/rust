@@ -407,6 +407,8 @@ TrivialTypeTraversalImpls! {
     ::rustc_hir::MatchSource,
     ::rustc_target::asm::InlineAsmRegOrRegClass,
     crate::mir::coverage::BlockMarkerId,
+    crate::mir::coverage::DecisionMarkerId,
+    crate::mir::coverage::ConditionMarkerId,
     crate::mir::coverage::DecisionId,
     crate::mir::coverage::ConditionId,
     crate::mir::coverage::CounterId,

@@ -15,6 +15,23 @@ rustc_index::newtype_index! {
     pub struct BlockMarkerId {}
 }
 
+// DecisionMarkerId and ConditionMarkerId are used between THIR and MIR representations.
+// DecisionId and ConditionId are used between MIR representation and LLVM-IR.
+
+rustc_index::newtype_index! {
+    #[derive(HashStable)]
+    #[encodable]
+    #[debug_format = "DecisionMarkerId({})"]
+    pub struct DecisionMarkerId {}
+}
+
+rustc_index::newtype_index! {
+    #[derive(HashStable)]
+    #[encodable]
+    #[debug_format = "ConditionMarkerId({})"]
+    pub struct ConditionMarkerId {}
+}
+
 rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
@@ -115,27 +132,31 @@ pub enum CoverageKind {
     /// conditions in the same decision will reference this id.
     ///
     /// Has no effect during codegen.
-    MCDCDecisionEntryMarker { id: DecisionId },
+    MCDCDecisionEntryMarker { decm_id: DecisionMarkerId },
 
     /// Marks one of the basic blocks following the decision referenced with `id`.
     /// the outcome bool designates which branch of the decision it is:
     /// `true` for the then block, `false` for the else block.
     ///
     /// Has no effect during codegen.
-    MCDCDecisionOutputMarker { id: DecisionId, outcome: bool },
+    MCDCDecisionOutputMarker { decm_id: DecisionMarkerId, outcome: bool },
 
     /// Marks a basic block where a condition evaluation occurs
     /// The block may end with a SwitchInt where the 2 successors BBs have a
     /// MCDCConditionOutcomeMarker statement with a matching ID.
     ///
     /// Has no effect during codegen.
-    MCDCConditionEntryMarker { decision_id: DecisionId, id: ConditionId },
+    MCDCConditionEntryMarker { decm_id: DecisionMarkerId, condm_id: ConditionMarkerId },
 
     /// Marks a basic block that is branched from a condition evaluation.
     /// The block may have a predecessor with a matching ID.
     ///
     /// Has no effect during codegen.
-    MCDCConditionOutputMarker { decision_id: DecisionId, id: ConditionId, outcome: bool },
+    MCDCConditionOutputMarker {
+        decm_id: DecisionMarkerId,
+        condm_id: ConditionMarkerId,
+        outcome: bool,
+    },
 
     /// Marks the point in MIR control flow represented by a coverage counter.
     ///
@@ -178,20 +199,20 @@ impl Debug for CoverageKind {
         match self {
             SpanMarker => write!(fmt, "SpanMarker"),
             BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
-            MCDCDecisionEntryMarker { id } => {
+            MCDCDecisionEntryMarker { decm_id: id } => {
                 write!(fmt, "MCDCDecisionEntryMarker({:?})", id.index())
             }
-            MCDCDecisionOutputMarker { id, outcome } => {
+            MCDCDecisionOutputMarker { decm_id: id, outcome } => {
                 write!(fmt, "MCDCDecisionOutputMarker({:?}, {})", id.index(), outcome)
             }
-            MCDCConditionEntryMarker { decision_id, id } => {
+            MCDCConditionEntryMarker { decm_id: decision_id, condm_id: id } => {
                 write!(fmt, "MCDCConditionEntryMarker({:?}, {:?})", decision_id.index(), id.index())
             }
-            MCDCConditionOutputMarker { decision_id, id, outcome } => {
+            MCDCConditionOutputMarker { decm_id: decision_marker_id, condm_id: id, outcome } => {
                 write!(
                     fmt,
                     "MCDCConditionOutcomeMarker({:?}, {:?}, {})",
-                    decision_id.index(),
+                    decision_marker_id.index(),
                     id.index(),
                     outcome
                 )
@@ -323,7 +344,7 @@ pub struct BranchInfo {
 
     /// Associate a span for every decision in the function body.
     /// Empty if MCDC coverage is disabled.
-    pub decision_spans: IndexVec<DecisionId, DecisionSpan>,
+    pub decision_spans: IndexVec<DecisionMarkerId, DecisionSpan>,
 }
 
 #[derive(Clone, Debug)]
@@ -342,7 +363,7 @@ pub struct BranchSpan {
     pub span: Span,
     /// ID of Decision structure the branch is part of. Only used in
     /// the MCDC coverage.
-    pub decision_id: DecisionId,
+    pub decision_id: DecisionMarkerId,
     pub true_marker: BlockMarkerId,
     pub false_marker: BlockMarkerId,
 }

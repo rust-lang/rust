@@ -1,13 +1,215 @@
+use rustc_data_structures::fx::FxHashMap;
+use rustc_index::{bit_set::BitSet, IndexVec};
 use rustc_middle::{
-    mir::{self, coverage::CoverageKind, Statement},
+    mir::{
+        self,
+        coverage::{self, ConditionId, CoverageKind, DecisionId, DecisionMarkerId},
+        BasicBlock, StatementKind,
+    },
     ty::TyCtxt,
 };
 
-use crate::coverage::graph::CoverageGraph;
+use crate::coverage::{graph::CoverageGraph, inject_statement};
 use crate::errors::MCDCTooManyConditions;
 
 const MAX_COND_DECISION: u32 = 6;
 
+#[allow(dead_code)]
+
+struct Decisions {
+    data: IndexVec<DecisionId, DecisionData>,
+    needed_bytes: u32,
+}
+
+impl Decisions {
+    /// Use MIR markers and THIR extracted data to create the data we need for
+    /// MCDC instrumentation.
+    ///
+    /// Note: MCDC Instrumentation might skip some decisions that contains too
+    /// may conditions.
+    pub fn extract_decisions<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        branch_info: &coverage::BranchInfo,
+        mir_body: &mir::Body<'_>,
+    ) -> Self {
+        let mut decisions_builder: IndexVec<DecisionId, DecisionDataBuilder> = IndexVec::new();
+        let mut decm_id_to_dec_id: FxHashMap<DecisionMarkerId, DecisionId> = Default::default();
+        let mut ignored_decisions: BitSet<DecisionMarkerId> = BitSet::new_empty(
+            branch_info.decision_spans.last_index().map(|i| i.as_usize()).unwrap_or(0) + 1,
+        );
+        let mut needed_bytes: u32 = 0;
+
+        // Start by gathering all the decisions.
+        for (bb, data) in mir_body.basic_blocks.iter_enumerated() {
+            for statement in &data.statements {
+                match &statement.kind {
+                    StatementKind::Coverage(CoverageKind::MCDCDecisionEntryMarker { decm_id }) => {
+                        assert!(
+                            !decm_id_to_dec_id.contains_key(decm_id)
+                                && !ignored_decisions.contains(*decm_id),
+                            "Duplicated decision marker id {:?}.",
+                            decm_id
+                        );
+
+                        // Skip uninstrumentable conditions and flag them
+                        // as ignored for the rest of the process.
+                        let dec_span = &branch_info.decision_spans[*decm_id];
+                        if dec_span.num_conditions > MAX_COND_DECISION {
+                            tcx.dcx().emit_warn(MCDCTooManyConditions {
+                                span: dec_span.span,
+                                num_conditions: dec_span.num_conditions,
+                                max_conditions: MAX_COND_DECISION,
+                            });
+                            ignored_decisions.insert(*decm_id);
+                        } else {
+                            decm_id_to_dec_id.insert(
+                                *decm_id,
+                                decisions_builder.push(DecisionDataBuilder::new(bb, needed_bytes)),
+                            );
+                            needed_bytes += 1 << dec_span.num_conditions;
+                        }
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        for (bb, data) in mir_body.basic_blocks.iter_enumerated() {
+            for statement in &data.statements {
+                let StatementKind::Coverage(cov_kind) = &statement.kind else {
+                    continue;
+                };
+                use CoverageKind::*;
+                match cov_kind {
+                    // Handled above
+                    // MCDCDecisionEntryMarker { decm_id } => {
+                    // }
+                    MCDCDecisionOutputMarker { decm_id, outcome } => {
+                        if let Some(decision_id) = decm_id_to_dec_id.get(decm_id) {
+                            if *outcome {
+                                decisions_builder[*decision_id].set_then_bb(bb);
+                            } else {
+                                decisions_builder[*decision_id].set_else_bb(bb);
+                            }
+                        } else if !ignored_decisions.contains(*decm_id) {
+                            // If id is not in the mapping vector nor in the ignored IDs bitset,
+                            // It means we have not encountered the corresponding DecisionEntryMarker.
+                            bug!(
+                                "Decision output marker {:?} coming before its decision entry marker.",
+                                decm_id
+                            );
+                        }
+                    }
+                    MCDCConditionEntryMarker { decm_id, condm_id } => {
+                        if let Some(decision_id) = decm_id_to_dec_id.get(decm_id) {
+                            debug!("TODO MCDCConditionEntryMarker");
+                            let dec_data = &mut decisions_builder[*decision_id];
+                            dec_data.conditions.push(bb);
+                        } else if !ignored_decisions.contains(*decm_id) {
+                            // If id is not in the mapping vector nor in the ignored IDs bitset,
+                            // It means we have not encountered the corresponding DecisionEntryMarker.
+                            bug!(
+                                "Condition marker {:?} references unknown decision entry marker.",
+                                condm_id
+                            );
+                        }
+                    }
+                    MCDCConditionOutputMarker { decm_id, condm_id, outcome: _ } => {
+                        if let Some(_decision_id) = decm_id_to_dec_id.get(decm_id) {
+                            debug!("TODO MCDCConditionOutcomeMarker");
+                        } else if !ignored_decisions.contains(*decm_id) {
+                            // If id is not in the mapping vector nor in the ignored IDs bitset,
+                            // It means we have not encountered the corresponding DecisionEntryMarker.
+                            bug!(
+                                "Condition marker {:?} references unknown decision entry marker.",
+                                condm_id
+                            );
+                        }
+                    }
+                    _ => (), // Ignore other marker kinds.
+                }
+            }
+        }
+
+        Self {
+            data: IndexVec::from_iter(decisions_builder.into_iter().map(|b| b.into_done())),
+            needed_bytes,
+        }
+    }
+}
+
+// FIXME(dprn): Remove allow dead code
+#[allow(unused)]
+struct DecisionData {
+    entry_bb: BasicBlock,
+
+    /// Decision's offset in the global TV update table.
+    bitmap_idx: u32,
+
+    conditions: IndexVec<ConditionId, BasicBlock>,
+    then_bb: BasicBlock,
+    else_bb: BasicBlock,
+}
+
+// FIXME(dprn): Remove allow dead code
+#[allow(dead_code)]
+impl DecisionData {
+    pub fn new(
+        entry_bb: BasicBlock,
+        bitmap_idx: u32,
+        then_bb: BasicBlock,
+        else_bb: BasicBlock,
+    ) -> Self {
+        Self { entry_bb, bitmap_idx, conditions: IndexVec::new(), then_bb, else_bb }
+    }
+}
+
+struct DecisionDataBuilder {
+    entry_bb: BasicBlock,
+
+    /// Decision's offset in the global TV update table.
+    bitmap_idx: u32,
+
+    conditions: IndexVec<ConditionId, BasicBlock>,
+    then_bb: Option<BasicBlock>,
+    else_bb: Option<BasicBlock>,
+}
+
+// FIXME(dprn): Remove allow dead code
+#[allow(dead_code)]
+impl DecisionDataBuilder {
+    pub fn new(entry_bb: BasicBlock, bitmap_idx: u32) -> Self {
+        Self {
+            entry_bb,
+            bitmap_idx,
+            conditions: Default::default(),
+            then_bb: Default::default(),
+            else_bb: Default::default(),
+        }
+    }
+
+    pub fn set_then_bb(&mut self, then_bb: BasicBlock) -> &mut Self {
+        self.then_bb = Some(then_bb);
+        self
+    }
+
+    pub fn set_else_bb(&mut self, else_bb: BasicBlock) -> &mut Self {
+        self.else_bb = Some(else_bb);
+        self
+    }
+
+    pub fn into_done(self) -> DecisionData {
+        assert!(!self.conditions.is_empty(), "Empty condition vector");
+
+        DecisionData {
+            entry_bb: self.entry_bb,
+            bitmap_idx: self.bitmap_idx,
+            conditions: self.conditions,
+            then_bb: self.then_bb.expect("Missing then_bb"),
+            else_bb: self.else_bb.expect("Missing else_bb"),
+        }
+    }
+}
 
 /// If MCDC coverage is enabled, add MCDC instrumentation to the function.
 ///
@@ -84,6 +286,7 @@ pub fn instrument_function_mcdc<'tcx>(
     let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else {
         return;
     };
+    let _decision_data = Decisions::extract_decisions(tcx, branch_info, mir_body);
 
     let mut needed_bytes = 0;
     let mut bitmap_indexes = vec![];
@@ -108,12 +311,7 @@ pub fn instrument_function_mcdc<'tcx>(
     }
 
     // In the first BB, specify that we need to allocate bitmaps.
-    let entry_bb = &mut mir_body.basic_blocks_mut()[mir::START_BLOCK];
-    let mcdc_parameters_statement = Statement {
-        source_info: entry_bb.terminator().source_info,
-        kind: mir::StatementKind::Coverage(CoverageKind::MCDCBitmapRequire { needed_bytes }),
-    };
-    entry_bb.statements.insert(0, mcdc_parameters_statement);
+    inject_statement(mir_body, CoverageKind::MCDCBitmapRequire { needed_bytes }, mir::START_BLOCK);
 
     // For each decision:
     // - Find its 'root' basic block

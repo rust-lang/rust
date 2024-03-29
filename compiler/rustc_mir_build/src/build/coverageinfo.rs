@@ -4,7 +4,7 @@ use std::collections::hash_map::Entry;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{
-    BlockMarkerId, BranchSpan, ConditionId, CoverageKind, DecisionId, DecisionSpan,
+    BlockMarkerId, BranchSpan, ConditionMarkerId, CoverageKind, DecisionMarkerId, DecisionSpan,
 };
 use rustc_middle::mir::{self, BasicBlock, UnOp};
 use rustc_middle::thir::{ExprId, ExprKind, Thir};
@@ -19,12 +19,12 @@ struct MCDCInfoBuilder {
     /// ID of the current decision.
     /// Do not use directly. Use the function instead, as it will hide
     /// the decision in the scope of nested decisions.
-    current_decision_id: Option<DecisionId>,
+    current_decision_id: Option<DecisionMarkerId>,
     /// Track the nesting level of decision to avoid MCDC instrumentation of
     /// nested decisions.
     nested_decision_level: u32,
     /// Vector for storing all the decisions with their span
-    decision_spans: IndexVec<DecisionId, Span>,
+    decision_spans: IndexVec<DecisionMarkerId, Span>,
 
     next_condition_id: u32,
 }
@@ -52,7 +52,7 @@ impl MCDCInfoBuilder {
         self.nested_decision_level > 1
     }
 
-    pub fn current_decision_id(&self) -> Option<DecisionId> {
+    pub fn current_decision_id(&self) -> Option<DecisionMarkerId> {
         if self.in_nested_condition() { None } else { self.current_decision_id }
     }
 
@@ -235,7 +235,7 @@ impl Builder<'_, '_> {
                 .mcdc_info
                 .as_ref()
                 .and_then(|mcdc_info| mcdc_info.current_decision_id())
-                .unwrap_or(DecisionId::from_u32(0)),
+                .unwrap_or(DecisionMarkerId::from_u32(0)),
             true_marker,
             false_marker,
         });
@@ -268,7 +268,7 @@ impl Builder<'_, '_> {
         let marker_statement = mir::Statement {
             source_info,
             kind: mir::StatementKind::Coverage(CoverageKind::MCDCDecisionEntryMarker {
-                id: decision_id,
+                decm_id: decision_id,
             }),
         };
         self.cfg.push(block, marker_statement);
@@ -290,21 +290,17 @@ impl Builder<'_, '_> {
     /// If MCDC is enabled and the current decision is being instrumented,
     /// inject an `MCDCDecisionOutputMarker` to the given basic block.
     /// `outcome` should be true for the then block and false for the else block.
-    pub(crate) fn mcdc_decision_outcome_block(
-        &mut self,
-        bb: BasicBlock,
-        outcome: bool,
-    ) -> BasicBlock {
+    pub(crate) fn mcdc_decision_outcome_block(&mut self, bb: BasicBlock, outcome: bool) {
         // Get the MCDCInfoBuilder object, which existence implies that MCDC is enabled.
         let Some(BranchInfoBuilder { mcdc_info: Some(mcdc_info), .. }) =
             self.coverage_branch_info.as_mut()
         else {
-            return bb;
+            return;
         };
 
         let Some(decision_id) = mcdc_info.current_decision_id() else {
             // Decision is not instrumented
-            return bb;
+            return;
         };
 
         let span = mcdc_info.decision_spans[decision_id];
@@ -312,21 +308,13 @@ impl Builder<'_, '_> {
         let marker_statement = mir::Statement {
             source_info,
             kind: mir::StatementKind::Coverage(CoverageKind::MCDCDecisionOutputMarker {
-                id: decision_id,
+                decm_id: decision_id,
                 outcome,
             }),
         };
 
         // Insert statements at the beginning of the following basic block
         self.cfg.block_data_mut(bb).statements.insert(0, marker_statement);
-
-        // Create a new block to return
-        let new_bb = self.cfg.start_new_block();
-
-        // Set bb -> new_bb
-        self.cfg.goto(bb, source_info, new_bb);
-
-        new_bb
     }
 
     /// Add markers on the condition's basic blocks to ease the later MCDC instrumentation.
@@ -344,13 +332,12 @@ impl Builder<'_, '_> {
             return;
         };
 
-        let Some(decision_id) = mcdc_info.current_decision_id() else {
+        let Some(decm_id) = mcdc_info.current_decision_id() else {
             // If current_decision_id() is None, the decision is not instrumented.
             return;
         };
 
-
-        let id = ConditionId::from_u32(mcdc_info.next_condition_id());
+        let condm_id = ConditionMarkerId::from_u32(mcdc_info.next_condition_id());
         let span = self.thir[condition_expr].span;
         let source_info = self.source_info(span);
 
@@ -362,15 +349,15 @@ impl Builder<'_, '_> {
 
         inject_statement(
             condition_block,
-            CoverageKind::MCDCConditionEntryMarker { decision_id, id },
+            CoverageKind::MCDCConditionEntryMarker { decm_id, condm_id },
         );
         inject_statement(
             then_block,
-            CoverageKind::MCDCConditionOutputMarker { decision_id, id, outcome: true },
+            CoverageKind::MCDCConditionOutputMarker { decm_id, condm_id, outcome: true },
         );
         inject_statement(
             else_block,
-            CoverageKind::MCDCConditionOutputMarker { decision_id, id, outcome: false },
+            CoverageKind::MCDCConditionOutputMarker { decm_id, condm_id, outcome: false },
         );
     }
 }

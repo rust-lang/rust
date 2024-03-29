@@ -92,7 +92,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 ));
 
                                 // If MCDC is enabled, inject an outcome marker.
-                                let then_blk = this.mcdc_decision_outcome_block(then_blk, true);
+                                this.mcdc_decision_outcome_block(then_blk, true);
 
                                 // Lower the `then` arm into its block.
                                 this.expr_into_dest(destination, then_blk, then)
@@ -101,7 +101,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // If MCDC is enabled and decision was instrumented, exit the
                         // decision scope and inject an MCDC decision output marker
                         // in the then and else blocks.
-                        let else_block = this.mcdc_decision_outcome_block(else_block, false);
+                        this.mcdc_decision_outcome_block(else_block, false);
                         this.end_mcdc_decision_coverage();
 
                         // Pack `(then_block, else_block)` into `BlockAnd<BasicBlock>`.
