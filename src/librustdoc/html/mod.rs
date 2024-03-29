@@ -1,6 +1,6 @@
+mod ambiguity;
 pub(crate) mod escape;
 pub(crate) mod format;
-mod ambiguity;
 pub(crate) mod highlight;
 pub(crate) mod layout;
 mod length_limit;

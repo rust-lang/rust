@@ -1,4 +1,3 @@
-#![allow(warnings)]
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_span::Symbol;
@@ -14,7 +13,7 @@ pub struct PathLike<'a> {
 impl<'a> PathLike<'a> {
     pub fn make_longer(self) -> Self {
         let Self { path, suffix_len } = self;
-        assert!(suffix_len < path.segments.len());
+        assert!(suffix_len < path.segments.len(), "{self:?}");
         Self { path, suffix_len: suffix_len + 1 }
     }
 
@@ -30,7 +29,7 @@ impl<'a> PartialEq for PathLike<'a> {
             return false;
         }
         let self_suffix = self.iter_from_end();
-        let other_suffix = self.iter_from_end();
+        let other_suffix = other.iter_from_end();
         self_suffix.zip(other_suffix).all(|(s, o)| s.eq(o))
     }
 }
@@ -53,16 +52,29 @@ impl<'a> AmbiguityTable<'a> {
         Self { inner: FxHashMap::default() }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
-    }
+    // pub fn is_empty(&self) -> bool {
+    //     self.inner.is_empty()
+    // }
 
     pub fn build() -> AmbiguityTableBuilder<'a> {
         AmbiguityTableBuilder { inner: FxHashMap::default() }
     }
 
+    #[allow(rustc::pass_by_value)]
     pub fn get(&self, x: &DefId) -> Option<&PathLike<'a>> {
         self.inner.get(x)
+    }
+
+    pub fn build_fn_decl(decl: &'a FnDecl) -> Self {
+        let mut builder = Self::build();
+        builder.add_fndecl(decl);
+        builder.finnish()
+    }
+
+    pub fn build_fn(f: &'a Function) -> Self {
+        let mut builder = Self::build();
+        builder.add_fn(f);
+        builder.finnish()
     }
 }
 
@@ -79,19 +91,21 @@ impl<'a> AmbiguityTableBuilder<'a> {
     // Invariant: must start with length 1 path view
     fn add_path_view(&mut self, p: PathLike<'a>, did: DefId) {
         use std::collections::hash_map::Entry::*;
-        // TODO: clone
         match self.inner.entry(p.clone()) {
             Occupied(entry) => {
-                let v =
-                    std::mem::replace(entry.into_mut(), AmbiguityTableBuilderEntry::IsAmbiguous);
-                let p = p.make_longer();
+                match entry.get() {
+                    AmbiguityTableBuilderEntry::MapsToOne(other_did) if other_did == &did => return,
+                    _ => (),
+                }
+                let (other_p, v) = entry.replace_entry(AmbiguityTableBuilderEntry::IsAmbiguous);
+                // dbg!(&other_p, &p);
                 match v {
                     AmbiguityTableBuilderEntry::MapsToOne(other_did) => {
-                        self.add_path_view(p.clone(), other_did)
+                        self.add_path_view(other_p.make_longer(), other_did)
                     }
                     AmbiguityTableBuilderEntry::IsAmbiguous => (),
                 }
-                self.add_path_view(p.clone(), did)
+                self.add_path_view(p.make_longer(), did)
             }
             Vacant(entry) => {
                 entry.insert(AmbiguityTableBuilderEntry::MapsToOne(did));
@@ -112,7 +126,6 @@ impl<'a> AmbiguityTableBuilder<'a> {
     }
 
     fn add_poly_trait(&mut self, poly_trait: &'a clean::PolyTrait) {
-        // TODO: also add potential bounds on trait parameters
         self.add_path(&poly_trait.trait_);
         for gen_param in &poly_trait.generic_params {
             use clean::GenericParamDefKind::*;
@@ -172,9 +185,8 @@ impl<'a> AmbiguityTableBuilder<'a> {
         self.add_type(&decl.output);
     }
 
-    pub fn add_fn(mut self, f: &'a Function) -> Self{
+    pub fn add_fn(&mut self, f: &'a Function) {
         self.add_fndecl(&f.decl);
-        self
     }
 
     pub fn finnish(self) -> AmbiguityTable<'a> {

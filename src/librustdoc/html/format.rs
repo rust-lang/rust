@@ -37,6 +37,7 @@ use crate::html::escape::Escape;
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
+use super::ambiguity::AmbiguityTable;
 use super::url_parts_builder::estimate_item_path_byte_length;
 use super::url_parts_builder::UrlPartsBuilder;
 
@@ -164,9 +165,10 @@ pub(crate) fn comma_sep<T: Display>(
     })
 }
 
-pub(crate) fn print_generic_bounds<'a, 'tcx: 'a, 'at: 'a>(
+pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
     bounds: &'a [clean::GenericBound],
-    cx: &'a Context<'tcx, 'at>,
+    cx: &'a Context<'tcx>,
+    at: &'a AmbiguityTable<'_>,
 ) -> impl Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
         let mut bounds_dup = FxHashSet::default();
@@ -175,16 +177,17 @@ pub(crate) fn print_generic_bounds<'a, 'tcx: 'a, 'at: 'a>(
             if i > 0 {
                 f.write_str(" + ")?;
             }
-            bound.print(cx).fmt(f)?;
+            bound.print(cx, at).fmt(f)?;
         }
         Ok(())
     })
 }
 
 impl clean::GenericParamDef {
-    pub(crate) fn print<'a, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match &self.kind {
             clean::GenericParamDefKind::Lifetime { outlives } => {
@@ -207,19 +210,19 @@ impl clean::GenericParamDef {
 
                 if !bounds.is_empty() {
                     f.write_str(": ")?;
-                    print_generic_bounds(bounds, cx).fmt(f)?;
+                    print_generic_bounds(bounds, cx, at).fmt(f)?;
                 }
 
                 if let Some(ref ty) = default {
                     f.write_str(" = ")?;
-                    ty.print(cx).fmt(f)?;
+                    ty.print(cx, at).fmt(f)?;
                 }
 
                 Ok(())
             }
             clean::GenericParamDefKind::Const { ty, default, .. } => {
                 write!(f, "const {}: ", self.name)?;
-                ty.print(cx).fmt(f)?;
+                ty.print(cx, at).fmt(f)?;
 
                 if let Some(default) = default {
                     f.write_str(" = ")?;
@@ -237,9 +240,10 @@ impl clean::GenericParamDef {
 }
 
 impl clean::Generics {
-    pub(crate) fn print<'a, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             let mut real_params = self.params.iter().filter(|p| !p.is_synthetic_param()).peekable();
@@ -248,9 +252,9 @@ impl clean::Generics {
             }
 
             if f.alternate() {
-                write!(f, "<{:#}>", comma_sep(real_params.map(|g| g.print(cx)), true))
+                write!(f, "<{:#}>", comma_sep(real_params.map(|g| g.print(cx, at)), true))
             } else {
-                write!(f, "&lt;{}&gt;", comma_sep(real_params.map(|g| g.print(cx)), true))
+                write!(f, "&lt;{}&gt;", comma_sep(real_params.map(|g| g.print(cx, at)), true))
             }
         })
     }
@@ -265,9 +269,10 @@ pub(crate) enum Ending {
 /// * The Generics from which to emit a where-clause.
 /// * The number of spaces to indent each line with.
 /// * Whether the where-clause needs to add a comma and newline after the last bound.
-pub(crate) fn print_where_clause<'a, 'tcx: 'a, 'at: 'a>(
+pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     gens: &'a clean::Generics,
-    cx: &'a Context<'tcx, 'at>,
+    cx: &'a Context<'tcx>,
+    at: &'a AmbiguityTable<'_>,
     indent: usize,
     ending: Ending,
 ) -> impl Display + 'a + Captures<'tcx> {
@@ -285,12 +290,12 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a, 'at: 'a>(
 
                     match pred {
                         clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
-                            print_higher_ranked_params_with_space(bound_params, cx).fmt(f)?;
-                            ty.print(cx).fmt(f)?;
+                            print_higher_ranked_params_with_space(bound_params, cx, at).fmt(f)?;
+                            ty.print(cx, at).fmt(f)?;
                             f.write_str(":")?;
                             if !bounds.is_empty() {
                                 f.write_str(" ")?;
-                                print_generic_bounds(bounds, cx).fmt(f)?;
+                                print_generic_bounds(bounds, cx, at).fmt(f)?;
                             }
                             Ok(())
                         }
@@ -299,15 +304,15 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a, 'at: 'a>(
                             // the lifetime nor the bounds contain any characters which need escaping.
                             write!(f, "{}:", lifetime.print())?;
                             if !bounds.is_empty() {
-                                write!(f, " {}", print_generic_bounds(bounds, cx))?;
+                                write!(f, " {}", print_generic_bounds(bounds, cx, at))?;
                             }
                             Ok(())
                         }
                         clean::WherePredicate::EqPredicate { lhs, rhs } => {
                             if f.alternate() {
-                                write!(f, "{:#} == {:#}", lhs.print(cx), rhs.print(cx))
+                                write!(f, "{:#} == {:#}", lhs.print(cx, at), rhs.print(cx, at))
                             } else {
-                                write!(f, "{} == {}", lhs.print(cx), rhs.print(cx))
+                                write!(f, "{} == {}", lhs.print(cx, at), rhs.print(cx, at))
                             }
                         }
                     }
@@ -387,18 +392,23 @@ impl clean::Constant {
 }
 
 impl clean::PolyTrait {
-    fn print<'a, 'tcx: 'a, 'at: 'a>(&'a self, cx: &'a Context<'tcx, 'at>) -> impl Display + 'a + Captures<'tcx> {
+    fn print<'a, 'tcx: 'a>(
+        &'a self,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
+    ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
-            print_higher_ranked_params_with_space(&self.generic_params, cx).fmt(f)?;
-            self.trait_.print(cx).fmt(f)
+            print_higher_ranked_params_with_space(&self.generic_params, cx, at).fmt(f)?;
+            self.trait_.print(cx, at).fmt(f)
         })
     }
 }
 
 impl clean::GenericBound {
-    pub(crate) fn print<'a, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self {
             clean::GenericBound::Outlives(lt) => write!(f, "{}", lt.print()),
@@ -410,14 +420,18 @@ impl clean::GenericBound {
                     // `const` and `~const` trait bounds are experimental; don't render them.
                     hir::TraitBoundModifier::Const | hir::TraitBoundModifier::MaybeConst => "",
                 })?;
-                ty.print(cx).fmt(f)
+                ty.print(cx, at).fmt(f)
             }
         })
     }
 }
 
 impl clean::GenericArgs {
-    fn print<'a, 'tcx: 'a, 'at: 'a>(&'a self, cx: &'a Context<'tcx, 'at>) -> impl Display + 'a + Captures<'tcx> {
+    fn print<'a, 'tcx: 'a>(
+        &'a self,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
+    ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             match self {
                 clean::GenericArgs::AngleBracketed { args, bindings } => {
@@ -434,9 +448,9 @@ impl clean::GenericArgs {
                             }
                             comma = true;
                             if f.alternate() {
-                                write!(f, "{:#}", arg.print(cx))?;
+                                write!(f, "{:#}", arg.print(cx, at))?;
                             } else {
-                                write!(f, "{}", arg.print(cx))?;
+                                write!(f, "{}", arg.print(cx, at))?;
                             }
                         }
                         for binding in bindings.iter() {
@@ -445,9 +459,9 @@ impl clean::GenericArgs {
                             }
                             comma = true;
                             if f.alternate() {
-                                write!(f, "{:#}", binding.print(cx))?;
+                                write!(f, "{:#}", binding.print(cx, at))?;
                             } else {
-                                write!(f, "{}", binding.print(cx))?;
+                                write!(f, "{}", binding.print(cx, at))?;
                             }
                         }
                         if f.alternate() {
@@ -465,14 +479,14 @@ impl clean::GenericArgs {
                             f.write_str(", ")?;
                         }
                         comma = true;
-                        ty.print(cx).fmt(f)?;
+                        ty.print(cx, at).fmt(f)?;
                     }
                     f.write_str(")")?;
                     if let Some(ref ty) = *output {
                         if f.alternate() {
-                            write!(f, " -> {:#}", ty.print(cx))?;
+                            write!(f, " -> {:#}", ty.print(cx, at))?;
                         } else {
-                            write!(f, " -&gt; {}", ty.print(cx))?;
+                            write!(f, " -&gt; {}", ty.print(cx, at))?;
                         }
                     }
                 }
@@ -525,7 +539,7 @@ pub(crate) fn join_with_double_colon(syms: &[Symbol]) -> String {
 /// `href_with_root_path`.
 fn generate_macro_def_id_path(
     def_id: DefId,
-    cx: &Context<'_, '_>,
+    cx: &Context<'_>,
     root_path: Option<&str>,
 ) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     let tcx = cx.tcx();
@@ -590,7 +604,7 @@ fn generate_macro_def_id_path(
 fn generate_item_def_id_path(
     mut def_id: DefId,
     original_def_id: DefId,
-    cx: &Context<'_, '_>,
+    cx: &Context<'_>,
     root_path: Option<&str>,
     original_def_kind: DefKind,
 ) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
@@ -683,7 +697,7 @@ fn make_href(
 
 pub(crate) fn href_with_root_path(
     original_did: DefId,
-    cx: &Context<'_, '_>,
+    cx: &Context<'_>,
     root_path: Option<&str>,
 ) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     let tcx = cx.tcx();
@@ -753,7 +767,7 @@ pub(crate) fn href_with_root_path(
 
 pub(crate) fn href(
     did: DefId,
-    cx: &Context<'_, '_>,
+    cx: &Context<'_>,
 ) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     href_with_root_path(did, cx, None)
 }
@@ -790,7 +804,7 @@ pub(crate) fn href_relative_parts<'fqp>(
     }
 }
 
-pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Context<'_, '_>,) -> String {
+pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Context<'_>) -> String {
     let cache = cx.cache();
     let Some((fqp, shortty)) = cache.paths.get(&did).or_else(|| cache.external_paths.get(&did))
     else {
@@ -826,7 +840,8 @@ fn resolved_path<'cx>(
     path: &clean::Path,
     print_all: bool,
     use_absolute: bool,
-    cx: &'cx Context<'_, '_>,
+    cx: &'cx Context<'_>,
+    at: &AmbiguityTable<'_>,
 ) -> fmt::Result {
     let last = path.segments.last().unwrap();
 
@@ -836,7 +851,7 @@ fn resolved_path<'cx>(
         }
     }
     if w.alternate() {
-        write!(w, "{}{:#}", &last.name, last.args.print(cx))?;
+        write!(w, "{}{:#}", &last.name, last.args.print(cx, at))?;
     } else {
         let path = if use_absolute {
             if let Ok((_, _, fqp)) = href(did, cx) {
@@ -849,7 +864,7 @@ fn resolved_path<'cx>(
                 last.name.to_string()
             }
         } else {
-            match cx.ambiguity_table.get(&did) {
+            match at.get(&did) {
                 Some(path_view) => {
                     let mut iter = path_view.iter_from_end();
                     let end = iter.next().unwrap();
@@ -861,7 +876,7 @@ fn resolved_path<'cx>(
                 None => anchor(did, last.name, cx).to_string(),
             }
         };
-        write!(w, "{path}{args}", args = last.args.print(cx))?;
+        write!(w, "{path}{args}", args = last.args.print(cx, at))?;
     }
     Ok(())
 }
@@ -870,7 +885,7 @@ fn primitive_link(
     f: &mut fmt::Formatter<'_>,
     prim: clean::PrimitiveType,
     name: fmt::Arguments<'_>,
-    cx: &Context<'_, '_>,
+    cx: &Context<'_>,
 ) -> fmt::Result {
     primitive_link_fragment(f, prim, name, "", cx)
 }
@@ -880,7 +895,7 @@ fn primitive_link_fragment(
     prim: clean::PrimitiveType,
     name: fmt::Arguments<'_>,
     fragment: &str,
-    cx: &Context<'_, '_>,
+    cx: &Context<'_>,
 ) -> fmt::Result {
     let m = &cx.cache();
     let mut needs_termination = false;
@@ -941,17 +956,18 @@ fn primitive_link_fragment(
     Ok(())
 }
 
-fn tybounds<'a, 'tcx: 'a, 'at: 'a>(
+fn tybounds<'a, 'tcx: 'a>(
     bounds: &'a [clean::PolyTrait],
     lt: &'a Option<clean::Lifetime>,
-    cx: &'a Context<'tcx, 'at>,
+    cx: &'a Context<'tcx>,
+    at: &'a AmbiguityTable<'_>,
 ) -> impl Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
         for (i, bound) in bounds.iter().enumerate() {
             if i > 0 {
                 write!(f, " + ")?;
             }
-            bound.print(cx).fmt(f)?;
+            bound.print(cx, at).fmt(f)?;
         }
         if let Some(lt) = lt {
             // We don't need to check `alternate` since we can be certain that
@@ -962,14 +978,15 @@ fn tybounds<'a, 'tcx: 'a, 'at: 'a>(
     })
 }
 
-fn print_higher_ranked_params_with_space<'a, 'tcx: 'a, 'at: 'a>(
+fn print_higher_ranked_params_with_space<'a, 'tcx: 'a>(
     params: &'a [clean::GenericParamDef],
-    cx: &'a Context<'tcx, 'at>,
+    cx: &'a Context<'tcx>,
+    at: &'a AmbiguityTable<'_>,
 ) -> impl Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
         if !params.is_empty() {
             f.write_str(if f.alternate() { "for<" } else { "for&lt;" })?;
-            comma_sep(params.iter().map(|lt| lt.print(cx)), true).fmt(f)?;
+            comma_sep(params.iter().map(|lt| lt.print(cx, at)), true).fmt(f)?;
             f.write_str(if f.alternate() { "> " } else { "&gt; " })?;
         }
         Ok(())
@@ -979,7 +996,7 @@ fn print_higher_ranked_params_with_space<'a, 'tcx: 'a, 'at: 'a>(
 pub(crate) fn anchor<'a, 'cx: 'a>(
     did: DefId,
     text: Symbol,
-    cx: &'cx Context<'_, '_>,
+    cx: &'cx Context<'_>,
 ) -> impl Display + 'a {
     let parts = href(did, cx);
     display_fn(move |f| {
@@ -999,7 +1016,8 @@ fn fmt_type<'cx>(
     t: &clean::Type,
     f: &mut fmt::Formatter<'_>,
     use_absolute: bool,
-    cx: &'cx Context<'_, '_>,
+    cx: &'cx Context<'_>,
+    at: &AmbiguityTable<'_>,
 ) -> fmt::Result {
     trace!("fmt_type(t = {t:?})");
 
@@ -1008,11 +1026,11 @@ fn fmt_type<'cx>(
         clean::Type::Path { ref path } => {
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             let did = path.def_id();
-            resolved_path(f, did, path, path.is_assoc_ty(), use_absolute, cx)
+            resolved_path(f, did, path, path.is_assoc_ty(), use_absolute, cx, at)
         }
         clean::DynTrait(ref bounds, ref lt) => {
             f.write_str("dyn ")?;
-            tybounds(bounds, lt, cx).fmt(f)
+            tybounds(bounds, lt, cx, at).fmt(f)
         }
         clean::Infer => write!(f, "_"),
         clean::Primitive(clean::PrimitiveType::Never) => {
@@ -1022,7 +1040,7 @@ fn fmt_type<'cx>(
             primitive_link(f, prim, format_args!("{}", prim.as_sym().as_str()), cx)
         }
         clean::BareFunction(ref decl) => {
-            print_higher_ranked_params_with_space(&decl.generic_params, cx).fmt(f)?;
+            print_higher_ranked_params_with_space(&decl.generic_params, cx, at).fmt(f)?;
             decl.unsafety.print_with_space().fmt(f)?;
             print_abi_with_space(decl.abi).fmt(f)?;
             if f.alternate() {
@@ -1030,7 +1048,7 @@ fn fmt_type<'cx>(
             } else {
                 primitive_link(f, PrimitiveType::Fn, format_args!("fn"), cx)?;
             }
-            decl.decl.print(cx).fmt(f)
+            decl.decl.print(cx, at).fmt(f)
         }
         clean::Tuple(ref typs) => match &typs[..] {
             &[] => primitive_link(f, PrimitiveType::Unit, format_args!("()"), cx),
@@ -1039,7 +1057,7 @@ fn fmt_type<'cx>(
                     primitive_link(f, PrimitiveType::Tuple, format_args!("({name},)"), cx)
                 } else {
                     write!(f, "(")?;
-                    one.print(cx).fmt(f)?;
+                    one.print(cx, at).fmt(f)?;
                     write!(f, ",)")
                 }
             }
@@ -1065,7 +1083,7 @@ fn fmt_type<'cx>(
                         if i != 0 {
                             write!(f, ", ")?;
                         }
-                        item.print(cx).fmt(f)?;
+                        item.print(cx, at).fmt(f)?;
                     }
                     write!(f, ")")
                 }
@@ -1077,7 +1095,7 @@ fn fmt_type<'cx>(
             }
             _ => {
                 write!(f, "[")?;
-                t.print(cx).fmt(f)?;
+                t.print(cx, at).fmt(f)?;
                 write!(f, "]")
             }
         },
@@ -1090,7 +1108,7 @@ fn fmt_type<'cx>(
             ),
             _ => {
                 write!(f, "[")?;
-                t.print(cx).fmt(f)?;
+                t.print(cx, at).fmt(f)?;
                 if f.alternate() {
                     write!(f, "; {n}")?;
                 } else {
@@ -1112,7 +1130,7 @@ fn fmt_type<'cx>(
             };
 
             if matches!(**t, clean::Generic(_)) || t.is_assoc_ty() {
-                let ty = t.print(cx);
+                let ty = t.print(cx, at);
                 if f.alternate() {
                     primitive_link(
                         f,
@@ -1130,7 +1148,7 @@ fn fmt_type<'cx>(
                 }
             } else {
                 primitive_link(f, clean::PrimitiveType::RawPointer, format_args!("*{m} "), cx)?;
-                t.print(cx).fmt(f)
+                t.print(cx, at).fmt(f)
             }
         }
         clean::BorrowedRef { lifetime: ref l, mutability, type_: ref ty } => {
@@ -1164,7 +1182,7 @@ fn fmt_type<'cx>(
             if needs_parens {
                 f.write_str("(")?;
             }
-            fmt_type(ty, f, use_absolute, cx)?;
+            fmt_type(ty, f, use_absolute, cx, at)?;
             if needs_parens {
                 f.write_str(")")?;
             }
@@ -1172,7 +1190,7 @@ fn fmt_type<'cx>(
         }
         clean::ImplTrait(ref bounds) => {
             f.write_str("impl ")?;
-            print_generic_bounds(bounds, cx).fmt(f)
+            print_generic_bounds(bounds, cx, at).fmt(f)
         }
         clean::QPath(box clean::QPathData {
             ref assoc,
@@ -1187,17 +1205,17 @@ fn fmt_type<'cx>(
                 if let Some(trait_) = trait_
                     && should_show_cast
                 {
-                    write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
+                    write!(f, "<{:#} as {:#}>::", self_type.print(cx, at), trait_.print(cx, at))?
                 } else {
-                    write!(f, "{:#}::", self_type.print(cx))?
+                    write!(f, "{:#}::", self_type.print(cx, at))?
                 }
             } else {
                 if let Some(trait_) = trait_
                     && should_show_cast
                 {
-                    write!(f, "&lt;{} as {}&gt;::", self_type.print(cx), trait_.print(cx))?
+                    write!(f, "&lt;{} as {}&gt;::", self_type.print(cx, at), trait_.print(cx, at))?
                 } else {
-                    write!(f, "{}::", self_type.print(cx))?
+                    write!(f, "{}::", self_type.print(cx, at))?
                 }
             };
             // It's pretty unsightly to look at `<A as B>::C` in output, and
@@ -1244,38 +1262,41 @@ fn fmt_type<'cx>(
                 write!(f, "{}", assoc.name)
             }?;
 
-            assoc.args.print(cx).fmt(f)
+            assoc.args.print(cx, at).fmt(f)
         }
     }
 }
 
 impl clean::Type {
-    pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'b + Captures<'tcx> {
-        display_fn(move |f| fmt_type(self, f, false, cx))
+        display_fn(move |f| fmt_type(self, f, false, cx, at))
     }
 }
 
 impl clean::Path {
-    pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'b AmbiguityTable<'_>,
     ) -> impl Display + 'b + Captures<'tcx> {
-        display_fn(move |f| resolved_path(f, self.def_id(), self, false, false, cx))
+        display_fn(move |f| resolved_path(f, self.def_id(), self, false, false, cx, at))
     }
 }
 
 impl clean::Impl {
-    pub(crate) fn print<'a, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         use_absolute: bool,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             f.write_str("impl")?;
-            self.generics.print(cx).fmt(f)?;
+            self.generics.print(cx, at).fmt(f)?;
             f.write_str(" ")?;
 
             if let Some(ref ty) = self.trait_ {
@@ -1283,7 +1304,7 @@ impl clean::Impl {
                     ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => {}
                     ty::ImplPolarity::Negative => write!(f, "!")?,
                 }
-                ty.print(cx).fmt(f)?;
+                ty.print(cx, at).fmt(f)?;
                 write!(f, " for ")?;
             }
 
@@ -1308,7 +1329,7 @@ impl clean::Impl {
                 // Hardcoded anchor library/core/src/primitive_docs.rs
                 // Link should match `# Trait implementations`
 
-                print_higher_ranked_params_with_space(&bare_fn.generic_params, cx).fmt(f)?;
+                print_higher_ranked_params_with_space(&bare_fn.generic_params, cx, at).fmt(f)?;
                 bare_fn.unsafety.print_with_space().fmt(f)?;
                 print_abi_with_space(bare_fn.abi).fmt(f)?;
                 let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
@@ -1322,28 +1343,29 @@ impl clean::Impl {
                 // Write output.
                 if !bare_fn.decl.output.is_unit() {
                     write!(f, " -> ")?;
-                    fmt_type(&bare_fn.decl.output, f, use_absolute, cx)?;
+                    fmt_type(&bare_fn.decl.output, f, use_absolute, cx, at)?;
                 }
             } else if let Some(ty) = self.kind.as_blanket_ty() {
-                fmt_type(ty, f, use_absolute, cx)?;
+                fmt_type(ty, f, use_absolute, cx, at)?;
             } else {
-                fmt_type(&self.for_, f, use_absolute, cx)?;
+                fmt_type(&self.for_, f, use_absolute, cx, at)?;
             }
 
-            print_where_clause(&self.generics, cx, 0, Ending::Newline).fmt(f)
+            print_where_clause(&self.generics, cx, at, 0, Ending::Newline).fmt(f)
         })
     }
 }
 
 impl clean::Arguments {
-    pub(crate) fn print<'a, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             for (i, input) in self.values.iter().enumerate() {
                 write!(f, "{}: ", input.name)?;
-                input.type_.print(cx).fmt(f)?;
+                input.type_.print(cx, at).fmt(f)?;
                 if i + 1 < self.values.len() {
                     write!(f, ", ")?;
                 }
@@ -1376,9 +1398,10 @@ impl Display for Indent {
 }
 
 impl clean::FnDecl {
-    pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'b AmbiguityTable<'_>,
     ) -> impl Display + 'b + Captures<'tcx> {
         display_fn(move |f| {
             let ellipsis = if self.c_variadic { ", ..." } else { "" };
@@ -1386,17 +1409,17 @@ impl clean::FnDecl {
                 write!(
                     f,
                     "({args:#}{ellipsis}){arrow:#}",
-                    args = self.inputs.print(cx),
+                    args = self.inputs.print(cx, at),
                     ellipsis = ellipsis,
-                    arrow = self.print_output(cx)
+                    arrow = self.print_output(cx, at)
                 )
             } else {
                 write!(
                     f,
                     "({args}{ellipsis}){arrow}",
-                    args = self.inputs.print(cx),
+                    args = self.inputs.print(cx, at),
                     ellipsis = ellipsis,
-                    arrow = self.print_output(cx)
+                    arrow = self.print_output(cx, at)
                 )
             }
         })
@@ -1408,23 +1431,28 @@ impl clean::FnDecl {
     ///   are preserved.
     /// * `indent`: The number of spaces to indent each successive line with, if line-wrapping is
     ///   necessary.
-    pub(crate) fn full_print<'a, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn full_print<'a, 'tcx: 'a>(
         &'a self,
         header_len: usize,
         indent: usize,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             // First, generate the text form of the declaration, with no line wrapping, and count the bytes.
             let mut counter = WriteCounter(0);
-            write!(&mut counter, "{:#}", display_fn(|f| { self.inner_full_print(None, f, cx) }))
-                .unwrap();
+            write!(
+                &mut counter,
+                "{:#}",
+                display_fn(|f| { self.inner_full_print(None, f, cx, at) })
+            )
+            .unwrap();
             // If the text form was over 80 characters wide, we will line-wrap our output.
             let line_wrapping_indent =
                 if header_len + counter.0 > 80 { Some(indent) } else { None };
             // Generate the final output. This happens to accept `{:#}` formatting to get textual
             // output but in practice it is only formatted with `{}` to get HTML output.
-            self.inner_full_print(line_wrapping_indent, f, cx)
+            self.inner_full_print(line_wrapping_indent, f, cx, at)
         })
     }
 
@@ -1481,7 +1509,8 @@ impl clean::FnDecl {
         // the declaration will be line-wrapped, with an indent of n spaces.
         line_wrapping_indent: Option<usize>,
         f: &mut fmt::Formatter<'_>,
-        cx: &Context<'_, '_>,
+        cx: &Context<'_>,
+        at: &AmbiguityTable<'_>,
     ) -> fmt::Result {
         let amp = if f.alternate() { "&" } else { "&amp;" };
 
@@ -1520,7 +1549,7 @@ impl clean::FnDecl {
                     }
                     clean::SelfExplicit(ref typ) => {
                         write!(f, "self: ")?;
-                        typ.print(&cx).fmt(f)?;
+                        typ.print(&cx, at).fmt(f)?;
                     }
                 }
             } else {
@@ -1529,7 +1558,7 @@ impl clean::FnDecl {
                 }
                 write!(f, "{}: ", input.name)?;
 
-                fmt_type(&input.type_, f, false, &cx)?;
+                fmt_type(&input.type_, f, false, &cx, at)?;
             }
         }
 
@@ -1545,26 +1574,27 @@ impl clean::FnDecl {
             Some(n) => write!(f, "\n{})", Indent(n))?,
         };
 
-        self.print_output(&cx).fmt(f)
+        self.print_output(&cx, at).fmt(f)
     }
 
-    fn print_output<'a, 'tcx: 'a, 'at: 'a>(
+    fn print_output<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match &self.output {
             clean::Tuple(tys) if tys.is_empty() => Ok(()),
             ty if f.alternate() => {
-                write!(f, " -> {:#}", ty.print(cx))
+                write!(f, " -> {:#}", ty.print(cx, at))
             }
-            ty => write!(f, " -&gt; {}", ty.print(cx)),
+            ty => write!(f, " -&gt; {}", ty.print(cx, at)),
         })
     }
 }
 
-pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a, 'at: 'a>(
+pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
     item: &clean::Item,
-    cx: &'a Context<'tcx, 'at>,
+    cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
     use std::fmt::Write as _;
     let vis: Cow<'static, str> = match item.visibility(cx.tcx()) {
@@ -1616,7 +1646,7 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a, 'at: 'a>(
 /// This function is the same as print_with_space, except that it renders no links.
 /// It's used for macros' rendered source view, which is syntax highlighted and cannot have
 /// any HTML in it.
-pub(crate) fn visibility_to_src_with_space<'a, 'tcx: 'a, 'at: 'a>(
+pub(crate) fn visibility_to_src_with_space<'a, 'tcx: 'a>(
     visibility: Option<ty::Visibility<DefId>>,
     tcx: TyCtxt<'tcx>,
     item_did: DefId,
@@ -1702,23 +1732,24 @@ pub(crate) fn print_constness_with_space(
 }
 
 impl clean::Import {
-    pub(crate) fn print<'a, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self.kind {
             clean::ImportKind::Simple(name) => {
                 if name == self.source.path.last() {
-                    write!(f, "use {};", self.source.print(cx))
+                    write!(f, "use {};", self.source.print(cx, at))
                 } else {
-                    write!(f, "use {source} as {name};", source = self.source.print(cx))
+                    write!(f, "use {source} as {name};", source = self.source.print(cx, at))
                 }
             }
             clean::ImportKind::Glob => {
                 if self.source.path.segments.is_empty() {
                     write!(f, "use *;")
                 } else {
-                    write!(f, "use {}::*;", self.source.print(cx))
+                    write!(f, "use {}::*;", self.source.print(cx, at))
                 }
             }
         })
@@ -1726,12 +1757,13 @@ impl clean::Import {
 }
 
 impl clean::ImportSource {
-    pub(crate) fn print<'a, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self.did {
-            Some(did) => resolved_path(f, did, &self.path, true, false, cx),
+            Some(did) => resolved_path(f, did, &self.path, true, false, cx, at),
             _ => {
                 for seg in &self.path.segments[..self.path.segments.len() - 1] {
                     write!(f, "{}::", seg.name)?;
@@ -1754,22 +1786,23 @@ impl clean::ImportSource {
 }
 
 impl clean::TypeBinding {
-    pub(crate) fn print<'a, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             f.write_str(self.assoc.name.as_str())?;
-            self.assoc.args.print(cx).fmt(f)?;
+            self.assoc.args.print(cx, at).fmt(f)?;
             match self.kind {
                 clean::TypeBindingKind::Equality { ref term } => {
                     f.write_str(" = ")?;
-                    term.print(cx).fmt(f)?;
+                    term.print(cx, at).fmt(f)?;
                 }
                 clean::TypeBindingKind::Constraint { ref bounds } => {
                     if !bounds.is_empty() {
                         f.write_str(": ")?;
-                        print_generic_bounds(bounds, cx).fmt(f)?;
+                        print_generic_bounds(bounds, cx, at).fmt(f)?;
                     }
                 }
             }
@@ -1793,13 +1826,14 @@ pub(crate) fn print_default_space<'a>(v: bool) -> &'a str {
 }
 
 impl clean::GenericArg {
-    pub(crate) fn print<'a, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self {
             clean::GenericArg::Lifetime(lt) => lt.print().fmt(f),
-            clean::GenericArg::Type(ty) => ty.print(cx).fmt(f),
+            clean::GenericArg::Type(ty) => ty.print(cx, at).fmt(f),
             clean::GenericArg::Const(ct) => ct.print(cx.tcx()).fmt(f),
             clean::GenericArg::Infer => Display::fmt("_", f),
         })
@@ -1807,12 +1841,13 @@ impl clean::GenericArg {
 }
 
 impl clean::Term {
-    pub(crate) fn print<'a, 'tcx: 'a, 'at: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx, 'at>,
+        cx: &'a Context<'tcx>,
+        at: &'a AmbiguityTable<'_>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self {
-            clean::Term::Type(ty) => ty.print(cx).fmt(f),
+            clean::Term::Type(ty) => ty.print(cx, at).fmt(f),
             clean::Term::Constant(ct) => ct.print(cx.tcx()).fmt(f),
         })
     }

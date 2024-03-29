@@ -23,6 +23,7 @@ use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
+use crate::html::ambiguity::AmbiguityTable;
 use crate::html::format::Buffer;
 use crate::html::render::{AssocItemLink, ImplRenderingParameters};
 use crate::html::{layout, static_files};
@@ -534,11 +535,12 @@ else if (window.initSearch) window.initSearch(searchIndex);
             .values()
             .flat_map(|AliasedTypeImpl { impl_, type_aliases }| {
                 let mut ret = Vec::new();
+                let at = AmbiguityTable::empty();
                 let trait_ = impl_
                     .inner_impl()
                     .trait_
                     .as_ref()
-                    .map(|trait_| format!("{:#}", trait_.print(cx)));
+                    .map(|trait_| format!("{:#}", trait_.print(cx, &at)));
                 // render_impl will filter out "impossible-to-call" methods
                 // to make that functionality work here, it needs to be called with
                 // each type alias, and if it gives a different result, split the impl
@@ -692,8 +694,10 @@ else if (window.initSearch) window.initSearch(searchIndex);
                 if imp.impl_item.item_id.krate() == did.krate || !imp.impl_item.item_id.is_local() {
                     None
                 } else {
+                    let at = AmbiguityTable::empty();
+                    let text = imp.inner_impl().print(false, cx, &at).to_string();
                     Some(Implementor {
-                        text: imp.inner_impl().print(false, cx).to_string(),
+                        text,
                         synthetic: imp.inner_impl().kind.is_auto(),
                         types: collect_paths_for_type(imp.inner_impl().for_.clone(), cache),
                     })

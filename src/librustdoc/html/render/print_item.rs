@@ -25,7 +25,7 @@ use super::{
 use crate::clean;
 use crate::config::ModuleSorting;
 use crate::formats::item_type::ItemType;
-use crate::formats::{FormatRenderer, Impl};
+use crate::formats::Impl;
 use crate::html::ambiguity::AmbiguityTable;
 use crate::html::escape::Escape;
 use crate::html::format::{
@@ -71,8 +71,8 @@ macro_rules! item_template {
     ) => {
         #[derive(Template)]
         $(#[$meta])*
-        struct $name<'a, 'cx, 'at> {
-            cx: RefCell<&'a mut Context<'cx, 'at>>,
+        struct $name<'a, 'cx> {
+            cx: RefCell<&'a mut Context<'cx>>,
             it: &'a clean::Item,
             $($field_name: $field_ty),*
         }
@@ -169,18 +169,19 @@ struct ItemVars<'a> {
 }
 
 /// Calls `print_where_clause` and returns `true` if a `where` clause was generated.
-fn print_where_clause_and_check<'a, 'tcx: 'a, 'at: 'a>(
+fn print_where_clause_and_check<'a, 'tcx: 'a>(
     buffer: &mut Buffer,
     gens: &'a clean::Generics,
-    cx: &'a Context<'tcx, 'at>,
+    cx: &'a Context<'tcx>,
+    at: &'a AmbiguityTable<'_>,
 ) -> bool {
     let len_before = buffer.len();
-    write!(buffer, "{}", print_where_clause(gens, cx, 0, Ending::Newline));
+    write!(buffer, "{}", print_where_clause(gens, cx, at, 0, Ending::Newline));
     len_before != buffer.len()
 }
 
 pub(super) fn print_item(
-    cx: &mut Context<'_, '_>,
+    cx: &mut Context<'_>,
     item: &clean::Item,
     buf: &mut Buffer,
     page: &Page<'_>,
@@ -321,8 +322,8 @@ fn toggle_close(mut w: impl fmt::Write) {
     w.write_str("</details>").unwrap();
 }
 
-trait ItemTemplate<'a, 'cx: 'a, 'at: 'a>: askama::Template + fmt::Display {
-    fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx, 'at>>);
+trait ItemTemplate<'a, 'cx: 'a>: askama::Template + fmt::Display {
+    fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>);
 }
 
 fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: &[clean::Item]) {
@@ -462,6 +463,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             }
 
             clean::ImportItem(ref import) => {
+                let at = AmbiguityTable::empty();
                 let stab_tags = if let Some(import_def_id) = import.source.did {
                     // Just need an item with the correct def_id and attrs
                     let import_item =
@@ -493,7 +495,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                      </div>\
                      {stab_tags_before}{stab_tags}{stab_tags_after}",
                     vis = visibility_print_with_space(myitem, cx),
-                    imp = import.print(cx),
+                    imp = import.print(cx, &at),
                 );
                 w.write_str(ITEM_TABLE_ROW_CLOSE);
             }
@@ -625,7 +627,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
     })
 }
 
-fn item_function(w: &mut Buffer, cx: &mut Context<'_,'_>, it: &clean::Item, f: &clean::Function) {
+fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &clean::Function) {
     let tcx = cx.tcx();
     let header = it.fn_header(tcx).expect("printing a function which isn't a function");
     let constness = print_constness_with_space(&header.constness, it.const_stability(tcx));
@@ -634,8 +636,9 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_,'_>, it: &clean::Item, f: &
     let asyncness = header.asyncness.print_with_space();
     let visibility = visibility_print_with_space(it, cx).to_string();
     let name = it.name.unwrap();
+    let at = AmbiguityTable::build_fn(f);
 
-    let generics_len = format!("{:#}", f.generics.print(cx)).len();
+    let generics_len = format!("{:#}", f.generics.print(cx, &at)).len();
     let header_len = "fn ".len()
         + visibility.len()
         + constness.len()
@@ -646,10 +649,6 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_,'_>, it: &clean::Item, f: &
         + generics_len;
 
     let notable_traits = notable_traits_button(&f.decl.output, cx);
-    let mut child_cx = cx.make_child_renderer();
-    assert!(child_cx.ambiguity_table.is_empty());
-    let amb_table = AmbiguityTable::build().add_fn(f).finnish();
-    child_cx.ambiguity_table = amb_table;
     wrap_item(w, |w| {
         w.reserve(header_len);
         write!(
@@ -663,9 +662,9 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_,'_>, it: &clean::Item, f: &
             unsafety = unsafety,
             abi = abi,
             name = name,
-            generics = f.generics.print(cx),
-            where_clause = print_where_clause(&f.generics, cx, 0, Ending::Newline),
-            decl = f.decl.full_print(header_len, 0, cx),
+            generics = f.generics.print(cx, &at),
+            where_clause = print_where_clause(&f.generics, cx, &at, 0, Ending::Newline),
+            decl = f.decl.full_print(header_len, 0, cx, &at),
             notable_traits = notable_traits.unwrap_or_default(),
         );
     });
@@ -686,6 +685,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     let count_methods = required_methods.len() + provided_methods.len();
     let must_implement_one_of_functions = tcx.trait_def(t.def_id).must_implement_one_of.clone();
 
+    let at = AmbiguityTable::empty();
     // Output the trait definition
     wrap_item(w, |mut w| {
         write!(
@@ -696,11 +696,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             unsafety = t.unsafety(tcx).print_with_space(),
             is_auto = if t.is_auto(tcx) { "auto " } else { "" },
             name = it.name.unwrap(),
-            generics = t.generics.print(cx),
+            generics = t.generics.print(cx, &at),
         );
 
         if !t.generics.where_predicates.is_empty() {
-            write!(w, "{}", print_where_clause(&t.generics, cx, 0, Ending::Newline));
+            write!(w, "{}", print_where_clause(&t.generics, cx, &at, 0, Ending::Newline));
         } else {
             w.write_str(" ");
         }
@@ -1189,14 +1189,15 @@ fn item_trait_alias(
     it: &clean::Item,
     t: &clean::TraitAlias,
 ) {
+    let at = AmbiguityTable::empty();
     wrap_item(w, |w| {
         write!(
             w,
             "{attrs}trait {name}{generics}{where_b} = {bounds};",
             attrs = render_attributes_in_pre(it, "", cx),
             name = it.name.unwrap(),
-            generics = t.generics.print(cx),
-            where_b = print_where_clause(&t.generics, cx, 0, Ending::Newline),
+            generics = t.generics.print(cx, &at),
+            where_b = print_where_clause(&t.generics, cx, &at, 0, Ending::Newline),
             bounds = bounds(&t.bounds, true, cx),
         )
         .unwrap();
@@ -1217,14 +1218,15 @@ fn item_opaque_ty(
     it: &clean::Item,
     t: &clean::OpaqueTy,
 ) {
+    let at = AmbiguityTable::empty();
     wrap_item(w, |w| {
         write!(
             w,
             "{attrs}type {name}{generics}{where_clause} = impl {bounds};",
             attrs = render_attributes_in_pre(it, "", cx),
             name = it.name.unwrap(),
-            generics = t.generics.print(cx),
-            where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
+            generics = t.generics.print(cx, &at),
+            where_clause = print_where_clause(&t.generics, cx, &at, 0, Ending::Newline),
             bounds = bounds(&t.bounds, false, cx),
         )
         .unwrap();
@@ -1243,15 +1245,16 @@ fn item_opaque_ty(
 fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::TypeAlias) {
     fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) {
         wrap_item(w, |w| {
+            let at = AmbiguityTable::empty();
             write!(
                 w,
                 "{attrs}{vis}type {name}{generics}{where_clause} = {type_};",
                 attrs = render_attributes_in_pre(it, "", cx),
                 vis = visibility_print_with_space(it, cx),
                 name = it.name.unwrap(),
-                generics = t.generics.print(cx),
-                where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
-                type_ = t.type_.print(cx),
+                generics = t.generics.print(cx, &at),
+                where_clause = print_where_clause(&t.generics, cx, &at, 0, Ending::Newline),
+                type_ = t.type_.print(cx, &at),
             );
         });
     }
@@ -1273,8 +1276,8 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
                     let variants_len = variants.len();
                     let variants_count = variants_iter().count();
                     let has_stripped_entries = variants_len != variants_count;
-
-                    write!(w, "enum {}{}", it.name.unwrap(), t.generics.print(cx));
+                    let at = AmbiguityTable::empty();
+                    write!(w, "enum {}{}", it.name.unwrap(), t.generics.print(cx, &at));
                     render_enum_fields(
                         w,
                         cx,
@@ -1290,10 +1293,11 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
             }
             clean::TypeAliasInnerType::Union { fields } => {
                 wrap_item(w, |w| {
+                    let at = AmbiguityTable::empty();
                     let fields_count = fields.iter().filter(|i| !i.is_stripped()).count();
                     let has_stripped_fields = fields.len() != fields_count;
 
-                    write!(w, "union {}{}", it.name.unwrap(), t.generics.print(cx));
+                    write!(w, "union {}{}", it.name.unwrap(), t.generics.print(cx, &at));
                     render_struct_fields(
                         w,
                         Some(&t.generics),
@@ -1309,10 +1313,11 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
             }
             clean::TypeAliasInnerType::Struct { ctor_kind, fields } => {
                 wrap_item(w, |w| {
+                    let at = AmbiguityTable::empty();
                     let fields_count = fields.iter().filter(|i| !i.is_stripped()).count();
                     let has_stripped_fields = fields.len() != fields_count;
 
-                    write!(w, "struct {}{}", it.name.unwrap(), t.generics.print(cx));
+                    write!(w, "struct {}{}", it.name.unwrap(), t.generics.print(cx, &at));
                     render_struct_fields(
                         w,
                         Some(&t.generics),
@@ -1475,8 +1480,9 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
             ty: &'a clean::Type,
         ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
+                let at = AmbiguityTable::empty();
                 let cx = self.cx.borrow();
-                let v = ty.print(*cx);
+                let v = ty.print(*cx, &at);
                 write!(f, "{v}")
             })
         }
@@ -1517,7 +1523,10 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
             }
             match *ty.kind {
                 clean::StrippedItem(box clean::StructFieldItem(_)) => f.write_str("_")?,
-                clean::StructFieldItem(ref ty) => write!(f, "{}", ty.print(cx))?,
+                clean::StructFieldItem(ref ty) => {
+                    let at = AmbiguityTable::empty();
+                    write!(f, "{}", ty.print(cx, &at))?;
+                }
                 _ => unreachable!(),
             }
         }
@@ -1529,12 +1538,13 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
     let count_variants = e.variants().count();
     wrap_item(w, |w| {
         render_attributes_in_code(w, it, cx);
+        let at = AmbiguityTable::empty();
         write!(
             w,
             "{}enum {}{}",
             visibility_print_with_space(it, cx),
             it.name.unwrap(),
-            e.generics.print(cx),
+            e.generics.print(cx, &at),
         );
 
         render_enum_fields(
@@ -1620,7 +1630,8 @@ fn render_enum_fields(
     enum_def_id: DefId,
 ) {
     let should_show_enum_discriminant = should_show_enum_discriminant(cx, enum_def_id, variants);
-    if !g.is_some_and(|g| print_where_clause_and_check(w, g, cx)) {
+    let at = AmbiguityTable::empty();
+    if !g.is_some_and(|g| print_where_clause_and_check(w, g, cx, &at)) {
         // If there wasn't a `where` clause, we add a whitespace.
         w.write_str(" ");
     }
@@ -1763,6 +1774,7 @@ fn item_variants(
                     {}",
                 document_non_exhaustive(variant)
             );
+            let at = AmbiguityTable::empty();
             for field in fields {
                 match *field.kind {
                     clean::StrippedItem(box clean::StructFieldItem(_)) => {}
@@ -1780,7 +1792,7 @@ fn item_variants(
                                      <code>{f}: {t}</code>\
                                  </span>",
                             f = field.name.unwrap(),
-                            t = ty.print(cx),
+                            t = ty.print(cx, &at),
                         );
                         write!(
                             w,
@@ -1859,15 +1871,15 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
     wrap_item(w, |w| {
         let tcx = cx.tcx();
         render_attributes_in_code(w, it, cx);
-
+        let at = AmbiguityTable::empty();
         write!(
             w,
             "{vis}const {name}{generics}: {typ}{where_clause}",
             vis = visibility_print_with_space(it, cx),
             name = it.name.unwrap(),
-            generics = c.generics.print(cx),
-            typ = c.type_.print(cx),
-            where_clause = print_where_clause(&c.generics, cx, 0, Ending::NoNewline),
+            generics = c.generics.print(cx, &at),
+            typ = c.type_.print(cx, &at),
+            where_clause = print_where_clause(&c.generics, cx, &at, 0, Ending::NoNewline),
         );
 
         // FIXME: The code below now prints
@@ -1942,6 +1954,7 @@ fn item_fields(
                 document_non_exhaustive_header(it),
             );
             write_section_heading(w, &title, "fields", Some("fields"), document_non_exhaustive(it));
+            let at = AmbiguityTable::empty();
             for (index, (field, ty)) in fields.enumerate() {
                 let field_name =
                     field.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
@@ -1953,7 +1966,7 @@ fn item_fields(
                          <code>{field_name}: {ty}</code>\
                      </span>",
                     item_type = ItemType::StructField,
-                    ty = ty.print(cx)
+                    ty = ty.print(cx, &at)
                 );
                 write!(w, "{}", document(cx, field, Some(it), HeadingOffset::H3));
             }
@@ -1964,13 +1977,14 @@ fn item_fields(
 fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
     wrap_item(w, |buffer| {
         render_attributes_in_code(buffer, it, cx);
+        let at = AmbiguityTable::empty();
         write!(
             buffer,
             "{vis}static {mutability}{name}: {typ}",
             vis = visibility_print_with_space(it, cx),
             mutability = s.mutability.print_with_space(),
             name = it.name.unwrap(),
-            typ = s.type_.print(cx)
+            typ = s.type_.print(cx, &at)
         )
         .unwrap();
     });
@@ -2053,6 +2067,7 @@ pub(super) fn item_path(ty: ItemType, name: &str) -> String {
 
 fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool, cx: &Context<'_>) -> String {
     let mut bounds = String::new();
+    let at = AmbiguityTable::empty();
     if !t_bounds.is_empty() {
         if !trait_alias {
             bounds.push_str(": ");
@@ -2061,7 +2076,7 @@ fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool, cx: &Context<'_>)
             if i > 0 {
                 bounds.push_str(" + ");
             }
-            bounds.push_str(&p.print(cx).to_string());
+            bounds.push_str(&p.print(cx, &at).to_string());
         }
     }
     bounds
@@ -2082,7 +2097,8 @@ struct ImplString(String);
 
 impl ImplString {
     fn new(i: &Impl, cx: &Context<'_>) -> ImplString {
-        ImplString(format!("{}", i.inner_impl().print(false, cx)))
+        let at = AmbiguityTable::empty();
+        ImplString(format!("{}", i.inner_impl().print(false, cx, &at)))
     }
 }
 
@@ -2143,12 +2159,12 @@ fn render_union<'a, 'cx: 'a>(
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     display_fn(move |mut f| {
         write!(f, "{}union {}", visibility_print_with_space(it, cx), it.name.unwrap(),)?;
-
+        let at = AmbiguityTable::empty();
         let where_displayed = g
             .map(|g| {
                 let mut buf = Buffer::html();
-                write!(buf, "{}", g.print(cx));
-                let where_displayed = print_where_clause_and_check(&mut buf, g, cx);
+                write!(buf, "{}", g.print(cx, &at));
+                let where_displayed = print_where_clause_and_check(&mut buf, g, cx, &at);
                 write!(f, "{buf}", buf = buf.into_inner()).unwrap();
                 where_displayed
             })
@@ -2174,7 +2190,7 @@ fn render_union<'a, 'cx: 'a>(
                     "    {}{}: {},\n",
                     visibility_print_with_space(field, cx),
                     field.name.unwrap(),
-                    ty.print(cx)
+                    ty.print(cx, &at)
                 )?;
             }
         }
@@ -2208,7 +2224,8 @@ fn render_struct(
         it.name.unwrap()
     );
     if let Some(g) = g {
-        write!(w, "{}", g.print(cx))
+        let at = AmbiguityTable::empty();
+        write!(w, "{}", g.print(cx, &at));
     }
     render_struct_fields(
         w,
@@ -2232,10 +2249,11 @@ fn render_struct_fields(
     has_stripped_entries: bool,
     cx: &Context<'_>,
 ) {
+    let at = AmbiguityTable::empty();
     match ty {
         None => {
             let where_displayed =
-                g.map(|g| print_where_clause_and_check(w, g, cx)).unwrap_or(false);
+                g.map(|g| print_where_clause_and_check(w, g, cx, &at)).unwrap_or(false);
 
             // If there wasn't a `where` clause, we add a whitespace.
             if !where_displayed {
@@ -2257,7 +2275,7 @@ fn render_struct_fields(
                         "\n{tab}    {vis}{name}: {ty},",
                         vis = visibility_print_with_space(field, cx),
                         name = field.name.unwrap(),
-                        ty = ty.print(cx),
+                        ty = ty.print(cx, &at),
                     );
                 }
             }
@@ -2291,7 +2309,12 @@ fn render_struct_fields(
                     match *field.kind {
                         clean::StrippedItem(box clean::StructFieldItem(..)) => write!(w, "_"),
                         clean::StructFieldItem(ref ty) => {
-                            write!(w, "{}{}", visibility_print_with_space(field, cx), ty.print(cx),)
+                            write!(
+                                w,
+                                "{}{}",
+                                visibility_print_with_space(field, cx),
+                                ty.print(cx, &at),
+                            )
                         }
                         _ => unreachable!(),
                     }
@@ -2299,7 +2322,7 @@ fn render_struct_fields(
             }
             w.write_str(")");
             if let Some(g) = g {
-                write!(w, "{}", print_where_clause(g, cx, 0, Ending::NoNewline));
+                write!(w, "{}", print_where_clause(g, cx, &at, 0, Ending::NoNewline));
             }
             // We only want a ";" when we are displaying a tuple struct, not a variant tuple struct.
             if structhead {
@@ -2309,7 +2332,7 @@ fn render_struct_fields(
         Some(CtorKind::Const) => {
             // Needed for PhantomData.
             if let Some(g) = g {
-                write!(w, "{}", print_where_clause(g, cx, 0, Ending::NoNewline));
+                write!(w, "{}", print_where_clause(g, cx, &at, 0, Ending::NoNewline));
             }
             w.write_str(";");
         }

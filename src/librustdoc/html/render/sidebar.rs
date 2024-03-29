@@ -8,7 +8,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use crate::{
     clean,
     formats::{item_type::ItemType, Impl},
-    html::{format::Buffer, markdown::IdMap},
+    html::{ambiguity::AmbiguityTable, format::Buffer, markdown::IdMap},
 };
 
 use super::{item_ty_to_section, Context, ItemSection};
@@ -423,10 +423,11 @@ fn sidebar_deref_methods<'a>(
                 } else {
                     Cow::Borrowed("deref-methods")
                 };
+                let at = AmbiguityTable::empty();
                 let title = format!(
                     "Methods from {:#}<Target={:#}>",
-                    impl_.inner_impl().trait_.as_ref().unwrap().print(cx),
-                    real_target.print(cx),
+                    impl_.inner_impl().trait_.as_ref().unwrap().print(cx, &at),
+                    real_target.print(cx, &at),
                 );
                 // We want links' order to be reproducible so we don't use unstable sort.
                 ret.sort();
@@ -530,7 +531,8 @@ fn sidebar_render_assoc_items(
                     ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
                     ty::ImplPolarity::Negative => "!",
                 };
-                let generated = Link::new(encoded, format!("{prefix}{:#}", trait_.print(cx)));
+                let at = AmbiguityTable::empty();
+                let generated = Link::new(encoded, format!("{prefix}{:#}", trait_.print(cx, &at)));
                 if links.insert(generated.clone()) { Some(generated) } else { None }
             })
             .collect::<Vec<Link<'static>>>();
