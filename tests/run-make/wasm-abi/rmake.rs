@@ -1,25 +1,16 @@
+//@ only-wasm32-wasip1
+//@ needs-wasmtime
+
 extern crate run_make_support;
 
-use run_make_support::{out_dir, rustc};
+use run_make_support::{rustc, tmp_dir};
 use std::path::Path;
 use std::process::Command;
 
 fn main() {
-    if std::env::var("TARGET").unwrap() != "wasm32-wasip1" {
-        return;
-    }
+    rustc().input("foo.rs").target("wasm32-wasip1").run();
 
-    rustc().arg("foo.rs").arg("--target=wasm32-wasip1").run();
-    let file = out_dir().join("foo.wasm");
-
-    let has_wasmtime = match Command::new("wasmtime").arg("--version").output() {
-        Ok(s) => s.status.success(),
-        _ => false,
-    };
-    if !has_wasmtime {
-        println!("skipping test, wasmtime isn't available");
-        return;
-    }
+    let file = tmp_dir().join("foo.wasm");
 
     run(&file, "return_two_i32", "1\n2\n");
     run(&file, "return_two_i64", "3\n4\n");

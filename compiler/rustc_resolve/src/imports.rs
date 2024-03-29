@@ -19,6 +19,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, MultiSpan};
 use rustc_hir::def::{self, DefKind, PartialRes};
+use rustc_hir::def_id::DefId;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::metadata::Reexport;
 use rustc_middle::span_bug;
@@ -250,6 +251,9 @@ struct UnresolvedImportError {
     note: Option<String>,
     suggestion: Option<Suggestion>,
     candidates: Option<Vec<ImportSuggestion>>,
+    segment: Option<Symbol>,
+    /// comes from `PathRes::Failed { module }`
+    module: Option<DefId>,
 }
 
 // Reexports of the form `pub use foo as bar;` where `foo` is `extern crate foo;`
@@ -579,16 +583,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 &import.kind,
                 import.span,
             );
-            let err = UnresolvedImportError {
-                span: import.span,
-                label: None,
-                note: None,
-                suggestion: None,
-                candidates: None,
-            };
             // FIXME: there should be a better way of doing this than
             // formatting this as a string then checking for `::`
             if path.contains("::") {
+                let err = UnresolvedImportError {
+                    span: import.span,
+                    label: None,
+                    note: None,
+                    suggestion: None,
+                    candidates: None,
+                    segment: None,
+                    module: None,
+                };
                 errors.push((*import, err))
             }
         }
@@ -738,15 +744,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             }
 
-            match &import.kind {
-                ImportKind::Single { source, .. } => {
-                    if let Some(ModuleOrUniformRoot::Module(module)) = import.imported_module.get()
-                        && let Some(module) = module.opt_def_id()
-                    {
-                        self.find_cfg_stripped(&mut diag, &source.name, module)
-                    }
-                }
-                _ => {}
+            if matches!(import.kind, ImportKind::Single { .. })
+                && let Some(segment) = err.segment
+                && let Some(module) = err.module
+            {
+                self.find_cfg_stripped(&mut diag, &segment, module)
             }
         }
 
@@ -916,10 +918,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 span,
                 label,
                 suggestion,
+                module,
+                segment_name,
                 ..
             } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());
+                    let module = if let Some(ModuleOrUniformRoot::Module(m)) = module {
+                        m.opt_def_id()
+                    } else {
+                        None
+                    };
                     let err = match self.make_path_suggestion(
                         span,
                         import.module_path.clone(),
@@ -935,6 +944,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 Applicability::MaybeIncorrect,
                             )),
                             candidates: None,
+                            segment: Some(segment_name),
+                            module,
                         },
                         None => UnresolvedImportError {
                             span,
@@ -942,6 +953,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             note: None,
                             suggestion,
                             candidates: None,
+                            segment: Some(segment_name),
+                            module,
                         },
                     };
                     return Some(err);
@@ -990,6 +1003,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 note: None,
                                 suggestion: None,
                                 candidates: None,
+                                segment: None,
+                                module: None,
                             });
                         }
                     }
@@ -1199,6 +1214,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     } else {
                         None
                     },
+                    module: import.imported_module.get().and_then(|module| {
+                        if let ModuleOrUniformRoot::Module(m) = module {
+                            m.opt_def_id()
+                        } else {
+                            None
+                        }
+                    }),
+                    segment: Some(ident.name),
                 })
             } else {
                 // `resolve_ident_in_module` reported a privacy error.

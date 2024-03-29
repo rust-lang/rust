@@ -430,6 +430,31 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_adjustments }
     }
 
+    /// Does the pattern recursively contain a `ref mut` binding in it?
+    ///
+    /// This is used to determined whether a `deref` pattern should emit a `Deref`
+    /// or `DerefMut` call for its pattern scrutinee.
+    ///
+    /// This is computed from the typeck results since we want to make
+    /// sure to apply any match-ergonomics adjustments, which we cannot
+    /// determine from the HIR alone.
+    pub fn pat_has_ref_mut_binding(&self, pat: &'tcx hir::Pat<'tcx>) -> bool {
+        let mut has_ref_mut = false;
+        pat.walk(|pat| {
+            if let hir::PatKind::Binding(_, id, _, _) = pat.kind
+                && let Some(ty::BindByReference(ty::Mutability::Mut)) =
+                    self.pat_binding_modes().get(id)
+            {
+                has_ref_mut = true;
+                // No need to continue recursing
+                false
+            } else {
+                true
+            }
+        });
+        has_ref_mut
+    }
+
     /// For a given closure, returns the iterator of `ty::CapturedPlace`s that are captured
     /// by the closure.
     pub fn closure_min_captures_flattened(

@@ -14,7 +14,7 @@ use crate::ty::{self, BoundVar, TyCtxt, TypeFlags};
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 
 /// Use this rather than `RegionKind`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 
@@ -327,7 +327,7 @@ impl<'tcx> Deref for Region<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct EarlyParamRegion {
     pub def_id: DefId,
@@ -358,7 +358,7 @@ impl Atom for RegionVid {
     }
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]
 #[derive(HashStable)]
 /// The parameter representation of late-bound function parameters, "some region
 /// at least as big as the scope `fr.scope`".
@@ -367,7 +367,7 @@ pub struct LateParamRegion {
     pub bound_region: BoundRegionKind,
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]
 #[derive(HashStable)]
 pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
@@ -384,7 +384,7 @@ pub enum BoundRegionKind {
     BrEnv,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct BoundRegion {
     pub var: BoundVar,

@@ -9,16 +9,16 @@ use crate::{
 };
 
 pub trait Interner: Sized {
-    type DefId: Copy + Debug + Hash + Ord;
-    type AdtDef: Copy + Debug + Hash + Ord;
+    type DefId: Copy + Debug + Hash + Eq;
+    type AdtDef: Copy + Debug + Hash + Eq;
 
     type GenericArgs: Copy
         + DebugWithInfcx<Self>
         + Hash
-        + Ord
+        + Eq
         + IntoIterator<Item = Self::GenericArg>;
-    type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Ord;
-    type Term: Copy + Debug + Hash + Ord;
+    type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type Term: Copy + Debug + Hash + Eq;
 
     type Binder<T: TypeVisitable<Self>>: BoundVars<Self> + TypeSuperVisitable<Self>;
     type BoundVars: IntoIterator<Item = Self::BoundVar>;
@@ -30,56 +30,56 @@ pub trait Interner: Sized {
     type Ty: Copy
         + DebugWithInfcx<Self>
         + Hash
-        + Ord
+        + Eq
         + Into<Self::GenericArg>
         + IntoKind<Kind = TyKind<Self>>
         + TypeSuperVisitable<Self>
         + Flags
         + new::Ty<Self>;
-    type Tys: Copy + Debug + Hash + Ord + IntoIterator<Item = Self::Ty>;
-    type AliasTy: Copy + DebugWithInfcx<Self> + Hash + Ord;
-    type ParamTy: Copy + Debug + Hash + Ord;
-    type BoundTy: Copy + Debug + Hash + Ord;
-    type PlaceholderTy: Copy + Debug + Hash + Ord + PlaceholderLike;
+    type Tys: Copy + Debug + Hash + Eq + IntoIterator<Item = Self::Ty>;
+    type AliasTy: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type ParamTy: Copy + Debug + Hash + Eq;
+    type BoundTy: Copy + Debug + Hash + Eq;
+    type PlaceholderTy: Copy + Debug + Hash + Eq + PlaceholderLike;
 
     // Things stored inside of tys
-    type ErrorGuaranteed: Copy + Debug + Hash + Ord;
-    type BoundExistentialPredicates: Copy + DebugWithInfcx<Self> + Hash + Ord;
-    type PolyFnSig: Copy + DebugWithInfcx<Self> + Hash + Ord;
-    type AllocId: Copy + Debug + Hash + Ord;
+    type ErrorGuaranteed: Copy + Debug + Hash + Eq;
+    type BoundExistentialPredicates: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type PolyFnSig: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type AllocId: Copy + Debug + Hash + Eq;
 
     // Kinds of consts
     type Const: Copy
         + DebugWithInfcx<Self>
         + Hash
-        + Ord
+        + Eq
         + Into<Self::GenericArg>
         + IntoKind<Kind = ConstKind<Self>>
         + ConstTy<Self>
         + TypeSuperVisitable<Self>
         + Flags
         + new::Const<Self>;
-    type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Ord;
-    type PlaceholderConst: Copy + Debug + Hash + Ord + PlaceholderLike;
-    type ParamConst: Copy + Debug + Hash + Ord;
-    type BoundConst: Copy + Debug + Hash + Ord;
-    type ValueConst: Copy + Debug + Hash + Ord;
-    type ExprConst: Copy + DebugWithInfcx<Self> + Hash + Ord;
+    type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type PlaceholderConst: Copy + Debug + Hash + Eq + PlaceholderLike;
+    type ParamConst: Copy + Debug + Hash + Eq;
+    type BoundConst: Copy + Debug + Hash + Eq;
+    type ValueConst: Copy + Debug + Hash + Eq;
+    type ExprConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
 
     // Kinds of regions
     type Region: Copy
         + DebugWithInfcx<Self>
         + Hash
-        + Ord
+        + Eq
         + Into<Self::GenericArg>
         + IntoKind<Kind = RegionKind<Self>>
         + Flags
         + new::Region<Self>;
-    type EarlyParamRegion: Copy + Debug + Hash + Ord;
-    type LateParamRegion: Copy + Debug + Hash + Ord;
-    type BoundRegion: Copy + Debug + Hash + Ord;
-    type InferRegion: Copy + DebugWithInfcx<Self> + Hash + Ord;
-    type PlaceholderRegion: Copy + Debug + Hash + Ord + PlaceholderLike;
+    type EarlyParamRegion: Copy + Debug + Hash + Eq;
+    type LateParamRegion: Copy + Debug + Hash + Eq;
+    type BoundRegion: Copy + Debug + Hash + Eq;
+    type InferRegion: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type PlaceholderRegion: Copy + Debug + Hash + Eq + PlaceholderLike;
 
     // Predicates
     type Predicate: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;

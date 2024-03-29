@@ -1,7 +1,7 @@
 //@ run-pass
 
 #![feature(fn_delegation)]
-//~^ WARN the feature `fn_delegation` is incomplete
+#![allow(incomplete_features)]
 
 trait ToReuse {
     fn foo(&self, x: i32) -> i32 { x }

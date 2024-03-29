@@ -101,8 +101,9 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::middle;
+use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util;
 use rustc_session::parse::feature_err;
 use rustc_span::{symbol::sym, Span};
@@ -186,7 +187,12 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         let def_kind = tcx.def_kind(item_def_id);
         match def_kind {
             DefKind::Static { .. } => tcx.ensure().eval_static_initializer(item_def_id),
-            DefKind::Const => tcx.ensure().const_eval_poly(item_def_id.into()),
+            DefKind::Const if tcx.generics_of(item_def_id).params.is_empty() => {
+                let instance = ty::Instance::new(item_def_id.into(), ty::GenericArgs::empty());
+                let cid = GlobalId { instance, promoted: None };
+                let param_env = ty::ParamEnv::reveal_all();
+                tcx.ensure().eval_to_const_value_raw(param_env.and(cid));
+            }
             _ => (),
         }
     });

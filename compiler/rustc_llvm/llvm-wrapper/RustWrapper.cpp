@@ -1992,7 +1992,11 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
         }
       }
       if (DiagnosticHandlerCallback) {
+#if LLVM_VERSION_GE(19, 0)
+        DiagnosticHandlerCallback(&DI, DiagnosticHandlerContext);
+#else
         DiagnosticHandlerCallback(DI, DiagnosticHandlerContext);
+#endif
         return true;
       }
       return false;

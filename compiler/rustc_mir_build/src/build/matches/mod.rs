@@ -1006,6 +1006,10 @@ struct Candidate<'pat, 'tcx> {
     /// If the candidate matches, bindings and ascriptions must be established.
     extra_data: PatternExtraData<'tcx>,
 
+    /// If we filled `self.subcandidate`, we store here the span of the or-pattern they came from.
+    // Invariant: it is `None` iff `subcandidates.is_empty()`.
+    or_span: Option<Span>,
+
     /// The block before the `bindings` have been established.
     pre_binding_block: Option<BasicBlock>,
     /// The pre-binding block of the next candidate.
@@ -1028,6 +1032,7 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
             extra_data: flat_pat.extra_data,
             has_guard,
             subcandidates: Vec::new(),
+            or_span: None,
             otherwise_block: None,
             pre_binding_block: None,
             next_candidate_pre_binding_block: None,
@@ -1106,7 +1111,10 @@ impl<'pat, 'tcx> TestCase<'pat, 'tcx> {
 #[derive(Debug, Clone)]
 pub(crate) struct MatchPair<'pat, 'tcx> {
     /// This place...
-    place: PlaceBuilder<'tcx>,
+    // This can be `None` if it referred to a non-captured place in a closure.
+    // Invariant: place.is_none() => test_case is Irrefutable
+    // In other words this must be `Some(_)` after simplification.
+    place: Option<Place<'tcx>>,
 
     /// ... must pass this test...
     // Invariant: after creation and simplification in `Candidate::new()`, this must not be
@@ -1277,7 +1285,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //
                 // only generates a single switch.
                 candidate.subcandidates = self.create_or_subcandidates(pats, candidate.has_guard);
-                candidate.match_pairs.pop();
+                let first_match_pair = candidate.match_pairs.pop().unwrap();
+                candidate.or_span = Some(first_match_pair.pattern.span);
                 split_or_candidate = true;
             }
         }
@@ -1287,8 +1296,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // At least one of the candidates has been split into subcandidates.
                 // We need to change the candidate list to include those.
                 let mut new_candidates = Vec::new();
-
-                for candidate in candidates {
+                for candidate in candidates.iter_mut() {
                     candidate.visit_leaves(|leaf_candidate| new_candidates.push(leaf_candidate));
                 }
                 self.match_simplified_candidates(
@@ -1298,6 +1306,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     otherwise_block,
                     &mut *new_candidates,
                 );
+
+                for candidate in candidates {
+                    self.merge_trivial_subcandidates(candidate);
+                }
             } else {
                 self.match_simplified_candidates(
                     span,
@@ -1531,16 +1543,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             &mut or_candidate_refs,
         );
         candidate.subcandidates = or_candidates;
-        self.merge_trivial_subcandidates(candidate, self.source_info(or_span));
+        candidate.or_span = Some(or_span);
+        self.merge_trivial_subcandidates(candidate);
     }
 
     /// Try to merge all of the subcandidates of the given candidate into one.
     /// This avoids exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`.
-    fn merge_trivial_subcandidates(
-        &mut self,
-        candidate: &mut Candidate<'_, 'tcx>,
-        source_info: SourceInfo,
-    ) {
+    fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
         if candidate.subcandidates.is_empty() || candidate.has_guard {
             // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
             return;
@@ -1550,7 +1559,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Not `Iterator::all` because we don't want to short-circuit.
         for subcandidate in &mut candidate.subcandidates {
-            self.merge_trivial_subcandidates(subcandidate, source_info);
+            self.merge_trivial_subcandidates(subcandidate);
 
             // FIXME(or_patterns; matthewjasper) Try to be more aggressive here.
             can_merge &=
@@ -1559,6 +1568,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         if can_merge {
             let any_matches = self.cfg.start_new_block();
+            let or_span = candidate.or_span.take().unwrap();
+            let source_info = self.source_info(or_span);
             for subcandidate in mem::take(&mut candidate.subcandidates) {
                 let or_block = subcandidate.pre_binding_block.unwrap();
                 self.cfg.goto(or_block, source_info, any_matches);
@@ -1587,11 +1598,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn pick_test(
         &mut self,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
-    ) -> (PlaceBuilder<'tcx>, Test<'tcx>) {
+    ) -> (Place<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates.first().unwrap().match_pairs[0];
         let test = self.test(match_pair);
-        let match_place = match_pair.place.clone();
+        // Unwrap is ok after simplification.
+        let match_place = match_pair.place.unwrap();
         debug!(?test, ?match_pair);
 
         (match_place, test)
@@ -1632,7 +1644,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// - candidate 1 becomes `[y @ false]` since we know that `x` was `false`.
     fn sort_candidates<'b, 'c, 'pat>(
         &mut self,
-        match_place: &PlaceBuilder<'tcx>,
+        match_place: Place<'tcx>,
         test: &Test<'tcx>,
         mut candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
     ) -> (
@@ -1650,7 +1662,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // sorting.
         while let Some(candidate) = candidates.first_mut() {
             let Some(branch) =
-                self.sort_candidate(&match_place, test, candidate, &target_candidates)
+                self.sort_candidate(match_place, test, candidate, &target_candidates)
             else {
                 break;
             };
@@ -1778,7 +1790,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // For each of the N possible test outcomes, build the vector of candidates that applies if
         // the test has that particular outcome.
         let (remaining_candidates, target_candidates) =
-            self.sort_candidates(&match_place, &test, candidates);
+            self.sort_candidates(match_place, &test, candidates);
 
         // The block that we should branch to if none of the
         // `target_candidates` match.
@@ -1818,7 +1830,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             scrutinee_span,
             start_block,
             remainder_start,
-            &match_place,
+            match_place,
             &test,
             target_blocks,
         );

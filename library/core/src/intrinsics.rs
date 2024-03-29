@@ -2686,12 +2686,14 @@ pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
     unsafe { ptr::swap_nonoverlapping(x, y, 1) };
 }
 
-/// Returns whether we should perform some UB-checking at runtime. This evaluate to the value of
-/// `cfg!(debug_assertions)` during monomorphization.
+/// Returns whether we should perform some UB-checking at runtime. This eventually evaluates to
+/// `cfg!(debug_assertions)`, but behaves different from `cfg!` when mixing crates built with different
+/// flags: if the crate has debug assertions enabled or carries the `#[rustc_preserve_ub_checks]`
+/// attribute, evaluation is delayed until monomorphization (or until the call gets inlined into
+/// a crate that does not delay evaluation further); otherwise it can happen any time.
 ///
-/// This intrinsic is evaluated after monomorphization, which is relevant when mixing crates
-/// compiled with and without debug_assertions. The common case here is a user program built with
-/// debug_assertions linked against the distributed sysroot which is built without debug_assertions.
+/// The common case here is a user program built with debug_assertions linked against the distributed
+/// sysroot which is built without debug_assertions but with `#[rustc_preserve_ub_checks]`.
 /// For code that gets monomorphized in the user crate (i.e., generic functions and functions with
 /// `#[inline]`), gating assertions on `ub_checks()` rather than `cfg!(debug_assertions)` means that
 /// assertions are enabled whenever the *user crate* has debug assertions enabled. However if the

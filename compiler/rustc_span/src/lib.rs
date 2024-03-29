@@ -427,6 +427,17 @@ impl FileName {
         src.hash(&mut hasher);
         FileName::InlineAsm(hasher.finish())
     }
+
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
+    pub fn into_local_path(self) -> Option<PathBuf> {
+        match self {
+            FileName::Real(path) => path.into_local_path(),
+            FileName::DocTest(path, _) => Some(path),
+            _ => None,
+        }
+    }
 }
 
 /// Represents a span.

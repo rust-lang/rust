@@ -848,7 +848,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             bound_vars,
         );
 
-        let c_result = self.inh.infcx.canonicalize_response(result);
+        let c_result = self.infcx.canonicalize_response(result);
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
 
         // Normalize only after registering in `user_provided_sigs`.

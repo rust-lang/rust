@@ -1,6 +1,6 @@
 #![feature(c_variadic)]
 #![feature(fn_delegation)]
-//~^ WARN the feature `fn_delegation` is incomplete
+#![allow(incomplete_features)]
 
 mod generics {
     trait GenericTrait<T> {

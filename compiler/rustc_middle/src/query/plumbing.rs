@@ -336,9 +336,7 @@ macro_rules! define_callbacks {
                     ))
                 }
 
-                pub type Storage<'tcx> = <
-                    <$($K)* as keys::Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>>
-                >::Cache;
+                pub type Storage<'tcx> = <$($K)* as keys::Key>::Cache<Erase<$V>>;
 
                 // Ensure that keys grow no larger than 64 bytes
                 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]

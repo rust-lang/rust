@@ -7,7 +7,7 @@ mod suggestions;
 use crate::coercion::DynamicCoerceMany;
 use crate::fallback::DivergingFallbackBehavior;
 use crate::fn_ctxt::checks::DivergingBlockBehavior;
-use crate::{CoroutineTypes, Diverges, EnclosingBreakables, Inherited};
+use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -108,7 +108,7 @@ pub struct FnCtxt<'a, 'tcx> {
 
     pub(super) enclosing_breakables: RefCell<EnclosingBreakables<'tcx>>,
 
-    pub(super) inh: &'a Inherited<'tcx>,
+    pub(super) root_ctxt: &'a TypeckRootCtxt<'tcx>,
 
     pub(super) fallback_has_occurred: Cell<bool>,
 
@@ -118,12 +118,12 @@ pub struct FnCtxt<'a, 'tcx> {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn new(
-        inh: &'a Inherited<'tcx>,
+        root_ctxt: &'a TypeckRootCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body_id: LocalDefId,
     ) -> FnCtxt<'a, 'tcx> {
         let (diverging_fallback_behavior, diverging_block_behavior) =
-            parse_never_type_options_attr(inh.tcx);
+            parse_never_type_options_attr(root_ctxt.tcx);
         FnCtxt {
             body_id,
             param_env,
@@ -137,7 +137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 stack: Vec::new(),
                 by_id: Default::default(),
             }),
-            inh,
+            root_ctxt,
             fallback_has_occurred: Cell::new(false),
             diverging_fallback_behavior,
             diverging_block_behavior,
@@ -206,9 +206,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
-    type Target = Inherited<'tcx>;
+    type Target = TypeckRootCtxt<'tcx>;
     fn deref(&self) -> &Self::Target {
-        self.inh
+        self.root_ctxt
     }
 }
 

@@ -12,27 +12,15 @@ pub(super) fn codegen_return_param<'tcx>(
     ssa_analyzed: &rustc_index::IndexSlice<Local, crate::analyze::SsaKind>,
     block_params_iter: &mut impl Iterator<Item = Value>,
 ) -> CPlace<'tcx> {
-    let (ret_place, ret_param): (_, SmallVec<[_; 2]>) = match fx.fn_abi.as_ref().unwrap().ret.mode {
+    let (ret_place, ret_param): (_, SmallVec<[_; 2]>) = match fx.fn_abi.ret.mode {
         PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast { .. } => {
-            let is_ssa =
-                ssa_analyzed[RETURN_PLACE].is_ssa(fx, fx.fn_abi.as_ref().unwrap().ret.layout.ty);
-            (
-                super::make_local_place(
-                    fx,
-                    RETURN_PLACE,
-                    fx.fn_abi.as_ref().unwrap().ret.layout,
-                    is_ssa,
-                ),
-                smallvec![],
-            )
+            let is_ssa = ssa_analyzed[RETURN_PLACE].is_ssa(fx, fx.fn_abi.ret.layout.ty);
+            (super::make_local_place(fx, RETURN_PLACE, fx.fn_abi.ret.layout, is_ssa), smallvec![])
         }
         PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
             let ret_param = block_params_iter.next().unwrap();
             assert_eq!(fx.bcx.func.dfg.value_type(ret_param), fx.pointer_type);
-            (
-                CPlace::for_ptr(Pointer::new(ret_param), fx.fn_abi.as_ref().unwrap().ret.layout),
-                smallvec![ret_param],
-            )
+            (CPlace::for_ptr(Pointer::new(ret_param), fx.fn_abi.ret.layout), smallvec![ret_param])
         }
         PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
             unreachable!("unsized return value")
@@ -45,8 +33,8 @@ pub(super) fn codegen_return_param<'tcx>(
         Some(RETURN_PLACE),
         None,
         &ret_param,
-        &fx.fn_abi.as_ref().unwrap().ret.mode,
-        fx.fn_abi.as_ref().unwrap().ret.layout,
+        &fx.fn_abi.ret.mode,
+        fx.fn_abi.ret.layout,
     );
 
     ret_place
@@ -115,7 +103,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx>(
 
 /// Codegen a return instruction with the right return value(s) if any.
 pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, '_>) {
-    match fx.fn_abi.as_ref().unwrap().ret.mode {
+    match fx.fn_abi.ret.mode {
         PassMode::Ignore | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
             fx.bcx.ins().return_(&[]);
         }

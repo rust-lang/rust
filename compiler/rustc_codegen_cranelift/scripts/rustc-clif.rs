@@ -26,9 +26,10 @@ fn main() {
         codegen_backend_arg.push(cg_clif_dylib_path);
         args.push(codegen_backend_arg);
     }
-    if !passed_args.iter().any(|arg| {
-        arg == "--sysroot" || arg.to_str().is_some_and(|s| s.starts_with("--sysroot="))
-    }) {
+    if !passed_args
+        .iter()
+        .any(|arg| arg == "--sysroot" || arg.to_str().is_some_and(|s| s.starts_with("--sysroot=")))
+    {
         args.push(OsString::from("--sysroot"));
         args.push(OsString::from(sysroot.to_str().unwrap()));
     }

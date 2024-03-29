@@ -6,8 +6,6 @@ on:
   schedule:
     # Run weekly
     - cron: '0 0 * * Sun'
-    # Re-bump deps every 4 hours
-    - cron: '0 */4 * * *'
   workflow_dispatch:
     # Needed so we can run it manually
 permissions:
@@ -42,7 +40,7 @@ jobs:
 
           # Exit with error if open and S-waiting-on-bors
           if [[ "$STATE" == "OPEN" && "$WAITING_ON_BORS" == "true" ]]; then
-            gh run cancel ${{ github.run_id }}
+            exit 1
           fi
 
   update:
@@ -65,10 +63,7 @@ jobs:
 
       - name: cargo update
         # Remove first line that always just says "Updating crates.io index"
-        # If there are no changes, cancel the job here
-        run: |
-          cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
-          git status --porcelain | grep -q Cargo.lock || gh run cancel ${{ github.run_id }}
+        run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
       - name: upload Cargo.lock artifact for use in PR
         uses: actions/upload-artifact@v4
         with:
@@ -95,11 +90,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: download Cargo.lock from update job
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: Cargo-lock
       - name: download cargo-update log from update job
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: cargo-updates
 
@@ -134,14 +129,14 @@ jobs:
           # Exit with error if PR is closed
           STATE=$(gh pr view cargo_update --repo $GITHUB_REPOSITORY --json state --jq '.state')
           if [[ "$STATE" != "OPEN" ]]; then
-            gh run cancel ${{ github.run_id }}
+            exit 1
           fi
 
           gh pr edit cargo_update --title "${PR_TITLE}" --body-file body.md --repo $GITHUB_REPOSITORY
 
       - name: open new pull request
-        # Only run if there wasn't an existing PR and if this is the weekly run
-        if: steps.edit.outcome != 'success' && github.event.schedule == '0 0 * * Sun'
+        # Only run if there wasn't an existing PR
+        if: steps.edit.outcome != 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr create --title "${PR_TITLE}" --body-file body.md --repo $GITHUB_REPOSITORY

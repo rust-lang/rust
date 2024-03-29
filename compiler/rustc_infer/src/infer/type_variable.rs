@@ -47,7 +47,6 @@ pub enum TypeVariableOriginKind {
     MiscVariable,
     NormalizeProjectionType,
     TypeInference,
-    OpaqueTypeInference(DefId),
     TypeParameterDefinition(Symbol, DefId),
 
     /// One of the upvars or closure kind parameters in a `ClosureArgs`

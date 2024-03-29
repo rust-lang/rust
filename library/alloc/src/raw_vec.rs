@@ -114,7 +114,10 @@ impl<T> RawVec<T, Global> {
     #[must_use]
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
-        handle_reserve(Self::try_allocate_in(capacity, AllocInit::Uninitialized, Global))
+        match Self::try_allocate_in(capacity, AllocInit::Uninitialized, Global) {
+            Ok(res) => res,
+            Err(err) => handle_error(err),
+        }
     }
 
     /// Like `with_capacity`, but guarantees the buffer is zeroed.
@@ -152,7 +155,10 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
-        handle_reserve(Self::try_allocate_in(capacity, AllocInit::Uninitialized, alloc))
+        match Self::try_allocate_in(capacity, AllocInit::Uninitialized, alloc) {
+            Ok(res) => res,
+            Err(err) => handle_error(err),
+        }
     }
 
     /// Like `try_with_capacity`, but parameterized over the choice of
@@ -167,7 +173,10 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     pub fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {
-        handle_reserve(Self::try_allocate_in(capacity, AllocInit::Zeroed, alloc))
+        match Self::try_allocate_in(capacity, AllocInit::Zeroed, alloc) {
+            Ok(res) => res,
+            Err(err) => handle_error(err),
+        }
     }
 
     /// Converts the entire buffer into `Box<[MaybeUninit<T>]>` with the specified `len`.
@@ -326,7 +335,9 @@ impl<T, A: Allocator> RawVec<T, A> {
             len: usize,
             additional: usize,
         ) {
-            handle_reserve(slf.grow_amortized(len, additional));
+            if let Err(err) = slf.grow_amortized(len, additional) {
+                handle_error(err);
+            }
         }
 
         if self.needs_to_grow(len, additional) {
@@ -339,7 +350,9 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline(never)]
     pub fn reserve_for_push(&mut self, len: usize) {
-        handle_reserve(self.grow_amortized(len, 1));
+        if let Err(err) = self.grow_amortized(len, 1) {
+            handle_error(err);
+        }
     }
 
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
@@ -373,7 +386,9 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
     pub fn reserve_exact(&mut self, len: usize, additional: usize) {
-        handle_reserve(self.try_reserve_exact(len, additional));
+        if let Err(err) = self.try_reserve_exact(len, additional) {
+            handle_error(err);
+        }
     }
 
     /// The same as `reserve_exact`, but returns on errors instead of panicking or aborting.
@@ -404,7 +419,9 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
     pub fn shrink_to_fit(&mut self, cap: usize) {
-        handle_reserve(self.shrink(cap));
+        if let Err(err) = self.shrink(cap) {
+            handle_error(err);
+        }
     }
 }
 
@@ -559,12 +576,11 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
 
 // Central function for reserve error handling.
 #[cfg(not(no_global_oom_handling))]
-#[inline]
-fn handle_reserve<T>(result: Result<T, TryReserveError>) -> T {
-    match result.map_err(|e| e.kind()) {
-        Ok(res) => res,
-        Err(CapacityOverflow) => capacity_overflow(),
-        Err(AllocError { layout, .. }) => handle_alloc_error(layout),
+#[cold]
+fn handle_error(e: TryReserveError) -> ! {
+    match e.kind() {
+        CapacityOverflow => capacity_overflow(),
+        AllocError { layout, .. } => handle_alloc_error(layout),
     }
 }
 

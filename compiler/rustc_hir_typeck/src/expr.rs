@@ -1088,7 +1088,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let else_ty = self.check_expr_with_expectation(else_expr, expected);
             let else_diverges = self.diverges.get();
 
-            let opt_suggest_box_span = self.opt_suggest_box_span(then_ty, else_ty, orig_expected);
+            let tail_defines_return_position_impl_trait =
+                self.return_position_impl_trait_from_match_expectation(orig_expected);
             let if_cause = self.if_cause(
                 sp,
                 cond_expr.span,
@@ -1096,7 +1097,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 else_expr,
                 then_ty,
                 else_ty,
-                opt_suggest_box_span,
+                tail_defines_return_position_impl_trait,
             );
 
             coerce.coerce(self, &if_cause, else_expr, else_ty);

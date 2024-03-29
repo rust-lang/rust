@@ -21,6 +21,7 @@ use crate::traits::{
 };
 use core::ops::ControlFlow;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{pluralize, struct_span_code_err, Applicability, MultiSpan, StringPart};
 use rustc_errors::{Diag, EmissionGuarantee, ErrorGuaranteed, FatalError, StashKey};
@@ -2117,7 +2118,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 })
                 .collect();
 
-            impl_candidates.sort();
+            impl_candidates.sort_by_key(|tr| tr.to_string());
             impl_candidates.dedup();
             return report(impl_candidates, err);
         }
@@ -2143,7 +2144,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 cand
             })
             .collect();
-        impl_candidates.sort_by_key(|cand| (cand.similarity, cand.trait_ref));
+        impl_candidates.sort_by_key(|cand| (cand.similarity, cand.trait_ref.to_string()));
         let mut impl_candidates: Vec<_> =
             impl_candidates.into_iter().map(|cand| cand.trait_ref).collect();
         impl_candidates.dedup();
@@ -2243,14 +2244,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         };
 
         let required_trait_path = self.tcx.def_path_str(trait_ref.def_id());
-        let traits_with_same_path: std::collections::BTreeSet<_> = self
+        let traits_with_same_path: UnordSet<_> = self
             .tcx
             .all_traits()
             .filter(|trait_def_id| *trait_def_id != trait_ref.def_id())
-            .filter(|trait_def_id| self.tcx.def_path_str(*trait_def_id) == required_trait_path)
+            .map(|trait_def_id| (self.tcx.def_path_str(trait_def_id), trait_def_id))
+            .filter(|(p, _)| *p == required_trait_path)
             .collect();
+
+        let traits_with_same_path =
+            traits_with_same_path.into_items().into_sorted_stable_ord_by_key(|(p, _)| p);
         let mut suggested = false;
-        for trait_with_same_path in traits_with_same_path {
+        for (_, trait_with_same_path) in traits_with_same_path {
             let trait_impls = get_trait_impls(trait_with_same_path);
             if trait_impls.is_empty() {
                 continue;

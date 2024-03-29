@@ -122,6 +122,7 @@
 #![feature(const_waker)]
 #![feature(core_intrinsics)]
 #![feature(deprecated_suggestion)]
+#![feature(deref_pure_trait)]
 #![feature(dispatch_from_dyn)]
 #![feature(error_generic_member_access)]
 #![feature(error_in_core)]
@@ -169,11 +170,13 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(utf8_chunks)]
+#![feature(vec_pop_if)]
 // tidy-alphabetical-end
 //
 // Language features:
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(associated_type_bounds))]
+#![cfg_attr(not(bootstrap), rustc_preserve_ub_checks)]
 #![cfg_attr(not(test), feature(coroutine_trait))]
 #![cfg_attr(test, feature(panic_update_hook))]
 #![cfg_attr(test, feature(test))]
