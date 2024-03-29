@@ -2130,6 +2130,14 @@ pub struct DestructuredConst<'tcx> {
     pub fields: &'tcx [ty::Const<'tcx>],
 }
 
+#[derive(Clone, Debug, HashStable)]
+pub struct LoweredDelegation<'tcx> {
+    pub inputs: &'tcx [Ty<'tcx>],
+    pub output: Ty<'tcx>,
+    pub generics: Option<Generics>,
+    pub predicates: Option<GenericPredicates<'tcx>>,
+}
+
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {

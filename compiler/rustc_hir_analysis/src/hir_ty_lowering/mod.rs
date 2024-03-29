@@ -1939,94 +1939,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self.lower_ty_common(hir_ty, false, true)
     }
 
-    fn check_delegation_constraints(&self, sig_id: DefId, span: Span, emit: bool) -> bool {
-        let mut error_occured = false;
-        let sig_span = self.tcx().def_span(sig_id);
-        let mut try_emit = |descr| {
-            if emit {
-                self.tcx().dcx().emit_err(crate::errors::NotSupportedDelegation {
-                    span,
-                    descr,
-                    callee_span: sig_span,
-                });
-            }
-            error_occured = true;
-        };
-
-        if let Some(node) = self.tcx().hir().get_if_local(sig_id)
-            && let Some(decl) = node.fn_decl()
-            && let hir::FnRetTy::Return(ty) = decl.output
-            && let hir::TyKind::InferDelegation(_, _) = ty.kind
-        {
-            try_emit("recursive delegation");
-        }
-
-        let sig_generics = self.tcx().generics_of(sig_id);
-        let parent = self.tcx().parent(self.item_def_id());
-        let parent_generics = self.tcx().generics_of(parent);
-
-        let parent_is_trait = (self.tcx().def_kind(parent) == DefKind::Trait) as usize;
-        let sig_has_self = sig_generics.has_self as usize;
-
-        if sig_generics.count() > sig_has_self || parent_generics.count() > parent_is_trait {
-            try_emit("delegation with early bound generics");
-        }
-
-        // There is no way to instantiate `Self` param for caller if
-        // 1. callee is a trait method
-        // 2. delegation item isn't an associative item
-        if let DefKind::AssocFn = self.tcx().def_kind(sig_id)
-            && let DefKind::Fn = self.tcx().def_kind(self.item_def_id())
-            && self.tcx().associated_item(sig_id).container
-                == ty::AssocItemContainer::TraitContainer
-        {
-            try_emit("delegation to a trait method from a free function");
-        }
-
-        error_occured
-    }
-
-    fn lower_delegation_ty(
-        &self,
-        sig_id: DefId,
-        idx: hir::InferDelegationKind,
-        span: Span,
-    ) -> Ty<'tcx> {
-        if self.check_delegation_constraints(sig_id, span, idx == hir::InferDelegationKind::Output)
-        {
-            let e = self.tcx().dcx().span_delayed_bug(span, "not supported delegation case");
-            self.set_tainted_by_errors(e);
-            return Ty::new_error(self.tcx(), e);
-        };
-        let sig = self.tcx().fn_sig(sig_id);
-        let sig_generics = self.tcx().generics_of(sig_id);
-
-        let parent = self.tcx().parent(self.item_def_id());
-        let parent_def_kind = self.tcx().def_kind(parent);
-
-        let sig = if let DefKind::Impl { .. } = parent_def_kind
-            && sig_generics.has_self
-        {
-            // Generic params can't be here except the trait self type.
-            // They are not supported yet.
-            assert_eq!(sig_generics.count(), 1);
-            assert_eq!(self.tcx().generics_of(parent).count(), 0);
-
-            let self_ty = self.tcx().type_of(parent).instantiate_identity();
-            let generic_self_ty = ty::GenericArg::from(self_ty);
-            let args = self.tcx().mk_args_from_iter(std::iter::once(generic_self_ty));
-            sig.instantiate(self.tcx(), args)
-        } else {
-            sig.instantiate_identity()
-        };
-
-        // Bound vars are also inherited from `sig_id`.
-        // They will be rebound later in `lower_fn_ty`.
-        let sig = sig.skip_binder();
-
+    fn lower_delegation_ty(&self, idx: hir::InferDelegationKind) -> Ty<'tcx> {
+        let delegation_res = self.tcx().lower_delegation_ty(self.item_def_id().expect_local());
         match idx {
-            hir::InferDelegationKind::Input(id) => sig.inputs()[id],
-            hir::InferDelegationKind::Output => sig.output(),
+            hir::InferDelegationKind::Input(idx) => delegation_res.inputs[idx],
+            hir::InferDelegationKind::Output => delegation_res.output,
         }
     }
 
@@ -2043,9 +1960,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         let result_ty = match &hir_ty.kind {
-            hir::TyKind::InferDelegation(sig_id, idx) => {
-                self.lower_delegation_ty(*sig_id, *idx, hir_ty.span)
-            }
+            hir::TyKind::InferDelegation(_, idx) => self.lower_delegation_ty(*idx),
             hir::TyKind::Slice(ty) => Ty::new_slice(tcx, self.lower_ty(ty)),
             hir::TyKind::Ptr(mt) => Ty::new_ptr(tcx, self.lower_ty(mt.ty), mt.mutbl),
             hir::TyKind::Ref(region, mt) => {

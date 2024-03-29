@@ -3240,16 +3240,19 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     fn resolve_delegation(&mut self, delegation: &'ast Delegation) {
-        self.smart_resolve_path(
-            delegation.id,
-            &delegation.qself,
-            &delegation.path,
-            PathSource::Delegation,
-        );
-        if let Some(qself) = &delegation.qself {
-            self.visit_ty(&qself.ty);
-        }
-        self.visit_path(&delegation.path, delegation.id);
+        self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+            this.smart_resolve_path(
+                delegation.id,
+                &delegation.qself,
+                &delegation.path,
+                PathSource::Delegation,
+            );
+
+            if let Some(qself) = &delegation.qself {
+                this.visit_ty(&qself.ty);
+            }
+            this.visit_path(&delegation.path, delegation.id);
+        });
         if let Some(body) = &delegation.body {
             // `PatBoundCtx` is not necessary in this context
             let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];

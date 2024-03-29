@@ -736,6 +736,21 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn opt_delegation_sig_id(self, def_id: LocalDefId) -> Option<DefId> {
+        if let Some(ret) = self.get_fn_output(def_id)
+            && let FnRetTy::Return(ty) = ret
+            && let TyKind::InferDelegation(sig_id, _) = ty.kind
+        {
+            return Some(sig_id);
+        }
+        None
+    }
+
+    #[inline]
+    pub fn delegation_sig_id(self, def_id: LocalDefId) -> DefId {
+        self.opt_delegation_sig_id(def_id).unwrap()
+    }
+
     #[inline]
     fn opt_ident(self, id: HirId) -> Option<Ident> {
         match self.tcx.hir_node(id) {

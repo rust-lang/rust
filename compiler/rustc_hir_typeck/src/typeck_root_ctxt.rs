@@ -76,9 +76,16 @@ impl<'tcx> Deref for TypeckRootCtxt<'tcx> {
 
 impl<'tcx> TypeckRootCtxt<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
-
         let infcx = tcx.infer_ctxt().ignoring_regions().with_opaque_type_inference(def_id).build();
+        Self::new_with_infcx(tcx, def_id, infcx)
+    }
+
+    pub(super) fn new_with_infcx(
+        tcx: TyCtxt<'tcx>,
+        def_id: LocalDefId,
+        infcx: InferCtxt<'tcx>,
+    ) -> Self {
+        let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
 
         TypeckRootCtxt {

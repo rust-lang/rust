@@ -1666,6 +1666,11 @@ rustc_queries! {
         desc { |tcx| "getting the native library for `{}`", tcx.def_path_str(def_id) }
     }
 
+    query lower_delegation_ty(_: LocalDefId) -> &'tcx ty::LoweredDelegation<'tcx> {
+        arena_cache
+        desc { "inheriting delegation type" }
+    }
+
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes` for details.
