@@ -9,9 +9,8 @@ use std::{
 use always_assert::always;
 use crossbeam_channel::{never, select, Receiver};
 use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
-use itertools::Itertools;
 use lsp_server::{Connection, Notification, Request};
-use lsp_types::notification::Notification as _;
+use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
 use stdx::thread::ThreadIntent;
 use vfs::FileId;
 
@@ -533,22 +532,14 @@ impl GlobalState {
             let snapshot = self.snapshot();
             move || {
                 let tests = subscriptions
-                    .into_iter()
-                    .filter_map(|f| snapshot.analysis.crates_for(f).ok())
-                    .flatten()
-                    .unique()
-                    .filter_map(|c| snapshot.analysis.discover_tests_in_crate(c).ok())
+                    .iter()
+                    .copied()
+                    .filter_map(|f| snapshot.analysis.discover_tests_in_file(f).ok())
                     .flatten()
                     .collect::<Vec<_>>();
                 for t in &tests {
                     hack_recover_crate_name::insert_name(t.id.clone());
                 }
-                let scope = tests
-                    .iter()
-                    .filter_map(|t| Some(t.id.split_once("::")?.0))
-                    .unique()
-                    .map(|it| it.to_owned())
-                    .collect();
                 Task::DiscoverTest(lsp_ext::DiscoverTestResults {
                     tests: tests
                         .into_iter()
@@ -557,7 +548,13 @@ impl GlobalState {
                             to_proto::test_item(&snapshot, t, line_index.as_ref())
                         })
                         .collect(),
-                    scope,
+                    scope: None,
+                    scope_file: Some(
+                        subscriptions
+                            .into_iter()
+                            .map(|f| TextDocumentIdentifier { uri: to_proto::url(&snapshot, f) })
+                            .collect(),
+                    ),
                 })
             }
         });

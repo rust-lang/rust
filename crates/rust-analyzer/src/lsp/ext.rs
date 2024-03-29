@@ -194,7 +194,8 @@ pub struct TestItem {
 #[serde(rename_all = "camelCase")]
 pub struct DiscoverTestResults {
     pub tests: Vec<TestItem>,
-    pub scope: Vec<String>,
+    pub scope: Option<Vec<String>>,
+    pub scope_file: Option<Vec<TextDocumentIdentifier>>,
 }
 
 pub enum DiscoverTest {}

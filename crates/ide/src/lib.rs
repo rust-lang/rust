@@ -353,6 +353,10 @@ impl Analysis {
         self.with_db(|db| test_explorer::discover_tests_in_crate(db, crate_id))
     }
 
+    pub fn discover_tests_in_file(&self, file_id: FileId) -> Cancellable<Vec<TestItem>> {
+        self.with_db(|db| test_explorer::discover_tests_in_file(db, file_id))
+    }
+
     /// Renders the crate graph to GraphViz "dot" syntax.
     pub fn view_crate_graph(&self, full: bool) -> Cancellable<Result<String, String>> {
         self.with_db(|db| view_crate_graph::view_crate_graph(db, full))
