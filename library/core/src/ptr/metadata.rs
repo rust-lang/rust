@@ -2,6 +2,7 @@
 
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
+use crate::ptr::internal_repr;
 
 /// Provides the pointer metadata type of any pointed-to type.
 ///
@@ -92,10 +93,7 @@ pub trait Thin = Pointee<Metadata = ()>;
 #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
 #[inline]
 pub const fn metadata<T: ?Sized>(ptr: *const T) -> <T as Pointee>::Metadata {
-    // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
-    // and PtrComponents<T> have the same memory layouts. Only std can make this
-    // guarantee.
-    unsafe { PtrRepr { const_ptr: ptr }.components.metadata }
+    internal_repr::metadata(ptr)
 }
 
 /// Forms a (possibly-wide) raw pointer from a data pointer and metadata.
@@ -112,10 +110,7 @@ pub const fn from_raw_parts<T: ?Sized>(
     data_pointer: *const (),
     metadata: <T as Pointee>::Metadata,
 ) -> *const T {
-    // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
-    // and PtrComponents<T> have the same memory layouts. Only std can make this
-    // guarantee.
-    unsafe { PtrRepr { components: PtrComponents { data_pointer, metadata } }.const_ptr }
+    internal_repr::from_raw_parts(data_pointer, metadata)
 }
 
 /// Performs the same functionality as [`from_raw_parts`], except that a
@@ -129,33 +124,7 @@ pub const fn from_raw_parts_mut<T: ?Sized>(
     data_pointer: *mut (),
     metadata: <T as Pointee>::Metadata,
 ) -> *mut T {
-    // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
-    // and PtrComponents<T> have the same memory layouts. Only std can make this
-    // guarantee.
-    unsafe { PtrRepr { components: PtrComponents { data_pointer, metadata } }.mut_ptr }
-}
-
-#[repr(C)]
-union PtrRepr<T: ?Sized> {
-    const_ptr: *const T,
-    mut_ptr: *mut T,
-    components: PtrComponents<T>,
-}
-
-#[repr(C)]
-struct PtrComponents<T: ?Sized> {
-    data_pointer: *const (),
-    metadata: <T as Pointee>::Metadata,
-}
-
-// Manual impl needed to avoid `T: Copy` bound.
-impl<T: ?Sized> Copy for PtrComponents<T> {}
-
-// Manual impl needed to avoid `T: Clone` bound.
-impl<T: ?Sized> Clone for PtrComponents<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
+    internal_repr::from_raw_parts(data_pointer, metadata)
 }
 
 /// The metadata for a `Dyn = dyn SomeTrait` trait object type.

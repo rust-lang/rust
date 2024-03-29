@@ -6,8 +6,7 @@ use crate::marker::Unsize;
 use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
-use crate::ptr;
-use crate::ptr::Unique;
+use crate::ptr::{self, internal_repr, Unique};
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
 
@@ -265,10 +264,7 @@ impl<T: ?Sized> NonNull<T> {
         data_pointer: NonNull<()>,
         metadata: <T as super::Pointee>::Metadata,
     ) -> NonNull<T> {
-        // SAFETY: The result of `ptr::from::raw_parts_mut` is non-null because `data_pointer` is.
-        unsafe {
-            NonNull::new_unchecked(super::from_raw_parts_mut(data_pointer.as_ptr(), metadata))
-        }
+        internal_repr::from_raw_parts(data_pointer, metadata)
     }
 
     /// Decompose a (possibly wide) pointer into its data pointer and metadata components.
