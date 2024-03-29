@@ -35,8 +35,6 @@ pub struct StdioPipes {
     pub stderr: Option<AnonPipe>,
 }
 
-// FIXME: This should be a unit struct, so we can always construct it
-// The value here should be never used, since we cannot spawn processes.
 pub enum Stdio {
     Inherit,
     Null,
@@ -45,12 +43,7 @@ pub enum Stdio {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        Command {
-            prog: program.to_os_string(),
-            args: Vec::from([program.to_os_string()]),
-            stdout: None,
-            stderr: None,
-        }
+        Command { prog: program.to_os_string(), args: Vec::new(), stdout: None, stderr: None }
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
@@ -122,6 +115,7 @@ impl Command {
     pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
         let mut cmd = uefi_command_internal::Command::load_image(&self.prog)?;
 
+        /* Setup Stdout */
         let stdout: Option<helpers::Protocol<uefi_command_internal::PipeProtocol>> =
             match self.stdout.take() {
                 Some(s) => Self::create_pipe(s),
@@ -131,7 +125,12 @@ impl Command {
                 )
                 .map(Some),
             }?;
+        match stdout {
+            Some(stdout) => cmd.stdout_init(stdout),
+            None => cmd.stdout_inherit(),
+        };
 
+        /* Setup Stderr */
         let stderr: Option<helpers::Protocol<uefi_command_internal::PipeProtocol>> =
             match self.stderr.take() {
                 Some(s) => Self::create_pipe(s),
@@ -141,21 +140,15 @@ impl Command {
                 )
                 .map(Some),
             }?;
-
-        match stdout {
-            Some(stdout) => cmd.stdout_init(stdout),
-            None => cmd.stdout_inherit(),
-        };
         match stderr {
             Some(stderr) => cmd.stderr_init(stderr),
             None => cmd.stderr_inherit(),
         };
 
-        if self.args.len() > 1 {
-            let args = self.args.iter().fold(OsString::new(), |mut acc, arg| {
-                if !acc.is_empty() {
-                    acc.push(" ");
-                }
+        /* No reason to set args if only program name is preset */
+        if !self.args.is_empty() {
+            let args = self.args.iter().fold(OsString::from(&self.prog), |mut acc, arg| {
+                acc.push(" ");
                 acc.push(arg);
                 acc
             });
@@ -202,7 +195,11 @@ impl From<File> for Stdio {
 }
 
 impl fmt::Debug for Command {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.prog.fmt(f)?;
+        for arg in &self.args {
+            arg.fmt(f)?;
+        }
         Ok(())
     }
 }
@@ -303,9 +300,11 @@ pub struct CommandArgs<'a> {
 
 impl<'a> Iterator for CommandArgs<'a> {
     type Item = &'a OsStr;
+
     fn next(&mut self) -> Option<&'a OsStr> {
         self.iter.next().map(|x| x.as_ref())
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
@@ -315,6 +314,7 @@ impl<'a> ExactSizeIterator for CommandArgs<'a> {
     fn len(&self) -> usize {
         self.iter.len()
     }
+
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
