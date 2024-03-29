@@ -90,7 +90,7 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>) -> Certainty {
     if let Some(def_id) = adt_def_id(expr_ty) {
         certainty.with_def_id(def_id)
     } else {
-        certainty
+        certainty.clear_def_id()
     }
 }
 
