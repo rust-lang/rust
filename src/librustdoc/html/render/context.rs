@@ -29,6 +29,7 @@ use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::formats::FormatRenderer;
+use crate::html::ambiguity::AmbiguityTable;
 use crate::html::escape::Escape;
 use crate::html::format::{join_with_double_colon, Buffer};
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
@@ -45,7 +46,7 @@ use askama::Template;
 /// It is intended that this context is a lightweight object which can be fairly
 /// easily cloned because it is cloned per work-job (about once per item in the
 /// rustdoc tree).
-pub(crate) struct Context<'tcx> {
+pub(crate) struct Context<'tcx, 'at> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
     pub(crate) current: Vec<Symbol>,
@@ -75,11 +76,13 @@ pub(crate) struct Context<'tcx> {
     pub(crate) types_with_notable_traits: FxHashSet<clean::Type>,
     /// Field used during rendering, to know if we're inside an inlined item.
     pub(crate) is_inside_inlined_module: bool,
+
+    pub(crate) ambiguity_table: AmbiguityTable<'at>,
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(all(not(windows), target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 160);
+rustc_data_structures::static_assert_size!(Context<'_, '_>, 192);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
 pub(crate) struct SharedContext<'tcx> {
@@ -149,7 +152,7 @@ impl SharedContext<'_> {
     }
 }
 
-impl<'tcx> Context<'tcx> {
+impl<'tcx, 'at> Context<'tcx, 'at> {
     pub(crate) fn tcx(&self) -> TyCtxt<'tcx> {
         self.shared.tcx
     }
@@ -434,7 +437,7 @@ impl<'tcx> Context<'tcx> {
 }
 
 /// Generates the documentation for `crate` into the directory `dst`
-impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
+impl<'tcx> FormatRenderer<'tcx> for Context<'tcx, '_> {
     fn descr() -> &'static str {
         "html"
     }
@@ -567,6 +570,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             include_sources,
             types_with_notable_traits: FxHashSet::default(),
             is_inside_inlined_module: false,
+            ambiguity_table: AmbiguityTable::empty(),
         };
 
         if emit_crate {
@@ -597,6 +601,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             include_sources: self.include_sources,
             types_with_notable_traits: FxHashSet::default(),
             is_inside_inlined_module: self.is_inside_inlined_module,
+            ambiguity_table: self.ambiguity_table.clone()
         }
     }
 

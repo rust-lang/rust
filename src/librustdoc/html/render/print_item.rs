@@ -25,7 +25,8 @@ use super::{
 use crate::clean;
 use crate::config::ModuleSorting;
 use crate::formats::item_type::ItemType;
-use crate::formats::Impl;
+use crate::formats::{FormatRenderer, Impl};
+use crate::html::ambiguity::AmbiguityTable;
 use crate::html::escape::Escape;
 use crate::html::format::{
     display_fn, join_with_double_colon, print_abi_with_space, print_constness_with_space,
@@ -70,8 +71,8 @@ macro_rules! item_template {
     ) => {
         #[derive(Template)]
         $(#[$meta])*
-        struct $name<'a, 'cx> {
-            cx: RefCell<&'a mut Context<'cx>>,
+        struct $name<'a, 'cx, 'at> {
+            cx: RefCell<&'a mut Context<'cx, 'at>>,
             it: &'a clean::Item,
             $($field_name: $field_ty),*
         }
@@ -168,10 +169,10 @@ struct ItemVars<'a> {
 }
 
 /// Calls `print_where_clause` and returns `true` if a `where` clause was generated.
-fn print_where_clause_and_check<'a, 'tcx: 'a>(
+fn print_where_clause_and_check<'a, 'tcx: 'a, 'at: 'a>(
     buffer: &mut Buffer,
     gens: &'a clean::Generics,
-    cx: &'a Context<'tcx>,
+    cx: &'a Context<'tcx, 'at>,
 ) -> bool {
     let len_before = buffer.len();
     write!(buffer, "{}", print_where_clause(gens, cx, 0, Ending::Newline));
@@ -179,7 +180,7 @@ fn print_where_clause_and_check<'a, 'tcx: 'a>(
 }
 
 pub(super) fn print_item(
-    cx: &mut Context<'_>,
+    cx: &mut Context<'_, '_>,
     item: &clean::Item,
     buf: &mut Buffer,
     page: &Page<'_>,
@@ -320,8 +321,8 @@ fn toggle_close(mut w: impl fmt::Write) {
     w.write_str("</details>").unwrap();
 }
 
-trait ItemTemplate<'a, 'cx: 'a>: askama::Template + fmt::Display {
-    fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>);
+trait ItemTemplate<'a, 'cx: 'a, 'at: 'a>: askama::Template + fmt::Display {
+    fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx, 'at>>);
 }
 
 fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: &[clean::Item]) {
@@ -624,7 +625,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
     })
 }
 
-fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &clean::Function) {
+fn item_function(w: &mut Buffer, cx: &mut Context<'_,'_>, it: &clean::Item, f: &clean::Function) {
     let tcx = cx.tcx();
     let header = it.fn_header(tcx).expect("printing a function which isn't a function");
     let constness = print_constness_with_space(&header.constness, it.const_stability(tcx));
@@ -645,7 +646,10 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         + generics_len;
 
     let notable_traits = notable_traits_button(&f.decl.output, cx);
-
+    let mut child_cx = cx.make_child_renderer();
+    assert!(child_cx.ambiguity_table.is_empty());
+    let amb_table = AmbiguityTable::build().add_fn(f).finnish();
+    child_cx.ambiguity_table = amb_table;
     wrap_item(w, |w| {
         w.reserve(header_len);
         write!(

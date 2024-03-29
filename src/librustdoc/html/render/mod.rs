@@ -533,8 +533,8 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
     )
 }
 
-fn document<'a, 'cx: 'a>(
-    cx: &'a mut Context<'cx>,
+fn document<'a, 'cx: 'a, 'at: 'a>(
+    cx: &'a mut Context<'cx, 'at>,
     item: &'a clean::Item,
     parent: Option<&'a clean::Item>,
     heading_offset: HeadingOffset,
@@ -1443,7 +1443,7 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
     }
 }
 
-pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> Option<String> {
+pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_, '_>) -> Option<String> {
     let mut has_notable_trait = false;
 
     if ty.is_unit() {
