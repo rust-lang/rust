@@ -404,6 +404,15 @@ impl GenericParamsCollector {
 }
 
 impl GenericParams {
+    /// Number of Generic parameters (type_or_consts + lifetimes)
+    pub fn len(&self) -> usize {
+        self.type_or_consts.len() + self.lifetimes.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Iterator of type_or_consts field
     pub fn iter(
         &self,
