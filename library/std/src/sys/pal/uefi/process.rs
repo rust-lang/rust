@@ -91,9 +91,11 @@ impl Command {
     }
 
     pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
-        let cmd = uefi_command_internal::Command::load_image(&self.prog)?;
+        let mut cmd = uefi_command_internal::Command::load_image(&self.prog)?;
+        cmd.stdout_init()?;
         let stat = cmd.start_image()?;
-        Ok((ExitStatus(stat), Vec::new(), Vec::new()))
+        let stdout = cmd.stdout()?;
+        Ok((ExitStatus(stat), stdout, Vec::new()))
     }
 }
 
@@ -246,20 +248,30 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
 }
 
 mod uefi_command_internal {
+    use r_efi::protocols::{loaded_image, simple_text_output};
+
     use super::super::helpers;
-    use crate::ffi::OsStr;
+    use crate::ffi::{OsStr, OsString};
     use crate::io::{self, const_io_error};
     use crate::mem::MaybeUninit;
     use crate::os::uefi::env::{boot_services, image_handle};
+    use crate::os::uefi::ffi::OsStringExt;
     use crate::ptr::NonNull;
+    use crate::slice;
+    use crate::sys_common::wstr::WStrUnits;
 
     pub struct Command {
         handle: NonNull<crate::ffi::c_void>,
+        stdout: Option<helpers::Protocol<PipeProtocol>>,
+        st: Box<r_efi::efi::SystemTable>,
     }
 
     impl Command {
-        const fn new(handle: NonNull<crate::ffi::c_void>) -> Self {
-            Self { handle }
+        const fn new(
+            handle: NonNull<crate::ffi::c_void>,
+            st: Box<r_efi::efi::SystemTable>,
+        ) -> Self {
+            Self { handle, stdout: None, st }
         }
 
         pub fn load_image(p: &OsStr) -> io::Result<Self> {
@@ -286,7 +298,17 @@ mod uefi_command_internal {
             } else {
                 let child_handle = unsafe { child_handle.assume_init() };
                 let child_handle = NonNull::new(child_handle).unwrap();
-                Ok(Self::new(child_handle))
+
+                let loaded_image: NonNull<loaded_image::Protocol> =
+                    helpers::open_protocol(child_handle, loaded_image::PROTOCOL_GUID).unwrap();
+                let mut st: Box<r_efi::efi::SystemTable> =
+                    Box::new(unsafe { crate::ptr::read((*loaded_image.as_ptr()).system_table) });
+
+                unsafe {
+                    (*loaded_image.as_ptr()).system_table = st.as_mut();
+                }
+
+                Ok(Self::new(child_handle, st))
             }
         }
 
@@ -313,6 +335,32 @@ mod uefi_command_internal {
 
             Ok(r)
         }
+
+        pub fn stdout_init(&mut self) -> io::Result<()> {
+            let mut protocol =
+                helpers::Protocol::create(PipeProtocol::new(), simple_text_output::PROTOCOL_GUID)?;
+
+            self.st.console_out_handle = protocol.handle().as_ptr();
+            self.st.con_out =
+                protocol.as_mut() as *mut PipeProtocol as *mut simple_text_output::Protocol;
+
+            self.stdout = Some(protocol);
+
+            Ok(())
+        }
+
+        pub fn stdout(&self) -> io::Result<Vec<u8>> {
+            if let Some(stdout) = &self.stdout {
+                stdout
+                    .as_ref()
+                    .utf8()
+                    .into_string()
+                    .map_err(|_| const_io_error!(io::ErrorKind::Other, "utf8 conversion failed"))
+                    .map(Into::into)
+            } else {
+                Err(const_io_error!(io::ErrorKind::NotFound, "stdout not found"))
+            }
+        }
     }
 
     impl Drop for Command {
@@ -323,6 +371,136 @@ mod uefi_command_internal {
                     ((*bt.as_ptr()).unload_image)(self.handle.as_ptr());
                 }
             }
+        }
+    }
+
+    #[repr(C)]
+    struct PipeProtocol {
+        reset: simple_text_output::ProtocolReset,
+        output_string: simple_text_output::ProtocolOutputString,
+        test_string: simple_text_output::ProtocolTestString,
+        query_mode: simple_text_output::ProtocolQueryMode,
+        set_mode: simple_text_output::ProtocolSetMode,
+        set_attribute: simple_text_output::ProtocolSetAttribute,
+        clear_screen: simple_text_output::ProtocolClearScreen,
+        set_cursor_position: simple_text_output::ProtocolSetCursorPosition,
+        enable_cursor: simple_text_output::ProtocolEnableCursor,
+        mode: *mut simple_text_output::Mode,
+        _mode: Box<simple_text_output::Mode>,
+        _buffer: Vec<u16>,
+    }
+
+    impl PipeProtocol {
+        fn new() -> Self {
+            let mut mode = Box::new(simple_text_output::Mode {
+                max_mode: 0,
+                mode: 0,
+                attribute: 0,
+                cursor_column: 0,
+                cursor_row: 0,
+                cursor_visible: r_efi::efi::Boolean::FALSE,
+            });
+            Self {
+                reset: Self::reset,
+                output_string: Self::output_string,
+                test_string: Self::test_string,
+                query_mode: Self::query_mode,
+                set_mode: Self::set_mode,
+                set_attribute: Self::set_attribute,
+                clear_screen: Self::clear_screen,
+                set_cursor_position: Self::set_cursor_position,
+                enable_cursor: Self::enable_cursor,
+                mode: mode.as_mut(),
+                _mode: mode,
+                _buffer: Vec::new(),
+            }
+        }
+
+        fn utf8(&self) -> OsString {
+            OsString::from_wide(&self._buffer)
+        }
+
+        extern "efiapi" fn reset(
+            proto: *mut simple_text_output::Protocol,
+            _: r_efi::efi::Boolean,
+        ) -> r_efi::efi::Status {
+            let proto: *mut PipeProtocol = proto.cast();
+            unsafe {
+                (*proto)._buffer.clear();
+            }
+            r_efi::efi::Status::SUCCESS
+        }
+
+        extern "efiapi" fn output_string(
+            proto: *mut simple_text_output::Protocol,
+            buf: *mut r_efi::efi::Char16,
+        ) -> r_efi::efi::Status {
+            let proto: *mut PipeProtocol = proto.cast();
+            let buf_len = unsafe {
+                if let Some(x) = WStrUnits::new(buf) {
+                    x.count()
+                } else {
+                    return r_efi::efi::Status::INVALID_PARAMETER;
+                }
+            };
+            let buf_slice = unsafe { slice::from_raw_parts(buf, buf_len) };
+
+            unsafe {
+                (*proto)._buffer.extend_from_slice(buf_slice);
+            };
+
+            r_efi::efi::Status::SUCCESS
+        }
+
+        extern "efiapi" fn test_string(
+            _: *mut simple_text_output::Protocol,
+            _: *mut r_efi::efi::Char16,
+        ) -> r_efi::efi::Status {
+            r_efi::efi::Status::SUCCESS
+        }
+
+        extern "efiapi" fn query_mode(
+            _: *mut simple_text_output::Protocol,
+            _: usize,
+            _: *mut usize,
+            _: *mut usize,
+        ) -> r_efi::efi::Status {
+            r_efi::efi::Status::UNSUPPORTED
+        }
+
+        extern "efiapi" fn set_mode(
+            _: *mut simple_text_output::Protocol,
+            _: usize,
+        ) -> r_efi::efi::Status {
+            r_efi::efi::Status::UNSUPPORTED
+        }
+
+        extern "efiapi" fn set_attribute(
+            _: *mut simple_text_output::Protocol,
+            _: usize,
+        ) -> r_efi::efi::Status {
+            r_efi::efi::Status::UNSUPPORTED
+        }
+
+        extern "efiapi" fn clear_screen(
+            _: *mut simple_text_output::Protocol,
+        ) -> r_efi::efi::Status {
+            r_efi::efi::Status::UNSUPPORTED
+        }
+
+        extern "efiapi" fn set_cursor_position(
+            _: *mut simple_text_output::Protocol,
+            _: usize,
+            _: usize,
+        ) -> r_efi::efi::Status {
+            r_efi::efi::Status::UNSUPPORTED
+        }
+
+        extern "efiapi" fn enable_cursor(
+            _: *mut simple_text_output::Protocol,
+            _: r_efi::efi::Boolean,
+        ) -> r_efi::efi::Status {
+            r_efi::efi::Status::UNSUPPORTED
         }
     }
 }
