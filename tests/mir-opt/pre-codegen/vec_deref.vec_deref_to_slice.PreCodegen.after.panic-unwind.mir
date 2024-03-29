@@ -1,0 +1,14 @@
+// MIR for `vec_deref_to_slice` after PreCodegen
+
+fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
+    debug v => _1;
+    let mut _0: &[u8];
+
+    bb0: {
+        _0 = <Vec<u8> as Deref>::deref(move _1) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}
