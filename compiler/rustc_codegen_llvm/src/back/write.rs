@@ -703,10 +703,56 @@ unsafe fn create_call<'a>(tgt: &'a Value, src: &'a Value, rev_mode: bool,
     let f_ty = LLVMRustGetFunctionType(src);
 
     let inner_param_num = LLVMCountParams(src);
-    let mut outer_args: Vec<&Value> = get_params(tgt);
+    let outer_param_num = LLVMCountParams(tgt);
+    let outer_args: Vec<&Value> = get_params(tgt);
+    let inner_args: Vec<&Value> = get_params(src);
+    let mut call_args: Vec<&Value> = vec![];
 
-    if inner_param_num as usize != outer_args.len() {
-        panic!("Args len shouldn't differ. Please report this. {} : {}", inner_param_num, outer_args.len());
+    if inner_param_num == outer_param_num {
+        call_args = outer_args;
+    } else {
+        dbg!("Different number of args, adjusting");
+        let mut outer_pos: usize = 0;
+        let mut inner_pos: usize = 0;
+        // copy over if they are identical.
+        // If not, skip the outer arg (and assert it's int).
+        while outer_pos < outer_param_num as usize {
+            let inner_arg = inner_args[inner_pos];
+            let outer_arg = outer_args[outer_pos];
+            let inner_arg_ty = llvm::LLVMTypeOf(inner_arg);
+            let outer_arg_ty = llvm::LLVMTypeOf(outer_arg);
+            if inner_arg_ty == outer_arg_ty {
+                call_args.push(outer_arg);
+                inner_pos += 1;
+                outer_pos += 1;
+            } else {
+                // out: (ptr, <>int1, ptr, int2)
+                // inner: (ptr, <>ptr, int)
+                // goal: (ptr, ptr, int1), skipping int2
+                // we are here: <>
+                assert!(llvm::LLVMRustGetTypeKind(outer_arg_ty) == llvm::TypeKind::Integer);
+                assert!(llvm::LLVMRustGetTypeKind(inner_arg_ty) == llvm::TypeKind::Pointer);
+                let next_outer_arg = outer_args[outer_pos + 1];
+                let next_inner_arg = inner_args[inner_pos + 1];
+                let next_outer_arg_ty = llvm::LLVMTypeOf(next_outer_arg);
+                let next_inner_arg_ty = llvm::LLVMTypeOf(next_inner_arg);
+                assert!(llvm::LLVMRustGetTypeKind(next_outer_arg_ty) == llvm::TypeKind::Pointer);
+                assert!(llvm::LLVMRustGetTypeKind(next_inner_arg_ty) == llvm::TypeKind::Integer);
+                let next2_outer_arg = outer_args[outer_pos + 2];
+                let next2_outer_arg_ty = llvm::LLVMTypeOf(next2_outer_arg);
+                assert!(llvm::LLVMRustGetTypeKind(next2_outer_arg_ty) == llvm::TypeKind::Integer);
+                call_args.push(next_outer_arg);
+                call_args.push(outer_arg);
+
+                outer_pos += 3;
+                inner_pos += 2;
+            }
+        }
+    }
+
+
+    if inner_param_num as usize != call_args.len() {
+        panic!("Args len shouldn't differ. Please report this. {} : {}", inner_param_num, call_args.len());
     }
 
     let inner_fnc_name = llvm::get_value_name(src);
@@ -719,8 +765,8 @@ unsafe fn create_call<'a>(tgt: &'a Value, src: &'a Value, rev_mode: bool,
         builder,
         f_ty,
         src,
-        outer_args.as_mut_ptr(),
-        outer_args.len(),
+        call_args.as_mut_ptr(),
+        call_args.len(),
         c_inner_fnc_name.as_ptr(),
     );
 

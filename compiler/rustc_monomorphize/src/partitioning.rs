@@ -125,6 +125,9 @@ use crate::collector::UsageMap;
 use crate::collector::{self, MonoItemCollectionMode};
 use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownCguCollectionMode};
 
+use rustc_ast::expand::autodiff_attrs::DiffActivity;
+
+
 struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     usage_map: &'a UsageMap<'tcx>,
@@ -1158,21 +1161,24 @@ fn collect_and_partition_mono_items(
         })
         .collect();
 
-    let autodiff_items = items
+    let autodiff_items2: Vec<_> = items
         .iter()
         .filter_map(|item| match *item {
             MonoItem::Fn(ref instance) => Some((item, instance)),
             _ => None,
-        })
-        .filter_map(|(item, instance)| {
+        }).collect();
+    let mut autodiff_items: Vec<AutoDiffItem> = vec![];
+
+    for (item, instance) in autodiff_items2 {
             let target_id = instance.def_id();
             let target_attrs: &AutoDiffAttrs = tcx.autodiff_attrs(target_id);
+            let mut input_activities: Vec<DiffActivity> = target_attrs.input_activity.clone();
             if target_attrs.is_source() {
                 dbg!("source");
                 dbg!(&target_attrs);
             }
             if !target_attrs.apply_autodiff() {
-                return None;
+                continue;
             }
 
             let target_symbol =
@@ -1189,17 +1195,25 @@ fn collect_and_partition_mono_items(
                     }
                     _ => None,
                 });
+            let inst = match source {
+                Some(source) => source,
+                None => continue,
+            };
 
-            source.map(|inst| {
-                println!("source_id: {:?}", inst.def_id());
-                 let fnc_tree = fnc_typetrees(tcx, inst.ty(tcx, ParamEnv::empty()));
-                 let (inputs, output) = (fnc_tree.args, fnc_tree.ret);
-                //check_types(inst.ty(tcx, ParamEnv::empty()), tcx, &target_attrs.input_activity);
-                let symb = symbol_name_for_instance_in_crate(tcx, inst.clone(), LOCAL_CRATE);
+            println!("source_id: {:?}", inst.def_id());
+            let fn_ty = inst.ty(tcx, ParamEnv::empty());
+            assert!(fn_ty.is_fn());
+            let fnc_tree = fnc_typetrees(tcx, fn_ty, &mut input_activities);
+            let (inputs, output) = (fnc_tree.args, fnc_tree.ret);
+            //check_types(inst.ty(tcx, ParamEnv::empty()), tcx, &target_attrs.input_activity);
+            let symb = symbol_name_for_instance_in_crate(tcx, inst.clone(), LOCAL_CRATE);
 
-                target_attrs.clone().into_item(symb, target_symbol, inputs, output)
-            })
-        });
+            let mut new_target_attrs = target_attrs.clone();
+            new_target_attrs.input_activity = input_activities;
+            let itm = new_target_attrs.into_item(symb, target_symbol, inputs, output);
+            dbg!(&itm);
+            autodiff_items.push(itm);
+        };
 
     let autodiff_items = tcx.arena.alloc_from_iter(autodiff_items);
 

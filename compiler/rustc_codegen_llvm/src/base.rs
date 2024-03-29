@@ -93,7 +93,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
                     _ => continue,
                 };
                 let fn_ty = inst.ty(tcx, ParamEnv::empty());
-                let _fnc_tree = fnc_typetrees(tcx, fn_ty);
+                let _fnc_tree = fnc_typetrees(tcx, fn_ty, &mut vec![]);
                 //trace!("codegen_module: predefine fn {}", inst);
                 //trace!("{} \n {:?} \n {:?}", inst, fn_ty, _fnc_tree);
                 // Manuel: TODO

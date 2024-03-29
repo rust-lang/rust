@@ -2727,23 +2727,59 @@ pub fn typetree_from<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
     return TypeTree(vec![tt]);
 }
 
-pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>) -> FncTree {
+use rustc_ast::expand::autodiff_attrs::DiffActivity;
+
+pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec<DiffActivity>) -> FncTree {
     if !fn_ty.is_fn() {
         return FncTree { args: vec![], ret: TypeTree::new() };
     }
     let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
 
-    // TODO: verify.
-    let x: ty::FnSig<'_> = match fnc_binder.no_bound_vars() {
-        Some(x) => x,
-        None => return FncTree { args: vec![], ret: TypeTree::new() },
-    };
+    // TODO: cleanup
+    // Ok, sorry whoever reviews this.
+    // If we call this on arbitrary rust functions which we don't differentiate directly,
+    // then we have no da vec. We might encounter complex types, so do it properly.
+    // If we have a da vec, we know we are difrectly differentiating that fnc,
+    // so can assume it's something simpler, where skip_binder is ok (for now).
+    let x: ty::FnSig<'_>;
+    if da.is_empty() {
+        x = match fnc_binder.no_bound_vars() {
+            Some(x) => x,
+            None => return FncTree { args: vec![], ret: TypeTree::new() },
+        }
+    } else {
+        x = fnc_binder.skip_binder();
+    }
+    dbg!("creating fncTree");
 
+    let mut offset = 0;
     let mut visited = vec![];
     let mut args = vec![];
-    for arg in x.inputs() {
+    for (i, ty) in x.inputs().iter().enumerate() {
         visited.clear();
-        let arg_tt = typetree_from_ty(*arg, tcx, 0, false, &mut visited);
+        if ty.is_unsafe_ptr() || ty.is_ref() || ty.is_box() {
+            if ty.is_fn_ptr() {
+                unimplemented!("what to do whith fn ptr?");
+            }
+            let inner_ty = ty.builtin_deref(true).unwrap().ty;
+            if inner_ty.is_slice() {
+                // We know that the lenght will be passed as extra arg.
+                let child = typetree_from_ty(inner_ty, tcx, 0, false, &mut visited);
+                let tt = Type { offset: -1, kind: Kind::Pointer, size: 8, child };
+                args.push(TypeTree(vec![tt]));
+                let i64_tt = Type { offset: -1, kind: Kind::Integer, size: 8, child: TypeTree::new() };
+                args.push(TypeTree(vec![i64_tt]));
+                if !da.is_empty() {
+                    // We are looking at a slice. The length of that slice will become an
+                    // extra integer on llvm level. Integers are always const.
+                    da.insert(i + 1 + offset, DiffActivity::Const);
+                    offset += 1;
+                }
+                dbg!("ABI MATCHING\n\n\n");
+                continue;
+            }
+        }
+        let arg_tt = typetree_from_ty(*ty, tcx, 0, false, &mut visited);
         args.push(arg_tt);
     }
 
