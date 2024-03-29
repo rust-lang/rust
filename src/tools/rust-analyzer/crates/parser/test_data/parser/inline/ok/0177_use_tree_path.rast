@@ -1,0 +1,72 @@
+SOURCE_FILE
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH_SEGMENT
+          COLON2 "::"
+          NAME_REF
+            IDENT "std"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "std"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "collections"
+    SEMICOLON ";"
+  WHITESPACE "\n\n"
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              SELF_KW "self"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "m"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              SUPER_KW "super"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "m"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              CRATE_KW "crate"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "m"
+    SEMICOLON ";"
+  WHITESPACE "\n"

@@ -1,0 +1,1 @@
+fn test() where (u64, u64): Foo {}

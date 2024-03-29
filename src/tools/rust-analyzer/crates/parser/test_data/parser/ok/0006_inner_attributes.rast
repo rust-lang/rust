@@ -1,0 +1,194 @@
+SOURCE_FILE
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "attr"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "attr"
+      TOKEN_TREE
+        L_PAREN "("
+        TRUE_KW "true"
+        R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "attr"
+      TOKEN_TREE
+        L_PAREN "("
+        IDENT "ident"
+        R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "attr"
+      TOKEN_TREE
+        L_PAREN "("
+        IDENT "ident"
+        COMMA ","
+        WHITESPACE " "
+        INT_NUMBER "100"
+        COMMA ","
+        WHITESPACE " "
+        TRUE_KW "true"
+        COMMA ","
+        WHITESPACE " "
+        STRING "\"true\""
+        COMMA ","
+        WHITESPACE " "
+        IDENT "ident"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        INT_NUMBER "100"
+        COMMA ","
+        WHITESPACE " "
+        IDENT "ident"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        STRING "\"hello\""
+        COMMA ","
+        WHITESPACE " "
+        IDENT "ident"
+        TOKEN_TREE
+          L_PAREN "("
+          INT_NUMBER "100"
+          R_PAREN ")"
+        R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "attr"
+      TOKEN_TREE
+        L_PAREN "("
+        INT_NUMBER "100"
+        R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "attr"
+      TOKEN_TREE
+        L_PAREN "("
+        IDENT "enabled"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        TRUE_KW "true"
+        R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "enabled"
+      TOKEN_TREE
+        L_PAREN "("
+        TRUE_KW "true"
+        R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "attr"
+      TOKEN_TREE
+        L_PAREN "("
+        STRING "\"hello\""
+        R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "repr"
+      TOKEN_TREE
+        L_PAREN "("
+        IDENT "C"
+        COMMA ","
+        WHITESPACE " "
+        IDENT "align"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        INT_NUMBER "4"
+        R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "repr"
+      TOKEN_TREE
+        L_PAREN "("
+        IDENT "C"
+        COMMA ","
+        WHITESPACE " "
+        IDENT "align"
+        TOKEN_TREE
+          L_PAREN "("
+          INT_NUMBER "4"
+          R_PAREN ")"
+        R_PAREN ")"
+    R_BRACK "]"

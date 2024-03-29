@@ -1,0 +1,87 @@
+SOURCE_FILE@0..106
+  STRUCT@0..11
+    STRUCT_KW@0..6 "struct"
+    WHITESPACE@6..7 " "
+    NAME@7..10
+      IDENT@7..10 "Foo"
+    SEMICOLON@10..11 ";"
+  WHITESPACE@11..12 "\n"
+  STRUCT@12..25
+    STRUCT_KW@12..18 "struct"
+    WHITESPACE@18..19 " "
+    NAME@19..22
+      IDENT@19..22 "Foo"
+    WHITESPACE@22..23 " "
+    RECORD_FIELD_LIST@23..25
+      L_CURLY@23..24 "{"
+      R_CURLY@24..25 "}"
+  WHITESPACE@25..26 "\n"
+  STRUCT@26..39
+    STRUCT_KW@26..32 "struct"
+    WHITESPACE@32..33 " "
+    NAME@33..36
+      IDENT@33..36 "Foo"
+    TUPLE_FIELD_LIST@36..38
+      L_PAREN@36..37 "("
+      R_PAREN@37..38 ")"
+    SEMICOLON@38..39 ";"
+  WHITESPACE@39..40 "\n"
+  STRUCT@40..66
+    STRUCT_KW@40..46 "struct"
+    WHITESPACE@46..47 " "
+    NAME@47..50
+      IDENT@47..50 "Foo"
+    TUPLE_FIELD_LIST@50..65
+      L_PAREN@50..51 "("
+      TUPLE_FIELD@51..57
+        PATH_TYPE@51..57
+          PATH@51..57
+            PATH_SEGMENT@51..57
+              NAME_REF@51..57
+                IDENT@51..57 "String"
+      COMMA@57..58 ","
+      WHITESPACE@58..59 " "
+      TUPLE_FIELD@59..64
+        PATH_TYPE@59..64
+          PATH@59..64
+            PATH_SEGMENT@59..64
+              NAME_REF@59..64
+                IDENT@59..64 "usize"
+      R_PAREN@64..65 ")"
+    SEMICOLON@65..66 ";"
+  WHITESPACE@66..67 "\n"
+  STRUCT@67..105
+    STRUCT_KW@67..73 "struct"
+    WHITESPACE@73..74 " "
+    NAME@74..77
+      IDENT@74..77 "Foo"
+    WHITESPACE@77..78 " "
+    RECORD_FIELD_LIST@78..105
+      L_CURLY@78..79 "{"
+      WHITESPACE@79..84 "\n    "
+      RECORD_FIELD@84..90
+        NAME@84..85
+          IDENT@84..85 "a"
+        COLON@85..86 ":"
+        WHITESPACE@86..87 " "
+        PATH_TYPE@87..90
+          PATH@87..90
+            PATH_SEGMENT@87..90
+              NAME_REF@87..90
+                IDENT@87..90 "i32"
+      COMMA@90..91 ","
+      WHITESPACE@91..96 "\n    "
+      RECORD_FIELD@96..102
+        NAME@96..97
+          IDENT@96..97 "b"
+        COLON@97..98 ":"
+        WHITESPACE@98..99 " "
+        PATH_TYPE@99..102
+          PATH@99..102
+            PATH_SEGMENT@99..102
+              NAME_REF@99..102
+                IDENT@99..102 "f32"
+      COMMA@102..103 ","
+      WHITESPACE@103..104 "\n"
+      R_CURLY@104..105 "}"
+  WHITESPACE@105..106 "\n"

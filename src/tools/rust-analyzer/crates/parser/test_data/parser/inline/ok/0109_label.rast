@@ -1,0 +1,70 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          LOOP_EXPR
+            LABEL
+              LIFETIME
+                LIFETIME_IDENT "'a"
+              COLON ":"
+            WHITESPACE " "
+            LOOP_KW "loop"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          WHILE_EXPR
+            LABEL
+              LIFETIME
+                LIFETIME_IDENT "'b"
+              COLON ":"
+            WHITESPACE " "
+            WHILE_KW "while"
+            WHITESPACE " "
+            LITERAL
+              TRUE_KW "true"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+        WHITESPACE "\n    "
+        FOR_EXPR
+          LABEL
+            LIFETIME
+              LIFETIME_IDENT "'c"
+            COLON ":"
+          WHITESPACE " "
+          FOR_KW "for"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "x"
+          WHITESPACE " "
+          IN_KW "in"
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
