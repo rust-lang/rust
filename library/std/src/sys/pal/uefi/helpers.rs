@@ -12,10 +12,10 @@
 use r_efi::efi::{self, Guid};
 use r_efi::protocols::{device_path, device_path_to_text};
 
-use crate::ffi::{OsString, OsStr};
+use crate::ffi::{OsStr, OsString};
 use crate::io::{self, const_io_error};
 use crate::mem::{size_of, MaybeUninit};
-use crate::os::uefi::{self, env::boot_services, ffi::OsStringExt};
+use crate::os::uefi::{self, env::boot_services, ffi::OsStrExt, ffi::OsStringExt};
 use crate::ptr::NonNull;
 use crate::slice;
 use crate::sync::atomic::{AtomicPtr, Ordering};
@@ -289,5 +289,77 @@ impl Drop for DevicePath {
                 ((*bt.as_ptr()).free_pool)(self.0.as_ptr() as *mut crate::ffi::c_void);
             }
         }
+    }
+}
+
+pub(crate) struct Protocol<T> {
+    guid: r_efi::efi::Guid,
+    handle: NonNull<crate::ffi::c_void>,
+    protocol: Box<T>,
+}
+
+impl<T> Protocol<T> {
+    const fn new(
+        guid: r_efi::efi::Guid,
+        handle: NonNull<crate::ffi::c_void>,
+        protocol: Box<T>,
+    ) -> Self {
+        Self { guid, handle, protocol }
+    }
+
+    pub(crate) fn create(protocol: T, mut guid: r_efi::efi::Guid) -> io::Result<Self> {
+        let boot_services: NonNull<r_efi::efi::BootServices> =
+            boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?.cast();
+        let mut protocol = Box::new(protocol);
+        let mut handle: r_efi::efi::Handle = crate::ptr::null_mut();
+
+        let r = unsafe {
+            ((*boot_services.as_ptr()).install_protocol_interface)(
+                &mut handle,
+                &mut guid,
+                r_efi::efi::NATIVE_INTERFACE,
+                protocol.as_mut() as *mut T as *mut crate::ffi::c_void,
+            )
+        };
+
+        if r.is_error() {
+            return Err(crate::io::Error::from_raw_os_error(r.as_usize()));
+        };
+
+        let handle = NonNull::new(handle)
+            .ok_or(io::const_io_error!(io::ErrorKind::Uncategorized, "found null handle"))?;
+
+        Ok(Self::new(guid, handle, protocol))
+    }
+
+    pub(crate) fn handle(&self) -> NonNull<crate::ffi::c_void> {
+        self.handle
+    }
+}
+
+impl<T> Drop for Protocol<T> {
+    fn drop(&mut self) {
+        if let Some(bt) = boot_services() {
+            let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
+            unsafe {
+                ((*bt.as_ptr()).uninstall_protocol_interface)(
+                    self.handle.as_ptr(),
+                    &mut self.guid,
+                    self.protocol.as_mut() as *mut T as *mut crate::ffi::c_void,
+                )
+            };
+        }
+    }
+}
+
+impl<T> AsRef<T> for Protocol<T> {
+    fn as_ref(&self) -> &T {
+        &self.protocol
+    }
+}
+
+impl<T> AsMut<T> for Protocol<T> {
+    fn as_mut(&mut self) -> &mut T {
+        &mut self.protocol
     }
 }
