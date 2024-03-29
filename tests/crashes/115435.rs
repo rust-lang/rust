@@ -1,4 +1,6 @@
 //@ known-bug: #115435
+//@ edition:2021
+//@ compile-flags: -Copt-level=0
 trait MyTrait {
     type Target: ?Sized;
 }

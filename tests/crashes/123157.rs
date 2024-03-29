@@ -1,4 +1,5 @@
 //@ known-bug: #123157
+//@ edition:2021
 #![feature(type_alias_impl_trait)]
 
 #[derive(Copy, Clone)]

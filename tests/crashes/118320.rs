@@ -1,4 +1,5 @@
 //@ known-bug: #118320
+//@ edition:2021
 #![feature(const_trait_impl, effects, const_closures)]
 
 #[const_trait]

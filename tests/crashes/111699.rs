@@ -1,4 +1,6 @@
 //@ known-bug: #111699
+//@ edition:2021
+//@ compile-flags: -Copt-level=0
 #![feature(core_intrinsics)]
 use std::intrinsics::offset;
 

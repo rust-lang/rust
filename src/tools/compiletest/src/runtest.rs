@@ -364,13 +364,16 @@ impl<'test> TestCx<'test> {
     fn run_crash_test(&self) {
         let pm = self.pass_mode();
         let proc_res = self.compile_test(WillExecute::No, self.should_emit_metadata(pm));
+        /*
+        eprintln!("{}", proc_res.status);
+        eprintln!("{}", proc_res.stdout);
+        eprintln!("{}", proc_res.stderr);
+        eprintln!("{}", proc_res.cmdline);
+        */
 
         // if a test does not crash, consider it an error
-        if !proc_res.status.success() {
-            match proc_res.status.code() {
-                Some(1 | 0) => self.fatal(&format!("test no longer crashes/triggers ICE! Please annotate it and add it as test to tests/ui or wherever you see fit")),
-                _ => (),
-            }
+        if proc_res.status.success() || matches!(proc_res.status.code(), Some(1 | 0)) {
+            self.fatal(&format!("test no longer crashes/triggers ICE! Please annotate it and add it as test to tests/ui or wherever you see fit"));
         }
     }
 
@@ -2322,9 +2325,6 @@ impl<'test> TestCx<'test> {
         }
 
         let (Output { status, stdout, stderr }, truncated) = self.read2_abbreviated(child);
-        eprintln!("{:?}", status);
-        eprintln!("{}", String::from_utf8_lossy(&stdout).into_owned());
-        eprintln!("{}", String::from_utf8_lossy(&stdout).into_owned());
 
         let result = ProcRes {
             status,

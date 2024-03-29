@@ -1,4 +1,5 @@
 //@ known-bug: #120482
+//@ edition:2021
 #![feature(object_safe_for_dispatch)]
 
 trait B {

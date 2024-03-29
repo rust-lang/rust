@@ -4,7 +4,7 @@ the rustc testsuite is more convenient.
 
 It is imperative that a test in the suite causes an internal compiler error/panic
 or makes rustc crash in some other way.
-Accepted exit codes are: 101 (may be expanded later)
+A test will "pass" if rustc exits with something other than 1 or 0.
 
 When adding crashes from https://github.com/rust-lang/rust/issues, the
 issue number should be noted in the file name (12345.rs should suffice)

@@ -1,4 +1,5 @@
 //@ known-bug: #101557
+//@ compile-flags: -Copt-level=0
 #![feature(generic_const_exprs)]
 use std::marker::PhantomData;
 
