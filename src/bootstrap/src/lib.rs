@@ -168,6 +168,7 @@ pub struct Build {
     clippy_info: GitInfo,
     miri_info: GitInfo,
     rustfmt_info: GitInfo,
+    enzyme_info: GitInfo,
     in_tree_llvm_info: GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
@@ -331,6 +332,7 @@ impl Build {
         let clippy_info = GitInfo::new(omit_git_hash, &src.join("src/tools/clippy"));
         let miri_info = GitInfo::new(omit_git_hash, &src.join("src/tools/miri"));
         let rustfmt_info = GitInfo::new(omit_git_hash, &src.join("src/tools/rustfmt"));
+        let enzyme_info = GitInfo::new(omit_git_hash, &src.join("src/tools/enzyme"));
 
         // we always try to use git for LLVM builds
         let in_tree_llvm_info = GitInfo::new(false, &src.join("src/llvm-project"));
@@ -413,6 +415,7 @@ impl Build {
             clippy_info,
             miri_info,
             rustfmt_info,
+            enzyme_info,
             in_tree_llvm_info,
             cc: RefCell::new(HashMap::new()),
             cxx: RefCell::new(HashMap::new()),

@@ -844,13 +844,34 @@ impl Step for Enzyme {
 
         let LlvmResult { llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
 
+        static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
+        let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
+            generate_smart_stamp_hash(
+                &builder.config.src.join("src/tools/enzyme"),
+                &builder.enzyme_info.sha().unwrap_or_default(),
+            )
+        });
+
         let out_dir = builder.enzyme_out(target);
-        let done_stamp = out_dir.join("enzyme-finished-building");
-        if done_stamp.exists() {
+        let stamp = out_dir.join("enzyme-finished-building");
+        let stamp = HashStamp::new(stamp, Some(smart_stamp_hash));
+
+        if stamp.is_done() {
+            if stamp.hash.is_none() {
+                builder.info(
+                    "Could not determine the Enzyme submodule commit hash. \
+                     Assuming that an Enzyme rebuild is not necessary.",
+                );
+                builder.info(&format!(
+                    "To force Enzyme to rebuild, remove the file `{}`",
+                    stamp.path.display()
+                ));
+            }
             return out_dir;
         }
 
         builder.info(&format!("Building Enzyme for {}", target));
+        t!(stamp.remove());
         let _time = helpers::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
@@ -878,7 +899,8 @@ impl Step for Enzyme {
 
         cfg.build();
 
-        t!(File::create(&done_stamp));
+        t!(stamp.write());
+
         out_dir
     }
 }
