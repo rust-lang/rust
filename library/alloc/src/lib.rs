@@ -176,6 +176,7 @@
 // Language features:
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(associated_type_bounds))]
+#![cfg_attr(not(bootstrap), rustc_preserve_ub_checks)]
 #![cfg_attr(not(test), feature(coroutine_trait))]
 #![cfg_attr(test, feature(panic_update_hook))]
 #![cfg_attr(test, feature(test))]
