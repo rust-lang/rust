@@ -205,7 +205,7 @@ impl Iterator for SupertraitDefIds<'_> {
 /// returning the resulting subject and all obligations that arise.
 /// The obligations are closed under normalization.
 pub fn impl_subject_and_oblig<'a, 'tcx>(
-    selcx: &mut SelectionContext<'a, 'tcx>,
+    selcx: &SelectionContext<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
     impl_args: GenericArgsRef<'tcx>,

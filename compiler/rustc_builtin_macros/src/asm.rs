@@ -29,7 +29,7 @@ pub struct AsmArgs {
 }
 
 fn parse_args<'a>(
-    ecx: &mut ExtCtxt<'a>,
+    ecx: &ExtCtxt<'a>,
     sp: Span,
     tts: TokenStream,
     is_global_asm: bool,
@@ -303,7 +303,7 @@ pub fn parse_asm_args<'a>(
 ///
 /// This function must be called immediately after the option token is parsed.
 /// Otherwise, the suggestion will be incorrect.
-fn err_duplicate_option(p: &mut Parser<'_>, symbol: Symbol, span: Span) {
+fn err_duplicate_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
     // Tool-only output
     let full_span = if p.token.kind == token::Comma { span.to(p.token.span) } else { span };
     p.psess.dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
@@ -315,7 +315,7 @@ fn err_duplicate_option(p: &mut Parser<'_>, symbol: Symbol, span: Span) {
 /// This function must be called immediately after the option token is parsed.
 /// Otherwise, the error will not point to the correct spot.
 fn try_set_option<'a>(
-    p: &mut Parser<'a>,
+    p: &Parser<'a>,
     args: &mut AsmArgs,
     symbol: Symbol,
     option: ast::InlineAsmOptions,

@@ -239,10 +239,10 @@ fn fulfill_implication<'tcx>(
 
     let source_trait = ImplSubject::Trait(source_trait_ref);
 
-    let selcx = &mut SelectionContext::new(infcx);
+    let selcx = SelectionContext::new(infcx);
     let target_args = infcx.fresh_args_for_item(DUMMY_SP, target_impl);
     let (target_trait, obligations) =
-        util::impl_subject_and_oblig(selcx, param_env, target_impl, target_args, error_cause);
+        util::impl_subject_and_oblig(&selcx, param_env, target_impl, target_args, error_cause);
 
     // do the impls unify? If not, no specialization.
     let Ok(InferOk { obligations: more_obligations, .. }) = infcx

@@ -40,7 +40,7 @@ pub fn expand_unreachable<'cx>(
 
 fn expand<'cx>(
     mac: rustc_span::Symbol,
-    cx: &'cx mut ExtCtxt<'_>,
+    cx: &'cx ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

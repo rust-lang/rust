@@ -35,7 +35,7 @@ pub fn expand_cfg(
     })
 }
 
-fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<'a, ast::MetaItem> {
+fn parse_cfg<'a>(cx: &ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<'a, ast::MetaItem> {
     let mut p = cx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {

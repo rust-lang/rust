@@ -2089,14 +2089,14 @@ fn add_rpath_args(
                     .map(|(path, _)| &**path)
             })
             .collect::<Vec<_>>();
-        let mut rpath_config = RPathConfig {
+        let rpath_config = RPathConfig {
             libs: &*libs,
             out_filename: out_filename.to_path_buf(),
             has_rpath: sess.target.has_rpath,
             is_like_osx: sess.target.is_like_osx,
             linker_is_gnu: sess.target.linker_flavor.is_gnu(),
         };
-        cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
+        cmd.args(&rpath::get_rpath_flags(&rpath_config));
     }
 }
 

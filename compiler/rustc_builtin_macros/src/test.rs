@@ -96,7 +96,7 @@ pub fn expand_bench(
 }
 
 pub fn expand_test_or_bench(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     attr_sp: Span,
     item: Annotatable,
     is_bench: bool,

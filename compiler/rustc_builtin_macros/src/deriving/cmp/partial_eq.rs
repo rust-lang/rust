@@ -9,14 +9,14 @@ use rustc_span::Span;
 use thin_vec::thin_vec;
 
 pub fn expand_deriving_partial_eq(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
     is_const: bool,
 ) {
-    fn cs_eq(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
+    fn cs_eq(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
         let base = true;
         let expr = cs_fold(
             true, // use foldl
