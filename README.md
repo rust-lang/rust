@@ -21,7 +21,7 @@ Afterwards you can build rustc using:
 
 Afterwards rustc toolchain link will allow you to use it through cargo:
 ```
-rustup toolchain link enzyme `pwd`/build/`rustup target list --installed`/stage1
+rustup toolchain link enzyme build/host/stage1
 rustup toolchain install nightly # enables -Z unstable-options
 ```
 

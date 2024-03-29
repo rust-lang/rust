@@ -21,18 +21,35 @@ jobs:
 
     timeout-minutes: 600
     steps:
-      - name: checkout the source code
+      - name: Checkout Rust source
         uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - uses: dtolnay/rust-toolchain@nightly
-      - name: build
+      - name: Get LLVM commit hash
+        id: llvm-commit
+        run: echo "HEAD=$(git -C src/llvm-project rev-parse HEAD)" >> $GITHUB_OUTPUT
+      - name: Cache LLVM
+        id: cache-llvm
+        uses: actions/cache@v4
+        with:
+          path: build/build/x86_64-unknown-linux-gnu/llvm
+          key: ${{ matrix.os }}-llvm-${{ steps.llvm-commit.outputs.HEAD }}
+      - name: Build
         run: |
-          mkdir build
+          mkdir -p build
           cd build
+          rm -f config.toml
           ../configure --enable-llvm-link-shared --enable-llvm-plugins --enable-llvm-enzyme --release-channel=nightly --enable-llvm-assertions --enable-lld --enable-option-checking --enable-ninja --disable-docs
           ../x.py build --stage 1 library/std library/proc_macro library/test tools/rustdoc
-          rustup toolchain link enzyme `pwd`/build/`rustup target list --installed`/stage1
-      - name: test
+          rustup toolchain link enzyme build/host/stage1
+      - name: checkout Enzyme/rustbook
+        uses: actions/checkout@v4
+        with:
+          repository: EnzymeAD/rustbook
+          ref: mdbook-test
+          path: rustbook
+      - name: test Enzyme/rustbook
+        working-directory: rustbook
         run: |
           cargo +enzyme test --examples
