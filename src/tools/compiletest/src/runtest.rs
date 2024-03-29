@@ -368,7 +368,8 @@ impl<'test> TestCx<'test> {
         // if a test does not crash, consider it an error
         match proc_res.status.code() {
             Some(101) => (),
-            _ => self.fatal("expected ICE"),
+            Some(other) => self.fatal(&format!("expected exit code 101, got: {}", other)),
+            e => self.fatal(&format!("expected ICE, got '{:?}'", e)),
         }
     }
 
@@ -2320,6 +2321,9 @@ impl<'test> TestCx<'test> {
         }
 
         let (Output { status, stdout, stderr }, truncated) = self.read2_abbreviated(child);
+        eprintln!("{:?}", status);
+        eprintln!("{}", String::from_utf8_lossy(&stdout).into_owned());
+        eprintln!("{}", String::from_utf8_lossy(&stdout).into_owned());
 
         let result = ProcRes {
             status,
