@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: d5febcbf63650753
+lsp/ext.rs hash: 223f48a89a5126a0
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -440,7 +440,11 @@ interface DiscoverTestResults {
     // For each test which its id is in this list, the response
     // contains all tests that are children of this test, and
     // client should remove old tests not included in the response.
-    scope: string[];
+    scope: string[] | undefined;
+    // For each file which its uri is in this list, the response
+    // contains all tests that are located in this file, and
+    // client should remove old tests not included in the response.
+    scopeFile: lc.TextDocumentIdentifier[] | undefined;    
 }
 ```
 

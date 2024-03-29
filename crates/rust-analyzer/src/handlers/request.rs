@@ -238,9 +238,12 @@ pub(crate) fn handle_discover_test(
     let (tests, scope) = match params.test_id {
         Some(id) => {
             let crate_id = id.split_once("::").map(|it| it.0).unwrap_or(&id);
-            (snap.analysis.discover_tests_in_crate_by_test_id(crate_id)?, vec![crate_id.to_owned()])
+            (
+                snap.analysis.discover_tests_in_crate_by_test_id(crate_id)?,
+                Some(vec![crate_id.to_owned()]),
+            )
         }
-        None => (snap.analysis.discover_test_roots()?, vec![]),
+        None => (snap.analysis.discover_test_roots()?, None),
     };
     for t in &tests {
         hack_recover_crate_name::insert_name(t.id.clone());
@@ -254,6 +257,7 @@ pub(crate) fn handle_discover_test(
             })
             .collect(),
         scope,
+        scope_file: None,
     })
 }
 
