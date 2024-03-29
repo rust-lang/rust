@@ -9,15 +9,14 @@ use crate::errors::*;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
 use rustc_errors::codes::*;
-use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::RangeEnd;
+use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
 use rustc_middle::mir::interpret::{ErrorHandled, GlobalId, LitToConstError, LitToConstInput};
-use rustc_middle::mir::{self, BorrowKind, Const, Mutability};
+use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{
-    Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
+    Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt};
@@ -281,26 +280,16 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     span = span.with_hi(ident_span.hi());
                 }
 
-                let bm = *self
+                let mode = *self
                     .typeck_results
                     .pat_binding_modes()
                     .get(pat.hir_id)
                     .expect("missing binding mode");
-                let (mutability, mode) = match bm {
-                    ty::BindByValue(mutbl) => (mutbl, BindingMode::ByValue),
-                    ty::BindByReference(hir::Mutability::Mut) => (
-                        Mutability::Not,
-                        BindingMode::ByRef(BorrowKind::Mut { kind: mir::MutBorrowKind::Default }),
-                    ),
-                    ty::BindByReference(hir::Mutability::Not) => {
-                        (Mutability::Not, BindingMode::ByRef(BorrowKind::Shared))
-                    }
-                };
 
                 // A ref x pattern is the same node used for x, and as such it has
                 // x's type, which is &T, where we want T (the type being matched).
                 let var_ty = ty;
-                if let ty::BindByReference(_) = bm {
+                if let hir::ByRef::Yes(_) = mode.0 {
                     if let ty::Ref(_, rty, _) = ty.kind() {
                         ty = *rty;
                     } else {
@@ -309,7 +298,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 };
 
                 PatKind::Binding {
-                    mutability,
                     mode,
                     name: ident.name,
                     var: LocalVarId(id),
