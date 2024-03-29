@@ -23,8 +23,8 @@ use super::helpers;
 
 pub struct Command {
     prog: OsString,
-    stdout: Option<uefi_command_internal::PipeProtocol>,
-    stderr: Option<uefi_command_internal::PipeProtocol>,
+    stdout: Option<Stdio>,
+    stderr: Option<Stdio>,
 }
 
 // passed back to std::process with the pipes connected to the child, if any
@@ -65,19 +65,11 @@ impl Command {
     }
 
     pub fn stdout(&mut self, stdout: Stdio) {
-        self.stdout = match stdout {
-            Stdio::MakePipe => Some(uefi_command_internal::PipeProtocol::new()),
-            Stdio::Null => Some(uefi_command_internal::PipeProtocol::null()),
-            _ => None,
-        };
+        self.stdout = Some(stdout);
     }
 
     pub fn stderr(&mut self, stderr: Stdio) {
-        self.stderr = match stderr {
-            Stdio::MakePipe => Some(uefi_command_internal::PipeProtocol::new()),
-            Stdio::Null => Some(uefi_command_internal::PipeProtocol::null()),
-            _ => None,
-        };
+        self.stderr = Some(stderr);
     }
 
     pub fn get_program(&self) -> &OsStr {
@@ -104,31 +96,56 @@ impl Command {
         unsupported()
     }
 
+    fn create_pipe(
+        s: Stdio,
+    ) -> io::Result<Option<helpers::Protocol<uefi_command_internal::PipeProtocol>>> {
+        match s {
+            Stdio::MakePipe => helpers::Protocol::create(
+                uefi_command_internal::PipeProtocol::new(),
+                simple_text_output::PROTOCOL_GUID,
+            )
+            .map(Some),
+            Stdio::Null => helpers::Protocol::create(
+                uefi_command_internal::PipeProtocol::null(),
+                simple_text_output::PROTOCOL_GUID,
+            )
+            .map(Some),
+            Stdio::Inherit => Ok(None),
+        }
+    }
+
     pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
         let mut cmd = uefi_command_internal::Command::load_image(&self.prog)?;
 
-        let stdout: helpers::Protocol<uefi_command_internal::PipeProtocol> =
+        let stdout: Option<helpers::Protocol<uefi_command_internal::PipeProtocol>> =
             match self.stdout.take() {
-                Some(s) => helpers::Protocol::create(s, simple_text_output::PROTOCOL_GUID),
+                Some(s) => Self::create_pipe(s),
                 None => helpers::Protocol::create(
                     uefi_command_internal::PipeProtocol::new(),
                     simple_text_output::PROTOCOL_GUID,
-                ),
+                )
+                .map(Some),
             }?;
 
-        let stderr: helpers::Protocol<uefi_command_internal::PipeProtocol> =
+        let stderr: Option<helpers::Protocol<uefi_command_internal::PipeProtocol>> =
             match self.stderr.take() {
-                Some(s) => helpers::Protocol::create(s, simple_text_output::PROTOCOL_GUID),
+                Some(s) => Self::create_pipe(s),
                 None => helpers::Protocol::create(
                     uefi_command_internal::PipeProtocol::new(),
                     simple_text_output::PROTOCOL_GUID,
-                ),
+                )
+                .map(Some),
             }?;
 
-        cmd.stdout_init(stdout)?;
-        cmd.stderr_init(stderr)?;
+        if let Some(stdout) = stdout {
+            cmd.stdout_init(stdout)?;
+        }
+        if let Some(stderr) = stderr {
+            cmd.stderr_init(stderr)?;
+        }
 
         let stat = cmd.start_image()?;
+
         let stdout = cmd.stdout()?;
         let stderr = cmd.stderr()?;
 
