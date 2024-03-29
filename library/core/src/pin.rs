@@ -923,7 +923,7 @@
 use crate::cmp;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
+use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, Receiver};
 
 #[allow(unused_imports)]
 use crate::{
@@ -1683,6 +1683,9 @@ impl<Ptr: DerefMut<Target: Unpin>> DerefMut for Pin<Ptr> {
         Pin::get_mut(Pin::as_mut(self))
     }
 }
+
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<Ptr: DerefPure> DerefPure for Pin<Ptr> {}
 
 #[unstable(feature = "receiver_trait", issue = "none")]
 impl<Ptr: Receiver> Receiver for Pin<Ptr> {}
