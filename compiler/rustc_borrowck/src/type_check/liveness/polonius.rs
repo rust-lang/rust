@@ -87,6 +87,8 @@ pub(super) fn populate_access_facts<'a, 'tcx>(
     body: &Body<'tcx>,
     location_table: &LocationTable,
     move_data: &MoveData<'tcx>,
+    //FIXME: this is not mutated, but expected to be modified as
+    // out param, bug?
     dropped_at: &mut Vec<(Local, Location)>,
 ) {
     debug!("populate_access_facts()");

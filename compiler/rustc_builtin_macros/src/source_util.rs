@@ -234,7 +234,7 @@ pub fn expand_include_bytes(
 }
 
 fn load_binary_file(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     original_path: &Path,
     macro_span: Span,
     path_span: Span,

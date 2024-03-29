@@ -1593,10 +1593,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [`Switch`]: TestKind::Switch
     /// [`SwitchInt`]: TestKind::SwitchInt
     /// [`Range`]: TestKind::Range
-    fn pick_test(
-        &mut self,
-        candidates: &mut [&mut Candidate<'_, 'tcx>],
-    ) -> (Place<'tcx>, Test<'tcx>) {
+    fn pick_test(&mut self, candidates: &[&mut Candidate<'_, 'tcx>]) -> (Place<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates.first().unwrap().match_pairs[0];
         let test = self.test(match_pair);
