@@ -339,7 +339,13 @@ impl<'a> ContextBuilder<'a> {
     pub const fn from_waker(waker: &'a Waker) -> Self {
         // SAFETY: LocalWaker is just Waker without thread safety
         let local_waker = unsafe { transmute(waker) };
-        Self { waker: waker, local_waker, ext: ExtData::None(()), _marker: PhantomData, _marker2: PhantomData }
+        Self {
+            waker: waker,
+            local_waker,
+            ext: ExtData::None(()),
+            _marker: PhantomData,
+            _marker2: PhantomData,
+        }
     }
 
     /// Create a ContextBuilder from an existing Context.
@@ -351,7 +357,13 @@ impl<'a> ContextBuilder<'a> {
             ExtData::Some(ext) => ExtData::Some(*ext),
             ExtData::None(()) => ExtData::None(()),
         };
-        Self { waker: cx.waker, local_waker: cx.local_waker, ext, _marker: PhantomData, _marker2: PhantomData }
+        Self {
+            waker: cx.waker,
+            local_waker: cx.local_waker,
+            ext,
+            _marker: PhantomData,
+            _marker2: PhantomData,
+        }
     }
 
     /// This method is used to set the value for the waker on `Context`.
