@@ -6,9 +6,10 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{DynKind, ToPredicate};
-use rustc_span::Span;
+use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_object_safety_violations};
 
@@ -228,12 +229,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         if arg == dummy_self.into() {
                             let param = &generics.params[index];
                             missing_type_params.push(param.name);
-                            return Ty::new_misc_error(tcx).into();
+                            Ty::new_misc_error(tcx).into()
                         } else if arg.walk().any(|arg| arg == dummy_self.into()) {
                             references_self = true;
-                            return Ty::new_misc_error(tcx).into();
+                            let guar = tcx.dcx().span_delayed_bug(
+                                span,
+                                "trait object trait bounds reference `Self`",
+                            );
+                            replace_dummy_self_with_error(tcx, arg, guar)
+                        } else {
+                            arg
                         }
-                        arg
                     })
                     .collect();
                 let args = tcx.mk_args(&args);
@@ -288,18 +294,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     let guar = tcx
                         .dcx()
                         .span_delayed_bug(span, "trait object projection bounds reference `Self`");
-                    let args: Vec<_> = b
-                        .projection_ty
-                        .args
-                        .iter()
-                        .map(|arg| {
-                            if arg.walk().any(|arg| arg == dummy_self.into()) {
-                                return Ty::new_error(tcx, guar).into();
-                            }
-                            arg
-                        })
-                        .collect();
-                    b.projection_ty.args = tcx.mk_args(&args);
+                    b.projection_ty = replace_dummy_self_with_error(tcx, b.projection_ty, guar);
                 }
 
                 ty::ExistentialProjection::erase_self_ty(tcx, b)
@@ -356,4 +351,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         Ty::new_dynamic(tcx, existential_predicates, region_bound, representation)
     }
+}
+
+fn replace_dummy_self_with_error<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+    tcx: TyCtxt<'tcx>,
+    t: T,
+    guar: ErrorGuaranteed,
+) -> T {
+    t.fold_with(&mut BottomUpFolder {
+        tcx,
+        ty_op: |ty| {
+            if ty == tcx.types.trait_object_dummy_self { Ty::new_error(tcx, guar) } else { ty }
+        },
+        lt_op: |lt| lt,
+        ct_op: |ct| ct,
+    })
 }
