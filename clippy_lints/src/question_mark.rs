@@ -4,7 +4,7 @@ use clippy_config::msrvs::Msrv;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{
     eq_expr_value, higher, in_constant, is_else_clause, is_lint_allowed, is_path_lang_item, is_res_lang_ctor,
     pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
@@ -109,12 +109,31 @@ fn find_let_else_ret_expression<'hir>(block: &'hir Block<'hir>) -> Option<&'hir 
 }
 
 fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
+    /// Make sure the init expr implements try trait so a valid suggestion could be given.
+    ///
+    /// Because the init expr could have the type of `&Option<T>` which does not implements `Try`.
+    ///
+    /// NB: This conveniently prevents the cause of
+    /// issue [#12412](https://github.com/rust-lang/rust-clippy/issues/12412),
+    /// since accessing an `Option` field from a borrowed struct requires borrow, such as
+    /// `&some_struct.opt`, which is type of `&Option`. And we can't suggest `&some_struct.opt?`
+    /// or `(&some_struct.opt)?` since the first one has different semantics and the later does
+    /// not implements `Try`.
+    fn init_expr_can_use_question_mark(cx: &LateContext<'_>, init_expr: &Expr<'_>) -> bool {
+        let init_ty = cx.typeck_results().expr_ty_adjusted(init_expr);
+        cx.tcx
+            .lang_items()
+            .try_trait()
+            .map_or(false, |did| implements_trait(cx, init_ty, did, &[]))
+    }
+
     if let StmtKind::Let(Local {
         pat,
         init: Some(init_expr),
         els: Some(els),
         ..
     }) = stmt.kind
+        && init_expr_can_use_question_mark(cx, init_expr)
         && let Some(ret) = find_let_else_ret_expression(els)
         && let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, ret)
         && !span_contains_comment(cx.tcx.sess.source_map(), els.span)
