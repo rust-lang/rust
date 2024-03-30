@@ -53,8 +53,11 @@ impl Tarballer {
         // Sort files by their suffix, to group files with the same name from
         // different locations (likely identical) and files with the same
         // extension (likely containing similar data).
-        let (dirs, mut files) = get_recursive_paths(&self.work_dir, &self.input)
+        // Sorting of file and directory paths also helps with the reproducibility
+        // of the resulting archive.
+        let (mut dirs, mut files) = get_recursive_paths(&self.work_dir, &self.input)
             .context("failed to collect file paths")?;
+        dirs.sort();
         files.sort_by(|a, b| a.bytes().rev().cmp(b.bytes().rev()));
 
         // Write the tar into both encoded files. We write all directories
