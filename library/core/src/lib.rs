@@ -137,6 +137,7 @@
 #![feature(const_heap)]
 #![feature(const_hint_assert_unchecked)]
 #![feature(const_index_range_slice_index)]
+#![feature(const_int_from_str)]
 #![feature(const_intrinsic_copy)]
 #![feature(const_intrinsic_forget)]
 #![feature(const_ipv4)]
