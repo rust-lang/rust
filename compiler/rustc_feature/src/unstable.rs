@@ -339,6 +339,8 @@ declare_features! (
     (incomplete, adt_const_params, "1.56.0", Some(95174)),
     /// Allows defining an `#[alloc_error_handler]`.
     (unstable, alloc_error_handler, "1.29.0", Some(51540)),
+    /// Allows `&` and `&mut` patterns to consume match-ergonomics-inserted references.
+    (incomplete, and_pat_everywhere, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// Allows trait methods with arbitrary self types.
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
     /// Allows using `const` operands in inline assembly.

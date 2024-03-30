@@ -345,6 +345,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             _ => {}
         };
 
+        self.visit_ref_pats_that_dont_deref(p.hir_id);
         self.visit_pat_adjustments(p.span, p.hir_id);
 
         self.visit_node_id(p.span, p.hir_id);
@@ -671,6 +672,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 debug!(?resolved_adjustment);
                 self.typeck_results.pat_adjustments_mut().insert(hir_id, resolved_adjustment);
             }
+        }
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn visit_ref_pats_that_dont_deref(&mut self, hir_id: hir::HirId) {
+        if self.fcx.typeck_results.borrow_mut().ref_pats_that_dont_deref_mut().remove(hir_id) {
+            debug!("node is a ref pat that doesn't deref");
+            self.typeck_results.ref_pats_that_dont_deref_mut().insert(hir_id);
         }
     }
 

@@ -380,6 +380,7 @@ symbols! {
         alu32,
         always,
         and,
+        and_pat_everywhere,
         and_then,
         anon,
         anon_adt,
