@@ -41,7 +41,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
                 })
             },
             BinOpKind::Rem | BinOpKind::BitAnd => get_constant_bits(cx, right)
-                .unwrap_or(u64::max_value())
+                .unwrap_or(u64::MAX)
                 .min(apply_reductions(cx, nbits, left, signed)),
             BinOpKind::Shr => apply_reductions(cx, nbits, left, signed)
                 .saturating_sub(constant_int(cx, right).map_or(0, |s| u64::try_from(s).unwrap_or_default())),
@@ -56,7 +56,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             } else {
                 None
             };
-            apply_reductions(cx, nbits, left, signed).min(max_bits.unwrap_or(u64::max_value()))
+            apply_reductions(cx, nbits, left, signed).min(max_bits.unwrap_or(u64::MAX))
         },
         ExprKind::MethodCall(method, _, [lo, hi], _) => {
             if method.ident.as_str() == "clamp" {

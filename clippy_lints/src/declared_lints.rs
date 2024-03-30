@@ -254,6 +254,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::large_include_file::LARGE_INCLUDE_FILE_INFO,
     crate::large_stack_arrays::LARGE_STACK_ARRAYS_INFO,
     crate::large_stack_frames::LARGE_STACK_FRAMES_INFO,
+    crate::legacy_numeric_constants::LEGACY_NUMERIC_CONSTANTS_INFO,
     crate::len_zero::COMPARISON_TO_EMPTY_INFO,
     crate::len_zero::LEN_WITHOUT_IS_EMPTY_INFO,
     crate::len_zero::LEN_ZERO_INFO,

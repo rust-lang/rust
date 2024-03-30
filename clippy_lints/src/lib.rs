@@ -189,6 +189,7 @@ mod large_futures;
 mod large_include_file;
 mod large_stack_arrays;
 mod large_stack_frames;
+mod legacy_numeric_constants;
 mod len_zero;
 mod let_if_seq;
 mod let_underscore;
@@ -1083,6 +1084,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             allow_one_hash_in_raw_strings,
         })
     });
+    store.register_late_pass(move |_| Box::new(legacy_numeric_constants::LegacyNumericConstants::new(msrv())));
     store.register_late_pass(|_| Box::new(manual_range_patterns::ManualRangePatterns));
     store.register_early_pass(|| Box::new(visibility::Visibility));
     store.register_late_pass(move |_| Box::new(tuple_array_conversions::TupleArrayConversions { msrv: msrv() }));
