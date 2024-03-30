@@ -54,13 +54,7 @@ jobs:
       run: curl -LO https://github.com/cross-cg-gcc-tools/cross-gcc/releases/latest/download/gcc-m68k-13.deb
 
     - name: Download VM artifact
-      uses: dawidd6/action-download-artifact@v2
-      with:
-          workflow: m68k.yml
-          name: debian-m68k
-          repo: cross-cg-gcc-tools/vms
-          branch: master
-          event: push
+      run: curl -LO https://github.com/cross-cg-gcc-tools/vms/releases/latest/download/debian-m68k.img
 
     - name: Setup path to libgccjit
       run: |

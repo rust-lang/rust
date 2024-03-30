@@ -89,10 +89,10 @@ jobs:
     - name: Run stdarch tests
       if: ${{ !matrix.cargo_runner }}
       run: |
-        CHANNEL=release TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" cargo test --manifest-path build/build_sysroot/sysroot_src/library/stdarch/Cargo.toml
+        CHANNEL=release TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" ./y.sh cargo test --manifest-path build/build_sysroot/sysroot_src/library/stdarch/Cargo.toml
 
     - name: Run stdarch tests
       if: ${{ matrix.cargo_runner }}
       run: |
         # FIXME: these tests fail when the sysroot is compiled with LTO because of a missing symbol in proc-macro.
-        STDARCH_TEST_EVERYTHING=1 CHANNEL=release CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="${{ matrix.cargo_runner }}" TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" cargo test --manifest-path build/build_sysroot/sysroot_src/library/stdarch/Cargo.toml -- --skip rtm --skip tbm --skip sse4a
+        STDARCH_TEST_EVERYTHING=1 CHANNEL=release CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="${{ matrix.cargo_runner }}" TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" ./y.sh cargo test --manifest-path build/build_sysroot/sysroot_src/library/stdarch/Cargo.toml -- --skip rtm --skip tbm --skip sse4a
