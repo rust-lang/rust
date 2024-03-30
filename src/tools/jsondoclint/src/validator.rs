@@ -324,8 +324,13 @@ impl<'a> Validator<'a> {
 
     fn check_generic_param_def(&mut self, gpd: &'a GenericParamDef) {
         match &gpd.kind {
-            rustdoc_json_types::GenericParamDefKind::Lifetime { outlives: _ } => {}
-            rustdoc_json_types::GenericParamDefKind::Type { bounds, default, synthetic: _ } => {
+            rustdoc_json_types::GenericParamDefKind::Lifetime { variance: _, outlives: _ } => {}
+            rustdoc_json_types::GenericParamDefKind::Type {
+                variance: _,
+                bounds,
+                default,
+                synthetic: _,
+            } => {
                 bounds.iter().for_each(|b| self.check_generic_bound(b));
                 if let Some(ty) = default {
                     self.check_type(ty);

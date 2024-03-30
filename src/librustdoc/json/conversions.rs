@@ -454,9 +454,11 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
         use clean::GenericParamDefKind::*;
         match kind {
             Lifetime(param) => GenericParamDefKind::Lifetime {
+                variance: param.variance.map(|var| var.into_tcx(tcx)),
                 outlives: param.outlives.into_iter().map(convert_lifetime).collect(),
             },
             Type(param) => GenericParamDefKind::Type {
+                variance: param.variance.map(|var| var.into_tcx(tcx)),
                 bounds: param.bounds.into_tcx(tcx),
                 default: param.default.map(|ty| ty.into_tcx(tcx)),
                 synthetic: param.synthetic,
@@ -464,6 +466,17 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
             Const(param) => {
                 GenericParamDefKind::Const { type_: param.ty.into_tcx(tcx), default: param.default }
             }
+        }
+    }
+}
+
+impl FromWithTcx<ty::Variance> for Variance {
+    fn from_tcx(variance: ty::Variance, _tcx: TyCtxt<'_>) -> Self {
+        match variance {
+            ty::Variance::Covariant => Self::Covariant,
+            ty::Variance::Invariant => Self::Invariant,
+            ty::Variance::Contravariant => Self::Contravariant,
+            ty::Variance::Bivariant => Self::Bivariant,
         }
     }
 }
