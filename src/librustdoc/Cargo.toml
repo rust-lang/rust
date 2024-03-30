@@ -20,7 +20,7 @@ serde = { version = "1.0", features = ["derive"] }
 smallvec = "1.8.1"
 tempfile = "3"
 tracing = "0.1"
-tracing-tree = "0.2.0"
+tracing-tree = "0.3.0"
 threadpool = "1.8.1"
 
 [dependencies.tracing-subscriber]
