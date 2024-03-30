@@ -2251,9 +2251,15 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Find the crate root and the appropriate span where `use` and outer attributes can be
     /// inserted at.
     pub fn crate_level_attribute_injection_span(self, hir_id: HirId) -> Option<Span> {
-        for (_hir_id, node) in self.hir().parent_iter(hir_id) {
-            if let hir::Node::Crate(m) = node {
-                return Some(m.spans.inject_use_span.shrink_to_lo());
+        for (_hir_id, node) in
+            [(hir_id, self.hir_node(hir_id))].into_iter().chain(self.hir().parent_iter(hir_id))
+        {
+            match node {
+                hir::Node::Synthetic => return None,
+                hir::Node::Crate(m) => {
+                    return Some(m.spans.inject_use_span.shrink_to_lo());
+                }
+                _ => {}
             }
         }
         None

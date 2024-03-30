@@ -1,0 +1,37 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/dont-panic-by-accessing-parent-hir-of-synthetic.rs:4:23
+   |
+LL |     fn demo() -> impl Foo
+   |                       ^^^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'a` lifetime
+   |
+LL |     fn demo() -> impl Foo<'a>
+   |                          ++++
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/dont-panic-by-accessing-parent-hir-of-synthetic.rs:8:9
+   |
+LL |         String: Copy;
+   |         ^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/dont-panic-by-accessing-parent-hir-of-synthetic.rs:4:18
+   |
+LL |     fn demo() -> impl Foo
+   |                  ^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+   = help: see issue #48214
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0106, E0277.
+For more information about an error, try `rustc --explain E0106`.
