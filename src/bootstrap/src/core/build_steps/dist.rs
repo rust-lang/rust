@@ -1028,6 +1028,20 @@ impl Step for PlainSourceTarball {
             builder.create(&cargo_config_dir.join("config.toml"), &config);
         }
 
+        // Delete extraneous directories
+        // FIXME: if we're managed by git, we should probably instead ask git if the given path
+        // is managed by it?
+        for entry in walkdir::WalkDir::new(tarball.image_dir())
+            .follow_links(true)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            if entry.path().is_dir() && entry.path().file_name() == Some(OsStr::new("__pycache__"))
+            {
+                t!(fs::remove_dir_all(entry.path()));
+            }
+        }
+
         tarball.bare()
     }
 }
