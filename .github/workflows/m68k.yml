@@ -54,13 +54,7 @@ jobs:
       run: curl -LO https://github.com/cross-cg-gcc-tools/cross-gcc/releases/latest/download/gcc-m68k-13.deb
 
     - name: Download VM artifact
-      uses: dawidd6/action-download-artifact@v2
-      with:
-          workflow: m68k.yml
-          name: debian-m68k
-          repo: cross-cg-gcc-tools/vms
-          branch: master
-          event: push
+      run: curl -LO https://github.com/cross-cg-gcc-tools/vms/releases/latest/download/debian-m68k.img
 
     - name: Setup path to libgccjit
       run: |
@@ -87,6 +81,13 @@ jobs:
         mkdir vm
         sudo mount debian-m68k.img vm
         sudo cp $(which qemu-m68k-static) vm/usr/bin/
+
+    - name: Build sample project with target defined as JSON spec
+      run: |
+        ./y.sh prepare --only-libcore --cross
+        ./y.sh build --target-triple m68k-unknown-linux-gnu --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
+        ./y.sh cargo build --manifest-path=./tests/hello-world/Cargo.toml --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
+        ./y.sh clean all
 
     - name: Build
       run: |

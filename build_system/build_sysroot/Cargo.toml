@@ -1,5 +1,5 @@
 [package]
-authors = ["bjorn3 <bjorn3@users.noreply.github.com>"]
+authors = ["rustc_codegen_gcc devs"]
 name = "sysroot"
 version = "0.0.0"
 resolver = "2"
@@ -18,5 +18,5 @@ rustc-std-workspace-alloc = { path = "./sysroot_src/library/rustc-std-workspace-
 rustc-std-workspace-std = { path = "./sysroot_src/library/rustc-std-workspace-std" }
 
 [profile.release]
-debug = true
+debug = "limited"
 #lto = "fat" # TODO(antoyo): re-enable when the failing LTO tests regarding proc-macros are fixed.
