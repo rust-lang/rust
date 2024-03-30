@@ -3,10 +3,9 @@
 use rustc_hir::LangItem;
 use rustc_middle::mir;
 use rustc_middle::ty::Instance;
-use rustc_middle::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
+use rustc_middle::ty::{self, layout::TyAndLayout, TyCtxt};
 use rustc_span::Span;
 
-use crate::base;
 use crate::traits::*;
 
 #[derive(Copy, Clone)]
@@ -126,44 +125,6 @@ pub fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let def_id = tcx.require_lang_item(li, span);
     let instance = ty::Instance::mono(tcx, def_id);
     (bx.fn_abi_of_instance(instance, ty::List::empty()), bx.get_fn_addr(instance), instance)
-}
-
-// To avoid UB from LLVM, these two functions mask RHS with an
-// appropriate mask unconditionally (i.e., the fallback behavior for
-// all shifts). For 32- and 64-bit types, this matches the semantics
-// of Java. (See related discussion on #1877 and #10183.)
-
-pub fn build_masked_lshift<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    lhs: Bx::Value,
-    rhs: Bx::Value,
-) -> Bx::Value {
-    let rhs = base::cast_shift_expr_rhs(bx, lhs, rhs);
-    // #1877, #10183: Ensure that input is always valid
-    let rhs = shift_mask_rhs(bx, rhs);
-    bx.shl(lhs, rhs)
-}
-
-pub fn build_masked_rshift<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    lhs_t: Ty<'tcx>,
-    lhs: Bx::Value,
-    rhs: Bx::Value,
-) -> Bx::Value {
-    let rhs = base::cast_shift_expr_rhs(bx, lhs, rhs);
-    // #1877, #10183: Ensure that input is always valid
-    let rhs = shift_mask_rhs(bx, rhs);
-    let is_signed = lhs_t.is_signed();
-    if is_signed { bx.ashr(lhs, rhs) } else { bx.lshr(lhs, rhs) }
-}
-
-fn shift_mask_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    rhs: Bx::Value,
-) -> Bx::Value {
-    let rhs_llty = bx.val_ty(rhs);
-    let shift_val = shift_mask_val(bx, rhs_llty, rhs_llty, false);
-    bx.and(rhs, shift_val)
 }
 
 pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(

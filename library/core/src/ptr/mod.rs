@@ -1781,9 +1781,19 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
     use intrinsics::{
-        assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_shl,
-        unchecked_shr, unchecked_sub, wrapping_add, wrapping_mul, wrapping_sub,
+        assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_sub,
+        wrapping_add, wrapping_mul, wrapping_sub,
     };
+    #[cfg(bootstrap)]
+    const unsafe fn unchecked_shl(value: usize, shift: usize) -> usize {
+        value << shift
+    }
+    #[cfg(bootstrap)]
+    const unsafe fn unchecked_shr(value: usize, shift: usize) -> usize {
+        value >> shift
+    }
+    #[cfg(not(bootstrap))]
+    use intrinsics::{unchecked_shl, unchecked_shr};
 
     /// Calculate multiplicative modular inverse of `x` modulo `m`.
     ///
