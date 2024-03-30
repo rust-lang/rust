@@ -1140,8 +1140,17 @@ pub fn typeid_for_instance<'tcx>(
         let predicates = tcx.mk_poly_existential_predicates(&[ty::Binder::dummy(predicate)]);
         let self_ty = Ty::new_dynamic(tcx, predicates, tcx.lifetimes.re_erased, ty::Dyn);
         instance.args = tcx.mk_args_trait(self_ty, List::empty());
-    } else if matches!(instance.def, ty::InstanceDef::Virtual(..)) {
-        instance.args = strip_receiver_auto(tcx, instance.args);
+    } else if let ty::InstanceDef::Virtual(def_id, _) = instance.def {
+        let upcast_ty = match tcx.trait_of_item(def_id) {
+            Some(trait_id) => trait_object_ty(
+                tcx,
+                ty::Binder::dummy(ty::TraitRef::from_method(tcx, trait_id, instance.args)),
+            ),
+            // drop_in_place won't have a defining trait, skip the upcast
+            None => instance.args.type_at(0),
+        };
+        let stripped_ty = strip_receiver_auto(tcx, upcast_ty);
+        instance.args = tcx.mk_args_trait(stripped_ty, instance.args.into_iter().skip(1));
     }
 
     if !options.contains(EncodeTyOptions::NO_SELF_TYPE_ERASURE)
@@ -1191,15 +1200,11 @@ pub fn typeid_for_instance<'tcx>(
     typeid_for_fnabi(tcx, fn_abi, options)
 }
 
-fn strip_receiver_auto<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    args: ty::GenericArgsRef<'tcx>,
-) -> ty::GenericArgsRef<'tcx> {
-    let ty = args.type_at(0);
+fn strip_receiver_auto<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     let ty::Dynamic(preds, lifetime, kind) = ty.kind() else {
         bug!("Tried to strip auto traits from non-dynamic type {ty}");
     };
-    let new_rcvr = if preds.principal().is_some() {
+    if preds.principal().is_some() {
         let filtered_preds =
             tcx.mk_poly_existential_predicates_from_iter(preds.into_iter().filter(|pred| {
                 !matches!(pred.skip_binder(), ty::ExistentialPredicate::AutoTrait(..))
@@ -1210,8 +1215,7 @@ fn strip_receiver_auto<'tcx>(
         // about it. This technically discards the knowledge that it was a type that was made
         // into a trait object at some point, but that's not a lot.
         tcx.types.unit
-    };
-    tcx.mk_args_trait(new_rcvr, args.into_iter().skip(1))
+    }
 }
 
 #[instrument(skip(tcx), ret)]
