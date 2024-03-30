@@ -381,8 +381,6 @@ pub fn check_args_compatible<'tcx>(
     }
 
     let generics = tcx.generics_of(assoc_item.def_id);
-    // Chop off any additional args (RPITIT) args
-    let args = &args[0..generics.count().min(args.len())];
     check_args_compatible_inner(tcx, generics, args)
 }
 
