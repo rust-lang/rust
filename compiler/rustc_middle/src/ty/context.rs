@@ -2016,7 +2016,12 @@ impl<'tcx> TyCtxt<'tcx> {
         true
     }
 
-    pub fn assert_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) {
+    pub fn debug_assert_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) {
+        #[cfg(not(debug_assertions))]
+        {
+            return;
+        }
+
         if !self.check_args_compatible(def_id, args) {
             if let DefKind::AssocTy = self.def_kind(def_id)
                 && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id))
@@ -2040,10 +2045,7 @@ impl<'tcx> TyCtxt<'tcx> {
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> GenericArgsRef<'tcx> {
         let args = self.mk_args_from_iter(args.into_iter().map(Into::into));
-        #[cfg(debug_assertions)]
-        {
-            self.assert_args_compatible(_def_id, args);
-        }
+        self.debug_assert_args_compatible(_def_id, args);
         args
     }
 
