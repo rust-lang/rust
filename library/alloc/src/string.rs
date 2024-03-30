@@ -1803,6 +1803,7 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_confusables("length", "size")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     pub const fn len(&self) -> usize {
         self.vec.len()
     }
@@ -1822,6 +1823,7 @@ impl String {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
