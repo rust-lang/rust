@@ -1755,6 +1755,7 @@ impl String {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("length", "size")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     pub fn len(&self) -> usize {
         self.vec.len()
     }
@@ -1773,6 +1774,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
