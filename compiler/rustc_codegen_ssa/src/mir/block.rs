@@ -902,31 +902,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // The arguments we'll be passing. Plus one to account for outptr, if used.
         let arg_count = fn_abi.args.len() + fn_abi.ret.is_indirect() as usize;
 
-        if matches!(intrinsic, Some(ty::IntrinsicDef { name: sym::caller_location, .. })) {
-            return if let Some(target) = target {
-                let location =
-                    self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
-
-                let mut llargs = Vec::with_capacity(arg_count);
-                let ret_dest = self.make_return_dest(
-                    bx,
-                    destination,
-                    &fn_abi.ret,
-                    &mut llargs,
-                    intrinsic,
-                    Some(target),
-                );
-                assert_eq!(llargs, []);
-                if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
-                    location.val.store(bx, tmp);
-                }
-                self.store_return(bx, ret_dest, &fn_abi.ret, location.immediate());
-                helper.funclet_br(self, bx, target, mergeable_succ)
-            } else {
-                MergingSucc::False
-            };
-        }
-
         let instance = match intrinsic {
             None => instance,
             Some(intrinsic) => {
@@ -970,6 +945,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         self.codegen_operand(bx, &arg.node)
                     })
                     .collect();
+
+                if matches!(intrinsic, ty::IntrinsicDef { name: sym::caller_location, .. }) {
+                    let location = self
+                        .get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
+
+                    assert_eq!(llargs, []);
+                    if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
+                        location.val.store(bx, tmp);
+                    }
+                    self.store_return(bx, ret_dest, &fn_abi.ret, location.immediate());
+                    return helper.funclet_br(self, bx, target.unwrap(), mergeable_succ);
+                }
 
                 let instance = *instance.as_ref().unwrap();
                 match Self::codegen_intrinsic_call(bx, instance, fn_abi, &args, dest, span) {
