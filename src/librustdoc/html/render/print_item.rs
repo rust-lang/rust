@@ -1237,22 +1237,18 @@ fn item_opaque_ty(
 }
 
 fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::TypeAlias) {
-    fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) {
-        wrap_item(w, |w| {
-            write!(
-                w,
-                "{attrs}{vis}type {name}{generics}{where_clause} = {type_};",
-                attrs = render_attributes_in_pre(it, "", cx),
-                vis = visibility_print_with_space(it, cx),
-                name = it.name.unwrap(),
-                generics = t.generics.print(cx),
-                where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
-                type_ = t.type_.print(cx),
-            );
-        });
-    }
-
-    write_content(w, cx, it, t);
+    wrap_item(w, |w| {
+        write!(
+            w,
+            "{attrs}{vis}type {name}{generics}{where_clause} = {type_};",
+            attrs = render_attributes_in_pre(it, "", cx),
+            vis = visibility_print_with_space(it, cx),
+            name = it.name.unwrap(),
+            generics = t.generics.print(cx),
+            where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
+            type_ = t.type_.print(cx),
+        );
+    });
 
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
