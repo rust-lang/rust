@@ -64,25 +64,6 @@ We use `mdbook-linkcheck` to validate URLs included in our documentation.
 We use `mdbook-toc` to auto-generate TOCs for long sections. You can invoke the preprocessor by
 including the `<!-- toc -->` marker at the place where you want the TOC.
 
-### Pre-commit script
-
-We also test that line lengths are less than 100 columns. To test this locally,
-you can run `ci/lengthcheck.sh`.
-
-You can also set this to run automatically.
-
-On Linux:
-
-```bash
-ln -s ../../ci/lengthcheck.sh .git/hooks/pre-commit
-```
-
-On Windows:
-
-```powershell
-New-Item -Path .git/hooks/pre-commit -ItemType HardLink -Value $(Resolve-Path ci/lengthcheck.sh)
-```
-
 ## How to fix toolstate failures
 
 > **NOTE**: Currently, we do not track the rustc-dev-guide toolstate due to

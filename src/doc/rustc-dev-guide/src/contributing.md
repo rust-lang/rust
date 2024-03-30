@@ -316,9 +316,9 @@ There are issues for beginners and advanced compiler devs alike!
 
 Just a few things to keep in mind:
 
-- Please limit line length to 100 characters.
-  This is enforced by CI,
-  and you can run the checks locally with `ci/lengthcheck.sh`.
+- Please try to avoid overly long lines and use semantic line breaks (so break the line after a sentence).
+  There is no strict limit on line lengths, let the sentence or part of the sentence flow to its proper end on the same line.
+  There is currently nothing stopping anyone from creating overly long lines, just do your best to avoid them.
 
 - When contributing text to the guide, please contextualize the information with some time period
   and/or a reason so that the reader knows how much to trust or mistrust the information.

@@ -42,12 +42,6 @@ jobs:
             ~/book/linkcheck
           key: ${{ runner.os }}-${{ hashFiles('./book/linkcheck') }}
 
-      - name: Check line lengths
-        if: github.event_name != 'push'
-        run: |
-          shopt -s globstar
-          MAX_LINE_LENGTH=100 bash ci/lengthcheck.sh src/**/*.md
-
       - name: Install latest nightly Rust toolchain
         if: steps.mdbook-cache.outputs.cache-hit != 'true'
         run: |
