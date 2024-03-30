@@ -321,7 +321,7 @@ fn clean_where_predicate<'tcx>(
             let bound_params = wbp
                 .bound_generic_params
                 .iter()
-                .map(|param| clean_generic_param(cx, None, param))
+                .map(|param| clean_generic_param(cx, param, None, None))
                 .collect();
             WherePredicate::BoundPredicate {
                 ty: clean_ty(wbp.bounded_ty, cx),
@@ -502,11 +502,12 @@ fn projection_to_path_segment<'tcx>(
 
 fn clean_generic_param_def<'tcx>(
     def: &ty::GenericParamDef,
+    variance: Option<ty::Variance>,
     cx: &mut DocContext<'tcx>,
 ) -> GenericParamDef {
     let (name, kind) = match def.kind {
         ty::GenericParamDefKind::Lifetime => {
-            (def.name, LifetimeParam { outlives: ThinVec::new() }.into())
+            (def.name, LifetimeParam { variance, outlives: ThinVec::new() }.into())
         }
         ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
             let default = has_default.then(|| {
@@ -520,6 +521,7 @@ fn clean_generic_param_def<'tcx>(
             (
                 def.name,
                 TypeParam {
+                    variance,
                     bounds: ThinVec::new(), // These are filled in from the where-clause.
                     default,
                     synthetic,
@@ -555,8 +557,9 @@ fn clean_generic_param_def<'tcx>(
 
 fn clean_generic_param<'tcx>(
     cx: &mut DocContext<'tcx>,
-    generics: Option<&hir::Generics<'tcx>>,
     param: &hir::GenericParam<'tcx>,
+    variance: Option<ty::Variance>,
+    generics: Option<&hir::Generics<'tcx>>,
 ) -> GenericParamDef {
     let (name, kind) = match param.kind {
         hir::GenericParamKind::Lifetime { .. } => {
@@ -573,7 +576,7 @@ fn clean_generic_param<'tcx>(
             } else {
                 ThinVec::new()
             };
-            (param.name.ident().name, LifetimeParam { outlives }.into())
+            (param.name.ident().name, LifetimeParam { variance, outlives }.into())
         }
         hir::GenericParamKind::Type { ref default, synthetic } => {
             let bounds = if let Some(generics) = generics {
@@ -588,7 +591,13 @@ fn clean_generic_param<'tcx>(
             };
             (
                 param.name.ident().name,
-                TypeParam { bounds, default: default.map(|t| clean_ty(t, cx)), synthetic }.into(),
+                TypeParam {
+                    variance,
+                    bounds,
+                    default: default.map(|t| clean_ty(t, cx)),
+                    synthetic,
+                }
+                .into(),
             )
         }
         hir::GenericParamKind::Const { ty, default, is_host_effect } => (
@@ -629,14 +638,43 @@ fn is_elided_lifetime(param: &hir::GenericParam<'_>) -> bool {
 pub(crate) fn clean_generics<'tcx>(
     generics: &hir::Generics<'tcx>,
     cx: &mut DocContext<'tcx>,
-    _item_def_id: DefId,
+    item_def_id: DefId,
 ) -> Generics {
+    // FIXME(fmease): Instead of querying the DefKind, we could instead let the caller somehow make
+    // the decision of whether to compute variances or not. Mostly relevant for synthetic impls but
+    // also for function items since we probably want to *invert* the variances going forward.
+    // FIXME(fmease): Add support for lazy type aliases (`DefKind::TyAlias if type_alias_is_lazy()`).
+    let def_kind = cx.tcx.def_kind(item_def_id);
+    let variances = if !generics.params.is_empty()
+        && let DefKind::Fn
+        | DefKind::AssocFn
+        | DefKind::Enum
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::OpaqueTy = def_kind
+    {
+        // We need to obtain the middle generics since we can't simply enumerate the HIR params when
+        // iterating over them and index into the variances directly. We need to account for late-bound
+        // regions and parent generics.
+        let variances = cx.tcx.variances_of(item_def_id);
+        let generics = cx.tcx.generics_of(item_def_id);
+        Some((variances, generics))
+    } else {
+        None
+    };
+
     let impl_trait_params = generics
         .params
         .iter()
         .filter(|param| is_impl_trait(param))
         .map(|param| {
-            let param = clean_generic_param(cx, Some(generics), param);
+            let variance = variances.and_then(|(variances, generics)| {
+                // The `param` might be late-bound in which case it doesn't have a variance associated
+                // with it. Hence the fallible indexing.
+                let index = *generics.param_def_id_to_index.get(&param.def_id.to_def_id())?;
+                Some(variances[index as usize])
+            });
+            let param = clean_generic_param(cx, param, variance, Some(generics));
             let GenericParamDefKind::Type(ty_param) = &param.kind else { unreachable!() };
             cx.impl_trait_bounds.insert(param.def_id.into(), ty_param.bounds.to_vec());
             param
@@ -694,7 +732,14 @@ pub(crate) fn clean_generics<'tcx>(
     // bounds in the where predicates. If so, we move their bounds into the where predicates
     // while also preventing duplicates.
     for param in generics.params.iter().filter(|p| !is_impl_trait(p) && !is_elided_lifetime(p)) {
-        let mut param = clean_generic_param(cx, Some(generics), param);
+        let variance = variances.and_then(|(variances, generics)| {
+            // The `param` might be late-bound in which case it doesn't have a variance associated
+            // with it. Hence the fallible indexing.
+            let index = *generics.param_def_id_to_index.get(&param.def_id.to_def_id())?;
+            Some(variances[index as usize])
+        });
+        let mut param = clean_generic_param(cx, param, variance, Some(generics));
+
         match &mut param.kind {
             GenericParamDefKind::Lifetime(lt_param) => {
                 if let Some(region_pred) = region_predicates.get_mut(&Lifetime(param.name)) {
@@ -748,8 +793,25 @@ fn clean_ty_generics<'tcx>(
     cx: &mut DocContext<'tcx>,
     generics: &ty::Generics,
     predicates: ty::GenericPredicates<'tcx>,
-    _item_def_id: DefId,
+    item_def_id: DefId,
 ) -> Generics {
+    // FIXME(fmease): Instead of querying the DefKind, we could instead let the caller somehow make
+    // the decision of whether to compute variances or not. Mostly relevant for synthetic impls but
+    // also for function items since we probably want to *invert* the variances going forward.
+    // FIXME(fmease): Add support for lazy type aliases (`DefKind::TyAlias if type_alias_is_lazy()`).
+    let variances = if !generics.params.is_empty()
+        && let DefKind::Fn
+        | DefKind::AssocFn
+        | DefKind::Enum
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::OpaqueTy = cx.tcx.def_kind(item_def_id)
+    {
+        Some(cx.tcx.variances_of(item_def_id))
+    } else {
+        None
+    };
+
     // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
     // since `Clean for ty::Predicate` would consume them.
     let mut impl_trait = BTreeMap::<u32, Vec<GenericBound>>::default();
@@ -760,22 +822,26 @@ fn clean_ty_generics<'tcx>(
     let stripped_params = generics
         .params
         .iter()
-        .filter_map(|param| match param.kind {
-            ty::GenericParamDefKind::Lifetime if param.is_anonymous_lifetime() => None,
-            ty::GenericParamDefKind::Lifetime => Some(clean_generic_param_def(param, cx)),
+        .filter(|param| match param.kind {
+            ty::GenericParamDefKind::Lifetime => !param.is_anonymous_lifetime(),
             ty::GenericParamDefKind::Type { synthetic, .. } => {
                 if param.name == kw::SelfUpper {
                     assert_eq!(param.index, 0);
-                    return None;
+                    return false;
                 }
                 if synthetic {
                     impl_trait.insert(param.index, vec![]);
-                    return None;
+                    return false;
                 }
-                Some(clean_generic_param_def(param, cx))
+                true
             }
-            ty::GenericParamDefKind::Const { is_host_effect: true, .. } => None,
-            ty::GenericParamDefKind::Const { .. } => Some(clean_generic_param_def(param, cx)),
+            ty::GenericParamDefKind::Const { is_host_effect, .. } => !is_host_effect,
+        })
+        .map(|param| {
+            let variance = variances
+                .map(|variances| variances[generics.param_def_id_to_index[&param.def_id] as usize]);
+
+            clean_generic_param_def(param, variance, cx)
         })
         .collect::<ThinVec<GenericParamDef>>();
 
@@ -1223,7 +1289,7 @@ fn clean_poly_trait_ref<'tcx>(
             .bound_generic_params
             .iter()
             .filter(|p| !is_elided_lifetime(p))
-            .map(|x| clean_generic_param(cx, None, x))
+            .map(|x| clean_generic_param(cx, x, None, None))
             .collect(),
     }
 }
@@ -2558,7 +2624,7 @@ fn clean_bare_fn_ty<'tcx>(
             .generic_params
             .iter()
             .filter(|p| !is_elided_lifetime(p))
-            .map(|x| clean_generic_param(cx, None, x))
+            .map(|x| clean_generic_param(cx, x, None, None)) // FIXME(fmease): variance?
             .collect();
         let args = clean_args_from_types_and_names(cx, bare_fn.decl.inputs, bare_fn.param_names);
         let decl = clean_fn_decl_with_args(cx, bare_fn.decl, None, args);
@@ -3141,8 +3207,13 @@ fn clean_bound_vars<'tcx>(
                 Some(GenericParamDef {
                     name,
                     def_id,
-                    kind: TypeParam { bounds: ThinVec::new(), default: None, synthetic: false }
-                        .into(),
+                    kind: TypeParam {
+                        variance: None,
+                        bounds: ThinVec::new(),
+                        default: None,
+                        synthetic: false,
+                    }
+                    .into(),
                 })
             }
             // FIXME(non_lifetime_binders): Support higher-ranked const parameters.

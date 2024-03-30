@@ -1356,11 +1356,13 @@ impl From<ConstParam> for GenericParamDefKind {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct LifetimeParam {
+    pub(crate) variance: Option<ty::Variance>,
     pub(crate) outlives: ThinVec<Lifetime>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct TypeParam {
+    pub(crate) variance: Option<ty::Variance>,
     pub(crate) bounds: ThinVec<GenericBound>,
     pub(crate) default: Option<Type>,
     pub(crate) synthetic: bool,
@@ -1382,7 +1384,8 @@ pub(crate) struct GenericParamDef {
 
 impl GenericParamDef {
     pub(crate) fn lifetime(def_id: DefId, name: Symbol) -> Self {
-        Self { name, def_id, kind: LifetimeParam { outlives: ThinVec::new() }.into() }
+        let param = LifetimeParam { variance: None, outlives: ThinVec::new() };
+        Self { name, def_id, kind: param.into() }
     }
 
     pub(crate) fn is_synthetic_param(&self) -> bool {
