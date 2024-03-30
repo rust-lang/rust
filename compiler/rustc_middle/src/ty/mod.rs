@@ -2735,21 +2735,12 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec<Diff
     }
     let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
 
-    // TODO: cleanup
-    // Ok, sorry whoever reviews this.
-    // If we call this on arbitrary rust functions which we don't differentiate directly,
-    // then we have no da vec. We might encounter complex types, so do it properly.
-    // If we have a da vec, we know we are difrectly differentiating that fnc,
-    // so can assume it's something simpler, where skip_binder is ok (for now).
-    let x: ty::FnSig<'_>;
-    if da.is_empty() {
-        x = match fnc_binder.no_bound_vars() {
-            Some(x) => x,
-            None => return FncTree { args: vec![], ret: TypeTree::new() },
-        }
-    } else {
-        x = fnc_binder.skip_binder();
-    }
+    // If rustc compiles the unmodified primal, we know that this copy of the function
+    // also has correct lifetimes. We know that Enzyme won't free the shadow too early
+    // (or actually at all), so let's strip lifetimes when computing the layout.
+    // Recommended by compiler-errors:
+    // https://discord.com/channels/273534239310479360/957720175619215380/1223454360676208751
+    let x = tcx.instantiate_bound_regions_with_erased(fnc_binder);
     dbg!("creating fncTree");
 
     let mut offset = 0;
