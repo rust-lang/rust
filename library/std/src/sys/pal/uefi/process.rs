@@ -20,9 +20,9 @@ use super::helpers;
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct Command {
     prog: OsString,
-    args: Vec<OsString>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
 }
@@ -35,6 +35,7 @@ pub struct StdioPipes {
     pub stderr: Option<AnonPipe>,
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum Stdio {
     Inherit,
     Null,
@@ -43,11 +44,12 @@ pub enum Stdio {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        Command { prog: program.to_os_string(), args: Vec::new(), stdout: None, stderr: None }
+        Command { prog: program.to_os_string(), stdout: None, stderr: None }
     }
 
-    pub fn arg(&mut self, arg: &OsStr) {
-        self.args.push(arg.to_os_string());
+    // FIXME: Implement arguments as reverse of parsing algorithm
+    pub fn arg(&mut self, _arg: &OsStr) {
+        panic!("unsupported")
     }
 
     pub fn env_mut(&mut self) -> &mut CommandEnv {
@@ -75,7 +77,7 @@ impl Command {
     }
 
     pub fn get_args(&self) -> CommandArgs<'_> {
-        CommandArgs { iter: self.args.iter() }
+        panic!("unsupported")
     }
 
     pub fn get_envs(&self) -> CommandEnvs<'_> {
@@ -96,64 +98,46 @@ impl Command {
 
     fn create_pipe(
         s: Stdio,
-    ) -> io::Result<Option<helpers::Protocol<uefi_command_internal::PipeProtocol>>> {
+    ) -> io::Result<Option<helpers::OwnedProtocol<uefi_command_internal::PipeProtocol>>> {
         match s {
-            Stdio::MakePipe => helpers::Protocol::create(
-                uefi_command_internal::PipeProtocol::new(),
-                simple_text_output::PROTOCOL_GUID,
-            )
+            Stdio::MakePipe => unsafe {
+                helpers::OwnedProtocol::create(
+                    uefi_command_internal::PipeProtocol::new(),
+                    simple_text_output::PROTOCOL_GUID,
+                )
+            }
             .map(Some),
-            Stdio::Null => helpers::Protocol::create(
-                uefi_command_internal::PipeProtocol::null(),
-                simple_text_output::PROTOCOL_GUID,
-            )
+            Stdio::Null => unsafe {
+                helpers::OwnedProtocol::create(
+                    uefi_command_internal::PipeProtocol::null(),
+                    simple_text_output::PROTOCOL_GUID,
+                )
+            }
             .map(Some),
             Stdio::Inherit => Ok(None),
         }
     }
 
     pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
-        let mut cmd = uefi_command_internal::Command::load_image(&self.prog)?;
+        let mut cmd = uefi_command_internal::Image::load_image(&self.prog)?;
 
-        /* Setup Stdout */
-        let stdout: Option<helpers::Protocol<uefi_command_internal::PipeProtocol>> =
-            match self.stdout.take() {
-                Some(s) => Self::create_pipe(s),
-                None => helpers::Protocol::create(
-                    uefi_command_internal::PipeProtocol::new(),
-                    simple_text_output::PROTOCOL_GUID,
-                )
-                .map(Some),
-            }?;
-        match stdout {
-            Some(stdout) => cmd.stdout_init(stdout),
-            None => cmd.stdout_inherit(),
+        // Setup Stdout
+        let stdout = self.stdout.unwrap_or(Stdio::MakePipe);
+        let stdout = Self::create_pipe(stdout)?;
+        if let Some(con) = stdout {
+            cmd.stdout_init(con)
+        } else {
+            cmd.stdout_inherit()
         };
 
-        /* Setup Stderr */
-        let stderr: Option<helpers::Protocol<uefi_command_internal::PipeProtocol>> =
-            match self.stderr.take() {
-                Some(s) => Self::create_pipe(s),
-                None => helpers::Protocol::create(
-                    uefi_command_internal::PipeProtocol::new(),
-                    simple_text_output::PROTOCOL_GUID,
-                )
-                .map(Some),
-            }?;
-        match stderr {
-            Some(stderr) => cmd.stderr_init(stderr),
-            None => cmd.stderr_inherit(),
+        // Setup Stderr
+        let stderr = self.stderr.unwrap_or(Stdio::MakePipe);
+        let stderr = Self::create_pipe(stderr)?;
+        if let Some(con) = stderr {
+            cmd.stderr_init(con)
+        } else {
+            cmd.stderr_inherit()
         };
-
-        /* No reason to set args if only program name is preset */
-        if !self.args.is_empty() {
-            let args = self.args.iter().fold(OsString::from(&self.prog), |mut acc, arg| {
-                acc.push(" ");
-                acc.push(arg);
-                acc
-            });
-            cmd.set_args(&args);
-        }
 
         let stat = cmd.start_image()?;
 
@@ -191,16 +175,6 @@ impl From<File> for Stdio {
         // FIXME: This is wrong.
         // Instead, the Stdio we have here should be a unit struct.
         panic!("unsupported")
-    }
-}
-
-impl fmt::Debug for Command {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.prog.fmt(f)?;
-        for arg in &self.args {
-            arg.fmt(f)?;
-        }
-        Ok(())
     }
 }
 
@@ -326,6 +300,7 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
     }
 }
 
+#[allow(dead_code)]
 mod uefi_command_internal {
     use r_efi::protocols::{loaded_image, simple_text_output};
 
@@ -337,26 +312,20 @@ mod uefi_command_internal {
     use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
     use crate::ptr::NonNull;
     use crate::slice;
+    use crate::sys::pal::uefi::helpers::OwnedTable;
     use crate::sys_common::wstr::WStrUnits;
 
-    pub struct Command {
+    pub struct Image {
         handle: NonNull<crate::ffi::c_void>,
-        stdout: Option<helpers::Protocol<PipeProtocol>>,
-        stderr: Option<helpers::Protocol<PipeProtocol>>,
-        st: Box<r_efi::efi::SystemTable>,
+        stdout: Option<helpers::OwnedProtocol<PipeProtocol>>,
+        stderr: Option<helpers::OwnedProtocol<PipeProtocol>>,
+        st: OwnedTable<r_efi::efi::SystemTable>,
         args: Option<Vec<u16>>,
     }
 
-    impl Command {
-        const fn new(
-            handle: NonNull<crate::ffi::c_void>,
-            st: Box<r_efi::efi::SystemTable>,
-        ) -> Self {
-            Self { handle, stdout: None, stderr: None, st, args: None }
-        }
-
+    impl Image {
         pub fn load_image(p: &OsStr) -> io::Result<Self> {
-            let mut path = helpers::DevicePath::from_text(p)?;
+            let path = helpers::DevicePath::from_text(p)?;
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services()
                 .ok_or_else(|| const_io_error!(io::ErrorKind::NotFound, "Boot Services not found"))?
                 .cast();
@@ -367,7 +336,7 @@ mod uefi_command_internal {
                 ((*boot_services.as_ptr()).load_image)(
                     r_efi::efi::Boolean::FALSE,
                     image_handle.as_ptr(),
-                    path.as_mut(),
+                    path.as_ptr(),
                     crate::ptr::null_mut(),
                     0,
                     child_handle.as_mut_ptr(),
@@ -382,69 +351,93 @@ mod uefi_command_internal {
 
                 let loaded_image: NonNull<loaded_image::Protocol> =
                     helpers::open_protocol(child_handle, loaded_image::PROTOCOL_GUID).unwrap();
-                let mut st: Box<r_efi::efi::SystemTable> =
-                    Box::new(unsafe { crate::ptr::read((*loaded_image.as_ptr()).system_table) });
+                let st = OwnedTable::from_table(unsafe { (*loaded_image.as_ptr()).system_table });
 
-                unsafe {
-                    (*loaded_image.as_ptr()).system_table = st.as_mut();
-                }
-
-                Ok(Self::new(child_handle, st))
+                Ok(Self { handle: child_handle, stdout: None, stderr: None, st, args: None })
             }
         }
 
-        pub fn start_image(&self) -> io::Result<r_efi::efi::Status> {
+        pub fn start_image(&mut self) -> io::Result<r_efi::efi::Status> {
+            self.update_st_crc32()?;
+
+            // Use our system table instead of the default one
+            let loaded_image: NonNull<loaded_image::Protocol> =
+                helpers::open_protocol(self.handle, loaded_image::PROTOCOL_GUID).unwrap();
+            unsafe {
+                (*loaded_image.as_ptr()).system_table = self.st.as_mut_ptr();
+            }
+
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services()
                 .ok_or_else(|| const_io_error!(io::ErrorKind::NotFound, "Boot Services not found"))?
                 .cast();
-            let mut exit_data_size: MaybeUninit<usize> = MaybeUninit::uninit();
+            let mut exit_data_size: usize = 0;
             let mut exit_data: MaybeUninit<*mut u16> = MaybeUninit::uninit();
 
             let r = unsafe {
                 ((*boot_services.as_ptr()).start_image)(
                     self.handle.as_ptr(),
-                    exit_data_size.as_mut_ptr(),
+                    &mut exit_data_size,
                     exit_data.as_mut_ptr(),
                 )
             };
 
             // Drop exitdata
-            unsafe {
-                exit_data_size.assume_init_drop();
-                exit_data.assume_init_drop();
+            if exit_data_size != 0 {
+                unsafe {
+                    let exit_data = exit_data.assume_init();
+                    ((*boot_services.as_ptr()).free_pool)(exit_data as *mut crate::ffi::c_void);
+                }
             }
 
             Ok(r)
         }
 
-        pub fn stdout_init(&mut self, mut protocol: helpers::Protocol<PipeProtocol>) {
-            self.st.console_out_handle = protocol.handle().as_ptr();
-            self.st.con_out =
-                protocol.as_mut() as *mut PipeProtocol as *mut simple_text_output::Protocol;
+        fn set_stdout(
+            &mut self,
+            handle: r_efi::efi::Handle,
+            protocol: *mut simple_text_output::Protocol,
+        ) {
+            unsafe {
+                (*self.st.as_mut_ptr()).console_out_handle = handle;
+                (*self.st.as_mut_ptr()).con_out = protocol;
+            }
+        }
 
+        fn set_stderr(
+            &mut self,
+            handle: r_efi::efi::Handle,
+            protocol: *mut simple_text_output::Protocol,
+        ) {
+            unsafe {
+                (*self.st.as_mut_ptr()).standard_error_handle = handle;
+                (*self.st.as_mut_ptr()).std_err = protocol;
+            }
+        }
+
+        pub fn stdout_init(&mut self, protocol: helpers::OwnedProtocol<PipeProtocol>) {
+            self.set_stdout(
+                protocol.handle().as_ptr(),
+                protocol.as_ref() as *const PipeProtocol as *mut simple_text_output::Protocol,
+            );
             self.stdout = Some(protocol);
         }
 
         pub fn stdout_inherit(&mut self) {
             let st: NonNull<r_efi::efi::SystemTable> = system_table().cast();
-
-            self.st.console_out_handle = unsafe { (*st.as_ptr()).console_out_handle };
-            self.st.con_out = unsafe { (*st.as_ptr()).con_out };
+            unsafe { self.set_stdout((*st.as_ptr()).console_out_handle, (*st.as_ptr()).con_out) }
         }
 
-        pub fn stderr_init(&mut self, mut protocol: helpers::Protocol<PipeProtocol>) {
-            self.st.standard_error_handle = protocol.handle().as_ptr();
-            self.st.std_err =
-                protocol.as_mut() as *mut PipeProtocol as *mut simple_text_output::Protocol;
-
+        pub fn stderr_init(&mut self, protocol: helpers::OwnedProtocol<PipeProtocol>) {
+            self.set_stderr(
+                protocol.handle().as_ptr(),
+                protocol.as_ref() as *const PipeProtocol as *mut simple_text_output::Protocol,
+            );
             self.stderr = Some(protocol);
         }
 
         pub fn stderr_inherit(&mut self) {
             let st: NonNull<r_efi::efi::SystemTable> = system_table().cast();
-
-            self.st.standard_error_handle = unsafe { (*st.as_ptr()).standard_error_handle };
-            self.st.std_err = unsafe { (*st.as_ptr()).std_err };
+            unsafe { self.set_stderr((*st.as_ptr()).standard_error_handle, (*st.as_ptr()).std_err) }
         }
 
         pub fn stderr(&self) -> io::Result<Vec<u8>> {
@@ -476,9 +469,37 @@ mod uefi_command_internal {
 
             self.args = Some(args);
         }
+
+        fn update_st_crc32(&mut self) -> io::Result<()> {
+            let bt: NonNull<r_efi::efi::BootServices> = boot_services().unwrap().cast();
+            let st_size = unsafe { (*self.st.as_ptr()).hdr.header_size as usize };
+            let mut crc32: u32 = 0;
+
+            // Set crc to 0 before calcuation
+            unsafe {
+                (*self.st.as_mut_ptr()).hdr.crc32 = 0;
+            }
+
+            let r = unsafe {
+                ((*bt.as_ptr()).calculate_crc32)(
+                    self.st.as_mut_ptr() as *mut crate::ffi::c_void,
+                    st_size,
+                    &mut crc32,
+                )
+            };
+
+            if r.is_error() {
+                Err(io::Error::from_raw_os_error(r.as_usize()))
+            } else {
+                unsafe {
+                    (*self.st.as_mut_ptr()).hdr.crc32 = crc32;
+                }
+                Ok(())
+            }
+        }
     }
 
-    impl Drop for Command {
+    impl Drop for Image {
         fn drop(&mut self) {
             if let Some(bt) = boot_services() {
                 let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
@@ -501,13 +522,12 @@ mod uefi_command_internal {
         set_cursor_position: simple_text_output::ProtocolSetCursorPosition,
         enable_cursor: simple_text_output::ProtocolEnableCursor,
         mode: *mut simple_text_output::Mode,
-        _mode: Box<simple_text_output::Mode>,
         _buffer: Vec<u16>,
     }
 
     impl PipeProtocol {
         pub fn new() -> Self {
-            let mut mode = Box::new(simple_text_output::Mode {
+            let mode = Box::new(simple_text_output::Mode {
                 max_mode: 0,
                 mode: 0,
                 attribute: 0,
@@ -525,14 +545,13 @@ mod uefi_command_internal {
                 clear_screen: Self::clear_screen,
                 set_cursor_position: Self::set_cursor_position,
                 enable_cursor: Self::enable_cursor,
-                mode: mode.as_mut(),
-                _mode: mode,
+                mode: Box::into_raw(mode),
                 _buffer: Vec::new(),
             }
         }
 
         pub fn null() -> Self {
-            let mut mode = Box::new(simple_text_output::Mode {
+            let mode = Box::new(simple_text_output::Mode {
                 max_mode: 0,
                 mode: 0,
                 attribute: 0,
@@ -550,8 +569,7 @@ mod uefi_command_internal {
                 clear_screen: Self::clear_screen,
                 set_cursor_position: Self::set_cursor_position,
                 enable_cursor: Self::enable_cursor,
-                mode: mode.as_mut(),
-                _mode: mode,
+                mode: Box::into_raw(mode),
                 _buffer: Vec::new(),
             }
         }
@@ -658,6 +676,14 @@ mod uefi_command_internal {
             _: r_efi::efi::Boolean,
         ) -> r_efi::efi::Status {
             r_efi::efi::Status::UNSUPPORTED
+        }
+    }
+
+    impl Drop for PipeProtocol {
+        fn drop(&mut self) {
+            unsafe {
+                let _ = Box::from_raw(self.mode);
+            }
         }
     }
 }
