@@ -22,8 +22,6 @@ use rustc_session::{
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::call::FnAbi;
 
-use std::fmt;
-
 pub trait BackendTypes {
     type Value: CodegenObject;
     type Function: CodegenObject;
@@ -62,7 +60,7 @@ pub trait CodegenBackend {
     fn locale_resource(&self) -> &'static str;
 
     fn init(&self, _sess: &Session) {}
-    fn print(&self, _req: &PrintRequest, _out: &mut dyn PrintBackendInfo, _sess: &Session) {}
+    fn print(&self, _req: &PrintRequest, _out: &mut String, _sess: &Session) {}
     fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<Symbol> {
         vec![]
     }
@@ -148,21 +146,5 @@ pub trait ExtraBackendMethods:
         T: Send + 'static,
     {
         std::thread::Builder::new().name(name).spawn(f)
-    }
-}
-
-pub trait PrintBackendInfo {
-    fn infallible_write_fmt(&mut self, args: fmt::Arguments<'_>);
-}
-
-impl PrintBackendInfo for String {
-    fn infallible_write_fmt(&mut self, args: fmt::Arguments<'_>) {
-        fmt::Write::write_fmt(self, args).unwrap();
-    }
-}
-
-impl dyn PrintBackendInfo + '_ {
-    pub fn write_fmt(&mut self, args: fmt::Arguments<'_>) {
-        self.infallible_write_fmt(args);
     }
 }
