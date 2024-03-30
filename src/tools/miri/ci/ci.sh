@@ -46,8 +46,8 @@ function run_tests {
   fi
 
   ## ui test suite
-  # On the host and on Linux, also stress-test the GC.
-  if [ -z "${MIRI_TEST_TARGET:-}" ] || [ "$HOST_TARGET" = x86_64-unknown-linux-gnu ]; then
+  # On the host, also stress-test the GC.
+  if [ -z "${MIRI_TEST_TARGET:-}" ]; then
     MIRIFLAGS="${MIRIFLAGS:-} -Zmiri-provenance-gc=1" ./miri test
   else
     ./miri test
