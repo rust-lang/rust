@@ -22,41 +22,35 @@ fn existential() -> impl Any {
 trait AnySubTrait: Any {}
 impl<T: Any> AnySubTrait for T {}
 
-// `Any` is an indirect supertrait
-trait AnySubSubTrait: AnySubTrait {}
-impl<T: AnySubTrait> AnySubSubTrait for T {}
-
-// This trait mentions `Any` in its predicates, but it is not a subtrait of `Any`.
-trait NormalTrait
-where
-    i32: Any,
-{
-}
-impl<T> NormalTrait for T {}
-
 fn main() {
+    // Don't lint, calling `.type_id()` on a `&dyn Any` does the expected thing
+    let ref_dyn: &dyn Any = &42;
+    let _ = ref_dyn.type_id();
+
     let any_box: Box<dyn Any> = Box::new(0usize);
     let _ = any_box.type_id();
-    let _ = TypeId::of::<Box<dyn Any>>(); // Don't lint. We explicitly say "do this instead" if this is intentional
+    //~^ ERROR: calling `.type_id()` on
+
+    // Don't lint. We explicitly say "do this instead" if this is intentional
+    let _ = TypeId::of::<Box<dyn Any>>();
     let _ = (*any_box).type_id();
+
+    // 2 derefs are needed here to get to the `dyn Any`
     let any_box: &Box<dyn Any> = &(Box::new(0usize) as Box<dyn Any>);
-    let _ = any_box.type_id(); // 2 derefs are needed here to get to the `dyn Any`
+    let _ = any_box.type_id();
+    //~^ ERROR: calling `.type_id()` on
 
     let b = existential();
-    let _ = b.type_id(); // Don't lint.
+    let _ = b.type_id(); // Don't
+
+    let b: Box<dyn AnySubTrait> = Box::new(1);
+    let _ = b.type_id();
+    //~^ ERROR: calling `.type_id()` on
 
     let b: SomeBox = Box::new(0usize);
     let _ = b.type_id();
+    //~^ ERROR: calling `.type_id()` on
 
     let b = BadBox(Box::new(0usize));
     let _ = b.type_id(); // Don't lint. This is a call to `<BadBox as Any>::type_id`. Not `std::boxed::Box`!
-
-    let b: Box<dyn AnySubTrait> = Box::new(1);
-    let _ = b.type_id(); // Lint if calling `type_id` on a `dyn Trait` where `Trait: Any`
-
-    let b: Box<dyn AnySubSubTrait> = Box::new(1);
-    let _ = b.type_id(); // Known FN - Any is not an "immediate" supertrait
-
-    let b: Box<dyn NormalTrait> = Box::new(1);
-    let _ = b.type_id(); // `NormalTrait` does not have `Any` as its supertrait (even though it mentions it in `i32: Any`)
 }
