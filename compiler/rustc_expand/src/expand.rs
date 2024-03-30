@@ -871,7 +871,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut parser = self.cx.new_parser_from_tts(toks);
         match parse_ast_fragment(&mut parser, kind) {
             Ok(fragment) => {
-                ensure_complete_parse(&mut parser, path, kind.name(), span);
+                ensure_complete_parse(&parser, path, kind.name(), span);
                 fragment
             }
             Err(mut err) => {
@@ -958,7 +958,7 @@ pub fn parse_ast_fragment<'a>(
 }
 
 pub fn ensure_complete_parse<'a>(
-    parser: &mut Parser<'a>,
+    parser: &Parser<'a>,
     macro_path: &ast::Path,
     kind_name: &str,
     span: Span,

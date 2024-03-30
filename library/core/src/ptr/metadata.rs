@@ -258,6 +258,7 @@ impl<Dyn: ?Sized> PartialEq for DynMetadata<Dyn> {
 
 impl<Dyn: ?Sized> Ord for DynMetadata<Dyn> {
     #[inline]
+    #[allow(ambiguous_wide_pointer_comparisons)]
     fn cmp(&self, other: &Self) -> crate::cmp::Ordering {
         (self.vtable_ptr as *const VTable).cmp(&(other.vtable_ptr as *const VTable))
     }

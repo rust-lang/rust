@@ -345,12 +345,12 @@ impl<T, A: Allocator> RawVec<T, A> {
         }
     }
 
-    /// A specialized version of `reserve()` used only by the hot and
-    /// oft-instantiated `Vec::push()`, which does its own capacity check.
+    /// A specialized version of `self.reserve(len, 1)` which requires the
+    /// caller to ensure `len == self.capacity()`.
     #[cfg(not(no_global_oom_handling))]
     #[inline(never)]
-    pub fn reserve_for_push(&mut self, len: usize) {
-        if let Err(err) = self.grow_amortized(len, 1) {
+    pub fn grow_one(&mut self) {
+        if let Err(err) = self.grow_amortized(self.cap.0, 1) {
             handle_error(err);
         }
     }

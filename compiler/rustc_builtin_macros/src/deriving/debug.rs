@@ -9,7 +9,7 @@ use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
 
 pub fn expand_deriving_debug(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
@@ -45,7 +45,7 @@ pub fn expand_deriving_debug(
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
+fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
     // We want to make sure we have the ctxt set so that we can use unstable methods
     let span = cx.with_def_site_ctxt(span);
 
@@ -209,7 +209,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
 /// }
 /// ```
 fn show_fieldless_enum(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     span: Span,
     def: &EnumDef,
     substr: &Substructure<'_>,

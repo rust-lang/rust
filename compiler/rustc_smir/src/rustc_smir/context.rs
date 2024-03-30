@@ -420,7 +420,10 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let args = args.internal(&mut *tables, tcx);
         let def_ty = tables.tcx.type_of(item.internal(&mut *tables, tcx));
-        def_ty.instantiate(tables.tcx, args).stable(&mut *tables)
+        tables
+            .tcx
+            .instantiate_and_normalize_erasing_regions(args, ty::ParamEnv::reveal_all(), def_ty)
+            .stable(&mut *tables)
     }
 
     fn const_pretty(&self, cnst: &stable_mir::ty::Const) -> String {

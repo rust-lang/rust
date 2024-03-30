@@ -1,8 +1,0 @@
-error: the order of `mut` and `ref` is incorrect
-  --> $DIR/mut-ref.rs:2:9
-   |
-LL |     let mut ref x = 10;
-   |         ^^^^^^^ help: try switching the order: `ref mut`
-
-error: aborting due to 1 previous error
-

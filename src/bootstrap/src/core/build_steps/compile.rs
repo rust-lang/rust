@@ -643,13 +643,13 @@ impl Step for StdLink {
             t!(fs::create_dir_all(&sysroot_bin_dir));
             builder.cp_link_r(&stage0_bin_dir, &sysroot_bin_dir);
 
-            // Copy all *.so files from stage0/lib to stage0-sysroot/lib
+            // Copy all files from stage0/lib to stage0-sysroot/lib
             let stage0_lib_dir = builder.out.join(host).join("stage0/lib");
             if let Ok(files) = fs::read_dir(stage0_lib_dir) {
                 for file in files {
                     let file = t!(file);
                     let path = file.path();
-                    if path.is_file() && is_dylib(&file.file_name().into_string().unwrap()) {
+                    if path.is_file() {
                         builder
                             .copy_link(&path, &sysroot.join("lib").join(path.file_name().unwrap()));
                     }

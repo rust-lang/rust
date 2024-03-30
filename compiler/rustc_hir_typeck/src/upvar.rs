@@ -1711,10 +1711,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let bm = *typeck_results.pat_binding_modes().get(var_hir_id).expect("missing binding mode");
 
-        let mut is_mutbl = match bm {
-            ty::BindByValue(mutability) => mutability,
-            ty::BindByReference(_) => hir::Mutability::Not,
-        };
+        let mut is_mutbl = bm.1;
 
         for pointer_ty in place.deref_tys() {
             match pointer_ty.kind() {
