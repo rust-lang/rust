@@ -58,6 +58,11 @@ def summary_lookup(valobj, dict):
     if rust_type == RustType.STD_NONZERO_NUMBER:
         return StdNonZeroNumberSummaryProvider(valobj, dict)
 
+    if rust_type == RustType.STD_PATHBUF:
+        return StdPathBufSummaryProvider(valobj, dict)
+    if rust_type == RustType.STD_PATH:
+        return StdPathSummaryProvider(valobj, dict)
+
     return ""
 
 
