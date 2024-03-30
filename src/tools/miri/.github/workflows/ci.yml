@@ -49,15 +49,16 @@ jobs:
         with:
           path: |
             # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
-            ~/.cargo/bin
+            # Cache package/registry information
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-            # contains package information of crates installed via `cargo install`.
+            # Cache installed binaries
+            ~/.cargo/bin
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-cargo-reset20230315-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-reset20230315
+          key: cargo-${{ runner.os }}-reset20240331-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-reset20240331
 
       - name: Install rustup-toolchain-install-master
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
@@ -98,15 +99,16 @@ jobs:
         with:
           path: |
             # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
-            ~/.cargo/bin
+            # Cache package/registry information
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-            # contains package information of crates installed via `cargo install`.
+            # Cache installed binaries
+            ~/.cargo/bin
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-cargo-reset20230315-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-reset20230315
+          key: cargo-${{ runner.os }}-reset20240331-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-reset20240331
 
       - name: Install rustup-toolchain-install-master
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
