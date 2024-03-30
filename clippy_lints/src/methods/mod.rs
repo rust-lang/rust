@@ -3002,13 +3002,22 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Looks for calls to `<Box<dyn Any> as Any>::type_id`.
+    /// Looks for calls to `.type_id()` on a `Box<dyn _>`.
     ///
     /// ### Why is this bad?
-    /// This most certainly does not do what the user expects and is very easy to miss.
-    /// Calling `type_id` on a `Box<dyn Any>` calls `type_id` on the `Box<..>` itself,
-    /// so this will return the `TypeId` of the `Box<dyn Any>` type (not the type id
-    /// of the value referenced by the box!).
+    /// This almost certainly does not do what the user expects and can lead to subtle bugs.
+    /// Calling `.type_id()` on a `Box<dyn Trait>` returns a fixed `TypeId` of the `Box` itself,
+    /// rather than returning the `TypeId` of the underlying type behind the trait object.
+    ///
+    /// For `Box<dyn Any>` specifically (and trait objects that have `Any` as its supertrait),
+    /// this lint will provide a suggestion, which is to dereference the receiver explicitly
+    /// to go from `Box<dyn Any>` to `dyn Any`.
+    /// This makes sure that `.type_id()` resolves to a dynamic call on the trait object
+    /// and not on the box.
+    ///
+    /// If the fixed `TypeId` of the `Box` is the intended behavior, it's better to be explicit about it
+    /// and write `TypeId::of::<Box<dyn Trait>>()`:
+    /// this makes it clear that a fixed `TypeId` is returned and not the `TypeId` of the implementor.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -3028,7 +3037,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.73.0"]
     pub TYPE_ID_ON_BOX,
     suspicious,
-    "calling `.type_id()` on `Box<dyn Any>`"
+    "calling `.type_id()` on a boxed trait object"
 }
 
 declare_clippy_lint! {
