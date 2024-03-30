@@ -113,8 +113,8 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     /// The backend type used for a rust type when it's in an SSA register.
     ///
     /// For nearly all types this is the same as the [`Self::backend_type`], however
-    /// `bool` (and other `0`-or-`1` values) are kept as [`BaseTypeMethods::type_i1`]
-    /// in registers but as [`BaseTypeMethods::type_i8`] in memory.
+    /// `bool` (and other `0`-or-`1` values) are kept as `i1` in registers but as
+    /// [`BaseTypeMethods::type_i8`] in memory.
     ///
     /// Converting values between the two different backend types is done using
     /// [`from_immediate`](super::BuilderMethods::from_immediate) and
