@@ -89,11 +89,7 @@ impl DebugContext {
             match &source_file.name {
                 FileName::Real(path) => {
                     let (dir_path, file_name) =
-                        split_path_dir_and_file(if self.should_remap_filepaths {
-                            path.remapped_path_if_available()
-                        } else {
-                            path.local_path_if_available()
-                        });
+                        split_path_dir_and_file(path.to_path(self.filename_display_preference));
                     let dir_name = osstr_as_utf8_bytes(dir_path.as_os_str());
                     let file_name = osstr_as_utf8_bytes(file_name);
 
@@ -115,14 +111,7 @@ impl DebugContext {
                 filename => {
                     let dir_id = line_program.default_directory();
                     let dummy_file_name = LineString::new(
-                        filename
-                            .display(if self.should_remap_filepaths {
-                                FileNameDisplayPreference::Remapped
-                            } else {
-                                FileNameDisplayPreference::Local
-                            })
-                            .to_string()
-                            .into_bytes(),
+                        filename.display(self.filename_display_preference).to_string().into_bytes(),
                         line_program.encoding(),
                         line_strings,
                     );
