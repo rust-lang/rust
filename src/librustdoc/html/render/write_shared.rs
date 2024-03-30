@@ -343,7 +343,7 @@ else if (window.initSearch) window.initSearch(searchIndex);
     if options.enable_index_page {
         if let Some(index_page) = options.index_page.clone() {
             let mut md_opts = options.clone();
-            md_opts.output = cx.dst.clone();
+            md_opts.output.clone_from(&cx.dst);
             md_opts.external_html = (*cx.shared).layout.external_html.clone();
 
             crate::markdown::render(&index_page, md_opts, cx.shared.edition())

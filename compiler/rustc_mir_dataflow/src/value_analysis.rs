@@ -689,7 +689,7 @@ impl<V: JoinSemiLattice + Clone> JoinSemiLattice for State<V> {
         match (&mut self.0, &other.0) {
             (_, StateData::Unreachable) => false,
             (StateData::Unreachable, _) => {
-                *self = other.clone();
+                self.clone_from(other);
                 true
             }
             (StateData::Reachable(this), StateData::Reachable(other)) => this.join(other),

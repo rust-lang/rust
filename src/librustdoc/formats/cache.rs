@@ -169,7 +169,7 @@ impl Cache {
         }
 
         // FIXME: avoid this clone (requires implementing Default manually)
-        cx.cache.primitive_locations = PrimitiveType::primitive_locations(tcx).clone();
+        cx.cache.primitive_locations.clone_from(PrimitiveType::primitive_locations(tcx));
         for (prim, &def_id) in &cx.cache.primitive_locations {
             let crate_name = tcx.crate_name(def_id.krate);
             // Recall that we only allow primitive modules to be at the root-level of the crate.

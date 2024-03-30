@@ -392,7 +392,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             other => PathBuf::from(other.prefer_local().to_string()),
         };
         let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();
-        self.cx.root_path = dir_path.clone();
+        self.cx.root_path.clone_from(&dir_path);
         self.cx.current_expansion.module = Rc::new(ModuleData {
             mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
             file_path_stack: vec![file_path],

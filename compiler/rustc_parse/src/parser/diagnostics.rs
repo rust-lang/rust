@@ -2781,7 +2781,7 @@ impl<'a> Parser<'a> {
                                         .chain(take(&mut path.segments))
                                         .collect();
                                     path.span = new_span;
-                                    *qself = old_qself.clone();
+                                    qself.clone_from(old_qself);
                                     first_pat = pat;
                                     show_sugg = true;
                                 }

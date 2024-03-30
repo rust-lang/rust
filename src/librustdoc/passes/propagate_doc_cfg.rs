@@ -79,7 +79,7 @@ impl<'a, 'tcx> DocFolder for CfgPropagator<'a, 'tcx> {
                 Some(a)
             }
         };
-        self.parent_cfg = new_cfg.clone();
+        self.parent_cfg.clone_from(&new_cfg);
         item.cfg = new_cfg;
 
         let old_parent =

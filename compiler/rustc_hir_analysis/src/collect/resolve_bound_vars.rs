@@ -319,7 +319,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 }
 
                 Scope::Supertrait { s, bound_vars } => {
-                    supertrait_bound_vars = bound_vars.clone();
+                    supertrait_bound_vars.clone_from(bound_vars);
                     scope = s;
                 }
 

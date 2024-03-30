@@ -355,7 +355,7 @@ impl<T: JoinSemiLattice + Clone> JoinSemiLattice for MaybeReachable<T> {
         match (&mut *self, &other) {
             (_, MaybeReachable::Unreachable) => false,
             (MaybeReachable::Unreachable, _) => {
-                *self = other.clone();
+                self.clone_from(other);
                 true
             }
             (MaybeReachable::Reachable(this), MaybeReachable::Reachable(other)) => this.join(other),

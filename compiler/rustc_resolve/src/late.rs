@@ -3866,7 +3866,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             swap(&mut err.span, &mut parent_err.span);
             err.children = take(&mut parent_err.children);
             err.sort_span = parent_err.sort_span;
-            err.is_lint = parent_err.is_lint.clone();
+            err.is_lint.clone_from(&parent_err.is_lint);
 
             // merge the parent's suggestions with the typo suggestions
             fn append_result<T, E>(res1: &mut Result<Vec<T>, E>, res2: Result<Vec<T>, E>) {
