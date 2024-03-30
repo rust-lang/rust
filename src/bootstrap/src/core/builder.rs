@@ -1318,7 +1318,7 @@ impl<'a> Builder<'a> {
         compiler: Compiler,
         mode: Mode,
         target: TargetSelection,
-        cmd: &str,
+        cmd: &str, // FIXME make this properly typed
     ) -> Command {
         let mut cargo;
         if cmd == "clippy" {
@@ -1392,7 +1392,7 @@ impl<'a> Builder<'a> {
         mode: Mode,
         source_type: SourceType,
         target: TargetSelection,
-        cmd: &str,
+        cmd: &str, // FIXME make this properly typed
     ) -> Cargo {
         let mut cargo = self.bare_cargo(compiler, mode, target, cmd);
         let out_dir = self.stage_out(compiler, mode);
@@ -2100,7 +2100,7 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zinline-mir");
         }
 
-        if builder.config.rustc_parallel
+        if self.config.rustc_parallel
             && matches!(mode, Mode::ToolRustc | Mode::Rustc | Mode::Codegen)
         {
             // keep in sync with `bootstrap/lib.rs:Build::rustc_features`
@@ -2342,7 +2342,7 @@ impl Cargo {
         mode: Mode,
         source_type: SourceType,
         target: TargetSelection,
-        cmd: &str,
+        cmd: &str, // FIXME make this properly typed
     ) -> Cargo {
         let mut cargo = builder.cargo(compiler, mode, source_type, target, cmd);
         cargo.configure_linker(builder);
@@ -2356,7 +2356,7 @@ impl Cargo {
         mode: Mode,
         source_type: SourceType,
         target: TargetSelection,
-        cmd: &str,
+        cmd: &str, // FIXME make this properly typed
     ) -> Cargo {
         builder.cargo(compiler, mode, source_type, target, cmd)
     }
