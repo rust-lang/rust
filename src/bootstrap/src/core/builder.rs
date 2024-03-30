@@ -2100,6 +2100,15 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zinline-mir");
         }
 
+        if builder.config.rustc_parallel
+            && matches!(mode, Mode::ToolRustc | Mode::Rustc | Mode::Codegen)
+        {
+            // keep in sync with `bootstrap/lib.rs:Build::rustc_features`
+            // `cfg` option for rustc, `features` option for cargo, for conditional compilation
+            rustflags.arg("--cfg=parallel_compiler");
+            rustdocflags.arg("--cfg=parallel_compiler");
+        }
+
         // set rustc args passed from command line
         let rustc_args =
             self.config.cmd.rustc_args().iter().map(|s| s.to_string()).collect::<Vec<_>>();
