@@ -4,7 +4,7 @@
 use crate::errors;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_middle::ty::{self, AliasKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, AliasKind, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_trait_selection::traits::{self, IsFirstInputType};
@@ -283,8 +283,14 @@ fn emit_orphan_check_error<'tcx>(
     let self_ty = trait_ref.self_ty();
     Err(match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
-            let (mut opaque, mut foreign, mut name, mut pointer, mut ty_diag) =
-                (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
+            // FIXME: Someone needs to just turn these into `Subdiag`s and attach
+            // them to the `Diag` after creating the error.
+            let mut opaque = vec![];
+            let mut foreign = vec![];
+            let mut name = vec![];
+            let mut pointer = vec![];
+            let mut ty_diag = vec![];
+            let mut adt = vec![];
             let mut sugg = None;
             for &(mut ty, is_target_ty) in &tys {
                 let span = if matches!(is_target_ty, IsFirstInputType::Yes) {
@@ -296,15 +302,6 @@ fn emit_orphan_check_error<'tcx>(
                 };
 
                 ty = tcx.erase_regions(ty);
-                ty = match ty.kind() {
-                    // Remove the type arguments from the output, as they are not relevant.
-                    // You can think of this as the reverse of `resolve_vars_if_possible`.
-                    // That way if we had `Vec<MyType>`, we will properly attribute the
-                    // problem to `Vec<T>` and avoid confusing the user if they were to see
-                    // `MyType` in the error.
-                    ty::Adt(def, _) => Ty::new_adt(tcx, *def, ty::List::empty()),
-                    _ => ty,
-                };
 
                 fn push_to_foreign_or_name<'tcx>(
                     is_foreign: bool,
@@ -366,6 +363,10 @@ fn emit_orphan_check_error<'tcx>(
                         }
                         pointer.push(errors::OnlyCurrentTraitsPointer { span, pointer: ty });
                     }
+                    ty::Adt(adt_def, _) => adt.push(errors::OnlyCurrentTraitsAdt {
+                        span,
+                        name: tcx.def_path_str(adt_def.did()),
+                    }),
                     _ => ty_diag.push(errors::OnlyCurrentTraitsTy { span, ty }),
                 }
             }
@@ -379,6 +380,7 @@ fn emit_orphan_check_error<'tcx>(
                     name,
                     pointer,
                     ty: ty_diag,
+                    adt,
                     sugg,
                 },
                 _ if self_ty.is_primitive() => errors::OnlyCurrentTraits::Primitive {
@@ -389,6 +391,7 @@ fn emit_orphan_check_error<'tcx>(
                     name,
                     pointer,
                     ty: ty_diag,
+                    adt,
                     sugg,
                 },
                 _ => errors::OnlyCurrentTraits::Arbitrary {
@@ -399,6 +402,7 @@ fn emit_orphan_check_error<'tcx>(
                     name,
                     pointer,
                     ty: ty_diag,
+                    adt,
                     sugg,
                 },
             };

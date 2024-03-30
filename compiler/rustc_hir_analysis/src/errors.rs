@@ -1395,6 +1395,8 @@ pub enum OnlyCurrentTraits<'a> {
         #[subdiagnostic]
         ty: Vec<OnlyCurrentTraitsTy<'a>>,
         #[subdiagnostic]
+        adt: Vec<OnlyCurrentTraitsAdt>,
+        #[subdiagnostic]
         sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
     },
     #[diag(hir_analysis_only_current_traits_primitive, code = E0117)]
@@ -1414,6 +1416,8 @@ pub enum OnlyCurrentTraits<'a> {
         pointer: Vec<OnlyCurrentTraitsPointer<'a>>,
         #[subdiagnostic]
         ty: Vec<OnlyCurrentTraitsTy<'a>>,
+        #[subdiagnostic]
+        adt: Vec<OnlyCurrentTraitsAdt>,
         #[subdiagnostic]
         sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
     },
@@ -1435,6 +1439,8 @@ pub enum OnlyCurrentTraits<'a> {
         #[subdiagnostic]
         ty: Vec<OnlyCurrentTraitsTy<'a>>,
         #[subdiagnostic]
+        adt: Vec<OnlyCurrentTraitsAdt>,
+        #[subdiagnostic]
         sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
     },
 }
@@ -1445,7 +1451,6 @@ pub struct OnlyCurrentTraitsOpaque {
     #[primary_span]
     pub span: Span,
 }
-
 #[derive(Subdiagnostic)]
 #[label(hir_analysis_only_current_traits_foreign)]
 pub struct OnlyCurrentTraitsForeign {
@@ -1475,6 +1480,14 @@ pub struct OnlyCurrentTraitsTy<'a> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'a>,
+}
+
+#[derive(Subdiagnostic)]
+#[label(hir_analysis_only_current_traits_adt)]
+pub struct OnlyCurrentTraitsAdt {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
 }
 
 #[derive(Subdiagnostic)]
