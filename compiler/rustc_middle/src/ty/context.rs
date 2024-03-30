@@ -1961,33 +1961,90 @@ impl<'tcx> TyCtxt<'tcx> {
         if pred.kind() != binder { self.mk_predicate(binder) } else { pred }
     }
 
+    pub fn check_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) -> bool {
+        self.check_args_compatible_inner(def_id, args, false)
+    }
+
+    fn check_args_compatible_inner(
+        self,
+        def_id: DefId,
+        args: &'tcx [ty::GenericArg<'tcx>],
+        nested: bool,
+    ) -> bool {
+        let generics = self.generics_of(def_id);
+
+        // IATs themselves have a weird arg setup (self + own args), but nested items *in* IATs
+        // (namely: opaques, i.e. ATPITs) do not.
+        let own_args = if !nested
+            && let DefKind::AssocTy = self.def_kind(def_id)
+            && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id))
+        {
+            if generics.params.len() + 1 != args.len() {
+                return false;
+            }
+
+            if !matches!(args[0].unpack(), ty::GenericArgKind::Type(_)) {
+                return false;
+            }
+
+            &args[1..]
+        } else {
+            if generics.count() != args.len() {
+                return false;
+            }
+
+            let (parent_args, own_args) = args.split_at(generics.parent_count);
+
+            if let Some(parent) = generics.parent
+                && !self.check_args_compatible_inner(parent, parent_args, true)
+            {
+                return false;
+            }
+
+            own_args
+        };
+
+        for (param, arg) in std::iter::zip(&generics.params, own_args) {
+            match (&param.kind, arg.unpack()) {
+                (ty::GenericParamDefKind::Type { .. }, ty::GenericArgKind::Type(_))
+                | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Lifetime(_))
+                | (ty::GenericParamDefKind::Const { .. }, ty::GenericArgKind::Const(_)) => {}
+                _ => return false,
+            }
+        }
+
+        true
+    }
+
+    pub fn assert_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) {
+        if !self.check_args_compatible(def_id, args) {
+            if let DefKind::AssocTy = self.def_kind(def_id)
+                && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id))
+            {
+                bug!()
+            } else {
+                bug!(
+                    "args not compatible with generics for {}: args={:#?}, generics={:#?}",
+                    self.def_path_str(def_id),
+                    args,
+                    ty::GenericArgs::identity_for_item(self, def_id)
+                );
+            }
+        }
+    }
+
     #[inline(always)]
     pub(crate) fn check_and_mk_args(
         self,
         _def_id: DefId,
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> GenericArgsRef<'tcx> {
-        let args = args.into_iter().map(Into::into);
+        let args = self.mk_args_from_iter(args.into_iter().map(Into::into));
         #[cfg(debug_assertions)]
         {
-            let generics = self.generics_of(_def_id);
-
-            let n = if let DefKind::AssocTy = self.def_kind(_def_id)
-                && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(_def_id))
-            {
-                // If this is an inherent projection.
-                generics.params.len() + 1
-            } else {
-                generics.count()
-            };
-            assert_eq!(
-                (n, Some(n)),
-                args.size_hint(),
-                "wrong number of generic parameters for {_def_id:?}: {:?}",
-                args.collect::<Vec<_>>(),
-            );
+            self.assert_args_compatible(_def_id, args);
         }
-        self.mk_args_from_iter(args)
+        args
     }
 
     #[inline]

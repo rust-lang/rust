@@ -2,7 +2,6 @@
 
 use std::ops::ControlFlow;
 
-use super::check_args_compatible;
 use super::specialization_graph;
 use super::translate_args;
 use super::util;
@@ -2030,7 +2029,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     } else {
         ty.map_bound(|ty| ty.into())
     };
-    if !check_args_compatible(tcx, assoc_ty.item, args) {
+    if !tcx.check_args_compatible(assoc_ty.item.def_id, args) {
         let err = Ty::new_error_with_message(
             tcx,
             obligation.cause.span,
