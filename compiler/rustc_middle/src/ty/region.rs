@@ -140,6 +140,10 @@ impl<'tcx> rustc_type_ir::new::Region<TyCtxt<'tcx>> for Region<'tcx> {
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
         Region::new_bound(tcx, debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::BrAnon })
     }
+
+    fn new_static(tcx: TyCtxt<'tcx>) -> Self {
+        tcx.lifetimes.re_static
+    }
 }
 
 /// Region utilities

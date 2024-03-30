@@ -296,10 +296,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
         Region::new_anon_bound(self.interner(), self.binder_index, var)
     }
 
-    fn fold_ty(&mut self, t: I::Ty) -> I::Ty
-    where
-        I::Ty: TypeSuperFoldable<I>,
-    {
+    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         let kind = match t.kind() {
             ty::Infer(i) => match i {
                 ty::TyVar(vid) => {
@@ -378,47 +375,48 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
         Ty::new_anon_bound(self.interner(), self.binder_index, var)
     }
 
-    fn fold_const(&mut self, c: I::Const) -> I::Const
-    where
-        I::Const: TypeSuperFoldable<I>,
-    {
+    fn fold_const(&mut self, c: I::Const) -> I::Const {
+        // We could canonicalize all consts with static types, but the only ones we
+        // *really* need to worry about are the ones that we end up putting into `CanonicalVarKind`
+        // since canonical vars can't reference other canonical vars.
+        let ty = c
+            .ty()
+            .fold_with(&mut RegionsToStatic { interner: self.interner(), binder: ty::INNERMOST });
         let kind = match c.kind() {
-            ty::ConstKind::Infer(i) => {
-                // FIXME: we should fold the ty too eventually
-                match i {
-                    ty::InferConst::Var(vid) => {
-                        assert_eq!(
-                            self.infcx.root_ct_var(vid),
-                            vid,
-                            "region vid should have been resolved fully before canonicalization"
-                        );
-                        assert_eq!(
-                            self.infcx.probe_ct_var(vid),
-                            None,
-                            "region vid should have been resolved fully before canonicalization"
-                        );
-                        CanonicalVarKind::Const(self.infcx.universe_of_ct(vid).unwrap(), c.ty())
-                    }
-                    ty::InferConst::EffectVar(_) => CanonicalVarKind::Effect,
-                    ty::InferConst::Fresh(_) => todo!(),
+            ty::ConstKind::Infer(i) => match i {
+                ty::InferConst::Var(vid) => {
+                    assert_eq!(
+                        self.infcx.root_ct_var(vid),
+                        vid,
+                        "region vid should have been resolved fully before canonicalization"
+                    );
+                    assert_eq!(
+                        self.infcx.probe_ct_var(vid),
+                        None,
+                        "region vid should have been resolved fully before canonicalization"
+                    );
+                    CanonicalVarKind::Const(self.infcx.universe_of_ct(vid).unwrap(), ty)
                 }
-            }
+                ty::InferConst::EffectVar(_) => CanonicalVarKind::Effect,
+                ty::InferConst::Fresh(_) => todo!(),
+            },
             ty::ConstKind::Placeholder(placeholder) => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::PlaceholderConst(
                     PlaceholderLike::new(placeholder.universe(), self.variables.len().into()),
-                    c.ty(),
+                    ty,
                 ),
                 CanonicalizeMode::Response { .. } => {
-                    CanonicalVarKind::PlaceholderConst(placeholder, c.ty())
+                    CanonicalVarKind::PlaceholderConst(placeholder, ty)
                 }
             },
             ty::ConstKind::Param(_) => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::PlaceholderConst(
                     PlaceholderLike::new(ty::UniverseIndex::ROOT, self.variables.len().into()),
-                    c.ty(),
+                    ty,
                 ),
                 CanonicalizeMode::Response { .. } => panic!("param ty in response: {c:?}"),
             },
+            // FIXME: See comment above -- we could fold the region separately or something.
             ty::ConstKind::Bound(_, _)
             | ty::ConstKind::Unevaluated(_)
             | ty::ConstKind::Value(_)
@@ -435,6 +433,35 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
             }),
         );
 
-        Const::new_anon_bound(self.interner(), self.binder_index, var, c.ty())
+        Const::new_anon_bound(self.interner(), self.binder_index, var, ty)
+    }
+}
+
+struct RegionsToStatic<I> {
+    interner: I,
+    binder: ty::DebruijnIndex,
+}
+
+impl<I: Interner> TypeFolder<I> for RegionsToStatic<I> {
+    fn interner(&self) -> I {
+        self.interner
+    }
+
+    fn fold_binder<T>(&mut self, t: I::Binder<T>) -> I::Binder<T>
+    where
+        T: TypeFoldable<I>,
+        I::Binder<T>: TypeSuperFoldable<I>,
+    {
+        self.binder.shift_in(1);
+        let t = t.fold_with(self);
+        self.binder.shift_out(1);
+        t
+    }
+
+    fn fold_region(&mut self, r: I::Region) -> I::Region {
+        match r.kind() {
+            ty::ReBound(db, _) if self.binder > db => r,
+            _ => Region::new_static(self.interner()),
+        }
     }
 }
