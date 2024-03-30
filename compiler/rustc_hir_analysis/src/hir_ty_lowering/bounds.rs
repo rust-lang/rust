@@ -385,7 +385,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     span: binding.span,
                     ty: tcx.liberate_late_bound_regions(assoc_item.def_id, output),
                     fn_span: tcx.hir().span_if_local(assoc_item.def_id),
-                    note: (),
                 }));
             };
 

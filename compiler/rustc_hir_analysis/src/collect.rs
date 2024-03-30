@@ -1590,8 +1590,6 @@ fn check_impl_constness(
         trait_name,
         local_trait_span:
             trait_def_id.as_local().map(|_| tcx.def_span(trait_def_id).shrink_to_lo()),
-        marking: (),
-        adding: (),
     }))
 }
 

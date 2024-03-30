@@ -198,7 +198,6 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                         lo: ty_span.shrink_to_lo(),
                         hi: ty_span.shrink_to_hi(),
                     },
-                    note: (),
                 });
                 return false;
             } else if field_ty.needs_drop(tcx, param_env) {

@@ -591,7 +591,6 @@ pub fn report_cycle<'a>(
         alias,
         cycle_usage: cycle_usage,
         stack_count,
-        note_span: (),
     };
 
     sess.dcx().create_err(cycle_diag)

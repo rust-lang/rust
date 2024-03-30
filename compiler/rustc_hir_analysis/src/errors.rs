@@ -470,16 +470,14 @@ pub struct GenericArgsOnOverriddenImpl {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_const_impl_for_non_const_trait)]
+#[note]
+#[note(hir_analysis_adding)]
 pub struct ConstImplForNonConstTrait {
     #[primary_span]
     pub trait_ref_span: Span,
     pub trait_name: String,
     #[suggestion(applicability = "machine-applicable", code = "#[const_trait]")]
     pub local_trait_span: Option<Span>,
-    #[note]
-    pub marking: (),
-    #[note(hir_analysis_adding)]
-    pub adding: (),
 }
 
 #[derive(Diagnostic)]
@@ -492,11 +490,10 @@ pub struct ConstBoundForNonConstTrait {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_self_in_impl_self)]
+#[note]
 pub struct SelfInImplSelf {
     #[primary_span]
     pub span: MultiSpan,
-    #[note]
-    pub note: (),
 }
 
 #[derive(Diagnostic)]
@@ -690,13 +687,12 @@ pub(crate) struct CastThinPointerToFatPointer<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_invalid_union_field, code = E0740)]
+#[note]
 pub(crate) struct InvalidUnionField {
     #[primary_span]
     pub field_span: Span,
     #[subdiagnostic]
     pub sugg: InvalidUnionFieldSuggestion,
-    #[note]
-    pub note: (),
 }
 
 #[derive(Diagnostic)]
@@ -708,14 +704,13 @@ pub struct InvalidUnnamedFieldTy {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_return_type_notation_on_non_rpitit)]
+#[note]
 pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     #[label]
     pub fn_span: Option<Span>,
-    #[note]
-    pub note: (),
 }
 
 #[derive(Subdiagnostic)]
@@ -1353,12 +1348,11 @@ pub struct CrossCrateTraitsDefined {
 #[derive(Diagnostic)]
 #[diag(hir_analysis_ty_param_first_local, code = E0210)]
 #[note]
+#[note(hir_analysis_case_note)]
 pub struct TyParamFirstLocal<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[note(hir_analysis_case_note)]
-    pub note: (),
     pub param_ty: Ty<'a>,
     pub local_type: Ty<'a>,
 }
@@ -1366,24 +1360,22 @@ pub struct TyParamFirstLocal<'a> {
 #[derive(Diagnostic)]
 #[diag(hir_analysis_ty_param_some, code = E0210)]
 #[note]
+#[note(hir_analysis_only_note)]
 pub struct TyParamSome<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[note(hir_analysis_only_note)]
-    pub note: (),
     pub param_ty: Ty<'a>,
 }
 
 #[derive(Diagnostic)]
 pub enum OnlyCurrentTraits<'a> {
     #[diag(hir_analysis_only_current_traits_outside, code = E0117)]
+    #[note(hir_analysis_only_current_traits_note)]
     Outside {
         #[primary_span]
         #[label(hir_analysis_only_current_traits_label)]
         span: Span,
-        #[note(hir_analysis_only_current_traits_note)]
-        note: (),
         #[subdiagnostic]
         opaque: Vec<OnlyCurrentTraitsOpaque>,
         #[subdiagnostic]
@@ -1398,12 +1390,11 @@ pub enum OnlyCurrentTraits<'a> {
         sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
     },
     #[diag(hir_analysis_only_current_traits_primitive, code = E0117)]
+    #[note(hir_analysis_only_current_traits_note)]
     Primitive {
         #[primary_span]
         #[label(hir_analysis_only_current_traits_label)]
         span: Span,
-        #[note(hir_analysis_only_current_traits_note)]
-        note: (),
         #[subdiagnostic]
         opaque: Vec<OnlyCurrentTraitsOpaque>,
         #[subdiagnostic]
@@ -1418,12 +1409,11 @@ pub enum OnlyCurrentTraits<'a> {
         sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
     },
     #[diag(hir_analysis_only_current_traits_arbitrary, code = E0117)]
+    #[note(hir_analysis_only_current_traits_note)]
     Arbitrary {
         #[primary_span]
         #[label(hir_analysis_only_current_traits_label)]
         span: Span,
-        #[note(hir_analysis_only_current_traits_note)]
-        note: (),
         #[subdiagnostic]
         opaque: Vec<OnlyCurrentTraitsOpaque>,
         #[subdiagnostic]

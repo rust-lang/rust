@@ -50,7 +50,6 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                             sup_span,
                             sub_symbol,
                             sup_symbol,
-                            note: (),
                         }
                     }
                     (Some(sub_span), Some(sup_span), _, Some(&sup_symbol)) => {
@@ -59,7 +58,6 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                             sub_span,
                             sup_span,
                             sup_symbol,
-                            note: (),
                         }
                     }
                     (Some(sub_span), Some(sup_span), Some(&sub_symbol), _) => {
@@ -68,18 +66,12 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                             sub_span,
                             sup_span,
                             sub_symbol,
-                            note: (),
                         }
                     }
                     (Some(sub_span), Some(sup_span), _, _) => {
-                        PlaceholderRelationLfNotSatisfied::HasNone {
-                            span,
-                            sub_span,
-                            sup_span,
-                            note: (),
-                        }
+                        PlaceholderRelationLfNotSatisfied::HasNone { span, sub_span, sup_span }
                     }
-                    _ => PlaceholderRelationLfNotSatisfied::OnlyPrimarySpan { span, note: () },
+                    _ => PlaceholderRelationLfNotSatisfied::OnlyPrimarySpan { span },
                 };
                 Some(self.tcx().dcx().create_err(diag))
             }

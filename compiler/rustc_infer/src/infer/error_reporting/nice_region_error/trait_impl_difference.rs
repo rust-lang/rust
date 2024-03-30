@@ -111,7 +111,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let diag = TraitImplDiff {
             sp,
             trait_sp,
-            note: (),
             param_help: ConsiderBorrowingParamHelp { spans: visitor.types.to_vec() },
             rel_help: visitor.types.is_empty().then_some(RelationshipHelp),
             expected,

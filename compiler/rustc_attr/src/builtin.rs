@@ -849,7 +849,6 @@ pub fn find_deprecation(
                                         session_diagnostics::DeprecatedItemSuggestion {
                                             span: mi.span,
                                             is_nightly: sess.is_nightly_build().then_some(()),
-                                            details: (),
                                         },
                                     );
                                 }

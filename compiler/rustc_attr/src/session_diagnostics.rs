@@ -337,15 +337,13 @@ pub(crate) struct CfgPredicateIdentifier {
 
 #[derive(Diagnostic)]
 #[diag(attr_deprecated_item_suggestion)]
+#[note]
 pub(crate) struct DeprecatedItemSuggestion {
     #[primary_span]
     pub span: Span,
 
     #[help]
     pub is_nightly: Option<()>,
-
-    #[note]
-    pub details: (),
 }
 
 #[derive(Diagnostic)]

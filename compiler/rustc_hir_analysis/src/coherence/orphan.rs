@@ -373,7 +373,6 @@ fn emit_orphan_check_error<'tcx>(
             let err_struct = match self_ty.kind() {
                 ty::Adt(..) => errors::OnlyCurrentTraits::Outside {
                     span: sp,
-                    note: (),
                     opaque,
                     foreign,
                     name,
@@ -383,7 +382,6 @@ fn emit_orphan_check_error<'tcx>(
                 },
                 _ if self_ty.is_primitive() => errors::OnlyCurrentTraits::Primitive {
                     span: sp,
-                    note: (),
                     opaque,
                     foreign,
                     name,
@@ -393,7 +391,6 @@ fn emit_orphan_check_error<'tcx>(
                 },
                 _ => errors::OnlyCurrentTraits::Arbitrary {
                     span: sp,
-                    note: (),
                     opaque,
                     foreign,
                     name,
@@ -413,13 +410,10 @@ fn emit_orphan_check_error<'tcx>(
             }
 
             match local_type {
-                Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
-                    span: sp,
-                    note: (),
-                    param_ty,
-                    local_type,
-                }),
-                None => tcx.dcx().emit_err(errors::TyParamSome { span: sp, note: (), param_ty }),
+                Some(local_type) => {
+                    tcx.dcx().emit_err(errors::TyParamFirstLocal { span: sp, param_ty, local_type })
+                }
+                None => tcx.dcx().emit_err(errors::TyParamSome { span: sp, param_ty }),
             }
         }
     })

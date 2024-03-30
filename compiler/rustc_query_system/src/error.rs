@@ -47,6 +47,7 @@ pub struct CycleUsage {
 
 #[derive(Diagnostic)]
 #[diag(query_system_cycle, code = E0391)]
+#[note]
 pub struct Cycle {
     #[primary_span]
     pub span: Span,
@@ -59,8 +60,6 @@ pub struct Cycle {
     pub alias: Option<Alias>,
     #[subdiagnostic]
     pub cycle_usage: Option<CycleUsage>,
-    #[note]
-    pub note_span: (),
 }
 
 #[derive(Diagnostic)]

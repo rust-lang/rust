@@ -48,13 +48,11 @@ pub(crate) struct IceBugReportInternalFeature;
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice_bug_report_outdated)]
+#[note(driver_impl_update)]
+#[note(driver_impl_url)]
 pub(crate) struct IceBugReportOutdated<'a> {
     pub version: &'a str,
     pub bug_report_url: &'a str,
-    #[note(driver_impl_update)]
-    pub note_update: (),
-    #[note(driver_impl_url)]
-    pub note_url: (),
 }
 
 #[derive(Diagnostic)]

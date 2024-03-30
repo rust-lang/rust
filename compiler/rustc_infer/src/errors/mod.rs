@@ -780,14 +780,13 @@ pub struct RelationshipHelp;
 
 #[derive(Diagnostic)]
 #[diag(infer_trait_impl_diff)]
+#[note(infer_expected_found)]
 pub struct TraitImplDiff {
     #[primary_span]
     #[label(infer_found)]
     pub sp: Span,
     #[label(infer_expected)]
     pub trait_sp: Span,
-    #[note(infer_expected_found)]
-    pub note: (),
     #[subdiagnostic]
     pub param_help: ConsiderBorrowingParamHelp,
     #[subdiagnostic]
@@ -1068,6 +1067,7 @@ pub enum ConsiderAddingAwait {
 #[derive(Diagnostic)]
 pub enum PlaceholderRelationLfNotSatisfied {
     #[diag(infer_lf_bound_not_satisfied)]
+    #[note(infer_prlf_known_limitation)]
     HasBoth {
         #[primary_span]
         span: Span,
@@ -1077,10 +1077,9 @@ pub enum PlaceholderRelationLfNotSatisfied {
         sup_span: Span,
         sub_symbol: Symbol,
         sup_symbol: Symbol,
-        #[note(infer_prlf_known_limitation)]
-        note: (),
     },
     #[diag(infer_lf_bound_not_satisfied)]
+    #[note(infer_prlf_known_limitation)]
     HasSub {
         #[primary_span]
         span: Span,
@@ -1089,10 +1088,9 @@ pub enum PlaceholderRelationLfNotSatisfied {
         #[note(infer_prlf_must_outlive_without_sup)]
         sup_span: Span,
         sub_symbol: Symbol,
-        #[note(infer_prlf_known_limitation)]
-        note: (),
     },
     #[diag(infer_lf_bound_not_satisfied)]
+    #[note(infer_prlf_known_limitation)]
     HasSup {
         #[primary_span]
         span: Span,
@@ -1101,10 +1099,9 @@ pub enum PlaceholderRelationLfNotSatisfied {
         #[note(infer_prlf_must_outlive_with_sup)]
         sup_span: Span,
         sup_symbol: Symbol,
-        #[note(infer_prlf_known_limitation)]
-        note: (),
     },
     #[diag(infer_lf_bound_not_satisfied)]
+    #[note(infer_prlf_known_limitation)]
     HasNone {
         #[primary_span]
         span: Span,
@@ -1112,15 +1109,12 @@ pub enum PlaceholderRelationLfNotSatisfied {
         sub_span: Span,
         #[note(infer_prlf_must_outlive_without_sup)]
         sup_span: Span,
-        #[note(infer_prlf_known_limitation)]
-        note: (),
     },
     #[diag(infer_lf_bound_not_satisfied)]
+    #[note(infer_prlf_known_limitation)]
     OnlyPrimarySpan {
         #[primary_span]
         span: Span,
-        #[note(infer_prlf_known_limitation)]
-        note: (),
     },
 }
 

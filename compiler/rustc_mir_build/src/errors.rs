@@ -827,6 +827,7 @@ pub struct NontrivialStructuralMatch<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_pattern_not_covered, code = E0005)]
+#[note(mir_build_pattern_ty)]
 pub(crate) struct PatternNotCovered<'s, 'tcx> {
     #[primary_span]
     pub span: Span,
@@ -841,8 +842,6 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub adt_defined_here: Option<AdtDefinedHere<'tcx>>,
     #[note(mir_build_privately_uninhabited)]
     pub witness_1_is_privately_uninhabited: Option<()>,
-    #[note(mir_build_pattern_ty)]
-    pub _p: (),
     pub pattern_ty: Ty<'tcx>,
     #[subdiagnostic]
     pub let_suggestion: Option<SuggestLet>,

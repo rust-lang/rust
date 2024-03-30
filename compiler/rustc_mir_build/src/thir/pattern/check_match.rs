@@ -691,7 +691,6 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             inform,
             interpreted_as_const,
             witness_1_is_privately_uninhabited: witness_1_is_privately_uninhabited.then_some(()),
-            _p: (),
             pattern_ty,
             let_suggestion,
             misc_suggestion,
