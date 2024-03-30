@@ -995,9 +995,9 @@ impl Step for PlainSourceTarball {
         if builder.rust_info().is_managed_git_subrepository()
             || builder.rust_info().is_from_tarball()
         {
-            if builder.rust_info().is_managed_git_subrepository() {
-                // Ensure we have the submodules checked out.
-                builder.update_submodule(Path::new("src/tools/cargo"));
+            // Ensure we have all submodules from src and other directories checked out.
+            for submodule in builder.get_all_submodules() {
+                builder.update_submodule(Path::new(submodule));
             }
 
             // Vendor all Cargo dependencies
