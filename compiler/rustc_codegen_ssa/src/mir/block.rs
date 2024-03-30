@@ -751,7 +751,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         helper: &TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
-        intrinsic: Option<ty::IntrinsicDef>,
+        intrinsic: ty::IntrinsicDef,
         instance: Option<Instance<'tcx>>,
         source_info: mir::SourceInfo,
         target: Option<mir::BasicBlock>,
@@ -761,8 +761,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
-        let panic_intrinsic = intrinsic.and_then(|i| ValidityRequirement::from_intrinsic(i.name));
-        if let Some(requirement) = panic_intrinsic {
+        if let Some(requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) {
             let ty = instance.unwrap().args.type_at(0);
 
             let do_panic = !bx
@@ -869,12 +868,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let sig = callee.layout.ty.fn_sig(bx.tcx());
         let abi = sig.abi();
 
-        // Handle intrinsics old codegen wants Expr's for, ourselves.
-        let intrinsic = match def {
-            Some(ty::InstanceKind::Intrinsic(def_id)) => Some(bx.tcx().intrinsic(def_id).unwrap()),
-            _ => None,
-        };
-
         let extra_args = &args[sig.inputs().skip_binder().len()..];
         let extra_args = bx.tcx().mk_type_list_from_iter(extra_args.iter().map(|op_arg| {
             let op_ty = op_arg.node.ty(self.mir, bx.tcx());
@@ -886,25 +879,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             None => bx.fn_abi_of_fn_ptr(sig, extra_args),
         };
 
-        if let Some(merging_succ) = self.codegen_panic_intrinsic(
-            &helper,
-            bx,
-            intrinsic,
-            instance,
-            source_info,
-            target,
-            unwind,
-            mergeable_succ,
-        ) {
-            return merging_succ;
-        }
-
         // The arguments we'll be passing. Plus one to account for outptr, if used.
         let arg_count = fn_abi.args.len() + fn_abi.ret.is_indirect() as usize;
 
-        let instance = match intrinsic {
-            None => instance,
-            Some(intrinsic) => {
+        let instance = match def {
+            Some(ty::InstanceKind::Intrinsic(def_id)) => {
+                let intrinsic = bx.tcx().intrinsic(def_id).unwrap();
+                if let Some(merging_succ) = self.codegen_panic_intrinsic(
+                    &helper,
+                    bx,
+                    intrinsic,
+                    instance,
+                    source_info,
+                    target,
+                    unwind,
+                    mergeable_succ,
+                ) {
+                    return merging_succ;
+                }
+
                 let mut llargs = Vec::with_capacity(1);
                 let ret_dest = self.make_return_dest(
                     bx,
@@ -984,6 +977,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
+            _ => instance,
         };
 
         let mut llargs = Vec::with_capacity(arg_count);
