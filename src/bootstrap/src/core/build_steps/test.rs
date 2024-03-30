@@ -620,10 +620,6 @@ impl Step for Miri {
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", &sysroot);
         cargo.env("MIRI", &miri);
-        if builder.config.locked_deps {
-            // enforce lockfiles
-            cargo.env("CARGO_EXTRA_FLAGS", "--locked");
-        }
 
         // Set the target.
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
