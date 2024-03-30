@@ -353,7 +353,7 @@ impl DiagnosticDeriveVariantBuilder {
                     || type_matches_path(inner, &["rustc_span", "MultiSpan"])
                 {
                     Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug))
-                } else if type_is_unit(inner)
+                } else if (matches!(info.ty, FieldInnerTy::Option(_)) && type_is_unit(inner))
                     || (matches!(info.ty, FieldInnerTy::Plain(_)) && type_is_bool(inner))
                 {
                     Ok(self.add_subdiagnostic(&fn_ident, slug))
