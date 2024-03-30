@@ -16,7 +16,6 @@ pub trait MiscMethods<'tcx>: BackendTypes {
         _vtable: Self::Value,
     ) {
     }
-    fn check_overflow(&self) -> bool;
     fn get_fn(&self, instance: Instance<'tcx>) -> Self::Function;
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> Self::Value;
     fn eh_personality(&self) -> Self::Value;
