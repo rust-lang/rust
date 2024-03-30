@@ -2016,24 +2016,36 @@ impl<'tcx> TyCtxt<'tcx> {
         true
     }
 
+    /// With `cfg(debug_assertions)`, assert that args are compatible with their generics,
+    /// and print out the args if not.
     pub fn debug_assert_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) {
-        #[cfg(not(debug_assertions))]
-        {
-            return;
-        }
-
-        if !self.check_args_compatible(def_id, args) {
-            if let DefKind::AssocTy = self.def_kind(def_id)
-                && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id))
-            {
-                bug!()
-            } else {
-                bug!(
-                    "args not compatible with generics for {}: args={:#?}, generics={:#?}",
-                    self.def_path_str(def_id),
-                    args,
-                    ty::GenericArgs::identity_for_item(self, def_id)
-                );
+        if cfg!(debug_assertions) {
+            if !self.check_args_compatible(def_id, args) {
+                if let DefKind::AssocTy = self.def_kind(def_id)
+                    && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id))
+                {
+                    bug!(
+                        "args not compatible with generics for {}: args={:#?}, generics={:#?}",
+                        self.def_path_str(def_id),
+                        args,
+                        // Make `[Self, GAT_ARGS...]` (this could be simplified)
+                        self.mk_args_from_iter(
+                            [self.types.self_param.into()].into_iter().chain(
+                                self.generics_of(def_id)
+                                    .own_args(ty::GenericArgs::identity_for_item(self, def_id))
+                                    .iter()
+                                    .copied()
+                            )
+                        )
+                    );
+                } else {
+                    bug!(
+                        "args not compatible with generics for {}: args={:#?}, generics={:#?}",
+                        self.def_path_str(def_id),
+                        args,
+                        ty::GenericArgs::identity_for_item(self, def_id)
+                    );
+                }
             }
         }
     }
@@ -2041,11 +2053,11 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub(crate) fn check_and_mk_args(
         self,
-        _def_id: DefId,
+        def_id: DefId,
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> GenericArgsRef<'tcx> {
         let args = self.mk_args_from_iter(args.into_iter().map(Into::into));
-        self.debug_assert_args_compatible(_def_id, args);
+        self.debug_assert_args_compatible(def_id, args);
         args
     }
 
