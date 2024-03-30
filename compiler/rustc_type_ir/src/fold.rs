@@ -136,31 +136,21 @@ pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = Never> {
         t.super_fold_with(self)
     }
 
-    fn fold_ty(&mut self, t: I::Ty) -> I::Ty
-    where
-        I::Ty: TypeSuperFoldable<I>,
-    {
+    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         t.super_fold_with(self)
     }
 
     // The default region folder is a no-op because `Region` is non-recursive
-    // and has no `super_fold_with` method to call. That also explains the
-    // lack of `I::Region: TypeSuperFoldable<I>` bound on this method.
+    // and has no `super_fold_with` method to call.
     fn fold_region(&mut self, r: I::Region) -> I::Region {
         r
     }
 
-    fn fold_const(&mut self, c: I::Const) -> I::Const
-    where
-        I::Const: TypeSuperFoldable<I>,
-    {
+    fn fold_const(&mut self, c: I::Const) -> I::Const {
         c.super_fold_with(self)
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate
-    where
-        I::Predicate: TypeSuperFoldable<I>,
-    {
+    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
         p.super_fold_with(self)
     }
 }
@@ -185,31 +175,21 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
         t.try_super_fold_with(self)
     }
 
-    fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, Self::Error>
-    where
-        I::Ty: TypeSuperFoldable<I>,
-    {
+    fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, Self::Error> {
         t.try_super_fold_with(self)
     }
 
     // The default region folder is a no-op because `Region` is non-recursive
-    // and has no `super_fold_with` method to call. That also explains the
-    // lack of `I::Region: TypeSuperFoldable<I>` bound on this method.
+    // and has no `super_fold_with` method to call.
     fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, Self::Error> {
         Ok(r)
     }
 
-    fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Self::Error>
-    where
-        I::Const: TypeSuperFoldable<I>,
-    {
+    fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Self::Error> {
         c.try_super_fold_with(self)
     }
 
-    fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Self::Error>
-    where
-        I::Predicate: TypeSuperFoldable<I>,
-    {
+    fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Self::Error> {
         p.try_super_fold_with(self)
     }
 }
@@ -234,10 +214,7 @@ where
         Ok(self.fold_binder(t))
     }
 
-    fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, Never>
-    where
-        I::Ty: TypeSuperFoldable<I>,
-    {
+    fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, Never> {
         Ok(self.fold_ty(t))
     }
 
@@ -245,17 +222,11 @@ where
         Ok(self.fold_region(r))
     }
 
-    fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Never>
-    where
-        I::Const: TypeSuperFoldable<I>,
-    {
+    fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Never> {
         Ok(self.fold_const(c))
     }
 
-    fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Never>
-    where
-        I::Predicate: TypeSuperFoldable<I>,
-    {
+    fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Never> {
         Ok(self.fold_predicate(p))
     }
 }
