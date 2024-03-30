@@ -3,6 +3,7 @@ use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::coverageinfo;
 use crate::debuginfo;
+use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
 use crate::llvm;
 use crate::llvm_util;
 use crate::type_::Type;
@@ -520,6 +521,15 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
     {
         &self.vtables
+    }
+
+    fn apply_vcall_visibility_metadata(
+        &self,
+        ty: Ty<'tcx>,
+        poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        vtable: &'ll Value,
+    ) {
+        apply_vcall_visibility_metadata(self, ty, poly_trait_ref, vtable);
     }
 
     fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
