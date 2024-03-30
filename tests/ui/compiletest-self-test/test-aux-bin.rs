@@ -1,4 +1,4 @@
-//@ ignore-cross-compile because we run the compiled code
+//@ ignore-cross-compile because aux-bin does not yet support it
 //@ aux-bin: print-it-works.rs
 //@ run-pass
 
