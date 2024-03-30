@@ -252,6 +252,9 @@ fn main() {
 
     bin_helpers::maybe_dump(format!("stage{stage}-rustc"), &cmd);
 
+    // Unformatting!
+    cmd.arg("--cap-lints=allow");
+
     let start = Instant::now();
     let (child, status) = {
         let errmsg = format!("\nFailed to run:\n{cmd:?}\n-------------");
