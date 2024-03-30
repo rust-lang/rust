@@ -121,7 +121,6 @@ impl Step for ReplaceVersionPlaceholder {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
-    host: TargetSelection,
     target: TargetSelection,
 }
 
@@ -134,24 +133,35 @@ impl Step for Miri {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Miri { host: run.build_triple(), target: run.target });
+        run.builder.ensure(Miri { target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let stage = builder.top_stage;
-        let host = self.host;
+        let host = builder.build.build;
         let target = self.target;
-        let compiler = builder.compiler(stage, host);
+        let stage = builder.top_stage;
+        if stage == 0 {
+            eprintln!("miri cannot be run at stage 0");
+            std::process::exit(1);
+        }
 
-        let compiler_std = builder.compiler(if stage < 2 { stage + 1 } else { stage }, host);
-        let miri_sysroot = test::Miri::build_miri_sysroot(builder, compiler_std, target);
+        // This compiler runs on the host, we'll just use it for the target.
+        let target_compiler = builder.compiler(stage, host);
+        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+        // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
+        // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
+        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
+        let host_compiler = builder.compiler(stage - 1, host);
+
+        // Get a target sysroot for Miri.
+        let miri_sysroot = test::Miri::build_miri_sysroot(builder, target_compiler, target);
 
         // # Run miri.
         // Running it via `cargo run` as that figures out the right dylib path.
         // add_rustc_lib_path does not add the path that contains librustc_driver-<...>.so.
         let mut miri = tool::prepare_tool_cargo(
             builder,
-            compiler,
+            host_compiler,
             Mode::ToolRustc,
             host,
             "run",

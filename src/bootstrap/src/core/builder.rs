@@ -1031,10 +1031,10 @@ impl<'a> Builder<'a> {
         StepDescription::run(v, self, paths);
     }
 
-    /// Obtain a compiler at a given stage and for a given host. Explicitly does
-    /// not take `Compiler` since all `Compiler` instances are meant to be
-    /// obtained through this function, since it ensures that they are valid
-    /// (i.e., built and assembled).
+    /// Obtain a compiler at a given stage and for a given host (i.e., this is the target that the
+    /// compiler will run on, *not* the target it will build code for). Explicitly does not take
+    /// `Compiler` since all `Compiler` instances are meant to be obtained through this function,
+    /// since it ensures that they are valid (i.e., built and assembled).
     pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
         self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
     }
@@ -1703,7 +1703,8 @@ impl<'a> Builder<'a> {
             .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
             .env(
                 "RUSTDOC_REAL",
-                if cmd == "doc" || cmd == "rustdoc" || (cmd == "test" && want_rustdoc) {
+                // Make sure to handle both `test` and `miri-test` commands.
+                if cmd == "doc" || cmd == "rustdoc" || (cmd.ends_with("test") && want_rustdoc) {
                     self.rustdoc(compiler)
                 } else {
                     PathBuf::from("/path/to/nowhere/rustdoc/not/required")
