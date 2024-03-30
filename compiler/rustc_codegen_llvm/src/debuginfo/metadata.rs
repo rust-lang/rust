@@ -554,13 +554,16 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
     ) -> &'ll DIFile {
         debug!(?source_file.name);
 
-        use rustc_session::RemapFileNameExt;
+        let filename_display_preference =
+            cx.sess().filename_display_preference(RemapPathScopeComponents::DEBUGINFO);
+
+        use rustc_session::config::RemapPathScopeComponents;
         let (directory, file_name) = match &source_file.name {
             FileName::Real(filename) => {
                 let working_directory = &cx.sess().opts.working_dir;
                 debug!(?working_directory);
 
-                if cx.sess().should_prefer_remapped_for_codegen() {
+                if filename_display_preference == FileNameDisplayPreference::Remapped {
                     let filename = cx
                         .sess()
                         .source_map()
@@ -623,7 +626,7 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
             }
             other => {
                 debug!(?other);
-                ("".into(), other.for_codegen(cx.sess()).to_string_lossy().into_owned())
+                ("".into(), other.display(filename_display_preference).to_string())
             }
         };
 
@@ -832,9 +835,11 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     codegen_unit_name: &str,
     debug_context: &CodegenUnitDebugContext<'ll, 'tcx>,
 ) -> &'ll DIDescriptor {
+    use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
     let mut name_in_debuginfo = tcx
         .sess
         .local_crate_source_file()
+        .map(|src| src.for_scope(&tcx.sess, RemapPathScopeComponents::DEBUGINFO).to_path_buf())
         .unwrap_or_else(|| PathBuf::from(tcx.crate_name(LOCAL_CRATE).as_str()));
 
     // To avoid breaking split DWARF, we need to ensure that each codegen unit
@@ -862,30 +867,29 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
     let producer = format!("clang LLVM ({rustc_producer})");
 
-    use rustc_session::RemapFileNameExt;
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
-    let work_dir = tcx.sess.opts.working_dir.for_codegen(tcx.sess).to_string_lossy();
+    let work_dir = tcx
+        .sess
+        .opts
+        .working_dir
+        .for_scope(tcx.sess, RemapPathScopeComponents::DEBUGINFO)
+        .to_string_lossy();
     let output_filenames = tcx.output_filenames(());
-    let split_name = if tcx.sess.target_can_use_split_dwarf() {
-        output_filenames
-            .split_dwarf_path(
-                tcx.sess.split_debuginfo(),
-                tcx.sess.opts.unstable_opts.split_dwarf_kind,
-                Some(codegen_unit_name),
-            )
-            // We get a path relative to the working directory from split_dwarf_path
-            .map(|f| {
-                if tcx.sess.should_prefer_remapped_for_split_debuginfo_paths() {
-                    tcx.sess.source_map().path_mapping().map_prefix(f).0
-                } else {
-                    f.into()
-                }
-            })
+    let split_name = if tcx.sess.target_can_use_split_dwarf()
+        && let Some(f) = output_filenames.split_dwarf_path(
+            tcx.sess.split_debuginfo(),
+            tcx.sess.opts.unstable_opts.split_dwarf_kind,
+            Some(codegen_unit_name),
+        ) {
+        // We get a path relative to the working directory from split_dwarf_path
+        Some(tcx.sess.source_map().path_mapping().to_real_filename(f))
     } else {
         None
-    }
-    .unwrap_or_default();
-    let split_name = split_name.to_str().unwrap();
+    };
+    let split_name = split_name
+        .as_ref()
+        .map(|f| f.for_scope(tcx.sess, RemapPathScopeComponents::DEBUGINFO).to_string_lossy())
+        .unwrap_or_default();
     let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
 
     let dwarf_version =

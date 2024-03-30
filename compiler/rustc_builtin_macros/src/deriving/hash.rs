@@ -8,7 +8,7 @@ use rustc_span::Span;
 use thin_vec::thin_vec;
 
 pub fn expand_deriving_hash(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
@@ -46,11 +46,7 @@ pub fn expand_deriving_hash(
     hash_trait_def.expand(cx, mitem, item, push);
 }
 
-fn hash_substructure(
-    cx: &mut ExtCtxt<'_>,
-    trait_span: Span,
-    substr: &Substructure<'_>,
-) -> BlockOrExpr {
+fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
     let [state_expr] = substr.nonselflike_args else {
         cx.dcx().span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };

@@ -84,7 +84,7 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
 ///
 /// If the MIR fulfills both these conditions, this function returns the `Local` that is assigned
 /// to the return place along all possible paths through the control-flow graph.
-fn local_eligible_for_nrvo(body: &mut mir::Body<'_>) -> Option<Local> {
+fn local_eligible_for_nrvo(body: &mir::Body<'_>) -> Option<Local> {
     if IsReturnPlaceRead::run(body) {
         return None;
     }
@@ -118,10 +118,7 @@ fn local_eligible_for_nrvo(body: &mut mir::Body<'_>) -> Option<Local> {
     copied_to_return_place
 }
 
-fn find_local_assigned_to_return_place(
-    start: BasicBlock,
-    body: &mut mir::Body<'_>,
-) -> Option<Local> {
+fn find_local_assigned_to_return_place(start: BasicBlock, body: &mir::Body<'_>) -> Option<Local> {
     let mut block = start;
     let mut seen = BitSet::new_empty(body.basic_blocks.len());
 

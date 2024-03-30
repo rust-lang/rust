@@ -1668,14 +1668,16 @@ pub enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
     Cast {
         deref_left: &'a str,
         deref_right: &'a str,
-        #[suggestion_part(code = "{deref_left}")]
+        paren_left: &'a str,
+        paren_right: &'a str,
+        #[suggestion_part(code = "({deref_left}")]
         left_before: Option<Span>,
-        #[suggestion_part(code = " as *const ()")]
-        left: Span,
-        #[suggestion_part(code = "{deref_right}")]
+        #[suggestion_part(code = "{paren_left}.cast::<()>()")]
+        left_after: Span,
+        #[suggestion_part(code = "({deref_right}")]
         right_before: Option<Span>,
-        #[suggestion_part(code = " as *const ()")]
-        right: Span,
+        #[suggestion_part(code = "{paren_right}.cast::<()>()")]
+        right_after: Span,
     },
 }
 

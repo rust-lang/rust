@@ -13,9 +13,20 @@ bitflags! {
     /// Options for typeid_for_fnabi.
     #[derive(Clone, Copy, Debug)]
     pub struct TypeIdOptions: u32 {
+        /// Generalizes pointers for compatibility with Clang
+        /// `-fsanitize-cfi-icall-generalize-pointers` option for cross-language LLVM CFI and KCFI
+        /// support.
         const GENERALIZE_POINTERS = 1;
+        /// Generalizes repr(C) user-defined type for extern function types with the "C" calling
+        /// convention (or extern types) for cross-language LLVM CFI and  KCFI support.
         const GENERALIZE_REPR_C = 2;
+        /// Normalizes integers for compatibility with Clang
+        /// `-fsanitize-cfi-icall-experimental-normalize-integers` option for cross-language LLVM
+        /// CFI and  KCFI support.
         const NORMALIZE_INTEGERS = 4;
+        /// Do not perform self type erasure for attaching a secondary type id to methods with their
+        /// concrete self so they can be used as function pointers.
+        const NO_SELF_TYPE_ERASURE = 8;
     }
 }
 

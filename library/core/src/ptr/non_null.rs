@@ -702,8 +702,6 @@ impl<T: ?Sized> NonNull<T> {
     #[unstable(feature = "non_null_convenience", issue = "117691")]
     #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    // We could always go back to wrapping if unchecked becomes unacceptable
-    #[rustc_allow_const_fn_unstable(const_int_unchecked_arith)]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn sub(self, count: usize) -> Self
@@ -1821,6 +1819,7 @@ impl<T: ?Sized> PartialEq for NonNull<T> {
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> Ord for NonNull<T> {
     #[inline]
+    #[allow(ambiguous_wide_pointer_comparisons)]
     fn cmp(&self, other: &Self) -> Ordering {
         self.as_ptr().cmp(&other.as_ptr())
     }
@@ -1829,6 +1828,7 @@ impl<T: ?Sized> Ord for NonNull<T> {
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> PartialOrd for NonNull<T> {
     #[inline]
+    #[allow(ambiguous_wide_pointer_comparisons)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.as_ptr().partial_cmp(&other.as_ptr())
     }

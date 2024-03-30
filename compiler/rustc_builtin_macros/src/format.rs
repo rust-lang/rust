@@ -65,7 +65,7 @@ struct MacroInput {
 /// ```text
 /// Ok((fmtstr, parsed arguments))
 /// ```
-fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
+fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
     let mut args = FormatArguments::new();
 
     let mut p = ecx.new_parser_from_tts(tts);
@@ -604,7 +604,7 @@ fn invalid_placeholder_type_error(
 }
 
 fn report_missing_placeholders(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_>,
     unused: Vec<(Span, bool)>,
     used: &[bool],
     args: &FormatArguments,
@@ -734,7 +734,7 @@ fn report_missing_placeholders(
 /// This function detects and reports unused format!() arguments that are
 /// redundant due to implicit captures (e.g. `format!("{x}", x)`).
 fn report_redundant_format_arguments<'a>(
-    ecx: &mut ExtCtxt<'a>,
+    ecx: &ExtCtxt<'a>,
     args: &FormatArguments,
     used: &[bool],
     placeholders: Vec<(Span, &str)>,
@@ -806,7 +806,7 @@ fn report_redundant_format_arguments<'a>(
 /// there are named arguments or numbered positional arguments in the
 /// format string.
 fn report_invalid_references(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_>,
     invalid_refs: &[(usize, Option<Span>, PositionUsedAs, FormatArgPositionKind)],
     template: &[FormatArgsPiece],
     fmt_span: Span,
