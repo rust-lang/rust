@@ -348,9 +348,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         mut obligation: PredicateObligation<'tcx>,
         root_obligation: &PredicateObligation<'tcx>,
         error: &SelectionError<'tcx>,
-        mut span: Span,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx;
+        let mut span = obligation.cause.span;
 
         if tcx.sess.opts.unstable_opts.next_solver.map(|c| c.dump_tree).unwrap_or_default()
             == DumpSolverProofTree::OnError
@@ -1489,7 +1489,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     error.obligation.clone(),
                     &error.root_obligation,
                     selection_error,
-                    error.obligation.cause.span,
                 ),
             FulfillmentErrorCode::ProjectionError(ref e) => {
                 self.report_projection_error(&error.obligation, e)
