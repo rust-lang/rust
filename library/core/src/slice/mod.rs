@@ -110,6 +110,7 @@ impl<T> [T] {
     #[lang = "slice_len_fn"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     #[inline]
     #[must_use]
     pub const fn len(&self) -> usize {
@@ -129,6 +130,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_is_empty", since = "1.39.0")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     #[inline]
     #[must_use]
     pub const fn is_empty(&self) -> bool {
@@ -589,6 +591,7 @@ impl<T> [T] {
     /// assert_eq!(None, v.get(0..4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     #[inline]
     #[must_use]
     pub fn get<I>(&self, index: I) -> Option<&I::Output>
@@ -614,6 +617,7 @@ impl<T> [T] {
     /// assert_eq!(x, &[0, 42, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     #[inline]
     #[must_use]
     pub fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
@@ -651,6 +655,7 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     #[inline]
     #[must_use]
     pub unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
@@ -693,6 +698,7 @@ impl<T> [T] {
     /// assert_eq!(x, &[1, 13, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     #[inline]
     #[must_use]
     pub unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
