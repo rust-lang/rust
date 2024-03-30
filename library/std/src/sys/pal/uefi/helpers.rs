@@ -21,6 +21,12 @@ use crate::slice;
 use crate::sync::atomic::{AtomicPtr, Ordering};
 use crate::sys_common::wstr::WStrUnits;
 
+type BootInstallMultipleProtocolInterfaces =
+    unsafe extern "efiapi" fn(_: *mut r_efi::efi::Handle, _: ...) -> r_efi::efi::Status;
+
+type BootUninstallMultipleProtocolInterfaces =
+    unsafe extern "efiapi" fn(_: r_efi::efi::Handle, _: ...) -> r_efi::efi::Status;
+
 const BOOT_SERVICES_UNAVAILABLE: io::Error =
     const_io_error!(io::ErrorKind::Other, "Boot Services are no longer available");
 
@@ -231,6 +237,13 @@ impl DevicePath {
             protocol: NonNull<r_efi::protocols::device_path_from_text::Protocol>,
         ) -> io::Result<DevicePath> {
             let path_vec = p.encode_wide().chain(Some(0)).collect::<Vec<u16>>();
+            if path_vec[..path_vec.len() - 1].contains(&0) {
+                return Err(const_io_error!(
+                    io::ErrorKind::InvalidInput,
+                    "strings passed to UEFI cannot contain NULs",
+                ));
+            }
+
             let path =
                 unsafe { ((*protocol.as_ptr()).convert_text_to_device_path)(path_vec.as_ptr()) };
 
@@ -267,17 +280,9 @@ impl DevicePath {
             "DevicePathFromText Protocol not found"
         ))
     }
-}
 
-impl AsRef<r_efi::protocols::device_path::Protocol> for DevicePath {
-    fn as_ref(&self) -> &r_efi::protocols::device_path::Protocol {
-        unsafe { self.0.as_ref() }
-    }
-}
-
-impl AsMut<r_efi::protocols::device_path::Protocol> for DevicePath {
-    fn as_mut(&mut self) -> &mut r_efi::protocols::device_path::Protocol {
-        unsafe { self.0.as_mut() }
+    pub(crate) fn as_ptr(&self) -> *mut r_efi::protocols::device_path::Protocol {
+        self.0.as_ptr()
     }
 }
 
@@ -292,44 +297,42 @@ impl Drop for DevicePath {
     }
 }
 
-pub(crate) struct Protocol<T> {
+pub(crate) struct OwnedProtocol<T> {
     guid: r_efi::efi::Guid,
     handle: NonNull<crate::ffi::c_void>,
-    protocol: Box<T>,
+    protocol: *mut T,
 }
 
-impl<T> Protocol<T> {
-    const fn new(
-        guid: r_efi::efi::Guid,
-        handle: NonNull<crate::ffi::c_void>,
-        protocol: Box<T>,
-    ) -> Self {
-        Self { guid, handle, protocol }
-    }
-
-    pub(crate) fn create(protocol: T, mut guid: r_efi::efi::Guid) -> io::Result<Self> {
-        let boot_services: NonNull<r_efi::efi::BootServices> =
+impl<T> OwnedProtocol<T> {
+    // FIXME: Consider using unsafe trait for matching protocol with guid
+    pub(crate) unsafe fn create(protocol: T, mut guid: r_efi::efi::Guid) -> io::Result<Self> {
+        let bt: NonNull<r_efi::efi::BootServices> =
             boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?.cast();
-        let mut protocol = Box::new(protocol);
+        let protocol: *mut T = Box::into_raw(Box::new(protocol));
         let mut handle: r_efi::efi::Handle = crate::ptr::null_mut();
 
+        // FIXME: Move into r-efi once extended_varargs_abi_support is stablized
+        let func: BootInstallMultipleProtocolInterfaces =
+            unsafe { crate::mem::transmute((*bt.as_ptr()).install_multiple_protocol_interfaces) };
+
         let r = unsafe {
-            ((*boot_services.as_ptr()).install_protocol_interface)(
+            func(
                 &mut handle,
-                &mut guid,
-                r_efi::efi::NATIVE_INTERFACE,
-                protocol.as_mut() as *mut T as *mut crate::ffi::c_void,
+                &mut guid as *mut _ as *mut crate::ffi::c_void,
+                protocol as *mut crate::ffi::c_void,
+                crate::ptr::null_mut() as *mut crate::ffi::c_void,
             )
         };
 
         if r.is_error() {
+            drop(unsafe { Box::from_raw(protocol) });
             return Err(crate::io::Error::from_raw_os_error(r.as_usize()));
         };
 
         let handle = NonNull::new(handle)
             .ok_or(io::const_io_error!(io::ErrorKind::Uncategorized, "found null handle"))?;
 
-        Ok(Self::new(guid, handle, protocol))
+        Ok(Self { guid, handle, protocol })
     }
 
     pub(crate) fn handle(&self) -> NonNull<crate::ffi::c_void> {
@@ -337,29 +340,79 @@ impl<T> Protocol<T> {
     }
 }
 
-impl<T> Drop for Protocol<T> {
+impl<T> Drop for OwnedProtocol<T> {
     fn drop(&mut self) {
+        // Do not deallocate a runtime protocol
         if let Some(bt) = boot_services() {
             let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
-            unsafe {
-                ((*bt.as_ptr()).uninstall_protocol_interface)(
+            // FIXME: Move into r-efi once extended_varargs_abi_support is stablized
+            let func: BootUninstallMultipleProtocolInterfaces = unsafe {
+                crate::mem::transmute((*bt.as_ptr()).uninstall_multiple_protocol_interfaces)
+            };
+            let status = unsafe {
+                func(
                     self.handle.as_ptr(),
-                    &mut self.guid,
-                    self.protocol.as_mut() as *mut T as *mut crate::ffi::c_void,
+                    &mut self.guid as *mut _ as *mut crate::ffi::c_void,
+                    self.protocol as *mut crate::ffi::c_void,
+                    crate::ptr::null_mut() as *mut crate::ffi::c_void,
                 )
             };
+
+            // Leak the protocol in case uninstall fails
+            if status == r_efi::efi::Status::SUCCESS {
+                let _ = unsafe { Box::from_raw(self.protocol) };
+            }
         }
     }
 }
 
-impl<T> AsRef<T> for Protocol<T> {
+impl<T> AsRef<T> for OwnedProtocol<T> {
     fn as_ref(&self) -> &T {
-        &self.protocol
+        unsafe { self.protocol.as_ref().unwrap() }
     }
 }
 
-impl<T> AsMut<T> for Protocol<T> {
-    fn as_mut(&mut self) -> &mut T {
-        &mut self.protocol
+pub(crate) struct OwnedTable<T> {
+    layout: crate::alloc::Layout,
+    ptr: *mut T,
+}
+
+impl<T> OwnedTable<T> {
+    pub(crate) fn from_table_header(hdr: &r_efi::efi::TableHeader) -> Self {
+        let header_size = hdr.header_size as usize;
+        let layout = crate::alloc::Layout::from_size_align(header_size, 8).unwrap();
+        let ptr = unsafe { crate::alloc::alloc(layout) as *mut T };
+        Self { layout, ptr }
+    }
+
+    pub(crate) const fn as_ptr(&self) -> *const T {
+        self.ptr
+    }
+
+    pub(crate) const fn as_mut_ptr(&self) -> *mut T {
+        self.ptr
+    }
+}
+
+impl OwnedTable<r_efi::efi::SystemTable> {
+    pub(crate) fn from_table(tbl: *const r_efi::efi::SystemTable) -> Self {
+        let hdr = unsafe { (*tbl).hdr };
+
+        let owned_tbl = Self::from_table_header(&hdr);
+        unsafe {
+            crate::ptr::copy_nonoverlapping(
+                tbl as *const u8,
+                owned_tbl.as_mut_ptr() as *mut u8,
+                hdr.header_size as usize,
+            )
+        };
+
+        owned_tbl
+    }
+}
+
+impl<T> Drop for OwnedTable<T> {
+    fn drop(&mut self) {
+        unsafe { crate::alloc::dealloc(self.ptr as *mut u8, self.layout) };
     }
 }
