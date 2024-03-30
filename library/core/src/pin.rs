@@ -676,7 +676,7 @@
 //!             let data_ptr = unpinned_src.data.as_ptr() as *const u8;
 //!             let slice_ptr = unpinned_src.slice.as_ptr() as *const u8;
 //!             let offset = slice_ptr.offset_from(data_ptr) as usize;
-//!             let len = (*unpinned_src.slice.as_ptr()).len();
+//!             let len = unpinned_src.slice.as_ptr().len();
 //!
 //!             unpinned_self.slice = NonNull::from(&mut unpinned_self.data[offset..offset+len]);
 //!         }
