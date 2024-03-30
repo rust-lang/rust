@@ -283,15 +283,14 @@ fn emit_orphan_check_error<'tcx>(
     let self_ty = trait_ref.self_ty();
     Err(match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
-            // FIXME: Someone needs to just turn these into `Subdiag`s and attach
-            // them to the `Diag` after creating the error.
-            let mut opaque = vec![];
-            let mut foreign = vec![];
-            let mut name = vec![];
-            let mut pointer = vec![];
-            let mut ty_diag = vec![];
-            let mut adt = vec![];
-            let mut sugg = None;
+            let mut diag = tcx.dcx().create_err(match self_ty.kind() {
+                ty::Adt(..) => errors::OnlyCurrentTraits::Outside { span: sp, note: () },
+                _ if self_ty.is_primitive() => {
+                    errors::OnlyCurrentTraits::Primitive { span: sp, note: () }
+                }
+                _ => errors::OnlyCurrentTraits::Arbitrary { span: sp, note: () },
+            });
+
             for &(mut ty, is_target_ty) in &tys {
                 let span = if matches!(is_target_ty, IsFirstInputType::Yes) {
                     // Point at `D<A>` in `impl<A, B> for C<B> in D<A>`
@@ -303,110 +302,85 @@ fn emit_orphan_check_error<'tcx>(
 
                 ty = tcx.erase_regions(ty);
 
-                fn push_to_foreign_or_name<'tcx>(
-                    is_foreign: bool,
-                    foreign: &mut Vec<errors::OnlyCurrentTraitsForeign>,
-                    name: &mut Vec<errors::OnlyCurrentTraitsName<'tcx>>,
-                    span: Span,
-                    sname: &'tcx str,
-                ) {
-                    if is_foreign {
-                        foreign.push(errors::OnlyCurrentTraitsForeign { span })
-                    } else {
-                        name.push(errors::OnlyCurrentTraitsName { span, name: sname });
-                    }
-                }
-
                 let is_foreign =
                     !trait_ref.def_id.is_local() && matches!(is_target_ty, IsFirstInputType::No);
 
                 match *ty.kind() {
                     ty::Slice(_) => {
-                        push_to_foreign_or_name(
-                            is_foreign,
-                            &mut foreign,
-                            &mut name,
-                            span,
-                            "slices",
-                        );
+                        if is_foreign {
+                            diag.subdiagnostic(
+                                tcx.dcx(),
+                                errors::OnlyCurrentTraitsForeign { span },
+                            );
+                        } else {
+                            diag.subdiagnostic(
+                                tcx.dcx(),
+                                errors::OnlyCurrentTraitsName { span, name: "slices" },
+                            );
+                        }
                     }
                     ty::Array(..) => {
-                        push_to_foreign_or_name(
-                            is_foreign,
-                            &mut foreign,
-                            &mut name,
-                            span,
-                            "arrays",
-                        );
+                        if is_foreign {
+                            diag.subdiagnostic(
+                                tcx.dcx(),
+                                errors::OnlyCurrentTraitsForeign { span },
+                            );
+                        } else {
+                            diag.subdiagnostic(
+                                tcx.dcx(),
+                                errors::OnlyCurrentTraitsName { span, name: "arrays" },
+                            );
+                        }
                     }
                     ty::Tuple(..) => {
-                        push_to_foreign_or_name(
-                            is_foreign,
-                            &mut foreign,
-                            &mut name,
-                            span,
-                            "tuples",
-                        );
+                        if is_foreign {
+                            diag.subdiagnostic(
+                                tcx.dcx(),
+                                errors::OnlyCurrentTraitsForeign { span },
+                            );
+                        } else {
+                            diag.subdiagnostic(
+                                tcx.dcx(),
+                                errors::OnlyCurrentTraitsName { span, name: "tuples" },
+                            );
+                        }
                     }
                     ty::Alias(ty::Opaque, ..) => {
-                        opaque.push(errors::OnlyCurrentTraitsOpaque { span })
+                        diag.subdiagnostic(tcx.dcx(), errors::OnlyCurrentTraitsOpaque { span });
                     }
                     ty::RawPtr(ptr_ty, mutbl) => {
                         if !self_ty.has_param() {
-                            let mut_key = mutbl.prefix_str();
-                            sugg = Some(errors::OnlyCurrentTraitsPointerSugg {
-                                wrapper_span: self_ty_span,
-                                struct_span: full_impl_span.shrink_to_lo(),
-                                mut_key,
-                                ptr_ty,
-                            });
+                            diag.subdiagnostic(
+                                tcx.dcx(),
+                                errors::OnlyCurrentTraitsPointerSugg {
+                                    wrapper_span: self_ty_span,
+                                    struct_span: full_impl_span.shrink_to_lo(),
+                                    mut_key: mutbl.prefix_str(),
+                                    ptr_ty,
+                                },
+                            );
                         }
-                        pointer.push(errors::OnlyCurrentTraitsPointer { span, pointer: ty });
+                        diag.subdiagnostic(
+                            tcx.dcx(),
+                            errors::OnlyCurrentTraitsPointer { span, pointer: ty },
+                        );
                     }
-                    ty::Adt(adt_def, _) => adt.push(errors::OnlyCurrentTraitsAdt {
-                        span,
-                        name: tcx.def_path_str(adt_def.did()),
-                    }),
-                    _ => ty_diag.push(errors::OnlyCurrentTraitsTy { span, ty }),
+                    ty::Adt(adt_def, _) => {
+                        diag.subdiagnostic(
+                            tcx.dcx(),
+                            errors::OnlyCurrentTraitsAdt {
+                                span,
+                                name: tcx.def_path_str(adt_def.did()),
+                            },
+                        );
+                    }
+                    _ => {
+                        diag.subdiagnostic(tcx.dcx(), errors::OnlyCurrentTraitsTy { span, ty });
+                    }
                 }
             }
 
-            let err_struct = match self_ty.kind() {
-                ty::Adt(..) => errors::OnlyCurrentTraits::Outside {
-                    span: sp,
-                    note: (),
-                    opaque,
-                    foreign,
-                    name,
-                    pointer,
-                    ty: ty_diag,
-                    adt,
-                    sugg,
-                },
-                _ if self_ty.is_primitive() => errors::OnlyCurrentTraits::Primitive {
-                    span: sp,
-                    note: (),
-                    opaque,
-                    foreign,
-                    name,
-                    pointer,
-                    ty: ty_diag,
-                    adt,
-                    sugg,
-                },
-                _ => errors::OnlyCurrentTraits::Arbitrary {
-                    span: sp,
-                    note: (),
-                    opaque,
-                    foreign,
-                    name,
-                    pointer,
-                    ty: ty_diag,
-                    adt,
-                    sugg,
-                },
-            };
-            tcx.dcx().emit_err(err_struct)
+            diag.emit()
         }
         traits::OrphanCheckErr::UncoveredTy(param_ty, local_type) => {
             let mut sp = sp;
