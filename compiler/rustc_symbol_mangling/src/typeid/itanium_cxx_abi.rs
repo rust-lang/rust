@@ -261,12 +261,12 @@ fn encode_region<'tcx>(region: Region<'tcx>, dict: &mut FxHashMap<DictKey<'tcx>,
             s.push('E');
             compress(dict, DictKey::Region(region), &mut s);
         }
-        // FIXME(@lcnr): Why is `ReEarlyParam` reachable here.
-        RegionKind::ReEarlyParam(..) | RegionKind::ReErased => {
+        RegionKind::ReErased => {
             s.push_str("u6region");
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReLateParam(..)
+        RegionKind::ReEarlyParam(..)
+        | RegionKind::ReLateParam(..)
         | RegionKind::ReStatic
         | RegionKind::ReError(_)
         | RegionKind::ReVar(..)
