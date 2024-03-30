@@ -17,7 +17,7 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Const, ToPredicate, Ty, TyCtxt};
-use rustc_span::{DesugaringKind, ExpnKind, Span};
+use rustc_span::Span;
 
 pub use self::ImplSource::*;
 pub use self::SelectionError::*;
@@ -205,19 +205,6 @@ impl<'tcx> FulfillmentError<'tcx> {
         root_obligation: PredicateObligation<'tcx>,
     ) -> FulfillmentError<'tcx> {
         FulfillmentError { obligation, code, root_obligation }
-    }
-
-    pub fn span(&self) -> Span {
-        let mut span = self.obligation.cause.span;
-        // We want to ignore desugarings here: spans are equivalent even
-        // if one is the result of a desugaring and the other is not.
-        let expn_data = span.ctxt().outer_expn_data();
-        if let ExpnKind::Desugaring(desugaring) = expn_data.kind
-            && DesugaringKind::QuestionMark != desugaring
-        {
-            span = expn_data.call_site;
-        }
-        span
     }
 }
 

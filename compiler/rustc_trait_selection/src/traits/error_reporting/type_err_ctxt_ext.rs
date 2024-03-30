@@ -125,7 +125,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         });
 
         for (index, error) in errors.iter().enumerate() {
-            error_map.entry(error.span()).or_default().push(ErrorDescriptor {
+            error_map.entry(error.obligation.cause.span).or_default().push(ErrorDescriptor {
                 predicate: error.obligation.predicate,
                 index: Some(index),
             });
@@ -171,7 +171,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     reported = Some(guar);
                     self.reported_trait_errors
                         .borrow_mut()
-                        .entry(error.span())
+                        .entry(error.obligation.cause.span)
                         .or_insert_with(|| (vec![], guar))
                         .0
                         .push(error.obligation.predicate);
@@ -1489,7 +1489,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     error.obligation.clone(),
                     &error.root_obligation,
                     selection_error,
-                    error.span(),
+                    error.obligation.cause.span,
                 ),
             FulfillmentErrorCode::ProjectionError(ref e) => {
                 self.report_projection_error(&error.obligation, e)

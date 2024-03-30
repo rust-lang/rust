@@ -6,11 +6,13 @@
 use std::ops::Coroutine;
 
 fn foo(bar: bool) -> impl Coroutine<(bool,)> {
-    //~^ ERROR: type mismatch in coroutine arguments [E0631]
-    //~| NOTE: expected due to this
-    //~| NOTE: expected coroutine signature `fn((bool,)) -> _`
+    //~^ ERROR type mismatch in coroutine arguments [E0631]
+    //~| NOTE expected due to this
+    //~| NOTE expected coroutine signature `fn((bool,)) -> _`
+    //~| NOTE in this expansion of desugaring of `impl Trait`
+    //~| NOTE in this expansion of desugaring of `impl Trait`
     |bar| {
-        //~^ NOTE: found signature defined here
+        //~^ NOTE found signature defined here
         if bar {
             yield bar;
         }

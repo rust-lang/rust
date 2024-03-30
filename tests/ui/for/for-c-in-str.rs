@@ -6,6 +6,9 @@ fn main() {
         //~| NOTE `&str` is not an iterator
         //~| HELP the trait `Iterator` is not implemented for `&str`
         //~| NOTE required for `&str` to implement `IntoIterator`
+        //~| NOTE in this expansion of desugaring of `for` loop
+        //~| NOTE in this expansion of desugaring of `for` loop
+        //~| NOTE in this expansion of desugaring of `for` loop
         println!();
     }
 }
