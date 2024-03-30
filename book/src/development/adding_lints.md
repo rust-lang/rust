@@ -297,10 +297,10 @@ This is good, because it makes writing this particular lint less complicated.
 We have to make this decision with every new Clippy lint. It boils down to using
 either [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass].
 
-In short, the `LateLintPass` has access to type information while the
-`EarlyLintPass` doesn't. If you don't need access to type information, use the
-`EarlyLintPass`. The `EarlyLintPass` is also faster. However, linting speed
-hasn't really been a concern with Clippy so far.
+In short, the `EarlyLintPass` runs before type checking and
+[HIR](https://rustc-dev-guide.rust-lang.org/hir.html) lowering and the `LateLintPass`
+has access to type information. Consider using the `LateLintPass` unless you need
+something specific from the `EarlyLintPass`.
 
 Since we don't need type information for checking the function name, we used
 `--pass=early` when running the new lint automation and all the imports were
