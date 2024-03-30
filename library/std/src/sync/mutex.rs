@@ -227,7 +227,7 @@ unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
 ///   data races.
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: ?Sized + Send> Sync for MutexGuard<T> {}
+unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
 /// dropped (falls out of scope), the lock will be unlocked.
