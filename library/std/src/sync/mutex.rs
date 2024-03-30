@@ -183,10 +183,51 @@ pub struct Mutex<T: ?Sized> {
 
 // these are the only places where `T: Send` matters; all other
 // functionality works fine on a single thread.
+
+/// SAFETY
+///
+/// The `Send` and `Sync` implementations for `Mutex` ensure that it is safe to
+/// share instances of `Mutex` between threads when the protected data is also
+/// thread-safe. The following explains the safety guarantees:
+///
+/// - `Send` is implemented for `Mutex<T>` if and only if `T` is also `Send`.
+///   This guarantees that `Mutex<T>` can be safely transferred between threads,
+///   and `T` can be sent across thread boundaries. This is crucial for allowing
+///   safe access to the protected data from multiple threads.
+///
+/// - `Sync` is implemented for `Mutex<T>` if and only if `T` is both `Send` and
+///   `Sync`. This ensures that `Mutex<T>` can be safely shared between threads
+///   without requiring further synchronization, assuming `T` can be sent across
+///   thread boundaries. It guarantees that multiple threads can safely access the
+///   protected data concurrently without data races.
+///
+/// It's important to note that `Mutex` can be `Sync` even if its inner type `T`
+/// is not `Sync` itself. This is because `Mutex` provides a safe interface for
+/// accessing `T` through locking mechanisms, ensuring that only one thread can
+/// access `T` at a time.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
+
+/// SAFETY
+///
+/// The `Send` and `Sync` implementations for `MutexGuard` ensure that it is
+/// safe to share instances of `MutexGuard` between threads when the protected
+/// data is also thread-safe. The following explains the safety guarantees:
+///
+/// - `MutexGuard` is not `Send` because it represents exclusive access to the
+///   data protected by `Mutex`, and sending it to another thread could lead to
+///   data races or other unsafe behavior, violating the mutual exclusion property
+///   provided by `Mutex`.
+///
+/// - `Sync` is implemented for `MutexGuard` if and only if `T` is `Send`. This
+///   ensures that `MutexGuard` can be safely shared between threads if the
+///   protected data can be sent across thread boundaries. It guarantees that
+///   multiple threads can safely access the protected data concurrently without
+///   data races.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
+unsafe impl<T: ?Sized + Send> Sync for MutexGuard<T> {}
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
 /// dropped (falls out of scope), the lock will be unlocked.
