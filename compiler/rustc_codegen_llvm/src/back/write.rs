@@ -872,7 +872,10 @@ pub(crate) unsafe fn enzyme_ad(
         item.inputs.into_iter().map(|x| to_enzyme_typetree(x, llvm_data_layout, llcx)).collect();
     let output_tt = to_enzyme_typetree(item.output, llvm_data_layout, llcx);
 
-    let opt = 1;
+    let mut opt = 1;
+    if std::env::var("ENZYME_DISABLE_OPTS").is_ok() {
+        opt = 0;
+    }
     let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
     let type_analysis: EnzymeTypeAnalysisRef =
         CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
