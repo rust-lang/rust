@@ -124,7 +124,6 @@ pub fn expand(
         // This allows us to potentially parse other attributes.
         return vec![item];
     }
-    dbg!(&x);
     let span = ecx.with_def_site_ctxt(expand_span);
 
     let n_active: u32 = x.input_activity.iter()
