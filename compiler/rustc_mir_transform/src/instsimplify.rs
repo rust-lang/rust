@@ -11,42 +11,59 @@ use rustc_span::symbol::Symbol;
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
-pub struct InstSimplify;
+pub enum InstSimplify {
+    BeforeUnreachablePropagation,
+    Final,
+}
 
 impl<'tcx> MirPass<'tcx> for InstSimplify {
+    fn name(&self) -> &'static str {
+        match &self {
+            InstSimplify::BeforeUnreachablePropagation => {
+                "InstSimplify-before-unreachable-propagation"
+            }
+            InstSimplify::Final => "InstSimplify-final",
+        }
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let ctx = InstSimplifyContext {
-            tcx,
-            local_decls: &body.local_decls,
-            param_env: tcx.param_env_reveal_all_normalized(body.source.def_id()),
-        };
-        let preserve_ub_checks =
-            attr::contains_name(tcx.hir().krate_attrs(), sym::rustc_preserve_ub_checks);
-        for block in body.basic_blocks.as_mut() {
-            for statement in block.statements.iter_mut() {
-                match statement.kind {
-                    StatementKind::Assign(box (_place, ref mut rvalue)) => {
-                        if !preserve_ub_checks {
-                            ctx.simplify_ub_check(&statement.source_info, rvalue);
-                        }
-                        ctx.simplify_bool_cmp(&statement.source_info, rvalue);
-                        ctx.simplify_ref_deref(&statement.source_info, rvalue);
-                        ctx.simplify_len(&statement.source_info, rvalue);
-                        ctx.simplify_cast(rvalue);
-                    }
-                    _ => {}
-                }
-            }
+        inst_simplify(tcx, body);
+    }
+}
 
-            ctx.simplify_primitive_clone(block.terminator.as_mut().unwrap(), &mut block.statements);
-            ctx.simplify_intrinsic_assert(block.terminator.as_mut().unwrap());
-            ctx.simplify_nounwind_call(block.terminator.as_mut().unwrap());
-            simplify_duplicate_switch_targets(block.terminator.as_mut().unwrap());
+fn inst_simplify<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    let ctx = InstSimplifyContext {
+        tcx,
+        local_decls: &body.local_decls,
+        param_env: tcx.param_env_reveal_all_normalized(body.source.def_id()),
+    };
+    let preserve_ub_checks =
+        attr::contains_name(tcx.hir().krate_attrs(), sym::rustc_preserve_ub_checks);
+    for block in body.basic_blocks.as_mut() {
+        for statement in block.statements.iter_mut() {
+            match statement.kind {
+                StatementKind::Assign(box (_place, ref mut rvalue)) => {
+                    if !preserve_ub_checks {
+                        ctx.simplify_ub_check(&statement.source_info, rvalue);
+                    }
+                    ctx.simplify_bool_cmp(&statement.source_info, rvalue);
+                    ctx.simplify_ref_deref(&statement.source_info, rvalue);
+                    ctx.simplify_len(&statement.source_info, rvalue);
+                    ctx.simplify_cast(rvalue);
+                }
+                _ => {}
+            }
         }
+
+        let terminator = block.terminator.as_mut().unwrap();
+        ctx.simplify_primitive_clone(terminator, &mut block.statements);
+        ctx.simplify_intrinsic_assert(terminator);
+        ctx.simplify_nounwind_call(terminator);
+        simplify_duplicate_switch_targets(terminator);
     }
 }
 

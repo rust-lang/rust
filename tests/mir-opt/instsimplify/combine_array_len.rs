@@ -1,7 +1,7 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ unit-test: InstSimplify
+//@ unit-test: InstSimplify-before-unreachable-propagation
 
-// EMIT_MIR combine_array_len.norm2.InstSimplify.diff
+// EMIT_MIR combine_array_len.norm2.InstSimplify-before-unreachable-propagation.diff
 fn norm2(x: [f32; 2]) -> f32 {
     // CHECK-LABEL: fn norm2(
     // CHECK-NOT: Len(

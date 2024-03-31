@@ -1,7 +1,7 @@
-//@ unit-test: InstSimplify
+//@ unit-test: InstSimplify-before-unreachable-propagation
 //@ compile-flags: -Cdebug-assertions=no -Zinline-mir
 
-// EMIT_MIR ub_check.unwrap_unchecked.InstSimplify.diff
+// EMIT_MIR ub_check.unwrap_unchecked.InstSimplify-before-unreachable-propagation.diff
 pub fn unwrap_unchecked(x: Option<i32>) -> i32 {
     // CHECK-LABEL: fn unwrap_unchecked(
     // CHECK-NOT: UbChecks()

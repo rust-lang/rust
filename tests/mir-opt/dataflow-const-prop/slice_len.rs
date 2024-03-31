@@ -1,6 +1,6 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ unit-test: DataflowConstProp
-//@ compile-flags: -Zmir-enable-passes=+InstSimplify
+//@ compile-flags: -Zmir-enable-passes=+InstSimplify-before-unreachable-propagation
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 // EMIT_MIR slice_len.main.DataflowConstProp.diff

@@ -1,55 +1,55 @@
-//@ unit-test: InstSimplify
+//@ unit-test: InstSimplify-before-unreachable-propagation
 
-// EMIT_MIR bool_compare.eq_true.InstSimplify.diff
+// EMIT_MIR bool_compare.eq_true.InstSimplify-before-unreachable-propagation.diff
 fn eq_true(x: bool) -> u32 {
     // CHECK-LABEL: fn eq_true(
     // CHECK-NOT: Eq(
     if x == true { 0 } else { 1 }
 }
 
-// EMIT_MIR bool_compare.true_eq.InstSimplify.diff
+// EMIT_MIR bool_compare.true_eq.InstSimplify-before-unreachable-propagation.diff
 fn true_eq(x: bool) -> u32 {
     // CHECK-LABEL: fn true_eq(
     // CHECK-NOT: Eq(
     if true == x { 0 } else { 1 }
 }
 
-// EMIT_MIR bool_compare.ne_true.InstSimplify.diff
+// EMIT_MIR bool_compare.ne_true.InstSimplify-before-unreachable-propagation.diff
 fn ne_true(x: bool) -> u32 {
     // CHECK-LABEL: fn ne_true(
     // CHECK: Not(
     if x != true { 0 } else { 1 }
 }
 
-// EMIT_MIR bool_compare.true_ne.InstSimplify.diff
+// EMIT_MIR bool_compare.true_ne.InstSimplify-before-unreachable-propagation.diff
 fn true_ne(x: bool) -> u32 {
     // CHECK-LABEL: fn true_ne(
     // CHECK: Not(
     if true != x { 0 } else { 1 }
 }
 
-// EMIT_MIR bool_compare.eq_false.InstSimplify.diff
+// EMIT_MIR bool_compare.eq_false.InstSimplify-before-unreachable-propagation.diff
 fn eq_false(x: bool) -> u32 {
     // CHECK-LABEL: fn eq_false(
     // CHECK: Not(
     if x == false { 0 } else { 1 }
 }
 
-// EMIT_MIR bool_compare.false_eq.InstSimplify.diff
+// EMIT_MIR bool_compare.false_eq.InstSimplify-before-unreachable-propagation.diff
 fn false_eq(x: bool) -> u32 {
     // CHECK-LABEL: fn false_eq(
     // CHECK: Not(
     if false == x { 0 } else { 1 }
 }
 
-// EMIT_MIR bool_compare.ne_false.InstSimplify.diff
+// EMIT_MIR bool_compare.ne_false.InstSimplify-before-unreachable-propagation.diff
 fn ne_false(x: bool) -> u32 {
     // CHECK-LABEL: fn ne_false(
     // CHECK-NOT: Ne(
     if x != false { 0 } else { 1 }
 }
 
-// EMIT_MIR bool_compare.false_ne.InstSimplify.diff
+// EMIT_MIR bool_compare.false_ne.InstSimplify-before-unreachable-propagation.diff
 fn false_ne(x: bool) -> u32 {
     // CHECK-LABEL: fn false_ne(
     // CHECK-NOT: Ne(

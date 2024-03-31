@@ -1,5 +1,5 @@
 //@ unit-test: GVN
-//@ compile-flags: -Zmir-enable-passes=+InstSimplify
+//@ compile-flags: -Zmir-enable-passes=+InstSimplify-before-unreachable-propagation
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 

@@ -1,5 +1,5 @@
-- // MIR for `norm2` before InstSimplify
-+ // MIR for `norm2` after InstSimplify
+- // MIR for `norm2` before InstSimplify-before-unreachable-propagation
++ // MIR for `norm2` after InstSimplify-before-unreachable-propagation
   
   fn norm2(_1: [f32; 2]) -> f32 {
       debug x => _1;

@@ -1,7 +1,7 @@
-- // MIR for `false_ne` before InstSimplify
-+ // MIR for `false_ne` after InstSimplify
+- // MIR for `true_eq` before InstSimplify-before-unreachable-propagation
++ // MIR for `true_eq` after InstSimplify-before-unreachable-propagation
   
-  fn false_ne(_1: bool) -> u32 {
+  fn true_eq(_1: bool) -> u32 {
       debug x => _1;
       let mut _0: u32;
       let mut _2: bool;
@@ -11,7 +11,7 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = _1;
--         _2 = Ne(const false, move _3);
+-         _2 = Eq(const true, move _3);
 +         _2 = move _3;
           switchInt(move _2) -> [0: bb2, otherwise: bb1];
       }

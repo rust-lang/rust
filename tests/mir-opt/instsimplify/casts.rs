@@ -1,4 +1,4 @@
-//@ unit-test: InstSimplify
+//@ unit-test: InstSimplify-before-unreachable-propagation
 //@ compile-flags: -Zinline-mir
 #![crate_type = "lib"]
 
@@ -7,7 +7,7 @@ fn generic_cast<T, U>(x: *const T) -> *const U {
     x as *const U
 }
 
-// EMIT_MIR casts.redundant.InstSimplify.diff
+// EMIT_MIR casts.redundant.InstSimplify-before-unreachable-propagation.diff
 pub fn redundant<'a, 'b: 'a>(x: *const &'a u8) -> *const &'a u8 {
     // CHECK-LABEL: fn redundant(
     // CHECK: inlined generic_cast
@@ -15,7 +15,7 @@ pub fn redundant<'a, 'b: 'a>(x: *const &'a u8) -> *const &'a u8 {
     generic_cast::<&'a u8, &'b u8>(x) as *const &'a u8
 }
 
-// EMIT_MIR casts.roundtrip.InstSimplify.diff
+// EMIT_MIR casts.roundtrip.InstSimplify-before-unreachable-propagation.diff
 pub fn roundtrip(x: *const u8) -> *const u8 {
     // CHECK-LABEL: fn roundtrip(
     // CHECK: _4 = _1;

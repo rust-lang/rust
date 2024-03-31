@@ -1,5 +1,5 @@
-- // MIR for `integer_transmutes` before InstSimplify
-+ // MIR for `integer_transmutes` after InstSimplify
+- // MIR for `integer_transmutes` before InstSimplify-before-unreachable-propagation
++ // MIR for `integer_transmutes` after InstSimplify-before-unreachable-propagation
   
   fn integer_transmutes() -> () {
       let mut _0: ();

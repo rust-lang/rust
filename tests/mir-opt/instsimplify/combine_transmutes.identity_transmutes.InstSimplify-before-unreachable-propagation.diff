@@ -1,5 +1,5 @@
-- // MIR for `identity_transmutes` before InstSimplify
-+ // MIR for `identity_transmutes` after InstSimplify
+- // MIR for `identity_transmutes` before InstSimplify-before-unreachable-propagation
++ // MIR for `identity_transmutes` after InstSimplify-before-unreachable-propagation
   
   fn identity_transmutes() -> () {
       let mut _0: ();

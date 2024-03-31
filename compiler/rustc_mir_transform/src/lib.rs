@@ -581,6 +581,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &remove_unneeded_drops::RemoveUnneededDrops,
             // Type instantiation may create uninhabited enums.
             &uninhabited_enum_branching::UninhabitedEnumBranching,
+            &instsimplify::InstSimplify::BeforeUnreachablePropagation,
             &unreachable_prop::UnreachablePropagation,
             &o1(simplify::SimplifyCfg::AfterUninhabitedEnumBranching),
             // Inlining may have introduced a lot of redundant code and a large move pattern.
@@ -591,9 +592,9 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &ref_prop::ReferencePropagation,
             &sroa::ScalarReplacementOfAggregates,
             &match_branches::MatchBranchSimplification,
-            // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
+            // InstSimplify is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
-            &instsimplify::InstSimplify,
+            &instsimplify::InstSimplify::Final,
             &simplify::SimplifyLocals::BeforeConstProp,
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,

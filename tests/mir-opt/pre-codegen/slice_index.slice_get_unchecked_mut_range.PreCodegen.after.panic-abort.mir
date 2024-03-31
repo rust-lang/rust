@@ -14,6 +14,7 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
     }
 
     bb0: {
+        StorageLive(_4);
         StorageLive(_3);
         _3 = &raw mut (*_1);
         _4 = <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked_mut(move _2, move _3) -> [return: bb1, unwind unreachable];
@@ -22,6 +23,7 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
     bb1: {
         StorageDead(_3);
         _0 = &mut (*_4);
+        StorageDead(_4);
         return;
     }
 }

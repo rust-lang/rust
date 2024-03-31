@@ -1,5 +1,5 @@
-- // MIR for `f` before InstSimplify
-+ // MIR for `f` after InstSimplify
+- // MIR for `f` before InstSimplify-before-unreachable-propagation
++ // MIR for `f` after InstSimplify-before-unreachable-propagation
   
   fn f(_1: &T) -> *const T {
       debug a => _1;

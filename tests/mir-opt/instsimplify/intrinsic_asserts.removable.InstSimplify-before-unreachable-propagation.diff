@@ -1,5 +1,5 @@
-- // MIR for `removable` before InstSimplify
-+ // MIR for `removable` after InstSimplify
+- // MIR for `removable` before InstSimplify-before-unreachable-propagation
++ // MIR for `removable` after InstSimplify-before-unreachable-propagation
   
   fn removable() -> () {
       let mut _0: ();

@@ -1,5 +1,5 @@
-- // MIR for `roundtrip` before InstSimplify
-+ // MIR for `roundtrip` after InstSimplify
+- // MIR for `roundtrip` before InstSimplify-before-unreachable-propagation
++ // MIR for `roundtrip` after InstSimplify-before-unreachable-propagation
   
   fn roundtrip(_1: *const u8) -> *const u8 {
       debug x => _1;

@@ -1,5 +1,5 @@
-- // MIR for `generic` before InstSimplify
-+ // MIR for `generic` after InstSimplify
+- // MIR for `generic` before InstSimplify-before-unreachable-propagation
++ // MIR for `generic` after InstSimplify-before-unreachable-propagation
   
   fn generic() -> () {
       let mut _0: ();

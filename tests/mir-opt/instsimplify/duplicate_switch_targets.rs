@@ -1,11 +1,11 @@
-//@ unit-test: InstSimplify
+//@ unit-test: InstSimplify-before-unreachable-propagation
 
 #![feature(custom_mir, core_intrinsics)]
 #![crate_type = "lib"]
 
 use std::intrinsics::mir::*;
 
-// EMIT_MIR duplicate_switch_targets.assert_zero.InstSimplify.diff
+// EMIT_MIR duplicate_switch_targets.assert_zero.InstSimplify-before-unreachable-propagation.diff
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 pub unsafe fn assert_zero(x: u8) -> u8 {
     // CHECK-LABEL: fn assert_zero(
