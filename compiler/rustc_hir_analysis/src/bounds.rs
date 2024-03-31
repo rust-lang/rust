@@ -54,14 +54,20 @@ impl<'tcx> Bounds<'tcx> {
         span: Span,
         polarity: ty::ImplPolarity,
     ) {
-        self.clauses.push((
+        let clause = (
             trait_ref
                 .map_bound(|trait_ref| {
                     ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity })
                 })
                 .to_predicate(tcx),
             span,
-        ));
+        );
+        // FIXME(-Znext-solver): We can likely remove this hack once the new trait solver lands.
+        if tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
+            self.clauses.insert(0, clause);
+        } else {
+            self.clauses.push(clause);
+        }
     }
 
     pub fn push_projection_bound(
