@@ -50,6 +50,7 @@ endgroup
 # - MIR_OPT: if non-empty, re-run test `pass` tests with mir-opt-level=4
 # - MANY_SEEDS: if set to N, run the "many-seeds" tests N times
 # - TEST_BENCH: if non-empty, check that the benchmarks all build
+# - CARGO_MIRI_ENV: if non-empty, set some env vars and config to potentially confuse cargo-miri
 function run_tests {
   if [ -n "${MIRI_TEST_TARGET-}" ]; then
     begingroup "Testing foreign architecture $MIRI_TEST_TARGET"
@@ -94,14 +95,16 @@ function run_tests {
     PYTHON=python
   fi
   # Some environment setup that attempts to confuse the heck out of cargo-miri.
-  if [ "$HOST_TARGET" = x86_64-unknown-linux-gnu ]; then
-    # These act up on Windows (`which miri` produces a filename that does not exist?!?),
-    # so let's do this only on Linux. Also makes sure things work without these set.
-    export RUSTC=$(which rustc) # Produces a warning unless we also set MIRI
+  if [ -n "${CARGO_MIRI_ENV-}" ]; then
+    # These act up on Windows (`which miri` produces a filename that does not exist?!?).
+    # RUSTC is the main thing to set (it changes the first argument our wrapper will see).
+    # Unless MIRI is also set, that produces a warning.
+    export RUSTC=$(which rustc)
     export MIRI=$(rustc +miri --print sysroot)/bin/miri
+    # We entirely ignore other wrappers.
+    mkdir -p .cargo
+    echo 'build.rustc-wrapper = "thisdoesnotexist"' > .cargo/config.toml
   fi
-  mkdir -p .cargo
-  echo 'build.rustc-wrapper = "thisdoesnotexist"' > .cargo/config.toml
   # Run the actual test
   ${PYTHON} test-cargo-miri/run-test.py
   # Clean up
@@ -133,7 +136,7 @@ function run_tests_minimal {
 case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
     # Host
-    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 run_tests
+    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
     MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
     MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
@@ -154,9 +157,9 @@ case $HOST_TARGET in
     ;;
   x86_64-apple-darwin)
     # Host
-    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 run_tests
+    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
-    MIRI_TEST_TARGET=x86_64-pc-windows-msvc run_tests
+    MIRI_TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
     # Extra tier 2
     MIRI_TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture
     ;;
