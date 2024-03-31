@@ -135,6 +135,7 @@ case $HOST_TARGET in
     # Extra tier 1
     MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
     MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
+    MIRI_TEST_TARGET=x86_64-apple-darwin run_tests
     MIRI_TEST_TARGET=i686-pc-windows-gnu run_tests
     MIRI_TEST_TARGET=x86_64-pc-windows-gnu run_tests
     # Extra tier 2
@@ -150,8 +151,8 @@ case $HOST_TARGET in
     # Custom target JSON file
     MIRI_TEST_TARGET=tests/avr.json MIRI_NO_STD=1 run_tests_minimal no_std
     ;;
-  x86_64-apple-darwin)
-    # Host
+  aarch64-apple-darwin)
+    # Host (tier 2)
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
     MIRI_TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
