@@ -192,7 +192,7 @@ impl LangItems {
 
 pub(crate) fn lang_attr(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangItem> {
     let attrs = db.attrs(item);
-    attrs.by_key("lang").string_value().and_then(|it| LangItem::from_str(it))
+    attrs.by_key("lang").string_value().and_then(LangItem::from_str)
 }
 
 pub(crate) fn notable_traits_in_deps(

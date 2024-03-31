@@ -1,6 +1,7 @@
 //! Tests that don't fit into a specific category.
 
 use expect_test::{expect, Expect};
+use ide_db::SymbolKind;
 
 use crate::{
     tests::{
@@ -316,15 +317,15 @@ trait Sub: Super {
 fn foo<T: Sub>() { T::$0 }
 "#,
         expect![[r#"
-                ct C2 (as Sub)           const C2: ()
-                ct CONST (as Super)      const CONST: u8
-                fn func() (as Super)     fn()
-                fn subfunc() (as Sub)    fn()
-                ta SubTy (as Sub)        type SubTy
-                ta Ty (as Super)         type Ty
-                me method(…) (as Super)  fn(&self)
-                me submethod(…) (as Sub) fn(&self)
-            "#]],
+            ct C2 (as Sub)           const C2: ()
+            ct CONST (as Super)      const CONST: u8
+            fn func() (as Super)     fn()
+            fn subfunc() (as Sub)    fn()
+            me method(…) (as Super)  fn(&self)
+            me submethod(…) (as Sub) fn(&self)
+            ta SubTy (as Sub)        type SubTy
+            ta Ty (as Super)         type Ty
+        "#]],
     );
 }
 
@@ -356,15 +357,15 @@ impl<T> Sub for Wrap<T> {
 }
 "#,
         expect![[r#"
-                ct C2 (as Sub)           const C2: ()
-                ct CONST (as Super)      const CONST: u8
-                fn func() (as Super)     fn()
-                fn subfunc() (as Sub)    fn()
-                ta SubTy (as Sub)        type SubTy
-                ta Ty (as Super)         type Ty
-                me method(…) (as Super)  fn(&self)
-                me submethod(…) (as Sub) fn(&self)
-            "#]],
+            ct C2 (as Sub)           const C2: ()
+            ct CONST (as Super)      const CONST: u8
+            fn func() (as Super)     fn()
+            fn subfunc() (as Sub)    fn()
+            me method(…) (as Super)  fn(&self)
+            me submethod(…) (as Sub) fn(&self)
+            ta SubTy (as Sub)        type SubTy
+            ta Ty (as Super)         type Ty
+        "#]],
     );
 }
 
@@ -555,10 +556,10 @@ impl Foo {
 }
 "#,
         expect![[r#"
-                ev Bar    Bar
-                ev Baz    Baz
-                me foo(…) fn(self)
-            "#]],
+            me foo(…) fn(self)
+            ev Bar    Bar
+            ev Baz    Baz
+        "#]],
     );
 }
 
@@ -1399,7 +1400,7 @@ fn main() {
     bar.b$0
 }
 "#,
-        CompletionItemKind::Method,
+        CompletionItemKind::SymbolKind(SymbolKind::Method),
         expect!("const fn(&'foo mut self, &Foo) -> !"),
         expect!("pub const fn baz<'foo>(&'foo mut self, x: &'foo Foo) -> !"),
     );

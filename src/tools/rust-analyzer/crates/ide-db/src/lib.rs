@@ -346,6 +346,7 @@ pub enum SymbolKind {
     Enum,
     Field,
     Function,
+    Method,
     Impl,
     Label,
     LifetimeParam,

@@ -26,7 +26,6 @@ use itertools::Itertools;
 use load_cargo::{load_proc_macro, ProjectFolders};
 use proc_macro_api::ProcMacroServer;
 use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
-use rustc_hash::FxHashSet;
 use stdx::{format_to, thread::ThreadIntent};
 use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, ChangeKind};
@@ -185,10 +184,8 @@ impl GlobalState {
                 message.push_str(
                     "`rust-analyzer.linkedProjects` have been specified, which may be incorrect. Specified project paths:\n",
                 );
-                message.push_str(&format!(
-                    "    {}",
-                    self.config.linked_manifests().map(|it| it.display()).format("\n    ")
-                ));
+                message
+                    .push_str(&format!("    {}", self.config.linked_manifests().format("\n    ")));
                 if self.config.has_linked_project_jsons() {
                     message.push_str("\nAdditionally, one or more project jsons are specified")
                 }
@@ -431,27 +428,46 @@ impl GlobalState {
         }
 
         if let FilesWatcher::Client = self.config.files().watcher {
-            let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
-                watchers: self
-                    .workspaces
-                    .iter()
-                    .flat_map(|ws| ws.to_roots())
-                    .filter(|it| it.is_local)
+            let filter =
+                self.workspaces.iter().flat_map(|ws| ws.to_roots()).filter(|it| it.is_local);
+
+            let watchers = if self.config.did_change_watched_files_relative_pattern_support() {
+                // When relative patterns are supported by the client, prefer using them
+                filter
                     .flat_map(|root| {
-                        root.include.into_iter().flat_map(|it| {
-                            [
-                                format!("{it}/**/*.rs"),
-                                format!("{it}/**/Cargo.toml"),
-                                format!("{it}/**/Cargo.lock"),
-                            ]
+                        root.include.into_iter().flat_map(|base| {
+                            [(base.clone(), "**/*.rs"), (base, "**/Cargo.{lock,toml}")]
+                        })
+                    })
+                    .map(|(base, pat)| lsp_types::FileSystemWatcher {
+                        glob_pattern: lsp_types::GlobPattern::Relative(
+                            lsp_types::RelativePattern {
+                                base_uri: lsp_types::OneOf::Right(
+                                    lsp_types::Url::from_file_path(base).unwrap(),
+                                ),
+                                pattern: pat.to_owned(),
+                            },
+                        ),
+                        kind: None,
+                    })
+                    .collect()
+            } else {
+                // When they're not, integrate the base to make them into absolute patterns
+                filter
+                    .flat_map(|root| {
+                        root.include.into_iter().flat_map(|base| {
+                            [format!("{base}/**/*.rs"), format!("{base}/**/Cargo.{{lock,toml}}")]
                         })
                     })
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {
                         glob_pattern: lsp_types::GlobPattern::String(glob_pattern),
                         kind: None,
                     })
-                    .collect(),
+                    .collect()
             };
+
+            let registration_options =
+                lsp_types::DidChangeWatchedFilesRegistrationOptions { watchers };
             let registration = lsp_types::Registration {
                 id: "workspace/didChangeWatchedFiles".to_owned(),
                 method: "workspace/didChangeWatchedFiles".to_owned(),
@@ -525,26 +541,23 @@ impl GlobalState {
     fn recreate_crate_graph(&mut self, cause: String) {
         // crate graph construction relies on these paths, record them so when one of them gets
         // deleted or created we trigger a reconstruction of the crate graph
-        let mut crate_graph_file_dependencies = FxHashSet::default();
+        let mut crate_graph_file_dependencies = mem::take(&mut self.crate_graph_file_dependencies);
+        self.report_progress(
+            "Building CrateGraph",
+            crate::lsp::utils::Progress::Begin,
+            None,
+            None,
+            None,
+        );
 
         let (crate_graph, proc_macro_paths, layouts, toolchains) = {
             // Create crate graph from all the workspaces
             let vfs = &mut self.vfs.write().0;
-            let loader = &mut self.loader;
 
             let load = |path: &AbsPath| {
-                let _p = tracing::span!(tracing::Level::DEBUG, "switch_workspaces::load").entered();
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 crate_graph_file_dependencies.insert(vfs_path.clone());
-                match vfs.file_id(&vfs_path) {
-                    Some(file_id) => Some(file_id),
-                    None => {
-                        // FIXME: Consider not loading this here?
-                        let contents = loader.handle.load_sync(path);
-                        vfs.set_file_contents(vfs_path.clone(), contents);
-                        vfs.file_id(&vfs_path)
-                    }
-                }
+                vfs.file_id(&vfs_path)
             };
 
             ws_to_crate_graph(&self.workspaces, self.config.extra_env(), load)
@@ -564,6 +577,13 @@ impl GlobalState {
         change.set_toolchains(toolchains);
         self.analysis_host.apply_change(change);
         self.crate_graph_file_dependencies = crate_graph_file_dependencies;
+        self.report_progress(
+            "Building CrateGraph",
+            crate::lsp::utils::Progress::End,
+            None,
+            None,
+            None,
+        );
 
         self.process_changes();
         self.reload_flycheck();
@@ -732,6 +752,8 @@ pub fn ws_to_crate_graph(
         });
         proc_macro_paths.push(crate_proc_macros);
     }
+    crate_graph.shrink_to_fit();
+    proc_macro_paths.shrink_to_fit();
     (crate_graph, proc_macro_paths, layouts, toolchains)
 }
 
@@ -739,7 +761,7 @@ pub(crate) fn should_refresh_for_change(path: &AbsPath, change_kind: ChangeKind)
     const IMPLICIT_TARGET_FILES: &[&str] = &["build.rs", "src/main.rs", "src/lib.rs"];
     const IMPLICIT_TARGET_DIRS: &[&str] = &["src/bin", "examples", "tests", "benches"];
 
-    let file_name = match path.file_name().unwrap_or_default().to_str() {
+    let file_name = match path.file_name() {
         Some(it) => it,
         None => return false,
     };
@@ -754,18 +776,18 @@ pub(crate) fn should_refresh_for_change(path: &AbsPath, change_kind: ChangeKind)
     // .cargo/config{.toml}
     if path.extension().unwrap_or_default() != "rs" {
         let is_cargo_config = matches!(file_name, "config.toml" | "config")
-            && path.parent().map(|parent| parent.as_ref().ends_with(".cargo")).unwrap_or(false);
+            && path.parent().map(|parent| parent.as_str().ends_with(".cargo")).unwrap_or(false);
         return is_cargo_config;
     }
 
-    if IMPLICIT_TARGET_FILES.iter().any(|it| path.as_ref().ends_with(it)) {
+    if IMPLICIT_TARGET_FILES.iter().any(|it| path.as_str().ends_with(it)) {
         return true;
     }
     let parent = match path.parent() {
         Some(it) => it,
         None => return false,
     };
-    if IMPLICIT_TARGET_DIRS.iter().any(|it| parent.as_ref().ends_with(it)) {
+    if IMPLICIT_TARGET_DIRS.iter().any(|it| parent.as_str().ends_with(it)) {
         return true;
     }
     if file_name == "main.rs" {
@@ -773,7 +795,7 @@ pub(crate) fn should_refresh_for_change(path: &AbsPath, change_kind: ChangeKind)
             Some(it) => it,
             None => return false,
         };
-        if IMPLICIT_TARGET_DIRS.iter().any(|it| grand_parent.as_ref().ends_with(it)) {
+        if IMPLICIT_TARGET_DIRS.iter().any(|it| grand_parent.as_str().ends_with(it)) {
             return true;
         }
     }

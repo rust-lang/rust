@@ -175,9 +175,21 @@ fn on_opening_bracket_typed(
             }
         }
 
-        // If it's a statement in a block, we don't know how many statements should be included
-        if ast::ExprStmt::can_cast(expr.syntax().parent()?.kind()) {
-            return None;
+        if let Some(parent) = expr.syntax().parent().and_then(ast::Expr::cast) {
+            let mut node = expr.syntax().clone();
+            let all_prev_sib_attr = loop {
+                match node.prev_sibling() {
+                    Some(sib) if sib.kind().is_trivia() || sib.kind() == SyntaxKind::ATTR => {
+                        node = sib
+                    }
+                    Some(_) => break false,
+                    None => break true,
+                };
+            };
+
+            if all_prev_sib_attr {
+                expr = parent;
+            }
         }
 
         // Insert the closing bracket right after the expression.
@@ -824,6 +836,21 @@ fn f() {
         0 => {()},
         1 => (),
     }
+}
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+fn main() {
+    #[allow(unreachable_code)]
+    $0g();
+}
+            "#,
+            r#"
+fn main() {
+    #[allow(unreachable_code)]
+    {g()};
 }
             "#,
         );
