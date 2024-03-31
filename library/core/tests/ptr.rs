@@ -841,9 +841,17 @@ fn ptr_metadata_bounds() {
     fn static_assert_expected_bounds_for_metadata<Meta>()
     where
         // Keep this in sync with the associated type in `library/core/src/ptr/metadata.rs`
-        Meta: Copy + Send + Sync + Ord + std::hash::Hash + Unpin,
+        Meta: Debug + Copy + Send + Sync + Ord + std::hash::Hash + Unpin,
     {
     }
+}
+
+#[test]
+fn pointee_metadata_debug() {
+    assert_eq!("()", format!("{:?}", metadata::<u32>(&17)));
+    assert_eq!("2", format!("{:?}", metadata::<[u32]>(&[19, 23])));
+    let for_dyn = format!("{:?}", metadata::<dyn Debug>(&29));
+    assert!(for_dyn.starts_with("DynMetadata(0x"), "{:?}", for_dyn);
 }
 
 #[test]
