@@ -729,17 +729,6 @@ mod cgroups {
     }
 }
 
-pub mod guard {
-    use crate::ops::Range;
-    pub type Guard = Range<usize>;
-    pub unsafe fn current() -> Option<Guard> {
-        None
-    }
-    pub unsafe fn init() -> Option<Guard> {
-        None
-    }
-}
-
 // glibc >= 2.15 has a __pthread_get_minstack() function that returns
 // PTHREAD_STACK_MIN plus bytes needed for thread-local storage.
 // We need that information to avoid blowing up when a small stack

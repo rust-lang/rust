@@ -21,7 +21,6 @@ use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{PoisonError, RwLock};
 use crate::sys::stdio::panic_output;
 use crate::sys_common::backtrace;
-use crate::sys_common::thread_info;
 use crate::thread;
 
 #[cfg(not(test))]
@@ -256,7 +255,7 @@ fn default_hook(info: &PanicInfo<'_>) {
             None => "Box<dyn Any>",
         },
     };
-    let thread = thread_info::current_thread();
+    let thread = thread::try_current();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
