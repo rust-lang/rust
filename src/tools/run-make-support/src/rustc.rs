@@ -104,6 +104,20 @@ impl Rustc {
         self
     }
 
+    /// Specify the crate type.
+    pub fn crate_type(&mut self, crate_type: &str) -> &mut Self {
+        self.cmd.arg("--crate-type");
+        self.cmd.arg(crate_type);
+        self
+    }
+
+    /// Specify the edition year.
+    pub fn edition(&mut self, edition: &str) -> &mut Self {
+        self.cmd.arg("--edition");
+        self.cmd.arg(edition);
+        self
+    }
+
     /// Generic command arguments provider. Use `.arg("-Zname")` over `.arg("-Z").arg("arg")`.
     /// This method will panic if a plain `-Z` or `-C` is passed, or if `-Z <name>` or `-C <name>`
     /// is passed (note the space).

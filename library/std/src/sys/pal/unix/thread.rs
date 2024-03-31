@@ -257,6 +257,23 @@ impl Thread {
         CString::new(name).ok()
     }
 
+    #[cfg(target_os = "haiku")]
+    pub fn get_name() -> Option<CString> {
+        unsafe {
+            let mut tinfo = mem::MaybeUninit::<libc::thread_info>::uninit();
+            // See BeOS teams group and threads api.
+            // https://www.haiku-os.org/legacy-docs/bebook/TheKernelKit_ThreadsAndTeams_Overview.html
+            let thread_self = libc::find_thread(ptr::null_mut());
+            let res = libc::get_thread_info(thread_self, tinfo.as_mut_ptr());
+            if res != libc::B_OK {
+                return None;
+            }
+            let info = tinfo.assume_init();
+            let name = slice::from_raw_parts(info.name.as_ptr() as *const u8, info.name.len());
+            CStr::from_bytes_until_nul(name).map(CStr::to_owned).ok()
+        }
+    }
+
     #[cfg(not(any(
         target_os = "linux",
         target_os = "freebsd",
@@ -264,7 +281,8 @@ impl Thread {
         target_os = "macos",
         target_os = "ios",
         target_os = "tvos",
-        target_os = "watchos"
+        target_os = "watchos",
+        target_os = "haiku"
     )))]
     pub fn get_name() -> Option<CString> {
         None
