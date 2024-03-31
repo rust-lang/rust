@@ -27,20 +27,15 @@ export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--locked"
 
-# Determine configuration for installed build
+# Determine configuration for installed build (used by test-cargo-miri).
 echo "Installing release version of Miri"
-./miri install
-
-echo "Checking various feature flag configurations"
-./miri check --no-default-features # make sure this can be built
-./miri check # and this, too
-# `--all-features` is used for the build below, so no extra check needed.
+time ./miri install
 
 # Prepare debug build for direct `./miri` invocations.
 # We enable all features to make sure the Stacked Borrows consistency check runs.
 echo "Building debug version of Miri"
 export CARGO_EXTRA_FLAGS="$CARGO_EXTRA_FLAGS --all-features"
-./miri build --all-targets # the build that all the `./miri test` below will use
+time ./miri build --all-targets # the build that all the `./miri test` below will use
 
 endgroup
 

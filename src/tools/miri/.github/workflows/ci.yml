@@ -130,6 +130,10 @@ jobs:
         run: ./miri fmt --check
       - name: clippy
         run: ./miri clippy -- -D warnings
+      - name: clippy (no features)
+        run: ./miri clippy --no-default-features -- -D warnings
+      - name: clippy (all features)
+        run: ./miri clippy --all-features -- -D warnings
       - name: rustdoc
         run: RUSTDOCFLAGS="-Dwarnings" ./miri cargo doc --document-private-items
 
