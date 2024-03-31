@@ -1271,9 +1271,15 @@ impl<'a> Builder<'a> {
         let mut cmd = Command::new(cargo_miri);
         cmd.env("MIRI", &miri);
         cmd.env("CARGO", &self.initial_cargo);
-        // Need to add the run_compiler libs. Not entirely sure why that has to be one stage up from
-        // what Miri was built for.
-        self.add_rustc_lib_path(run_compiler, &mut cmd);
+        // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`,
+        // so they match the Miri we just built. However this means they are actually living one
+        // stage up, i.e. we are running `stage0-tools-bin/miri` with the libraries in `stage1/lib`.
+        // This is an unfortunate off-by-1 caused (possibly) by the fact that Miri doesn't have an
+        // "assemble" step like rustc does that would cross the stage boundary. We can't use
+        // `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries added to
+        // the PATH due to the stage mismatch.
+        // Also see https://github.com/rust-lang/rust/pull/123192#issuecomment-2028901503.
+        add_dylib_path(self.rustc_lib_paths(run_compiler), &mut cmd);
         cmd
     }
 
