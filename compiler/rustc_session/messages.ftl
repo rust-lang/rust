@@ -96,6 +96,8 @@ session_sanitizer_cfi_requires_lto = `-Zsanitizer=cfi` requires `-Clto` or `-Cli
 
 session_sanitizer_cfi_requires_single_codegen_unit = `-Zsanitizer=cfi` with `-Clto` requires `-Ccodegen-units=1`
 
+session_sanitizer_kcfi_requires_panic_abort = `-Z sanitizer=kcfi` requires `-C panic=abort`
+
 session_sanitizer_not_supported = {$us} sanitizer is not supported for this target
 
 session_sanitizers_not_supported = {$us} sanitizers are not supported for this target
