@@ -59,7 +59,6 @@ pub(super) fn hints(
             }
             let label = label_of_ty(famous_defs, config, &ty)?;
             acc.push(InlayHint {
-                needs_resolve: label.needs_resolve(),
                 range: expr.syntax().text_range(),
                 kind: InlayKind::Chaining,
                 label,

@@ -254,14 +254,14 @@ fn list_test_macros() {
     let res = list().join("\n");
 
     expect![[r#"
-        fn_like_noop [FuncLike]
-        fn_like_panic [FuncLike]
-        fn_like_error [FuncLike]
-        fn_like_clone_tokens [FuncLike]
-        fn_like_mk_literals [FuncLike]
-        fn_like_mk_idents [FuncLike]
-        fn_like_span_join [FuncLike]
-        fn_like_span_ops [FuncLike]
+        fn_like_noop [Bang]
+        fn_like_panic [Bang]
+        fn_like_error [Bang]
+        fn_like_clone_tokens [Bang]
+        fn_like_mk_literals [Bang]
+        fn_like_mk_idents [Bang]
+        fn_like_span_join [Bang]
+        fn_like_span_ops [Bang]
         attr_noop [Attr]
         attr_panic [Attr]
         attr_error [Attr]

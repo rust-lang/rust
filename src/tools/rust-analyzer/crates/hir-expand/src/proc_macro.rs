@@ -23,7 +23,7 @@ impl ProcMacroId {
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
 pub enum ProcMacroKind {
     CustomDerive,
-    FuncLike,
+    Bang,
     Attr,
 }
 

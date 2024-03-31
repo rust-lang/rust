@@ -490,6 +490,18 @@ fn match_expr(p: &mut Parser<'_>) -> CompletedMarker {
     m.complete(p, MATCH_EXPR)
 }
 
+// test_err match_arms_recovery
+// fn foo() {
+//     match () {
+//         _ => (),,
+//         _ => ,
+//         _ => (),
+//          => (),
+//         if true => (),
+//         _ => (),
+//         () if => (),
+//     }
+// }
 pub(crate) fn match_arm_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['{']));
     let m = p.start();
@@ -509,6 +521,10 @@ pub(crate) fn match_arm_list(p: &mut Parser<'_>) {
     while !p.at(EOF) && !p.at(T!['}']) {
         if p.at(T!['{']) {
             error_block(p, "expected match arm");
+            continue;
+        }
+        if p.at(T![,]) {
+            p.err_and_bump("expected pattern");
             continue;
         }
         match_arm(p);
@@ -544,26 +560,30 @@ fn match_arm(p: &mut Parser<'_>) {
     // }
     attributes::outer_attrs(p);
 
-    patterns::pattern_top_r(p, TokenSet::EMPTY);
+    patterns::pattern_top_r(p, TokenSet::new(&[T![=], T![if]]));
     if p.at(T![if]) {
         match_guard(p);
     }
     p.expect(T![=>]);
-    let blocklike = match expr_stmt(p, None) {
-        Some((_, blocklike)) => blocklike,
-        None => BlockLike::NotBlock,
-    };
+    if p.eat(T![,]) {
+        p.error("expected expression");
+    } else {
+        let blocklike = match expr_stmt(p, None) {
+            Some((_, blocklike)) => blocklike,
+            None => BlockLike::NotBlock,
+        };
 
-    // test match_arms_commas
-    // fn foo() {
-    //     match () {
-    //         _ => (),
-    //         _ => {}
-    //         _ => ()
-    //     }
-    // }
-    if !p.eat(T![,]) && !blocklike.is_block() && !p.at(T!['}']) {
-        p.error("expected `,`");
+        // test match_arms_commas
+        // fn foo() {
+        //     match () {
+        //         _ => (),
+        //         _ => {}
+        //         _ => ()
+        //     }
+        // }
+        if !p.eat(T![,]) && !blocklike.is_block() && !p.at(T!['}']) {
+            p.error("expected `,`");
+        }
     }
     m.complete(p, MATCH_ARM);
 }
@@ -579,7 +599,11 @@ fn match_guard(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T![if]));
     let m = p.start();
     p.bump(T![if]);
-    expr(p);
+    if p.at(T![=]) {
+        p.error("expected expression");
+    } else {
+        expr(p);
+    }
     m.complete(p, MATCH_GUARD)
 }
 

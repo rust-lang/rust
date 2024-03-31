@@ -76,7 +76,7 @@ impl Tester {
         );
 
         let workspace = ProjectWorkspace::DetachedFiles {
-            files: vec![tmp_file.clone()],
+            files: vec![tmp_file],
             sysroot,
             rustc_cfg: vec![],
             toolchain: None,

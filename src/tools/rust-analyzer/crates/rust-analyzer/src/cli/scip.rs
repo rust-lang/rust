@@ -27,7 +27,8 @@ impl flags::Scip {
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: true,
         };
-        let root = vfs::AbsPathBuf::assert(std::env::current_dir()?.join(&self.path)).normalize();
+        let root =
+            vfs::AbsPathBuf::assert_utf8(std::env::current_dir()?.join(&self.path)).normalize();
 
         let mut config = crate::config::Config::new(
             root.clone(),
@@ -63,12 +64,7 @@ impl flags::Scip {
                 special_fields: Default::default(),
             })
             .into(),
-            project_root: format!(
-                "file://{}",
-                root.as_os_str()
-                    .to_str()
-                    .ok_or(anyhow::format_err!("Unable to normalize project_root path"))?
-            ),
+            project_root: format!("file://{root}"),
             text_document_encoding: scip_types::TextEncoding::UTF8.into(),
             special_fields: Default::default(),
         };
@@ -216,7 +212,7 @@ fn get_relative_filepath(
     rootpath: &vfs::AbsPathBuf,
     file_id: ide::FileId,
 ) -> Option<String> {
-    Some(vfs.file_path(file_id).as_path()?.strip_prefix(rootpath)?.as_ref().to_str()?.to_owned())
+    Some(vfs.file_path(file_id).as_path()?.strip_prefix(rootpath)?.as_str().to_owned())
 }
 
 // SCIP Ranges have a (very large) optimization that ranges if they are on the same line

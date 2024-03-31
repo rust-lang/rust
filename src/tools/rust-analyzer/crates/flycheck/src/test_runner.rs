@@ -55,13 +55,16 @@ pub struct CargoTestHandle {
 }
 
 // Example of a cargo test command:
-// cargo test -- module::func -Z unstable-options --format=json
+// cargo test --workspace --no-fail-fast -- module::func -Z unstable-options --format=json
 
 impl CargoTestHandle {
     pub fn new(path: Option<&str>) -> std::io::Result<Self> {
         let mut cmd = Command::new(Tool::Cargo.path());
         cmd.env("RUSTC_BOOTSTRAP", "1");
         cmd.arg("test");
+        cmd.arg("--workspace");
+        // --no-fail-fast is needed to ensure that all requested tests will run
+        cmd.arg("--no-fail-fast");
         cmd.arg("--");
         if let Some(path) = path {
             cmd.arg(path);

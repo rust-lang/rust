@@ -307,16 +307,18 @@ impl GlobalState {
             for file in changed_files {
                 let vfs_path = vfs.file_path(file.file_id);
                 if let Some(path) = vfs_path.as_path() {
-                    let path = path.to_path_buf();
-                    if reload::should_refresh_for_change(&path, file.kind()) {
-                        workspace_structure_change = Some((path.clone(), false));
-                    }
-                    if file.is_created_or_deleted() {
-                        has_structure_changes = true;
-                        workspace_structure_change =
-                            Some((path, self.crate_graph_file_dependencies.contains(vfs_path)));
-                    } else if path.extension() == Some("rs".as_ref()) {
+                    has_structure_changes = file.is_created_or_deleted();
+
+                    if file.is_modified() && path.extension() == Some("rs") {
                         modified_rust_files.push(file.file_id);
+                    }
+
+                    let path = path.to_path_buf();
+                    if file.is_created_or_deleted() {
+                        workspace_structure_change.get_or_insert((path, false)).1 |=
+                            self.crate_graph_file_dependencies.contains(vfs_path);
+                    } else if reload::should_refresh_for_change(&path, file.kind()) {
+                        workspace_structure_change.get_or_insert((path.clone(), false));
                     }
                 }
 

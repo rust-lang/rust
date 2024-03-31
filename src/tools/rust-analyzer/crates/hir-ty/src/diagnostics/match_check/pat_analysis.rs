@@ -8,7 +8,8 @@ use rustc_hash::FxHashMap;
 use rustc_pattern_analysis::{
     constructor::{Constructor, ConstructorSet, VariantVisibility},
     index::IdxContainer,
-    Captures, PrivateUninhabitedField, TypeCx,
+    usefulness::{compute_match_usefulness, PlaceValidity, UsefulnessReport},
+    Captures, PatCx, PrivateUninhabitedField,
 };
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
@@ -59,6 +60,18 @@ impl<'p> MatchCheckCtx<'p> {
         Self { module, body, db, exhaustive_patterns, min_exhaustive_patterns }
     }
 
+    pub(crate) fn compute_match_usefulness(
+        &self,
+        arms: &[MatchArm<'p>],
+        scrut_ty: Ty,
+    ) -> Result<UsefulnessReport<'p, Self>, ()> {
+        // FIXME: Determine place validity correctly. For now, err on the safe side.
+        let place_validity = PlaceValidity::MaybeInvalid;
+        // Measured to take ~100ms on modern hardware.
+        let complexity_limit = Some(500000);
+        compute_match_usefulness(self, arms, scrut_ty, place_validity, complexity_limit)
+    }
+
     fn is_uninhabited(&self, ty: &Ty) -> bool {
         is_ty_uninhabited_from(ty, self.module, self.db)
     }
@@ -107,15 +120,17 @@ impl<'p> MatchCheckCtx<'p> {
     }
 
     pub(crate) fn lower_pat(&self, pat: &Pat) -> DeconstructedPat<'p> {
-        let singleton = |pat| vec![pat];
+        let singleton = |pat: DeconstructedPat<'p>| vec![pat.at_index(0)];
         let ctor;
-        let fields: Vec<_>;
+        let mut fields: Vec<_>;
+        let arity;
 
         match pat.kind.as_ref() {
             PatKind::Binding { subpattern: Some(subpat), .. } => return self.lower_pat(subpat),
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;
                 fields = Vec::new();
+                arity = 0;
             }
             PatKind::Deref { subpattern } => {
                 ctor = match pat.ty.kind(Interner) {
@@ -128,23 +143,22 @@ impl<'p> MatchCheckCtx<'p> {
                     }
                 };
                 fields = singleton(self.lower_pat(subpattern));
+                arity = 1;
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
+                fields = subpatterns
+                    .iter()
+                    .map(|pat| {
+                        let idx: u32 = pat.field.into_raw().into();
+                        self.lower_pat(&pat.pattern).at_index(idx as usize)
+                    })
+                    .collect();
                 match pat.ty.kind(Interner) {
                     TyKind::Tuple(_, substs) => {
                         ctor = Struct;
-                        let mut wilds: Vec<_> = substs
-                            .iter(Interner)
-                            .map(|arg| arg.assert_ty_ref(Interner).clone())
-                            .map(DeconstructedPat::wildcard)
-                            .collect();
-                        for pat in subpatterns {
-                            let idx: u32 = pat.field.into_raw().into();
-                            wilds[idx as usize] = self.lower_pat(&pat.pattern);
-                        }
-                        fields = wilds
+                        arity = substs.len(Interner);
                     }
-                    TyKind::Adt(adt, substs) if is_box(self.db, adt.0) => {
+                    TyKind::Adt(adt, _) if is_box(self.db, adt.0) => {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
                         // FIXME(Nadrieril): A `Box` can in theory be matched either with `Box(_,
@@ -157,16 +171,9 @@ impl<'p> MatchCheckCtx<'p> {
                         // normally or through box-patterns. We'll have to figure out a proper
                         // solution when we introduce generalized deref patterns. Also need to
                         // prevent mixing of those two options.
-                        let pat =
-                            subpatterns.iter().find(|pat| pat.field.into_raw() == 0u32.into());
-                        let field = if let Some(pat) = pat {
-                            self.lower_pat(&pat.pattern)
-                        } else {
-                            let ty = substs.at(Interner, 0).assert_ty_ref(Interner).clone();
-                            DeconstructedPat::wildcard(ty)
-                        };
+                        fields.retain(|ipat| ipat.idx == 0);
                         ctor = Struct;
-                        fields = singleton(field);
+                        arity = 1;
                     }
                     &TyKind::Adt(adt, _) => {
                         ctor = match pat.kind.as_ref() {
@@ -181,37 +188,33 @@ impl<'p> MatchCheckCtx<'p> {
                             }
                         };
                         let variant = Self::variant_id_for_adt(&ctor, adt.0).unwrap();
-                        // Fill a vec with wildcards, then place the fields we have at the right
-                        // index.
-                        let mut wilds: Vec<_> = self
-                            .list_variant_fields(&pat.ty, variant)
-                            .map(|(_, ty)| ty)
-                            .map(DeconstructedPat::wildcard)
-                            .collect();
-                        for pat in subpatterns {
-                            let field_id: u32 = pat.field.into_raw().into();
-                            wilds[field_id as usize] = self.lower_pat(&pat.pattern);
-                        }
-                        fields = wilds;
+                        arity = variant.variant_data(self.db.upcast()).fields().len();
                     }
                     _ => {
                         never!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, &pat.ty);
                         ctor = Wildcard;
-                        fields = Vec::new();
+                        fields.clear();
+                        arity = 0;
                     }
                 }
             }
             &PatKind::LiteralBool { value } => {
                 ctor = Bool(value);
                 fields = Vec::new();
+                arity = 0;
             }
             PatKind::Or { pats } => {
                 ctor = Or;
-                fields = pats.iter().map(|pat| self.lower_pat(pat)).collect();
+                fields = pats
+                    .iter()
+                    .enumerate()
+                    .map(|(i, pat)| self.lower_pat(pat).at_index(i))
+                    .collect();
+                arity = pats.len();
             }
         }
         let data = PatData { db: self.db };
-        DeconstructedPat::new(ctor, fields, pat.ty.clone(), data)
+        DeconstructedPat::new(ctor, fields, arity, pat.ty.clone(), data)
     }
 
     pub(crate) fn hoist_witness_pat(&self, pat: &WitnessPat<'p>) -> Pat {
@@ -271,7 +274,7 @@ impl<'p> MatchCheckCtx<'p> {
     }
 }
 
-impl<'p> TypeCx for MatchCheckCtx<'p> {
+impl<'p> PatCx for MatchCheckCtx<'p> {
     type Error = ();
     type Ty = Ty;
     type VariantIdx = EnumVariantId;
@@ -453,7 +456,7 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
         let variant =
             pat.ty().as_adt().and_then(|(adt, _)| Self::variant_id_for_adt(pat.ctor(), adt));
 
-        let db = pat.data().unwrap().db;
+        let db = pat.data().db;
         if let Some(variant) = variant {
             match variant {
                 VariantId::EnumVariantId(v) => {
@@ -475,7 +478,6 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
     }
 
     fn complexity_exceeded(&self) -> Result<(), Self::Error> {
-        // FIXME(Nadrieril): make use of the complexity counter.
         Err(())
     }
 }
