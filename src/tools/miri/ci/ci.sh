@@ -51,37 +51,37 @@ endgroup
 # - MANY_SEEDS: if set to N, run the "many-seeds" tests N times
 # - TEST_BENCH: if non-empty, check that the benchmarks all build
 function run_tests {
-  if [ -n "${MIRI_TEST_TARGET:-}" ]; then
+  if [ -n "${MIRI_TEST_TARGET-}" ]; then
     begingroup "Testing foreign architecture $MIRI_TEST_TARGET"
   else
     begingroup "Testing host architecture"
   fi
 
   ## ui test suite
-  if [ -n "${GC_STRESS:-}" ]; then
-    MIRIFLAGS="${MIRIFLAGS:-} -Zmiri-provenance-gc=1" ./miri test
+  if [ -n "${GC_STRESS-}" ]; then
+    MIRIFLAGS="${MIRIFLAGS-} -Zmiri-provenance-gc=1" ./miri test
   else
     ./miri test
   fi
 
   ## advanced tests
-  if [ -n "${MIR_OPT:-}" ]; then
+  if [ -n "${MIR_OPT-}" ]; then
     # Tests with optimizations (`-O` is what cargo passes, but crank MIR optimizations up all the
     # way, too).
     # Optimizations change diagnostics (mostly backtraces), so we don't check
     # them. Also error locations change so we don't run the failing tests.
     # We explicitly enable debug-assertions here, they are disabled by -O but we have tests
     # which exist to check that we panic on debug assertion failures.
-    MIRIFLAGS="${MIRIFLAGS:-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
+    MIRIFLAGS="${MIRIFLAGS-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
   fi
-  if [ -n "${MANY_SEEDS:-}" ]; then
+  if [ -n "${MANY_SEEDS-}" ]; then
     # Also run some many-seeds tests. 64 seeds means this takes around a minute per test.
     # (Need to invoke via explicit `bash -c` for Windows.)
     for FILE in tests/many-seeds/*.rs; do
       MIRI_SEEDS=$MANY_SEEDS ./miri many-seeds "$BASH" -c "./miri run '$FILE'"
     done
   fi
-  if [ -n "${TEST_BENCH:-}" ]; then
+  if [ -n "${TEST_BENCH-}" ]; then
     # Check that the benchmarks build and run, but without actually benchmarking.
     HYPERFINE="'$BASH' -c" ./miri bench
   fi
@@ -112,7 +112,7 @@ function run_tests {
 }
 
 function run_tests_minimal {
-  if [ -n "${MIRI_TEST_TARGET:-}" ]; then
+  if [ -n "${MIRI_TEST_TARGET-}" ]; then
     begingroup "Testing MINIMAL foreign architecture $MIRI_TEST_TARGET: only testing $@"
   else
     echo "run_tests_minimal requires MIRI_TEST_TARGET to be set"
@@ -169,7 +169,7 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=x86_64-unknown-linux-gnu run_tests
     ;;
   *)
-    echo "FATAL: unknown OS"
+    echo "FATAL: unknown host target: $HOST_TARGET"
     exit 1
     ;;
 esac
