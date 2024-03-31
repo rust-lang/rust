@@ -8,6 +8,7 @@
 # Building and debugging `rustc`
 
 - [How to build and run the compiler](./building/how-to-build-and-run.md)
+    - [Quickstart](./building/quickstart.md)
     - [Prerequisites](./building/prerequisites.md)
     - [Suggested Workflows](./building/suggested.md)
     - [Distribution artifacts](./building/build-install-distribution-artifacts.md)

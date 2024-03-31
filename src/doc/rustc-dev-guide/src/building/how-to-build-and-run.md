@@ -5,6 +5,11 @@
 The compiler is built using a tool called `x.py`. You will need to
 have Python installed to run it.
 
+## Quick Start
+
+For a less in-depth quick-start of getting the compiler running, see [quickstart](./quickstart.md).
+
+
 ## Get the source code
 
 The main repository is [`rust-lang/rust`][repo]. This contains the compiler,
