@@ -88,9 +88,6 @@ pub fn expand(
             return vec![item];
         }
     };
-    let mut orig_item: P<ast::Item> = item.clone().expect_item();
-    let primal = orig_item.ident.clone();
-
     // Allow using `#[autodiff(...)]` only on a Fn
     let (has_ret, sig, sig_span) = if let Annotatable::Item(item) = &item
         && let ItemKind::Fn(box ast::Fn { sig, .. }) = &item.kind
@@ -100,6 +97,11 @@ pub fn expand(
         ecx.sess.dcx().emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
         return vec![item];
     };
+
+    // Now we know that item is a Item::Fn
+    let mut orig_item: P<ast::Item> = item.clone().expect_item();
+    let primal = orig_item.ident.clone();
+
     // create TokenStream from vec elemtents:
     // meta_item doesn't have a .tokens field
     let comma: Token = Token::new(TokenKind::Comma, Span::default());
