@@ -16,6 +16,7 @@ macro_rules! no_mangle {
     }
 }
 
+#[cfg(all(not(windows), not(target_vendor = "apple")))]
 no_mangle! {
     fn acos(x: f64) -> f64;
     fn asin(x: f64) -> f64;
