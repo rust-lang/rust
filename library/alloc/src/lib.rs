@@ -128,6 +128,7 @@
 #![feature(error_in_core)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
+#![feature(extend_one_unchecked)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(generic_nonzero)]

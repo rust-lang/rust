@@ -21,21 +21,12 @@ where
         //     self.push_back(item);
         // }
 
-        // May only be called if `deque.len() < deque.capacity()`
-        unsafe fn push_unchecked<T, A: Allocator>(deque: &mut VecDeque<T, A>, element: T) {
-            // SAFETY: Because of the precondition, it's guaranteed that there is space
-            // in the logical array after the last element.
-            unsafe { deque.buffer_write(deque.to_physical_idx(deque.len), element) };
-            // This can't overflow because `deque.len() < deque.capacity() <= usize::MAX`.
-            deque.len += 1;
-        }
-
         while let Some(element) = iter.next() {
             let (lower, _) = iter.size_hint();
             self.reserve(lower.saturating_add(1));
 
             // SAFETY: We just reserved space for at least one element.
-            unsafe { push_unchecked(self, element) };
+            unsafe { self.push_unchecked(element) };
 
             // Inner loop to avoid repeatedly calling `reserve`.
             while self.len < self.capacity() {
@@ -43,7 +34,7 @@ where
                     return;
                 };
                 // SAFETY: The loop condition guarantees that `self.len() < self.capacity()`.
-                unsafe { push_unchecked(self, element) };
+                unsafe { self.push_unchecked(element) };
             }
         }
     }
