@@ -257,20 +257,19 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // Apply debuginfo to the newly allocated locals.
     fx.debug_introduce_locals(&mut start_bx);
 
-    let reachable_blocks = mir.reachable_blocks_in_mono(cx.tcx(), instance);
-
     // The builders will be created separately for each basic block at `codegen_block`.
     // So drop the builder of `start_llbb` to avoid having two at the same time.
     drop(start_bx);
+
+    let reachable_blocks = traversal::mono_reachable_as_bitset(mir, cx.tcx(), instance);
 
     // Codegen the body of each block using reverse postorder
     for (bb, _) in traversal::reverse_postorder(mir) {
         if reachable_blocks.contains(bb) {
             fx.codegen_block(bb);
         } else {
-            // This may have references to things we didn't monomorphize, so we
-            // don't actually codegen the body. We still create the block so
-            // terminators in other blocks can reference it without worry.
+            // We want to skip this block, because it's not reachable. But we still create
+            // the block so terminators in other blocks can reference it.
             fx.codegen_block_as_unreachable(bb);
         }
     }
