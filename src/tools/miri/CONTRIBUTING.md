@@ -241,18 +241,20 @@ We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit chan
 rustc and Miri repositories. You can install it as follows:
 
 ```sh
-cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r22.12.06
+RUSTFLAGS="--cap-lints=warn" cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r23.12.04
 ```
 
 Josh will automatically be started and stopped by `./miri`.
 
 ### Importing changes from the rustc repo
 
+*Note: this usually happens automatically, so these steps rarely have to be done by hand.*
+
 We assume we start on an up-to-date master branch in the Miri repo.
 
 ```sh
 # Fetch and merge rustc side of the history. Takes ca 5 min the first time.
-# This will also update the 'rustc-version' file.
+# This will also update the `rustc-version` file.
 ./miri rustc-pull
 # Update local toolchain and apply formatting.
 ./miri toolchain && ./miri fmt
@@ -266,12 +268,6 @@ needed.
 
 ### Exporting changes to the rustc repo
 
-Keep in mind that pushing is the most complicated job that josh has to do -- pulling just filters
-the rustc history, but pushing needs to construct a new rustc history that would filter to the given
-Miri history! To avoid problems, it is a good idea to always pull immediately before you push. If
-you are getting strange errors, chances are you are running into [this josh
-bug](https://github.com/josh-project/josh/issues/998). In that case, please get in touch on Zulip.
-
 We will use the josh proxy to push to your fork of rustc. Run the following in the Miri repo,
 assuming we are on an up-to-date master branch:
 
@@ -280,9 +276,9 @@ assuming we are on an up-to-date master branch:
 ./miri rustc-push YOUR_NAME miri
 ```
 
-This will create a new branch called 'miri' in your fork, and the output should
-include a link to create a rustc PR that will integrate those changes into the
-main repository.
+This will create a new branch called `miri` in your fork, and the output should include a link that
+creates a rustc PR to integrate those changes into the main repository. If that PR has conflicts,
+you need to pull rustc changes into Miri first, and then re-do the rustc push.
 
 If this fails due to authentication problems, it can help to make josh push via ssh instead of
 https. Add the following to your `.gitconfig`:
