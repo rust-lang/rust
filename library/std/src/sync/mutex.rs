@@ -195,8 +195,9 @@ pub struct Mutex<T: ?Sized> {
 ///   and `T` can be sent across thread boundaries. This is crucial for allowing
 ///   safe access to the protected data from multiple threads.
 ///
-/// - `Sync` is implemented for `Mutex<T>` if and only if `T` is both `Send` and
-///   `Sync`. This ensures that `Mutex<T>` can be safely shared between threads
+/// - `Sync` is implemented for `Mutex<T>` if and only if `T` is `Send`,
+///   since passing around a &Mutex<T> is basically the same as passing a &mut T.
+///   This ensures that `Mutex<T>` can be safely shared between threads
 ///   without requiring further synchronization, assuming `T` can be sent across
 ///   thread boundaries. It guarantees that multiple threads can safely access the
 ///   protected data concurrently without data races.
@@ -209,23 +210,6 @@ pub struct Mutex<T: ?Sized> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
 
-/// SAFETY
-///
-/// The `Send` and `Sync` implementations for `MutexGuard` ensure that it is
-/// safe to share instances of `MutexGuard` between threads when the protected
-/// data is also thread-safe. The following explains the safety guarantees:
-///
-/// - `MutexGuard` is not `Send` because it represents exclusive access to the
-///   data protected by `Mutex`, and sending it to another thread could lead to
-///   data races or other unsafe behavior, violating the mutual exclusion property
-///   provided by `Mutex`.
-///
-/// - `Sync` is implemented for `MutexGuard` if and only if `T` is `Send`. This
-///   ensures that `MutexGuard` can be safely shared between threads if the
-///   protected data can be sent across thread boundaries. It guarantees that
-///   multiple threads can safely access the protected data concurrently without
-///   data races.
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 
