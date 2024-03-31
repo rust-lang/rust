@@ -20,8 +20,8 @@ struct Foo<'lt, T, const C: usize> {
             en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            sp Self      Foo<'_, {unknown}, _>
-            st Foo<…>    Foo<'_, {unknown}, _>
+            sp Self      Foo<'static, {unknown}, _>
+            st Foo<…>    Foo<'static, {unknown}, _>
             st Record    Record
             st Tuple     Tuple
             st Unit      Unit
@@ -45,8 +45,8 @@ struct Foo<'lt, T, const C: usize>(f$0);
             en Enum       Enum
             ma makro!(…)  macro_rules! makro
             md module
-            sp Self       Foo<'_, {unknown}, _>
-            st Foo<…>     Foo<'_, {unknown}, _>
+            sp Self       Foo<'static, {unknown}, _>
+            st Foo<…>     Foo<'static, {unknown}, _>
             st Record     Record
             st Tuple      Tuple
             st Unit       Unit

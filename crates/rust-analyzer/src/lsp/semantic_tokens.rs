@@ -127,13 +127,14 @@ macro_rules! define_semantic_token_modifiers {
 
 define_semantic_token_modifiers![
     standard {
+        ASYNC,
         DOCUMENTATION,
         DECLARATION,
         STATIC,
         DEFAULT_LIBRARY,
     }
     custom {
-        (ASYNC, "async"),
+        (ASSOCIATED, "associated"),
         (ATTRIBUTE_MODIFIER, "attribute"),
         (CALLABLE, "callable"),
         (CONSTANT, "constant"),

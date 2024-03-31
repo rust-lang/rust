@@ -108,7 +108,7 @@ impl ProcMacros {
                     (trait_name.to_string(), ProcMacroKind::CustomDerive)
                 }
                 bridge::client::ProcMacro::Bang { name, .. } => {
-                    (name.to_string(), ProcMacroKind::FuncLike)
+                    (name.to_string(), ProcMacroKind::Bang)
                 }
                 bridge::client::ProcMacro::Attr { name, .. } => {
                     (name.to_string(), ProcMacroKind::Attr)

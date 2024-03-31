@@ -20,6 +20,7 @@ tracing.workspace = true
 
 hir-expand.workspace = true
 ide-db.workspace = true
+paths.workspace = true
 proc-macro-api.workspace = true
 project-model.workspace = true
 span.workspace = true
