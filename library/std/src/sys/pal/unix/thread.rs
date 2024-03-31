@@ -225,9 +225,14 @@ impl Thread {
         // Newlib, Emscripten, and VxWorks have no way to set a thread name.
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "netbsd",))]
     pub fn get_name() -> Option<CString> {
+        #[cfg(target_os = "linux")]
         const TASK_COMM_LEN: usize = 16;
+        #[cfg(target_os = "freebsd")]
+        const TASK_COMM_LEN: usize = libc::MAXCOMLEN + 1;
+        #[cfg(target_os = "netbsd")]
+        const TASK_COMM_LEN: usize = 32;
         let mut name = vec![0u8; TASK_COMM_LEN];
         let res = unsafe {
             libc::pthread_getname_np(libc::pthread_self(), name.as_mut_ptr().cast(), name.len())
@@ -254,6 +259,8 @@ impl Thread {
 
     #[cfg(not(any(
         target_os = "linux",
+        target_os = "freebsd",
+        target_os = "netbsd",
         target_os = "macos",
         target_os = "ios",
         target_os = "tvos",
