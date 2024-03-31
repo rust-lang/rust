@@ -1632,11 +1632,13 @@ pub struct AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a> {
     pub ne: &'a str,
     pub deref_left: &'a str,
     pub deref_right: &'a str,
+    pub l_modifiers: &'a str,
+    pub r_modifiers: &'a str,
     #[suggestion_part(code = "{ne}std::ptr::eq({deref_left}")]
     pub left: Span,
-    #[suggestion_part(code = ", {deref_right}")]
+    #[suggestion_part(code = "{l_modifiers}, {deref_right}")]
     pub middle: Span,
-    #[suggestion_part(code = ")")]
+    #[suggestion_part(code = "{r_modifiers})")]
     pub right: Span,
 }
 
@@ -1652,11 +1654,13 @@ pub enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
         ne: &'a str,
         deref_left: &'a str,
         deref_right: &'a str,
+        l_modifiers: &'a str,
+        r_modifiers: &'a str,
         #[suggestion_part(code = "{ne}std::ptr::addr_eq({deref_left}")]
         left: Span,
-        #[suggestion_part(code = ", {deref_right}")]
+        #[suggestion_part(code = "{l_modifiers}, {deref_right}")]
         middle: Span,
-        #[suggestion_part(code = ")")]
+        #[suggestion_part(code = "{r_modifiers})")]
         right: Span,
     },
     #[multipart_suggestion(
@@ -1670,13 +1674,15 @@ pub enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
         deref_right: &'a str,
         paren_left: &'a str,
         paren_right: &'a str,
+        l_modifiers: &'a str,
+        r_modifiers: &'a str,
         #[suggestion_part(code = "({deref_left}")]
         left_before: Option<Span>,
-        #[suggestion_part(code = "{paren_left}.cast::<()>()")]
+        #[suggestion_part(code = "{l_modifiers}{paren_left}.cast::<()>()")]
         left_after: Span,
         #[suggestion_part(code = "({deref_right}")]
         right_before: Option<Span>,
-        #[suggestion_part(code = "{paren_right}.cast::<()>()")]
+        #[suggestion_part(code = "{r_modifiers}{paren_right}.cast::<()>()")]
         right_after: Span,
     },
 }

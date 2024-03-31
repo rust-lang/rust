@@ -1211,6 +1211,11 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.dcx().emit_err(errors::SanitizerCfiRequiresLto);
     }
 
+    // KCFI requires panic=abort
+    if sess.is_sanitizer_kcfi_enabled() && sess.panic_strategy() != PanicStrategy::Abort {
+        sess.dcx().emit_err(errors::SanitizerKcfiRequiresPanicAbort);
+    }
+
     // LLVM CFI using rustc LTO requires a single codegen unit.
     if sess.is_sanitizer_cfi_enabled()
         && sess.lto() == config::Lto::Fat

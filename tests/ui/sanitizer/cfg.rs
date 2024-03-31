@@ -11,6 +11,7 @@
 //@[cfi]compile-flags:     -Clto -Ccodegen-units=1
 //@[kcfi]needs-llvm-components: x86
 //@[kcfi]compile-flags:    -Zsanitizer=kcfi    --cfg kcfi --target x86_64-unknown-none
+//@[kcfi]compile-flags:    -C panic=abort
 //@[leak]needs-sanitizer-leak
 //@[leak]compile-flags:    -Zsanitizer=leak    --cfg leak
 //@[memory]needs-sanitizer-memory

@@ -1624,6 +1624,13 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_adt(tcx: TyCtxt<'tcx>, def: AdtDef<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
+        debug_assert_eq!(
+            tcx.generics_of(def.did()).count(),
+            args.len(),
+            "wrong number of args for ADT: {:#?} vs {:#?}",
+            tcx.generics_of(def.did()).params,
+            args
+        );
         Ty::new(tcx, Adt(def, args))
     }
 
