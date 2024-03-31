@@ -23,6 +23,7 @@ jobs:
         cargo fmt --check
         rustfmt --check build_system/main.rs
         rustfmt --check example/*
+        rustfmt --check scripts/*.rs
 
 
   test:
