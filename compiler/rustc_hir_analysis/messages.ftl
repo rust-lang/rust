@@ -295,6 +295,8 @@ hir_analysis_not_supported_delegation =
     {$descr} is not supported yet
     .label = callee defined here
 
+hir_analysis_only_current_traits_adt = `{$name}` is not defined in the current crate
+
 hir_analysis_only_current_traits_arbitrary = only traits defined in the current crate can be implemented for arbitrary types
 
 hir_analysis_only_current_traits_foreign = this is not defined in the current crate because this is a foreign trait

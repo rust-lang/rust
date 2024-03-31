@@ -3,6 +3,7 @@
 use std::rc::Rc;
 use std::sync::Arc;
 use std::cmp::PartialEq;
+use std::ptr::NonNull;
 
 struct A;
 struct B;
@@ -49,6 +50,17 @@ fn main() {
     //~^ WARN ambiguous wide pointer comparison
     let _ = a.gt(&b);
     //~^ WARN ambiguous wide pointer comparison
+
+    {
+        let a = NonNull::<dyn T>::new(a as *mut _).unwrap();
+        let b = NonNull::<dyn T>::new(b as *mut _).unwrap();
+        let _ = a == b;
+        //~^ WARN ambiguous wide pointer comparison
+        let _ = a >= b;
+        //~^ WARN ambiguous wide pointer comparison
+        let _ = &a == &b;
+        //~^ WARN ambiguous wide pointer comparison
+    }
 
     {
         // &*const ?Sized

@@ -670,7 +670,11 @@ fn lint_wide_pointer<'tcx>(
     l: &'tcx hir::Expr<'tcx>,
     r: &'tcx hir::Expr<'tcx>,
 ) {
-    let ptr_unsized = |mut ty: Ty<'tcx>| -> Option<(usize, bool)> {
+    let ptr_unsized = |mut ty: Ty<'tcx>| -> Option<(
+        /* number of refs */ usize,
+        /* modifiers */ String,
+        /* is dyn */ bool,
+    )> {
         let mut refs = 0;
         // here we remove any "implicit" references and count the number
         // of them to correctly suggest the right number of deref
@@ -678,11 +682,20 @@ fn lint_wide_pointer<'tcx>(
             ty = *inner_ty;
             refs += 1;
         }
-        match ty.kind() {
-            ty::RawPtr(ty, _) => (!ty.is_sized(cx.tcx, cx.param_env))
-                .then(|| (refs, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn)))),
-            _ => None,
-        }
+
+        // get the inner type of a pointer (or akin)
+        let mut modifiers = String::new();
+        ty = match ty.kind() {
+            ty::RawPtr(ty, _) => *ty,
+            ty::Adt(def, args) if cx.tcx.is_diagnostic_item(sym::NonNull, def.did()) => {
+                modifiers.push_str(".as_ptr()");
+                args.type_at(0)
+            }
+            _ => return None,
+        };
+
+        (!ty.is_sized(cx.tcx, cx.param_env))
+            .then(|| (refs, modifiers, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn))))
     };
 
     // the left and right operands can have references, remove any explicit references
@@ -696,10 +709,10 @@ fn lint_wide_pointer<'tcx>(
         return;
     };
 
-    let Some((l_ty_refs, l_inner_ty_is_dyn)) = ptr_unsized(l_ty) else {
+    let Some((l_ty_refs, l_modifiers, l_inner_ty_is_dyn)) = ptr_unsized(l_ty) else {
         return;
     };
-    let Some((r_ty_refs, r_inner_ty_is_dyn)) = ptr_unsized(r_ty) else {
+    let Some((r_ty_refs, r_modifiers, r_inner_ty_is_dyn)) = ptr_unsized(r_ty) else {
         return;
     };
 
@@ -724,6 +737,9 @@ fn lint_wide_pointer<'tcx>(
     let deref_left = &*"*".repeat(l_ty_refs);
     let deref_right = &*"*".repeat(r_ty_refs);
 
+    let l_modifiers = &*l_modifiers;
+    let r_modifiers = &*r_modifiers;
+
     cx.emit_span_lint(
         AMBIGUOUS_WIDE_POINTER_COMPARISONS,
         e.span,
@@ -733,6 +749,8 @@ fn lint_wide_pointer<'tcx>(
                     ne,
                     deref_left,
                     deref_right,
+                    l_modifiers,
+                    r_modifiers,
                     left,
                     middle,
                     right,
@@ -743,6 +761,8 @@ fn lint_wide_pointer<'tcx>(
                     ne,
                     deref_left,
                     deref_right,
+                    l_modifiers,
+                    r_modifiers,
                     left,
                     middle,
                     right,
@@ -751,6 +771,8 @@ fn lint_wide_pointer<'tcx>(
                 AmbiguousWidePointerComparisonsAddrSuggestion::Cast {
                     deref_left,
                     deref_right,
+                    l_modifiers,
+                    r_modifiers,
                     paren_left: if l_ty_refs != 0 { ")" } else { "" },
                     paren_right: if r_ty_refs != 0 { ")" } else { "" },
                     left_before: (l_ty_refs != 0).then_some(l_span.shrink_to_lo()),

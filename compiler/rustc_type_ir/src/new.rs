@@ -6,6 +6,8 @@ pub trait Ty<I: Interner<Ty = Self>> {
 
 pub trait Region<I: Interner<Region = Self>> {
     fn new_anon_bound(interner: I, debruijn: DebruijnIndex, var: BoundVar) -> Self;
+
+    fn new_static(interner: I) -> Self;
 }
 
 pub trait Const<I: Interner<Const = Self>> {

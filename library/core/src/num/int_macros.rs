@@ -60,32 +60,6 @@ macro_rules! int_impl {
         #[stable(feature = "int_bits_const", since = "1.53.0")]
         pub const BITS: u32 = <$UnsignedT>::BITS;
 
-        /// Converts a string slice in a given base to an integer.
-        ///
-        /// The string is expected to be an optional `+` or `-` sign followed by digits.
-        /// Leading and trailing whitespace represent an error. Digits are a subset of these characters,
-        /// depending on `radix`:
-        ///
-        ///  * `0-9`
-        ///  * `a-z`
-        ///  * `A-Z`
-        ///
-        /// # Panics
-        ///
-        /// This function panics if `radix` is not in the range from 2 to 36.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::from_str_radix(\"A\", 16), Ok(10));")]
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
-            from_str_radix(src, radix)
-        }
-
         /// Returns the number of ones in the binary representation of `self`.
         ///
         /// # Examples

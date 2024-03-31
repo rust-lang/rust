@@ -571,7 +571,9 @@ pub fn make_tests(
         &modified_tests,
         &mut poisoned,
     )
-    .unwrap_or_else(|_| panic!("Could not read tests from {}", config.src_base.display()));
+    .unwrap_or_else(|reason| {
+        panic!("Could not read tests from {}: {reason}", config.src_base.display())
+    });
 
     if poisoned {
         eprintln!();

@@ -2,13 +2,14 @@ use smallvec::SmallVec;
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use crate::fold::TypeSuperFoldable;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
     new, BoundVar, BoundVars, CanonicalVarInfo, ConstKind, DebugWithInfcx, RegionKind, TyKind,
     UniverseIndex,
 };
 
-pub trait Interner: Sized {
+pub trait Interner: Sized + Copy {
     type DefId: Copy + Debug + Hash + Eq;
     type AdtDef: Copy + Debug + Hash + Eq;
 
@@ -34,6 +35,7 @@ pub trait Interner: Sized {
         + Into<Self::GenericArg>
         + IntoKind<Kind = TyKind<Self>>
         + TypeSuperVisitable<Self>
+        + TypeSuperFoldable<Self>
         + Flags
         + new::Ty<Self>;
     type Tys: Copy + Debug + Hash + Eq + IntoIterator<Item = Self::Ty>;
@@ -57,6 +59,7 @@ pub trait Interner: Sized {
         + IntoKind<Kind = ConstKind<Self>>
         + ConstTy<Self>
         + TypeSuperVisitable<Self>
+        + TypeSuperFoldable<Self>
         + Flags
         + new::Const<Self>;
     type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
@@ -82,7 +85,13 @@ pub trait Interner: Sized {
     type PlaceholderRegion: Copy + Debug + Hash + Eq + PlaceholderLike;
 
     // Predicates
-    type Predicate: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
+    type Predicate: Copy
+        + Debug
+        + Hash
+        + Eq
+        + TypeSuperVisitable<Self>
+        + TypeSuperFoldable<Self>
+        + Flags;
     type TraitPredicate: Copy + Debug + Hash + Eq;
     type RegionOutlivesPredicate: Copy + Debug + Hash + Eq;
     type TypeOutlivesPredicate: Copy + Debug + Hash + Eq;
