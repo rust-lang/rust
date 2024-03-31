@@ -29,9 +29,7 @@ fn match_const<T: MyTrait>() -> &'static str {
 fn if_const_debug<T: MyTrait>() -> i32 {
     // CHECK-LABEL: fn if_const_debug(
     // CHECK: my_bool => const <T as MyTrait>::ASSOC_BOOL;
-    // FIXME: `if` forces a temporary (unlike `match`), so the const isn't direct
-    // CHECK: _3 = const <T as MyTrait>::ASSOC_BOOL;
-    // CHECK: switchInt(move _3)
+    // CHECK: switchInt(const <T as MyTrait>::ASSOC_BOOL)
     let my_bool = T::ASSOC_BOOL;
     do_whatever();
     if my_bool { 7 } else { 42 }
