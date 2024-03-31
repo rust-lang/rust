@@ -1174,8 +1174,7 @@ fn collect_and_partition_mono_items(
             let target_attrs: &AutoDiffAttrs = tcx.autodiff_attrs(target_id);
             let mut input_activities: Vec<DiffActivity> = target_attrs.input_activity.clone();
             if target_attrs.is_source() {
-                dbg!("source");
-                dbg!(&target_attrs);
+                trace!("source found: {:?}", target_id);
             }
             if !target_attrs.apply_autodiff() {
                 continue;
@@ -1211,7 +1210,6 @@ fn collect_and_partition_mono_items(
             let mut new_target_attrs = target_attrs.clone();
             new_target_attrs.input_activity = input_activities;
             let itm = new_target_attrs.into_item(symb, target_symbol, inputs, output);
-            dbg!(&itm);
             autodiff_items.push(itm);
         };
 
@@ -1277,9 +1275,9 @@ fn collect_and_partition_mono_items(
         }
     }
     if autodiff_items.len() > 0 {
-        println!("AUTODIFF ITEMS EXIST");
+        trace!("AUTODIFF ITEMS EXIST");
         for item in &mut *autodiff_items {
-            dbg!(&item);
+            trace!("{}", &item);
         }
     }
 

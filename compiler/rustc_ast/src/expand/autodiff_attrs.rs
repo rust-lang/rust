@@ -1,6 +1,6 @@
 use crate::expand::typetree::TypeTree;
 use std::str::FromStr;
-use std::fmt::{Display, Formatter};
+use std::fmt::{self, Display, Formatter};
 use crate::ptr::P;
 use crate::{Ty, TyKind};
 
@@ -14,7 +14,7 @@ pub enum DiffMode {
 }
 
 impl Display for DiffMode {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             DiffMode::Inactive => write!(f, "Inactive"),
             DiffMode::Source => write!(f, "Source"),
@@ -209,7 +209,6 @@ impl AutoDiffAttrs {
             DiffMode::Inactive => false,
             DiffMode::Source => false,
             _ => {
-                dbg!(&self);
                 true
             }
         }
@@ -222,7 +221,6 @@ impl AutoDiffAttrs {
         inputs: Vec<TypeTree>,
         output: TypeTree,
     ) -> AutoDiffItem {
-        dbg!(&self);
         AutoDiffItem { source, target, inputs, output, attrs: self }
     }
 }
@@ -235,3 +233,14 @@ pub struct AutoDiffItem {
     pub inputs: Vec<TypeTree>,
     pub output: TypeTree,
 }
+
+impl fmt::Display for AutoDiffItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Differentiating {} -> {}", self.source, self.target)?;
+        write!(f, " with attributes: {:?}", self.attrs)?;
+        write!(f, " with inputs: {:?}", self.inputs)?;
+        write!(f, " with output: {:?}", self.output)
+    }
+}
+
+

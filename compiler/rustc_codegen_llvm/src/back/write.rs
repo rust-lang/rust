@@ -692,7 +692,6 @@ fn get_params(fnc: &Value) -> Vec<&Value> {
 
 unsafe fn create_call<'a>(tgt: &'a Value, src: &'a Value, rev_mode: bool,
     llmod: &'a llvm::Module, llcx: &llvm::Context) {
-    dbg!(&tgt);
    // first, remove all calls from fnc
    let bb = LLVMGetFirstBasicBlock(tgt);
    let br = LLVMRustGetTerminator(bb);
@@ -711,7 +710,7 @@ unsafe fn create_call<'a>(tgt: &'a Value, src: &'a Value, rev_mode: bool,
     if inner_param_num == outer_param_num {
         call_args = outer_args;
     } else {
-        dbg!("Different number of args, adjusting");
+        trace!("Different number of args, adjusting");
         let mut outer_pos: usize = 0;
         let mut inner_pos: usize = 0;
         // copy over if they are identical.
@@ -784,15 +783,8 @@ unsafe fn create_call<'a>(tgt: &'a Value, src: &'a Value, rev_mode: bool,
         let md_val = LLVMMetadataAsValue(llcx, md);
         let md2 = llvm::LLVMSetMetadata(struct_ret, md_ty, md_val);
     } else {
-        dbg!("No dbg info");
-        dbg!(&inst);
+        trace!("No dbg info");
     }
-
-    // Our placeholder originally ended with `loop {}`, and therefore got the noreturn fnc attr.
-    // This is not true anymore, so we remove it.
-    //LLVMRustRemoveFncAttr(tgt, AttributeKind::NoReturn);
-
-    dbg!(&tgt);
 
     // Now clean up placeholder code.
     LLVMRustEraseInstBefore(bb, last_inst);
@@ -809,15 +801,11 @@ unsafe fn create_call<'a>(tgt: &'a Value, src: &'a Value, rev_mode: bool,
         }
     }
     if f_return_type != void_type {
-        dbg!("Returning struct");
         let _ret = LLVMBuildRet(builder, struct_ret);
     } else {
-        dbg!("Returning void");
         let _ret = LLVMBuildRetVoid(builder);
     }
     LLVMDisposeBuilder(builder);
-
-    dbg!(&tgt);
     let _fnc_ok =
         LLVMVerifyFunction(tgt, llvm::LLVMVerifierFailureAction::LLVMAbortProcessAction);
 }
@@ -944,7 +932,9 @@ pub(crate) unsafe fn differentiate(
     _typetrees: FxHashMap<String, DiffTypeTree>,
     _config: &ModuleConfig,
 ) -> Result<(), FatalError> {
-    dbg!(&diff_items);
+    for item in &diff_items {
+        trace!("{}", item);
+    }
 
     let llmod = module.module_llvm.llmod();
     let llcx = &module.module_llvm.llcx;

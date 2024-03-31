@@ -876,7 +876,6 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
 
     // We don't support volatile / extern / (global?) values.
     // Just because I didn't had time to test them, and it seems less urgent.
-    dbg!(&fnc);
     let args_uncacheable = vec![0; input_tts.len()];
     assert!(args_uncacheable.len() == input_activity.len());
     let num_fnc_args = LLVMCountParams(fnc);
@@ -938,8 +937,6 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
 
     let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
 
-    dbg!(&fnc);
-
     let mut args_tree = input_tts.iter().map(|x| x.inner).collect::<Vec<_>>();
 
     // We don't support volatile / extern / (global?) values.
@@ -964,9 +961,11 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
         KnownValues: known_values.as_mut_ptr(),
     };
 
-    dbg!(&primary_ret);
-    dbg!(&ret_activity);
-    dbg!(&input_activity);
+    trace!("{}", &primary_ret);
+    trace!("{}", &ret_activity);
+    for i in &input_activity {
+        trace!("{}", &i);
+    }
     let res = EnzymeCreatePrimalAndGradient(
         logic_ref, // Logic
         std::ptr::null(),
@@ -989,7 +988,6 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
         std::ptr::null_mut(),   // write augmented function to this
         0,
     );
-    dbg!(&res);
     res
 }
 
@@ -2788,6 +2786,18 @@ pub mod Shared_AD {
         DFT_DUP_ARG = 1,
         DFT_CONSTANT = 2,
         DFT_DUP_NONEED = 3,
+    }
+
+    impl fmt::Display for CDIFFE_TYPE {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let value = match self {
+                CDIFFE_TYPE::DFT_OUT_DIFF => "DFT_OUT_DIFF",
+                CDIFFE_TYPE::DFT_DUP_ARG  => "DFT_DUP_ARG",
+                CDIFFE_TYPE::DFT_CONSTANT => "DFT_CONSTANT",
+                CDIFFE_TYPE::DFT_DUP_NONEED => "DFT_DUP_NONEED",
+            };
+            write!(f, "{}", value)
+        }
     }
 
     pub fn cdiffe_from(act: DiffActivity) -> CDIFFE_TYPE {

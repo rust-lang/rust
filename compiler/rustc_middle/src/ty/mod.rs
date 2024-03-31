@@ -2741,7 +2741,6 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec<Diff
     // Recommended by compiler-errors:
     // https://discord.com/channels/273534239310479360/957720175619215380/1223454360676208751
     let x = tcx.instantiate_bound_regions_with_erased(fnc_binder);
-    dbg!("creating fncTree");
 
     let mut offset = 0;
     let mut visited = vec![];
@@ -2766,7 +2765,7 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec<Diff
                     da.insert(i + 1 + offset, DiffActivity::Const);
                     offset += 1;
                 }
-                dbg!("ABI MATCHING\n\n\n");
+                trace!("ABI MATCHING!");
                 continue;
             }
         }
@@ -2782,12 +2781,11 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec<Diff
 
 pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize, safety: bool, visited: &mut Vec<Ty<'a>>) -> TypeTree {
     if depth > 20 {
-        dbg!(&ty);
+        trace!("depth > 20 for ty: {}", &ty);
     }
     if visited.contains(&ty) {
         // recursive type
-        dbg!("recursive type");
-        dbg!(&ty);
+        trace!("recursive type: {}", &ty);
         return TypeTree::new();
     }
     visited.push(ty);
@@ -2847,7 +2845,6 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize, safety: b
                 FieldsShape::Array { .. } => {return TypeTree::new();}, //e.g. core::arch::x86_64::__m128i, TODO: later
                 FieldsShape::Union(_) => {return TypeTree::new();},
                 FieldsShape::Primitive => {return TypeTree::new();},
-                //_ => {dbg!(&adt_def); panic!("")},
             };
 
             let substs = match ty.kind() {

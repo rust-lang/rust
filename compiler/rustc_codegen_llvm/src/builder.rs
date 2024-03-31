@@ -162,7 +162,6 @@ fn add_tt<'ll>(llmod: &'ll llvm::Module, llcx: &'ll llvm::Context,val: &'ll Valu
         }
         unsafe { llvm::EnzymeTypeTreeToStringFree(c_str.as_ptr()) };
     }
-    dbg!(&val);
 }
 
 
