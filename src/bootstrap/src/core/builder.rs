@@ -554,29 +554,7 @@ impl<'a> ShouldRun<'a> {
     ///
     /// [`path`]: ShouldRun::path
     pub fn paths(mut self, paths: &[&str]) -> Self {
-        static SUBMODULES_PATHS: OnceLock<Vec<String>> = OnceLock::new();
-
-        let init_submodules_paths = |src: &PathBuf| {
-            let file = File::open(src.join(".gitmodules")).unwrap();
-
-            let mut submodules_paths = vec![];
-            for line in BufReader::new(file).lines() {
-                if let Ok(line) = line {
-                    let line = line.trim();
-
-                    if line.starts_with("path") {
-                        let actual_path =
-                            line.split(' ').last().expect("Couldn't get value of path");
-                        submodules_paths.push(actual_path.to_owned());
-                    }
-                }
-            }
-
-            submodules_paths
-        };
-
-        let submodules_paths =
-            SUBMODULES_PATHS.get_or_init(|| init_submodules_paths(&self.builder.src));
+        let submodules_paths = self.builder.get_all_submodules();
 
         self.paths.insert(PathSet::Set(
             paths
@@ -2149,6 +2127,37 @@ impl<'a> Builder<'a> {
         self.verbose_than(1, || println!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
         self.cache.put(step, out.clone());
         out
+    }
+
+    /// Return paths of all submodules managed by git.
+    /// If the current checkout is not managed by git, returns an empty slice.
+    pub fn get_all_submodules(&self) -> &[String] {
+        if !self.rust_info().is_managed_git_subrepository() {
+            return &[];
+        }
+
+        static SUBMODULES_PATHS: OnceLock<Vec<String>> = OnceLock::new();
+
+        let init_submodules_paths = |src: &PathBuf| {
+            let file = File::open(src.join(".gitmodules")).unwrap();
+
+            let mut submodules_paths = vec![];
+            for line in BufReader::new(file).lines() {
+                if let Ok(line) = line {
+                    let line = line.trim();
+
+                    if line.starts_with("path") {
+                        let actual_path =
+                            line.split(' ').last().expect("Couldn't get value of path");
+                        submodules_paths.push(actual_path.to_owned());
+                    }
+                }
+            }
+
+            submodules_paths
+        };
+
+        &SUBMODULES_PATHS.get_or_init(|| init_submodules_paths(&self.src))
     }
 
     /// Ensure that a given step is built *only if it's supposed to be built by default*, returning
