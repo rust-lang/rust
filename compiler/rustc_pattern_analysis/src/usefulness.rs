@@ -1384,12 +1384,35 @@ impl<Cx: PatCx> WitnessStack<Cx> {
     /// pats: [(false, "foo"), _, true]
     /// result: [Enum::Variant { a: (false, "foo"), b: _ }, true]
     /// ```
-    fn apply_constructor(&mut self, pcx: &PlaceCtxt<'_, Cx>, ctor: &Constructor<Cx>) {
+    fn apply_constructor(
+        mut self,
+        pcx: &PlaceCtxt<'_, Cx>,
+        ctor: &Constructor<Cx>,
+    ) -> SmallVec<[Self; 1]> {
         let len = self.0.len();
         let arity = pcx.ctor_arity(ctor);
-        let fields = self.0.drain((len - arity)..).rev().collect();
-        let pat = WitnessPat::new(ctor.clone(), fields, pcx.ty.clone());
-        self.0.push(pat);
+        let fields: Vec<_> = self.0.drain((len - arity)..).rev().collect();
+        if matches!(ctor, Constructor::UnionField)
+            && fields.iter().filter(|p| !matches!(p.ctor(), Constructor::Wildcard)).count() >= 2
+        {
+            // Convert a `Union { a: p, b: q }` witness into `Union { a: p }` and `Union { b: q }`.
+            // First add `Union { .. }` to `self`.
+            self.0.push(WitnessPat::wild_from_ctor(pcx.cx, ctor.clone(), pcx.ty.clone()));
+            fields
+                .into_iter()
+                .enumerate()
+                .filter(|(_, p)| !matches!(p.ctor(), Constructor::Wildcard))
+                .map(|(i, p)| {
+                    let mut ret = self.clone();
+                    // Fill the `i`th field of the union with `p`.
+                    ret.0.last_mut().unwrap().fields[i] = p;
+                    ret
+                })
+                .collect()
+        } else {
+            self.0.push(WitnessPat::new(ctor.clone(), fields, pcx.ty.clone()));
+            smallvec![self]
+        }
     }
 }
 
@@ -1462,8 +1485,8 @@ impl<Cx: PatCx> WitnessMatrix<Cx> {
             *self = ret;
         } else {
             // Any other constructor we unspecialize as expected.
-            for witness in self.0.iter_mut() {
-                witness.apply_constructor(pcx, ctor)
+            for witness in std::mem::take(&mut self.0) {
+                self.0.extend(witness.apply_constructor(pcx, ctor));
             }
         }
     }

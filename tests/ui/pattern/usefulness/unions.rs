@@ -20,12 +20,13 @@ fn main() {
             U8AsBool { n: 1.. } => {}
         }
         match x {
-            //~^ ERROR non-exhaustive patterns: `U8AsBool { n: 0_u8, b: false }` not covered
+            //~^ ERROR non-exhaustive patterns: `U8AsBool { n: 0_u8 }` and `U8AsBool { b: false }` not covered
             U8AsBool { b: true } => {}
             U8AsBool { n: 1.. } => {}
         }
+        // Our approach can report duplicate witnesses sometimes.
         match (x, true) {
-            //~^ ERROR non-exhaustive patterns: `(U8AsBool { n: 0_u8, b: false }, false)` and `(U8AsBool { n: 0_u8, b: true }, false)` not covered
+            //~^ ERROR non-exhaustive patterns: `(U8AsBool { n: 0_u8 }, false)`, `(U8AsBool { b: false }, false)`, `(U8AsBool { n: 0_u8 }, false)` and 1 more not covered
             (U8AsBool { b: true }, true) => {}
             (U8AsBool { b: false }, true) => {}
             (U8AsBool { n: 1.. }, true) => {}
