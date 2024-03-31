@@ -220,6 +220,12 @@ fn main() {
         }
     }
 
+    if env::var_os("RUSTC_BOLT_LINK_FLAGS").is_some() {
+        if let Some("rustc_driver") = crate_name {
+            cmd.arg("-Clink-args=-Wl,-q");
+        }
+    }
+
     let is_test = args.iter().any(|a| a == "--test");
     if verbose > 2 {
         let rust_env_vars =
@@ -242,12 +248,6 @@ fn main() {
         );
         eprintln!("{prefix} sysroot: {sysroot:?}");
         eprintln!("{prefix} libdir: {libdir:?}");
-    }
-
-    if env::var_os("RUSTC_BOLT_LINK_FLAGS").is_some() {
-        if let Some("rustc_driver") = crate_name {
-            cmd.arg("-Clink-args=-Wl,-q");
-        }
     }
 
     bin_helpers::maybe_dump(format!("stage{stage}-rustc"), &cmd);

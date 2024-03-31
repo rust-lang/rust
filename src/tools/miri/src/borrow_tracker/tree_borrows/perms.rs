@@ -181,8 +181,12 @@ impl Permission {
     pub fn is_initial(&self) -> bool {
         self.inner.is_initial()
     }
+    /// Check if `self` is the terminal state of a pointer (is `Disabled`).
+    pub fn is_disabled(&self) -> bool {
+        self.inner == Disabled
+    }
 
-    /// Default initial permission of the root of a new tree.
+    /// Default initial permission of the root of a new tree at inbounds positions.
     /// Must *only* be used for the root, this is not in general an "initial" permission!
     pub fn new_active() -> Self {
         Self { inner: Active }
@@ -193,9 +197,15 @@ impl Permission {
         Self { inner: Reserved { ty_is_freeze, conflicted: false } }
     }
 
-    /// Default initial permission of a reborrowed shared reference
+    /// Default initial permission of a reborrowed shared reference.
     pub fn new_frozen() -> Self {
         Self { inner: Frozen }
+    }
+
+    /// Default initial permission of  the root of a new tre at out-of-bounds positions.
+    /// Must *only* be used for the root, this is not in general an "initial" permission!
+    pub fn new_disabled() -> Self {
+        Self { inner: Disabled }
     }
 
     /// Apply the transition to the inner PermissionPriv.

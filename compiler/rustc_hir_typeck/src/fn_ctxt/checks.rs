@@ -1916,22 +1916,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx hir::Pat<'tcx>,
         ty: Ty<'tcx>,
     ) {
-        struct V {
-            pat_hir_ids: Vec<hir::HirId>,
-        }
-
-        impl<'tcx> Visitor<'tcx> for V {
-            fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
-                self.pat_hir_ids.push(p.hir_id);
-                hir::intravisit::walk_pat(self, p);
-            }
-        }
         if let Err(guar) = ty.error_reported() {
+            struct OverwritePatternsWithError {
+                pat_hir_ids: Vec<hir::HirId>,
+            }
+            impl<'tcx> Visitor<'tcx> for OverwritePatternsWithError {
+                fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
+                    self.pat_hir_ids.push(p.hir_id);
+                    hir::intravisit::walk_pat(self, p);
+                }
+            }
             // Override the types everywhere with `err()` to avoid knock on errors.
             let err = Ty::new_error(self.tcx, guar);
             self.write_ty(hir_id, err);
             self.write_ty(pat.hir_id, err);
-            let mut visitor = V { pat_hir_ids: vec![] };
+            let mut visitor = OverwritePatternsWithError { pat_hir_ids: vec![] };
             hir::intravisit::walk_pat(&mut visitor, pat);
             // Mark all the subpatterns as `{type error}` as well. This allows errors for specific
             // subpatterns to be silenced.
