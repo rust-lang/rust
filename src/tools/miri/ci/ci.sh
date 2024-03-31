@@ -162,7 +162,8 @@ case $HOST_TARGET in
     ;;
   i686-pc-windows-msvc)
     # Host
-    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 run_tests
+    # Only smoke-test `many-seeds`; 64 runs take 15min here!
+    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=1 TEST_BENCH=1 run_tests
     # Extra tier 1
     # We really want to ensure a Linux target works on a Windows host,
     # and a 64bit target works on a 32bit host.
