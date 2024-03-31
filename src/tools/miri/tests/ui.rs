@@ -1,9 +1,10 @@
-use colored::*;
-use regex::bytes::Regex;
 use std::ffi::OsString;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
+
+use colored::*;
+use regex::bytes::Regex;
 use ui_test::color_eyre::eyre::{Context, Result};
 use ui_test::{
     status_emitter, CommandBuilder, Config, Format, Match, Mode, OutputConflictHandling,
@@ -44,12 +45,15 @@ fn build_so_for_c_ffi_tests() -> PathBuf {
             // This is to avoid automatically adding `malloc`, etc.
             // Source: https://anadoxin.org/blog/control-over-symbol-exports-in-gcc.html/
             "-fPIC",
-            "-Wl,--version-script=tests/extern-so/libcode.version",
+            "-Wl,--version-script=tests/extern-so/libtest.map",
         ])
         .output()
         .expect("failed to generate shared object file for testing external C function calls");
     if !cc_output.status.success() {
-        panic!("error in generating shared object file for testing external C function calls");
+        panic!(
+            "error in generating shared object file for testing external C function calls:\n{}",
+            String::from_utf8_lossy(&cc_output.stderr),
+        );
     }
     so_file_path
 }
@@ -120,10 +124,10 @@ fn run_tests(
     config.program.args.push("--target".into());
     config.program.args.push(target.into());
 
-    // If we're on linux, and we're testing the extern-so functionality,
-    // then build the shared object file for testing external C function calls
-    // and push the relevant compiler flag.
-    if cfg!(target_os = "linux") && path.starts_with("tests/extern-so/") {
+    // If we're testing the extern-so functionality, then build the shared object file for testing
+    // external C function calls and push the relevant compiler flag.
+    if path.starts_with("tests/extern-so/") {
+        assert!(cfg!(target_os = "linux"));
         let so_file_path = build_so_for_c_ffi_tests();
         let mut flag = std::ffi::OsString::from("-Zmiri-extern-so-file=");
         flag.push(so_file_path.into_os_string());
