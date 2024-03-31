@@ -1,0 +1,34 @@
+error[E0004]: non-exhaustive patterns: `U8AsBool { n: 0_u8, b: false }` not covered
+  --> $DIR/unions.rs:22:15
+   |
+LL |         match x {
+   |               ^ pattern `U8AsBool { n: 0_u8, b: false }` not covered
+   |
+note: `U8AsBool` defined here
+  --> $DIR/unions.rs:3:11
+   |
+LL |     union U8AsBool {
+   |           ^^^^^^^^
+   = note: the matched value is of type `U8AsBool`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~             U8AsBool { n: 1.. } => {},
+LL +             U8AsBool { n: 0_u8, b: false } => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `(U8AsBool { n: 0_u8, b: false }, false)` and `(U8AsBool { n: 0_u8, b: true }, false)` not covered
+  --> $DIR/unions.rs:27:15
+   |
+LL |         match (x, true) {
+   |               ^^^^^^^^^ patterns `(U8AsBool { n: 0_u8, b: false }, false)` and `(U8AsBool { n: 0_u8, b: true }, false)` not covered
+   |
+   = note: the matched value is of type `(U8AsBool, bool)`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~             (U8AsBool { n: 1.. }, true) => {},
+LL +             (U8AsBool { n: 0_u8, b: false }, false) | (U8AsBool { n: 0_u8, b: true }, false) => todo!()
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.
