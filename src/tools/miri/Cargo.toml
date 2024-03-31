@@ -59,6 +59,7 @@ harness = false
 [features]
 default = ["stack-cache"]
 stack-cache = []
+stack-cache-consistency-check = ["stack-cache"]
 
 # Be aware that this file is inside a workspace when used via the
 # submodule in the rustc repo. That means there are many cargo features

@@ -479,10 +479,11 @@ impl Command {
         Ok(())
     }
 
-    fn run(dep: bool, flags: Vec<OsString>) -> Result<()> {
+    fn run(dep: bool, mut flags: Vec<OsString>) -> Result<()> {
         let mut e = MiriEnv::new()?;
         // Scan for "--target" to overwrite the "MIRI_TEST_TARGET" env var so
-        // that we set the MIRI_SYSROOT up the right way.
+        // that we set the MIRI_SYSROOT up the right way. We must make sure that
+        // MIRI_TEST_TARGET and `--target` are in sync.
         use itertools::Itertools;
         let target = flags
             .iter()
@@ -493,33 +494,35 @@ impl Command {
             // Found it!
             e.sh.set_var("MIRI_TEST_TARGET", target);
         } else if let Ok(target) = std::env::var("MIRI_TEST_TARGET") {
-            // Make sure miri actually uses this target.
-            let miriflags = e.sh.var("MIRIFLAGS").unwrap_or_default();
-            e.sh.set_var("MIRIFLAGS", format!("{miriflags} --target {target}"));
+            // Convert `MIRI_TEST_TARGET` into `--target`.
+            flags.push("--target".into());
+            flags.push(target.into());
         }
-        // Scan for "--edition" (we'll set one ourselves if that flag is not present).
+        // Scan for "--edition", set one ourselves if that flag is not present.
         let have_edition =
             flags.iter().take_while(|arg| *arg != "--").any(|arg| *arg == "--edition");
+        if !have_edition {
+            flags.push("--edition=2021".into()); // keep in sync with `tests/ui.rs`.`
+        }
 
         // Prepare a sysroot.
         e.build_miri_sysroot(/* quiet */ true)?;
 
-        // Then run the actual command.
+        // Then run the actual command. Also add MIRIFLAGS.
         let miri_manifest = path!(e.miri_dir / "Cargo.toml");
         let miri_flags = e.sh.var("MIRIFLAGS").unwrap_or_default();
         let miri_flags = flagsplit(&miri_flags);
         let toolchain = &e.toolchain;
         let extra_flags = &e.cargo_extra_flags;
-        let edition_flags = (!have_edition).then_some("--edition=2021"); // keep in sync with `tests/ui.rs`.`
         if dep {
             cmd!(
                 e.sh,
-                "cargo +{toolchain} --quiet test {extra_flags...} --manifest-path {miri_manifest} --test ui -- --miri-run-dep-mode {miri_flags...} {edition_flags...} {flags...}"
+                "cargo +{toolchain} --quiet test {extra_flags...} --manifest-path {miri_manifest} --test ui -- --miri-run-dep-mode {miri_flags...} {flags...}"
             ).quiet().run()?;
         } else {
             cmd!(
                 e.sh,
-                "cargo +{toolchain} --quiet run {extra_flags...} --manifest-path {miri_manifest} -- {miri_flags...} {edition_flags...} {flags...}"
+                "cargo +{toolchain} --quiet run {extra_flags...} --manifest-path {miri_manifest} -- {miri_flags...} {flags...}"
             ).quiet().run()?;
         }
         Ok(())
