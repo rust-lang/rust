@@ -25,8 +25,8 @@ pub enum RegionTarget<'tcx> {
 
 #[derive(Default, Debug, Clone)]
 pub struct RegionDeps<'tcx> {
-    larger: FxIndexSet<RegionTarget<'tcx>>,
-    smaller: FxIndexSet<RegionTarget<'tcx>>,
+    pub larger: FxIndexSet<RegionTarget<'tcx>>,
+    pub smaller: FxIndexSet<RegionTarget<'tcx>>,
 }
 
 pub enum AutoTraitResult<A> {
@@ -81,19 +81,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let infcx = tcx.infer_ctxt().build();
         let mut selcx = SelectionContext::new(&infcx);
-        for polarity in [true, false] {
+        for polarity in [ty::PredicatePolarity::Positive, ty::PredicatePolarity::Negative] {
             let result = selcx.select(&Obligation::new(
                 tcx,
                 ObligationCause::dummy(),
                 orig_env,
-                ty::TraitPredicate {
-                    trait_ref,
-                    polarity: if polarity {
-                        ty::PredicatePolarity::Positive
-                    } else {
-                        ty::PredicatePolarity::Negative
-                    },
-                },
+                ty::TraitPredicate { trait_ref, polarity },
             ));
             if let Ok(Some(ImplSource::UserDefined(_))) = result {
                 debug!(
