@@ -51,5 +51,24 @@ LL +         Some(_) => (),
 LL +     };
    |
 
-error: aborting due to 3 previous errors
+error: this let-binding has unit value
+  --> tests/ui/let_unit.rs:190:9
+   |
+LL |         let res = returns_unit();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: omit the `let` binding
+   |
+LL |         returns_unit();
+   |
+help: variable `res` of type `()` can be replaced with explicit `()`
+   |
+LL |         returns_result(()).unwrap();
+   |                        ~~
+help: variable `res` of type `()` can be replaced with explicit `()`
+   |
+LL |         returns_result(()).unwrap();
+   |                        ~~
+
+error: aborting due to 4 previous errors
 
