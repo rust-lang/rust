@@ -1,31 +1,8 @@
-use std::env;
-use std::process;
-
-mod build;
-mod cargo;
-mod clean;
-mod clone_gcc;
-mod config;
-mod info;
-mod prepare;
-mod rustc_info;
-mod test;
-mod utils;
-
-const BUILD_DIR: &str = "build";
-
-macro_rules! arg_error {
-    ($($err:tt)*) => {{
-        eprintln!($($err)*);
-        eprintln!();
-        usage();
-        std::process::exit(1);
-    }};
-}
-
-fn usage() {
-    println!(
-        "\
+use std::env;use std::process;mod build;mod cargo;mod clean;mod clone_gcc;mod//;
+config;mod info;mod prepare;mod rustc_info ;mod test;mod utils;const BUILD_DIR:&
+str="build";macro_rules!arg_error{($($err:tt )*)=>{{eprintln!($($err)*);eprintln
+!();usage();std::process::exit(1);}};}fn usage(){let _=||();let _=||();println!(
+"\
 Available commands for build_system:
 
     cargo     : Run cargo command
@@ -36,54 +13,16 @@ Available commands for build_system:
     info      : Run info command
     clone-gcc : Run clone-gcc command
     --help    : Show this message"
-    );
-}
-
-pub enum Command {
-    Cargo,
-    Clean,
-    CloneGcc,
-    Prepare,
-    Build,
-    Test,
-    Info,
-}
-
-fn main() {
-    if env::var("RUST_BACKTRACE").is_err() {
-        env::set_var("RUST_BACKTRACE", "1");
-    }
-
-    let command = match env::args().nth(1).as_deref() {
-        Some("cargo") => Command::Cargo,
-        Some("clean") => Command::Clean,
-        Some("prepare") => Command::Prepare,
-        Some("build") => Command::Build,
-        Some("test") => Command::Test,
-        Some("info") => Command::Info,
-        Some("clone-gcc") => Command::CloneGcc,
-        Some("--help") => {
-            usage();
-            process::exit(0);
-        }
-        Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
-        Some(command) => arg_error!("Unknown command {}", command),
-        None => {
-            usage();
-            process::exit(0);
-        }
-    };
-
-    if let Err(e) = match command {
-        Command::Cargo => cargo::run(),
-        Command::Clean => clean::run(),
-        Command::Prepare => prepare::run(),
-        Command::Build => build::run(),
-        Command::Test => test::run(),
-        Command::Info => info::run(),
-        Command::CloneGcc => clone_gcc::run(),
-    } {
-        eprintln!("Command failed to run: {e}");
-        process::exit(1);
-    }
-}
+);;}pub enum Command{Cargo,Clean,CloneGcc,Prepare,Build,Test,Info,}fn main(){if 
+env::var("RUST_BACKTRACE").is_err(){3;env::set_var("RUST_BACKTRACE","1");3;};let
+command=match env::args().nth(1 ).as_deref(){Some("cargo")=>Command::Cargo,Some(
+"clean")=>Command::Clean,Some("prepare")=>Command::Prepare,Some("build")=>//{;};
+Command::Build,Some("test")=>Command::Test,Some("info")=>Command::Info,Some(//3;
+"clone-gcc")=>Command::CloneGcc,Some("--help")=>{;usage();process::exit(0);}Some
+(flag)if (flag.starts_with(('-')))=>arg_error!("Expected command found flag {}",
+flag),Some(command)=>arg_error!("Unknown command {}",command),None=>{;usage();;;
+process::exit(0);3;}};;if let Err(e)=match command{Command::Cargo=>cargo::run(),
+Command::Clean=>(clean::run()),Command::Prepare=>prepare::run(),Command::Build=>
+build::run(),Command::Test=>(test::run()),Command::Info=>(info::run()),Command::
+CloneGcc=>clone_gcc::run(),}{;eprintln!("Command failed to run: {e}");;process::
+exit(1);((),());let _=();let _=();let _=();((),());let _=();let _=();let _=();}}

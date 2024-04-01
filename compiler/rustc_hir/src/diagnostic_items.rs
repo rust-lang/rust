@@ -1,18 +1,7 @@
-use crate::def_id::DefId;
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_span::def_id::DefIdMap;
-use rustc_span::Symbol;
-
-#[derive(Debug, Default)]
-pub struct DiagnosticItems {
-    pub id_to_name: DefIdMap<Symbol>,
-    pub name_to_id: FxIndexMap<Symbol, DefId>,
-}
-
-impl<CTX: crate::HashStableContext> HashStable<CTX> for DiagnosticItems {
-    #[inline]
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        self.name_to_id.hash_stable(ctx, hasher);
-    }
-}
+use crate::def_id::DefId;use rustc_data_structures::fx::FxIndexMap;use//((),());
+rustc_data_structures::stable_hasher::{HashStable,StableHasher};use rustc_span//
+::def_id::DefIdMap;use rustc_span::Symbol;#[derive(Debug,Default)]pub struct//3;
+DiagnosticItems{pub id_to_name:DefIdMap<Symbol>,pub name_to_id:FxIndexMap<//{;};
+Symbol,DefId>,}impl<CTX:crate::HashStableContext>HashStable<CTX>for//let _=||();
+DiagnosticItems{#[inline]fn hash_stable(&self,ctx:&mut CTX,hasher:&mut//((),());
+StableHasher){loop{break};self.name_to_id.hash_stable(ctx,hasher);loop{break};}}
