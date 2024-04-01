@@ -1009,10 +1009,10 @@ impl<'a> Builder<'a> {
         StepDescription::run(v, self, paths);
     }
 
-    /// Obtain a compiler at a given stage and for a given host. Explicitly does
-    /// not take `Compiler` since all `Compiler` instances are meant to be
-    /// obtained through this function, since it ensures that they are valid
-    /// (i.e., built and assembled).
+    /// Obtain a compiler at a given stage and for a given host (i.e., this is the target that the
+    /// compiler will run on, *not* the target it will build code for). Explicitly does not take
+    /// `Compiler` since all `Compiler` instances are meant to be obtained through this function,
+    /// since it ensures that they are valid (i.e., built and assembled).
     pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
         self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
     }
@@ -1231,6 +1231,36 @@ impl<'a> Builder<'a> {
         cmd
     }
 
+    pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> Command {
+        assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
+        let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
+
+        let miri = self.ensure(tool::Miri {
+            compiler: build_compiler,
+            target: self.build.build,
+            extra_features: Vec::new(),
+        });
+        let cargo_miri = self.ensure(tool::CargoMiri {
+            compiler: build_compiler,
+            target: self.build.build,
+            extra_features: Vec::new(),
+        });
+        // Invoke cargo-miri, make sure we can find miri and cargo.
+        let mut cmd = Command::new(cargo_miri);
+        cmd.env("MIRI", &miri);
+        cmd.env("CARGO", &self.initial_cargo);
+        // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`,
+        // so they match the Miri we just built. However this means they are actually living one
+        // stage up, i.e. we are running `stage0-tools-bin/miri` with the libraries in `stage1/lib`.
+        // This is an unfortunate off-by-1 caused (possibly) by the fact that Miri doesn't have an
+        // "assemble" step like rustc does that would cross the stage boundary. We can't use
+        // `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries added to
+        // the PATH due to the stage mismatch.
+        // Also see https://github.com/rust-lang/rust/pull/123192#issuecomment-2028901503.
+        add_dylib_path(self.rustc_lib_paths(run_compiler), &mut cmd);
+        cmd
+    }
+
     pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
         let mut cmd = Command::new(self.bootstrap_out.join("rustdoc"));
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
@@ -1272,20 +1302,26 @@ impl<'a> Builder<'a> {
         compiler: Compiler,
         mode: Mode,
         target: TargetSelection,
-        cmd: &str,
+        cmd: &str, // FIXME make this properly typed
     ) -> Command {
-        let mut cargo = if cmd == "clippy" {
-            self.cargo_clippy_cmd(compiler)
+        let mut cargo;
+        if cmd == "clippy" {
+            cargo = self.cargo_clippy_cmd(compiler);
+            cargo.arg(cmd);
+        } else if let Some(subcmd) = cmd.strip_prefix("miri-") {
+            cargo = self.cargo_miri_cmd(compiler);
+            cargo.arg("miri").arg(subcmd);
         } else {
-            Command::new(&self.initial_cargo)
-        };
+            cargo = Command::new(&self.initial_cargo);
+            cargo.arg(cmd);
+        }
 
         // Run cargo from the source root so it can find .cargo/config.
         // This matters when using vendoring and the working directory is outside the repository.
         cargo.current_dir(&self.src);
 
         let out_dir = self.stage_out(compiler, mode);
-        cargo.env("CARGO_TARGET_DIR", &out_dir).arg(cmd);
+        cargo.env("CARGO_TARGET_DIR", &out_dir);
 
         // Found with `rg "init_env_logger\("`. If anyone uses `init_env_logger`
         // from out of tree it shouldn't matter, since x.py is only used for
@@ -1315,7 +1351,8 @@ impl<'a> Builder<'a> {
 
         if self.config.rust_optimize.is_release() {
             // FIXME: cargo bench/install do not accept `--release`
-            if cmd != "bench" && cmd != "install" {
+            // and miri doesn't want it
+            if cmd != "bench" && cmd != "install" && !cmd.starts_with("miri-") {
                 cargo.arg("--release");
             }
         }
@@ -1331,14 +1368,15 @@ impl<'a> Builder<'a> {
     /// Cargo. This cargo will be configured to use `compiler` as the actual
     /// rustc compiler, its output will be scoped by `mode`'s output directory,
     /// it will pass the `--target` flag for the specified `target`, and will be
-    /// executing the Cargo command `cmd`.
+    /// executing the Cargo command `cmd`. `cmd` can be `miri-cmd` for commands
+    /// to be run with Miri.
     fn cargo(
         &self,
         compiler: Compiler,
         mode: Mode,
         source_type: SourceType,
         target: TargetSelection,
-        cmd: &str,
+        cmd: &str, // FIXME make this properly typed
     ) -> Cargo {
         let mut cargo = self.bare_cargo(compiler, mode, target, cmd);
         let out_dir = self.stage_out(compiler, mode);
@@ -1649,7 +1687,8 @@ impl<'a> Builder<'a> {
             .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
             .env(
                 "RUSTDOC_REAL",
-                if cmd == "doc" || cmd == "rustdoc" || (cmd == "test" && want_rustdoc) {
+                // Make sure to handle both `test` and `miri-test` commands.
+                if cmd == "doc" || cmd == "rustdoc" || (cmd.ends_with("test") && want_rustdoc) {
                     self.rustdoc(compiler)
                 } else {
                     PathBuf::from("/path/to/nowhere/rustdoc/not/required")
@@ -2045,6 +2084,15 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zinline-mir");
         }
 
+        if self.config.rustc_parallel
+            && matches!(mode, Mode::ToolRustc | Mode::Rustc | Mode::Codegen)
+        {
+            // keep in sync with `bootstrap/lib.rs:Build::rustc_features`
+            // `cfg` option for rustc, `features` option for cargo, for conditional compilation
+            rustflags.arg("--cfg=parallel_compiler");
+            rustdocflags.arg("--cfg=parallel_compiler");
+        }
+
         // set rustc args passed from command line
         let rustc_args =
             self.config.cmd.rustc_args().iter().map(|s| s.to_string()).collect::<Vec<_>>();
@@ -2309,7 +2357,7 @@ impl Cargo {
         mode: Mode,
         source_type: SourceType,
         target: TargetSelection,
-        cmd: &str,
+        cmd: &str, // FIXME make this properly typed
     ) -> Cargo {
         let mut cargo = builder.cargo(compiler, mode, source_type, target, cmd);
         cargo.configure_linker(builder);
@@ -2323,7 +2371,7 @@ impl Cargo {
         mode: Mode,
         source_type: SourceType,
         target: TargetSelection,
-        cmd: &str,
+        cmd: &str, // FIXME make this properly typed
     ) -> Cargo {
         builder.cargo(compiler, mode, source_type, target, cmd)
     }

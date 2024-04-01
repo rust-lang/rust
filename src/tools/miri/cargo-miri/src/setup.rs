@@ -90,13 +90,13 @@ pub fn setup(
     let cargo_cmd = {
         let mut command = cargo();
         // Use Miri as rustc to build a libstd compatible with us (and use the right flags).
+        // We set ourselves (`cargo-miri`) instead of Miri directly to be able to patch the flags
+        // for `libpanic_abort` (usually this is done by bootstrap but we have to do it ourselves).
+        // The `MIRI_CALLED_FROM_SETUP` will mean we dispatch to `phase_setup_rustc`.
         // However, when we are running in bootstrap, we cannot just overwrite `RUSTC`,
         // because we still need bootstrap to distinguish between host and target crates.
         // In that case we overwrite `RUSTC_REAL` instead which determines the rustc used
         // for target crates.
-        // We set ourselves (`cargo-miri`) instead of Miri directly to be able to patch the flags
-        // for `libpanic_abort` (usually this is done by bootstrap but we have to do it ourselves).
-        // The `MIRI_CALLED_FROM_SETUP` will mean we dispatch to `phase_setup_rustc`.
         let cargo_miri_path = std::env::current_exe().expect("current executable path invalid");
         if env::var_os("RUSTC_STAGE").is_some() {
             assert!(env::var_os("RUSTC").is_some());
