@@ -1235,6 +1235,7 @@ impl<'a> Builder<'a> {
         assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
         let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
 
+        // Prepare the tools
         let miri = self.ensure(tool::Miri {
             compiler: build_compiler,
             target: self.build.build,
@@ -1245,7 +1246,7 @@ impl<'a> Builder<'a> {
             target: self.build.build,
             extra_features: Vec::new(),
         });
-        // Invoke cargo-miri, make sure we can find miri and cargo.
+        // Invoke cargo-miri, make sure it can find miri and cargo.
         let mut cmd = Command::new(cargo_miri);
         cmd.env("MIRI", &miri);
         cmd.env("CARGO", &self.initial_cargo);
@@ -1709,6 +1710,15 @@ impl<'a> Builder<'a> {
         // sccache) before bootstrap overrode it. Respect that variable.
         if let Some(existing_wrapper) = env::var_os("RUSTC_WRAPPER") {
             cargo.env("RUSTC_WRAPPER_REAL", existing_wrapper);
+        }
+
+        // If this is for `miri-test`, prepare the sysroots.
+        if cmd == "miri-test" {
+            self.ensure(compile::Std::new(compiler, compiler.host));
+            let host_sysroot = self.sysroot(compiler);
+            let miri_sysroot = test::Miri::build_miri_sysroot(self, compiler, target);
+            cargo.env("MIRI_SYSROOT", &miri_sysroot);
+            cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
         }
 
         cargo.env(profile_var("STRIP"), self.config.rust_strip.to_string());

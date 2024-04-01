@@ -595,7 +595,7 @@ impl Step for Miri {
         // This is for the tests so everything is done with the target compiler.
         let miri_sysroot = Miri::build_miri_sysroot(builder, target_compiler, target);
         builder.ensure(compile::Std::new(target_compiler, host));
-        let sysroot = builder.sysroot(target_compiler);
+        let host_sysroot = builder.sysroot(target_compiler);
 
         // # Run `cargo test`.
         // This is with the Miri crate, so it uses the host compiler.
@@ -618,7 +618,7 @@ impl Step for Miri {
 
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
-        cargo.env("MIRI_HOST_SYSROOT", &sysroot);
+        cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
         cargo.env("MIRI", &miri);
 
         // Set the target.
@@ -680,10 +680,6 @@ impl Step for Miri {
                 cargo.arg("--doc");
             }
         }
-
-        // Tell `cargo miri` where to find the sysroots.
-        cargo.env("MIRI_SYSROOT", &miri_sysroot);
-        cargo.env("MIRI_HOST_SYSROOT", sysroot);
 
         // Finally, pass test-args and run everything.
         cargo.arg("--").args(builder.config.test_args());
