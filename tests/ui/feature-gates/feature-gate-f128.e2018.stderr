@@ -1,51 +1,51 @@
-error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:3:10
+error[E0658]: the type `f128` is unstable
+  --> $DIR/feature-gate-f128.rs:11:10
    |
-LL | const A: f16 = 10.0;
-   |          ^^^
+LL | const A: f128 = 10.0;
+   |          ^^^^
    |
    = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
-   = help: add `#![feature(f16)]` to the crate attributes to enable
+   = help: add `#![feature(f128)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:6:12
+error[E0658]: the type `f128` is unstable
+  --> $DIR/feature-gate-f128.rs:14:12
    |
-LL |     let a: f16 = 100.0;
-   |            ^^^
+LL |     let a: f128 = 100.0;
+   |            ^^^^
    |
    = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
-   = help: add `#![feature(f16)]` to the crate attributes to enable
+   = help: add `#![feature(f128)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:11:11
+error[E0658]: the type `f128` is unstable
+  --> $DIR/feature-gate-f128.rs:19:11
    |
-LL | fn foo(a: f16) {}
-   |           ^^^
+LL | fn foo(a: f128) {}
+   |           ^^^^
    |
    = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
-   = help: add `#![feature(f16)]` to the crate attributes to enable
+   = help: add `#![feature(f128)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:14:8
+error[E0658]: the type `f128` is unstable
+  --> $DIR/feature-gate-f128.rs:22:8
    |
-LL |     a: f16,
-   |        ^^^
+LL |     a: f128,
+   |        ^^^^
    |
    = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
-   = help: add `#![feature(f16)]` to the crate attributes to enable
+   = help: add `#![feature(f128)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:7:13
+error[E0658]: the type `f128` is unstable
+  --> $DIR/feature-gate-f128.rs:15:13
    |
-LL |     let b = 0.0f16;
-   |             ^^^^^^
+LL |     let b = 0.0f128;
+   |             ^^^^^^^
    |
    = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
-   = help: add `#![feature(f16)]` to the crate attributes to enable
+   = help: add `#![feature(f128)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 5 previous errors
