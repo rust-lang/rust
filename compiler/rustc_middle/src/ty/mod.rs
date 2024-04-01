@@ -1036,7 +1036,7 @@ impl PlaceholderLike for PlaceholderConst {
 
 /// When interacting with the type system we must provide information about the
 /// environment. `ParamEnv` is the type that represents this information. See the
-/// [dev guide chapter](param_env_guide) for more information.
+/// [dev guide chapter][param_env_guide] for more information.
 ///
 /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
