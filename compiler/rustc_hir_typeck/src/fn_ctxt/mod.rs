@@ -416,13 +416,13 @@ fn parse_never_type_options_attr(
             continue;
         }
 
-        if item.has_name(sym::diverging_block_default) && fallback.is_none() {
-            let mode = item.value_str().unwrap();
-            match mode {
+        if item.has_name(sym::diverging_block_default) && block.is_none() {
+            let default = item.value_str().unwrap();
+            match default {
                 sym::unit => block = Some(DivergingBlockBehavior::Unit),
                 sym::never => block = Some(DivergingBlockBehavior::Never),
                 _ => {
-                    tcx.dcx().span_err(item.span(), format!("unknown diverging block default: `{mode}` (supported: `unit` and `never`)"));
+                    tcx.dcx().span_err(item.span(), format!("unknown diverging block default: `{default}` (supported: `unit` and `never`)"));
                 }
             };
             continue;
@@ -431,7 +431,7 @@ fn parse_never_type_options_attr(
         tcx.dcx().span_err(
             item.span(),
             format!(
-                "unknown never type option: `{}` (supported: `fallback`)",
+                "unknown or duplicate never type option: `{}` (supported: `fallback`, `diverging_block_default`)",
                 item.name_or_empty()
             ),
         );
