@@ -8,8 +8,6 @@
       let mut _3: u64;
       let mut _4: u32;
 +     scope 1 (inlined core::num::<impl u64>::unchecked_shl) {
-+         debug self => _3;
-+         debug rhs => _4;
 +         let mut _5: u64;
 +         scope 2 {
 +         }

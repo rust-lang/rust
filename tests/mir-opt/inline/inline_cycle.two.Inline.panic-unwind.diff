@@ -6,7 +6,6 @@
       let _1: ();
 +     let mut _2: fn() {f};
 +     scope 1 (inlined call::<fn() {f}>) {
-+         debug f => _2;
 +         let _3: ();
 +     }
   

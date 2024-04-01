@@ -7,7 +7,6 @@ fn a(_1: &mut [T]) -> &mut [T] {
     let mut _3: &mut [T];
     let mut _4: &mut [T];
     scope 1 (inlined <[T] as AsMut<[T]>>::as_mut) {
-        debug self => _4;
     }
 
     bb0: {

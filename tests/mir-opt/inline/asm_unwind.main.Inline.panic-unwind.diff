@@ -7,7 +7,6 @@
 +     scope 1 (inlined foo) {
 +         let _2: D;
 +         scope 2 {
-+             debug _d => const D;
 +             scope 3 {
 +             }
 +         }

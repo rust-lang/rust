@@ -10,10 +10,8 @@
       scope 1 {
           debug c => _2;
 +         scope 2 (inlined try_execute_query::<<Q as Query>::C>) {
-+             debug c => _4;
 +             let mut _5: &dyn Cache<V = <Q as Query>::V>;
 +             scope 3 (inlined mk_cycle::<<Q as Query>::V>) {
-+                 debug c => _5;
 +             }
 +         }
       }

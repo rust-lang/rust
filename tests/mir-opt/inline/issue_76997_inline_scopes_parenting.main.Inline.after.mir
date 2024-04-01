@@ -10,9 +10,7 @@ fn main() -> () {
     scope 1 {
         debug f => _1;
         scope 2 (inlined main::{closure#0}) {
-            debug x => const ();
             scope 3 {
-                debug y => const ();
             }
         }
     }

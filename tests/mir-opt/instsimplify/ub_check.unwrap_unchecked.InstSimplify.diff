@@ -7,10 +7,8 @@
       let mut _2: std::option::Option<i32>;
       scope 1 {
           scope 2 (inlined #[track_caller] Option::<i32>::unwrap_unchecked) {
-              debug self => _2;
               let mut _3: isize;
               scope 3 {
-                  debug val => _0;
               }
               scope 4 {
                   scope 5 (inlined unreachable_unchecked) {

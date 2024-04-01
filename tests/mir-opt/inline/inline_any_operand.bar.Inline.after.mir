@@ -9,8 +9,6 @@ fn bar() -> bool {
     scope 1 {
         debug f => _1;
         scope 2 (inlined foo) {
-            debug x => _3;
-            debug y => _4;
         }
     }
 

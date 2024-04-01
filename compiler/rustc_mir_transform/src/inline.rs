@@ -699,7 +699,7 @@ impl<'tcx> Inliner<'tcx> {
         // Insert all of the (mapped) parts of the callee body into the caller.
         caller_body.local_decls.extend(callee_body.drain_vars_and_temps());
         caller_body.source_scopes.extend(&mut callee_body.source_scopes.drain(..));
-        caller_body.var_debug_info.append(&mut callee_body.var_debug_info);
+        // caller_body.var_debug_info.append(&mut callee_body.var_debug_info);
         caller_body.basic_blocks_mut().extend(callee_body.basic_blocks_mut().drain(..));
 
         caller_body[callsite.block].terminator = Some(Terminator {

@@ -14,8 +14,6 @@ fn foo(_1: T, _2: i32) -> i32 {
     scope 1 {
         debug x => _3;
         scope 2 (inlined foo::<T>::{closure#0}) {
-            debug _t => _8;
-            debug _q => _9;
         }
     }
 

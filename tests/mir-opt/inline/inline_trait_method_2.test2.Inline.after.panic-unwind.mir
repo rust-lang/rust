@@ -6,7 +6,6 @@ fn test2(_1: &dyn X) -> bool {
     let mut _2: &dyn X;
     let mut _3: &dyn X;
     scope 1 (inlined test) {
-        debug x => _2;
     }
 
     bb0: {

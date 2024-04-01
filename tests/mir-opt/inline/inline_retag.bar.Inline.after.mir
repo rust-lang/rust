@@ -15,8 +15,6 @@ fn bar() -> bool {
         let mut _9: &i32;
         let mut _10: &i32;
         scope 2 (inlined foo) {
-            debug x => _3;
-            debug y => _6;
             let mut _11: i32;
             let mut _12: i32;
         }

@@ -5,8 +5,6 @@ fn unchecked_shl_unsigned_bigger(_1: u64, _2: u32) -> u64 {
     debug b => _2;
     let mut _0: u64;
     scope 1 (inlined core::num::<impl u64>::unchecked_shl) {
-        debug self => _1;
-        debug rhs => _2;
         let mut _3: u64;
         scope 2 {
         }

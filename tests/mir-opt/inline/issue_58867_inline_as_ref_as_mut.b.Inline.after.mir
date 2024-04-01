@@ -7,7 +7,6 @@ fn b(_1: &mut Box<T>) -> &mut T {
     let mut _3: &mut T;
     let mut _4: &mut std::boxed::Box<T>;
     scope 1 (inlined <Box<T> as AsMut<T>>::as_mut) {
-        debug self => _4;
         let mut _5: std::boxed::Box<T>;
         let mut _6: *const T;
     }

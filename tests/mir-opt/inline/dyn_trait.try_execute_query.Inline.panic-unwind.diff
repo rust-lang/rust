@@ -7,7 +7,6 @@
       let mut _2: &dyn Cache<V = <C as Cache>::V>;
       let mut _3: &C;
 +     scope 1 (inlined mk_cycle::<<C as Cache>::V>) {
-+         debug c => _2;
 +     }
   
       bb0: {

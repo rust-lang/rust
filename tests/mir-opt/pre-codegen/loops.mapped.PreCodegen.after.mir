@@ -18,7 +18,6 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
         }
     }
     scope 3 (inlined <Map<impl Iterator<Item = T>, impl Fn(T) -> U> as IntoIterator>::into_iter) {
-        debug self => _3;
     }
 
     bb0: {

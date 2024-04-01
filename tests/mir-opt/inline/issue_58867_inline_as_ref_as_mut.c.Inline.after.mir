@@ -6,7 +6,6 @@ fn c(_1: &[T]) -> &[T] {
     let _2: &[T];
     let mut _3: &[T];
     scope 1 (inlined <[T] as AsRef<[T]>>::as_ref) {
-        debug self => _3;
     }
 
     bb0: {

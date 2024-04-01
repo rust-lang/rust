@@ -6,7 +6,6 @@ fn d(_1: &Box<T>) -> &T {
     let _2: &T;
     let mut _3: &std::boxed::Box<T>;
     scope 1 (inlined <Box<T> as AsRef<T>>::as_ref) {
-        debug self => _3;
         let mut _4: std::boxed::Box<T>;
         let mut _5: *const T;
     }
