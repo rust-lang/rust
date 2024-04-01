@@ -553,9 +553,12 @@ Supported values for this option are:
   of MSVC).
 - `debuginfo` - debuginfo sections and debuginfo symbols from the symbol table
   section are stripped at link time and are not copied to the produced binary
-  or separate files.
+  or separate files. This should leave backtraces mostly-intact but may make
+  using a debugger like gdb or lldb ineffectual.
 - `symbols` - same as `debuginfo`, but the rest of the symbol table section is
-  stripped as well if the linker supports it.
+  stripped as well if the linker supports it. On platforms which depend on the
+  binary's symbol table for backtraces, this can affect them so negatively as to
+  make the trace completely incomprehensible.
 
 ## symbol-mangling-version
 
