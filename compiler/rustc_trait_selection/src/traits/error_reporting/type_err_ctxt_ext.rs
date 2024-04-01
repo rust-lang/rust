@@ -135,13 +135,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // This is a special case: when `fn foo() -> dyn Trait` and we call `foo()`
                         // in the init of a `let` binding, we will already emit an unsized local
                         // error, so we check for this case and unify the errors.
-                        if let hir::Node::Local(local) = self.tcx.parent_hir_node(*hir_id) {
+                        if let hir::Node::LetStmt(local) = self.tcx.parent_hir_node(*hir_id) {
                             span = local.pat.span;
                         }
                     }
                     ObligationCauseCode::ExprBindingObligation(_, _, hir_id, _) => {
                         // For method calls like `let x = y.foo();` that are `?Sized`, we also dedup
-                        if let hir::Node::Local(local) = self.tcx.parent_hir_node(*hir_id) {
+                        if let hir::Node::LetStmt(local) = self.tcx.parent_hir_node(*hir_id) {
                             span = local.pat.span;
                         }
                     }
