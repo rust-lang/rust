@@ -4,7 +4,7 @@
 When needing a [`ParamEnv`][pe] in the compiler there are a few options for obtaining one:
 - The correct env is already in scope simply use it (or pass it down the call stack to where you are).
 - The [`tcx.param_env(def_id)` query][param_env_query]
-- Use [`ParamEnv::new`][param_env_new] to construct an env with an arbitrary set of where clauses. Then call `traits::normalize_param_env_or_error` which will handle normalizing and elaborating all the where clauses in the env for you.
+- Use [`ParamEnv::new`][param_env_new] to construct an env with an arbitrary set of where clauses. Then call [`traits::normalize_param_env_or_error`][normalize_env_or_error] which will handle normalizing and elaborating all the where clauses in the env for you.
 - Creating an empty environment via [`ParamEnv::reveal_all`][env_reveal_all] or [`ParamEnv::empty`][env_empty]
 
 In the large majority of cases a `ParamEnv` when required already exists somewhere in scope or above in the call stack and should be passed down. A non exhaustive list of places where you might find an existing `ParamEnv`:
@@ -41,3 +41,4 @@ The `ParamEnv` type has a method [`ParamEnv::with_reveal_all_normalized`][with_r
 [reveal]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/traits/enum.Reveal.html
 [pe]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html
 [param_env_query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.param_env
+[method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
