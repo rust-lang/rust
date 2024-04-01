@@ -631,6 +631,7 @@ pub enum Kind {
     Format,
     #[value(alias = "t")]
     Test,
+    Miri,
     Bench,
     #[value(alias = "d")]
     Doc,
@@ -673,6 +674,7 @@ impl Kind {
             Kind::Fix => "fix",
             Kind::Format => "fmt",
             Kind::Test => "test",
+            Kind::Miri => "miri",
             Kind::Bench => "bench",
             Kind::Doc => "doc",
             Kind::Clean => "clean",
@@ -822,6 +824,7 @@ impl<'a> Builder<'a> {
                 // Run run-make last, since these won't pass without make on Windows
                 test::RunMake,
             ),
+            Kind::Miri => describe!(test::Crate),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
             Kind::Doc => describe!(
                 doc::UnstableBook,
@@ -970,6 +973,7 @@ impl<'a> Builder<'a> {
             Subcommand::Fix => (Kind::Fix, &paths[..]),
             Subcommand::Doc { .. } => (Kind::Doc, &paths[..]),
             Subcommand::Test { .. } => (Kind::Test, &paths[..]),
+            Subcommand::Miri { .. } => (Kind::Miri, &paths[..]),
             Subcommand::Bench { .. } => (Kind::Bench, &paths[..]),
             Subcommand::Dist => (Kind::Dist, &paths[..]),
             Subcommand::Install => (Kind::Install, &paths[..]),
@@ -1309,7 +1313,11 @@ impl<'a> Builder<'a> {
         if cmd == "clippy" {
             cargo = self.cargo_clippy_cmd(compiler);
             cargo.arg(cmd);
-        } else if let Some(subcmd) = cmd.strip_prefix("miri-") {
+        } else if let Some(subcmd) = cmd.strip_prefix("miri") {
+            // Command must be "miri-X".
+            let subcmd = subcmd
+                .strip_prefix("-")
+                .unwrap_or_else(|| panic!("expected `miri-$subcommand`, but got {}", cmd));
             cargo = self.cargo_miri_cmd(compiler);
             cargo.arg("miri").arg(subcmd);
         } else {
