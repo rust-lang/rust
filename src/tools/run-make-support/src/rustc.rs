@@ -1,4 +1,5 @@
 use std::env;
+use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Command, Output};
 
@@ -133,6 +134,11 @@ impl Rustc {
         self
     }
 
+    pub fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self {
+        self.cmd.env(name, value);
+        self
+    }
+
     // Command inspection, output and running helper methods
 
     /// Get the [`Output`][std::process::Output] of the finished `rustc` process.
@@ -148,6 +154,18 @@ impl Rustc {
 
         let output = self.cmd.output().unwrap();
         if !output.status.success() {
+            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+        }
+        output
+    }
+
+    #[track_caller]
+    pub fn run_fail(&mut self) -> Output {
+        let caller_location = std::panic::Location::caller();
+        let caller_line_number = caller_location.line();
+
+        let output = self.cmd.output().unwrap();
+        if output.status.success() {
             handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
         }
         output
