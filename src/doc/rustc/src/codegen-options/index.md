@@ -555,12 +555,11 @@ Supported values for this option are:
   section are stripped at link time and are not copied to the produced binary
   or separate files. This should leave backtraces mostly-intact but may make
   using a debugger like gdb or lldb ineffectual.
-- `symbols` - same as `debuginfo`, but the rest of the symbol table section is
-  stripped as well if the linker supports it. On platforms which depend on the
-  binary's symbol table for backtraces, profiling, and similar, this can affect
-  them so negatively as to make the results completely incomprehensible.
-  Programs which may be combined with others, using e.g. CLI pipelines, or any
-  developer tooling whatsoever, should avoid stripping symbols for this reason.
+- `symbols` - same as `debuginfo`, but the rest of the symbol table section is stripped as well,
+  depending on platform support. On platforms which depend on this symbol table for backtraces,
+  profiling, and similar, this can affect them so negatively as to make the trace incomprehensible.
+  Programs which may be combined with others, such as CLI pipelines and developer tooling,
+  or even anything which wants crash-reporting, should usually avoid `-Cstrip=symbols`.
 
 ## symbol-mangling-version
 
