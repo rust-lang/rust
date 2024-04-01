@@ -1678,6 +1678,7 @@ impl DefWithBody {
         for d in &infer.diagnostics {
             acc.extend(AnyDiagnostic::inference_diagnostic(db, self.into(), d, &source_map));
         }
+
         for (pat_or_expr, mismatch) in infer.type_mismatches() {
             let expr_or_pat = match pat_or_expr {
                 ExprOrPatId::ExprId(expr) => source_map.expr_syntax(expr).map(Either::Left),

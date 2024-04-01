@@ -429,6 +429,8 @@ pub struct InferenceResult {
     /// Type of the result of `.into_iter()` on the for. `ExprId` is the one of the whole for loop.
     pub type_of_for_iterator: FxHashMap<ExprId, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
+    /// Whether there are any type-mismatching errors in the result.
+    pub(crate) has_errors: bool,
     /// Interned common types to return references to.
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
@@ -654,6 +656,7 @@ impl<'a> InferenceContext<'a> {
             type_of_rpit,
             type_of_for_iterator,
             type_mismatches,
+            has_errors,
             standard_types: _,
             pat_adjustments,
             binding_modes: _,
@@ -695,6 +698,9 @@ impl<'a> InferenceContext<'a> {
         for ty in type_of_for_iterator.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
+
+        *has_errors = !type_mismatches.is_empty();
+
         type_mismatches.retain(|_, mismatch| {
             mismatch.expected = table.resolve_completely(mismatch.expected.clone());
             mismatch.actual = table.resolve_completely(mismatch.actual.clone());
@@ -1646,9 +1652,11 @@ impl std::ops::BitOrAssign for Diverges {
         *self = *self | other;
     }
 }
-/// A zipper that checks for unequal `{unknown}` occurrences in the two types. Used to filter out
-/// mismatch diagnostics that only differ in `{unknown}`. These mismatches are usually not helpful.
-/// As the cause is usually an underlying name resolution problem.
+
+/// A zipper that checks for unequal occurrences of `{unknown}` and unresolved projections
+/// in the two types. Used to filter out mismatch diagnostics that only differ in
+/// `{unknown}` and unresolved projections. These mismatches are usually not helpful.
+/// As the cause is usually an underlying name resolution problem
 struct UnknownMismatch<'db>(&'db dyn HirDatabase);
 impl chalk_ir::zip::Zipper<Interner> for UnknownMismatch<'_> {
     fn zip_tys(&mut self, variance: Variance, a: &Ty, b: &Ty) -> chalk_ir::Fallible<()> {
@@ -1721,7 +1729,12 @@ impl chalk_ir::zip::Zipper<Interner> for UnknownMismatch<'_> {
                 zip_substs(self, None, &fn_ptr_a.substitution.0, &fn_ptr_b.substitution.0)?
             }
             (TyKind::Error, TyKind::Error) => (),
-            (TyKind::Error, _) | (_, TyKind::Error) => return Err(chalk_ir::NoSolution),
+            (TyKind::Error, _)
+            | (_, TyKind::Error)
+            | (TyKind::Alias(AliasTy::Projection(_)) | TyKind::AssociatedType(_, _), _)
+            | (_, TyKind::Alias(AliasTy::Projection(_)) | TyKind::AssociatedType(_, _)) => {
+                return Err(chalk_ir::NoSolution)
+            }
             _ => (),
         }
 
