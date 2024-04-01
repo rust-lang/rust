@@ -9,6 +9,7 @@ trait To {
         self //~ ERROR the size for values of type
     ) -> <Dst as From<Self>>::Result where Dst: From<Self> { //~ ERROR the size for values of type
         From::from(self) //~ ERROR the size for values of type
+        //~^ ERROR the size for values of type
     }
 }
 

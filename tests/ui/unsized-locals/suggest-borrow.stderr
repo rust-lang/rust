@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/suggest-borrow.rs:2:9
+  --> $DIR/suggest-borrow.rs:2:12
    |
 LL |     let x: [u8] = vec!(1, 2, 3)[..];
-   |         ^ doesn't have a size known at compile-time
+   |            ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
    = note: all local variables must have a statically known size
@@ -44,10 +44,10 @@ LL |     let x: &[u8] = &vec!(1, 2, 3)[..];
    |            +
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/suggest-borrow.rs:4:9
+  --> $DIR/suggest-borrow.rs:4:19
    |
 LL |     let x: [u8] = &vec!(1, 2, 3)[..];
-   |         ^ doesn't have a size known at compile-time
+   |                   ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
    = note: all local variables must have a statically known size

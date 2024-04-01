@@ -19,10 +19,10 @@ LL | fn f2((_x, _y): (i32, [i32])) {}
    = help: unsized locals are gated as an unstable feature
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/unsized-locals-using-unsized-fn-params.rs:13:9
+  --> $DIR/unsized-locals-using-unsized-fn-params.rs:13:15
    |
 LL |     let _foo: [u8] = *foo;
-   |         ^^^^ doesn't have a size known at compile-time
+   |               ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
    = note: all local variables must have a statically known size

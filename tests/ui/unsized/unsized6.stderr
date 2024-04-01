@@ -1,11 +1,11 @@
 error[E0277]: the size for values of type `Y` cannot be known at compilation time
-  --> $DIR/unsized6.rs:9:9
+  --> $DIR/unsized6.rs:9:12
    |
 LL | fn f1<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized>(x: &X) {
    |                             - this type parameter needs to be `Sized`
 ...
 LL |     let y: Y;
-   |         ^ doesn't have a size known at compile-time
+   |            ^ doesn't have a size known at compile-time
    |
    = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature
@@ -52,12 +52,12 @@ LL + fn f1<W: ?Sized, X: ?Sized, Y: ?Sized, Z>(x: &X) {
    |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized6.rs:15:9
+  --> $DIR/unsized6.rs:15:12
    |
 LL | fn f2<X: ?Sized, Y: ?Sized>(x: &X) {
    |       - this type parameter needs to be `Sized`
 LL |     let y: X;
-   |         ^ doesn't have a size known at compile-time
+   |            ^ doesn't have a size known at compile-time
    |
    = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature
@@ -88,12 +88,12 @@ LL + fn f2<X: ?Sized, Y>(x: &X) {
    |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized6.rs:22:9
+  --> $DIR/unsized6.rs:22:12
    |
 LL | fn f3<X: ?Sized>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
    |       - this type parameter needs to be `Sized`
 LL |     let y: X = *x1;
-   |         ^ doesn't have a size known at compile-time
+   |            ^ doesn't have a size known at compile-time
    |
    = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature
@@ -108,13 +108,13 @@ LL |     let y: &X = *x1;
    |            +
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized6.rs:24:9
+  --> $DIR/unsized6.rs:24:13
    |
 LL | fn f3<X: ?Sized>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
    |       - this type parameter needs to be `Sized`
 ...
 LL |     let y = *x2;
-   |         ^ doesn't have a size known at compile-time
+   |             ^^^ doesn't have a size known at compile-time
    |
    = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature
@@ -142,12 +142,12 @@ LL + fn f3<X>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
    |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized6.rs:30:9
+  --> $DIR/unsized6.rs:30:12
    |
 LL | fn f4<X: ?Sized + T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
    |       - this type parameter needs to be `Sized`
 LL |     let y: X = *x1;
-   |         ^ doesn't have a size known at compile-time
+   |            ^ doesn't have a size known at compile-time
    |
    = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature
@@ -162,13 +162,13 @@ LL |     let y: &X = *x1;
    |            +
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized6.rs:32:9
+  --> $DIR/unsized6.rs:32:13
    |
 LL | fn f4<X: ?Sized + T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
    |       - this type parameter needs to be `Sized`
 ...
 LL |     let y = *x2;
-   |         ^ doesn't have a size known at compile-time
+   |             ^^^ doesn't have a size known at compile-time
    |
    = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature

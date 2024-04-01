@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/unsized-binding.rs:2:9
+  --> $DIR/unsized-binding.rs:2:13
    |
 LL |     let x = *"";
-   |         ^ doesn't have a size known at compile-time
+   |             ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
    = note: all local variables must have a statically known size

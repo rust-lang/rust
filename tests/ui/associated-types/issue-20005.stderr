@@ -54,6 +54,19 @@ help: consider relaxing the implicit `Sized` restriction
 LL | trait From<Src: ?Sized> {
    |               ++++++++
 
-error: aborting due to 3 previous errors
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-20005.rs:11:20
+   |
+LL |         From::from(self)
+   |                    ^^^^ doesn't have a size known at compile-time
+   |
+   = note: all function arguments must have a statically known size
+   = help: unsized fn params are gated as an unstable feature
+help: consider further restricting `Self`
+   |
+LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self>, Self: Sized {
+   |                                                           +++++++++++++
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

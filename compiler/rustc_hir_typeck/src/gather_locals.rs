@@ -61,11 +61,12 @@ pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
     // *distinct* cases. so track when we are hitting a pattern *within* an fn
     // parameter.
     outermost_fn_param_pat: Option<(Span, hir::HirId)>,
+    let_binding_init: Option<Span>,
 }
 
 impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     pub(super) fn new(fcx: &'a FnCtxt<'a, 'tcx>) -> Self {
-        Self { fcx, outermost_fn_param_pat: None }
+        Self { fcx, outermost_fn_param_pat: None, let_binding_init: None }
     }
 
     fn assign(&mut self, span: Span, nid: hir::HirId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
@@ -92,18 +93,40 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     /// again during type checking by querying [`FnCtxt::local_ty`] for the same hir_id.
     fn declare(&mut self, decl: Declaration<'tcx>) {
         let local_ty = match decl.ty {
-            Some(ref ty) => {
-                let o_ty = self.fcx.lower_ty(ty);
+            Some(ref hir_ty) => {
+                let o_ty = self.fcx.lower_ty(hir_ty);
 
                 let c_ty = self.fcx.infcx.canonicalize_user_type_annotation(UserType::Ty(o_ty.raw));
-                debug!("visit_local: ty.hir_id={:?} o_ty={:?} c_ty={:?}", ty.hir_id, o_ty, c_ty);
+                debug!(?hir_ty.hir_id, ?o_ty, ?c_ty, "visit_local");
                 self.fcx
                     .typeck_results
                     .borrow_mut()
                     .user_provided_types_mut()
-                    .insert(ty.hir_id, c_ty);
+                    .insert(hir_ty.hir_id, c_ty);
 
-                Some(o_ty.normalized)
+                let ty = o_ty.normalized;
+                if let hir::PatKind::Wild = decl.pat.kind {
+                    // We explicitly allow `let _: dyn Trait;` (!)
+                } else {
+                    if self.outermost_fn_param_pat.is_some() {
+                        if !self.fcx.tcx.features().unsized_fn_params {
+                            self.fcx.require_type_is_sized(
+                                ty,
+                                hir_ty.span,
+                                traits::SizedArgumentType(Some(decl.pat.hir_id)),
+                            );
+                        }
+                    } else {
+                        if !self.fcx.tcx.features().unsized_locals {
+                            self.fcx.require_type_is_sized(
+                                ty,
+                                hir_ty.span,
+                                traits::VariableType(decl.pat.hir_id),
+                            );
+                        }
+                    }
+                }
+                Some(ty)
             }
             None => None,
         };
@@ -121,14 +144,20 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) {
         self.declare(local.into());
-        intravisit::walk_local(self, local)
+        let sp = self.let_binding_init.take();
+        self.let_binding_init = local.init.map(|e| e.span);
+        intravisit::walk_local(self, local);
+        self.let_binding_init = sp;
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+        let sp = self.let_binding_init.take();
         if let hir::ExprKind::Let(let_expr) = expr.kind {
+            self.let_binding_init = Some(let_expr.init.span);
             self.declare((let_expr, expr.hir_id).into());
         }
-        intravisit::walk_expr(self, expr)
+        intravisit::walk_expr(self, expr);
+        self.let_binding_init = sp;
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
@@ -163,7 +192,11 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 }
             } else {
                 if !self.fcx.tcx.features().unsized_locals {
-                    self.fcx.require_type_is_sized(var_ty, p.span, traits::VariableType(p.hir_id));
+                    self.fcx.require_type_is_sized(
+                        var_ty,
+                        self.let_binding_init.unwrap_or(p.span),
+                        traits::VariableType(p.hir_id),
+                    );
                 }
             }
 
@@ -174,6 +207,11 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 var_ty
             );
         }
+        // We only point at the init expression if this is the top level pattern, otherwise we point
+        // at the specific binding, because we might not be able to tie the binding to the,
+        // expression, like `let (a, b) = foo();`. FIXME: We could specialize
+        // `let (a, b) = (unsized(), bar());` to point at `unsized()` instead of `a`.
+        self.let_binding_init.take();
         let old_outermost_fn_param_pat = self.outermost_fn_param_pat.take();
         intravisit::walk_pat(self, p);
         self.outermost_fn_param_pat = old_outermost_fn_param_pat;
