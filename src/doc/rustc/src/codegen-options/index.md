@@ -561,6 +561,10 @@ Supported values for this option are:
   Programs which may be combined with others, such as CLI pipelines and developer tooling,
   or even anything which wants crash-reporting, should usually avoid `-Cstrip=symbols`.
 
+Note that, at any level, removing debuginfo only necessarily impacts "friendly" introspection.
+`-Cstrip` cannot be relied on as a meaningful security or obfuscation measure, as disassemblers
+and decompilers can extract considerable information even in the absence of symbols.
+
 ## symbol-mangling-version
 
 This option controls the [name mangling] format for encoding Rust item names
