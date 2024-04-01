@@ -230,15 +230,42 @@ mod issue_11910 {
         fn bar(&self, _: bool) {}
     }
 
-    fn test_then() {
+    fn test_normal_for_iter() {
+        let v = vec![3, 2, 1, 0, -1, -2, -3];
+        let _ = v.iter().find(|x| **x == 42).is_none();
+        Foo.bar(v.iter().find(|x| **x == 42).is_none());
+    }
+
+    fn test_then_for_iter() {
         let v = vec![3, 2, 1, 0, -1, -2, -3];
         v.iter().find(|x| **x == 42).is_none().then(computations);
     }
 
-    fn test_then_some() {
+    fn test_then_some_for_iter() {
         let v = vec![3, 2, 1, 0, -1, -2, -3];
         v.iter().find(|x| **x == 42).is_none().then_some(0);
+    }
 
-        Foo.bar(v.iter().find(|x| **x == 42).is_none());
+    fn test_normal_for_str() {
+        let s = "hello";
+        let _ = s.find("world").is_none();
+        Foo.bar(s.find("world").is_none());
+        let s = String::from("hello");
+        let _ = s.find("world").is_none();
+        Foo.bar(s.find("world").is_none());
+    }
+
+    fn test_then_for_str() {
+        let s = "hello";
+        let _ = s.find("world").is_none().then(computations);
+        let s = String::from("hello");
+        let _ = s.find("world").is_none().then(computations);
+    }
+
+    fn test_then_some_for_str() {
+        let s = "hello";
+        let _ = s.find("world").is_none().then_some(0);
+        let s = String::from("hello");
+        let _ = s.find("world").is_none().then_some(0);
     }
 }
