@@ -35,7 +35,6 @@ use rustc_span::{self, ExpnKind};
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
 use std::borrow::Cow;
-use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
 use std::hash::Hash;
 use std::mem;

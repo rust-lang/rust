@@ -1,6 +1,3 @@
-// FIXME(fmease, #119216): Reenable this test!
-//@ ignore-test
-
 pub struct Inner<T> {
     field: T,
 }
@@ -13,7 +10,7 @@ where
 
 // @has no_redundancy/struct.Outer.html
 // @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
-// "impl<T> Send for Outer<T>where T: Send + Copy"
+// "impl<T> Send for Outer<T>where T: Copy + Send"
 pub struct Outer<T> {
     inner_field: Inner<T>,
 }
