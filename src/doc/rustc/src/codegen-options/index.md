@@ -557,8 +557,10 @@ Supported values for this option are:
   using a debugger like gdb or lldb ineffectual.
 - `symbols` - same as `debuginfo`, but the rest of the symbol table section is
   stripped as well if the linker supports it. On platforms which depend on the
-  binary's symbol table for backtraces, this can affect them so negatively as to
-  make the trace completely incomprehensible.
+  binary's symbol table for backtraces, profiling, and similar, this can affect
+  them so negatively as to make the results completely incomprehensible.
+  Programs which may be combined with others, using e.g. CLI pipelines, or any
+  developer tooling whatsoever, should avoid stripping symbols for this reason.
 
 ## symbol-mangling-version
 
