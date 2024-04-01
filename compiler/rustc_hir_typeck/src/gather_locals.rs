@@ -138,6 +138,16 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
             self.fcx.ty_to_string(*self.fcx.locals.borrow().get(&decl.hir_id).unwrap())
         );
     }
+
+    fn span_for_init_expr(&self, expr: &'tcx hir::Expr<'tcx>) -> Span {
+        // In other parts of the compiler, when emitting a bound error on a method call we point at
+        // the method call path. We mimic that here so that error deduplication will work as
+        // expected.
+        match expr.kind {
+            hir::ExprKind::MethodCall(path, ..) => path.ident.span,
+            _ => expr.span,
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
@@ -145,7 +155,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) {
         self.declare(local.into());
         let sp = self.let_binding_init.take();
-        self.let_binding_init = local.init.map(|e| e.span);
+        self.let_binding_init = local.init.map(|e| self.span_for_init_expr(e));
         intravisit::walk_local(self, local);
         self.let_binding_init = sp;
     }
@@ -153,7 +163,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         let sp = self.let_binding_init.take();
         if let hir::ExprKind::Let(let_expr) = expr.kind {
-            self.let_binding_init = Some(let_expr.init.span);
+            self.let_binding_init = Some(self.span_for_init_expr(&let_expr.init));
             self.declare((let_expr, expr.hir_id).into());
         }
         intravisit::walk_expr(self, expr);

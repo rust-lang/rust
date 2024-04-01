@@ -139,6 +139,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             span = local.pat.span;
                         }
                     }
+                    ObligationCauseCode::ExprBindingObligation(_, _, hir_id, _) => {
+                        // For method calls like `let x = y.foo();` that are `?Sized`, we also dedup
+                        if let hir::Node::Local(local) = self.tcx.parent_hir_node(*hir_id) {
+                            span = local.pat.span;
+                        }
+                    }
                     _ => {}
                 }
             }

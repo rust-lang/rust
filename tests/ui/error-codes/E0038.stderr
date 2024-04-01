@@ -29,10 +29,10 @@ LL |     fn foo(&self) -> Self;
    = help: consider moving `foo` to another trait
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
-  --> $DIR/E0038.rs:7:13
+  --> $DIR/E0038.rs:7:15
    |
 LL |     let y = x.foo();
-   |             ^^^^^^^ doesn't have a size known at compile-time
+   |               ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn Trait`
    = note: all local variables must have a statically known size
