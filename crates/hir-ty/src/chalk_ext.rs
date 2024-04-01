@@ -29,7 +29,6 @@ pub trait TyExt {
     fn contains_unknown(&self) -> bool;
     fn is_ty_var(&self) -> bool;
     fn is_union(&self) -> bool;
-    fn is_projection(&self) -> bool;
 
     fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)>;
     fn as_builtin(&self) -> Option<BuiltinType>;
@@ -100,13 +99,6 @@ impl TyExt for Ty {
 
     fn is_union(&self) -> bool {
         matches!(self.adt_id(Interner), Some(AdtId(hir_def::AdtId::UnionId(_))))
-    }
-
-    fn is_projection(&self) -> bool {
-        matches!(
-            self.kind(Interner),
-            TyKind::Alias(AliasTy::Projection(_)) | TyKind::AssociatedType(_, _)
-        )
     }
 
     fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)> {

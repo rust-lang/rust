@@ -704,27 +704,13 @@ impl<'a> InferenceContext<'a> {
         type_mismatches.retain(|_, mismatch| {
             mismatch.expected = table.resolve_completely(mismatch.expected.clone());
             mismatch.actual = table.resolve_completely(mismatch.actual.clone());
-            let unresolved_ty_mismatch = || {
-                chalk_ir::zip::Zip::zip_with(
-                    &mut UnknownMismatch(self.db, |ty| matches!(ty.kind(Interner), TyKind::Error)),
-                    Variance::Invariant,
-                    &mismatch.expected,
-                    &mismatch.actual,
-                )
-                .is_ok()
-            };
-
-            let unresolved_projections_mismatch = || {
-                chalk_ir::zip::Zip::zip_with(
-                    &mut UnknownMismatch(self.db, |ty| ty.contains_unknown() && ty.is_projection()),
-                    chalk_ir::Variance::Invariant,
-                    &mismatch.expected,
-                    &mismatch.actual,
-                )
-                .is_ok()
-            };
-
-            unresolved_ty_mismatch() && unresolved_projections_mismatch()
+            chalk_ir::zip::Zip::zip_with(
+                &mut UnknownMismatch(self.db),
+                Variance::Invariant,
+                &mismatch.expected,
+                &mismatch.actual,
+            )
+            .is_ok()
         });
         diagnostics.retain_mut(|diagnostic| {
             use InferenceDiagnostic::*;
@@ -1666,16 +1652,13 @@ impl std::ops::BitOrAssign for Diverges {
         *self = *self | other;
     }
 }
-/// A zipper that checks for unequal `{unknown}` occurrences in the two types.
-/// Types that have different constructors are filtered out and tested by the
-/// provided closure `F`. Commonly used to filter out mismatch diagnostics that
-/// only differ in `{unknown}`. These mismatches are usually not helpful, as the
-/// cause is usually an underlying name resolution problem.
-///
-/// E.g. when F is `|ty| matches!(ty.kind(Interer), TyKind::Unknown)`, the zipper
-/// will skip over all mismatches that only differ in `{unknown}`.
-struct UnknownMismatch<'db, F: Fn(&Ty) -> bool>(&'db dyn HirDatabase, F);
-impl<F: Fn(&Ty) -> bool> chalk_ir::zip::Zipper<Interner> for UnknownMismatch<'_, F> {
+
+/// A zipper that checks for unequal occurrences of `{unknown}` and unresolved projections
+/// in the two types. Used to filter out mismatch diagnostics that only differ in
+/// `{unknown}` and unresolved projections. These mismatches are usually not helpful.
+/// As the cause is usually an underlying name resolution problem
+struct UnknownMismatch<'db>(&'db dyn HirDatabase);
+impl chalk_ir::zip::Zipper<Interner> for UnknownMismatch<'_> {
     fn zip_tys(&mut self, variance: Variance, a: &Ty, b: &Ty) -> chalk_ir::Fallible<()> {
         let zip_substs = |this: &mut Self,
                           variances,
@@ -1746,7 +1729,12 @@ impl<F: Fn(&Ty) -> bool> chalk_ir::zip::Zipper<Interner> for UnknownMismatch<'_,
                 zip_substs(self, None, &fn_ptr_a.substitution.0, &fn_ptr_b.substitution.0)?
             }
             (TyKind::Error, TyKind::Error) => (),
-            _ if (self.1)(a) || (self.1)(b) => return Err(chalk_ir::NoSolution),
+            (TyKind::Error, _)
+            | (_, TyKind::Error)
+            | (TyKind::Alias(AliasTy::Projection(_)) | TyKind::AssociatedType(_, _), _)
+            | (_, TyKind::Alias(AliasTy::Projection(_)) | TyKind::AssociatedType(_, _)) => {
+                return Err(chalk_ir::NoSolution)
+            }
             _ => (),
         }
 
