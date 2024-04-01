@@ -10,7 +10,7 @@ assert-window-property: {"srcIndex": null}
 
 // Form input
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-write: (".search-input", "Foo")
+write-into: (".search-input", "Foo")
 press-key: 'Enter'
 wait-for: "#search-tabs"
 assert-window-property-false: {"searchIndex": null}

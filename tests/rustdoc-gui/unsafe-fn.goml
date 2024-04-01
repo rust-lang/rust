@@ -13,7 +13,7 @@ define-function: (
     "sup-check",
     // `theme` is the theme being tested.
     // `color` is the expected color of the `<sup>` element.
-    (theme, color),
+    [theme, color],
     block {
         // Set the theme.
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
@@ -23,6 +23,15 @@ define-function: (
     },
 )
 
-call-function: ("sup-check", ("ayu", "#c5c5c5"))
-call-function: ("sup-check", ("dark", "#ddd"))
-call-function: ("sup-check", ("light", "black"))
+call-function: ("sup-check", {
+    "theme": "ayu",
+    "color": "#c5c5c5",
+})
+call-function: ("sup-check", {
+    "theme": "dark",
+    "color": "#ddd",
+})
+call-function: ("sup-check", {
+    "theme": "light",
+    "color": "black",
+})

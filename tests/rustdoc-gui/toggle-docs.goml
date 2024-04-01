@@ -49,7 +49,7 @@ assert-attribute: ("details.toggle", {"open": ""}, ALL)
 show-text: true
 define-function: (
     "check-color",
-    (theme, filter),
+    [theme, filter],
     block {
         // Setting the theme.
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
