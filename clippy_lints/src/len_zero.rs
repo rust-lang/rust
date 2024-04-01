@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::snippet_with_context;
-use clippy_utils::sugg::Sugg;
+use clippy_utils::source::{snippet_opt, snippet_with_context};
+use clippy_utils::sugg::{has_enclosing_paren, Sugg};
 use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -192,7 +192,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
 
         if let ExprKind::Binary(Spanned { node: cmp, .. }, left, right) = expr.kind {
             // expr.span might contains parenthesis, see issue #10529
-            let actual_span = left.span.with_hi(right.span.hi());
+            let actual_span = span_without_enclosing_paren(cx, expr.span);
             match cmp {
                 BinOpKind::Eq => {
                     check_cmp(cx, actual_span, left, right, "", 0); // len == 0
@@ -215,6 +215,20 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
                 _ => (),
             }
         }
+    }
+}
+
+fn span_without_enclosing_paren(cx: &LateContext<'_>, span: Span) -> Span {
+    let Some(snippet) = snippet_opt(cx, span) else {
+        return span;
+    };
+    if has_enclosing_paren(snippet) {
+        let source_map = cx.tcx.sess.source_map();
+        let left_paren = source_map.start_point(span);
+        let right_parent = source_map.end_point(span);
+        left_paren.between(right_parent)
+    } else {
+        span
     }
 }
 
@@ -495,6 +509,10 @@ fn check_for_is_empty(
 }
 
 fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>, op: &str, compare_to: u32) {
+    if method.span.from_expansion() {
+        return;
+    }
+
     if let (&ExprKind::MethodCall(method_path, receiver, args, _), ExprKind::Lit(lit)) = (&method.kind, &lit.kind) {
         // check if we are in an is_empty() method
         if let Some(name) = get_item_name(cx, method) {
