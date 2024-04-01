@@ -71,8 +71,7 @@ config_data! {
         /// How many worker threads to handle priming caches. The default `0` means to pick automatically.
         cachePriming_numThreads: ParallelCachePrimingNumThreads = "0",
 
-        /// Pass `--all-targets` to cargo invocation. Overridden by `#rust-analyzer.check.allTargets#`
-        /// when the latter is set.
+        /// Pass `--all-targets` to cargo invocation.
         cargo_allTargets: bool           = "true",
         /// Automatically refresh project info via `cargo metadata` on
         /// `Cargo.toml` or `.cargo/config.toml` changes.
@@ -166,7 +165,8 @@ config_data! {
         /// Run the check command for diagnostics on save.
         checkOnSave | checkOnSave_enable: bool                         = "true",
 
-        /// Check all targets and tests (`--all-targets`). Overrides `#rust-analyzer.cargo.allTargets#`.
+        /// Check all targets and tests (`--all-targets`). Defaults to
+        /// `#rust-analyzer.cargo.allTargets#`.
         check_allTargets | checkOnSave_allTargets: Option<bool>          = "null",
         /// Cargo command to use for `cargo check`.
         check_command | checkOnSave_command: String                      = "\"check\"",
