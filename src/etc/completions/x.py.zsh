@@ -335,7 +335,6 @@ _arguments "${_arguments_options[@]}" \
 ;;
 (test)
 _arguments "${_arguments_options[@]}" \
-'*--skip=[skips tests matching SUBSTRING, if supported by test tool. May be passed multiple times]:SUBSTRING:_files' \
 '*--test-args=[extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)]:ARGS: ' \
 '*--rustc-args=[extra options to pass the compiler when running tests]:ARGS: ' \
 '--extra-checks=[comma-separated list of other files types to check (accepts py, py\:lint, py\:fmt, shell)]:EXTRA_CHECKS: ' \
@@ -348,6 +347,7 @@ _arguments "${_arguments_options[@]}" \
 '--host=[host targets to build]:HOST:( )' \
 '--target=[target targets to build]:TARGET:( )' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
+'*--skip=[build paths to skip]:PATH:_files' \
 '--rustc-error-format=[]:RUSTC_ERROR_FORMAT:( )' \
 '--on-fail=[command to run on failure]:CMD:_cmdstring' \
 '--stage=[stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)]:N:( )' \

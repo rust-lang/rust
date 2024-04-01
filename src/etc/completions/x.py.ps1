@@ -333,7 +333,6 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             break
         }
         'x.py;test' {
-            [CompletionResult]::new('--skip', 'skip', [CompletionResultType]::ParameterName, 'skips tests matching SUBSTRING, if supported by test tool. May be passed multiple times')
             [CompletionResult]::new('--test-args', 'test-args', [CompletionResultType]::ParameterName, 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)')
             [CompletionResult]::new('--rustc-args', 'rustc-args', [CompletionResultType]::ParameterName, 'extra options to pass the compiler when running tests')
             [CompletionResult]::new('--extra-checks', 'extra-checks', [CompletionResultType]::ParameterName, 'comma-separated list of other files types to check (accepts py, py:lint, py:fmt, shell)')
@@ -346,6 +345,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--host', 'host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', 'target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', 'exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
+            [CompletionResult]::new('--skip', 'skip', [CompletionResultType]::ParameterName, 'build paths to skip')
             [CompletionResult]::new('--rustc-error-format', 'rustc-error-format', [CompletionResultType]::ParameterName, 'rustc-error-format')
             [CompletionResult]::new('--on-fail', 'on-fail', [CompletionResultType]::ParameterName, 'command to run on failure')
             [CompletionResult]::new('--stage', 'stage', [CompletionResultType]::ParameterName, 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)')
