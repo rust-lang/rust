@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
             // suggest `any(|..| *..)` instead of `any(|..| **..)` for `find(|..| **..).is_some()`
             let mut applicability = Applicability::MachineApplicable;
             let any_search_snippet = if search_method == "find"
-                && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = search_arg.kind
+                && let ExprKind::Closure(&hir::Closure { body, .. }) = search_arg.kind
                 && let closure_body = cx.tcx.hir().body(body)
                 && let Some(closure_arg) = closure_body.params.first()
             {
