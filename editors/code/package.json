@@ -547,7 +547,7 @@
                     "maximum": 255
                 },
                 "rust-analyzer.cargo.allTargets": {
-                    "markdownDescription": "Pass `--all-targets` to cargo invocation. Overridden by `#rust-analyzer.check.allTargets#`\nwhen the latter is set.",
+                    "markdownDescription": "Pass `--all-targets` to cargo invocation.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -712,7 +712,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.check.allTargets": {
-                    "markdownDescription": "Check all targets and tests (`--all-targets`). Overrides `#rust-analyzer.cargo.allTargets#`.",
+                    "markdownDescription": "Check all targets and tests (`--all-targets`). Defaults to\n`#rust-analyzer.cargo.allTargets#`.",
                     "default": null,
                     "type": [
                         "null",
