@@ -3,6 +3,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, LangItem, MatchSource, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::ty::GenericArgKind;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -118,6 +119,10 @@ fn handle_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
         && implements_trait(cx, match_ty, default_trait_id, &[])
         // We now get the bodies for both the `Some` and `None` arms.
         && let Some(((body_some, binding_id), body_none)) = get_some_and_none_bodies(cx, arm1, arm2)
+        // We check that the initial expression also implies the `Default` trait.
+        && let Some(match_expr_ty) = cx.typeck_results().expr_ty(match_expr).walk().nth(1)
+        && let GenericArgKind::Type(match_expr_ty) = match_expr_ty.unpack()
+        && implements_trait(cx, match_expr_ty, default_trait_id, &[])
         // We check that the `Some(x) => x` doesn't do anything apart "returning" the value in `Some`.
         && let ExprKind::Path(QPath::Resolved(_, path)) = peel_blocks(body_some).kind
         && let Res::Local(local_id) = path.res
@@ -154,6 +159,10 @@ fn handle_if_let<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         && let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
         && implements_trait(cx, match_ty, default_trait_id, &[])
         && let Some(binding_id) = get_some(cx, let_.pat)
+        // We check that the initial expression also implies the `Default` trait.
+        && let Some(let_ty) = cx.typeck_results().expr_ty(let_.init).walk().nth(1)
+        && let GenericArgKind::Type(let_ty) = let_ty.unpack()
+        && implements_trait(cx, let_ty, default_trait_id, &[])
         // We check that the `Some(x) => x` doesn't do anything apart "returning" the value in `Some`.
         && let ExprKind::Path(QPath::Resolved(_, path)) = peel_blocks(if_block).kind
         && let Res::Local(local_id) = path.res
