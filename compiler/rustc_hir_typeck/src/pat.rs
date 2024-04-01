@@ -294,7 +294,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             AdjustMode::Pass => (expected, def_bm, false),
             AdjustMode::Reset => (expected, INITIAL_BM, false),
             AdjustMode::ResetAndConsumeRef(mutbl) => {
-                (expected, INITIAL_BM, def_bm.0 == ByRef::Yes(mutbl))
+                let mutbls_match = def_bm.0 == ByRef::Yes(mutbl);
+                if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
+                    if mutbls_match {
+                        (expected, INITIAL_BM, true)
+                    } else {
+                        (expected, def_bm, false)
+                    }
+                } else {
+                    (expected, INITIAL_BM, mutbls_match)
+                }
             }
             AdjustMode::Peel => {
                 let peeled = self.peel_off_references(pat, expected, def_bm);
@@ -2056,61 +2065,70 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_info: PatInfo<'tcx, '_>,
         consumed_inherited_ref: bool,
     ) -> Ty<'tcx> {
-        let tcx = self.tcx;
-        let expected = self.shallow_resolve(expected);
-        let (ref_ty, inner_ty) = match self.check_dereferenceable(pat.span, expected, inner) {
-            Ok(()) => {
-                // `demand::subtype` would be good enough, but using `eqtype` turns
-                // out to be equally general. See (note_1) for details.
+        if consumed_inherited_ref
+            && pat.span.at_least_rust_2024()
+            && self.tcx.features().ref_pat_eat_one_layer_2024
+        {
+            self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
+            self.check_pat(inner, expected, pat_info);
+            expected
+        } else {
+            let tcx = self.tcx;
+            let expected = self.shallow_resolve(expected);
+            let (ref_ty, inner_ty) = match self.check_dereferenceable(pat.span, expected, inner) {
+                Ok(()) => {
+                    // `demand::subtype` would be good enough, but using `eqtype` turns
+                    // out to be equally general. See (note_1) for details.
 
-                // Take region, inner-type from expected type if we can,
-                // to avoid creating needless variables. This also helps with
-                // the bad interactions of the given hack detailed in (note_1).
-                debug!("check_pat_ref: expected={:?}", expected);
-                match *expected.kind() {
-                    ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
-                    _ => {
-                        if consumed_inherited_ref && self.tcx.features().ref_pat_everywhere {
-                            // We already matched against a match-ergonmics inserted reference,
-                            // so we don't need to match against a reference from the original type.
-                            // Save this infor for use in lowering later
-                            self.typeck_results
-                                .borrow_mut()
-                                .skipped_ref_pats_mut()
-                                .insert(pat.hir_id);
-                            (expected, expected)
-                        } else {
-                            let inner_ty = self.next_ty_var(TypeVariableOrigin {
-                                param_def_id: None,
-                                span: inner.span,
-                            });
-                            let ref_ty = self.new_ref_ty(pat.span, mutbl, inner_ty);
-                            debug!("check_pat_ref: demanding {:?} = {:?}", expected, ref_ty);
-                            let err = self.demand_eqtype_pat_diag(
-                                pat.span,
-                                expected,
-                                ref_ty,
-                                pat_info.top_info,
-                            );
+                    // Take region, inner-type from expected type if we can,
+                    // to avoid creating needless variables. This also helps with
+                    // the bad interactions of the given hack detailed in (note_1).
+                    debug!("check_pat_ref: expected={:?}", expected);
+                    match *expected.kind() {
+                        ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
+                        _ => {
+                            if consumed_inherited_ref && self.tcx.features().ref_pat_everywhere {
+                                // We already matched against a match-ergonmics inserted reference,
+                                // so we don't need to match against a reference from the original type.
+                                // Save this infor for use in lowering later
+                                self.typeck_results
+                                    .borrow_mut()
+                                    .skipped_ref_pats_mut()
+                                    .insert(pat.hir_id);
+                                (expected, expected)
+                            } else {
+                                let inner_ty = self.next_ty_var(TypeVariableOrigin {
+                                    param_def_id: None,
+                                    span: inner.span,
+                                });
+                                let ref_ty = self.new_ref_ty(pat.span, mutbl, inner_ty);
+                                debug!("check_pat_ref: demanding {:?} = {:?}", expected, ref_ty);
+                                let err = self.demand_eqtype_pat_diag(
+                                    pat.span,
+                                    expected,
+                                    ref_ty,
+                                    pat_info.top_info,
+                                );
 
-                            // Look for a case like `fn foo(&foo: u32)` and suggest
-                            // `fn foo(foo: &u32)`
-                            if let Some(mut err) = err {
-                                self.borrow_pat_suggestion(&mut err, pat);
-                                err.emit();
+                                // Look for a case like `fn foo(&foo: u32)` and suggest
+                                // `fn foo(foo: &u32)`
+                                if let Some(mut err) = err {
+                                    self.borrow_pat_suggestion(&mut err, pat);
+                                    err.emit();
+                                }
+                                (ref_ty, inner_ty)
                             }
-                            (ref_ty, inner_ty)
                         }
                     }
                 }
-            }
-            Err(guar) => {
-                let err = Ty::new_error(tcx, guar);
-                (err, err)
-            }
-        };
-        self.check_pat(inner, inner_ty, pat_info);
-        ref_ty
+                Err(guar) => {
+                    let err = Ty::new_error(tcx, guar);
+                    (err, err)
+                }
+            };
+            self.check_pat(inner, inner_ty, pat_info);
+            ref_ty
+        }
     }
 
     /// Create a reference type with a fresh region variable.
