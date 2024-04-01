@@ -336,7 +336,7 @@ impl<'a> Parser<'a> {
                 UseTreeKind::Glob => {
                     e.note("the wildcard token must be last on the path");
                 }
-                UseTreeKind::Nested(..) => {
+                UseTreeKind::Nested { .. } => {
                     e.note("glob-like brace syntax must be last on the path");
                 }
                 _ => (),
@@ -1056,7 +1056,11 @@ impl<'a> Parser<'a> {
         Ok(if self.eat(&token::BinOp(token::Star)) {
             UseTreeKind::Glob
         } else {
-            UseTreeKind::Nested(self.parse_use_tree_list()?)
+            let lo = self.token.span;
+            UseTreeKind::Nested {
+                items: self.parse_use_tree_list()?,
+                span: lo.to(self.prev_token.span),
+            }
         })
     }
 

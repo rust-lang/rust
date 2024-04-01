@@ -128,7 +128,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                     self.unused_import(self.base_id).add(id);
                 }
             }
-            ast::UseTreeKind::Nested(ref items) => self.check_imports_as_underscore(items),
+            ast::UseTreeKind::Nested { ref items, .. } => self.check_imports_as_underscore(items),
             _ => {}
         }
     }
@@ -254,7 +254,7 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             return;
         }
 
-        if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
+        if let ast::UseTreeKind::Nested { ref items, .. } = use_tree.kind {
             if items.is_empty() {
                 self.unused_import(self.base_id).add(id);
             }
@@ -292,7 +292,7 @@ fn calc_unused_spans(
                 UnusedSpanResult::Used
             }
         }
-        ast::UseTreeKind::Nested(ref nested) => {
+        ast::UseTreeKind::Nested { items: ref nested, .. } => {
             if nested.is_empty() {
                 return UnusedSpanResult::Unused { spans: vec![use_tree.span], remove: full_span };
             }
