@@ -16,7 +16,7 @@ LL ~    Box::new(todo!())
    |
 
 error[E0277]: the size for values of type `dyn T` cannot be known at compilation time
-  --> $DIR/unsized-return.rs:10:12
+  --> $DIR/unsized-return.rs:9:12
    |
 LL |     let x: dyn T = foo();
    |            ^^^^^ doesn't have a size known at compile-time
@@ -39,16 +39,7 @@ LL |     let x = foo();
    = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature
 
-error[E0277]: the size for values of type `(dyn T + 'static)` cannot be known at compilation time
-  --> $DIR/unsized-return.rs:8:13
-   |
-LL |     let x = foo();
-   |             ^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `(dyn T + 'static)`
-   = note: the return type of a function must have a statically known size
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0277, E0746.
 For more information about an error, try `rustc --explain E0277`.

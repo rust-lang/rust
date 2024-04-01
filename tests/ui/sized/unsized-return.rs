@@ -6,6 +6,5 @@ fn foo() -> dyn T { //~ E0746
 
 fn main() {
     let x = foo(); //~ ERROR E0277
-    //~^ ERROR E0277
     let x: dyn T = foo(); //~ ERROR E0277
 }

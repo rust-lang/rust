@@ -600,7 +600,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.require_type_is_sized_deferred(
                 output,
                 call.map_or(expr.span, |e| e.span),
-                traits::SizedCallReturnType,
+                traits::SizedCallReturnType(call.map(|e| e.hir_id)),
             );
         }
 

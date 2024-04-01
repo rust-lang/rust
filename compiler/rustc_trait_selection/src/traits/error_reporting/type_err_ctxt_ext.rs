@@ -131,6 +131,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             span = pat.span;
                         }
                     }
+                    ObligationCauseCode::SizedCallReturnType(Some(hir_id)) => {
+                        // This is a special case: when `fn foo() -> dyn Trait` and we call `foo()`
+                        // in the init of a `let` binding, we will already emit an unsized local
+                        // error, so we check for this case and unify the errors.
+                        if let hir::Node::Local(local) = self.tcx.parent_hir_node(*hir_id) {
+                            span = local.pat.span;
+                        }
+                    }
                     _ => {}
                 }
             }
