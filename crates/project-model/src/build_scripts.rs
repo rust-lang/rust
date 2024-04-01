@@ -86,7 +86,9 @@ impl WorkspaceBuildScripts {
                 // --all-targets includes tests, benches and examples in addition to the
                 // default lib and bins. This is an independent concept from the --target
                 // flag below.
-                cmd.arg("--all-targets");
+                if config.all_targets {
+                    cmd.arg("--all-targets");
+                }
 
                 if let Some(target) = &config.target {
                     cmd.args(["--target", target]);
