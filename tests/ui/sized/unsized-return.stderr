@@ -1,0 +1,54 @@
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/unsized-return.rs:3:13
+   |
+LL | fn foo() -> dyn T {
+   |             ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: if the returned value came from a borrowed argument that implements the trait, then you could return `&dyn Trait`
+help: return an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn foo() -> impl T {
+   |             ~~~~
+help: alternatively, box the return type to make a boxed trait object, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn foo() -> Box<dyn T> {
+LL ~    Box::new(todo!())
+   |
+
+error[E0277]: the size for values of type `dyn T` cannot be known at compilation time
+  --> $DIR/unsized-return.rs:10:12
+   |
+LL |     let x: dyn T = foo();
+   |            ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn T`
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+help: consider borrowing here
+   |
+LL |     let x: &dyn T = foo();
+   |            +
+
+error[E0277]: the size for values of type `dyn T` cannot be known at compilation time
+  --> $DIR/unsized-return.rs:8:13
+   |
+LL |     let x = foo();
+   |             ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn T`
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: the size for values of type `(dyn T + 'static)` cannot be known at compilation time
+  --> $DIR/unsized-return.rs:8:13
+   |
+LL |     let x = foo();
+   |             ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn T + 'static)`
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0746.
+For more information about an error, try `rustc --explain E0277`.
