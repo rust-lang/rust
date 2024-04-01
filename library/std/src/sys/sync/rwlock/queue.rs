@@ -115,8 +115,7 @@ use crate::sync::atomic::{
     AtomicBool, AtomicPtr,
     Ordering::{AcqRel, Acquire, Relaxed, Release},
 };
-use crate::sys_common::thread_info;
-use crate::thread::Thread;
+use crate::thread::{self, Thread};
 
 // Locking uses exponential backoff. `SPIN_COUNT` indicates how many times the
 // locking operation will be retried.
@@ -203,8 +202,7 @@ impl Node {
     fn prepare(&mut self) {
         // Fall back to creating an unnamed `Thread` handle to allow locking in
         // TLS destructors.
-        self.thread
-            .get_or_init(|| thread_info::current_thread().unwrap_or_else(|| Thread::new(None)));
+        self.thread.get_or_init(|| thread::try_current().unwrap_or_else(|| Thread::new(None)));
         self.completed = AtomicBool::new(false);
     }
 

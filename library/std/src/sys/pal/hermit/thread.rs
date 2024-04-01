@@ -104,13 +104,3 @@ impl Thread {
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     unsafe { Ok(NonZero::new_unchecked(abi::get_processor_count())) }
 }
-
-pub mod guard {
-    pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> {
-        None
-    }
-    pub unsafe fn init() -> Option<Guard> {
-        None
-    }
-}

@@ -312,16 +312,6 @@ impl Drop for Thread {
     }
 }
 
-pub mod guard {
-    pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> {
-        None
-    }
-    pub unsafe fn init() -> Option<Guard> {
-        None
-    }
-}
-
 /// Terminate and delete the specified task.
 ///
 /// This function will abort if `deleted_task` refers to the calling task.

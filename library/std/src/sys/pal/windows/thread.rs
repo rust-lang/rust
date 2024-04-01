@@ -144,14 +144,3 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
         cpus => Ok(unsafe { NonZero::new_unchecked(cpus) }),
     }
 }
-
-#[cfg_attr(test, allow(dead_code))]
-pub mod guard {
-    pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> {
-        None
-    }
-    pub unsafe fn init() -> Option<Guard> {
-        None
-    }
-}
