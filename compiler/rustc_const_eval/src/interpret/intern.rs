@@ -18,6 +18,7 @@ use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::interpret::{ConstAllocation, CtfeProvenance, InterpResult};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::TyAndLayout;
@@ -106,13 +107,17 @@ fn intern_as_new_static<'tcx>(
         DefKind::Static { mutability: alloc.0.mutability, nested: true },
     );
     tcx.set_nested_alloc_id_static(alloc_id, feed.def_id());
-    feed.codegen_fn_attrs(tcx.codegen_fn_attrs(static_id).clone());
+
+    // These do not inherit the codegen attrs of the parent static allocation, since
+    // it doesn't make sense for them to inherit their `#[no_mangle]` and `#[link_name = ..]`
+    // and the like.
+    feed.codegen_fn_attrs(CodegenFnAttrs::new());
+
     feed.eval_static_initializer(Ok(alloc));
     feed.generics_of(tcx.generics_of(static_id).clone());
     feed.def_ident_span(tcx.def_ident_span(static_id));
     feed.explicit_predicates_of(tcx.explicit_predicates_of(static_id));
-
-    feed.feed_hir()
+    feed.feed_hir();
 }
 
 /// How a constant value should be interned.
