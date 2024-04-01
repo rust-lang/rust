@@ -299,12 +299,12 @@ fn calc_unused_spans(
 
             let mut unused_spans = Vec::new();
             let mut to_remove = Vec::new();
-            let mut all_nested_unused = true;
+            let mut used_childs = 0;
             let mut previous_unused = false;
             for (pos, (use_tree, use_tree_id)) in nested.iter().enumerate() {
                 let remove = match calc_unused_spans(unused_import, use_tree, *use_tree_id) {
                     UnusedSpanResult::Used => {
-                        all_nested_unused = false;
+                        used_childs += 1;
                         None
                     }
                     UnusedSpanResult::Unused { mut spans, remove } => {
@@ -312,7 +312,7 @@ fn calc_unused_spans(
                         Some(remove)
                     }
                     UnusedSpanResult::PartialUnused { mut spans, remove: mut to_remove_extra } => {
-                        all_nested_unused = false;
+                        used_childs += 1;
                         unused_spans.append(&mut spans);
                         to_remove.append(&mut to_remove_extra);
                         None
@@ -321,7 +321,7 @@ fn calc_unused_spans(
                 if let Some(remove) = remove {
                     let remove_span = if nested.len() == 1 {
                         remove
-                    } else if pos == nested.len() - 1 || !all_nested_unused {
+                    } else if pos == nested.len() - 1 || used_childs > 0 {
                         // Delete everything from the end of the last import, to delete the
                         // previous comma
                         nested[pos - 1].0.span.shrink_to_hi().to(use_tree.span)
@@ -343,7 +343,7 @@ fn calc_unused_spans(
             }
             if unused_spans.is_empty() {
                 UnusedSpanResult::Used
-            } else if all_nested_unused {
+            } else if used_childs == 0 {
                 UnusedSpanResult::Unused { spans: unused_spans, remove: full_span }
             } else {
                 UnusedSpanResult::PartialUnused { spans: unused_spans, remove: to_remove }
