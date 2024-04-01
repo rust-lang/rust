@@ -146,6 +146,8 @@ fn base_config(test_dir: &str) -> (Config, Args) {
     );
 
     config.program.args.extend(EXTERN_FLAGS.iter().map(OsString::from));
+    // Prevent rustc from creating `rustc-ice-*` files the console output is enough.
+    config.program.envs.push(("RUSTC_ICE".into(), Some("0".into())));
 
     if let Some(host_libs) = option_env!("HOST_LIBS") {
         let dep = format!("-Ldependency={}", Path::new(host_libs).join("deps").display());
