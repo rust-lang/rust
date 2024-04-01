@@ -3569,6 +3569,7 @@ dependencies = [
 name = "rustc_attr"
 version = "0.0.0"
 dependencies = [
+ "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",

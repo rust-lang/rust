@@ -1552,7 +1552,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     attr::ReprRust => ReprFlags::empty(),
                     attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked(pack) => {
-                        let pack = Align::from_bytes(pack as u64).unwrap();
                         min_pack = Some(if let Some(min_pack) = min_pack {
                             min_pack.min(pack)
                         } else {
@@ -1584,7 +1583,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         ReprFlags::empty()
                     }
                     attr::ReprAlign(align) => {
-                        max_align = max_align.max(Some(Align::from_bytes(align as u64).unwrap()));
+                        max_align = max_align.max(Some(align));
                         ReprFlags::empty()
                     }
                 });
