@@ -4,7 +4,7 @@
 
 The type system relies on information in the environment in order for it to function correctly. This information is stored in the [`ParamEnv`][pe] type and it is important to use the correct `ParamEnv` when interacting with the type system.
 
-The information represented by `ParamEnv` is a list of in scope where clauses, and a [`Reveal`][reveal]. A `ParamEnv` typically corresponds to a specific item's environment however it can also be created with arbitrary data that is not derived from a specific item. In most cases `ParamEnv`s are initially created via the [`param_env` query][query] which returns a `ParamEnv` derived from the provided item's where clauses.
+The information represented by `ParamEnv` is a list of in-scope where-clauses, and a [`Reveal`][reveal]. A `ParamEnv` typically corresponds to a specific item's environment however it can also be created with arbitrary data that is not derived from a specific item. In most cases `ParamEnv`s are initially created via the [`param_env` query][query] which returns a `ParamEnv` derived from the provided item's where clauses.
 
 If we have a function such as:
 ```rust
@@ -21,7 +21,7 @@ A more concrete example:
 ```rust
 // `foo` would have a `ParamEnv` of:
 // `[T: Sized, T: Clone]`
-fn foo<T: Clone>(a: T) -> (T, T) {
+fn foo<T: Clone>(a: T) {
     // when typechecking `foo` we require all the where clauses on `bar`
     // to hold in order for it to be legal to call. This means we have to
     // prove `T: Clone`. As we are type checking `foo` we use `foo`'s
@@ -37,14 +37,15 @@ Or alternatively an example that would not compile:
 ```rust
 // `foo2` would have a `ParamEnv` of:
 // `[T: Sized]`
-fn foo2<T>(a: T) -> (T, T) {
+fn foo2<T>(a: T) {
     // When typechecking `foo2` we attempt to prove `T: Clone`.
     // As we are type checking `foo2` we use `foo2`'s environment
     // when trying to prove `T: Clone`.
     //
     // Trying to prove `T: Clone` with a `ParamEnv` of `[T: Sized]` will
     // fail as there is nothing in the environment telling the trait solver
-    // that `T` implements `Clone`.
+    // that `T` implements `Clone` and there exists no user written impl
+    // that could apply.
     requires_clone(a);
 }
 ```
