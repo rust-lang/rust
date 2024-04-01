@@ -1,3 +1,7 @@
+# 1.5.0
+
+* Make the `data` from an `ExpectFile` accessible ([#43])
+
 # 1.4.1
 
 * Use foreground colors instead of background colors to highlight diffs ([#36])
