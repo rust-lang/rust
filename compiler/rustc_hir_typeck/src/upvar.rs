@@ -399,16 +399,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
 
             // Additionally, we can now constrain the coroutine's kind type.
-            let ty::Coroutine(_, coroutine_args) =
-                *self.typeck_results.borrow().expr_ty(body.value).kind()
-            else {
-                bug!();
-            };
-            self.demand_eqtype(
-                span,
-                coroutine_args.as_coroutine().kind_ty(),
-                Ty::from_coroutine_closure_kind(self.tcx, closure_kind),
-            );
+            //
+            // We only do this if `infer_kind`, because if we have constrained
+            // the kind from closure signature inference, the kind inferred
+            // for the inner coroutine may actually be more restrictive.
+            if infer_kind {
+                let ty::Coroutine(_, coroutine_args) =
+                    *self.typeck_results.borrow().expr_ty(body.value).kind()
+                else {
+                    bug!();
+                };
+                self.demand_eqtype(
+                    span,
+                    coroutine_args.as_coroutine().kind_ty(),
+                    Ty::from_coroutine_closure_kind(self.tcx, closure_kind),
+                );
+            }
         }
 
         self.log_closure_min_capture_info(closure_def_id, span);

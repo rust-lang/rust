@@ -1,0 +1,31 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/async-closure-captures.rs:LL:CC
+   |
+LL |           let c = force_fnonce(async move || {
+   |  ____________________________________________-
+LL | |             println!("{x:?}");
+   | |                        ^ borrowed value does not live long enough
+LL | |         });
+   | |         --
+   | |         ||
+   | |         |`x` dropped here while still borrowed
+   | |_________|borrow later used here
+   |           value captured here by coroutine
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/async-closure-captures.rs:LL:CC
+   |
+LL |           let c = force_fnonce(async move || {
+   |  ____________________________________________-
+LL | |             println!("{x:?}");
+   | |                        ^ borrowed value does not live long enough
+LL | |         });
+   | |         --
+   | |         ||
+   | |         |`x` dropped here while still borrowed
+   | |_________|borrow later used here
+   |           value captured here by coroutine
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

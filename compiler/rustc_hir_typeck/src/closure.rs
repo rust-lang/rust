@@ -227,11 +227,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: TypeVariableOriginKind::ClosureSynthetic,
                     span: expr_span,
                 });
-                let closure_kind_ty = self.next_ty_var(TypeVariableOrigin {
-                    // FIXME(eddyb) distinguish closure kind inference variables from the rest.
-                    kind: TypeVariableOriginKind::ClosureSynthetic,
-                    span: expr_span,
-                });
+
+                let closure_kind_ty = match expected_kind {
+                    Some(kind) => Ty::from_closure_kind(tcx, kind),
+
+                    // Create a type variable (for now) to represent the closure kind.
+                    // It will be unified during the upvar inference phase (`upvar.rs`)
+                    None => self.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::ClosureSynthetic,
+                        span: expr_span,
+                    }),
+                };
+
                 let coroutine_captures_by_ref_ty = self.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::ClosureSynthetic,
                     span: expr_span,
@@ -262,10 +269,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     },
                 );
 
-                let coroutine_kind_ty = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::ClosureSynthetic,
-                    span: expr_span,
-                });
+                let coroutine_kind_ty = match expected_kind {
+                    Some(kind) => Ty::from_coroutine_closure_kind(tcx, kind),
+
+                    // Create a type variable (for now) to represent the closure kind.
+                    // It will be unified during the upvar inference phase (`upvar.rs`)
+                    None => self.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::ClosureSynthetic,
+                        span: expr_span,
+                    }),
+                };
+
                 let coroutine_upvars_ty = self.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::ClosureSynthetic,
                     span: expr_span,

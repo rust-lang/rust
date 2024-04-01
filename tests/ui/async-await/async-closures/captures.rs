@@ -1,7 +1,7 @@
 //@ aux-build:block-on.rs
 //@ edition:2021
-//@ run-pass
-//@ check-run-results
+
+
 
 // Same as miri's `tests/pass/async-closure-captures.rs`, keep in sync
 
@@ -77,6 +77,42 @@ async fn async_main() {
             println!("{x:?}");
             drop(x);
         };
+        call_once(c).await;
+    }
+
+    fn force_fnonce<T>(f: impl async FnOnce() -> T) -> impl async FnOnce() -> T {
+        f
+    }
+
+    // Capture something with `move`, but infer to `AsyncFnOnce`
+    {
+        let x = Hello(6);
+        let c = force_fnonce(async move || {
+            println!("{x:?}");
+        });
+        call_once(c).await;
+
+        let x = &Hello(7);
+        let c = force_fnonce(async move || {
+            println!("{x:?}");
+        });
+        call_once(c).await;
+    }
+
+    // Capture something by-ref, but infer to `AsyncFnOnce`
+    {
+        let x = Hello(8);
+        let c = force_fnonce(async || {
+            println!("{x:?}");
+            //~^ ERROR `x` does not live long enough
+        });
+        call_once(c).await;
+
+        let x = &Hello(9);
+        let c = force_fnonce(async || {
+            println!("{x:?}");
+            //~^ ERROR `x` does not live long enough
+        });
         call_once(c).await;
     }
 }
