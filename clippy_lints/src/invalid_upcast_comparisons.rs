@@ -76,7 +76,7 @@ fn err_upcast_comparison(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, alwa
             cx,
             INVALID_UPCAST_COMPARISONS,
             span,
-            &format!(
+            format!(
                 "because of the numeric bounds on `{}` prior to casting, this expression is always {}",
                 snippet(cx, cast_val.span, "the expression"),
                 if always { "true" } else { "false" },

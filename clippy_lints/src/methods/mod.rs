@@ -4333,12 +4333,12 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                             cx,
                             SHOULD_IMPLEMENT_TRAIT,
                             impl_item.span,
-                            &format!(
+                            format!(
                                 "method `{}` can be confused for the standard trait method `{}::{}`",
                                 method_config.method_name, method_config.trait_name, method_config.method_name
                             ),
                             None,
-                            &format!(
+                            format!(
                                 "consider implementing the trait `{}` or choosing a less ambiguous method name",
                                 method_config.trait_name
                             ),

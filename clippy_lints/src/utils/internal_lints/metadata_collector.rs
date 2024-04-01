@@ -822,7 +822,7 @@ fn lint_collection_error_item(cx: &LateContext<'_>, item: &Item<'_>, message: &s
         cx,
         METADATA_COLLECTOR,
         item.ident.span,
-        &format!("metadata collection error for `{}`: {message}", item.ident.name),
+        format!("metadata collection error for `{}`: {message}", item.ident.name),
     );
 }
 

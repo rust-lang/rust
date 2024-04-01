@@ -386,7 +386,7 @@ pub(super) fn check(
                 )
             },
         };
-        span_lint_and_then(cx, lint, span, &msg, |diag| {
+        span_lint_and_then(cx, lint, span, msg, |diag| {
             diag.span_suggestion(span, "try", sugg, applicability);
 
             if let Some((note, span)) = note_and_span {

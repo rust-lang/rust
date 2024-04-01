@@ -70,7 +70,7 @@ pub(super) fn check<'tcx>(
         cx,
         GET_UNWRAP,
         span,
-        &format!("called `.get{mut_str}().unwrap()` on a {caller_type}. Using `[]` is more clear and more concise"),
+        format!("called `.get{mut_str}().unwrap()` on a {caller_type}. Using `[]` is more clear and more concise"),
         "try",
         format!(
             "{borrow_str}{}[{get_args_str}]",

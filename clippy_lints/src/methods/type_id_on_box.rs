@@ -55,7 +55,7 @@ pub(super) fn check(cx: &LateContext<'_>, receiver: &Expr<'_>, call_span: Span) 
             cx,
             TYPE_ID_ON_BOX,
             call_span,
-            &format!("calling `.type_id()` on `{ty_name}`"),
+            format!("calling `.type_id()` on `{ty_name}`"),
             |diag| {
                 let derefs = recv_adjusts
                     .iter()

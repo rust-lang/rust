@@ -65,7 +65,7 @@ fn emit_lint(
         cx,
         IMPLIED_BOUNDS_IN_IMPLS,
         poly_trait.span,
-        &format!("this bound is already specified as the supertrait of `{implied_by}`"),
+        format!("this bound is already specified as the supertrait of `{implied_by}`"),
         |diag| {
             // If we suggest removing a bound, we may also need to extend the span
             // to include the `+` token that is ahead or behind,

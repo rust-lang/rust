@@ -78,9 +78,9 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryDefPath {
                 cx,
                 UNNECESSARY_DEF_PATH,
                 span,
-                &format!("hardcoded path to a {msg}"),
+                format!("hardcoded path to a {msg}"),
                 None,
-                &format!("convert all references to use `{sugg}`"),
+                format!("convert all references to use `{sugg}`"),
             );
         }
     }

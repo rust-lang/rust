@@ -69,7 +69,7 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
         cx,
         UNIT_ARG,
         expr.span,
-        &format!("passing {singular}unit value{plural} to a function"),
+        format!("passing {singular}unit value{plural} to a function"),
         |db| {
             let mut or = "";
             args_to_recover

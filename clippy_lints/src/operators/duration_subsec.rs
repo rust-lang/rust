@@ -31,7 +31,7 @@ pub(crate) fn check<'tcx>(
             cx,
             DURATION_SUBSEC,
             expr.span,
-            &format!("calling `{suggested_fn}()` is more concise than this calculation"),
+            format!("calling `{suggested_fn}()` is more concise than this calculation"),
             "try",
             format!(
                 "{}.{suggested_fn}()",

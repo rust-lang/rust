@@ -177,7 +177,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             )
             .filter(|arg| arg.mutability() == Mutability::Not)
             {
-                span_lint_hir_and_then(cx, PTR_ARG, arg.emission_id, arg.span, &arg.build_msg(), |diag| {
+                span_lint_hir_and_then(cx, PTR_ARG, arg.emission_id, arg.span, arg.build_msg(), |diag| {
                     diag.span_suggestion(
                         arg.span,
                         "change this to",
@@ -237,7 +237,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         let results = check_ptr_arg_usage(cx, body, &lint_args);
 
         for (result, args) in results.iter().zip(lint_args.iter()).filter(|(r, _)| !r.skip) {
-            span_lint_hir_and_then(cx, PTR_ARG, args.emission_id, args.span, &args.build_msg(), |diag| {
+            span_lint_hir_and_then(cx, PTR_ARG, args.emission_id, args.span, args.build_msg(), |diag| {
                 diag.multipart_suggestion(
                     "change this to",
                     iter::once((args.span, format!("{}{}", args.ref_prefix, args.deref_ty.display(cx))))

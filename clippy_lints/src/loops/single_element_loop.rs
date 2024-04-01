@@ -95,7 +95,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 SINGLE_ELEMENT_LOOP,
                 arg.span,
-                format!("this loops only once with `{pat_snip}` being `{range_expr}`").as_str(),
+                format!("this loops only once with `{pat_snip}` being `{range_expr}`"),
                 "did you mean to iterate over the range instead?",
                 sugg.to_string(),
                 Applicability::Unspecified,

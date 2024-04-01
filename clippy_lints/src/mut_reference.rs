@@ -92,7 +92,7 @@ fn check_arguments<'tcx>(
                                 cx,
                                 UNNECESSARY_MUT_PASSED,
                                 argument.span,
-                                &format!("the {fn_kind} `{name}` doesn't need a mutable reference"),
+                                format!("the {fn_kind} `{name}` doesn't need a mutable reference"),
                             );
                         }
                     },

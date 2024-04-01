@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultIterEmpty {
                 cx,
                 DEFAULT_INSTEAD_OF_ITER_EMPTY,
                 expr.span,
-                &format!("`{path}()` is the more idiomatic way"),
+                format!("`{path}()` is the more idiomatic way"),
                 "try",
                 sugg,
                 applicability,

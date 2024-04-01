@@ -52,7 +52,7 @@ impl LateLintPass<'_> for FromRawWithVoidPtr {
                 cx,
                 FROM_RAW_WITH_VOID_PTR,
                 expr.span,
-                &msg,
+                msg,
                 Some(arg.span),
                 "cast this to a pointer of the appropriate type",
             );

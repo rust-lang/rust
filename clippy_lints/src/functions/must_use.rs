@@ -142,7 +142,7 @@ fn check_must_use_candidate<'tcx>(
     item_span: Span,
     item_id: hir::OwnerId,
     fn_span: Span,
-    msg: &str,
+    msg: &'static str,
 ) {
     if has_mutable_arg(cx, body)
         || mutates_static(cx, body)

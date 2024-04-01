@@ -138,7 +138,7 @@ fn apply_lint(cx: &LateContext<'_>, pat: &Pat<'_>, deref_possible: DerefPossible
             span,
             "type of pattern does not match the expression type",
             None,
-            &format!(
+            format!(
                 "{}explicitly match against a `{}` pattern and adjust the enclosed variable bindings",
                 match (deref_possible, level) {
                     (DerefPossible::Possible, Level::Top) => "use `*` to dereference the match expression or ",

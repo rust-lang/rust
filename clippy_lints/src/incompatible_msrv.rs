@@ -104,7 +104,7 @@ impl IncompatibleMsrv {
             cx,
             INCOMPATIBLE_MSRV,
             span,
-            &format!(
+            format!(
                 "current MSRV (Minimum Supported Rust Version) is `{}` but this item is stable since `{version}`",
                 self.msrv
             ),

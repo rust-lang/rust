@@ -117,9 +117,9 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
                 cx,
                 IF_THEN_SOME_ELSE_NONE,
                 expr.span,
-                &format!("this could be simplified with `bool::{method_name}`"),
+                format!("this could be simplified with `bool::{method_name}`"),
                 None,
-                &help,
+                help,
             );
         }
     }

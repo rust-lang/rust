@@ -221,13 +221,13 @@ fn lint_map_unit_fn(
             binding = let_binding_name(cx, var_arg)
         );
 
-        span_lint_and_then(cx, lint, expr.span, &msg, |diag| {
+        span_lint_and_then(cx, lint, expr.span, msg, |diag| {
             diag.span_suggestion(stmt.span, "try", suggestion, applicability);
         });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = suggestion_msg("closure", map_type);
 
-        span_lint_and_then(cx, lint, expr.span, &msg, |diag| {
+        span_lint_and_then(cx, lint, expr.span, msg, |diag| {
             if let Some(reduced_expr_span) = reduce_unit_expression(cx, closure_expr) {
                 let mut applicability = Applicability::MachineApplicable;
                 let suggestion = format!(
