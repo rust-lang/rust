@@ -113,7 +113,7 @@ pub enum HlPunct {
     Semi,
     /// ! (only for macro calls)
     MacroBang,
-    ///
+    /// Other punctutations
     Other,
 }
 
@@ -127,7 +127,7 @@ pub enum HlOperator {
     Logical,
     /// >, <, ==, >=, <=, !=
     Comparison,
-    ///
+    /// Other operators
     Other,
 }
 

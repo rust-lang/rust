@@ -149,7 +149,7 @@ impl InferenceContext<'_> {
         expected: &Ty,
         default_bm: T::BindingMode,
         id: T,
-        subs: impl Iterator<Item = (Name, T)> + ExactSizeIterator,
+        subs: impl ExactSizeIterator<Item = (Name, T)>,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path, false);
         if let Some(variant) = def {

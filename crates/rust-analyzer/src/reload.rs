@@ -741,13 +741,13 @@ pub fn ws_to_crate_graph(
                 if layouts.len() <= idx {
                     layouts.resize(idx + 1, e.clone());
                 }
-                layouts[idx] = layout.clone();
+                layouts[idx].clone_from(&layout);
             }
             if idx >= num_toolchains {
                 if toolchains.len() <= idx {
                     toolchains.resize(idx + 1, None);
                 }
-                toolchains[idx] = toolchain.clone();
+                toolchains[idx].clone_from(&toolchain);
             }
         });
         proc_macro_paths.push(crate_proc_macros);

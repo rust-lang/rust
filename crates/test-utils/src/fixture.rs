@@ -186,7 +186,7 @@ impl FixtureWithProjectMeta {
 
         if let Some(meta) = fixture.strip_prefix("//- target_data_layout:") {
             let (meta, remain) = meta.split_once('\n').unwrap();
-            target_data_layout = meta.trim().to_owned();
+            meta.trim().clone_into(&mut target_data_layout);
             fixture = remain;
         }
 

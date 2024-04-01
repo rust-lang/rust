@@ -105,7 +105,7 @@ pub(crate) fn handle_did_change_text_document(
         )
         .into_bytes();
         if *data != new_contents {
-            *data = new_contents.clone();
+            data.clone_from(&new_contents);
             state.vfs.write().0.set_file_contents(path, Some(new_contents));
         }
     }
