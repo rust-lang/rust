@@ -5,7 +5,7 @@
 //@ compile-flags: -Zmir-opt-level=2 -Zinline-mir
 
 // These used to be more interesting when the library had to fix the RHS type.
-// After MCP#693, though, that's the backend's probablem, not something in MIR.
+// After MCP#693, though, that's the backend's problem, not something in MIR.
 
 // EMIT_MIR unchecked_shifts.unchecked_shl_unsigned_smaller.Inline.diff
 // EMIT_MIR unchecked_shifts.unchecked_shl_unsigned_smaller.PreCodegen.after.mir
