@@ -181,8 +181,14 @@ fn clean_param_env<'tcx>(
         })
         .map(|pred| {
             tcx.fold_regions(pred, |r, _| match *r {
-                ty::ReVar(vid) => vid_to_region[&vid],
+                // FIXME: Don't `unwrap_or`, I think we should panic if we encounter an infer var that
+                // we can't map to a concrete region. However, `AutoTraitFinder` *does* leak those kinds
+                // of `ReVar`s for some reason at the time of writing. See `rustdoc-ui/` tests.
+                // This is in dire need of an investigation into `AutoTraitFinder`.
+                ty::ReVar(vid) => vid_to_region.get(&vid).copied().unwrap_or(r),
                 ty::ReEarlyParam(_) | ty::ReStatic | ty::ReBound(..) | ty::ReError(_) => r,
+                // FIXME(#120606): `AutoTraitFinder` can actually leak placeholder regions which feels
+                // incorrect. Needs investigation.
                 ty::ReLateParam(_) | ty::RePlaceholder(_) | ty::ReErased => {
                     bug!("unexpected region kind: {r:?}")
                 }
