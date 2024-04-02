@@ -339,8 +339,6 @@ declare_features! (
     (incomplete, adt_const_params, "1.56.0", Some(95174)),
     /// Allows defining an `#[alloc_error_handler]`.
     (unstable, alloc_error_handler, "1.29.0", Some(51540)),
-    /// Allows `&` and `&mut` patterns to consume match-ergonomics-inserted references.
-    (incomplete, and_pat_everywhere, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// Allows trait methods with arbitrary self types.
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
     /// Allows using `const` operands in inline assembly.
@@ -569,6 +567,8 @@ declare_features! (
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
     (unstable, raw_ref_op, "1.41.0", Some(64490)),
+    /// Allows `&` and `&mut` patterns to consume match-ergonomics-inserted references.
+    (incomplete, ref_pat_everywhere, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// Allows using the `#[register_tool]` attribute.
     (unstable, register_tool, "1.41.0", Some(66079)),
     /// Allows the `#[repr(i128)]` attribute for enums.

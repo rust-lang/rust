@@ -98,7 +98,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Set of reference patterns that match against a match-ergonomics inserted reference
     /// (as opposed to against a reference in the scrutinee type).
-    ref_pats_that_dont_deref: ItemLocalSet,
+    skipped_ref_pats: ItemLocalSet,
 
     /// Records the reasons that we picked the kind of each closure;
     /// not all closures are present in the map.
@@ -232,7 +232,7 @@ impl<'tcx> TypeckResults<'tcx> {
             adjustments: Default::default(),
             pat_binding_modes: Default::default(),
             pat_adjustments: Default::default(),
-            ref_pats_that_dont_deref: Default::default(),
+            skipped_ref_pats: Default::default(),
             closure_kind_origins: Default::default(),
             liberated_fn_sigs: Default::default(),
             fru_field_types: Default::default(),
@@ -440,12 +440,12 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_adjustments }
     }
 
-    pub fn ref_pats_that_dont_deref(&self) -> LocalSetInContext<'_> {
-        LocalSetInContext { hir_owner: self.hir_owner, data: &self.ref_pats_that_dont_deref }
+    pub fn skipped_ref_pats(&self) -> LocalSetInContext<'_> {
+        LocalSetInContext { hir_owner: self.hir_owner, data: &self.skipped_ref_pats }
     }
 
-    pub fn ref_pats_that_dont_deref_mut(&mut self) -> LocalSetInContextMut<'_> {
-        LocalSetInContextMut { hir_owner: self.hir_owner, data: &mut self.ref_pats_that_dont_deref }
+    pub fn skipped_ref_pats_mut(&mut self) -> LocalSetInContextMut<'_> {
+        LocalSetInContextMut { hir_owner: self.hir_owner, data: &mut self.skipped_ref_pats }
     }
 
     /// Does the pattern recursively contain a `ref mut` binding in it?

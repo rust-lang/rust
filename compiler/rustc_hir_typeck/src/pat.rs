@@ -2058,7 +2058,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mutbl: Mutability,
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
-        already_consumed: bool,
+        consumed_inherited_ref: bool,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let expected = self.shallow_resolve(expected);
@@ -2074,13 +2074,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 match *expected.kind() {
                     ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
                     _ => {
-                        if already_consumed && self.tcx.features().and_pat_everywhere {
+                        if consumed_inherited_ref && self.tcx.features().ref_pat_everywhere {
                             // We already matched against a match-ergonmics inserted reference,
                             // so we don't need to match against a reference from the original type.
                             // Save this infor for use in lowering later
                             self.typeck_results
                                 .borrow_mut()
-                                .ref_pats_that_dont_deref_mut()
+                                .skipped_ref_pats_mut()
                                 .insert(pat.hir_id);
                             (expected, expected)
                         } else {
