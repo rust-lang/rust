@@ -364,7 +364,7 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
         }
 
-        // Are we compiling for iOS/tvOS/watchOS/visionos?
+        // Are we compiling for iOS/tvOS/watchOS/visionOS?
         if target.contains("apple-ios")
             || target.contains("apple-tvos")
             || target.contains("apple-watchos")
