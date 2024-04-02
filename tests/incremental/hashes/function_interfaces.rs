@@ -217,7 +217,7 @@ pub fn second_trait_bound<T: Eq + Clone>() {}
 pub fn second_builtin_bound<T: Send        >() {}
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2", except = "opt_hir_owner_nodes, predicates_of")]
+#[rustc_clean(cfg = "cfail2", except = "opt_hir_owner_nodes")]
 #[rustc_clean(cfg = "cfail3")]
 #[rustc_clean(cfg = "cfail5", except = "opt_hir_owner_nodes, predicates_of")]
 #[rustc_clean(cfg = "cfail6")]
