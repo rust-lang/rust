@@ -16,7 +16,7 @@
 //      1. Compute and return log2(x) in two pieces:
 //              log2(x) = w1 + w2,
 //         where w1 has 53-24 = 29 bit trailing zeros.
-//      2. Perform y*log2(x) = n+y' by simulating muti-precision
+//      2. Perform y*log2(x) = n+y' by simulating multi-precision
 //         arithmetic, where |y'|<=0.5.
 //      3. Return x**y = 2**n*exp(y'*log2)
 //
