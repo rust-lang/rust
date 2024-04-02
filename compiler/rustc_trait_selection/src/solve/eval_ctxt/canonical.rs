@@ -332,7 +332,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// whether an alias is rigid by using the trait solver. When instantiating a response
     /// from the solver we assume that the solver correctly handled aliases and therefore
     /// always relate them structurally here.
-    #[instrument(level = "debug", skip(infcx), ret)]
+    #[instrument(level = "debug", skip(infcx))]
     fn unify_query_var_values(
         infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
