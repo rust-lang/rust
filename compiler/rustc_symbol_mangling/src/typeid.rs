@@ -24,9 +24,9 @@ bitflags! {
         /// `-fsanitize-cfi-icall-experimental-normalize-integers` option for cross-language LLVM
         /// CFI and  KCFI support.
         const NORMALIZE_INTEGERS = 4;
-        /// Do not perform self type erasure for attaching a secondary type id to methods with their
-        /// concrete self so they can be used as function pointers.
-        const NO_SELF_TYPE_ERASURE = 8;
+        /// Generalize the instance by erasing the concrete `Self` type where possible.
+        /// Only has an effect on `{kcfi_,}typeid_for_instance`.
+        const ERASE_SELF_TYPE = 8;
     }
 }
 
