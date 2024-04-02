@@ -83,6 +83,27 @@ use crate::ub_checks;
 /// }
 /// ```
 ///
+/// ### FFI: Handling null pointers
+///
+/// In languages such as C++, pointers to empty collections are not guaranteed to be non-null.
+/// When accepting such pointers, they have to be checked for null-ness to avoid undefined
+/// behavior.
+///
+/// ```
+/// use std::slice;
+///
+/// unsafe extern "C" fn handle_slice(ptr: *const f32, len: usize) {
+///     let data = if ptr.is_null() {
+///         // `len` is assumed to be 0.
+///         &[]
+///     } else {
+///         unsafe { slice::from_raw_parts(ptr, len) }
+///     };
+///     dbg!(data);
+///     // ...
+/// }
+/// ```
+///
 /// [valid]: ptr#safety
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
 #[inline]
