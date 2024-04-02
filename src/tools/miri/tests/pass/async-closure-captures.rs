@@ -1,3 +1,5 @@
+// Same as rustc's `tests/ui/async-await/async-closures/captures.rs`, keep in sync
+
 #![feature(async_closure, noop_waker)]
 
 use std::future::Future;

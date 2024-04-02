@@ -3,6 +3,8 @@
 //@ run-pass
 //@ check-run-results
 
+// Same as miri's `tests/pass/async-closure-captures.rs`, keep in sync
+
 #![feature(async_closure)]
 
 extern crate block_on;
