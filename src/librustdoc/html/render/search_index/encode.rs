@@ -92,24 +92,23 @@ impl Container {
                     r += !chunk & u64::from((chunk << 1).count_ones());
                     r += !next_chunk & u64::from((chunk >> 63).count_ones());
                 }
-                if (2 + 4 * r) < 8192 {
-                    let bits = std::mem::replace(bits, Box::new([0; 1024]));
-                    *self = Container::Run(Vec::new());
-                    for (i, bits) in bits.iter().copied().enumerate() {
-                        if bits == 0 {
-                            continue;
-                        }
-                        for j in 0..64 {
-                            let value = (u16::try_from(i).unwrap() << 6) | j;
-                            if bits & (1 << j) != 0 {
-                                self.push(value);
-                            }
+                if (2 + 4 * r) >= 8192 {
+                    return false;
+                }
+                let bits = std::mem::replace(bits, Box::new([0; 1024]));
+                *self = Container::Run(Vec::new());
+                for (i, bits) in bits.iter().copied().enumerate() {
+                    if bits == 0 {
+                        continue;
+                    }
+                    for j in 0..64 {
+                        let value = (u16::try_from(i).unwrap() << 6) | j;
+                        if bits & (1 << j) != 0 {
+                            self.push(value);
                         }
                     }
-                    true
-                } else {
-                    false
                 }
+                true
             }
             Container::Array(array) if array.len() <= 5 => false,
             Container::Array(array) => {
@@ -121,16 +120,15 @@ impl Container {
                     }
                     prev = Some(value);
                 }
-                if 2 + 4 * r < 2 * array.len() + 2 {
-                    let array = std::mem::replace(array, Vec::new());
-                    *self = Container::Run(Vec::new());
-                    for value in array {
-                        self.push(value);
-                    }
-                    true
-                } else {
-                    false
+                if 2 + 4 * r >= 2 * array.len() + 2 {
+                    return false;
                 }
+                let array = std::mem::replace(array, Vec::new());
+                *self = Container::Run(Vec::new());
+                for value in array {
+                    self.push(value);
+                }
+                true
             }
             Container::Run(_) => true,
         }
