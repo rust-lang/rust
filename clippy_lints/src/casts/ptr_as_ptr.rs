@@ -62,8 +62,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
         // we omit following `cast`:
         let omit_cast = if let ExprKind::Call(func, []) = cast_expr.kind
             && let ExprKind::Path(ref qpath @ QPath::Resolved(None, path)) = func.kind
+            && let Some(method_defid) = path.res.opt_def_id()
         {
-            let method_defid = path.res.def_id();
             if cx.tcx.is_diagnostic_item(sym::ptr_null, method_defid) {
                 OmitFollowedCastReason::Null(qpath)
             } else if cx.tcx.is_diagnostic_item(sym::ptr_null_mut, method_defid) {
