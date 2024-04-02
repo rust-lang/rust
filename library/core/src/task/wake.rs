@@ -276,7 +276,7 @@ impl<'a> Context<'a> {
 
     /// Returns a reference to the extension data for the current task.
     #[inline]
-    #[unstable(feature = "context_ext", issue = "none")]
+    #[unstable(feature = "context_ext", issue = "123392")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const fn ext(&mut self) -> &mut dyn Any {
         match &mut self.ext {
@@ -351,7 +351,7 @@ impl<'a> ContextBuilder<'a> {
     /// Create a ContextBuilder from an existing Context.
     #[inline]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    #[unstable(feature = "context_ext", issue = "none")]
+    #[unstable(feature = "context_ext", issue = "123392")]
     pub const fn from(cx: &'a mut Context<'_>) -> Self {
         let ext = match &mut cx.ext {
             ExtData::Some(ext) => ExtData::Some(*ext),
@@ -368,7 +368,7 @@ impl<'a> ContextBuilder<'a> {
 
     /// This method is used to set the value for the waker on `Context`.
     #[inline]
-    #[unstable(feature = "context_ext", issue = "none")]
+    #[unstable(feature = "context_ext", issue = "123392")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const fn waker(self, waker: &'a Waker) -> Self {
         Self { waker, ..self }
@@ -384,7 +384,7 @@ impl<'a> ContextBuilder<'a> {
 
     /// This method is used to set the value for the extension data on `Context`.
     #[inline]
-    #[unstable(feature = "context_ext", issue = "none")]
+    #[unstable(feature = "context_ext", issue = "123392")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const fn ext(self, data: &'a mut dyn Any) -> Self {
         Self { ext: ExtData::Some(data), ..self }
