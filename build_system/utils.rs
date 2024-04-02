@@ -254,14 +254,6 @@ pub(crate) fn copy_dir_recursively(from: &Path, to: &Path) {
     }
 }
 
-pub(crate) fn is_ci() -> bool {
-    env::var("CI").is_ok()
-}
-
-pub(crate) fn is_ci_opt() -> bool {
-    env::var("CI_OPT").is_ok()
-}
-
 static IN_GROUP: AtomicBool = AtomicBool::new(false);
 pub(crate) struct LogGroup {
     is_gha: bool,

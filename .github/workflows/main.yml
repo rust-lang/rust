@@ -44,6 +44,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
 
+    env:
+      CG_CLIF_EXPENSIVE_CHECKS: 1
+
     strategy:
       fail-fast: false
       matrix:
@@ -182,10 +185,10 @@ jobs:
       run: ./y.sh prepare
 
     - name: Build
-      run: CI_OPT=1 ./y.sh build --sysroot none
+      run: ./y.sh build --sysroot none
 
     - name: Benchmark
-      run: CI_OPT=1 ./y.sh bench
+      run: ./y.sh bench
 
 
   dist:
@@ -237,10 +240,10 @@ jobs:
       run: ./y.sh prepare
 
     - name: Build backend
-      run: CI_OPT=1 ./y.sh build --sysroot none
+      run: ./y.sh build --sysroot none
 
     - name: Build sysroot
-      run: CI_OPT=1 ./y.sh build
+      run: ./y.sh build
 
     - name: Package prebuilt cg_clif
       run: tar cvfJ cg_clif.tar.xz dist
