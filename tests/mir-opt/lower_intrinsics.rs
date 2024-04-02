@@ -16,13 +16,15 @@ pub fn wrapping(a: i32, b: i32) {
 }
 
 // EMIT_MIR lower_intrinsics.unchecked.LowerIntrinsics.diff
-pub unsafe fn unchecked(a: i32, b: i32) {
+pub unsafe fn unchecked(a: i32, b: i32, c: u32) {
     // CHECK-LABEL: fn unchecked(
     // CHECK: {{_.*}} = AddUnchecked(
     // CHECK: {{_.*}} = SubUnchecked(
     // CHECK: {{_.*}} = MulUnchecked(
     // CHECK: {{_.*}} = Div(
     // CHECK: {{_.*}} = Rem(
+    // CHECK: {{_.*}} = ShlUnchecked(
+    // CHECK: {{_.*}} = ShrUnchecked(
     // CHECK: {{_.*}} = ShlUnchecked(
     // CHECK: {{_.*}} = ShrUnchecked(
     let _a = core::intrinsics::unchecked_add(a, b);
@@ -32,6 +34,8 @@ pub unsafe fn unchecked(a: i32, b: i32) {
     let _y = core::intrinsics::unchecked_rem(a, b);
     let _i = core::intrinsics::unchecked_shl(a, b);
     let _j = core::intrinsics::unchecked_shr(a, b);
+    let _k = core::intrinsics::unchecked_shl(a, c);
+    let _l = core::intrinsics::unchecked_shr(a, c);
 }
 
 // EMIT_MIR lower_intrinsics.size_of.LowerIntrinsics.diff
