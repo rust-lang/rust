@@ -5,9 +5,8 @@ LL |     let a: dyn Trait = if true {
    |            ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn Trait`
-   = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
-help: consider borrowing here
+   = help: unsized locals are gated as unstable feature `#[feature(unsized_locals)]`
+help: borrowed types have a statically known size
    |
 LL |     let a: &dyn Trait = if true {
    |            +

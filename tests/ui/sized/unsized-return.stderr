@@ -22,9 +22,8 @@ LL |     let x: dyn T = foo();
    |            ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn T`
-   = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
-help: consider borrowing here
+   = help: unsized locals are gated as unstable feature `#[feature(unsized_locals)]`
+help: borrowed types have a statically known size
    |
 LL |     let x: &dyn T = foo();
    |            +
@@ -36,8 +35,7 @@ LL |     let x = foo();
    |             ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn T`
-   = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
+   = help: unsized locals are gated as unstable feature `#[feature(unsized_locals)]`
 
 error: aborting due to 3 previous errors
 

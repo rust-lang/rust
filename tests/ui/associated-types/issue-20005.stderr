@@ -24,7 +24,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |         self
    |         ^^^^ doesn't have a size known at compile-time
    |
-   = help: unsized fn params are gated as an unstable feature
+   = help: unsized fn params are gated as unstable feature `#[feature(unsized_fn_params)]`
 help: consider further restricting `Self`
    |
 LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self>, Self: Sized {
@@ -60,8 +60,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |         From::from(self)
    |                    ^^^^ doesn't have a size known at compile-time
    |
-   = note: all function arguments must have a statically known size
-   = help: unsized fn params are gated as an unstable feature
+   = help: unsized fn params are gated as unstable feature `#[feature(unsized_fn_params)]`
 help: consider further restricting `Self`
    |
 LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self>, Self: Sized {

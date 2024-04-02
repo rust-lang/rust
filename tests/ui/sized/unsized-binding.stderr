@@ -22,8 +22,7 @@ LL |     let x = *"";
    |             ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
+   = help: unsized locals are gated as unstable feature `#[feature(unsized_locals)]`
 
 error[E0277]: the size for values of type `dyn T` cannot be known at compilation time
   --> $DIR/unsized-binding.rs:12:28
@@ -32,8 +31,7 @@ LL |     let Foo(a, b) = Foo(1, bar());
    |                            ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn T`
-   = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
+   = help: unsized locals are gated as unstable feature `#[feature(unsized_locals)]`
 
 error[E0277]: the size for values of type `dyn T` cannot be known at compilation time
   --> $DIR/unsized-binding.rs:12:28
@@ -42,8 +40,7 @@ LL |     let Foo(a, b) = Foo(1, bar());
    |                            ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn T`
-   = note: all function arguments must have a statically known size
-   = help: unsized fn params are gated as an unstable feature
+   = help: unsized fn params are gated as unstable feature `#[feature(unsized_fn_params)]`
 
 error: aborting due to 4 previous errors
 

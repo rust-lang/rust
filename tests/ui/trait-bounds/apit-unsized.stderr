@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `impl Iterator<Item = i32> + ?Sized` c
 LL | fn foo(_: impl Iterator<Item = i32> + ?Sized) {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: unsized fn params are gated as an unstable feature
+   = help: unsized fn params are gated as unstable feature `#[feature(unsized_fn_params)]`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn foo(_: impl Iterator<Item = i32> + ?Sized) {}
@@ -21,7 +21,7 @@ error[E0277]: the size for values of type `impl ?Sized` cannot be known at compi
 LL | fn bar(_: impl ?Sized) {}
    |           ^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: unsized fn params are gated as an unstable feature
+   = help: unsized fn params are gated as unstable feature `#[feature(unsized_fn_params)]`
 help: consider replacing `?Sized` with `Sized`
    |
 LL - fn bar(_: impl ?Sized) {}

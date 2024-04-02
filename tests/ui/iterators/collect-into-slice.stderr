@@ -15,11 +15,10 @@ LL |     let some_generated_vec = (0..10).collect();
    |                                      ^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[i32]`
-   = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
+   = help: unsized locals are gated as unstable feature `#[feature(unsized_locals)]`
 
 error[E0277]: a slice of type `&[i32]` cannot be built since we need to store the elements somewhere
-  --> $DIR/collect-into-slice.rs:15:38
+  --> $DIR/collect-into-slice.rs:14:38
    |
 LL |     let some_generated_vec = (0..10).collect();
    |                                      ^^^^^^^ try explicitly collecting into a `Vec<{integer}>`

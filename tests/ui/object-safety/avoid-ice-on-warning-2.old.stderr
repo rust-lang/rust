@@ -53,7 +53,7 @@ LL | fn id<F>(f: Copy) -> usize {
    |             ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
-   = help: unsized fn params are gated as an unstable feature
+   = help: unsized fn params are gated as unstable feature `#[feature(unsized_fn_params)]`
 help: you can use `impl Trait` as the argument type
    |
 LL | fn id<F>(f: impl Copy) -> usize {

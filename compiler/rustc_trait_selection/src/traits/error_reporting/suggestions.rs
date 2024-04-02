@@ -3137,11 +3137,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }) => {
                         err.span_suggestion_verbose(
                             ty.span.shrink_to_lo(),
-                            "consider borrowing here",
+                            "borrowed types have a statically known size",
                             "&",
                             Applicability::MachineApplicable,
                         );
-                        err.note("all local variables must have a statically known size");
                     }
                     Node::LetStmt(hir::LetStmt {
                         init: Some(hir::Expr { kind: hir::ExprKind::Index(..), span, .. }),
@@ -3152,11 +3151,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // order to use have a slice instead.
                         err.span_suggestion_verbose(
                             span.shrink_to_lo(),
-                            "consider borrowing here",
+                            "borrowed values have a statically known size",
                             "&",
                             Applicability::MachineApplicable,
                         );
-                        err.note("all local variables must have a statically known size");
                     }
                     Node::Param(param) => {
                         err.span_suggestion_verbose(
@@ -3168,11 +3166,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         );
                     }
                     _ => {
-                        err.note("all local variables must have a statically known size");
+                        if !tcx.sess.opts.unstable_features.is_nightly_build()
+                            && !tcx.features().unsized_locals
+                        {
+                            err.note("all bindings must have a statically known size");
+                        }
                     }
                 }
-                if !tcx.features().unsized_locals {
-                    err.help("unsized locals are gated as an unstable feature");
+                if tcx.sess.opts.unstable_features.is_nightly_build()
+                    && !tcx.features().unsized_locals
+                {
+                    err.help(
+                        "unsized locals are gated as unstable feature \
+                         `#[feature(unsized_locals)]`",
+                    );
                 }
             }
             ObligationCauseCode::SizedArgumentType(hir_id) => {
@@ -3197,64 +3204,69 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 {
                     ty = Some(t);
                 }
-                if let Some(ty) = ty {
-                    match ty.kind {
-                        hir::TyKind::TraitObject(traits, _, _) => {
-                            let (span, kw) = match traits {
-                                [first, ..] if first.span.lo() == ty.span.lo() => {
-                                    // Missing `dyn` in front of trait object.
-                                    (ty.span.shrink_to_lo(), "dyn ")
-                                }
-                                [first, ..] => (ty.span.until(first.span), ""),
-                                [] => span_bug!(ty.span, "trait object with no traits: {ty:?}"),
-                            };
-                            let needs_parens = traits.len() != 1;
-                            err.span_suggestion_verbose(
-                                span,
-                                "you can use `impl Trait` as the argument type",
-                                "impl ",
-                                Applicability::MaybeIncorrect,
-                            );
-                            let sugg = if !needs_parens {
-                                vec![(span.shrink_to_lo(), format!("&{kw}"))]
-                            } else {
-                                vec![
-                                    (span.shrink_to_lo(), format!("&({kw}")),
-                                    (ty.span.shrink_to_hi(), ")".to_string()),
-                                ]
-                            };
-                            err.multipart_suggestion_verbose(
-                                borrowed_msg,
-                                sugg,
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        hir::TyKind::Slice(_ty) => {
-                            err.span_suggestion_verbose(
-                                ty.span.shrink_to_lo(),
-                                "function arguments must have a statically known size, borrowed \
-                                 slices always have a known size",
-                                "&",
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        hir::TyKind::Path(_) => {
-                            err.span_suggestion_verbose(
-                                ty.span.shrink_to_lo(),
-                                borrowed_msg,
-                                "&",
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        _ => {}
+                match ty.map(|ty| (ty.kind, ty.span)) {
+                    Some((hir::TyKind::TraitObject(traits, _, _), sp)) => {
+                        let (span, kw) = match traits {
+                            [first, ..] if first.span.lo() == sp.lo() => {
+                                // Missing `dyn` in front of trait object.
+                                (sp.shrink_to_lo(), "dyn ")
+                            }
+                            [first, ..] => (sp.until(first.span), ""),
+                            [] => span_bug!(sp, "trait object with no traits: {ty:?}"),
+                        };
+                        let needs_parens = traits.len() != 1;
+                        err.span_suggestion_verbose(
+                            span,
+                            "you can use `impl Trait` as the argument type",
+                            "impl ",
+                            Applicability::MaybeIncorrect,
+                        );
+                        let sugg = if !needs_parens {
+                            vec![(span.shrink_to_lo(), format!("&{kw}"))]
+                        } else {
+                            vec![
+                                (span.shrink_to_lo(), format!("&({kw}")),
+                                (sp.shrink_to_hi(), ")".to_string()),
+                            ]
+                        };
+                        err.multipart_suggestion_verbose(
+                            borrowed_msg,
+                            sugg,
+                            Applicability::MachineApplicable,
+                        );
                     }
-                } else {
-                    err.note("all function arguments must have a statically known size");
+                    Some((hir::TyKind::Slice(_ty), span)) => {
+                        err.span_suggestion_verbose(
+                            span.shrink_to_lo(),
+                            "function arguments must have a statically known size, borrowed \
+                                slices always have a known size",
+                            "&",
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    Some((hir::TyKind::Path(_), span)) => {
+                        err.span_suggestion_verbose(
+                            span.shrink_to_lo(),
+                            borrowed_msg,
+                            "&",
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    _ => {
+                        if !tcx.sess.opts.unstable_features.is_nightly_build()
+                            && !tcx.features().unsized_fn_params
+                        {
+                            err.note("all bindings must have a statically known size");
+                        }
+                    }
                 }
                 if tcx.sess.opts.unstable_features.is_nightly_build()
                     && !tcx.features().unsized_fn_params
                 {
-                    err.help("unsized fn params are gated as an unstable feature");
+                    err.help(
+                        "unsized fn params are gated as unstable feature \
+                         `#[feature(unsized_fn_params)]`",
+                    );
                 }
             }
             ObligationCauseCode::SizedReturnType | ObligationCauseCode::SizedCallReturnType(_) => {

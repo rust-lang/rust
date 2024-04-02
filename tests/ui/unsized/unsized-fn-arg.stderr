@@ -6,7 +6,7 @@ LL | fn f<T: ?Sized>(t: T) {}
    |      |
    |      this type parameter needs to be `Sized`
    |
-   = help: unsized fn params are gated as an unstable feature
+   = help: unsized fn params are gated as unstable feature `#[feature(unsized_fn_params)]`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f<T: ?Sized>(t: T) {}
