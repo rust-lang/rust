@@ -491,21 +491,23 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         }
                         // Return alloc mutability. For "root" statics we look at the type to account for interior
                         // mutability; for nested statics we have no type and directly use the annotated mutability.
-                        match (mutability, nested) {
-                            (Mutability::Mut, _) => Mutability::Mut,
-                            (Mutability::Not, true) => Mutability::Not,
-                            (Mutability::Not, false)
-                                if !self
-                                    .ecx
-                                    .tcx
-                                    .type_of(did)
-                                    .no_bound_vars()
-                                    .expect("statics should not have generic parameters")
-                                    .is_freeze(*self.ecx.tcx, ty::ParamEnv::reveal_all()) =>
-                            {
-                                Mutability::Mut
+                        if nested {
+                            mutability
+                        } else {
+                            match mutability {
+                                Mutability::Not
+                                    if !self
+                                        .ecx
+                                        .tcx
+                                        .type_of(did)
+                                        .no_bound_vars()
+                                        .expect("statics should not have generic parameters")
+                                        .is_freeze(*self.ecx.tcx, ty::ParamEnv::reveal_all()) =>
+                                {
+                                    Mutability::Mut
+                                }
+                                _ => mutability,
                             }
-                            (Mutability::Not, false) => Mutability::Not,
                         }
                     }
                     GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
