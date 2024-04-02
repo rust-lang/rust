@@ -42,10 +42,9 @@ impl<'tcx> InferCtxt<'tcx> {
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
         let (param_env, value) = value.into_parts();
-        let param_env = self.tcx.canonical_param_env_cache.get_or_insert(
+        let mut param_env = self.tcx.canonical_param_env_cache.get_or_insert(
             self.tcx,
             param_env,
-            self.defining_opaque_types,
             query_state,
             |tcx, param_env, query_state| {
                 // FIXME(#118965): We don't canonicalize the static lifetimes that appear in the
@@ -59,6 +58,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 )
             },
         );
+
+        param_env.defining_opaque_types = self.defining_opaque_types;
 
         Canonicalizer::canonicalize_with_base(
             param_env,
@@ -611,6 +612,9 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             .max()
             .unwrap_or(ty::UniverseIndex::ROOT);
 
+        assert!(
+            !infcx.is_some_and(|infcx| infcx.defining_opaque_types != base.defining_opaque_types)
+        );
         Canonical {
             max_universe,
             variables: canonical_variables,

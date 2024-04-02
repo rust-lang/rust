@@ -23,7 +23,6 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
-use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
 use rustc_type_ir::Canonical as IrCanonical;
 use rustc_type_ir::CanonicalVarInfo as IrCanonicalVarInfo;
@@ -312,7 +311,6 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         key: ty::ParamEnv<'tcx>,
-        defining_opaque_types: &'tcx ty::List<LocalDefId>,
         state: &mut OriginalQueryValues<'tcx>,
         canonicalize_op: fn(
             TyCtxt<'tcx>,
@@ -327,7 +325,7 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
                 max_universe: ty::UniverseIndex::ROOT,
                 variables: List::empty(),
                 value: key,
-                defining_opaque_types,
+                defining_opaque_types: ty::List::empty(),
             };
         }
 
@@ -338,12 +336,19 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
         match self.map.borrow().entry(key) {
             Entry::Occupied(e) => {
                 let (canonical, var_values) = e.get();
+                if cfg!(debug_assertions) {
+                    let mut state = state.clone();
+                    let rerun_canonical = canonicalize_op(tcx, key, &mut state);
+                    assert_eq!(rerun_canonical, *canonical);
+                    let OriginalQueryValues { var_values: rerun_var_values, universe_map } = state;
+                    assert_eq!(universe_map.len(), 1);
+                    assert_eq!(**var_values, *rerun_var_values);
+                }
                 state.var_values.extend_from_slice(var_values);
                 *canonical
             }
             Entry::Vacant(e) => {
-                let mut canonical = canonicalize_op(tcx, key, state);
-                canonical.defining_opaque_types = defining_opaque_types;
+                let canonical = canonicalize_op(tcx, key, state);
                 let OriginalQueryValues { var_values, universe_map } = state;
                 assert_eq!(universe_map.len(), 1);
                 e.insert((canonical, tcx.arena.alloc_slice(var_values)));
