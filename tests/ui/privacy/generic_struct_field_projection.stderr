@@ -1,8 +1,0 @@
-error: type `Foo` is private
-  --> $DIR/generic_struct_field_projection.rs:22:9
-   |
-LL |         source: &'a T::Assoc,
-   |         ^^^^^^^^^^^^^^^^^^^^ private type
-
-error: aborting due to 1 previous error
-
