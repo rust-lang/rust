@@ -7,7 +7,7 @@ use crate::ptr;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
 
-#[cfg(all(target_os = "linux", target_env = "gnu"))]
+#[cfg(all(target_os = "linux", any(target_env = "gnu", target_env = "musl")))]
 use crate::sys::weak::dlsym;
 #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
 use crate::sys::weak::weak;
@@ -243,9 +243,21 @@ impl Thread {
         #[cfg(any(target_os = "netbsd", target_os = "solaris", target_os = "illumos"))]
         const TASK_COMM_LEN: usize = 32;
         let mut name = vec![0u8; TASK_COMM_LEN];
-        let res = unsafe {
-            libc::pthread_getname_np(libc::pthread_self(), name.as_mut_ptr().cast(), name.len())
-        };
+        cfg_if::cfg_if! {
+            if #[cfg(all(target_os = "linux", target_env = "musl"))] {
+                dlsym!(fn pthread_getname_np(libc::pthread_t, *mut libc::c_char, libc::size_t) -> libc::c_int);
+
+                let res = if let Some(f) = pthread_getname_np.get() {
+                    unsafe { f(libc::pthread_self(), name.as_mut_ptr().cast(), name.len()) }
+                } else {
+                    -1
+                };
+            } else {
+                let res = unsafe {
+                    libc::pthread_getname_np(libc::pthread_self(), name.as_mut_ptr().cast(), name.len())
+                };
+            }
+        }
         if res != 0 {
             return None;
         }
