@@ -272,7 +272,7 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
         .collect();
 
     let predicates = cx.tcx.predicates_of(did);
-    let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
+    let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates, did);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
     clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
@@ -284,8 +284,12 @@ pub(crate) fn build_function<'tcx>(
 ) -> Box<clean::Function> {
     let sig = cx.tcx.fn_sig(def_id).instantiate_identity();
     // The generics need to be cleaned before the signature.
-    let mut generics =
-        clean_ty_generics(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id));
+    let mut generics = clean_ty_generics(
+        cx,
+        cx.tcx.generics_of(def_id),
+        cx.tcx.explicit_predicates_of(def_id),
+        def_id,
+    );
     let bound_vars = clean_bound_vars(sig.bound_vars());
 
     // At the time of writing early & late-bound params are stored separately in rustc,
@@ -317,7 +321,7 @@ fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {
     let predicates = cx.tcx.explicit_predicates_of(did);
 
     clean::Enum {
-        generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
+        generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates, did),
         variants: cx.tcx.adt_def(did).variants().iter().map(|v| clean_variant_def(v, cx)).collect(),
     }
 }
@@ -328,7 +332,7 @@ fn build_struct(cx: &mut DocContext<'_>, did: DefId) -> clean::Struct {
 
     clean::Struct {
         ctor_kind: variant.ctor_kind(),
-        generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
+        generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates, did),
         fields: variant.fields.iter().map(|x| clean_middle_field(x, cx)).collect(),
     }
 }
@@ -337,7 +341,7 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
     let predicates = cx.tcx.explicit_predicates_of(did);
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
-    let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
+    let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates, did);
     let fields = variant.fields.iter().map(|x| clean_middle_field(x, cx)).collect();
     clean::Union { generics, fields }
 }
@@ -354,7 +358,7 @@ fn build_type_alias(
 
     Box::new(clean::TypeAlias {
         type_,
-        generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
+        generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates, did),
         inner_type,
         item_type: None,
     })
@@ -532,7 +536,7 @@ pub(crate) fn build_impl(
                 })
                 .map(|item| clean_impl_item(item, cx))
                 .collect::<Vec<_>>(),
-            clean_generics(impl_.generics, cx),
+            clean_generics(impl_.generics, cx, did),
         ),
         None => (
             tcx.associated_items(did)
@@ -560,7 +564,7 @@ pub(crate) fn build_impl(
                 .map(|item| clean_middle_assoc_item(item, cx))
                 .collect::<Vec<_>>(),
             clean::enter_impl_trait(cx, |cx| {
-                clean_ty_generics(cx, tcx.generics_of(did), predicates)
+                clean_ty_generics(cx, tcx.generics_of(did), predicates, did)
             }),
         ),
     };
@@ -718,8 +722,12 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
 }
 
 fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
-    let mut generics =
-        clean_ty_generics(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id));
+    let mut generics = clean_ty_generics(
+        cx,
+        cx.tcx.generics_of(def_id),
+        cx.tcx.explicit_predicates_of(def_id),
+        def_id,
+    );
     clean::simplify::move_bounds_to_generic_parameters(&mut generics);
 
     clean::Constant {

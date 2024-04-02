@@ -140,20 +140,16 @@ pub(crate) fn move_bounds_to_generic_parameters(generics: &mut clean::Generics) 
     let mut where_predicates = ThinVec::new();
     for mut pred in generics.where_predicates.drain(..) {
         if let WherePredicate::BoundPredicate { ty: Generic(arg), bounds, .. } = &mut pred
-            && let Some(GenericParamDef {
-                kind: GenericParamDefKind::Type { bounds: param_bounds, .. },
-                ..
-            }) = generics.params.iter_mut().find(|param| &param.name == arg)
+            && let Some(GenericParamDef { kind: GenericParamDefKind::Type(param), .. }) =
+                generics.params.iter_mut().find(|param| &param.name == arg)
         {
-            param_bounds.extend(bounds.drain(..));
+            param.bounds.extend(bounds.drain(..));
         } else if let WherePredicate::RegionPredicate { lifetime: Lifetime(arg), bounds } =
             &mut pred
-            && let Some(GenericParamDef {
-                kind: GenericParamDefKind::Lifetime { outlives: param_bounds },
-                ..
-            }) = generics.params.iter_mut().find(|param| &param.name == arg)
+            && let Some(GenericParamDef { kind: GenericParamDefKind::Lifetime(param), .. }) =
+                generics.params.iter_mut().find(|param| &param.name == arg)
         {
-            param_bounds.extend(bounds.drain(..).map(|bound| match bound {
+            param.outlives.extend(bounds.drain(..).map(|bound| match bound {
                 GenericBound::Outlives(lifetime) => lifetime,
                 _ => unreachable!(),
             }));
