@@ -41,7 +41,7 @@ impl Deref for EdgesVec {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        self.edges.as_slice()
+        &*self.edges
     }
 }
 
