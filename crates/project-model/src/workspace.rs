@@ -775,7 +775,7 @@ impl ProjectWorkspace {
             ),
         };
 
-        if matches!(sysroot.as_ref().map(|it| it.mode()), Ok(SysrootMode::Workspace(_)))
+        if matches!(sysroot.as_ref().map(|it| it.mode()), Ok(SysrootMode::Stitched(_)))
             && crate_graph.patch_cfg_if()
         {
             tracing::debug!("Patched std to depend on cfg-if")
