@@ -5,7 +5,7 @@ use crate::back::write::{
     compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
     submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
 };
-use crate::common::{IntPredicate, RealPredicate, TypeKind};
+use crate::common::{self, IntPredicate, RealPredicate, TypeKind};
 use crate::errors;
 use crate::meth;
 use crate::mir;
@@ -33,7 +33,7 @@ use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
+use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
@@ -300,14 +300,35 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+/// Returns `rhs` sufficiently masked, truncated, and/or extended so that
+/// it can be used to shift `lhs`.
+///
+/// Shifts in MIR are all allowed to have mismatched LHS & RHS types.
+/// The shift methods in `BuilderMethods`, however, are fully homogeneous
+/// (both parameters and the return type are all the same type).
+///
+/// If `is_unchecked` is false, this masks the RHS to ensure it stays in-bounds,
+/// as the `BuilderMethods` shifts are UB for out-of-bounds shift amounts.
+/// For 32- and 64-bit types, this matches the semantics
+/// of Java. (See related discussion on #1877 and #10183.)
+///
+/// If `is_unchecked` is true, this does no masking, and adds sufficient `assume`
+/// calls or operation flags to preserve as much freedom to optimize as possible.
+pub fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     lhs: Bx::Value,
-    rhs: Bx::Value,
+    mut rhs: Bx::Value,
+    is_unchecked: bool,
 ) -> Bx::Value {
     // Shifts may have any size int on the rhs
     let mut rhs_llty = bx.cx().val_ty(rhs);
     let mut lhs_llty = bx.cx().val_ty(lhs);
+
+    let mask = common::shift_mask_val(bx, lhs_llty, rhs_llty, false);
+    if !is_unchecked {
+        rhs = bx.and(rhs, mask);
+    }
+
     if bx.cx().type_kind(rhs_llty) == TypeKind::Vector {
         rhs_llty = bx.cx().element_type(rhs_llty)
     }
@@ -317,6 +338,12 @@ pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let rhs_sz = bx.cx().int_width(rhs_llty);
     let lhs_sz = bx.cx().int_width(lhs_llty);
     if lhs_sz < rhs_sz {
+        if is_unchecked && bx.sess().opts.optimize != OptLevel::No {
+            // FIXME: Use `trunc nuw` once that's available
+            let inrange = bx.icmp(IntPredicate::IntULE, rhs, mask);
+            bx.assume(inrange);
+        }
+
         bx.trunc(rhs, lhs_llty)
     } else if lhs_sz > rhs_sz {
         // We zero-extend even if the RHS is signed. So e.g. `(x: i32) << -1i8` will zero-extend the
