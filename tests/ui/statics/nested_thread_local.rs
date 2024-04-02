@@ -1,24 +1,14 @@
-// Check that nested statics in thread locals are
-// duplicated per thread.
+// Check that we forbid nested statics in `thread_local` statics.
 
 #![feature(const_refs_to_cell)]
 #![feature(thread_local)]
 
-//@run-pass
-
 #[thread_local]
-static mut FOO: &mut u32 = &mut 42;
+static mut FOO: &u32 = {
+    //~^ ERROR: does not support implicit nested statics
+    // Prevent promotion (that would trigger on `&42` as an expression)
+    let x = 42;
+    &{ x }
+};
 
-fn main() {
-    unsafe {
-        *FOO = 1;
-
-        let _ = std::thread::spawn(|| {
-            assert_eq!(*FOO, 42);
-            *FOO = 99;
-        })
-        .join();
-
-        assert_eq!(*FOO, 1);
-    }
-}
+fn main() {}
