@@ -48,15 +48,19 @@ jobs:
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-gnu
+            apt_deps: gcc-mingw-w64-x86-64 wine-stable
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
+            apt_deps: gcc-aarch64-linux-gnu qemu-user
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: s390x-unknown-linux-gnu
+            apt_deps: gcc-s390x-linux-gnu qemu-user
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: riscv64gc-unknown-linux-gnu
+            apt_deps: gcc-riscv64-linux-gnu qemu-user
           - os: windows-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-msvc
@@ -81,29 +85,11 @@ jobs:
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
 
-    - name: Install MinGW toolchain and wine
-      if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+    - name: Install toolchain and emulator
+      if: matrix.apt_deps != null
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
-
-    - name: Install AArch64 toolchain and qemu
-      if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'aarch64-unknown-linux-gnu'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu qemu-user
-
-    - name: Install s390x toolchain and qemu
-      if: matrix.env.TARGET_TRIPLE == 's390x-unknown-linux-gnu'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-s390x-linux-gnu qemu-user
-
-    - name: Install riscv64gc toolchain and qemu
-      if: matrix.env.TARGET_TRIPLE == 'riscv64gc-unknown-linux-gnu'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-riscv64-linux-gnu qemu-user
+        sudo apt-get install -y ${{ matrix.apt_deps }}
 
     - name: Prepare dependencies
       run: ./y.sh prepare
