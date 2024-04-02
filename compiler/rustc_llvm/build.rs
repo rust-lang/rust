@@ -391,9 +391,10 @@ fn main() {
         }
     }
 
-    // libc++abi have to be specified explicitly on AIX.
+    // libc++abi and libunwind have to be specified explicitly on AIX.
     if target.contains("aix") {
         println!("cargo:rustc-link-lib=c++abi");
+        println!("cargo:rustc-link-lib=unwind");
     }
 
     // Libstdc++ depends on pthread which Rust doesn't link on MinGW
