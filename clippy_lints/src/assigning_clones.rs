@@ -181,6 +181,23 @@ fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallC
         return false;
     }
 
+    // If the call expression is inside an impl block that contains the method invoked by the
+    // call expression, we bail out to avoid suggesting something that could result in endless
+    // recursion.
+    if let Some(local_block_id) = impl_block.as_local()
+        && let Some(block) = cx.tcx.hir_node_by_def_id(local_block_id).as_owner()
+    {
+        let impl_block_owner = block.def_id();
+        if cx
+            .tcx
+            .hir()
+            .parent_id_iter(lhs.hir_id)
+            .any(|parent| parent.owner == impl_block_owner)
+        {
+            return false;
+        }
+    }
+
     // Find the function for which we want to check that it is implemented.
     let provided_fn = match call.target {
         TargetTrait::Clone => cx.tcx.get_diagnostic_item(sym::Clone).and_then(|clone| {
