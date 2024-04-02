@@ -534,25 +534,10 @@ impl Step for Cargo {
         )
     }
 
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Cargo {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
-            target: run.target,
-        });
-    }
+    fn make_run(_run: RunConfig<'_>) {}
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let cargo_bin_path = builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
-            tool: "cargo",
-            mode: Mode::ToolRustc,
-            path: "src/tools/cargo",
-            source_type: SourceType::Submodule,
-            extra_features: Vec::new(),
-            allow_features: "",
-        });
-        cargo_bin_path
+        builder.initial_cargo.clone()
     }
 }
 
