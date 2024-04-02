@@ -79,58 +79,58 @@ store-value: (grey, "#999")
 
 call-function: (
     "check-result-color", {
-        "result_kind": "keyword", // item kind
-        "color": "#39afd7", // color of item kind
-        "hover_color": "#39afd7", // color of hovered/focused item kind
+        "result_kind": "keyword",
+        "color": "#39afd7",
+        "hover_color": "#39afd7",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "struct", // item kind
-        "color": "#ffa0a5", // color of item kind
-        "hover_color": "#ffa0a5", // color of hovered/focused item kind
+        "result_kind": "struct",
+        "color": "#ffa0a5",
+        "hover_color": "#ffa0a5",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "associatedtype", // item kind
-        "color": "#39afd7", // color of item kind
-        "hover_color": "#39afd7", // color of hovered/focused item kind
+        "result_kind": "associatedtype",
+        "color": "#39afd7",
+        "hover_color": "#39afd7",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "tymethod", // item kind
-        "color": "#fdd687", // color of item kind
-        "hover_color": "#fdd687", // color of hovered/focused item kind
+        "result_kind": "tymethod",
+        "color": "#fdd687",
+        "hover_color": "#fdd687",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "method", // item kind
-        "color": "#fdd687", // color of item kind
-        "hover_color": "#fdd687", // color of hovered/focused item kind
+        "result_kind": "method",
+        "color": "#fdd687",
+        "hover_color": "#fdd687",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "structfield", // item kind
-        "color": "#0096cf", // color of item kind
-        "hover_color": "#fff", // color of hovered/focused item kind
+        "result_kind": "structfield",
+        "color": "#0096cf",
+        "hover_color": "#fff",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "macro", // item kind
-        "color": "#a37acc", // color of item kind
-        "hover_color": "#a37acc", // color of hovered/focused item kind
+        "result_kind": "macro",
+        "color": "#a37acc",
+        "hover_color": "#a37acc",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "fn", // item kind
-        "color": "#fdd687", // color of item kind
-        "hover_color": "#fdd687", // color of hovered/focused item kind
+        "result_kind": "fn",
+        "color": "#fdd687",
+        "hover_color": "#fdd687",
     },
 )
 
@@ -191,58 +191,58 @@ store-value: (grey, "#ccc")
 
 call-function: (
     "check-result-color", {
-        "result_kind": "keyword", // item kind
-        "color": "#d2991d", // color of item kind
-        "hover_color": "#d2991d", // color of hovered/focused item kind
+        "result_kind": "keyword",
+        "color": "#d2991d",
+        "hover_color": "#d2991d",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "struct", // item kind
-        "color": "#2dbfb8", // color of item kind
-        "hover_color": "#2dbfb8", // color of hovered/focused item kind
+        "result_kind": "struct",
+        "color": "#2dbfb8",
+        "hover_color": "#2dbfb8",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "associatedtype", // item kind
-        "color": "#d2991d", // color of item kind
-        "hover_color": "#d2991d", // color of hovered/focused item kind
+        "result_kind": "associatedtype",
+        "color": "#d2991d",
+        "hover_color": "#d2991d",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "tymethod", // item kind
-        "color": "#2bab63", // color of item kind
-        "hover_color": "#2bab63", // color of hovered/focused item kind
+        "result_kind": "tymethod",
+        "color": "#2bab63",
+        "hover_color": "#2bab63",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "method", // item kind
-        "color": "#2bab63", // color of item kind
-        "hover_color": "#2bab63", // color of hovered/focused item kind
+        "result_kind": "method",
+        "color": "#2bab63",
+        "hover_color": "#2bab63",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "structfield", // item kind
-        "color": "#ddd", // color of item kind
-        "hover_color": "#ddd", // color of hovered/focused item kind
+        "result_kind": "structfield",
+        "color": "#ddd",
+        "hover_color": "#ddd",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "macro", // item kind
-        "color": "#09bd00", // color of item kind
-        "hover_color": "#09bd00", // color of hovered/focused item kind
+        "result_kind": "macro",
+        "color": "#09bd00",
+        "hover_color": "#09bd00",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "fn", // item kind
-        "color": "#2bab63", // color of item kind
-        "hover_color": "#2bab63", // color of hovered/focused item kind
+        "result_kind": "fn",
+        "color": "#2bab63",
+        "hover_color": "#2bab63",
     },
 )
 
@@ -288,58 +288,58 @@ store-value: (grey, "#999")
 
 call-function: (
     "check-result-color", {
-        "result_kind": "keyword", // item kind
-        "color": "#3873ad", // color of item kind
-        "hover_color": "#3873ad", // color of hovered/focused item kind
+        "result_kind": "keyword",
+        "color": "#3873ad",
+        "hover_color": "#3873ad",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "struct", // item kind
-        "color": "#ad378a", // color of item kind
-        "hover_color": "#ad378a", // color of hovered/focused item kind
+        "result_kind": "struct",
+        "color": "#ad378a",
+        "hover_color": "#ad378a",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "associatedtype", // item kind
-        "color": "#3873ad", // color of item kind
-        "hover_color": "#3873ad", // color of hovered/focused item kind
+        "result_kind": "associatedtype",
+        "color": "#3873ad",
+        "hover_color": "#3873ad",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "tymethod", // item kind
-        "color": "#ad7c37", // color of item kind
-        "hover_color": "#ad7c37", // color of hovered/focused item kind
+        "result_kind": "tymethod",
+        "color": "#ad7c37",
+        "hover_color": "#ad7c37",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "method", // item kind
-        "color": "#ad7c37", // color of item kind
-        "hover_color": "#ad7c37", // color of hovered/focused item kind
+        "result_kind": "method",
+        "color": "#ad7c37",
+        "hover_color": "#ad7c37",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "structfield", // item kind
-        "color": "#000", // color of item kind
-        "hover_color": "#000", // color of hovered/focused item kind
+        "result_kind": "structfield",
+        "color": "#000",
+        "hover_color": "#000",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "macro", // item kind
-        "color": "#068000", // color of item kind
-        "hover_color": "#068000", // color of hovered/focused item kind
+        "result_kind": "macro",
+        "color": "#068000",
+        "hover_color": "#068000",
     },
 )
 call-function: (
     "check-result-color", {
-        "result_kind": "fn", // item kind
-        "color": "#ad7c37", // color of item kind
-        "hover_color": "#ad7c37", // color of hovered/focused item kind
+        "result_kind": "fn",
+        "color": "#ad7c37",
+        "hover_color": "#ad7c37",
     },
 )
 
