@@ -30,14 +30,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
-        let def_id = goal.predicate.def_id();
-        let def_kind = self.tcx().def_kind(def_id);
-        match def_kind {
-            DefKind::OpaqueTy => return self.normalize_opaque_type(goal),
-            _ => self.set_is_normalizes_to_goal(),
-        }
-
+        self.set_is_normalizes_to_goal();
         debug_assert!(self.term_is_fully_unconstrained(goal));
+        let def_id = goal.predicate.def_id();
         match self.tcx().def_kind(def_id) {
             DefKind::AssocTy | DefKind::AssocConst => {
                 match self.tcx().associated_item(def_id).container {
@@ -52,6 +47,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
             DefKind::AnonConst => self.normalize_anon_const(goal),
             DefKind::TyAlias => self.normalize_weak_type(goal),
+            DefKind::OpaqueTy => self.normalize_opaque_type(goal),
             kind => bug!("unknown DefKind {} in normalizes-to goal: {goal:#?}", kind.descr(def_id)),
         }
     }

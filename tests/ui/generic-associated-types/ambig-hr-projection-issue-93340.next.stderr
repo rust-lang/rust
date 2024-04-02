@@ -1,5 +1,5 @@
 error[E0283]: type annotations needed
-  --> $DIR/ambig-hr-projection-issue-93340.rs:16:5
+  --> $DIR/ambig-hr-projection-issue-93340.rs:17:5
    |
 LL |     cmp_eq
    |     ^^^^^^ cannot infer type of the type parameter `A` declared on the function `cmp_eq`
@@ -16,13 +16,13 @@ LL |     cmp_eq::<A, B, O>
    |           +++++++++++
 
 error[E0275]: overflow evaluating the requirement `impl for<'a, 'b> Fn(<A as Scalar>::RefType<'a>, <B as Scalar>::RefType<'b>) -> O == for<'a, 'b> fn(..., ...) -> ... {cmp_eq::<..., ..., ...>}`
-  --> $DIR/ambig-hr-projection-issue-93340.rs:16:5
+  --> $DIR/ambig-hr-projection-issue-93340.rs:17:5
    |
 LL |     cmp_eq
    |     ^^^^^^
 
 error[E0275]: overflow evaluating the requirement `impl for<'a, 'b> Fn(<A as Scalar>::RefType<'a>, <B as Scalar>::RefType<'b>) -> O == for<'a, 'b> fn(..., ...) -> ... {cmp_eq::<..., ..., ...>}`
-  --> $DIR/ambig-hr-projection-issue-93340.rs:16:5
+  --> $DIR/ambig-hr-projection-issue-93340.rs:17:5
    |
 LL |     cmp_eq
    |     ^^^^^^
@@ -35,14 +35,25 @@ error[E0275]: overflow evaluating the requirement `for<'a, 'b> fn(<O as Scalar>:
 LL |   ) -> impl Fn(A::RefType<'_>, B::RefType<'_>) -> O {
    |  ___________________________________________________^
 LL | |
+LL | |
 LL | |     cmp_eq
-LL | |
-LL | |
+...  |
 LL | |
 LL | | }
    | |_^
 
-error: aborting due to 4 previous errors
+error[E0275]: overflow evaluating the requirement `impl for<'a, 'b> Fn(<A as Scalar>::RefType<'a>, <B as Scalar>::RefType<'b>) -> O: Sized`
+  --> $DIR/ambig-hr-projection-issue-93340.rs:14:6
+   |
+LL | ) -> impl Fn(A::RefType<'_>, B::RefType<'_>) -> O {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     cmp_eq
+   |     ------ this returned value is of type `for<'a, 'b> fn(<O as Scalar>::RefType<'a>, <_ as Scalar>::RefType<'b>) -> _ {cmp_eq::<O, _, _>}`
+   |
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0275, E0283.
 For more information about an error, try `rustc --explain E0275`.
