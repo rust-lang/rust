@@ -1588,4 +1588,36 @@ mod bar {
 "#,
         );
     }
+
+    #[test]
+    fn local_inline_import_has_alias() {
+        // FIXME
+        check_assist_not_applicable(
+            auto_import,
+            r#"
+struct S<T>(T);
+use S as IoResult;
+
+mod foo {
+    pub fn bar() -> S$0<()> {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn alias_local() {
+        // FIXME
+        check_assist_not_applicable(
+            auto_import,
+            r#"
+struct S<T>(T);
+use S as IoResult;
+
+mod foo {
+    pub fn bar() -> IoResult$0<()> {}
+}
+"#,
+        );
+    }
 }

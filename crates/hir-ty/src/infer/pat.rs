@@ -12,6 +12,7 @@ use hir_expand::name::Name;
 
 use crate::{
     consteval::{try_const_usize, usize_const},
+    error_lifetime,
     infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
@@ -396,14 +397,14 @@ impl InferenceContext<'_> {
             None => {
                 let inner_ty = self.table.new_type_var();
                 let ref_ty =
-                    TyKind::Ref(mutability, static_lifetime(), inner_ty.clone()).intern(Interner);
+                    TyKind::Ref(mutability, error_lifetime(), inner_ty.clone()).intern(Interner);
                 // Unification failure will be reported by the caller.
                 self.unify(&ref_ty, expected);
                 inner_ty
             }
         };
         let subty = self.infer_pat(inner_pat, &expectation, default_bm);
-        TyKind::Ref(mutability, static_lifetime(), subty).intern(Interner)
+        TyKind::Ref(mutability, error_lifetime(), subty).intern(Interner)
     }
 
     fn infer_bind_pat(
@@ -430,7 +431,7 @@ impl InferenceContext<'_> {
 
         let bound_ty = match mode {
             BindingMode::Ref(mutability) => {
-                TyKind::Ref(mutability, static_lifetime(), inner_ty.clone()).intern(Interner)
+                TyKind::Ref(mutability, error_lifetime(), inner_ty.clone()).intern(Interner)
             }
             BindingMode::Move => inner_ty.clone(),
         };

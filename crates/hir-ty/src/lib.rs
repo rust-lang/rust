@@ -622,7 +622,7 @@ pub fn static_lifetime() -> Lifetime {
 }
 
 pub fn error_lifetime() -> Lifetime {
-    static_lifetime()
+    LifetimeData::Static.intern(Interner)
 }
 
 pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
@@ -861,7 +861,7 @@ where
             if cfg!(debug_assertions) {
                 Err(NoSolution)
             } else {
-                Ok(static_lifetime())
+                Ok(error_lifetime())
             }
         }
 
@@ -873,7 +873,7 @@ where
             if cfg!(debug_assertions) {
                 Err(NoSolution)
             } else {
-                Ok(static_lifetime())
+                Ok(error_lifetime())
             }
         }
     }

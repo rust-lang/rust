@@ -15,7 +15,10 @@ use base_db::{
     CrateId,
 };
 use chalk_ir::{
-    cast::Cast, fold::Shift, fold::TypeFoldable, interner::HasInterner, Mutability, Safety,
+    cast::Cast,
+    fold::{Shift, TypeFoldable},
+    interner::HasInterner,
+    Mutability, Safety, TypeOutlives,
 };
 
 use either::Either;
@@ -64,7 +67,7 @@ use crate::{
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, Const, ConstScalar, DebruijnIndex, DynTy,
     FnAbi, FnPointer, FnSig, FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime,
-    LifetimeData, ParamKind, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
+    LifetimeData, LifetimeOutlives, ParamKind, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
     QuantifiedWhereClauses, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder,
     TyKind, WhereClause,
 };
@@ -282,7 +285,7 @@ impl<'a> TyLoweringContext<'a> {
                 let inner_ty = self.lower_ty(inner);
                 // FIXME: It should infer the eldided lifetimes instead of stubbing with static
                 let lifetime =
-                    lifetime.as_ref().map_or_else(static_lifetime, |lr| self.lower_lifetime(lr));
+                    lifetime.as_ref().map_or_else(error_lifetime, |lr| self.lower_lifetime(lr));
                 TyKind::Ref(lower_to_chalk_mutability(*mutability), lifetime, inner_ty)
                     .intern(Interner)
             }
@@ -1048,7 +1051,13 @@ impl<'a> TyLoweringContext<'a> {
                     .collect::<Vec<_>>()
                     .into_iter()
             }
-            WherePredicate::Lifetime { .. } => vec![].into_iter(),
+            WherePredicate::Lifetime { bound, target } => {
+                vec![crate::wrap_empty_binders(WhereClause::LifetimeOutlives(LifetimeOutlives {
+                    a: self.lower_lifetime(bound),
+                    b: self.lower_lifetime(target),
+                }))]
+                .into_iter()
+            }
         }
     }
 
@@ -1101,7 +1110,13 @@ impl<'a> TyLoweringContext<'a> {
                 bindings = self.lower_trait_ref_from_path(path, Some(self_ty));
                 bindings.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
             }
-            TypeBound::Lifetime(_) => None,
+            TypeBound::Lifetime(l) => {
+                let lifetime = self.lower_lifetime(l);
+                Some(crate::wrap_empty_binders(WhereClause::TypeOutlives(TypeOutlives {
+                    ty: self_ty,
+                    lifetime,
+                })))
+            }
             TypeBound::Error => None,
         };
         trait_ref.into_iter().chain(
@@ -1264,10 +1279,19 @@ impl<'a> TyLoweringContext<'a> {
         // bounds in the input.
         // INVARIANT: If this function returns `DynTy`, there should be at least one trait bound.
         // These invariants are utilized by `TyExt::dyn_trait()` and chalk.
+        let mut lifetime = None;
         let bounds = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
             let mut bounds: Vec<_> = bounds
                 .iter()
                 .flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false))
+                .filter(|b| match b.skip_binders() {
+                    WhereClause::Implemented(_) | WhereClause::AliasEq(_) => true,
+                    WhereClause::LifetimeOutlives(_) => false,
+                    WhereClause::TypeOutlives(t) => {
+                        lifetime = Some(t.lifetime.clone());
+                        false
+                    }
+                })
                 .collect();
 
             let mut multiple_regular_traits = false;
@@ -1305,7 +1329,7 @@ impl<'a> TyLoweringContext<'a> {
                             _ => unreachable!(),
                         }
                     }
-                    // We don't produce `WhereClause::{TypeOutlives, LifetimeOutlives}` yet.
+                    // `WhereClause::{TypeOutlives, LifetimeOutlives}` have been filtered out
                     _ => unreachable!(),
                 }
             });
@@ -1325,7 +1349,21 @@ impl<'a> TyLoweringContext<'a> {
 
         if let Some(bounds) = bounds {
             let bounds = crate::make_single_type_binders(bounds);
-            TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(Interner)
+            TyKind::Dyn(DynTy {
+                bounds,
+                lifetime: match lifetime {
+                    Some(it) => match it.bound_var(Interner) {
+                        Some(bound_var) => LifetimeData::BoundVar(BoundVar::new(
+                            DebruijnIndex::INNERMOST,
+                            bound_var.index,
+                        ))
+                        .intern(Interner),
+                        None => it,
+                    },
+                    None => static_lifetime(),
+                },
+            })
+            .intern(Interner)
         } else {
             // FIXME: report error
             // (additional non-auto traits, associated type rebound, or no resolved trait)
@@ -1657,18 +1695,7 @@ pub(crate) fn trait_environment_query(
         }
     }
 
-    let container: Option<ItemContainerId> = match def {
-        // FIXME: is there a function for this?
-        GenericDefId::FunctionId(f) => Some(f.lookup(db.upcast()).container),
-        GenericDefId::AdtId(_) => None,
-        GenericDefId::TraitId(_) => None,
-        GenericDefId::TraitAliasId(_) => None,
-        GenericDefId::TypeAliasId(t) => Some(t.lookup(db.upcast()).container),
-        GenericDefId::ImplId(_) => None,
-        GenericDefId::EnumVariantId(_) => None,
-        GenericDefId::ConstId(c) => Some(c.lookup(db.upcast()).container),
-    };
-    if let Some(ItemContainerId::TraitId(trait_id)) = container {
+    if let Some(trait_id) = def.assoc_trait_container(db.upcast()) {
         // add `Self: Trait<T1, T2, ...>` to the environment in trait
         // function default implementations (and speculative code
         // inside consts or type aliases)
@@ -1796,8 +1823,7 @@ pub(crate) fn generic_defaults_query(
                 make_binders(db, &generic_params, val)
             }
             GenericParamDataRef::LifetimeParamData(_) => {
-                // using static because it requires defaults
-                make_binders(db, &generic_params, static_lifetime().cast(Interner))
+                make_binders(db, &generic_params, error_lifetime().cast(Interner))
             }
         }
     }));
@@ -1817,7 +1843,7 @@ pub(crate) fn generic_defaults_recover(
         let val = match id {
             GenericParamId::TypeParamId(_) => TyKind::Error.intern(Interner).cast(Interner),
             GenericParamId::ConstParamId(id) => unknown_const_as_generic(db.const_param_ty(id)),
-            GenericParamId::LifetimeParamId(_) => static_lifetime().cast(Interner),
+            GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
         };
         crate::make_binders(db, &generic_params, val)
     }));

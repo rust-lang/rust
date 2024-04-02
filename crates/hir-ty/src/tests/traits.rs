@@ -1612,10 +1612,10 @@ fn test(
 ) {}
 "#,
         expect![[r#"
-            28..29 'a': impl Trait
-            59..60 'b': impl Sized
+            28..29 'a': impl Trait + 'static
+            59..60 'b': impl 'static
             82..83 'c': impl Trait
-            103..104 'd': impl Sized
+            103..104 'd': impl 'static
             128..129 'e': impl ?Sized
             148..149 'f': impl Trait + ?Sized
             173..175 '{}': ()

@@ -22,9 +22,9 @@ use stdx::never;
 
 use crate::{
     db::{HirDatabase, InternedClosure},
-    from_chalk_trait_id, from_placeholder_idx, make_binders,
+    error_lifetime, from_chalk_trait_id, from_placeholder_idx, make_binders,
     mir::{BorrowKind, MirSpan, MutBorrowKind, ProjectionElem},
-    static_lifetime, to_chalk_trait_id,
+    to_chalk_trait_id,
     traits::FnTrait,
     utils::{self, elaborate_clause_supertraits, generics, Generics},
     Adjust, Adjustment, AliasEq, AliasTy, Binders, BindingMode, ChalkTraitId, ClosureId, DynTy,
@@ -324,7 +324,7 @@ impl CapturedItemWithoutTy {
                     BorrowKind::Mut { .. } => Mutability::Mut,
                     _ => Mutability::Not,
                 };
-                TyKind::Ref(m, static_lifetime(), ty).intern(Interner)
+                TyKind::Ref(m, error_lifetime(), ty).intern(Interner)
             }
         };
         return CapturedItem {

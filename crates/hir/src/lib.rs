@@ -3910,7 +3910,7 @@ impl Type {
         inner.derived(
             TyKind::Ref(
                 if m.is_mut() { hir_ty::Mutability::Mut } else { hir_ty::Mutability::Not },
-                hir_ty::static_lifetime(),
+                hir_ty::error_lifetime(),
                 inner.ty.clone(),
             )
             .intern(Interner),

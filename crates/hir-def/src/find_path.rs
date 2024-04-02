@@ -30,6 +30,8 @@ pub fn find_path(
     find_path_inner(FindPathCtx { db, prefixed: None, prefer_no_std, prefer_prelude }, item, from)
 }
 
+/// Find a path that can be used to refer to a certain item. This can depend on
+/// *from where* you're referring to the item, hence the `from` parameter.
 pub fn find_path_prefixed(
     db: &dyn DefDatabase,
     item: ItemInNs,
@@ -255,7 +257,7 @@ fn find_in_scope(
     item: ItemInNs,
 ) -> Option<Name> {
     def_map.with_ancestor_maps(db, from.local_id, &mut |def_map, local_id| {
-        def_map[local_id].scope.name_of(item).map(|(name, _, _)| name.clone())
+        def_map[local_id].scope.names_of(item, |name, _, _| Some(name.clone()))
     })
 }
 
