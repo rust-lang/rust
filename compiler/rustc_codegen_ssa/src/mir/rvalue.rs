@@ -3,7 +3,7 @@ use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
 use crate::base;
-use crate::common::{self, IntPredicate};
+use crate::common::IntPredicate;
 use crate::traits::*;
 use crate::MemFlags;
 
@@ -861,14 +861,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.inbounds_gep(llty, lhs, &[rhs])
                 }
             }
-            mir::BinOp::Shl => common::build_masked_lshift(bx, lhs, rhs),
-            mir::BinOp::ShlUnchecked => {
-                let rhs = base::cast_shift_expr_rhs(bx, lhs, rhs);
+            mir::BinOp::Shl | mir::BinOp::ShlUnchecked => {
+                let rhs = base::build_shift_expr_rhs(bx, lhs, rhs, op == mir::BinOp::ShlUnchecked);
                 bx.shl(lhs, rhs)
             }
-            mir::BinOp::Shr => common::build_masked_rshift(bx, input_ty, lhs, rhs),
-            mir::BinOp::ShrUnchecked => {
-                let rhs = base::cast_shift_expr_rhs(bx, lhs, rhs);
+            mir::BinOp::Shr | mir::BinOp::ShrUnchecked => {
+                let rhs = base::build_shift_expr_rhs(bx, lhs, rhs, op == mir::BinOp::ShrUnchecked);
                 if is_signed { bx.ashr(lhs, rhs) } else { bx.lshr(lhs, rhs) }
             }
             mir::BinOp::Ne

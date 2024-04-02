@@ -25,6 +25,13 @@ pub(crate) struct DanglingPtrInFinal {
     pub kind: InternKind,
 }
 
+#[derive(Diagnostic)]
+#[diag(const_eval_nested_static_in_thread_local)]
+pub(crate) struct NestedStaticInThreadLocal {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(const_eval_mutable_ptr_in_final)]
 pub(crate) struct MutablePtrInFinal {

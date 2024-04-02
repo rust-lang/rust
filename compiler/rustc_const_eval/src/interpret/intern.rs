@@ -28,7 +28,7 @@ use rustc_span::sym;
 
 use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy};
 use crate::const_eval;
-use crate::errors::{DanglingPtrInFinal, MutablePtrInFinal};
+use crate::errors::{DanglingPtrInFinal, MutablePtrInFinal, NestedStaticInThreadLocal};
 
 pub trait CompileTimeMachine<'mir, 'tcx: 'mir, T> = Machine<
         'mir,
@@ -107,6 +107,10 @@ fn intern_as_new_static<'tcx>(
         DefKind::Static { mutability: alloc.0.mutability, nested: true },
     );
     tcx.set_nested_alloc_id_static(alloc_id, feed.def_id());
+
+    if tcx.is_thread_local_static(static_id.into()) {
+        tcx.dcx().emit_err(NestedStaticInThreadLocal { span: tcx.def_span(static_id) });
+    }
 
     // These do not inherit the codegen attrs of the parent static allocation, since
     // it doesn't make sense for them to inherit their `#[no_mangle]` and `#[link_name = ..]`
