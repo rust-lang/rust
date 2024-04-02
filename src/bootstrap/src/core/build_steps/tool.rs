@@ -81,7 +81,11 @@ impl Step for ToolBuild {
         match self.mode {
             Mode::ToolRustc => {
                 builder.ensure(compile::Std::new(compiler, compiler.host));
-                builder.ensure(compile::Rustc::new(compiler, target));
+                // When building a tool that links against rustc,
+                // we need the rustc to link against to be present and ready in the syroot.
+                builder.ensure(compile::Assemble {
+                    target_compiler: compiler.with_stage(compiler.stage + 1),
+                });
             }
             Mode::ToolStd => builder.ensure(compile::Std::new(compiler, target)),
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
@@ -863,8 +867,8 @@ macro_rules! tool_extended {
        $($name:ident,
        $path:expr,
        $tool_name:expr,
+       mode = $mode:expr,
        stable = $stable:expr
-       $(,tool_std = $tool_std:literal)?
        $(,allow_features = $allow_features:expr)?
        $(,add_bins_to_sysroot = $add_bins_to_sysroot:expr)?
        ;)+) => {
@@ -913,15 +917,16 @@ macro_rules! tool_extended {
                     compiler: $sel.compiler,
                     target: $sel.target,
                     tool: $tool_name,
-                    mode: if false $(|| $tool_std)? { Mode::ToolStd } else { Mode::ToolRustc },
+                    mode: $mode,
                     path: $path,
                     extra_features: $sel.extra_features,
                     source_type: SourceType::InTree,
                     allow_features: concat!($($allow_features)*),
                 });
 
-                if (false $(|| !$add_bins_to_sysroot.is_empty())?) && $sel.compiler.stage > 0 {
-                    let bindir = $builder.sysroot($sel.compiler).join("bin");
+                if (false $(|| !$add_bins_to_sysroot.is_empty())?) {
+                    // As usual, we copy the tool into the next sysroot, as it links against the compiler in that sysroot.
+                    let bindir = $builder.sysroot($sel.compiler.with_stage($sel.compiler.stage + 1)).join("bin");
                     t!(fs::create_dir_all(&bindir));
 
                     #[allow(unused_variables)]
@@ -950,17 +955,17 @@ macro_rules! tool_extended {
 // NOTE: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
 // invoke Cargo to build bootstrap. See the comment there for more details.
 tool_extended!((self, builder),
-    Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true;
-    CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true;
-    Clippy, "src/tools/clippy", "clippy-driver", stable=true, add_bins_to_sysroot = ["clippy-driver", "cargo-clippy"];
-    Miri, "src/tools/miri", "miri", stable=false, add_bins_to_sysroot = ["miri"];
-    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=true, add_bins_to_sysroot = ["cargo-miri"];
+    Cargofmt, "src/tools/rustfmt", "cargo-fmt", mode=Mode::ToolRustc, stable=true;
+    CargoClippy, "src/tools/clippy", "cargo-clippy", mode= Mode::ToolRustc, stable=true;
+    Clippy, "src/tools/clippy", "clippy-driver", mode=Mode::ToolRustc, stable=true, add_bins_to_sysroot = ["clippy-driver", "cargo-clippy"];
+    Miri, "src/tools/miri", "miri", mode= Mode::ToolRustc, stable=false, add_bins_to_sysroot = ["miri"];
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", mode=Mode::ToolRustc, stable=true, add_bins_to_sysroot = ["cargo-miri"];
     // FIXME: tool_std is not quite right, we shouldn't allow nightly features.
     // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,
     // and this is close enough for now.
-    Rls, "src/tools/rls", "rls", stable=true, tool_std=true;
-    RustDemangler, "src/tools/rust-demangler", "rust-demangler", stable=false, tool_std=true;
-    Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
+    Rls, "src/tools/rls", "rls", mode=Mode::ToolStd, stable=true;
+    RustDemangler, "src/tools/rust-demangler", "rust-demangler", mode=Mode::ToolStd, stable=false;
+    Rustfmt, "src/tools/rustfmt", "rustfmt", mode=Mode::ToolRustc, stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
 );
 
 impl<'a> Builder<'a> {
