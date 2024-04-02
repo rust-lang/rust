@@ -122,7 +122,7 @@ extern "rust-intrinsic" {
     /// * Not be infinite
     /// * Be representable in the return type, after truncating off its fractional part
     #[rustc_nounwind]
-    pub fn simd_cast<T, U>(x: T) -> U;
+    pub fn simd_cast<T: ?Sized, U: ?Sized>(x: T) -> U;
 
     /// Numerically cast a vector, elementwise.
     ///
@@ -137,6 +137,10 @@ extern "rust-intrinsic" {
     /// Otherwise, truncates or extends the value, maintaining the sign for signed integers.
     #[rustc_nounwind]
     pub fn simd_as<T, U>(x: T) -> U;
+
+    #[cfg(not(bootstrap))]
+    #[rustc_nounwind]
+    pub fn simd_reinterpret<Src: ?Sized, Dst: ?Sized>(src: Src) -> Dst;
 
     /// Elementwise negation of a vector.
     ///
@@ -504,7 +508,7 @@ extern "rust-intrinsic" {
     /// # Safety
     /// `mask` must only contain `0` and `!0`.
     #[rustc_nounwind]
-    pub fn simd_select<M, T>(mask: M, if_true: T, if_false: T) -> T;
+    pub fn simd_select<M: ?Sized, T: ?Sized>(mask: M, if_true: T, if_false: T) -> T;
 
     /// Select elements from a bitmask.
     ///
