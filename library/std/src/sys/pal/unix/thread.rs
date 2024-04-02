@@ -278,7 +278,8 @@ impl Thread {
                 return None;
             }
             let info = tinfo.assume_init();
-            let name = slice::from_raw_parts(info.name.as_ptr() as *const u8, info.name.len());
+            let name =
+                core::slice::from_raw_parts(info.name.as_ptr() as *const u8, info.name.len());
             CStr::from_bytes_until_nul(name).map(CStr::to_owned).ok()
         }
     }
