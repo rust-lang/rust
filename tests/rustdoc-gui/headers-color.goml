@@ -2,7 +2,7 @@
 
 define-function: (
     "check-colors",
-    (theme, color, code_header_color, focus_background_color, headings_color),
+    [theme, color, code_header_color, focus_background_color, headings_color],
     block {
         go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
         // This is needed so that the text color is computed.

@@ -1,6 +1,6 @@
 // Checks that the "keyword" results have the expected text alongside them.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-write: (".search-input", "CookieMonster")
+write-into: (".search-input", "CookieMonster")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...

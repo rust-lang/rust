@@ -4,8 +4,8 @@ show-text: true
 
 define-function: (
     "check-colors",
-    (theme, highlight, highlight_focus, help_border, help_color, help_hover_border,
-     help_hover_color),
+    [theme, highlight, highlight_focus, help_border, help_color, help_hover_border,
+     help_hover_color],
     block {
         set-local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false", }
         reload:
@@ -64,7 +64,7 @@ go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test.html"
 
 define-function: (
     "check-background",
-    (theme, background_color_start, background_color_end),
+    [theme, background_color_start, background_color_end],
     block {
         set-local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false", }
         reload:

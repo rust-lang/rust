@@ -2,7 +2,7 @@
 // Checks that the search results have the expected width.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 set-window-size: (900, 1000)
-write: (".search-input", "test")
+write-into: (".search-input", "test")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 wait-for: "#crate-search"
@@ -69,7 +69,7 @@ assert-css: ("#search", {"width": "640px"})
 show-text: true
 define-function: (
     "check-filter",
-    (theme, border, filter, hover_border, hover_filter),
+    [theme, border, filter, hover_border, hover_filter],
     block {
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:

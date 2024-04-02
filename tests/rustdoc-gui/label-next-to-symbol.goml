@@ -27,14 +27,14 @@ compare-elements-position-near: (
 compare-elements-position: (
     ".item-name .stab.deprecated",
     ".item-name .stab.portability",
-    ("y"),
+    ["y"],
 )
 
 // Ensure no wrap
 compare-elements-position: (
     "//*[@class='item-name']//a[text()='replaced_function']/..",
     "//*[@class='desc docblock-short'][text()='a thing with a label']",
-    ("y"),
+    ["y"],
 )
 
 // Mobile view
@@ -49,19 +49,19 @@ compare-elements-position-near: (
 compare-elements-position: (
     ".item-name .stab.deprecated",
     ".item-name .stab.portability",
-    ("y"),
+    ["y"],
 )
 
 // Ensure wrap
 compare-elements-position-false: (
     "//*[@class='item-name']//a[text()='replaced_function']/..",
     "//*[@class='desc docblock-short'][text()='a thing with a label']",
-    ("y"),
+    ["y"],
 )
 compare-elements-position-false: (
     ".item-name .stab.deprecated",
     "//*[@class='desc docblock-short'][text()='a thing with a label']",
-    ("y"),
+    ["y"],
 )
 
 // Ensure it doesn't expand.
@@ -72,5 +72,5 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/cfgs/index.html"
 compare-elements-position-false: (
     "//*[@class='stab portability']/code[text()='appservice-api-c']",
     "//*[@class='stab portability']/code[text()='server']",
-    ("y"),
+    ["y"],
 )
