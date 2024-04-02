@@ -4,6 +4,10 @@ on:
   - push
   - pull_request
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   rustfmt:
     runs-on: ubuntu-latest
@@ -29,10 +33,6 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
-
-    defaults:
-      run:
-        shell: bash
 
     strategy:
       fail-fast: false
@@ -129,10 +129,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
     - uses: actions/checkout@v4
 
@@ -154,10 +150,6 @@ jobs:
   bench:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-
-    defaults:
-      run:
-        shell: bash
 
     steps:
     - uses: actions/checkout@v4
@@ -189,10 +181,6 @@ jobs:
   dist:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
-
-    defaults:
-      run:
-        shell: bash
 
     strategy:
       fail-fast: false
