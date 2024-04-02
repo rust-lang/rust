@@ -1,7 +1,7 @@
 // Checks that the search tab results work correctly with function signature syntax
 // First, try a search-by-name
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-write: (".search-input", "Foo")
+write-into: (".search-input", "Foo")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...

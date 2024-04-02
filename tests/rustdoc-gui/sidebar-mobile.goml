@@ -57,7 +57,7 @@ show-text: true
 
 define-function: (
     "check-colors",
-    (theme, color, background),
+    [theme, color, background],
     block {
         set-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": |theme|}
         reload:

@@ -31,13 +31,13 @@ assert-count: ("#main-content > .item-info .stab", 2)
 compare-elements-position-false: (
     "#main-content > .item-info .stab:nth-of-type(1)",
     "#main-content > .item-info .stab:nth-of-type(2)",
-    ("y"),
+    ["y"],
 )
 // But they should have the same `x` position.
 compare-elements-position: (
     "#main-content > .item-info .stab:nth-of-type(1)",
     "#main-content > .item-info .stab:nth-of-type(2)",
-    ("x"),
+    ["x"],
 )
 // They are supposed to have the same height too.
 compare-elements-css: (
