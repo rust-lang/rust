@@ -187,12 +187,15 @@ impl clean::GenericParamDef {
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match &self.kind {
-            clean::GenericParamDefKind::Lifetime { outlives } => {
-                write!(f, "{}", self.name)?;
+            clean::GenericParamDefKind::Lifetime(param) => {
+                if let Some(variance) = param.variance {
+                    f.write_str(print_variance(variance))?;
+                }
+                f.write_str(self.name.as_str())?;
 
-                if !outlives.is_empty() {
+                if !param.outlives.is_empty() {
                     f.write_str(": ")?;
-                    for (i, lt) in outlives.iter().enumerate() {
+                    for (i, lt) in param.outlives.iter().enumerate() {
                         if i != 0 {
                             f.write_str(" + ")?;
                         }
@@ -202,26 +205,29 @@ impl clean::GenericParamDef {
 
                 Ok(())
             }
-            clean::GenericParamDefKind::Type { bounds, default, .. } => {
+            clean::GenericParamDefKind::Type(param) => {
+                if let Some(variance) = param.variance {
+                    f.write_str(print_variance(variance))?;
+                }
                 f.write_str(self.name.as_str())?;
 
-                if !bounds.is_empty() {
+                if !param.bounds.is_empty() {
                     f.write_str(": ")?;
-                    print_generic_bounds(bounds, cx).fmt(f)?;
+                    print_generic_bounds(&param.bounds, cx).fmt(f)?;
                 }
 
-                if let Some(ref ty) = default {
+                if let Some(ref ty) = param.default {
                     f.write_str(" = ")?;
                     ty.print(cx).fmt(f)?;
                 }
 
                 Ok(())
             }
-            clean::GenericParamDefKind::Const { ty, default, .. } => {
+            clean::GenericParamDefKind::Const(param) => {
                 write!(f, "const {}: ", self.name)?;
-                ty.print(cx).fmt(f)?;
+                param.ty.print(cx).fmt(f)?;
 
-                if let Some(default) = default {
+                if let Some(default) = &param.default {
                     f.write_str(" = ")?;
                     if f.alternate() {
                         write!(f, "{default}")?;
@@ -1757,6 +1763,16 @@ impl clean::Term {
             clean::Term::Type(ty) => ty.print(cx).fmt(f),
             clean::Term::Constant(ct) => ct.print(cx.tcx()).fmt(f),
         })
+    }
+}
+
+// FIXME(fmease): Do we need to care about alternate?
+fn print_variance(variance: ty::Variance) -> &'static str {
+    match variance {
+        ty::Variance::Covariant => "<sub class=\"variance\">+</sub>", // FIXME(fmease): empty str lit instead of `"+"` in the final version
+        ty::Variance::Invariant => r#"<sub class="variance" title="invariant">∘</sub>"#,
+        ty::Variance::Contravariant => r#"<sub class="variance" title="contravariant">−</sub>"#,
+        ty::Variance::Bivariant => r#"<sub class="variance" title="bivariant">∗</sub>"#,
     }
 }
 

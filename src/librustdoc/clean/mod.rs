@@ -321,7 +321,7 @@ fn clean_where_predicate<'tcx>(
             let bound_params = wbp
                 .bound_generic_params
                 .iter()
-                .map(|param| clean_generic_param(cx, None, param))
+                .map(|param| clean_generic_param(cx, param, None, None))
                 .collect();
             WherePredicate::BoundPredicate {
                 ty: clean_ty(wbp.bounded_ty, cx),
@@ -502,36 +502,37 @@ fn projection_to_path_segment<'tcx>(
 
 fn clean_generic_param_def<'tcx>(
     def: &ty::GenericParamDef,
+    variance: Option<ty::Variance>,
     cx: &mut DocContext<'tcx>,
 ) -> GenericParamDef {
     let (name, kind) = match def.kind {
         ty::GenericParamDefKind::Lifetime => {
-            (def.name, GenericParamDefKind::Lifetime { outlives: ThinVec::new() })
+            (def.name, LifetimeParam { variance, outlives: ThinVec::new() }.into())
         }
         ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
-            let default = if has_default {
-                Some(clean_middle_ty(
+            let default = has_default.then(|| {
+                clean_middle_ty(
                     ty::Binder::dummy(cx.tcx.type_of(def.def_id).instantiate_identity()),
                     cx,
                     Some(def.def_id),
                     None,
-                ))
-            } else {
-                None
-            };
+                )
+            });
             (
                 def.name,
-                GenericParamDefKind::Type {
-                    bounds: ThinVec::new(), // These are filled in from the where-clauses.
-                    default: default.map(Box::new),
+                TypeParam {
+                    variance,
+                    bounds: ThinVec::new(), // These are filled in from the where-clause.
+                    default,
                     synthetic,
-                },
+                }
+                .into(),
             )
         }
         ty::GenericParamDefKind::Const { has_default, is_host_effect } => (
             def.name,
-            GenericParamDefKind::Const {
-                ty: Box::new(clean_middle_ty(
+            ConstParam {
+                ty: clean_middle_ty(
                     ty::Binder::dummy(
                         cx.tcx
                             .type_of(def.def_id)
@@ -541,15 +542,13 @@ fn clean_generic_param_def<'tcx>(
                     cx,
                     Some(def.def_id),
                     None,
-                )),
-                default: match has_default {
-                    true => Some(Box::new(
-                        cx.tcx.const_param_default(def.def_id).instantiate_identity().to_string(),
-                    )),
-                    false => None,
-                },
+                ),
+                default: has_default.then(|| {
+                    cx.tcx.const_param_default(def.def_id).instantiate_identity().to_string()
+                }),
                 is_host_effect,
-            },
+            }
+            .into(),
         ),
     };
 
@@ -558,8 +557,9 @@ fn clean_generic_param_def<'tcx>(
 
 fn clean_generic_param<'tcx>(
     cx: &mut DocContext<'tcx>,
-    generics: Option<&hir::Generics<'tcx>>,
     param: &hir::GenericParam<'tcx>,
+    variance: Option<ty::Variance>,
+    generics: Option<&hir::Generics<'tcx>>,
 ) -> GenericParamDef {
     let (name, kind) = match param.kind {
         hir::GenericParamKind::Lifetime { .. } => {
@@ -576,7 +576,7 @@ fn clean_generic_param<'tcx>(
             } else {
                 ThinVec::new()
             };
-            (param.name.ident().name, GenericParamDefKind::Lifetime { outlives })
+            (param.name.ident().name, LifetimeParam { variance, outlives }.into())
         }
         hir::GenericParamKind::Type { ref default, synthetic } => {
             let bounds = if let Some(generics) = generics {
@@ -591,21 +591,24 @@ fn clean_generic_param<'tcx>(
             };
             (
                 param.name.ident().name,
-                GenericParamDefKind::Type {
+                TypeParam {
+                    variance,
                     bounds,
-                    default: default.map(|t| clean_ty(t, cx)).map(Box::new),
+                    default: default.map(|t| clean_ty(t, cx)),
                     synthetic,
-                },
+                }
+                .into(),
             )
         }
         hir::GenericParamKind::Const { ty, default, is_host_effect } => (
             param.name.ident().name,
-            GenericParamDefKind::Const {
-                ty: Box::new(clean_ty(ty, cx)),
+            ConstParam {
+                ty: clean_ty(ty, cx),
                 default: default
-                    .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
+                    .map(|ct| ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string()),
                 is_host_effect,
-            },
+            }
+            .into(),
         ),
     };
 
@@ -633,22 +636,47 @@ fn is_elided_lifetime(param: &hir::GenericParam<'_>) -> bool {
 }
 
 pub(crate) fn clean_generics<'tcx>(
-    gens: &hir::Generics<'tcx>,
+    generics: &hir::Generics<'tcx>,
     cx: &mut DocContext<'tcx>,
+    item_def_id: DefId,
 ) -> Generics {
-    let impl_trait_params = gens
+    // FIXME(fmease): Instead of querying the DefKind, we could instead let the caller somehow make
+    // the decision of whether to compute variances or not. Mostly relevant for synthetic impls but
+    // also for function items since we probably want to *invert* the variances going forward.
+    // FIXME(fmease): Add support for lazy type aliases (`DefKind::TyAlias if type_alias_is_lazy()`).
+    let def_kind = cx.tcx.def_kind(item_def_id);
+    let variances = if !generics.params.is_empty()
+        && let DefKind::Fn
+        | DefKind::AssocFn
+        | DefKind::Enum
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::OpaqueTy = def_kind
+    {
+        // We need to obtain the middle generics since we can't simply enumerate the HIR params when
+        // iterating over them and index into the variances directly. We need to account for late-bound
+        // regions and parent generics.
+        let variances = cx.tcx.variances_of(item_def_id);
+        let generics = cx.tcx.generics_of(item_def_id);
+        Some((variances, generics))
+    } else {
+        None
+    };
+
+    let impl_trait_params = generics
         .params
         .iter()
         .filter(|param| is_impl_trait(param))
         .map(|param| {
-            let param = clean_generic_param(cx, Some(gens), param);
-            match param.kind {
-                GenericParamDefKind::Lifetime { .. } => unreachable!(),
-                GenericParamDefKind::Type { ref bounds, .. } => {
-                    cx.impl_trait_bounds.insert(param.def_id.into(), bounds.to_vec());
-                }
-                GenericParamDefKind::Const { .. } => unreachable!(),
-            }
+            let variance = variances.and_then(|(variances, generics)| {
+                // The `param` might be late-bound in which case it doesn't have a variance associated
+                // with it. Hence the fallible indexing.
+                let index = *generics.param_def_id_to_index.get(&param.def_id.to_def_id())?;
+                Some(variances[index as usize])
+            });
+            let param = clean_generic_param(cx, param, variance, Some(generics));
+            let GenericParamDefKind::Type(ty_param) = &param.kind else { unreachable!() };
+            cx.impl_trait_bounds.insert(param.def_id.into(), ty_param.bounds.to_vec());
             param
         })
         .collect::<Vec<_>>();
@@ -656,7 +684,7 @@ pub(crate) fn clean_generics<'tcx>(
     let mut bound_predicates = FxIndexMap::default();
     let mut region_predicates = FxIndexMap::default();
     let mut eq_predicates = ThinVec::default();
-    for pred in gens.predicates.iter().filter_map(|x| clean_where_predicate(x, cx)) {
+    for pred in generics.predicates.iter().filter_map(|x| clean_where_predicate(x, cx)) {
         match pred {
             WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
                 match bound_predicates.entry(ty) {
@@ -699,17 +727,24 @@ pub(crate) fn clean_generics<'tcx>(
         }
     }
 
-    let mut params = ThinVec::with_capacity(gens.params.len());
+    let mut params = ThinVec::with_capacity(generics.params.len());
     // In this loop, we gather the generic parameters (`<'a, B: 'a>`) and check if they have
     // bounds in the where predicates. If so, we move their bounds into the where predicates
     // while also preventing duplicates.
-    for p in gens.params.iter().filter(|p| !is_impl_trait(p) && !is_elided_lifetime(p)) {
-        let mut p = clean_generic_param(cx, Some(gens), p);
-        match &mut p.kind {
-            GenericParamDefKind::Lifetime { ref mut outlives } => {
-                if let Some(region_pred) = region_predicates.get_mut(&Lifetime(p.name)) {
+    for param in generics.params.iter().filter(|p| !is_impl_trait(p) && !is_elided_lifetime(p)) {
+        let variance = variances.and_then(|(variances, generics)| {
+            // The `param` might be late-bound in which case it doesn't have a variance associated
+            // with it. Hence the fallible indexing.
+            let index = *generics.param_def_id_to_index.get(&param.def_id.to_def_id())?;
+            Some(variances[index as usize])
+        });
+        let mut param = clean_generic_param(cx, param, variance, Some(generics));
+
+        match &mut param.kind {
+            GenericParamDefKind::Lifetime(lt_param) => {
+                if let Some(region_pred) = region_predicates.get_mut(&Lifetime(param.name)) {
                     // We merge bounds in the `where` clause.
-                    for outlive in outlives.drain(..) {
+                    for outlive in lt_param.outlives.drain(..) {
                         let outlive = GenericBound::Outlives(outlive);
                         if !region_pred.contains(&outlive) {
                             region_pred.push(outlive);
@@ -717,10 +752,10 @@ pub(crate) fn clean_generics<'tcx>(
                     }
                 }
             }
-            GenericParamDefKind::Type { bounds, synthetic: false, .. } => {
-                if let Some(bound_pred) = bound_predicates.get_mut(&Type::Generic(p.name)) {
+            GenericParamDefKind::Type(ty_param) if !ty_param.synthetic => {
+                if let Some(bound_pred) = bound_predicates.get_mut(&Type::Generic(param.name)) {
                     // We merge bounds in the `where` clause.
-                    for bound in bounds.drain(..) {
+                    for bound in ty_param.bounds.drain(..) {
                         if !bound_pred.0.contains(&bound) {
                             bound_pred.0.push(bound);
                         }
@@ -731,7 +766,7 @@ pub(crate) fn clean_generics<'tcx>(
                 // nothing to do here.
             }
         }
-        params.push(p);
+        params.push(param);
     }
     params.extend(impl_trait_params);
 
@@ -756,9 +791,27 @@ pub(crate) fn clean_generics<'tcx>(
 
 fn clean_ty_generics<'tcx>(
     cx: &mut DocContext<'tcx>,
-    gens: &ty::Generics,
-    preds: ty::GenericPredicates<'tcx>,
+    generics: &ty::Generics,
+    predicates: ty::GenericPredicates<'tcx>,
+    item_def_id: DefId,
 ) -> Generics {
+    // FIXME(fmease): Instead of querying the DefKind, we could instead let the caller somehow make
+    // the decision of whether to compute variances or not. Mostly relevant for synthetic impls but
+    // also for function items since we probably want to *invert* the variances going forward.
+    // FIXME(fmease): Add support for lazy type aliases (`DefKind::TyAlias if type_alias_is_lazy()`).
+    let variances = if !generics.params.is_empty()
+        && let DefKind::Fn
+        | DefKind::AssocFn
+        | DefKind::Enum
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::OpaqueTy = cx.tcx.def_kind(item_def_id)
+    {
+        Some(cx.tcx.variances_of(item_def_id))
+    } else {
+        None
+    };
+
     // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
     // since `Clean for ty::Predicate` would consume them.
     let mut impl_trait = BTreeMap::<u32, Vec<GenericBound>>::default();
@@ -766,25 +819,29 @@ fn clean_ty_generics<'tcx>(
     // Bounds in the type_params and lifetimes fields are repeated in the
     // predicates field (see rustc_hir_analysis::collect::ty_generics), so remove
     // them.
-    let stripped_params = gens
+    let stripped_params = generics
         .params
         .iter()
-        .filter_map(|param| match param.kind {
-            ty::GenericParamDefKind::Lifetime if param.is_anonymous_lifetime() => None,
-            ty::GenericParamDefKind::Lifetime => Some(clean_generic_param_def(param, cx)),
+        .filter(|param| match param.kind {
+            ty::GenericParamDefKind::Lifetime => !param.is_anonymous_lifetime(),
             ty::GenericParamDefKind::Type { synthetic, .. } => {
                 if param.name == kw::SelfUpper {
                     assert_eq!(param.index, 0);
-                    return None;
+                    return false;
                 }
                 if synthetic {
                     impl_trait.insert(param.index, vec![]);
-                    return None;
+                    return false;
                 }
-                Some(clean_generic_param_def(param, cx))
+                true
             }
-            ty::GenericParamDefKind::Const { is_host_effect: true, .. } => None,
-            ty::GenericParamDefKind::Const { .. } => Some(clean_generic_param_def(param, cx)),
+            ty::GenericParamDefKind::Const { is_host_effect, .. } => !is_host_effect,
+        })
+        .map(|param| {
+            let variance = variances
+                .map(|variances| variances[generics.param_def_id_to_index[&param.def_id] as usize]);
+
+            clean_generic_param_def(param, variance, cx)
         })
         .collect::<ThinVec<GenericParamDef>>();
 
@@ -792,7 +849,7 @@ fn clean_ty_generics<'tcx>(
     let mut impl_trait_proj =
         FxHashMap::<u32, Vec<(DefId, PathSegment, ty::Binder<'_, ty::Term<'_>>)>>::default();
 
-    let where_predicates = preds
+    let where_predicates = predicates
         .predicates
         .iter()
         .flat_map(|(pred, _)| {
@@ -1041,7 +1098,13 @@ fn clean_fn_or_proc_macro<'tcx>(
     match macro_kind {
         Some(kind) => clean_proc_macro(item, name, kind, cx),
         None => {
-            let mut func = clean_function(cx, sig, generics, FunctionArgs::Body(body_id));
+            let mut func = clean_function(
+                cx,
+                item.owner_id.to_def_id(),
+                sig,
+                generics,
+                FunctionArgs::Body(body_id),
+            );
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
             FunctionItem(func)
         }
@@ -1060,17 +1123,15 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attrib
         for (pos, literal) in meta_item_list.iter().filter_map(|meta| meta.lit()).enumerate() {
             match literal.kind {
                 ast::LitKind::Int(a, _) => {
-                    let gen = func.generics.params.remove(0);
+                    let param = func.generics.params.remove(0);
                     if let GenericParamDef {
-                        name,
-                        kind: GenericParamDefKind::Const { ty, .. },
-                        ..
-                    } = gen
+                        name, kind: GenericParamDefKind::Const(param), ..
+                    } = param
                     {
-                        func.decl
-                            .inputs
-                            .values
-                            .insert(a.get() as _, Argument { name, type_: *ty, is_const: true });
+                        func.decl.inputs.values.insert(
+                            a.get() as _,
+                            Argument { name, type_: param.ty, is_const: true },
+                        );
                     } else {
                         panic!("unexpected non const in position {pos}");
                     }
@@ -1088,13 +1149,14 @@ enum FunctionArgs<'tcx> {
 
 fn clean_function<'tcx>(
     cx: &mut DocContext<'tcx>,
+    did: DefId,
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
     args: FunctionArgs<'tcx>,
 ) -> Box<Function> {
     let (generics, decl) = enter_impl_trait(cx, |cx| {
         // NOTE: generics must be cleaned before args
-        let generics = clean_generics(generics, cx);
+        let generics = clean_generics(generics, cx, did);
         let args = match args {
             FunctionArgs::Body(body_id) => {
                 clean_args_from_types_and_body_id(cx, sig.decl.inputs, body_id)
@@ -1227,37 +1289,47 @@ fn clean_poly_trait_ref<'tcx>(
             .bound_generic_params
             .iter()
             .filter(|p| !is_elided_lifetime(p))
-            .map(|x| clean_generic_param(cx, None, x))
+            .map(|x| clean_generic_param(cx, x, None, None))
             .collect(),
     }
 }
 
 fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
-    let local_did = trait_item.owner_id.to_def_id();
-    cx.with_param_env(local_did, |cx| {
+    let def_id = trait_item.owner_id.to_def_id();
+    cx.with_param_env(def_id, |cx| {
         let inner = match trait_item.kind {
             hir::TraitItemKind::Const(ty, Some(default)) => {
-                let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
+                let generics =
+                    enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx, def_id));
                 AssocConstItem(
                     generics,
                     Box::new(clean_ty(ty, cx)),
-                    ConstantKind::Local { def_id: local_did, body: default },
+                    ConstantKind::Local { def_id, body: default },
                 )
             }
             hir::TraitItemKind::Const(ty, None) => {
-                let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
+                let generics =
+                    enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx, def_id));
                 TyAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Body(body));
+                let m =
+                    clean_function(cx, def_id, sig, trait_item.generics, FunctionArgs::Body(body));
                 MethodItem(m, None)
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
-                let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Names(names));
+                let m = clean_function(
+                    cx,
+                    def_id,
+                    sig,
+                    trait_item.generics,
+                    FunctionArgs::Names(names),
+                );
                 TyMethodItem(m)
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
-                let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
+                let generics =
+                    enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx, def_id));
                 let bounds = bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect();
                 let item_type =
                     clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, default)), cx, None, None);
@@ -1272,12 +1344,13 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                 )
             }
             hir::TraitItemKind::Type(bounds, None) => {
-                let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
+                let generics =
+                    enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx, def_id));
                 let bounds = bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect();
                 TyAssocTypeItem(generics, bounds)
             }
         };
-        Item::from_def_id_and_parts(local_did, Some(trait_item.ident.name), inner, cx)
+        Item::from_def_id_and_parts(def_id, Some(trait_item.ident.name), inner, cx)
     })
 }
 
@@ -1285,22 +1358,22 @@ pub(crate) fn clean_impl_item<'tcx>(
     impl_: &hir::ImplItem<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Item {
-    let local_did = impl_.owner_id.to_def_id();
-    cx.with_param_env(local_did, |cx| {
+    let def_id = impl_.owner_id.to_def_id();
+    cx.with_param_env(def_id, |cx| {
         let inner = match impl_.kind {
             hir::ImplItemKind::Const(ty, expr) => {
-                let generics = clean_generics(impl_.generics, cx);
-                let default = ConstantKind::Local { def_id: local_did, body: expr };
+                let generics = clean_generics(impl_.generics, cx, def_id);
+                let default = ConstantKind::Local { def_id, body: expr };
                 AssocConstItem(generics, Box::new(clean_ty(ty, cx)), default)
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
-                let m = clean_function(cx, sig, impl_.generics, FunctionArgs::Body(body));
+                let m = clean_function(cx, def_id, sig, impl_.generics, FunctionArgs::Body(body));
                 let defaultness = cx.tcx.defaultness(impl_.owner_id);
                 MethodItem(m, Some(defaultness))
             }
             hir::ImplItemKind::Type(hir_ty) => {
                 let type_ = clean_ty(hir_ty, cx);
-                let generics = clean_generics(impl_.generics, cx);
+                let generics = clean_generics(impl_.generics, cx, def_id);
                 let item_type =
                     clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, hir_ty)), cx, None, None);
                 AssocTypeItem(
@@ -1315,7 +1388,7 @@ pub(crate) fn clean_impl_item<'tcx>(
             }
         };
 
-        Item::from_def_id_and_parts(local_did, Some(impl_.ident.name), inner, cx)
+        Item::from_def_id_and_parts(def_id, Some(impl_.ident.name), inner, cx)
     })
 }
 
@@ -1337,6 +1410,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                 cx,
                 tcx.generics_of(assoc_item.def_id),
                 tcx.explicit_predicates_of(assoc_item.def_id),
+                assoc_item.def_id,
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
@@ -1421,6 +1495,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                 cx,
                 tcx.generics_of(assoc_item.def_id),
                 ty::GenericPredicates { parent: None, predicates },
+                assoc_item.def_id,
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
@@ -2549,7 +2624,7 @@ fn clean_bare_fn_ty<'tcx>(
             .generic_params
             .iter()
             .filter(|p| !is_elided_lifetime(p))
-            .map(|x| clean_generic_param(cx, None, x))
+            .map(|x| clean_generic_param(cx, x, None, None)) // FIXME(fmease): variance?
             .collect();
         let args = clean_args_from_types_and_names(cx, bare_fn.decl.inputs, bare_fn.param_names);
         let decl = clean_fn_decl_with_args(cx, bare_fn.decl, None, args);
@@ -2723,19 +2798,19 @@ fn clean_maybe_renamed_item<'tcx>(
             }
             ItemKind::Const(ty, generics, body_id) => ConstantItem(Constant {
                 type_: Box::new(clean_ty(ty, cx)),
-                generics: clean_generics(generics, cx),
+                generics: clean_generics(generics, cx, def_id),
                 kind: ConstantKind::Local { body: body_id, def_id },
             }),
             ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
                 bounds: ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
-                generics: clean_generics(ty.generics, cx),
+                generics: clean_generics(ty.generics, cx, def_id),
             }),
             ItemKind::TyAlias(hir_ty, generics) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
                 let rustdoc_ty = clean_ty(hir_ty, cx);
                 let type_ =
                     clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, hir_ty)), cx, None, None);
-                let generics = clean_generics(generics, cx);
+                let generics = clean_generics(generics, cx, def_id);
                 if let Some(count) = cx.current_type_aliases.get_mut(&def_id) {
                     *count -= 1;
                     if *count == 0 {
@@ -2765,19 +2840,19 @@ fn clean_maybe_renamed_item<'tcx>(
             }
             ItemKind::Enum(ref def, generics) => EnumItem(Enum {
                 variants: def.variants.iter().map(|v| clean_variant(v, cx)).collect(),
-                generics: clean_generics(generics, cx),
+                generics: clean_generics(generics, cx, def_id),
             }),
             ItemKind::TraitAlias(generics, bounds) => TraitAliasItem(TraitAlias {
-                generics: clean_generics(generics, cx),
+                generics: clean_generics(generics, cx, def_id),
                 bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
             }),
             ItemKind::Union(ref variant_data, generics) => UnionItem(Union {
-                generics: clean_generics(generics, cx),
+                generics: clean_generics(generics, cx, def_id),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Struct(ref variant_data, generics) => StructItem(Struct {
                 ctor_kind: variant_data.ctor_kind(),
-                generics: clean_generics(generics, cx),
+                generics: clean_generics(generics, cx, def_id),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
@@ -2802,7 +2877,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 TraitItem(Box::new(Trait {
                     def_id,
                     items,
-                    generics: clean_generics(generics, cx),
+                    generics: clean_generics(generics, cx, def_id),
                     bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
                 }))
             }
@@ -2865,7 +2940,7 @@ fn clean_impl<'tcx>(
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Box::new(Impl {
             unsafety: impl_.unsafety,
-            generics: clean_generics(impl_.generics, cx),
+            generics: clean_generics(impl_.generics, cx, def_id.to_def_id()),
             trait_,
             for_,
             items,
@@ -3075,7 +3150,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
             hir::ForeignItemKind::Fn(decl, names, generics) => {
                 let (generics, decl) = enter_impl_trait(cx, |cx| {
                     // NOTE: generics must be cleaned before args
-                    let generics = clean_generics(generics, cx);
+                    let generics = clean_generics(generics, cx, def_id);
                     let args = clean_args_from_types_and_names(cx, decl.inputs, names);
                     let decl = clean_fn_decl_with_args(cx, decl, None, args);
                     (generics, decl)
@@ -3132,11 +3207,13 @@ fn clean_bound_vars<'tcx>(
                 Some(GenericParamDef {
                     name,
                     def_id,
-                    kind: GenericParamDefKind::Type {
+                    kind: TypeParam {
+                        variance: None,
                         bounds: ThinVec::new(),
                         default: None,
                         synthetic: false,
-                    },
+                    }
+                    .into(),
                 })
             }
             // FIXME(non_lifetime_binders): Support higher-ranked const parameters.

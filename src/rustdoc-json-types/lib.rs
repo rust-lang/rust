@@ -443,9 +443,11 @@ pub struct GenericParamDef {
 #[serde(rename_all = "snake_case")]
 pub enum GenericParamDefKind {
     Lifetime {
+        variance: Option<Variance>,
         outlives: Vec<String>,
     },
     Type {
+        variance: Option<Variance>,
         bounds: Vec<GenericBound>,
         default: Option<Type>,
         /// This is normally `false`, which means that this generic parameter is
@@ -478,6 +480,16 @@ pub enum GenericParamDefKind {
         type_: Type,
         default: Option<String>,
     },
+}
+
+// FIXME(fmease): docs
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Variance {
+    Covariant,
+    Invariant,
+    Contravariant,
+    Bivariant,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

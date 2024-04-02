@@ -101,6 +101,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             cx,
                             cx.tcx.generics_of(impl_def_id),
                             cx.tcx.explicit_predicates_of(impl_def_id),
+                            impl_def_id,
                         ),
                         // FIXME(eddyb) compute both `trait_` and `for_` from
                         // the post-inference `trait_ref`, as it's more accurate.
