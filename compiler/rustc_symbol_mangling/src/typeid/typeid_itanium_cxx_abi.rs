@@ -1218,22 +1218,35 @@ pub fn typeid_for_instance<'tcx>(
                     let trait_id = tcx.fn_trait_kind_to_def_id(closure_args.kind()).unwrap();
                     let tuple_args =
                         tcx.instantiate_bound_regions_with_erased(closure_args.sig()).inputs()[0];
-                    (trait_id, tuple_args)
+                    (trait_id, Some(tuple_args))
                 }
-                ty::Coroutine(..) => (
-                    tcx.require_lang_item(LangItem::Coroutine, None),
-                    instance.args.as_coroutine().resume_ty(),
-                ),
+                ty::Coroutine(..) => match tcx.coroutine_kind(instance.def_id()).unwrap() {
+                    hir::CoroutineKind::Coroutine(..) => (
+                        tcx.require_lang_item(LangItem::Coroutine, None),
+                        Some(instance.args.as_coroutine().resume_ty()),
+                    ),
+                    hir::CoroutineKind::Desugared(desugaring, _) => {
+                        let lang_item = match desugaring {
+                            hir::CoroutineDesugaring::Async => LangItem::Future,
+                            hir::CoroutineDesugaring::AsyncGen => LangItem::AsyncIterator,
+                            hir::CoroutineDesugaring::Gen => LangItem::Iterator,
+                        };
+                        (tcx.require_lang_item(lang_item, None), None)
+                    }
+                },
                 ty::CoroutineClosure(..) => (
                     tcx.require_lang_item(LangItem::FnOnce, None),
-                    tcx.instantiate_bound_regions_with_erased(
-                        instance.args.as_coroutine_closure().coroutine_closure_sig(),
-                    )
-                    .tupled_inputs_ty,
+                    Some(
+                        tcx.instantiate_bound_regions_with_erased(
+                            instance.args.as_coroutine_closure().coroutine_closure_sig(),
+                        )
+                        .tupled_inputs_ty,
+                    ),
                 ),
                 x => bug!("Unexpected type kind for closure-like: {x:?}"),
             };
-            let trait_ref = ty::TraitRef::new(tcx, trait_id, [closure_ty, inputs]);
+            let concrete_args = tcx.mk_args_trait(closure_ty, inputs.map(Into::into));
+            let trait_ref = ty::TraitRef::new(tcx, trait_id, concrete_args);
             let invoke_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
             let abstract_args = tcx.mk_args_trait(invoke_ty, trait_ref.args.into_iter().skip(1));
             // There should be exactly one method on this trait, and it should be the one we're
