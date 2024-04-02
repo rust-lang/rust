@@ -4040,7 +4040,6 @@ impl<T> Foo<T$0> {}
             ```
         "#]],
     );
-    // lifetimes bounds arent being tracked yet
     check(
         r#"
 //- minicore: sized
@@ -4051,7 +4050,7 @@ impl<T: 'static> Foo<T$0> {}
             *T*
 
             ```rust
-            T
+            T: 'static
             ```
         "#]],
     );

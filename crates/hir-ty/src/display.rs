@@ -9,6 +9,7 @@ use std::{
 
 use base_db::CrateId;
 use chalk_ir::{BoundVar, Safety, TyKind};
+use either::Either;
 use hir_def::{
     data::adt::VariantData,
     db::DefDatabase,
@@ -1072,6 +1073,7 @@ impl HirDisplay for Ty {
                         write_bounds_like_dyn_trait_with_prefix(
                             f,
                             "impl",
+                            Either::Left(self),
                             bounds.skip_binders(),
                             SizedByDefault::Sized { anchor: krate },
                         )?;
@@ -1087,6 +1089,7 @@ impl HirDisplay for Ty {
                         write_bounds_like_dyn_trait_with_prefix(
                             f,
                             "impl",
+                            Either::Left(self),
                             bounds.skip_binders(),
                             SizedByDefault::Sized { anchor: krate },
                         )?;
@@ -1189,21 +1192,24 @@ impl HirDisplay for Ty {
                                 .generic_predicates(id.parent)
                                 .iter()
                                 .map(|pred| pred.clone().substitute(Interner, &substs))
-                                .filter(|wc| match &wc.skip_binders() {
+                                .filter(|wc| match wc.skip_binders() {
                                     WhereClause::Implemented(tr) => {
-                                        &tr.self_type_parameter(Interner) == self
+                                        tr.self_type_parameter(Interner) == *self
                                     }
                                     WhereClause::AliasEq(AliasEq {
                                         alias: AliasTy::Projection(proj),
                                         ty: _,
-                                    }) => &proj.self_type_parameter(db) == self,
-                                    _ => false,
+                                    }) => proj.self_type_parameter(db) == *self,
+                                    WhereClause::AliasEq(_) => false,
+                                    WhereClause::TypeOutlives(to) => to.ty == *self,
+                                    WhereClause::LifetimeOutlives(_) => false,
                                 })
                                 .collect::<Vec<_>>();
                             let krate = id.parent.module(db.upcast()).krate();
                             write_bounds_like_dyn_trait_with_prefix(
                                 f,
                                 "impl",
+                                Either::Left(self),
                                 &bounds,
                                 SizedByDefault::Sized { anchor: krate },
                             )?;
@@ -1229,6 +1235,7 @@ impl HirDisplay for Ty {
                 write_bounds_like_dyn_trait_with_prefix(
                     f,
                     "dyn",
+                    Either::Left(self),
                     &bounds,
                     SizedByDefault::NotSized,
                 )?;
@@ -1252,6 +1259,7 @@ impl HirDisplay for Ty {
                         write_bounds_like_dyn_trait_with_prefix(
                             f,
                             "impl",
+                            Either::Left(self),
                             bounds.skip_binders(),
                             SizedByDefault::Sized { anchor: krate },
                         )?;
@@ -1266,6 +1274,7 @@ impl HirDisplay for Ty {
                         write_bounds_like_dyn_trait_with_prefix(
                             f,
                             "impl",
+                            Either::Left(self),
                             bounds.skip_binders(),
                             SizedByDefault::Sized { anchor: krate },
                         )?;
@@ -1468,6 +1477,7 @@ impl SizedByDefault {
 pub fn write_bounds_like_dyn_trait_with_prefix(
     f: &mut HirFormatter<'_>,
     prefix: &str,
+    this: Either<&Ty, &Lifetime>,
     predicates: &[QuantifiedWhereClause],
     default_sized: SizedByDefault,
 ) -> Result<(), HirDisplayError> {
@@ -1476,7 +1486,7 @@ pub fn write_bounds_like_dyn_trait_with_prefix(
         || predicates.is_empty() && matches!(default_sized, SizedByDefault::Sized { .. })
     {
         write!(f, " ")?;
-        write_bounds_like_dyn_trait(f, predicates, default_sized)
+        write_bounds_like_dyn_trait(f, this, predicates, default_sized)
     } else {
         Ok(())
     }
@@ -1484,6 +1494,7 @@ pub fn write_bounds_like_dyn_trait_with_prefix(
 
 fn write_bounds_like_dyn_trait(
     f: &mut HirFormatter<'_>,
+    this: Either<&Ty, &Lifetime>,
     predicates: &[QuantifiedWhereClause],
     default_sized: SizedByDefault,
 ) -> Result<(), HirDisplayError> {
@@ -1541,6 +1552,28 @@ fn write_bounds_like_dyn_trait(
                     }
                 }
             }
+            WhereClause::TypeOutlives(to) if Either::Left(&to.ty) == this => {
+                if !is_fn_trait && angle_open {
+                    write!(f, ">")?;
+                    angle_open = false;
+                }
+                if !first {
+                    write!(f, " + ")?;
+                }
+                to.lifetime.hir_fmt(f)?;
+            }
+            WhereClause::TypeOutlives(_) => {}
+            WhereClause::LifetimeOutlives(lo) if Either::Right(&lo.a) == this => {
+                if !is_fn_trait && angle_open {
+                    write!(f, ">")?;
+                    angle_open = false;
+                }
+                if !first {
+                    write!(f, " + ")?;
+                }
+                lo.b.hir_fmt(f)?;
+            }
+            WhereClause::LifetimeOutlives(_) => {}
             WhereClause::AliasEq(alias_eq) if is_fn_trait => {
                 is_fn_trait = false;
                 if !alias_eq.ty.is_unit() {
@@ -1577,10 +1610,6 @@ fn write_bounds_like_dyn_trait(
                 }
                 ty.hir_fmt(f)?;
             }
-
-            // FIXME implement these
-            WhereClause::LifetimeOutlives(_) => {}
-            WhereClause::TypeOutlives(_) => {}
         }
         first = false;
     }
