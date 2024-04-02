@@ -61,7 +61,7 @@ use crate::traits::{
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
-    ErrorGuaranteed, IntoDiagArg,
+    ErrorGuaranteed, IntoDiagArg, StringPart,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -1917,6 +1917,23 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     );
                     if !is_simple_error || terr.must_include_note() {
                         diag.note_expected_found(&expected_label, expected, &found_label, found);
+
+                        if let Some(ty::Closure(_, args)) =
+                            exp_found.map(|expected_type_found| expected_type_found.found.kind())
+                        {
+                            diag.highlighted_note(vec![
+                                StringPart::normal("closure has signature: `"),
+                                StringPart::highlighted(
+                                    self.tcx
+                                        .signature_unclosure(
+                                            args.as_closure().sig(),
+                                            rustc_hir::Unsafety::Normal,
+                                        )
+                                        .to_string(),
+                                ),
+                                StringPart::normal("`"),
+                            ]);
+                        }
                     }
                 }
             }
