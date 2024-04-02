@@ -300,12 +300,15 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
+/// Returns `rhs` sufficiently masked, truncated, and/or extended so that
+/// it can be used to shift `lhs`.
+///
 /// Shifts in MIR are all allowed to have mismatched LHS & RHS types.
+/// The shift methods in `BuilderMethods`, however, are fully homogeneous
+/// (both parameters and the return type are all the same type).
 ///
-/// This does all the appropriate conversions needed to pass it to the builder's
-/// shift methods, which are UB for out-of-range shifts.
-///
-/// If `is_unchecked` is false, this masks the RHS to ensure it stays in-bounds.
+/// If `is_unchecked` is false, this masks the RHS to ensure it stays in-bounds,
+/// as the `BuilderMethods` shifts are UB for out-of-bounds shift amounts.
 /// For 32- and 64-bit types, this matches the semantics
 /// of Java. (See related discussion on #1877 and #10183.)
 ///
