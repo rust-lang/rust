@@ -684,9 +684,12 @@ thread_local! {
 
 /// Sets the thread handle for the current thread.
 ///
-/// Panics if the handle has been set already or when called from a TLS destructor.
+/// Aborts if the handle has been set already to reduce code size.
 pub(crate) fn set_current(thread: Thread) {
-    CURRENT.with(|current| current.set(thread).unwrap());
+    CURRENT.with(|current| match current.set(thread) {
+        Ok(()) => {}
+        Err(_) => rtabort!("should only be set once"),
+    });
 }
 
 /// Gets a handle to the thread that invokes it.
