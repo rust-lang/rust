@@ -89,11 +89,11 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
         location: mir::Location,
     ) {
         if place.local == ty::CAPTURE_STRUCT_LOCAL
-            && !place.projection.is_empty()
-            && let mir::ProjectionElem::Field(idx, ty) = place.projection[0]
+            && let Some((&mir::ProjectionElem::Field(idx, ty), projection)) =
+                place.projection.split_first()
             && self.by_ref_fields.contains(&idx)
         {
-            let (begin, end) = place.projection[1..].split_first().unwrap();
+            let (begin, end) = projection.split_first().unwrap();
             // FIXME(async_closures): I'm actually a bit surprised to see that we always
             // initially deref the by-ref upvars. If this is not actually true, then we
             // will at least get an ICE that explains why this isn't true :^)
