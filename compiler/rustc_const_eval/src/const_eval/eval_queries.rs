@@ -98,14 +98,16 @@ fn eval_body_using_ecx<'mir, 'tcx, R: InterpretationResult<'tcx>>(
     // Only report this after validation, as validaiton produces much better diagnostics.
     // FIXME: ensure validation always reports this and stop making interning care about it.
 
-    if let Err(InternResult { found_bad_mutable_pointer, found_dangling_pointer }) = intern_result {
-        if found_dangling_pointer {
+    match intern_result {
+        Ok(()) => {}
+        Err(InternResult::FoundDanglingPointer) => {
             return Err(ecx
                 .tcx
                 .dcx()
                 .emit_err(DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind })
                 .into());
-        } else if found_bad_mutable_pointer {
+        }
+        Err(InternResult::FoundBadMutablePointer) => {
             // only report mutable pointers if there were no dangling pointers
             let err_diag = errors::MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind };
             ecx.tcx.emit_node_span_lint(

@@ -132,17 +132,10 @@ pub enum InternKind {
     Promoted,
 }
 
-#[derive(Default, Debug)]
-pub struct InternResult {
-    pub found_bad_mutable_pointer: bool,
-    pub found_dangling_pointer: bool,
-}
-
-impl InternResult {
-    fn has_errors(&self) -> bool {
-        let Self { found_bad_mutable_pointer, found_dangling_pointer } = *self;
-        found_bad_mutable_pointer || found_dangling_pointer
-    }
+#[derive(Debug)]
+pub enum InternResult {
+    FoundBadMutablePointer,
+    FoundDanglingPointer,
 }
 
 /// Intern `ret` and everything it references.
@@ -212,7 +205,7 @@ pub fn intern_const_alloc_recursive<
     // Whether we encountered a bad mutable pointer.
     // We want to first report "dangling" and then "mutable", so we need to delay reporting these
     // errors.
-    let mut result = InternResult::default();
+    let mut result = Ok(());
 
     // Keep interning as long as there are things to intern.
     // We show errors if there are dangling pointers, or mutable pointers in immutable contexts
@@ -262,7 +255,10 @@ pub fn intern_const_alloc_recursive<
             // on the promotion analysis not screwing up to ensure that it is sound to intern
             // promoteds as immutable.
             trace!("found bad mutable pointer");
-            result.found_bad_mutable_pointer = true;
+            // Prefer dangling pointer errors over mutable pointer errors
+            if result.is_ok() {
+                result = Err(InternResult::FoundBadMutablePointer);
+            }
         }
         if ecx.tcx.try_get_global_alloc(alloc_id).is_some() {
             // Already interned.
@@ -284,11 +280,11 @@ pub fn intern_const_alloc_recursive<
             Ok(nested) => todo.extend(nested),
             Err(()) => {
                 ecx.tcx.dcx().delayed_bug("found dangling pointer during const interning");
-                result.found_dangling_pointer = true
+                result = Err(InternResult::FoundDanglingPointer);
             }
         }
     }
-    if result.has_errors() { Err(result) } else { Ok(()) }
+    result
 }
 
 /// Intern `ret`. This function assumes that `ret` references no other allocation.
