@@ -118,6 +118,7 @@ rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
 miniz_oxide = { path = 'miniz_oxide-0.7.2' }
 regex = { path = 'regex-1.8.4' }
 crossbeam-utils = { path = 'crossbeam-utils-0.8.19' }
+ctrlc = { git = "https://github.com/WaffleLapkin/rust-ctrlc.git", rev = "17e3ee4b35f7988489a3d9fd7a3b10e81ca94809" }
 
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }
