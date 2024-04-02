@@ -8,6 +8,8 @@ defaults:
   run:
     shell: bash
 
+permissions: {}
+
 jobs:
   rustfmt:
     runs-on: ubuntu-latest
