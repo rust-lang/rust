@@ -3,7 +3,7 @@
 //! be a coroutine body that takes all of its upvars by-move, and which we stash
 //! into the `CoroutineInfo` for all coroutines returned by coroutine-closures.
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::unord::UnordSet;
 use rustc_hir as hir;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{self, dump_mir, MirPass};
@@ -33,7 +33,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             return;
         }
 
-        let mut by_ref_fields = FxIndexSet::default();
+        let mut by_ref_fields = UnordSet::default();
         let by_move_upvars = Ty::new_tup_from_iter(
             tcx,
             tcx.closure_captures(coroutine_def_id).iter().enumerate().map(|(idx, capture)| {
@@ -73,7 +73,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
 
 struct MakeByMoveBody<'tcx> {
     tcx: TyCtxt<'tcx>,
-    by_ref_fields: FxIndexSet<FieldIdx>,
+    by_ref_fields: UnordSet<FieldIdx>,
     by_move_coroutine_ty: Ty<'tcx>,
 }
 
