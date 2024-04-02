@@ -105,24 +105,41 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
                     .insert(hir_ty.hir_id, c_ty);
 
                 let ty = o_ty.normalized;
-                if let hir::PatKind::Wild = decl.pat.kind {
-                    // We explicitly allow `let _: dyn Trait;` (!)
-                } else {
-                    if self.outermost_fn_param_pat.is_some() {
-                        if !self.fcx.tcx.features().unsized_fn_params {
-                            self.fcx.require_type_is_sized(
-                                ty,
-                                hir_ty.span,
-                                traits::SizedArgumentType(Some(decl.pat.hir_id)),
-                            );
-                        }
-                    } else {
-                        if !self.fcx.tcx.features().unsized_locals {
-                            self.fcx.require_type_is_sized(
-                                ty,
-                                hir_ty.span,
-                                traits::VariableType(decl.pat.hir_id),
-                            );
+                match decl.pat.kind {
+                    // We explicitly allow `let ref x: str = *"";`
+                    hir::PatKind::Binding(hir::BindingAnnotation(hir::ByRef::Yes(_), _), ..) => {}
+                    // We explicitly allow `let _: dyn Trait;` and allow the `visit_pat` check to
+                    // handle `let (x, _): (sized, str) = *r;`. Otherwise with the later we'd
+                    // complain incorrectly about the `str` that is otherwise unused.
+                    _ if {
+                        let mut is_wild = false;
+                        decl.pat.walk(|pat| {
+                            if let hir::PatKind::Wild = pat.kind {
+                                is_wild = true;
+                                false
+                            } else {
+                                true
+                            }
+                        });
+                        is_wild
+                    } => {}
+                    _ => {
+                        if self.outermost_fn_param_pat.is_some() {
+                            if !self.fcx.tcx.features().unsized_fn_params {
+                                self.fcx.require_type_is_sized(
+                                    ty,
+                                    hir_ty.span,
+                                    traits::SizedArgumentType(Some(decl.pat.hir_id)),
+                                );
+                            }
+                        } else {
+                            if !self.fcx.tcx.features().unsized_locals {
+                                self.fcx.require_type_is_sized(
+                                    ty,
+                                    hir_ty.span,
+                                    traits::VariableType(decl.pat.hir_id),
+                                );
+                            }
                         }
                     }
                 }
