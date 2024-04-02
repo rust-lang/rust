@@ -37,7 +37,7 @@ use crate::time::SystemTime;
 ///
 /// # Examples
 ///
-/// Creates a new file and write bytes to it (you can also use [`write()`]):
+/// Creates a new file and write bytes to it (you can also use [`write`]):
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -2018,7 +2018,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// the length of the `to` file as reported by `metadata`.
 ///
 /// If you want to copy the contents of one file to another and you’re
-/// working with [`File`]s, see the [`io::copy()`] function.
+/// working with [`File`]s, see the [`io::copy`](io::copy()) function.
 ///
 /// # Platform-specific behavior
 ///
