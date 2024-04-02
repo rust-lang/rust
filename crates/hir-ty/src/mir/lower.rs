@@ -27,6 +27,7 @@ use crate::{
     consteval::ConstEvalError,
     db::{HirDatabase, InternedClosure},
     display::HirDisplay,
+    error_lifetime,
     infer::{CaptureKind, CapturedItem, TypeMismatch},
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
@@ -2032,10 +2033,12 @@ pub fn mir_body_for_closure_query(
     let closure_local = ctx.result.locals.alloc(Local {
         ty: match kind {
             FnTrait::FnOnce => infer[expr].clone(),
-            FnTrait::FnMut => TyKind::Ref(Mutability::Mut, static_lifetime(), infer[expr].clone())
-                .intern(Interner),
-            FnTrait::Fn => TyKind::Ref(Mutability::Not, static_lifetime(), infer[expr].clone())
-                .intern(Interner),
+            FnTrait::FnMut => {
+                TyKind::Ref(Mutability::Mut, error_lifetime(), infer[expr].clone()).intern(Interner)
+            }
+            FnTrait::Fn => {
+                TyKind::Ref(Mutability::Not, error_lifetime(), infer[expr].clone()).intern(Interner)
+            }
         },
     });
     ctx.result.param_locals.push(closure_local);

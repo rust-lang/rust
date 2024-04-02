@@ -55,10 +55,10 @@ use triomphe::Arc;
 
 use crate::{
     db::HirDatabase,
-    fold_tys,
+    error_lifetime, fold_tys,
     infer::{coerce::CoerceMany, unify::InferenceTable},
     lower::ImplTraitLoweringMode,
-    static_lifetime, to_assoc_type_id,
+    to_assoc_type_id,
     traits::FnTrait,
     utils::{InTypeConstIdMetadata, UnevaluatedConstEvaluatorFolder},
     AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, Goal, ImplTraitId,
@@ -326,7 +326,7 @@ pub struct Adjustment {
 
 impl Adjustment {
     pub fn borrow(m: Mutability, ty: Ty) -> Self {
-        let ty = TyKind::Ref(m, static_lifetime(), ty).intern(Interner);
+        let ty = TyKind::Ref(m, error_lifetime(), ty).intern(Interner);
         Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(m)), target: ty }
     }
 }

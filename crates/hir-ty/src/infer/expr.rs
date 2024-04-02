@@ -23,6 +23,7 @@ use crate::{
     autoderef::{builtin_deref, deref_by_trait, Autoderef},
     consteval,
     db::{InternedClosure, InternedCoroutine},
+    error_lifetime,
     infer::{
         coerce::{CoerceMany, CoercionCause},
         find_continuable,
@@ -630,7 +631,7 @@ impl InferenceContext<'_> {
                 let inner_ty = self.infer_expr_inner(*expr, &expectation);
                 match rawness {
                     Rawness::RawPtr => TyKind::Raw(mutability, inner_ty),
-                    Rawness::Ref => TyKind::Ref(mutability, static_lifetime(), inner_ty),
+                    Rawness::Ref => TyKind::Ref(mutability, error_lifetime(), inner_ty),
                 }
                 .intern(Interner)
             }
