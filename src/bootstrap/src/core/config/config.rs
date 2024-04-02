@@ -70,16 +70,19 @@ impl<'de> Deserialize<'de> for DebuginfoLevel {
         use serde::de::Error;
 
         Ok(match Deserialize::deserialize(deserializer)? {
-            StringOrInt::String("none") | StringOrInt::Int(0) => DebuginfoLevel::None,
-            StringOrInt::String("line-tables-only") => DebuginfoLevel::LineTablesOnly,
-            StringOrInt::String("limited") | StringOrInt::Int(1) => DebuginfoLevel::Limited,
-            StringOrInt::String("full") | StringOrInt::Int(2) => DebuginfoLevel::Full,
+            StringOrInt::String(s) if s == "none" => DebuginfoLevel::None,
+            StringOrInt::Int(0) => DebuginfoLevel::None,
+            StringOrInt::String(s) if s == "line-tables-only" => DebuginfoLevel::LineTablesOnly,
+            StringOrInt::String(s) if s == "limited" => DebuginfoLevel::Limited,
+            StringOrInt::Int(1) => DebuginfoLevel::Limited,
+            StringOrInt::String(s) if s == "full" => DebuginfoLevel::Full,
+            StringOrInt::Int(2) => DebuginfoLevel::Full,
             StringOrInt::Int(n) => {
                 let other = serde::de::Unexpected::Signed(n);
                 return Err(D::Error::invalid_value(other, &"expected 0, 1, or 2"));
             }
             StringOrInt::String(s) => {
-                let other = serde::de::Unexpected::Str(s);
+                let other = serde::de::Unexpected::Str(&s);
                 return Err(D::Error::invalid_value(
                     other,
                     &"expected none, line-tables-only, limited, or full",
@@ -1021,8 +1024,8 @@ impl RustOptimize {
 
 #[derive(Deserialize)]
 #[serde(untagged)]
-enum StringOrInt<'a> {
-    String(&'a str),
+enum StringOrInt {
+    String(String),
     Int(i64),
 }
 
