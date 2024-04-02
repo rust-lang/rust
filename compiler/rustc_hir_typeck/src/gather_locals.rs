@@ -1,4 +1,5 @@
 use crate::FnCtxt;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::PatKind;
@@ -61,12 +62,12 @@ pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
     // *distinct* cases. so track when we are hitting a pattern *within* an fn
     // parameter.
     outermost_fn_param_pat: Option<(Span, hir::HirId)>,
-    let_binding_init: Option<Span>,
+    pat_expr_map: FxHashMap<hir::HirId, Span>,
 }
 
 impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     pub(super) fn new(fcx: &'a FnCtxt<'a, 'tcx>) -> Self {
-        Self { fcx, outermost_fn_param_pat: None, let_binding_init: None }
+        Self { fcx, outermost_fn_param_pat: None, pat_expr_map: Default::default() }
     }
 
     fn assign(&mut self, span: Span, nid: hir::HirId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
@@ -155,14 +156,69 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
             self.fcx.ty_to_string(*self.fcx.locals.borrow().get(&decl.hir_id).unwrap())
         );
     }
+}
 
-    fn span_for_init_expr(&self, expr: &'tcx hir::Expr<'tcx>) -> Span {
-        // In other parts of the compiler, when emitting a bound error on a method call we point at
-        // the method call path. We mimic that here so that error deduplication will work as
-        // expected.
-        match expr.kind {
-            hir::ExprKind::MethodCall(path, ..) => path.ident.span,
-            _ => expr.span,
+/// Builds a correspondence mapping between the bindings in a pattern and the expression that
+/// originates the value. This is then used on unsized locals errors to point at the sub expression
+/// That corresponds to the sub-pattern with the `?Sized` type, instead of the binding.
+///
+/// This is somewhat limited, as it only supports bindings, tuples and structs for now, falling back
+/// on pointing at the binding otherwise.
+struct JointVisitorExpr<'hir> {
+    pat: &'hir hir::Pat<'hir>,
+    expr: &'hir hir::Expr<'hir>,
+    map: FxHashMap<hir::HirId, Span>,
+}
+
+impl<'hir> JointVisitorExpr<'hir> {
+    fn walk(&mut self) {
+        match (self.pat.kind, self.expr.kind) {
+            (hir::PatKind::Tuple(pat_fields, pos), hir::ExprKind::Tup(expr_fields))
+                if pat_fields.len() == expr_fields.len() && pos.as_opt_usize() == None =>
+            {
+                for (pat, expr) in pat_fields.iter().zip(expr_fields.iter()) {
+                    self.map.insert(pat.hir_id, expr.span);
+                    let mut v = JointVisitorExpr { pat, expr, map: Default::default() };
+                    v.walk();
+                    self.map.extend(v.map);
+                }
+            }
+            (hir::PatKind::Binding(..), hir::ExprKind::MethodCall(path, ..)) => {
+                self.map.insert(self.pat.hir_id, path.ident.span);
+            }
+            (hir::PatKind::Binding(..), _) => {
+                self.map.insert(self.pat.hir_id, self.expr.span);
+            }
+            (
+                hir::PatKind::Struct(pat_path, pat_fields, _),
+                hir::ExprKind::Struct(call_path, expr_fields, _),
+            ) if pat_path.res() == call_path.res() && pat_path.res().is_some() => {
+                for (pat_field, expr_field) in pat_fields.iter().zip(expr_fields.iter()) {
+                    self.map.insert(pat_field.hir_id, expr_field.span);
+                    let mut v = JointVisitorExpr {
+                        pat: pat_field.pat,
+                        expr: expr_field.expr,
+                        map: Default::default(),
+                    };
+                    v.walk();
+                    self.map.extend(v.map);
+                }
+            }
+            (
+                hir::PatKind::TupleStruct(pat_path, pat_fields, _),
+                hir::ExprKind::Call(
+                    hir::Expr { kind: hir::ExprKind::Path(expr_path), .. },
+                    expr_fields,
+                ),
+            ) if pat_path.res() == expr_path.res() && pat_path.res().is_some() => {
+                for (pat, expr) in pat_fields.iter().zip(expr_fields.iter()) {
+                    self.map.insert(pat.hir_id, expr.span);
+                    let mut v = JointVisitorExpr { pat: pat, expr: expr, map: Default::default() };
+                    v.walk();
+                    self.map.extend(v.map);
+                }
+            }
+            _ => {}
         }
     }
 }
@@ -171,20 +227,26 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) {
         self.declare(local.into());
-        let sp = self.let_binding_init.take();
-        self.let_binding_init = local.init.map(|e| self.span_for_init_expr(e));
+        if let Some(init) = local.init {
+            let mut v = JointVisitorExpr { pat: &local.pat, expr: &init, map: Default::default() };
+            v.walk();
+            self.pat_expr_map.extend(v.map);
+        }
         intravisit::walk_local(self, local);
-        self.let_binding_init = sp;
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        let sp = self.let_binding_init.take();
         if let hir::ExprKind::Let(let_expr) = expr.kind {
-            self.let_binding_init = Some(self.span_for_init_expr(&let_expr.init));
+            let mut v = JointVisitorExpr {
+                pat: &let_expr.pat,
+                expr: &let_expr.init,
+                map: Default::default(),
+            };
+            v.walk();
+            self.pat_expr_map.extend(v.map);
             self.declare((let_expr, expr.hir_id).into());
         }
         intravisit::walk_expr(self, expr);
-        self.let_binding_init = sp;
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
@@ -219,11 +281,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 }
             } else {
                 if !self.fcx.tcx.features().unsized_locals {
-                    self.fcx.require_type_is_sized(
-                        var_ty,
-                        self.let_binding_init.unwrap_or(p.span),
-                        traits::VariableType(p.hir_id),
-                    );
+                    let span = *self.pat_expr_map.get(&p.hir_id).unwrap_or(&p.span);
+                    self.fcx.require_type_is_sized(var_ty, span, traits::VariableType(p.hir_id));
                 }
             }
 
@@ -234,11 +293,6 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 var_ty
             );
         }
-        // We only point at the init expression if this is the top level pattern, otherwise we point
-        // at the specific binding, because we might not be able to tie the binding to the,
-        // expression, like `let (a, b) = foo();`. FIXME: We could specialize
-        // `let (a, b) = (unsized(), bar());` to point at `unsized()` instead of `a`.
-        self.let_binding_init.take();
         let old_outermost_fn_param_pat = self.outermost_fn_param_pat.take();
         intravisit::walk_pat(self, p);
         self.outermost_fn_param_pat = old_outermost_fn_param_pat;

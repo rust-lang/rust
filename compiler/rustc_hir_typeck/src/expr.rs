@@ -582,7 +582,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.require_type_is_sized_deferred(
                         input,
                         span,
-                        traits::SizedArgumentType(None),
+                        traits::SizedArgumentType(args.get(i).map(|e| e.hir_id)),
                     );
                 }
             }
