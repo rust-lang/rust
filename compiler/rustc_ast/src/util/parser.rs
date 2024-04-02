@@ -281,6 +281,7 @@ pub enum ExprPrecedence {
     ForLoop,
     Loop,
     Match,
+    PostfixMatch,
     ConstBlock,
     Block,
     TryBlock,
@@ -334,7 +335,8 @@ impl ExprPrecedence {
             | ExprPrecedence::InlineAsm
             | ExprPrecedence::Mac
             | ExprPrecedence::FormatArgs
-            | ExprPrecedence::OffsetOf => PREC_POSTFIX,
+            | ExprPrecedence::OffsetOf
+            | ExprPrecedence::PostfixMatch => PREC_POSTFIX,
 
             // Never need parens
             ExprPrecedence::Array
