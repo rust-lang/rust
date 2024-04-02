@@ -475,3 +475,12 @@ pub mod simd {
 }
 
 include!("primitive_docs.rs");
+
+/// Derive macro generating impls of traits related to smart pointers.
+#[cfg(not(bootstrap))]
+#[rustc_builtin_macro]
+#[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, receiver_trait, unsize)]
+#[unstable(feature = "derive_smart_pointer", issue = "123430")]
+pub macro SmartPointer($item:item) {
+    /* compiler built-in */
+}
