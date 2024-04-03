@@ -2323,6 +2323,49 @@ fn test_hover_layout_of_variant() {
 }
 
 #[test]
+fn test_hover_layout_of_variant_generic() {
+    check(
+        r#"enum Option<T> {
+    Some(T),
+    None$0
+}"#,
+        expect![[r#"
+            *None*
+
+            ```rust
+            test::Option
+            ```
+
+            ```rust
+            None
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_layout_generic_unused() {
+    check(
+        r#"
+//- minicore: phantom_data
+struct S$0<T>(core::marker::PhantomData<T>);
+"#,
+        expect![[r#"
+            *S*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 0, align = 1
+            struct S<T>(PhantomData<T>)
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_layout_of_enum() {
     check(
         r#"enum $0Foo {
@@ -3673,6 +3716,7 @@ struct S$0T<const C: usize = 1, T = Foo>(T);
             ```
 
             ```rust
+            // size = 0, align = 1
             struct ST<const C: usize = 1, T = Foo>(T)
             ```
         "#]],
@@ -3694,6 +3738,7 @@ struct S$0T<const C: usize = {40 + 2}, T = Foo>(T);
             ```
 
             ```rust
+            // size = 0, align = 1
             struct ST<const C: usize = {const}, T = Foo>(T)
             ```
         "#]],
@@ -3716,6 +3761,7 @@ struct S$0T<const C: usize = VAL, T = Foo>(T);
             ```
 
             ```rust
+            // size = 0, align = 1
             struct ST<const C: usize = VAL, T = Foo>(T)
             ```
         "#]],
@@ -7872,6 +7918,7 @@ struct Pedro$0<'a> {
             ```
 
             ```rust
+            // size = 16 (0x10), align = 8, niches = 1
             struct Pedro<'a>
             ```
         "#]],
