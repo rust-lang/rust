@@ -1418,16 +1418,14 @@ impl Adt {
     }
 
     pub fn layout(self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
-        if !db.generic_params(self.into()).is_empty() {
-            return Err(LayoutError::HasPlaceholder);
-        }
-        let krate = self.krate(db).id;
         db.layout_of_adt(
             self.into(),
-            Substitution::empty(Interner),
+            TyBuilder::adt(db, self.into())
+                .fill_with_defaults(db, || TyKind::Error.intern(Interner))
+                .build_into_subst(),
             db.trait_environment(self.into()),
         )
-        .map(|layout| Layout(layout, db.target_data_layout(krate).unwrap()))
+        .map(|layout| Layout(layout, db.target_data_layout(self.krate(db).id).unwrap()))
     }
 
     /// Turns this ADT into a type. Any type parameters of the ADT will be

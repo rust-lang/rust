@@ -37,7 +37,7 @@ pub enum ProcMacroKind {
     CustomDerive,
     Attr,
     // This used to be called FuncLike, so that's what the server expects currently.
-    #[serde(alias = "bang")]
+    #[serde(alias = "Bang")]
     #[serde(rename(serialize = "FuncLike", deserialize = "FuncLike"))]
     Bang,
 }
