@@ -73,3 +73,23 @@ pub fn replace_short_array_u8x3(r: &mut [u8; 3], v: [u8; 3]) -> [u8; 3] {
 pub fn replace_short_array_u8x8(r: &mut [u8; 8], v: [u8; 8]) -> [u8; 8] {
     std::mem::replace(r, v)
 }
+
+#[repr(transparent)]
+pub struct Foo([u8; 4]);
+
+// CHECK: define noundef i32 @replace_repr_transparent_struct_short_array(ptr noalias noundef align 1 dereferenceable(4) %r, i32 noundef %0)
+#[no_mangle]
+pub fn replace_repr_transparent_struct_short_array(r: &mut Foo, v: Foo) -> Foo {
+    std::mem::replace(r, v)
+}
+
+#[repr(transparent)]
+pub enum Bar {
+    Default([u8; 4])
+}
+
+// CHECK: define noundef i32 @replace_repr_transparent_enum_short_array(ptr noalias noundef align 1 dereferenceable(4) %r, i32 noundef %0)
+#[no_mangle]
+pub fn replace_repr_transparent_enum_short_array(r: &mut Bar, v: Bar) -> Bar {
+    std::mem::replace(r, v)
+}
