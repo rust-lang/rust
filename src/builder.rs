@@ -68,7 +68,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         src: RValue<'gcc>,
         order: AtomicOrdering,
     ) -> RValue<'gcc> {
-        let size = src.get_type().get_size();
+        let size = get_maybe_pointer_size(src);
 
         let func = self.current_func();
 
@@ -138,7 +138,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         failure_order: AtomicOrdering,
         weak: bool,
     ) -> RValue<'gcc> {
-        let size = src.get_type().get_size();
+        let size = get_maybe_pointer_size(src);
         let compare_exchange =
             self.context.get_builtin_function(&format!("__atomic_compare_exchange_{}", size));
         let order = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
@@ -1586,7 +1586,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         src: RValue<'gcc>,
         order: AtomicOrdering,
     ) -> RValue<'gcc> {
-        let size = src.get_type().get_size();
+        let size = get_maybe_pointer_size(src);
         let name = match op {
             AtomicRmwBinOp::AtomicXchg => format!("__atomic_exchange_{}", size),
             AtomicRmwBinOp::AtomicAdd => format!("__atomic_fetch_add_{}", size),
@@ -2417,5 +2417,21 @@ impl ToGccOrdering for AtomicOrdering {
             AtomicOrdering::SequentiallyConsistent => __ATOMIC_SEQ_CST,
         };
         ordering as i32
+    }
+}
+
+// Needed because gcc 12 `get_size()` doesn't work on pointers.
+#[cfg(feature = "master")]
+fn get_maybe_pointer_size(value: RValue<'_>) -> u32 {
+    value.get_type().get_size()
+}
+
+#[cfg(not(feature = "master"))]
+fn get_maybe_pointer_size(value: RValue<'_>) -> u32 {
+    let type_ = value.get_type();
+    if type_.get_pointee().is_some() {
+        std::mem::size_of::<*const ()>() as _
+    } else {
+        type_.get_size()
     }
 }
