@@ -54,7 +54,7 @@ pub fn test_UnionF32F32(_: UnionF32F32) -> UnionF32F32 { loop {} }
 
 pub union UnionF32U32{a:f32, b:u32}
 
-// CHECK: define noundef {{(dso_local )?}}i32 @test_UnionF32U32(i32 noundef{{( %0)?}})
+// CHECK: define {{(dso_local )?}}i32 @test_UnionF32U32(i32{{( %0)?}})
 #[no_mangle]
 pub fn test_UnionF32U32(_: UnionF32U32) -> UnionF32U32 { loop {} }
 
