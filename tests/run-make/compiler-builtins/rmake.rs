@@ -9,8 +9,13 @@
 //! dependence on core that is possible, so that is the configuration we test here.
 
 // wasm and nvptx targets don't produce rlib files that object can parse.
+// This test won't run on sgx. The first step of compiling to the SGX platform
+// is to generate an ELF file. At that level you can still link static
+// libraries in. Finally the actual enclave is build from the resulting
+// ELF. At that final level, everything is fixed and you can't link in
 //@ ignore-wasm
 //@ ignore-nvptx64
+//@ ignore-sgx
 
 #![deny(warnings)]
 
@@ -39,10 +44,7 @@ fn main() {
     let target = std::env::var("TARGET").unwrap();
 
     if target.starts_with("x86_64-fortanix-unknown-sgx") {
-        // This test won't run on sgx. The first step of compiling to the SGX platform
-        // is to generate an ELF file. At that level you can still link static
-        // libraries in. Finally the actual enclave is build from the resulting
-        // ELF. At that final level, everything is fixed and you can't link in
+
         return;
     }
 
