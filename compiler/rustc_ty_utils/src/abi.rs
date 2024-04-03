@@ -8,8 +8,8 @@ use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::{
-    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
-    RiscvInterruptKind,
+    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, Conv, FnAbi, PassMode, Reg,
+    RegKind, RiscvInterruptKind,
 };
 use rustc_target::abi::*;
 use rustc_target::spec::abi::Abi as SpecAbi;
@@ -784,6 +784,14 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 // an LLVM aggregate type for this leads to bad optimizations,
                 // so we pick an appropriately sized integer type instead.
                 arg.cast_to(Reg { kind: RegKind::Integer, size });
+
+                // Fixup arg attribute with `noundef`.
+                let PassMode::Cast { ref mut cast, .. } = &mut arg.mode else {
+                    bug!("this cannot fail because of the previous cast_to `Reg`");
+                };
+
+                let box CastTarget { ref mut attrs, .. } = cast;
+                attrs.set(ArgAttribute::NoUndef);
             }
 
             // If we deduced that this parameter was read-only, add that to the attribute list now.
