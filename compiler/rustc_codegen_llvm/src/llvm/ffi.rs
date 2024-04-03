@@ -1807,6 +1807,15 @@ extern "C" {
         name: *const c_char,
         value: u32,
     );
+
+    pub fn LLVMRustAddModuleStringFlag(
+        M: &Module,
+        merge_behavior: LLVMModFlagBehavior,
+        name: *const c_char,
+        value: *const c_char,
+        valueLen: size_t,
+    );
+
     pub fn LLVMRustHasModuleFlag(M: &Module, name: *const c_char, len: size_t) -> bool;
 
     pub fn LLVMRustDIBuilderCreate(M: &Module) -> &mut DIBuilder<'_>;

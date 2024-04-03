@@ -326,6 +326,16 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMMDNodeInContext(llcx, &name_metadata, 1),
     );
 
+    if sess.opts.cg.linker_plugin_lto.enabled() {
+        llvm::LLVMRustAddModuleStringFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Override,
+            c"target-abi".as_ptr(),
+            sess.target.llvm_abiname.as_ptr().cast(),
+            sess.target.llvm_abiname.len(),
+        )
+    }
+
     // Add module flags specified via -Z llvm_module_flag
     for (key, value, behavior) in &sess.opts.unstable_opts.llvm_module_flag {
         let key = format!("{key}\0");
