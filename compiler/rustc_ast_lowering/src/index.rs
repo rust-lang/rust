@@ -112,7 +112,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     }
 
     fn insert_nested(&mut self, item: LocalDefId) {
-        self.parenting.insert(item, self.parent_node);
+        if self.parent_node.as_u32() != 0 {
+            self.parenting.insert(item, self.parent_node);
+        }
     }
 }
 
