@@ -3,15 +3,12 @@ use rustc_target::spec::abi::Abi;
 
 use crate::machine::SIGRTMAX;
 use crate::machine::SIGRTMIN;
+use crate::shims::unix::*;
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
-use shims::unix::fs::EvalContextExt as _;
 use shims::unix::linux::fd::EvalContextExt as _;
 use shims::unix::linux::mem::EvalContextExt as _;
 use shims::unix::linux::sync::futex;
-use shims::unix::mem::EvalContextExt as _;
-use shims::unix::sync::EvalContextExt as _;
-use shims::unix::thread::EvalContextExt as _;
 
 pub fn is_dyn_sym(name: &str) -> bool {
     matches!(name, "getrandom")
