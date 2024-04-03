@@ -1,9 +1,9 @@
 <div align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/Urgau/rust/assets/3616612/526538d1-450c-4709-b597-27b7dd83c794">
-    <source media="(prefers-color-scheme: light)" srcset="https://www.rust-lang.org/static/images/rust-social-wide.jpg">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rust-lang/www.rust-lang.org/master/static/images/rust-social-wide-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/rust-lang/www.rust-lang.org/master/static/images/rust-social-wide-light.svg">
     <img alt="The Rust Programming Language: A language empowering everyone to build reliable and efficient software"
-         src="https://www.rust-lang.org/static/images/rust-social-wide.jpg"
+         src="https://raw.githubusercontent.com/rust-lang/www.rust-lang.org/master/static/images/rust-social-wide-light.svg"
          width="50%">
   </picture>
 
