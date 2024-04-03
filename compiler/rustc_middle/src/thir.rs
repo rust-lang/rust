@@ -1121,7 +1121,8 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                             printed += 1;
                         }
 
-                        if printed < variant.fields.len() {
+                        let is_union = self.ty.ty_adt_def().is_some_and(|adt| adt.is_union());
+                        if printed < variant.fields.len() && (!is_union || printed == 0) {
                             write!(f, "{}..", start_or_comma())?;
                         }
 

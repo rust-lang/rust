@@ -140,6 +140,34 @@
 //! [`ConstructorSet::split`]. The invariants of [`SplitConstructorSet`] are also of interest.
 //!
 //!
+//! ## Unions
+//!
+//! Unions allow us to match a value via several overlapping representations at the same time. For
+//! example, the following is exhaustive because when seeing the value as a boolean we handled all
+//! possible cases (other cases such as `n == 3` would trigger UB).
+//!
+//! ```rust
+//! # fn main() {
+//! union U8AsBool {
+//!     n: u8,
+//!     b: bool,
+//! }
+//! let x = U8AsBool { n: 1 };
+//! unsafe {
+//!     match x {
+//!         U8AsBool { n: 2 } => {}
+//!         U8AsBool { b: true } => {}
+//!         U8AsBool { b: false } => {}
+//!     }
+//! }
+//! # }
+//! ```
+//!
+//! Pattern-matching has no knowledge that e.g. `false as u8 == 0`, so the values we consider in the
+//! algorithm look like `U8AsBool { b: true, n: 2 }`. In other words, for the most part a union is
+//! treated like a struct with the same fields. The difference lies in how we construct witnesses of
+//! non-exhaustiveness.
+//!
 //!
 //! ## Opaque patterns
 //!
@@ -974,7 +1002,6 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
     /// any) are missing; 2/ split constructors to handle non-trivial intersections e.g. on ranges
     /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation
     /// and its invariants.
-    #[instrument(level = "debug", skip(self, ctors), ret)]
     pub fn split<'a>(
         &self,
         ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
