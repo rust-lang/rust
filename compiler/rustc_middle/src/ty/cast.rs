@@ -85,7 +85,7 @@ pub fn mir_cast_kind<'tcx>(from_ty: Ty<'tcx>, cast_ty: Ty<'tcx>) -> mir::CastKin
         (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
             mir::CastKind::PointerExposeAddress
         }
-        (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => mir::CastKind::PointerFromExposedAddress,
+        (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => mir::CastKind::PointerWithExposedProvenance,
         (_, Some(CastTy::DynStar)) => mir::CastKind::DynStar,
         (Some(CastTy::Int(_)), Some(CastTy::Int(_))) => mir::CastKind::IntToInt,
         (Some(CastTy::FnPtr), Some(CastTy::Ptr(_))) => mir::CastKind::FnPtrToPtr,

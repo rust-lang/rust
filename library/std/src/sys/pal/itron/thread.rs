@@ -98,7 +98,7 @@ impl Thread {
         });
 
         unsafe extern "C" fn trampoline(exinf: isize) {
-            let p_inner: *mut ThreadInner = crate::ptr::from_exposed_addr_mut(exinf as usize);
+            let p_inner: *mut ThreadInner = crate::ptr::with_exposed_provenance_mut(exinf as usize);
             // Safety: `ThreadInner` is alive at this point
             let inner = unsafe { &*p_inner };
 
