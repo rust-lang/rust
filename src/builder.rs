@@ -153,7 +153,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         // NOTE: not sure why, but we have the wrong type here.
         let int_type = compare_exchange.get_param(2).to_rvalue().get_type();
-        let src = self.context.new_cast(self.location, src, int_type);
+        let src = self.context.new_bitcast(self.location, src, int_type);
         self.context.new_call(
             self.location,
             compare_exchange,
@@ -1617,7 +1617,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let dst = self.context.new_cast(self.location, dst, volatile_void_ptr_type);
         // FIXME(antoyo): not sure why, but we have the wrong type here.
         let new_src_type = atomic_function.get_param(1).to_rvalue().get_type();
-        let src = self.context.new_cast(self.location, src, new_src_type);
+        let src = self.context.new_bitcast(self.location, src, new_src_type);
         let res = self.context.new_call(self.location, atomic_function, &[dst, src, order]);
         self.context.new_cast(self.location, res, src.get_type())
     }
