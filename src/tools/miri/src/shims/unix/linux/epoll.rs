@@ -35,6 +35,8 @@ impl FileDescriptor for Epoll {
     }
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+        // FIXME: this is probably wrong -- check if the `dup`ed descriptor truly uses an
+        // independent event set.
         Ok(Box::new(self.clone()))
     }
 
