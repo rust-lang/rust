@@ -221,7 +221,33 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                     cond_result,
                 )
             }
-            CoverageKind::MCDCTestBitmapUpdate { needed_bytes: _, decision_index: _ } => todo!(),
+            CoverageKind::MCDCTestVectorBitmapUpdate { needed_bytes, decision_index } => {
+                // Drop unused coverage_map, which prevents us to use bx.
+                drop(coverage_map);
+
+                let fn_name = bx.get_pgo_func_name_var(instance);
+                let hash = bx.const_u64(function_coverage_info.function_source_hash);
+                let needed_bytes = bx.const_u32(needed_bytes);
+                let bitmap_idx = bx.const_u32(decision_index);
+                let cond_bitmap_addr = match coverage_context
+                    .mcdc_condbitmap_map
+                    .borrow()
+                    .get(&instance)
+                {
+                    Some(addr) => *addr,
+                    None => bug!(
+                        "Condition bitmap reset instruction was encountered without a condition bitmap being declared."
+                    ),
+                };
+
+                bx.instrprof_mcdc_tvbitmap_update(
+                    fn_name,
+                    hash,
+                    needed_bytes,
+                    bitmap_idx,
+                    cond_bitmap_addr,
+                )
+            }
         }
     }
 }

@@ -239,7 +239,7 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
             | CoverageKind::MCDCBitmapRequire { .. }
             | CoverageKind::MCDCCondBitmapReset
             | CoverageKind::MCDCCondBitmapUpdate { .. }
-            | CoverageKind::MCDCTestBitmapUpdate { .. }
+            | CoverageKind::MCDCTestVectorBitmapUpdate { .. }
         ) => bug!(
             "Unexpected coverage statement found during coverage instrumentation: {statement:?}"
         ),

@@ -190,7 +190,7 @@ pub enum CoverageKind {
     MCDCCondBitmapUpdate { condition_id: u32, bool_value: bool },
 
     /// Marks a point where a bit of the global Test Vector bitmap should be set to one.
-    MCDCTestBitmapUpdate { needed_bytes: u32, decision_index: u32 },
+    MCDCTestVectorBitmapUpdate { needed_bytes: u32, decision_index: u32 },
 }
 
 impl Debug for CoverageKind {
@@ -228,7 +228,7 @@ impl Debug for CoverageKind {
             MCDCCondBitmapUpdate { condition_id, bool_value } => {
                 write!(fmt, "MCDCCondBitmapUpdate({condition_id}, {bool_value})")
             }
-            MCDCTestBitmapUpdate { needed_bytes, decision_index } => {
+            MCDCTestVectorBitmapUpdate { needed_bytes, decision_index } => {
                 write!(fmt, "MCDCTVBitmapUpdate({needed_bytes} bytes, {decision_index})")
             }
         }
