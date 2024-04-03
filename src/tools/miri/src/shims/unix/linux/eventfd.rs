@@ -29,6 +29,7 @@ impl FileDescriptor for Event {
     }
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+        // FIXME: this is wrong, the new and old FD should refer to the same event object!
         Ok(Box::new(Event { val: self.val.clone() }))
     }
 
@@ -91,7 +92,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// `EFD_SEMAPHORE` - miri does not support semaphore-like semantics.
     ///
     /// <https://linux.die.net/man/2/eventfd>
-    #[expect(clippy::needless_if)]
     fn eventfd(
         &mut self,
         val: &OpTy<'tcx, Provenance>,
@@ -106,14 +106,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let efd_nonblock = this.eval_libc_i32("EFD_NONBLOCK");
         let efd_semaphore = this.eval_libc_i32("EFD_SEMAPHORE");
 
-        if flags & (efd_cloexec | efd_nonblock | efd_semaphore) == 0 {
-            throw_unsup_format!("{flags} is unsupported");
+        if flags & (efd_cloexec | efd_nonblock | efd_semaphore) != flags {
+            throw_unsup_format!("eventfd: flag {flags:#x} is unsupported");
         }
-        // FIXME handle the cloexec and nonblock flags
-        if flags & efd_cloexec == efd_cloexec {}
-        if flags & efd_nonblock == efd_nonblock {}
+        if flags & efd_cloexec == efd_cloexec {
+            // cloexec does nothing as we don't support `exec`
+        }
+        if flags & efd_nonblock == efd_nonblock {
+            // FIXME remember the nonblock flag
+        }
         if flags & efd_semaphore == efd_semaphore {
-            throw_unsup_format!("EFD_SEMAPHORE is unsupported");
+            throw_unsup_format!("eventfd: EFD_SEMAPHORE is unsupported");
         }
 
         let fd = this.machine.fds.insert_fd(Box::new(Event { val: Cell::new(val.into()) }));
