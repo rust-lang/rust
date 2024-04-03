@@ -1398,7 +1398,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 });
                 hir::TyKind::TraitObject(bounds, lifetime_bound, *kind)
             }
-            TyKind::ImplTrait(def_node_id, bounds) => {
+            TyKind::ImplTrait(def_node_id, bounds, precise_capturing) => {
+                assert!(precise_capturing.is_none(), "precise captures not supported yet!");
                 let span = t.span;
                 match itctx {
                     ImplTraitContext::OpaqueTy { origin, fn_kind } => self.lower_opaque_impl_trait(

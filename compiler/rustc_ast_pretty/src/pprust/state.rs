@@ -1150,7 +1150,8 @@ impl<'a> State<'a> {
                 }
                 self.print_type_bounds(bounds);
             }
-            ast::TyKind::ImplTrait(_, bounds) => {
+            ast::TyKind::ImplTrait(_, bounds, _precise_capturing) => {
+                // TODO(precise_capturing):
                 self.word_nbsp("impl");
                 self.print_type_bounds(bounds);
             }

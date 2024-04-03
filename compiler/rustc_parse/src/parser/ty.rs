@@ -316,7 +316,7 @@ impl<'a> Parser<'a> {
                             TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn)
                         }
                         (TyKind::TraitObject(bounds, _), kw::Impl) => {
-                            TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds)
+                            TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds, None)
                         }
                         _ => return Err(err),
                     };
@@ -655,7 +655,6 @@ impl<'a> Parser<'a> {
 
     /// Parses an `impl B0 + ... + Bn` type.
     fn parse_impl_ty(&mut self, impl_dyn_multi: &mut bool) -> PResult<'a, TyKind> {
-        // Always parse bounds greedily for better error recovery.
         if self.token.is_lifetime() {
             self.look_ahead(1, |t| {
                 if let token::Ident(sym, _) = t.kind {
@@ -669,9 +668,26 @@ impl<'a> Parser<'a> {
                 }
             })
         }
+
+        // parse precise captures, if any.
+        let precise_capturing = if self.eat_keyword(kw::Use) {
+            self.expect_lt()?;
+            let use_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::precise_capturing, use_span);
+            let lo = self.token.span;
+            let args = self.parse_angle_args(None)?;
+            self.expect_gt()?;
+            Some(ast::AngleBracketedArgs { args, span: lo.to(self.prev_token.span) }.into())
+        } else {
+            None
+        };
+
+        // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
+
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token.kind == TokenKind::BinOp(token::Plus);
-        Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds))
+
+        Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds, precise_capturing))
     }
 
     /// Is a `dyn B0 + ... + Bn` type allowed here?
@@ -957,7 +973,7 @@ impl<'a> Parser<'a> {
                             Applicability::MaybeIncorrect,
                         )
                     }
-                    TyKind::ImplTrait(_, bounds)
+                    TyKind::ImplTrait(_, bounds, None)
                         if let [GenericBound::Trait(tr, ..), ..] = bounds.as_slice() =>
                     {
                         (

@@ -535,6 +535,8 @@ declare_features! (
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "CURRENT_RUSTC_VERSION", Some(123076)),
+    /// Allows `use<'a, 'b, A, B>` in `impl use<...> Trait` for precise capture of generic args.
+    (incomplete, precise_capturing, "CURRENT_RUSTC_VERSION", Some(123432)),
     /// Allows using `#[naked]` on functions.
     (unstable, naked_functions, "1.9.0", Some(90957)),
     /// Allows specifying the as-needed link modifier

@@ -457,8 +457,9 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
         TyKind::TraitObject(bounds, ..) => {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::TraitObject);
         }
-        TyKind::ImplTrait(_, bounds) => {
+        TyKind::ImplTrait(_, bounds, precise_capturing) => {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Impl);
+            visit_opt!(visitor, visit_generic_args, precise_capturing);
         }
         TyKind::Typeof(expression) => try_visit!(visitor.visit_anon_const(expression)),
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Dummy | TyKind::Err(_) => {}
