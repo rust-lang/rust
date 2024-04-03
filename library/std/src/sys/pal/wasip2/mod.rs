@@ -10,8 +10,6 @@
 pub mod alloc;
 #[path = "../wasi/args.rs"]
 pub mod args;
-#[path = "../unix/cmath.rs"]
-pub mod cmath;
 #[path = "../wasi/env.rs"]
 pub mod env;
 #[path = "../wasi/fd.rs"]
@@ -28,10 +26,6 @@ pub mod io;
 pub mod net;
 #[path = "../wasi/os.rs"]
 pub mod os;
-#[path = "../unix/os_str.rs"]
-pub mod os_str;
-#[path = "../unix/path.rs"]
-pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
@@ -72,3 +66,5 @@ pub use helpers::decode_error_kind;
 use helpers::err2io;
 pub use helpers::hashmap_random_keys;
 pub use helpers::is_interrupted;
+
+mod cabi_realloc;
