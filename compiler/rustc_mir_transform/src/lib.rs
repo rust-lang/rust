@@ -110,6 +110,7 @@ pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
 mod sroa;
+mod switch_const;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
 
@@ -600,6 +601,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &simplify::SimplifyLocals::AfterGVN,
             &dataflow_const_prop::DataflowConstProp,
             &const_debuginfo::ConstDebugInfo,
+            // GVN & ConstProp often don't fixup unevaluatable constants
+            &switch_const::SwitchConst,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
             &jump_threading::JumpThreading,
             &early_otherwise_branch::EarlyOtherwiseBranch,
