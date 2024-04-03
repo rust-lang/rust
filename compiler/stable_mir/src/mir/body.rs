@@ -971,6 +971,7 @@ pub enum PointerCoercion {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CastKind {
+    // FIXME(smir-rename): rename this to PointerExposeProvenance
     PointerExposeAddress,
     PointerWithExposedProvenance,
     PointerCoercion(PointerCoercion),

@@ -32,10 +32,10 @@ macro_rules! common_tests {
                 );
             }
 
-            fn expose_addr<const LANES: usize>() {
+            fn expose_provenance<const LANES: usize>() {
                 test_helpers::test_unary_elementwise(
-                    &Simd::<*$constness u32, LANES>::expose_addr,
-                    &<*$constness u32>::expose_addr,
+                    &Simd::<*$constness u32, LANES>::expose_provenance,
+                    &<*$constness u32>::expose_provenance,
                     &|_| true,
                 );
             }

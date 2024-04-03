@@ -434,7 +434,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::ThreadLocalRef(_) => return Err(Unpromotable),
 
             // ptr-to-int casts are not possible in consts and thus not promotable
-            Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => return Err(Unpromotable),
+            Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => return Err(Unpromotable),
 
             // all other casts including int-to-ptr casts are fine, they just use the integer value
             // at pointer type.

@@ -19,7 +19,7 @@
           StorageLive(_3);
           _3 = const main::FOO;
           _2 = &raw const (*_3);
-          _1 = move _2 as usize (PointerExposeAddress);
+          _1 = move _2 as usize (PointerExposeProvenance);
           StorageDead(_2);
           StorageDead(_3);
           StorageLive(_4);

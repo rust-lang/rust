@@ -4,7 +4,7 @@
 
 extern "rust-intrinsic" {
     fn simd_cast_ptr<T, U>(x: T) -> U;
-    fn simd_expose_addr<T, U>(x: T) -> U;
+    fn simd_expose_provenance<T, U>(x: T) -> U;
     fn simd_with_exposed_provenance<T, U>(x: T) -> U;
 }
 
@@ -22,7 +22,7 @@ fn main() {
         // change constness and type
         let const_ptrs: V<*const u8> = simd_cast_ptr(ptrs);
 
-        let exposed_addr: V<usize> = simd_expose_addr(const_ptrs);
+        let exposed_addr: V<usize> = simd_expose_provenance(const_ptrs);
 
         let with_exposed_provenance: V<*mut i8> = simd_with_exposed_provenance(exposed_addr);
 
