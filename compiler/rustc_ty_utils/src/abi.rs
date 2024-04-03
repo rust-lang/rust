@@ -785,13 +785,17 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 // so we pick an appropriately sized integer type instead.
                 arg.cast_to(Reg { kind: RegKind::Integer, size });
 
-                // Fixup arg attribute with `noundef`.
-                let PassMode::Cast { ref mut cast, .. } = &mut arg.mode else {
-                    bug!("this cannot fail because of the previous cast_to `Reg`");
-                };
+                // Let's see if we can add a `noundef`. This is only legal for arrays, definitely
+                // not for unions.
+                if arg.layout.ty.is_array() {
+                    // Fixup arg attribute with `noundef`.
+                    let PassMode::Cast { ref mut cast, .. } = &mut arg.mode else {
+                        bug!("this cannot fail because of the previous cast_to `Reg`");
+                    };
 
-                let box CastTarget { ref mut attrs, .. } = cast;
-                attrs.set(ArgAttribute::NoUndef);
+                    let box CastTarget { ref mut attrs, .. } = cast;
+                    attrs.set(ArgAttribute::NoUndef);
+                }
             }
 
             // If we deduced that this parameter was read-only, add that to the attribute list now.
