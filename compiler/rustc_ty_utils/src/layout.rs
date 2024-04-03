@@ -377,7 +377,7 @@ fn layout_of_uncached<'tcx>(
             }
 
             // Type of the first ADT field:
-            let f0_ty = fields[FieldIdx::from_u32(0)].ty(tcx, args);
+            let f0_ty = fields[FieldIdx::ZERO].ty(tcx, args);
 
             // Heterogeneous SIMD vectors are not supported:
             // (should be caught by typeck)

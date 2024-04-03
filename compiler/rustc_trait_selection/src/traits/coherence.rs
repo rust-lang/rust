@@ -554,11 +554,7 @@ fn plug_infer_with_placeholders<'tcx>(
         }
     }
 
-    value.visit_with(&mut PlugInferWithPlaceholder {
-        infcx,
-        universe,
-        var: ty::BoundVar::from_u32(0),
-    });
+    value.visit_with(&mut PlugInferWithPlaceholder { infcx, universe, var: ty::BoundVar::ZERO });
 }
 
 fn try_prove_negated_where_clause<'tcx>(
