@@ -862,9 +862,11 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
-        let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
-        let suffix = if verbatim { "" } else { ".lib" };
-        self.link_arg(format!("{prefix}{name}{suffix}"));
+        // Static libraries built by MSVC are usually called foo.lib.
+        // However, under MinGW and build systems such as Meson, they are
+        // called libfoo.a
+        let path = find_native_static_library(name, verbatim, self.sess);
+        self.link_staticlib_by_path(&path, whole_archive);
     }
 
     fn link_staticlib_by_path(&mut self, path: &Path, whole_archive: bool) {
