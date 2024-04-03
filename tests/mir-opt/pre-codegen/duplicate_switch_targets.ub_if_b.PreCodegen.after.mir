@@ -5,10 +5,8 @@ fn ub_if_b(_1: Thing) -> Thing {
     let mut _0: Thing;
     let mut _2: isize;
     scope 1 (inlined unreachable_unchecked) {
-        scope 2 {
-        }
-        scope 3 (inlined core::ub_checks::check_language_ub) {
-            scope 4 (inlined core::ub_checks::check_language_ub::runtime) {
+        scope 2 (inlined core::ub_checks::check_language_ub) {
+            scope 3 (inlined core::ub_checks::check_language_ub::runtime) {
             }
         }
     }

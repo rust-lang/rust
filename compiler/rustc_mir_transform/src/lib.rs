@@ -53,7 +53,6 @@ mod add_moves_for_packed_drops;
 mod add_retag;
 mod check_const_item_mutation;
 mod check_packed_ref;
-pub mod check_unsafety;
 mod remove_place_mention;
 // This pass is public to allow external drivers to perform MIR cleanup
 mod add_subtyping_projections;
@@ -120,7 +119,6 @@ use rustc_mir_dataflow::rustc_peek;
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
-    check_unsafety::provide(providers);
     coverage::query::provide(providers);
     ffi_unwind_calls::provide(providers);
     shim::provide(providers);
@@ -280,11 +278,6 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
 }
 
 fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
-    // MIR unsafety check uses the raw mir, so make sure it is run.
-    if !tcx.sess.opts.unstable_opts.thir_unsafeck {
-        tcx.ensure_with_value().mir_unsafety_check_result(def);
-    }
-
     let mut body = tcx.build_mir(def);
 
     pass_manager::dump_mir_for_phase_change(tcx, &body);

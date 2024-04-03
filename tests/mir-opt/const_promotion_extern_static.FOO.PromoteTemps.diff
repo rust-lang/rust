@@ -9,8 +9,6 @@
       let mut _4: &i32;
       let _5: *const i32;
 +     let mut _6: &[&i32; 1];
-      scope 1 {
-      }
   
       bb0: {
           StorageLive(_1);

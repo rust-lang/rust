@@ -18,8 +18,6 @@
           let mut _2: ();
           scope 2 {
               debug dst => _2;
-              scope 3 {
-              }
           }
       }
   

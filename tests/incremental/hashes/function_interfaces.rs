@@ -104,17 +104,17 @@ pub fn order_of_parameters(p2: i64, p1: i32) {}
 // Unsafe ----------------------------------------------------------------------
 
 #[cfg(any(cfail1,cfail4))]
-pub fn make_unsafe() {}
+pub        fn make_unsafe() {}
 
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(
     cfg = "cfail2",
-    except = "opt_hir_owner_nodes, optimized_mir, typeck, fn_sig"
+    except = "opt_hir_owner_nodes, typeck, fn_sig"
 )]
 #[rustc_clean(cfg = "cfail3")]
 #[rustc_clean(
     cfg = "cfail5",
-    except = "opt_hir_owner_nodes, optimized_mir, typeck, fn_sig"
+    except = "opt_hir_owner_nodes, typeck, fn_sig"
 )]
 #[rustc_clean(cfg = "cfail6")]
 pub unsafe fn make_unsafe() {}
