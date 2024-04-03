@@ -1194,20 +1194,11 @@ impl<'a> Builder<'a> {
     }
 
     pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> Command {
-        let initial_sysroot_bin = self.initial_rustc.parent().unwrap();
-        // Set PATH to include the sysroot bin dir so clippy can find cargo.
-        // FIXME: once rust-clippy#11944 lands on beta, set `CARGO` directly instead.
-        let path = t!(env::join_paths(
-            // The sysroot comes first in PATH to avoid using rustup's cargo.
-            std::iter::once(PathBuf::from(initial_sysroot_bin))
-                .chain(env::split_paths(&t!(env::var("PATH"))))
-        ));
-
         if run_compiler.stage == 0 {
             // `ensure(Clippy { stage: 0 })` *builds* clippy with stage0, it doesn't use the beta clippy.
             let cargo_clippy = self.build.config.download_clippy();
             let mut cmd = Command::new(cargo_clippy);
-            cmd.env("PATH", &path);
+            cmd.env("CARGO", &self.initial_cargo);
             return cmd;
         }
 
@@ -1227,7 +1218,7 @@ impl<'a> Builder<'a> {
 
         let mut cmd = Command::new(cargo_clippy);
         cmd.env(helpers::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
-        cmd.env("PATH", path);
+        cmd.env("CARGO", &self.initial_cargo);
         cmd
     }
 
