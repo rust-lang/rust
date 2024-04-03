@@ -8,17 +8,31 @@ fn all_patterns_are_tested() {
     // Even though `x` is never actually moved out of, we don't want borrowck results to be based on
     // whether MIR lowering reveals which patterns are unreachable.
     let x = String::new();
-    let _ = match true {
+    match true {
         _ => {},
         _ => drop(x),
-    };
+    }
     // Borrowck must not know the second arm is never run.
+    drop(x); //~ ERROR use of moved value
+
+    let x = String::new();
+    if let _ = true { //~ WARN irrefutable
+    } else {
+        drop(x)
+    }
+    // Borrowck must not know the else branch is never run.
     drop(x); //~ ERROR use of moved value
 
     let x = (String::new(), String::new());
     match x {
         (y, _) | (_, y) => (),
     }
+    &x.0; //~ ERROR borrow of moved value
+    // Borrowck must not know the second pattern never matches.
+    &x.1; //~ ERROR borrow of moved value
+
+    let x = (String::new(), String::new());
+    let ((y, _) | (_, y)) = x;
     &x.0; //~ ERROR borrow of moved value
     // Borrowck must not know the second pattern never matches.
     &x.1; //~ ERROR borrow of moved value
