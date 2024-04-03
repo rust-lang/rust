@@ -126,8 +126,6 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// policy. In essence, canonicalized queries need their errors propagated
     /// rather than immediately reported because we do not have accurate spans.
     query_mode: TraitQueryMode,
-
-    treat_inductive_cycle: TreatInductiveCycleAs,
 }
 
 // A stack that walks back up the stack frame.
@@ -208,27 +206,6 @@ enum BuiltinImplConditions<'tcx> {
     Ambiguous,
 }
 
-#[derive(Copy, Clone)]
-pub enum TreatInductiveCycleAs {
-    /// This is the previous behavior, where `Recur` represents an inductive
-    /// cycle that is known not to hold. This is not forwards-compatible with
-    /// coinduction, and will be deprecated. This is the default behavior
-    /// of the old trait solver due to back-compat reasons.
-    Recur,
-    /// This is the behavior of the new trait solver, where inductive cycles
-    /// are treated as ambiguous and possibly holding.
-    Ambig,
-}
-
-impl From<TreatInductiveCycleAs> for EvaluationResult {
-    fn from(treat: TreatInductiveCycleAs) -> EvaluationResult {
-        match treat {
-            TreatInductiveCycleAs::Ambig => EvaluatedToAmbigStackDependent,
-            TreatInductiveCycleAs::Recur => EvaluatedToErrStackDependent,
-        }
-    }
-}
-
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
@@ -236,19 +213,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             freshener: infcx.freshener(),
             intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
-            treat_inductive_cycle: TreatInductiveCycleAs::Recur,
-        }
-    }
-
-    pub fn with_treat_inductive_cycle_as_ambig(
-        infcx: &'cx InferCtxt<'tcx>,
-    ) -> SelectionContext<'cx, 'tcx> {
-        // Should be executed in a context where caching is disabled,
-        // otherwise the cache is poisoned with the temporary result.
-        assert!(infcx.intercrate);
-        SelectionContext {
-            treat_inductive_cycle: TreatInductiveCycleAs::Ambig,
-            ..SelectionContext::new(infcx)
         }
     }
 
@@ -756,7 +720,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 stack.update_reached_depth(stack_arg.1);
                                 return Ok(EvaluatedToOk);
                             } else {
-                                return Ok(self.treat_inductive_cycle.into());
+                                return Ok(EvaluatedToAmbigStackDependent);
                             }
                         }
                         return Ok(EvaluatedToOk);
@@ -875,7 +839,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             }
                         }
                         ProjectAndUnifyResult::FailedNormalization => Ok(EvaluatedToAmbig),
-                        ProjectAndUnifyResult::Recursive => Ok(self.treat_inductive_cycle.into()),
+                        ProjectAndUnifyResult::Recursive => Ok(EvaluatedToAmbigStackDependent),
                         ProjectAndUnifyResult::MismatchedProjectionTypes(_) => Ok(EvaluatedToErr),
                     }
                 }
@@ -1180,7 +1144,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Some(EvaluatedToOk)
             } else {
                 debug!("evaluate_stack --> recursive, inductive");
-                Some(self.treat_inductive_cycle.into())
+                Some(EvaluatedToAmbigStackDependent)
             }
         } else {
             None
