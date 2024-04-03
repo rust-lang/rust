@@ -904,6 +904,10 @@ macro_rules! tool_doc {
             /// we do not merge it with the other documentation from std, test and
             /// proc_macros. This is largely just a wrapper around `cargo doc`.
             fn run(self, builder: &Builder<'_>) {
+                if stringify!($tool).to_lowercase() == "cargo" {
+                    return;
+                }
+
                 let stage = builder.top_stage;
                 let target = self.target;
 

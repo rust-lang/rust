@@ -597,11 +597,11 @@ impl Step for RustAnalyzer {
         )
     }
 
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustAnalyzer {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
-            target: run.target,
-        });
+    fn make_run(_run: RunConfig<'_>) {
+        // run.builder.ensure(RustAnalyzer {
+        //     compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+        //     target: run.target,
+        // });
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
@@ -644,11 +644,11 @@ impl Step for RustAnalyzerProcMacroSrv {
             )
     }
 
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustAnalyzerProcMacroSrv {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
-            target: run.target,
-        });
+    fn make_run(_run: RunConfig<'_>) {
+        // run.builder.ensure(RustAnalyzerProcMacroSrv {
+        //     compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+        //     target: run.target,
+        // });
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
@@ -784,6 +784,10 @@ macro_rules! tool_extended {
             }
 
             fn make_run(run: RunConfig<'_>) {
+                if stringify!($name).to_lowercase().ends_with("clippy") {
+                    return;
+                }
+
                 run.builder.ensure($name {
                     compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
                     target: run.target,
