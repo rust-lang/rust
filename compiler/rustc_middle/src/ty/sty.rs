@@ -11,7 +11,7 @@ use crate::ty::{
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use crate::ty::{List, ParamEnv};
-use hir::def::DefKind;
+use hir::def::{CtorKind, DefKind};
 use rustc_data_structures::captures::Captures;
 use rustc_errors::{DiagArgValue, ErrorGuaranteed, IntoDiagArg, MultiSpan};
 use rustc_hir as hir;
@@ -1677,6 +1677,10 @@ impl<'tcx> Ty<'tcx> {
         def_id: DefId,
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> Ty<'tcx> {
+        debug_assert_matches!(
+            tcx.def_kind(def_id),
+            DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
+        );
         let args = tcx.check_and_mk_args(def_id, args);
         Ty::new(tcx, FnDef(def_id, args))
     }
