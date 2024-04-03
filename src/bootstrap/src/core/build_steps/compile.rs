@@ -825,6 +825,7 @@ fn cp_rustc_component_to_ci_sysroot(
 #[derive(Debug, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     pub target: TargetSelection,
+    /// The **previous** compiler used to compile this compiler.
     pub compiler: Compiler,
     /// Whether to build a subset of crates, rather than the whole compiler.
     ///
@@ -1512,12 +1513,9 @@ impl Step for Sysroot {
         run.never()
     }
 
-    /// Returns the sysroot for the `compiler` specified that *this build system
-    /// generates*.
-    ///
-    /// That is, the sysroot for the stage0 compiler is not what the compiler
-    /// thinks it is by default, but it's the same as the default for stages
-    /// 1-3.
+    /// Returns the sysroot that `compiler` is supposed to use.
+    /// For the stage0 compiler, this is stage0-sysroot (because of the initial std build).
+    /// For all other stages, it's the same stage directory that the compiler lives in.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let compiler = self.compiler;
         let host_dir = builder.out.join(compiler.host.triple);

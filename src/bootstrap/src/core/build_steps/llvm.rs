@@ -274,6 +274,7 @@ impl Step for Llvm {
             target.to_string()
         };
 
+        // If LLVM has already been built or been downloaded through download-ci-llvm, we avoid building it again.
         let Meta { stamp, res, out_dir, root } = match prebuilt_llvm_config(builder, target) {
             Ok(p) => return p,
             Err(m) => m,
