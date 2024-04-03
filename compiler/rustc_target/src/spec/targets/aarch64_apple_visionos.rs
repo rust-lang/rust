@@ -9,10 +9,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: visionos_llvm_target(arch).into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("ARM64 Apple visionOS".into()),
+            tier: Some(3),
+            host_tools: Some(false),
+            std: Some(false),
         },
         pointer_width: 64,
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".into(),
