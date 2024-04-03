@@ -175,7 +175,7 @@ pub fn expand_speculative(
             };
 
             let censor_cfg =
-                cfg_process::process_cfg_attrs(speculative_args, &loc, db).unwrap_or_default();
+                cfg_process::process_cfg_attrs(db, speculative_args, &loc).unwrap_or_default();
             let mut fixups = fixup::fixup_syntax(span_map, speculative_args, span);
             fixups.append.retain(|it, _| match it {
                 syntax::NodeOrToken::Token(_) => true,
@@ -462,7 +462,7 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
 
     let (mut tt, undo_info) = {
         let syntax = item_node.syntax();
-        let censor_cfg = cfg_process::process_cfg_attrs(syntax, &loc, db).unwrap_or_default();
+        let censor_cfg = cfg_process::process_cfg_attrs(db, syntax, &loc).unwrap_or_default();
         let mut fixups = fixup::fixup_syntax(map.as_ref(), syntax, span);
         fixups.append.retain(|it, _| match it {
             syntax::NodeOrToken::Token(_) => true,
