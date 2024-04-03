@@ -2749,7 +2749,7 @@ declare_lint! {
     /// memory the pointer is allowed to read/write. Casting an integer, which
     /// doesn't have provenance, to a pointer requires the compiler to assign
     /// (guess) provenance. The compiler assigns "all exposed valid" (see the
-    /// docs of [`ptr::from_exposed_addr`] for more information about this
+    /// docs of [`ptr::with_exposed_provenance`] for more information about this
     /// "exposing"). This penalizes the optimiser and is not well suited for
     /// dynamic analysis/dynamic program verification (e.g. Miri or CHERI
     /// platforms).
@@ -2757,11 +2757,11 @@ declare_lint! {
     /// It is much better to use [`ptr::with_addr`] instead to specify the
     /// provenance you want. If using this function is not possible because the
     /// code relies on exposed provenance then there is as an escape hatch
-    /// [`ptr::from_exposed_addr`].
+    /// [`ptr::with_exposed_provenance`].
     ///
     /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
     /// [`ptr::with_addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.with_addr
-    /// [`ptr::from_exposed_addr`]: https://doc.rust-lang.org/core/ptr/fn.from_exposed_addr.html
+    /// [`ptr::with_exposed_provenance`]: https://doc.rust-lang.org/core/ptr/fn.with_exposed_provenance.html
     pub FUZZY_PROVENANCE_CASTS,
     Allow,
     "a fuzzy integer to pointer cast is used",

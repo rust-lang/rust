@@ -11,6 +11,7 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, GenericArg, Node, QPath};
+use rustc_hir_analysis::hir_ty_lowering::errors::GenericsArgsErrExtend;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
 };
@@ -1177,11 +1178,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let indices: FxHashSet<_> =
             generic_segments.iter().map(|GenericPathSegment(_, index)| index).collect();
-        let generics_has_err = self.lowerer().prohibit_generic_args(
+        let generics_err = self.lowerer().prohibit_generic_args(
             segments.iter().enumerate().filter_map(|(index, seg)| {
                 if !indices.contains(&index) || is_alias_variant_ctor { Some(seg) } else { None }
             }),
-            |_| {},
+            GenericsArgsErrExtend::None,
         );
 
         if let Res::Local(hid) = res {
@@ -1191,7 +1192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return (ty, res);
         }
 
-        if generics_has_err {
+        if let Err(_) = generics_err {
             // Don't try to infer type parameters when prohibited generic arguments were given.
             user_self_ty = None;
         }

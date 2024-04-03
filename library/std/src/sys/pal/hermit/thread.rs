@@ -47,7 +47,7 @@ impl Thread {
         extern "C" fn thread_start(main: usize) {
             unsafe {
                 // Finally, let's run some code.
-                Box::from_raw(ptr::from_exposed_addr::<Box<dyn FnOnce()>>(main).cast_mut())();
+                Box::from_raw(ptr::with_exposed_provenance::<Box<dyn FnOnce()>>(main).cast_mut())();
 
                 // run all destructors
                 run_dtors();

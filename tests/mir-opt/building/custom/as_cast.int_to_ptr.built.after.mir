@@ -4,7 +4,7 @@ fn int_to_ptr(_1: usize) -> *const i32 {
     let mut _0: *const i32;
 
     bb0: {
-        _0 = _1 as *const i32 (PointerFromExposedAddress);
+        _0 = _1 as *const i32 (PointerWithExposedProvenance);
         return;
     }
 }

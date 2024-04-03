@@ -549,6 +549,10 @@ extern "rust-intrinsic" {
     ///
     /// `U` must be a vector of pointers, with the same length as `T`.
     #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn simd_with_exposed_provenance<T, U>(addr: T) -> U;
+    #[rustc_nounwind]
+    #[cfg(bootstrap)]
     pub fn simd_from_exposed_addr<T, U>(addr: T) -> U;
 
     /// Swap bytes of each element.
@@ -655,3 +659,6 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_flog<T>(a: T) -> T;
 }
+
+#[cfg(bootstrap)]
+pub use simd_from_exposed_addr as simd_with_exposed_provenance;

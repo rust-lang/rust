@@ -650,7 +650,7 @@ fn codegen_stmt<'tcx>(
                     | CastKind::FnPtrToPtr
                     | CastKind::PtrToPtr
                     | CastKind::PointerExposeAddress
-                    | CastKind::PointerFromExposedAddress,
+                    | CastKind::PointerWithExposedProvenance,
                     ref operand,
                     to_ty,
                 ) => {

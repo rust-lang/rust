@@ -14,7 +14,7 @@
 //! trait references and bounds.
 
 mod bounds;
-mod errors;
+pub mod errors;
 pub mod generics;
 mod lint;
 mod object_safety;
@@ -22,14 +22,14 @@ mod object_safety;
 use crate::bounds::Bounds;
 use crate::collect::HirPlaceholderCollector;
 use crate::errors::AmbiguousLifetimeBound;
-use crate::hir_ty_lowering::errors::prohibit_assoc_item_binding;
+use crate::hir_ty_lowering::errors::{prohibit_assoc_item_binding, GenericsArgsErrExtend};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, FatalError, MultiSpan,
+    codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, FatalError,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
@@ -46,7 +46,7 @@ use rustc_middle::ty::{
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{sym, BytePos, Span, DUMMY_SP};
+use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
@@ -632,7 +632,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_ref: &hir::TraitRef<'tcx>,
         self_ty: Ty<'tcx>,
     ) -> ty::TraitRef<'tcx> {
-        self.prohibit_generic_args(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
+        let _ = self.prohibit_generic_args(
+            trait_ref.path.segments.split_last().unwrap().1.iter(),
+            GenericsArgsErrExtend::None,
+        );
 
         self.lower_mono_trait_ref(
             trait_ref.path.span,
@@ -681,7 +684,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
         let trait_segment = trait_ref.path.segments.last().unwrap();
 
-        self.prohibit_generic_args(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
+        let _ = self.prohibit_generic_args(
+            trait_ref.path.segments.split_last().unwrap().1.iter(),
+            GenericsArgsErrExtend::None,
+        );
         self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, false);
 
         let (generic_args, arg_count) = self.lower_generic_args_of_path(
@@ -995,8 +1001,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_ref_id: hir::HirId,
         span: Span,
         qself_ty: Ty<'tcx>,
-        qself: &hir::Ty<'_>,
-        assoc_segment: &hir::PathSegment<'tcx>,
+        qself: &'tcx hir::Ty<'tcx>,
+        assoc_segment: &'tcx hir::PathSegment<'tcx>,
         permit_variants: bool,
     ) -> Result<(Ty<'tcx>, DefKind, DefId), ErrorGuaranteed> {
         debug!(%qself_ty, ?assoc_segment.ident);
@@ -1020,99 +1026,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 if let Some(variant_def) = variant_def {
                     if permit_variants {
                         tcx.check_stability(variant_def.def_id, Some(hir_ref_id), span, None);
-                        self.prohibit_generic_args(slice::from_ref(assoc_segment).iter(), |err| {
-                            err.note("enum variants can't have type parameters");
-                            let type_name = tcx.item_name(adt_def.did());
-                            let msg = format!(
-                                "you might have meant to specify type parameters on enum \
-                                 `{type_name}`"
-                            );
-                            let Some(args) = assoc_segment.args else {
-                                return;
-                            };
-                            // Get the span of the generics args *including* the leading `::`.
-                            // We do so by stretching args.span_ext to the left by 2. Earlier
-                            // it was done based on the end of assoc segment but that sometimes
-                            // led to impossible spans and caused issues like #116473
-                            let args_span = args.span_ext.with_lo(args.span_ext.lo() - BytePos(2));
-                            if tcx.generics_of(adt_def.did()).count() == 0 {
-                                // FIXME(estebank): we could also verify that the arguments being
-                                // work for the `enum`, instead of just looking if it takes *any*.
-                                err.span_suggestion_verbose(
-                                    args_span,
-                                    format!("{type_name} doesn't have generic parameters"),
-                                    "",
-                                    Applicability::MachineApplicable,
-                                );
-                                return;
-                            }
-                            let Ok(snippet) = tcx.sess.source_map().span_to_snippet(args_span)
-                            else {
-                                err.note(msg);
-                                return;
-                            };
-                            let (qself_sugg_span, is_self) =
-                                if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) =
-                                    &qself.kind
-                                {
-                                    // If the path segment already has type params, we want to overwrite
-                                    // them.
-                                    match &path.segments {
-                                        // `segment` is the previous to last element on the path,
-                                        // which would normally be the `enum` itself, while the last
-                                        // `_` `PathSegment` corresponds to the variant.
-                                        [
-                                            ..,
-                                            hir::PathSegment {
-                                                ident,
-                                                args,
-                                                res: Res::Def(DefKind::Enum, _),
-                                                ..
-                                            },
-                                            _,
-                                        ] => (
-                                            // We need to include the `::` in `Type::Variant::<Args>`
-                                            // to point the span to `::<Args>`, not just `<Args>`.
-                                            ident.span.shrink_to_hi().to(args
-                                                .map_or(ident.span.shrink_to_hi(), |a| a.span_ext)),
-                                            false,
-                                        ),
-                                        [segment] => (
-                                            // We need to include the `::` in `Type::Variant::<Args>`
-                                            // to point the span to `::<Args>`, not just `<Args>`.
-                                            segment.ident.span.shrink_to_hi().to(segment
-                                                .args
-                                                .map_or(segment.ident.span.shrink_to_hi(), |a| {
-                                                    a.span_ext
-                                                })),
-                                            kw::SelfUpper == segment.ident.name,
-                                        ),
-                                        _ => {
-                                            err.note(msg);
-                                            return;
-                                        }
-                                    }
-                                } else {
-                                    err.note(msg);
-                                    return;
-                                };
-                            let suggestion = vec![
-                                if is_self {
-                                    // Account for people writing `Self::Variant::<Args>`, where
-                                    // `Self` is the enum, and suggest replacing `Self` with the
-                                    // appropriate type: `Type::<Args>::Variant`.
-                                    (qself.span, format!("{type_name}{snippet}"))
-                                } else {
-                                    (qself_sugg_span, snippet)
-                                },
-                                (args_span, String::new()),
-                            ];
-                            err.multipart_suggestion_verbose(
-                                msg,
-                                suggestion,
-                                Applicability::MaybeIncorrect,
-                            );
-                        });
+                        let _ = self.prohibit_generic_args(
+                            slice::from_ref(assoc_segment).iter(),
+                            GenericsArgsErrExtend::EnumVariant { qself, assoc_segment, adt_def },
+                        );
                         return Ok((qself_ty, DefKind::Variant, variant_def.def_id));
                     } else {
                         variant_resolution = Some(variant_def.def_id);
@@ -1624,111 +1541,26 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub fn prohibit_generic_args<'a>(
         &self,
         segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
-        extend: impl Fn(&mut Diag<'_>),
-    ) -> bool {
-        let args = segments.clone().flat_map(|segment| segment.args().args);
-
-        let (lt, ty, ct, inf) =
-            args.clone().fold((false, false, false, false), |(lt, ty, ct, inf), arg| match arg {
-                hir::GenericArg::Lifetime(_) => (true, ty, ct, inf),
-                hir::GenericArg::Type(_) => (lt, true, ct, inf),
-                hir::GenericArg::Const(_) => (lt, ty, true, inf),
-                hir::GenericArg::Infer(_) => (lt, ty, ct, true),
-            });
-        let mut emitted = false;
-        if lt || ty || ct || inf {
-            let types_and_spans: Vec<_> = segments
-                .clone()
-                .flat_map(|segment| {
-                    if segment.args().args.is_empty() {
-                        None
-                    } else {
-                        Some((
-                            match segment.res {
-                                Res::PrimTy(ty) => {
-                                    format!("{} `{}`", segment.res.descr(), ty.name())
-                                }
-                                Res::Def(_, def_id)
-                                    if let Some(name) = self.tcx().opt_item_name(def_id) =>
-                                {
-                                    format!("{} `{name}`", segment.res.descr())
-                                }
-                                Res::Err => "this type".to_string(),
-                                _ => segment.res.descr().to_string(),
-                            },
-                            segment.ident.span,
-                        ))
-                    }
-                })
-                .collect();
-            let this_type = match &types_and_spans[..] {
-                [.., _, (last, _)] => format!(
-                    "{} and {last}",
-                    types_and_spans[..types_and_spans.len() - 1]
-                        .iter()
-                        .map(|(x, _)| x.as_str())
-                        .intersperse(", ")
-                        .collect::<String>()
-                ),
-                [(only, _)] => only.to_string(),
-                [] => "this type".to_string(),
-            };
-
-            let arg_spans: Vec<Span> = args.map(|arg| arg.span()).collect();
-
-            let mut kinds = Vec::with_capacity(4);
-            if lt {
-                kinds.push("lifetime");
-            }
-            if ty {
-                kinds.push("type");
-            }
-            if ct {
-                kinds.push("const");
-            }
-            if inf {
-                kinds.push("generic");
-            }
-            let (kind, s) = match kinds[..] {
-                [.., _, last] => (
-                    format!(
-                        "{} and {last}",
-                        kinds[..kinds.len() - 1]
-                            .iter()
-                            .map(|&x| x)
-                            .intersperse(", ")
-                            .collect::<String>()
-                    ),
-                    "s",
-                ),
-                [only] => (only.to_string(), ""),
-                [] => unreachable!("expected at least one generic to prohibit"),
-            };
-            let last_span = *arg_spans.last().unwrap();
-            let span: MultiSpan = arg_spans.into();
-            let mut err = struct_span_code_err!(
-                self.tcx().dcx(),
-                span,
-                E0109,
-                "{kind} arguments are not allowed on {this_type}",
-            );
-            err.span_label(last_span, format!("{kind} argument{s} not allowed"));
-            for (what, span) in types_and_spans {
-                err.span_label(span, format!("not allowed on {what}"));
-            }
-            extend(&mut err);
-            self.set_tainted_by_errors(err.emit());
-            emitted = true;
+        err_extend: GenericsArgsErrExtend<'_>,
+    ) -> Result<(), ErrorGuaranteed> {
+        let args_visitors = segments.clone().flat_map(|segment| segment.args().args);
+        let mut result = Ok(());
+        if let Some(_) = args_visitors.clone().next() {
+            result = Err(self.report_prohibit_generics_error(
+                segments.clone(),
+                args_visitors,
+                err_extend,
+            ));
         }
 
         for segment in segments {
             // Only emit the first error to avoid overloading the user with error messages.
             if let Some(b) = segment.args().bindings.first() {
-                prohibit_assoc_item_binding(self.tcx(), b.span, None);
-                return true;
+                return Err(prohibit_assoc_item_binding(self.tcx(), b.span, None));
             }
         }
-        emitted
+
+        result
     }
 
     /// Probe path segments that are semantically allowed to have generic arguments.
@@ -1893,9 +1725,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // Check for desugared `impl Trait`.
                 assert!(tcx.is_type_alias_impl_trait(did));
                 let item_segment = path.segments.split_last().unwrap();
-                self.prohibit_generic_args(item_segment.1.iter(), |err| {
-                    err.note("`impl Trait` types can't have type parameters");
-                });
+                let _ = self
+                    .prohibit_generic_args(item_segment.1.iter(), GenericsArgsErrExtend::OpaqueTy);
                 let args = self.lower_generic_args_of_path_segment(span, did, item_segment.0);
                 Ty::new_opaque(tcx, did, args)
             }
@@ -1908,7 +1739,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 did,
             ) => {
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_generic_args(path.segments.split_last().unwrap().1.iter(), |_| {});
+                let _ = self.prohibit_generic_args(
+                    path.segments.split_last().unwrap().1.iter(),
+                    GenericsArgsErrExtend::None,
+                );
                 self.lower_path_segment(span, did, path.segments.last().unwrap())
             }
             Res::Def(kind @ DefKind::Variant, def_id) if permit_variants => {
@@ -1920,13 +1754,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     self.probe_generic_path_segments(path.segments, None, kind, def_id, span);
                 let indices: FxHashSet<_> =
                     generic_segments.iter().map(|GenericPathSegment(_, index)| index).collect();
-                self.prohibit_generic_args(
+                let _ = self.prohibit_generic_args(
                     path.segments.iter().enumerate().filter_map(|(index, seg)| {
                         if !indices.contains(&index) { Some(seg) } else { None }
                     }),
-                    |err| {
-                        err.note("enum variants can't have type parameters");
-                    },
+                    GenericsArgsErrExtend::DefVariant,
                 );
 
                 let GenericPathSegment(def_id, index) = generic_segments.last().unwrap();
@@ -1934,27 +1766,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             Res::Def(DefKind::TyParam, def_id) => {
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_generic_args(path.segments.iter(), |err| {
-                    if let Some(span) = tcx.def_ident_span(def_id) {
-                        let name = tcx.item_name(def_id);
-                        err.span_note(span, format!("type parameter `{name}` defined here"));
-                    }
-                });
+                let _ = self.prohibit_generic_args(
+                    path.segments.iter(),
+                    GenericsArgsErrExtend::TyParam(def_id),
+                );
                 self.lower_ty_param(hir_id)
             }
             Res::SelfTyParam { .. } => {
                 // `Self` in trait or type alias.
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_generic_args(path.segments.iter(), |err| {
+                let _ = self.prohibit_generic_args(
+                    path.segments.iter(),
                     if let [hir::PathSegment { args: Some(args), ident, .. }] = &path.segments {
-                        err.span_suggestion_verbose(
+                        GenericsArgsErrExtend::SelfTyParam(
                             ident.span.shrink_to_hi().to(args.span_ext),
-                            "the `Self` type doesn't accept type parameters",
-                            "",
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                });
+                        )
+                    } else {
+                        GenericsArgsErrExtend::None
+                    },
+                );
                 tcx.types.self_param
             }
             Res::SelfTyAlias { alias_to: def_id, forbid_generic, .. } => {
@@ -1962,65 +1792,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 assert_eq!(opt_self_ty, None);
                 // Try to evaluate any array length constants.
                 let ty = tcx.at(span).type_of(def_id).instantiate_identity();
-                let span_of_impl = tcx.span_of_impl(def_id);
-                self.prohibit_generic_args(path.segments.iter(), |err| {
-                    let def_id = match *ty.kind() {
-                        ty::Adt(self_def, _) => self_def.did(),
-                        _ => return,
-                    };
-
-                    let type_name = tcx.item_name(def_id);
-                    let span_of_ty = tcx.def_ident_span(def_id);
-                    let generics = tcx.generics_of(def_id).count();
-
-                    let msg = format!("`Self` is of type `{ty}`");
-                    if let (Ok(i_sp), Some(t_sp)) = (span_of_impl, span_of_ty) {
-                        let mut span: MultiSpan = vec![t_sp].into();
-                        span.push_span_label(
-                            i_sp,
-                            format!("`Self` is on type `{type_name}` in this `impl`"),
-                        );
-                        let mut postfix = "";
-                        if generics == 0 {
-                            postfix = ", which doesn't have generic parameters";
-                        }
-                        span.push_span_label(
-                            t_sp,
-                            format!("`Self` corresponds to this type{postfix}"),
-                        );
-                        err.span_note(span, msg);
-                    } else {
-                        err.note(msg);
-                    }
-                    for segment in path.segments {
-                        if let Some(args) = segment.args
-                            && segment.ident.name == kw::SelfUpper
-                        {
-                            if generics == 0 {
-                                // FIXME(estebank): we could also verify that the arguments being
-                                // work for the `enum`, instead of just looking if it takes *any*.
-                                err.span_suggestion_verbose(
-                                    segment.ident.span.shrink_to_hi().to(args.span_ext),
-                                    "the `Self` type doesn't accept type parameters",
-                                    "",
-                                    Applicability::MachineApplicable,
-                                );
-                                return;
-                            } else {
-                                err.span_suggestion_verbose(
-                                    segment.ident.span,
-                                    format!(
-                                        "the `Self` type doesn't accept type parameters, use the \
-                                        concrete type's name `{type_name}` instead if you want to \
-                                        specify its type parameters"
-                                    ),
-                                    type_name,
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
-                        }
-                    }
-                });
+                let _ = self.prohibit_generic_args(
+                    path.segments.iter(),
+                    GenericsArgsErrExtend::SelfTyAlias { def_id, span },
+                );
                 // HACK(min_const_generics): Forbid generic `Self` types
                 // here as we can't easily do that during nameres.
                 //
@@ -2061,7 +1836,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             Res::Def(DefKind::AssocTy, def_id) => {
                 debug_assert!(path.segments.len() >= 2);
-                self.prohibit_generic_args(path.segments[..path.segments.len() - 2].iter(), |_| {});
+                let _ = self.prohibit_generic_args(
+                    path.segments[..path.segments.len() - 2].iter(),
+                    GenericsArgsErrExtend::None,
+                );
                 // HACK: until we support `<Type as ~const Trait>`, assume all of them are.
                 let constness = if tcx.has_attr(tcx.parent(def_id), sym::const_trait) {
                     ty::BoundConstness::ConstIfConst
@@ -2079,19 +1857,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             Res::PrimTy(prim_ty) => {
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_generic_args(path.segments.iter(), |err| {
-                    let name = prim_ty.name_str();
-                    for segment in path.segments {
-                        if let Some(args) = segment.args {
-                            err.span_suggestion_verbose(
-                                segment.ident.span.shrink_to_hi().to(args.span_ext),
-                                format!("primitive type `{name}` doesn't have generic parameters"),
-                                "",
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                    }
-                });
+                let _ = self.prohibit_generic_args(
+                    path.segments.iter(),
+                    GenericsArgsErrExtend::PrimTy(prim_ty),
+                );
                 match prim_ty {
                     hir::PrimTy::Bool => tcx.types.bool,
                     hir::PrimTy::Char => tcx.types.char,
