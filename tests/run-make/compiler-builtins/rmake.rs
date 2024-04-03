@@ -38,6 +38,14 @@ fn main() {
     let target_dir = tmp_dir().join("target");
     let target = std::env::var("TARGET").unwrap();
 
+    if target.starts_with("x86_64-fortanix-unknown-sgx") {
+        // This test won't run on sgx. The first step of compiling to the SGX platform
+        // is to generate an ELF file. At that level you can still link static
+        // libraries in. Finally the actual enclave is build from the resulting
+        // ELF. At that final level, everything is fixed and you can't link in
+        return;
+    }
+
     println!("Testing compiler_builtins for {}", target);
 
     // Set up the tiniest Cargo project: An empty no_std library. Just enough to run -Zbuild-std.
