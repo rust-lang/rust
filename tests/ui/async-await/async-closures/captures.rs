@@ -1,7 +1,7 @@
 //@ aux-build:block-on.rs
 //@ edition:2021
-
-
+//@ run-pass
+//@ check-run-results
 
 // Same as miri's `tests/pass/async-closure-captures.rs`, keep in sync
 
@@ -104,14 +104,12 @@ async fn async_main() {
         let x = Hello(8);
         let c = force_fnonce(async || {
             println!("{x:?}");
-            //~^ ERROR `x` does not live long enough
         });
         call_once(c).await;
 
         let x = &Hello(9);
         let c = force_fnonce(async || {
             println!("{x:?}");
-            //~^ ERROR `x` does not live long enough
         });
         call_once(c).await;
     }

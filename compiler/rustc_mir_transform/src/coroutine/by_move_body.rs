@@ -91,14 +91,16 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             return;
         }
 
-        let ty::Coroutine(_, coroutine_args) = *coroutine_ty.kind() else { bug!("{body:#?}") };
-        // We don't need to generate a by-move coroutine if the kind of the coroutine is
-        // already `FnOnce` -- that means that any upvars that the closure consumes have
-        // already been taken by-value.
-        let coroutine_kind = coroutine_args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap();
-        if coroutine_kind == ty::ClosureKind::FnOnce {
+        // We don't need to generate a by-move coroutine if the coroutine body was
+        // produced by the `CoroutineKindShim`, since it's already by-move.
+        if matches!(body.source.instance, ty::InstanceDef::CoroutineKindShim { .. }) {
             return;
         }
+
+        let ty::Coroutine(_, args) = *coroutine_ty.kind() else { bug!("{body:#?}") };
+        let args = args.as_coroutine();
+
+        let coroutine_kind = args.kind_ty().to_opt_closure_kind().unwrap();
 
         let parent_def_id = tcx.local_parent(coroutine_def_id);
         let ty::CoroutineClosure(_, parent_args) =
@@ -128,6 +130,12 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             // the outer closure body -- we need to change the coroutine to take the
             // upvar by value.
             if coroutine_capture.is_by_ref() && !parent_capture.is_by_ref() {
+                assert_ne!(
+                    coroutine_kind,
+                    ty::ClosureKind::FnOnce,
+                    "`FnOnce` coroutine-closures return coroutines that capture from \
+                    their body; it will always result in a borrowck error!"
+                );
                 by_ref_fields.insert(FieldIdx::from_usize(num_args + idx));
             }
 
