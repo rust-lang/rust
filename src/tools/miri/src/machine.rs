@@ -862,7 +862,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
 
     type Provenance = Provenance;
     type ProvenanceExtra = ProvenanceExtra;
-    type Bytes = Box<[u8]>;
+    type Bytes = MiriAllocBytes;
 
     type MemoryMap =
         MonoHashMap<AllocId, (MemoryKind, Allocation<Provenance, Self::AllocExtra, Self::Bytes>)>;
@@ -1088,8 +1088,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind>,
-    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra>>> {
-        let kind = kind.expect("we set our GLOBAL_KIND so this cannot be None");
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>
+    {
+        let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         if ecx.machine.tracked_alloc_ids.contains(&id) {
             ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedAlloc(
                 id,
@@ -1126,7 +1127,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             Some(ecx.generate_stacktrace())
         };
 
-        let alloc: Allocation<Provenance, Self::AllocExtra> = alloc.adjust_from_tcx(
+        let alloc: Allocation<Provenance, Self::AllocExtra, Self::Bytes> = alloc.adjust_from_tcx(
             &ecx.tcx,
             AllocExtra {
                 borrow_tracker,
