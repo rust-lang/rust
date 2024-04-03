@@ -17,7 +17,8 @@ use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    codes::*, pluralize, Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey,
+    a_or_an, codes::*, display_list_with_comma_and, pluralize, Applicability, Diag,
+    ErrorGuaranteed, MultiSpan, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -818,6 +819,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         call_expr,
                         None,
                         Some(mismatch_idx),
+                        &matched_inputs,
+                        &formal_and_expected_inputs,
                         is_method,
                     );
                     suggest_confusable(&mut err);
@@ -904,6 +907,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             err.span_label(full_call_span, format!("arguments to this {call_name} are incorrect"));
 
+            self.label_generic_mismatches(
+                &mut err,
+                fn_def_id,
+                &matched_inputs,
+                &provided_arg_tys,
+                &formal_and_expected_inputs,
+                is_method,
+            );
+
             if let hir::ExprKind::MethodCall(_, rcvr, _, _) = call_expr.kind
                 && provided_idx.as_usize() == expected_idx.as_usize()
             {
@@ -932,6 +944,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 call_expr,
                 Some(expected_ty),
                 Some(expected_idx.as_usize()),
+                &matched_inputs,
+                &formal_and_expected_inputs,
                 is_method,
             );
             suggest_confusable(&mut err);
@@ -1270,6 +1284,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        self.label_generic_mismatches(
+            &mut err,
+            fn_def_id,
+            &matched_inputs,
+            &provided_arg_tys,
+            &formal_and_expected_inputs,
+            is_method,
+        );
+
         // Incorporate the argument changes in the removal suggestion.
         // When a type is *missing*, and the rest are additional, we want to suggest these with a
         // multipart suggestion, but in order to do so we need to figure out *where* the arg that
@@ -1317,7 +1340,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Call out where the function is defined
-        self.label_fn_like(&mut err, fn_def_id, callee_ty, call_expr, None, None, is_method);
+        self.label_fn_like(
+            &mut err,
+            fn_def_id,
+            callee_ty,
+            call_expr,
+            None,
+            None,
+            &matched_inputs,
+            &formal_and_expected_inputs,
+            is_method,
+        );
 
         // And add a suggestion block for all of the parameters
         let suggestion_text = match suggestion_text {
@@ -2094,6 +2127,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Option<Ty<'tcx>>,
         // A specific argument should be labeled, instead of all of them
         expected_idx: Option<usize>,
+        matched_inputs: &IndexVec<ExpectedIdx, Option<ProvidedIdx>>,
+        formal_and_expected_inputs: &IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         is_method: bool,
     ) {
         let Some(mut def_id) = callable_def_id else {
@@ -2185,21 +2220,164 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let mut spans: MultiSpan = def_span.into();
 
-            let params = self
+            let params_with_generics = self.get_hir_params_with_generics(def_id, is_method);
+            let mut generics_with_unmatched_params = Vec::new();
+
+            let check_for_matched_generics = || {
+                if matched_inputs.iter().any(|x| x.is_some())
+                    && params_with_generics.iter().any(|x| x.0.is_some())
+                {
+                    for (idx, (generic, _)) in params_with_generics.iter().enumerate() {
+                        // Param has to have a generic and be matched to be relevant
+                        if matched_inputs[idx.into()].is_none() {
+                            continue;
+                        }
+
+                        let Some(generic) = generic else {
+                            continue;
+                        };
+
+                        for unmatching_idx in idx + 1..params_with_generics.len() {
+                            if matched_inputs[unmatching_idx.into()].is_none()
+                                && let Some(unmatched_idx_param_generic) =
+                                    params_with_generics[unmatching_idx].0
+                                && unmatched_idx_param_generic.name.ident() == generic.name.ident()
+                            {
+                                // We found a parameter that didn't match that needed to
+                                return true;
+                            }
+                        }
+                    }
+                }
+                false
+            };
+
+            let check_for_matched_generics = check_for_matched_generics();
+
+            for (idx, (generic_param, param)) in
+                params_with_generics.iter().enumerate().filter(|(idx, _)| {
+                    check_for_matched_generics
+                        || expected_idx.map_or(true, |expected_idx| expected_idx == *idx)
+                })
+            {
+                let Some(generic_param) = generic_param else {
+                    spans.push_span_label(param.span, "");
+                    continue;
+                };
+
+                let other_params_matched: Vec<(usize, &hir::Param<'_>)> = params_with_generics
+                    .iter()
+                    .enumerate()
+                    .filter(|(other_idx, (other_generic_param, _))| {
+                        if *other_idx == idx {
+                            return false;
+                        }
+                        let Some(other_generic_param) = other_generic_param else {
+                            return false;
+                        };
+                        if matched_inputs[idx.into()].is_none()
+                            && matched_inputs[(*other_idx).into()].is_none()
+                        {
+                            return false;
+                        }
+                        if matched_inputs[idx.into()].is_some()
+                            && matched_inputs[(*other_idx).into()].is_some()
+                        {
+                            return false;
+                        }
+                        other_generic_param.name.ident() == generic_param.name.ident()
+                    })
+                    .map(|(other_idx, (_, other_param))| (other_idx, *other_param))
+                    .collect();
+
+                if !other_params_matched.is_empty() {
+                    let other_param_matched_names: Vec<String> = other_params_matched
+                        .iter()
+                        .map(|(_, other_param)| {
+                            if let hir::PatKind::Binding(_, _, ident, _) = other_param.pat.kind {
+                                format!("`{ident}`")
+                            } else {
+                                "{unknown}".to_string()
+                            }
+                        })
+                        .collect();
+
+                    let matched_ty = self
+                        .resolve_vars_if_possible(formal_and_expected_inputs[idx.into()].1)
+                        .sort_string(self.tcx);
+
+                    if matched_inputs[idx.into()].is_some() {
+                        spans.push_span_label(
+                            param.span,
+                            format!(
+                                "{} {} to match the {} type of this parameter",
+                                display_list_with_comma_and(&other_param_matched_names),
+                                format!(
+                                    "need{}",
+                                    pluralize!(if other_param_matched_names.len() == 1 {
+                                        0
+                                    } else {
+                                        1
+                                    })
+                                ),
+                                matched_ty,
+                            ),
+                        );
+                    } else {
+                        spans.push_span_label(
+                            param.span,
+                            format!(
+                                "this parameter needs to match the {} type of {}",
+                                matched_ty,
+                                display_list_with_comma_and(&other_param_matched_names),
+                            ),
+                        );
+                    }
+                    generics_with_unmatched_params.push(generic_param);
+                } else {
+                    spans.push_span_label(param.span, "");
+                }
+            }
+
+            for generic_param in self
                 .tcx
                 .hir()
                 .get_if_local(def_id)
-                .and_then(|node| node.body_id())
+                .and_then(|node| node.generics())
                 .into_iter()
-                .flat_map(|id| self.tcx.hir().body(id).params)
-                .skip(if is_method { 1 } else { 0 });
-
-            for (_, param) in params
-                .into_iter()
-                .enumerate()
-                .filter(|(idx, _)| expected_idx.map_or(true, |expected_idx| expected_idx == *idx))
+                .flat_map(|x| x.params)
+                .filter(|x| {
+                    generics_with_unmatched_params.iter().any(|y| x.name.ident() == y.name.ident())
+                })
             {
-                spans.push_span_label(param.span, "");
+                let param_idents_matching: Vec<String> = params_with_generics
+                    .iter()
+                    .filter(|(generic, _)| {
+                        if let Some(generic) = generic {
+                            generic.name.ident() == generic_param.name.ident()
+                        } else {
+                            false
+                        }
+                    })
+                    .map(|(_, param)| {
+                        if let hir::PatKind::Binding(_, _, ident, _) = param.pat.kind {
+                            format!("`{ident}`")
+                        } else {
+                            "{unknown}".to_string()
+                        }
+                    })
+                    .collect();
+
+                if !param_idents_matching.is_empty() {
+                    spans.push_span_label(
+                        generic_param.span,
+                        format!(
+                            "{} all reference this parameter {}",
+                            display_list_with_comma_and(&param_idents_matching),
+                            generic_param.name.ident().name,
+                        ),
+                    );
+                }
             }
 
             err.span_note(spans, format!("{} defined here", self.tcx.def_descr(def_id)));
@@ -2259,6 +2437,115 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 format!("{} defined here", self.tcx.def_descr(def_id)),
             );
         }
+    }
+
+    fn label_generic_mismatches(
+        &self,
+        err: &mut Diag<'_>,
+        callable_def_id: Option<DefId>,
+        matched_inputs: &IndexVec<ExpectedIdx, Option<ProvidedIdx>>,
+        provided_arg_tys: &IndexVec<ProvidedIdx, (Ty<'tcx>, Span)>,
+        formal_and_expected_inputs: &IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
+        is_method: bool,
+    ) {
+        let Some(def_id) = callable_def_id else {
+            return;
+        };
+
+        let params_with_generics = self.get_hir_params_with_generics(def_id, is_method);
+
+        for (idx, (generic_param, _)) in params_with_generics.iter().enumerate() {
+            if matched_inputs[idx.into()].is_none() {
+                continue;
+            }
+
+            let Some((_, matched_arg_span)) = provided_arg_tys.get(idx.into()) else {
+                continue;
+            };
+
+            let Some(generic_param) = generic_param else {
+                continue;
+            };
+
+            let mut idxs_matched: Vec<usize> = vec![];
+            for (other_idx, (_, _)) in params_with_generics.iter().enumerate().filter(
+                |(other_idx, (other_generic_param, _))| {
+                    if *other_idx == idx {
+                        return false;
+                    }
+                    let Some(other_generic_param) = other_generic_param else {
+                        return false;
+                    };
+                    if matched_inputs[(*other_idx).into()].is_some() {
+                        return false;
+                    }
+                    other_generic_param.name.ident() == generic_param.name.ident()
+                },
+            ) {
+                idxs_matched.push(other_idx.into());
+            }
+
+            if idxs_matched.is_empty() {
+                continue;
+            }
+
+            let expected_display_type = self
+                .resolve_vars_if_possible(formal_and_expected_inputs[idx.into()].1)
+                .sort_string(self.tcx);
+            let label = if idxs_matched.len() == params_with_generics.len() - 1 {
+                format!(
+                    "expected all arguments to be this {} type because they need to match the type of this parameter",
+                    expected_display_type
+                )
+            } else {
+                format!(
+                    "expected some other arguments to be {} {} type to match the type of this parameter",
+                    a_or_an(&expected_display_type),
+                    expected_display_type,
+                )
+            };
+
+            err.span_label(*matched_arg_span, label);
+        }
+    }
+
+    fn get_hir_params_with_generics(
+        &self,
+        def_id: DefId,
+        is_method: bool,
+    ) -> Vec<(Option<&hir::GenericParam<'_>>, &hir::Param<'_>)> {
+        let fn_node = self.tcx.hir().get_if_local(def_id);
+
+        let generic_params: Vec<Option<&hir::GenericParam<'_>>> = fn_node
+            .and_then(|node| node.fn_decl())
+            .into_iter()
+            .flat_map(|decl| decl.inputs)
+            .skip(if is_method { 1 } else { 0 })
+            .map(|param| {
+                if let hir::TyKind::Path(QPath::Resolved(
+                    _,
+                    hir::Path { res: Res::Def(_, res_def_id), .. },
+                )) = param.kind
+                {
+                    fn_node
+                        .and_then(|node| node.generics())
+                        .into_iter()
+                        .flat_map(|generics| generics.params)
+                        .find(|gen| &gen.def_id.to_def_id() == res_def_id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let params: Vec<&hir::Param<'_>> = fn_node
+            .and_then(|node| node.body_id())
+            .into_iter()
+            .flat_map(|id| self.tcx.hir().body(id).params)
+            .skip(if is_method { 1 } else { 0 })
+            .collect();
+
+        generic_params.into_iter().zip(params).collect()
     }
 }
 
