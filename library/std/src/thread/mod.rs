@@ -686,6 +686,8 @@ thread_local! {
 ///
 /// Aborts if the handle has been set already to reduce code size.
 pub(crate) fn set_current(thread: Thread) {
+    // Using `unwrap` here can add ~3kB to the binary size. We have complete
+    // control over where this is called, so just abort if there is a bug.
     CURRENT.with(|current| match current.set(thread) {
         Ok(()) => {}
         Err(_) => rtabort!("should only be set once"),
