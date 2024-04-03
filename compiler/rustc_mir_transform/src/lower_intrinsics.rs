@@ -90,6 +90,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     sym::wrapping_add
                     | sym::wrapping_sub
                     | sym::wrapping_mul
+                    | sym::three_way_compare
                     | sym::unchecked_add
                     | sym::unchecked_sub
                     | sym::unchecked_mul
@@ -109,6 +110,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             sym::wrapping_add => BinOp::Add,
                             sym::wrapping_sub => BinOp::Sub,
                             sym::wrapping_mul => BinOp::Mul,
+                            sym::three_way_compare => BinOp::Cmp,
                             sym::unchecked_add => BinOp::AddUnchecked,
                             sym::unchecked_sub => BinOp::SubUnchecked,
                             sym::unchecked_mul => BinOp::MulUnchecked,

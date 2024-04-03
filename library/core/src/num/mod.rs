@@ -285,17 +285,6 @@ macro_rules! widening_impl {
     };
 }
 
-macro_rules! conv_rhs_for_unchecked_shift {
-    ($SelfT:ty, $x:expr) => {{
-        // If the `as` cast will truncate, ensure we still tell the backend
-        // that the pre-truncation value was also small.
-        if <$SelfT>::BITS < 32 {
-            intrinsics::assume($x <= (<$SelfT>::MAX as u32));
-        }
-        $x as $SelfT
-    }};
-}
-
 impl i8 {
     int_impl! {
         Self = i8,

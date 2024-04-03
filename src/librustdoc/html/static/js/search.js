@@ -206,14 +206,14 @@ const editDistanceState = {
                     // insertion
                     this.current[j - 1] + 1,
                     // substitution
-                    this.prev[j - 1] + substitutionCost
+                    this.prev[j - 1] + substitutionCost,
                 );
 
                 if ((i > 1) && (j > 1) && (a[aIdx] === b[bIdx - 1]) && (a[aIdx - 1] === b[bIdx])) {
                     // transposition
                     this.current[j] = Math.min(
                         this.current[j],
-                        this.prevPrev[j - 2] + 1
+                        this.prevPrev[j - 2] + 1,
                     );
                 }
             }
@@ -242,6 +242,14 @@ function initSearch(rawSearchIndex) {
      *  @type {Array<Row>}
      */
     let searchIndex;
+    /**
+     * @type {Map<String, RoaringBitmap>}
+     */
+    let searchIndexDeprecated;
+    /**
+     * @type {Map<String, RoaringBitmap>}
+     */
+    let searchIndexEmptyDesc;
     /**
      *  @type {Uint32Array}
      */
@@ -426,7 +434,7 @@ function initSearch(rawSearchIndex) {
         return c === "," || c === "=";
     }
 
-/**
+    /**
      * Returns `true` if the given `c` character is a path separator. For example
      * `:` in `a::b` or a whitespace in `a b`.
      *
@@ -856,8 +864,8 @@ function initSearch(rawSearchIndex) {
                         parserState,
                         parserState.userQuery.slice(start, end),
                         generics,
-                        isInGenerics
-                    )
+                        isInGenerics,
+                    ),
                 );
             }
         }
@@ -1295,7 +1303,7 @@ function initSearch(rawSearchIndex) {
      *
      * @return {ResultsTable}
      */
-    function execQuery(parsedQuery, filterCrates, currentCrate) {
+    async function execQuery(parsedQuery, filterCrates, currentCrate) {
         const results_others = new Map(), results_in_args = new Map(),
             results_returned = new Map();
 
@@ -1342,9 +1350,9 @@ function initSearch(rawSearchIndex) {
          * @param {Results} results
          * @param {boolean} isType
          * @param {string} preferredCrate
-         * @returns {[ResultObject]}
+         * @returns {Promise<[ResultObject]>}
          */
-        function sortResults(results, isType, preferredCrate) {
+        async function sortResults(results, isType, preferredCrate) {
             const userQuery = parsedQuery.userQuery;
             const result_list = [];
             for (const result of results.values()) {
@@ -1394,8 +1402,8 @@ function initSearch(rawSearchIndex) {
                 }
 
                 // sort deprecated items later
-                a = aaa.item.deprecated;
-                b = bbb.item.deprecated;
+                a = searchIndexDeprecated.get(aaa.item.crate).contains(aaa.item.bitIndex);
+                b = searchIndexDeprecated.get(bbb.item.crate).contains(bbb.item.bitIndex);
                 if (a !== b) {
                     return a - b;
                 }
@@ -1422,8 +1430,8 @@ function initSearch(rawSearchIndex) {
                 }
 
                 // sort by description (no description goes later)
-                a = (aaa.item.desc === "");
-                b = (bbb.item.desc === "");
+                a = searchIndexEmptyDesc.get(aaa.item.crate).contains(aaa.item.bitIndex);
+                b = searchIndexEmptyDesc.get(bbb.item.crate).contains(bbb.item.bitIndex);
                 if (a !== b) {
                     return a - b;
                 }
@@ -1446,7 +1454,16 @@ function initSearch(rawSearchIndex) {
                 return 0;
             });
 
-            return transformResults(result_list);
+            const transformed = transformResults(result_list);
+            const descs = await Promise.all(transformed.map(result => {
+                return searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
+                    "" :
+                    searchState.loadDesc(result);
+            }));
+            for (const [i, result] of transformed.entries()) {
+                result.desc = descs[i];
+            }
+            return transformed;
         }
 
         /**
@@ -1477,7 +1494,7 @@ function initSearch(rawSearchIndex) {
             whereClause,
             mgensIn,
             solutionCb,
-            unboxingDepth
+            unboxingDepth,
         ) {
             if (unboxingDepth >= UNBOXING_LIMIT) {
                 return false;
@@ -1524,7 +1541,7 @@ function initSearch(rawSearchIndex) {
                         queryElem,
                         whereClause,
                         mgens,
-                        unboxingDepth + 1
+                        unboxingDepth + 1,
                     )) {
                         continue;
                     }
@@ -1541,7 +1558,7 @@ function initSearch(rawSearchIndex) {
                             whereClause,
                             mgensScratch,
                             solutionCb,
-                            unboxingDepth + 1
+                            unboxingDepth + 1,
                         )) {
                             return true;
                         }
@@ -1551,7 +1568,7 @@ function initSearch(rawSearchIndex) {
                         whereClause,
                         mgens ? new Map(mgens) : null,
                         solutionCb,
-                        unboxingDepth + 1
+                        unboxingDepth + 1,
                     )) {
                         return true;
                     }
@@ -1625,7 +1642,7 @@ function initSearch(rawSearchIndex) {
                             queryElem,
                             whereClause,
                             mgensScratch,
-                            unboxingDepth
+                            unboxingDepth,
                         );
                         if (!solution) {
                             return false;
@@ -1638,7 +1655,7 @@ function initSearch(rawSearchIndex) {
                                 whereClause,
                                 simplifiedMgens,
                                 solutionCb,
-                                unboxingDepth
+                                unboxingDepth,
                             );
                             if (passesUnification) {
                                 return true;
@@ -1646,7 +1663,7 @@ function initSearch(rawSearchIndex) {
                         }
                         return false;
                     },
-                    unboxingDepth
+                    unboxingDepth,
                 );
                 if (passesUnification) {
                     return true;
@@ -1663,7 +1680,7 @@ function initSearch(rawSearchIndex) {
                     queryElem,
                     whereClause,
                     mgens,
-                    unboxingDepth + 1
+                    unboxingDepth + 1,
                 )) {
                     continue;
                 }
@@ -1689,7 +1706,7 @@ function initSearch(rawSearchIndex) {
                     whereClause,
                     mgensScratch,
                     solutionCb,
-                    unboxingDepth + 1
+                    unboxingDepth + 1,
                 );
                 if (passesUnification) {
                     return true;
@@ -1820,7 +1837,7 @@ function initSearch(rawSearchIndex) {
             queryElem,
             whereClause,
             mgensIn,
-            unboxingDepth
+            unboxingDepth,
         ) {
             if (fnType.bindings.size < queryElem.bindings.size) {
                 return false;
@@ -1849,7 +1866,7 @@ function initSearch(rawSearchIndex) {
                                 // possible solutions
                                 return false;
                             },
-                            unboxingDepth
+                            unboxingDepth,
                         );
                         return newSolutions;
                     });
@@ -1887,7 +1904,7 @@ function initSearch(rawSearchIndex) {
             queryElem,
             whereClause,
             mgens,
-            unboxingDepth
+            unboxingDepth,
         ) {
             if (unboxingDepth >= UNBOXING_LIMIT) {
                 return false;
@@ -1914,7 +1931,7 @@ function initSearch(rawSearchIndex) {
                     queryElem,
                     whereClause,
                     mgensTmp,
-                    unboxingDepth
+                    unboxingDepth,
                 );
             } else if (fnType.generics.length > 0 || fnType.bindings.size > 0) {
                 const simplifiedGenerics = [
@@ -1926,7 +1943,7 @@ function initSearch(rawSearchIndex) {
                     queryElem,
                     whereClause,
                     mgens,
-                    unboxingDepth
+                    unboxingDepth,
                 );
             }
             return false;
@@ -1975,7 +1992,7 @@ function initSearch(rawSearchIndex) {
                         elem,
                         whereClause,
                         mgens,
-                        unboxingDepth + 1
+                        unboxingDepth + 1,
                     );
                 }
                 if (row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
@@ -1989,7 +2006,7 @@ function initSearch(rawSearchIndex) {
                         elem,
                         whereClause,
                         mgens,
-                        unboxingDepth
+                        unboxingDepth,
                     );
                 }
             }
@@ -2007,7 +2024,7 @@ function initSearch(rawSearchIndex) {
                 return 0;
             }
             const maxPathEditDistance = Math.floor(
-                contains.reduce((acc, next) => acc + next.length, 0) / 3
+                contains.reduce((acc, next) => acc + next.length, 0) / 3,
             );
             let ret_dist = maxPathEditDistance + 1;
             const path = ty.path.split("::");
@@ -2066,12 +2083,13 @@ function initSearch(rawSearchIndex) {
                 crate: item.crate,
                 name: item.name,
                 path: item.path,
-                desc: item.desc,
+                descShard: item.descShard,
+                descIndex: item.descIndex,
                 ty: item.ty,
                 parent: item.parent,
                 type: item.type,
                 is_alias: true,
-                deprecated: item.deprecated,
+                bitIndex: item.bitIndex,
                 implDisambiguator: item.implDisambiguator,
             };
         }
@@ -2192,7 +2210,7 @@ function initSearch(rawSearchIndex) {
             results_others,
             results_in_args,
             results_returned,
-            maxEditDistance
+            maxEditDistance,
         ) {
             if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
                 return;
@@ -2204,7 +2222,7 @@ function initSearch(rawSearchIndex) {
             // atoms in the function not present in the query
             const tfpDist = compareTypeFingerprints(
                 fullId,
-                parsedQuery.typeFingerprint
+                parsedQuery.typeFingerprint,
             );
             if (tfpDist !== null) {
                 const in_args = row.type && row.type.inputs
@@ -2276,7 +2294,7 @@ function initSearch(rawSearchIndex) {
 
             const tfpDist = compareTypeFingerprints(
                 row.id,
-                parsedQuery.typeFingerprint
+                parsedQuery.typeFingerprint,
             );
             if (tfpDist === null) {
                 return;
@@ -2298,10 +2316,10 @@ function initSearch(rawSearchIndex) {
                         row.type.where_clause,
                         mgens,
                         null,
-                        0 // unboxing depth
+                        0, // unboxing depth
                     );
                 },
-                0 // unboxing depth
+                0, // unboxing depth
             )) {
                 return;
             }
@@ -2419,7 +2437,7 @@ function initSearch(rawSearchIndex) {
                         }
 
                         return [typeNameIdMap.get(name).id, constraints];
-                    })
+                    }),
                 );
             }
 
@@ -2446,7 +2464,7 @@ function initSearch(rawSearchIndex) {
                             results_others,
                             results_in_args,
                             results_returned,
-                            maxEditDistance
+                            maxEditDistance,
                         );
                     }
                 }
@@ -2477,10 +2495,15 @@ function initSearch(rawSearchIndex) {
             innerRunQuery();
         }
 
-        const ret = createQueryResults(
+        const [sorted_in_args, sorted_returned, sorted_others] = await Promise.all([
             sortResults(results_in_args, true, currentCrate),
             sortResults(results_returned, true, currentCrate),
             sortResults(results_others, false, currentCrate),
+        ]);
+        const ret = createQueryResults(
+            sorted_in_args,
+            sorted_returned,
+            sorted_others,
             parsedQuery);
         handleAliases(ret, parsedQuery.original.replace(/"/g, ""), filterCrates, currentCrate);
         if (parsedQuery.error !== null && ret.others.length !== 0) {
@@ -2581,14 +2604,14 @@ function initSearch(rawSearchIndex) {
      * @param {ParsedQuery} query
      * @param {boolean}     display - True if this is the active tab
      */
-    function addTab(array, query, display) {
+    async function addTab(array, query, display) {
         const extraClass = display ? " active" : "";
 
         const output = document.createElement("div");
         if (array.length > 0) {
             output.className = "search-results " + extraClass;
 
-            array.forEach(item => {
+            for (const item of array) {
                 const name = item.name;
                 const type = itemTypes[item.ty];
                 const longType = longItemTypes[item.ty];
@@ -2624,7 +2647,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
                 link.appendChild(description);
                 output.appendChild(link);
-            });
+            }
         } else if (query.error === null) {
             output.className = "search-failed" + extraClass;
             output.innerHTML = "No results :(<br/>" +
@@ -2666,7 +2689,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * @param {boolean} go_to_first
      * @param {string} filterCrates
      */
-    function showResults(results, go_to_first, filterCrates) {
+    async function showResults(results, go_to_first, filterCrates) {
         const search = searchState.outputElement();
         if (go_to_first || (results.others.length === 1
             && getSettingValue("go-to-only-result") === "true")
@@ -2699,9 +2722,11 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
         currentResults = results.query.userQuery;
 
-        const ret_others = addTab(results.others, results.query, true);
-        const ret_in_args = addTab(results.in_args, results.query, false);
-        const ret_returned = addTab(results.returned, results.query, false);
+        const [ret_others, ret_in_args, ret_returned] = await Promise.all([
+            addTab(results.others, results.query, true),
+            addTab(results.in_args, results.query, false),
+            addTab(results.returned, results.query, false),
+        ]);
 
         // Navigate to the relevant tab if the current tab is empty, like in case users search
         // for "-> String". If they had selected another tab previously, they have to click on
@@ -2822,7 +2847,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * and display the results.
      * @param {boolean} [forced]
      */
-    function search(forced) {
+    async function search(forced) {
         const query = parseQuery(searchState.input.value.trim());
         let filterCrates = getFilterCrates();
 
@@ -2850,8 +2875,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         // recent search query is added to the browser history.
         updateSearchHistory(buildUrl(query.original, filterCrates));
 
-        showResults(
-            execQuery(query, filterCrates, window.currentCrate),
+        await showResults(
+            await execQuery(query, filterCrates, window.currentCrate),
             params.go_to_first,
             filterCrates);
     }
@@ -2920,7 +2945,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             pathIndex = type[PATH_INDEX_DATA];
             generics = buildItemSearchTypeAll(
                 type[GENERICS_DATA],
-                lowercasePaths
+                lowercasePaths,
             );
             if (type.length > BINDINGS_DATA && type[BINDINGS_DATA].length > 0) {
                 bindings = new Map(type[BINDINGS_DATA].map(binding => {
@@ -3030,101 +3055,49 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * The raw function search type format is generated using serde in
      * librustdoc/html/render/mod.rs: IndexItemFunctionType::write_to_string
      *
-     * @param {{
-     *  string: string,
-     *  offset: number,
-     *  backrefQueue: FunctionSearchType[]
-     * }} itemFunctionDecoder
      * @param {Array<{name: string, ty: number}>} lowercasePaths
-     * @param {Map<string, integer>}
      *
      * @return {null|FunctionSearchType}
      */
-    function buildFunctionSearchType(itemFunctionDecoder, lowercasePaths) {
-        const c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
-        itemFunctionDecoder.offset += 1;
-        const [zero, ua, la, ob, cb] = ["0", "@", "`", "{", "}"].map(c => c.charCodeAt(0));
-        // `` ` `` is used as a sentinel because it's fewer bytes than `null`, and decodes to zero
-        // `0` is a backref
-        if (c === la) {
-            return null;
-        }
-        // sixteen characters after "0" are backref
-        if (c >= zero && c < ua) {
-            return itemFunctionDecoder.backrefQueue[c - zero];
-        }
-        if (c !== ob) {
-            throw ["Unexpected ", c, " in function: expected ", "{", "; this is a bug"];
-        }
-        // call after consuming `{`
-        function decodeList() {
-            let c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
-            const ret = [];
-            while (c !== cb) {
-                ret.push(decode());
-                c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
+    function buildFunctionSearchTypeCallback(lowercasePaths) {
+        return functionSearchType => {
+            if (functionSearchType === 0) {
+                return null;
             }
-            itemFunctionDecoder.offset += 1; // eat cb
-            return ret;
-        }
-        // consumes and returns a list or integer
-        function decode() {
-            let n = 0;
-            let c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
-            if (c === ob) {
-                itemFunctionDecoder.offset += 1;
-                return decodeList();
-            }
-            while (c < la) {
-                n = (n << 4) | (c & 0xF);
-                itemFunctionDecoder.offset += 1;
-                c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
-            }
-            // last character >= la
-            n = (n << 4) | (c & 0xF);
-            const [sign, value] = [n & 1, n >> 1];
-            itemFunctionDecoder.offset += 1;
-            return sign ? -value : value;
-        }
-        const functionSearchType = decodeList();
-        const INPUTS_DATA = 0;
-        const OUTPUT_DATA = 1;
-        let inputs, output;
-        if (typeof functionSearchType[INPUTS_DATA] === "number") {
-            inputs = [buildItemSearchType(functionSearchType[INPUTS_DATA], lowercasePaths)];
-        } else {
-            inputs = buildItemSearchTypeAll(
-                functionSearchType[INPUTS_DATA],
-                lowercasePaths
-            );
-        }
-        if (functionSearchType.length > 1) {
-            if (typeof functionSearchType[OUTPUT_DATA] === "number") {
-                output = [buildItemSearchType(functionSearchType[OUTPUT_DATA], lowercasePaths)];
+            const INPUTS_DATA = 0;
+            const OUTPUT_DATA = 1;
+            let inputs, output;
+            if (typeof functionSearchType[INPUTS_DATA] === "number") {
+                inputs = [buildItemSearchType(functionSearchType[INPUTS_DATA], lowercasePaths)];
             } else {
-                output = buildItemSearchTypeAll(
-                    functionSearchType[OUTPUT_DATA],
-                    lowercasePaths
+                inputs = buildItemSearchTypeAll(
+                    functionSearchType[INPUTS_DATA],
+                    lowercasePaths,
                 );
             }
-        } else {
-            output = [];
-        }
-        const where_clause = [];
-        const l = functionSearchType.length;
-        for (let i = 2; i < l; ++i) {
-            where_clause.push(typeof functionSearchType[i] === "number"
-                ? [buildItemSearchType(functionSearchType[i], lowercasePaths)]
-                : buildItemSearchTypeAll(functionSearchType[i], lowercasePaths));
-        }
-        const ret = {
-            inputs, output, where_clause,
+            if (functionSearchType.length > 1) {
+                if (typeof functionSearchType[OUTPUT_DATA] === "number") {
+                    output = [buildItemSearchType(functionSearchType[OUTPUT_DATA], lowercasePaths)];
+                } else {
+                    output = buildItemSearchTypeAll(
+                        functionSearchType[OUTPUT_DATA],
+                        lowercasePaths,
+                    );
+                }
+            } else {
+                output = [];
+            }
+            const where_clause = [];
+            const l = functionSearchType.length;
+            for (let i = 2; i < l; ++i) {
+                where_clause.push(typeof functionSearchType[i] === "number"
+                    ? [buildItemSearchType(functionSearchType[i], lowercasePaths)]
+                    : buildItemSearchTypeAll(functionSearchType[i], lowercasePaths));
+            }
+            return {
+                inputs, output, where_clause,
+            };
         };
-        itemFunctionDecoder.backrefQueue.unshift(ret);
-        if (itemFunctionDecoder.backrefQueue.length > 16) {
-            itemFunctionDecoder.backrefQueue.pop();
-        }
-        return ret;
     }
 
     /**
@@ -3245,6 +3218,185 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         return functionTypeFingerprint[(fullId * 4) + 3];
     }
 
+    class VlqHexDecoder {
+        constructor(string, cons) {
+            this.string = string;
+            this.cons = cons;
+            this.offset = 0;
+            this.backrefQueue = [];
+        }
+        // call after consuming `{`
+        decodeList() {
+            const cb = "}".charCodeAt(0);
+            let c = this.string.charCodeAt(this.offset);
+            const ret = [];
+            while (c !== cb) {
+                ret.push(this.decode());
+                c = this.string.charCodeAt(this.offset);
+            }
+            this.offset += 1; // eat cb
+            return ret;
+        }
+        // consumes and returns a list or integer
+        decode() {
+            const [ob, la] = ["{", "`"].map(c => c.charCodeAt(0));
+            let n = 0;
+            let c = this.string.charCodeAt(this.offset);
+            if (c === ob) {
+                this.offset += 1;
+                return this.decodeList();
+            }
+            while (c < la) {
+                n = (n << 4) | (c & 0xF);
+                this.offset += 1;
+                c = this.string.charCodeAt(this.offset);
+            }
+            // last character >= la
+            n = (n << 4) | (c & 0xF);
+            const [sign, value] = [n & 1, n >> 1];
+            this.offset += 1;
+            return sign ? -value : value;
+        }
+        next() {
+            const c = this.string.charCodeAt(this.offset);
+            const [zero, ua, la] = ["0", "@", "`"].map(c => c.charCodeAt(0));
+            // sixteen characters after "0" are backref
+            if (c >= zero && c < ua) {
+                this.offset += 1;
+                return this.backrefQueue[c - zero];
+            }
+            // special exception: 0 doesn't use backref encoding
+            // it's already one character, and it's always nullish
+            if (c === la) {
+                this.offset += 1;
+                return this.cons(0);
+            }
+            const result = this.cons(this.decode());
+            this.backrefQueue.unshift(result);
+            if (this.backrefQueue.length > 16) {
+                this.backrefQueue.pop();
+            }
+            return result;
+        }
+    }
+    class RoaringBitmap {
+        constructor(str) {
+            const strdecoded = atob(str);
+            const u8array = new Uint8Array(strdecoded.length);
+            for (let j = 0; j < strdecoded.length; ++j) {
+                u8array[j] = strdecoded.charCodeAt(j);
+            }
+            const has_runs = u8array[0] === 0x3b;
+            const size = has_runs ?
+                ((u8array[2] | (u8array[3] << 8)) + 1) :
+                ((u8array[4] | (u8array[5] << 8) | (u8array[6] << 16) | (u8array[7] << 24)));
+            let i = has_runs ? 4 : 8;
+            let is_run;
+            if (has_runs) {
+                const is_run_len = Math.floor((size + 7) / 8);
+                is_run = u8array.slice(i, i + is_run_len);
+                i += is_run_len;
+            } else {
+                is_run = new Uint8Array();
+            }
+            this.keys = [];
+            this.cardinalities = [];
+            for (let j = 0; j < size; ++j) {
+                this.keys.push(u8array[i] | (u8array[i + 1] << 8));
+                i += 2;
+                this.cardinalities.push((u8array[i] | (u8array[i + 1] << 8)) + 1);
+                i += 2;
+            }
+            this.containers = [];
+            let offsets = null;
+            if (!has_runs || this.keys.length >= 4) {
+                offsets = [];
+                for (let j = 0; j < size; ++j) {
+                    offsets.push(u8array[i] | (u8array[i + 1] << 8) | (u8array[i + 2] << 16) |
+                        (u8array[i + 3] << 24));
+                    i += 4;
+                }
+            }
+            for (let j = 0; j < size; ++j) {
+                if (offsets && offsets[j] !== i) {
+                    console.log(this.containers);
+                    throw new Error(`corrupt bitmap ${j}: ${i} / ${offsets[j]}`);
+                }
+                if (is_run[j >> 3] & (1 << (j & 0x7))) {
+                    const runcount = (u8array[i] | (u8array[i + 1] << 8));
+                    i += 2;
+                    this.containers.push(new RoaringBitmapRun(
+                        runcount,
+                        u8array.slice(i, i + (runcount * 4)),
+                    ));
+                    i += runcount * 4;
+                } else if (this.cardinalities[j] >= 4096) {
+                    this.containers.push(new RoaringBitmapBits(u8array.slice(i, i + 8192)));
+                    i += 8192;
+                } else {
+                    const end = this.cardinalities[j] * 2;
+                    this.containers.push(new RoaringBitmapArray(
+                        this.cardinalities[j],
+                        u8array.slice(i, i + end),
+                    ));
+                    i += end;
+                }
+            }
+        }
+        contains(keyvalue) {
+            const key = keyvalue >> 16;
+            const value = keyvalue & 0xFFFF;
+            for (let i = 0; i < this.keys.length; ++i) {
+                if (this.keys[i] === key) {
+                    return this.containers[i].contains(value);
+                }
+            }
+            return false;
+        }
+    }
+
+    class RoaringBitmapRun {
+        constructor(runcount, array) {
+            this.runcount = runcount;
+            this.array = array;
+        }
+        contains(value) {
+            const l = this.runcount * 4;
+            for (let i = 0; i < l; i += 4) {
+                const start = this.array[i] | (this.array[i + 1] << 8);
+                const lenm1 = this.array[i + 2] | (this.array[i + 3] << 8);
+                if (value >= start && value <= (start + lenm1)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    class RoaringBitmapArray {
+        constructor(cardinality, array) {
+            this.cardinality = cardinality;
+            this.array = array;
+        }
+        contains(value) {
+            const l = this.cardinality * 2;
+            for (let i = 0; i < l; i += 2) {
+                const start = this.array[i] | (this.array[i + 1] << 8);
+                if (value === start) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    class RoaringBitmapBits {
+        constructor(array) {
+            this.array = array;
+        }
+        contains(value) {
+            return !!(this.array[value >> 3] & (1 << (value & 7)));
+        }
+    }
+
     /**
      * Convert raw search index into in-memory search index.
      *
@@ -3252,6 +3404,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      */
     function buildIndex(rawSearchIndex) {
         searchIndex = [];
+        searchIndexDeprecated = new Map();
+        searchIndexEmptyDesc = new Map();
         const charA = "A".charCodeAt(0);
         let currentIndex = 0;
         let id = 0;
@@ -3271,26 +3425,48 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         id = 0;
 
         for (const [crate, crateCorpus] of rawSearchIndex) {
+            // a string representing the lengths of each description shard
+            // a string representing the list of function types
+            const itemDescShardDecoder = new VlqHexDecoder(crateCorpus.D, noop => noop);
+            let descShard = {
+                crate,
+                shard: 0,
+                start: 0,
+                len: itemDescShardDecoder.next(),
+                promise: null,
+                resolve: null,
+            };
+            const descShardList = [ descShard ];
+
+            // Deprecated items and items with no description
+            searchIndexDeprecated.set(crate, new RoaringBitmap(crateCorpus.c));
+            searchIndexEmptyDesc.set(crate, new RoaringBitmap(crateCorpus.e));
+            let descIndex = 0;
+
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
             // https://mathiasbynens.be/notes/shapes-ics
             const crateRow = {
-                crate: crate,
+                crate,
                 ty: 3, // == ExternCrate
                 name: crate,
                 path: "",
-                desc: crateCorpus.doc,
+                descShard,
+                descIndex,
                 parent: undefined,
                 type: null,
-                id: id,
+                id,
                 word: crate,
                 normalizedName: crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, ""),
-                deprecated: null,
+                bitIndex: 0,
                 implDisambiguator: null,
             };
             id += 1;
             searchIndex.push(crateRow);
             currentIndex += 1;
+            if (!searchIndexEmptyDesc.get(crate).contains(0)) {
+                descIndex += 1;
+            }
 
             // a String of one character item type codes
             const itemTypes = crateCorpus.t;
@@ -3302,19 +3478,9 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // i.e. if indices 4 and 11 are present, but 5-10 and 12-13 are not present,
             // 5-10 will fall back to the path for 4 and 12-13 will fall back to the path for 11
             const itemPaths = new Map(crateCorpus.q);
-            // an array of (String) descriptions
-            const itemDescs = crateCorpus.d;
             // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
             const itemParentIdxs = crateCorpus.i;
-            // a string representing the list of function types
-            const itemFunctionDecoder = {
-                string: crateCorpus.f,
-                offset: 0,
-                backrefQueue: [],
-            };
-            // an array of (Number) indices for the deprecated items
-            const deprecatedItems = new Set(crateCorpus.c);
-            // an array of (Number) indices for the deprecated items
+            // a map Number, string for impl disambiguators
             const implDisambiguator = new Map(crateCorpus.b);
             // an array of [(Number) item type,
             //              (String) name]
@@ -3325,6 +3491,12 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
             // an array of [{name: String, ty: Number}]
             const lowercasePaths = [];
+
+            // a string representing the list of function types
+            const itemFunctionDecoder = new VlqHexDecoder(
+                crateCorpus.f,
+                buildFunctionSearchTypeCallback(lowercasePaths),
+            );
 
             // convert `rawPaths` entries into object form
             // generate normalizedPaths for function search mode
@@ -3354,12 +3526,26 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             lastPath = "";
             len = itemTypes.length;
             for (let i = 0; i < len; ++i) {
+                const bitIndex = i + 1;
+                if (descIndex >= descShard.len &&
+                    !searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
+                    descShard = {
+                        crate,
+                        shard: descShard.shard + 1,
+                        start: descShard.start + descShard.len,
+                        len: itemDescShardDecoder.next(),
+                        promise: null,
+                        resolve: null,
+                    };
+                    descIndex = 0;
+                    descShardList.push(descShard);
+                }
                 let word = "";
                 if (typeof itemNames[i] === "string") {
                     word = itemNames[i].toLowerCase();
                 }
                 const path = itemPaths.has(i) ? itemPaths.get(i) : lastPath;
-                const type = buildFunctionSearchType(itemFunctionDecoder, lowercasePaths);
+                const type = itemFunctionDecoder.next();
                 if (type !== null) {
                     if (type) {
                         const fp = functionTypeFingerprint.subarray(id * 4, (id + 1) * 4);
@@ -3380,22 +3566,26 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 // This object should have exactly the same set of fields as the "crateRow"
                 // object defined above.
                 const row = {
-                    crate: crate,
+                    crate,
                     ty: itemTypes.charCodeAt(i) - charA,
                     name: itemNames[i],
-                    path: path,
-                    desc: itemDescs[i],
+                    path,
+                    descShard,
+                    descIndex,
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                     type,
-                    id: id,
+                    id,
                     word,
                     normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
-                    deprecated: deprecatedItems.has(i),
+                    bitIndex,
                     implDisambiguator: implDisambiguator.has(i) ? implDisambiguator.get(i) : null,
                 };
                 id += 1;
                 searchIndex.push(row);
                 lastPath = row.path;
+                if (!searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
+                    descIndex += 1;
+                }
             }
 
             if (aliases) {
@@ -3419,6 +3609,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 }
             }
             currentIndex += itemTypes.length;
+            searchState.descShards.set(crate, descShardList);
         }
         // Drop the (rather large) hash table used for reusing function items
         TYPES_POOL = new Map();

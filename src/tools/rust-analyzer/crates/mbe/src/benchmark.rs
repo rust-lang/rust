@@ -23,7 +23,11 @@ fn benchmark_parse_macro_rules() {
         let _pt = bench("mbe parse macro rules");
         rules
             .values()
-            .map(|it| DeclarativeMacro::parse_macro_rules(it, true, true).rules.len())
+            .map(|it| {
+                DeclarativeMacro::parse_macro_rules(it, |_| span::Edition::CURRENT, true)
+                    .rules
+                    .len()
+            })
             .sum()
     };
     assert_eq!(hash, 1144);
@@ -51,10 +55,12 @@ fn benchmark_expand_macro_rules() {
     assert_eq!(hash, 69413);
 }
 
-fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro<Span>> {
+fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro> {
     macro_rules_fixtures_tt()
         .into_iter()
-        .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt, true, true)))
+        .map(|(id, tt)| {
+            (id, DeclarativeMacro::parse_macro_rules(&tt, |_| span::Edition::CURRENT, true))
+        })
         .collect()
 }
 
@@ -80,7 +86,7 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<Span>> {
 
 /// Generate random invocation fixtures from rules
 fn invocation_fixtures(
-    rules: &FxHashMap<String, DeclarativeMacro<Span>>,
+    rules: &FxHashMap<String, DeclarativeMacro>,
 ) -> Vec<(String, tt::Subtree<Span>)> {
     let mut seed = 123456789;
     let mut res = Vec::new();
@@ -128,11 +134,7 @@ fn invocation_fixtures(
     }
     return res;
 
-    fn collect_from_op(
-        op: &Op<Span>,
-        token_trees: &mut Vec<tt::TokenTree<Span>>,
-        seed: &mut usize,
-    ) {
+    fn collect_from_op(op: &Op, token_trees: &mut Vec<tt::TokenTree<Span>>, seed: &mut usize) {
         return match op {
             Op::Var { kind, .. } => match kind.as_ref() {
                 Some(MetaVarKind::Ident) => token_trees.push(make_ident("foo")),

@@ -1277,13 +1277,6 @@ impl GenericBound {
         false
     }
 
-    pub(crate) fn get_poly_trait(&self) -> Option<PolyTrait> {
-        if let GenericBound::TraitBound(ref p, _) = *self {
-            return Some(p.clone());
-        }
-        None
-    }
-
     pub(crate) fn get_trait_path(&self) -> Option<Path> {
         if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, _) = *self {
             Some(trait_.clone())

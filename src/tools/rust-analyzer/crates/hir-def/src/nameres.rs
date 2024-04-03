@@ -59,14 +59,14 @@ mod tests;
 
 use std::ops::Deref;
 
-use base_db::{CrateId, Edition, FileId};
+use base_db::{CrateId, FileId};
 use hir_expand::{
     name::Name, proc_macro::ProcMacroKind, ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId,
 };
 use itertools::Itertools;
 use la_arena::Arena;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{FileAstId, ROOT_ERASED_FILE_AST_ID};
+use span::{Edition, FileAstId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{ast, SmolStr};
 use triomphe::Arc;
@@ -737,7 +737,7 @@ impl MacroSubNs {
             MacroId::ProcMacroId(it) => {
                 return match it.lookup(db).kind {
                     ProcMacroKind::CustomDerive | ProcMacroKind::Attr => Self::Attr,
-                    ProcMacroKind::FuncLike => Self::Bang,
+                    ProcMacroKind::Bang => Self::Bang,
                 };
             }
         };

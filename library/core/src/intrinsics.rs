@@ -2146,6 +2146,18 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn bitreverse<T: Copy>(x: T) -> T;
 
+    /// Does a three-way comparison between the two integer arguments.
+    ///
+    /// This is included as an intrinsic as it's useful to let it be one thing
+    /// in MIR, rather than the multiple checks and switches that make its IR
+    /// large and difficult to optimize.
+    ///
+    /// The stabilized version of this intrinsic is [`Ord::cmp`].
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_three_way_compare", issue = "none")]
+    #[rustc_safe_intrinsic]
+    pub fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> crate::cmp::Ordering;
+
     /// Performs checked integer addition.
     ///
     /// Note that, unlike most intrinsics, this is safe to call;
@@ -2224,18 +2236,20 @@ extern "rust-intrinsic" {
     /// Safe wrappers for this intrinsic are available on the integer
     /// primitives via the `checked_shl` method. For example,
     /// [`u32::checked_shl`]
+    #[cfg(not(bootstrap))]
     #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
     #[rustc_nounwind]
-    pub fn unchecked_shl<T: Copy>(x: T, y: T) -> T;
+    pub fn unchecked_shl<T: Copy, U: Copy>(x: T, y: U) -> T;
     /// Performs an unchecked right shift, resulting in undefined behavior when
     /// `y < 0` or `y >= N`, where N is the width of T in bits.
     ///
     /// Safe wrappers for this intrinsic are available on the integer
     /// primitives via the `checked_shr` method. For example,
     /// [`u32::checked_shr`]
+    #[cfg(not(bootstrap))]
     #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
     #[rustc_nounwind]
-    pub fn unchecked_shr<T: Copy>(x: T, y: T) -> T;
+    pub fn unchecked_shr<T: Copy, U: Copy>(x: T, y: U) -> T;
 
     /// Returns the result of an unchecked addition, resulting in
     /// undefined behavior when `x + y > T::MAX` or `x + y < T::MIN`.

@@ -1034,9 +1034,11 @@ impl PlaceholderLike for PlaceholderConst {
     }
 }
 
-/// When type checking, we use the `ParamEnv` to track
-/// details about the set of where-clauses that are in scope at this
-/// particular point.
+/// When interacting with the type system we must provide information about the
+/// environment. `ParamEnv` is the type that represents this information. See the
+/// [dev guide chapter][param_env_guide] for more information.
+///
+/// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ParamEnv<'tcx> {
     /// This packs both caller bounds and the reveal enum into one pointer.
@@ -1103,8 +1105,11 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
 impl<'tcx> ParamEnv<'tcx> {
     /// Construct a trait environment suitable for contexts where
     /// there are no where-clauses in scope. Hidden types (like `impl
-    /// Trait`) are left hidden, so this is suitable for ordinary
-    /// type-checking.
+    /// Trait`) are left hidden. In majority of cases it is incorrect
+    /// to use an empty environment. See the [dev guide section][param_env_guide]
+    /// for information on what a `ParamEnv` is and how to acquire one.
+    ///
+    /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
     #[inline]
     pub fn empty() -> Self {
         Self::new(List::empty(), Reveal::UserFacing)
@@ -1552,7 +1557,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     attr::ReprRust => ReprFlags::empty(),
                     attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked(pack) => {
-                        let pack = Align::from_bytes(pack as u64).unwrap();
                         min_pack = Some(if let Some(min_pack) = min_pack {
                             min_pack.min(pack)
                         } else {
@@ -1584,7 +1588,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         ReprFlags::empty()
                     }
                     attr::ReprAlign(align) => {
-                        max_align = max_align.max(Some(Align::from_bytes(align as u64).unwrap()));
+                        max_align = max_align.max(Some(align));
                         ReprFlags::empty()
                     }
                 });
@@ -2164,7 +2168,7 @@ pub struct DestructuredConst<'tcx> {
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;

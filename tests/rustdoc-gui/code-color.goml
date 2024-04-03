@@ -8,7 +8,7 @@ show-text: true
 
 define-function: (
     "check-colors",
-    (theme, doc_code_color, doc_inline_code_color),
+    [theme, doc_code_color, doc_inline_code_color],
     block {
         // Set the theme.
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}

@@ -21,23 +21,30 @@ use crate::{
 pub(crate) fn remove_unnecessary_else(
     ctx: &DiagnosticsContext<'_>,
     d: &RemoveUnnecessaryElse,
-) -> Diagnostic {
+) -> Option<Diagnostic> {
+    if d.if_expr.file_id.macro_file().is_some() {
+        // FIXME: Our infra can't handle allow from within macro expansions rn
+        return None;
+    }
+
     let display_range = adjusted_display_range(ctx, d.if_expr, &|if_expr| {
         if_expr.else_token().as_ref().map(SyntaxToken::text_range)
     });
-    Diagnostic::new(
-        DiagnosticCode::Ra("remove-unnecessary-else", Severity::WeakWarning),
-        "remove unnecessary else block",
-        display_range,
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::Ra("remove-unnecessary-else", Severity::WeakWarning),
+            "remove unnecessary else block",
+            display_range,
+        )
+        .experimental()
+        .with_fixes(fixes(ctx, d)),
     )
-    .experimental()
-    .with_fixes(fixes(ctx, d))
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveUnnecessaryElse) -> Option<Vec<Assist>> {
     let root = ctx.sema.db.parse_or_expand(d.if_expr.file_id);
     let if_expr = d.if_expr.value.to_node(&root);
-    let if_expr = ctx.sema.original_ast_node(if_expr.clone())?;
+    let if_expr = ctx.sema.original_ast_node(if_expr)?;
 
     let mut indent = IndentLevel::from_node(if_expr.syntax());
     let has_parent_if_expr = if_expr.syntax().parent().and_then(ast::IfExpr::cast).is_some();

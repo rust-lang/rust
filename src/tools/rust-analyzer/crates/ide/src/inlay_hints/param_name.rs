@@ -57,7 +57,6 @@ pub(super) fn hints(
             let label =
                 InlayHintLabel::simple(format!("{param_name}{colon}"), None, linked_location);
             InlayHint {
-                needs_resolve: label.needs_resolve(),
                 range,
                 kind: InlayKind::Parameter,
                 label,

@@ -1128,10 +1128,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         err: &mut Diag<'_>,
     ) -> bool {
         let span = obligation.cause.span;
-        struct V {
+        /// Look for the (direct) sub-expr of `?`, and return it if it's a `.` method call.
+        struct FindMethodSubexprOfTry {
             search_span: Span,
         }
-        impl<'v> Visitor<'v> for V {
+        impl<'v> Visitor<'v> for FindMethodSubexprOfTry {
             type Result = ControlFlow<&'v hir::Expr<'v>>;
             fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) -> Self::Result {
                 if let hir::ExprKind::Match(expr, _arms, hir::MatchSource::TryDesugar(_)) = ex.kind
@@ -1149,8 +1150,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. }) => body_id,
             _ => return false,
         };
-        let ControlFlow::Break(expr) =
-            (V { search_span: span }).visit_body(self.tcx.hir().body(*body_id))
+        let ControlFlow::Break(expr) = (FindMethodSubexprOfTry { search_span: span })
+            .visit_body(self.tcx.hir().body(*body_id))
         else {
             return false;
         };

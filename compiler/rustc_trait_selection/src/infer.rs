@@ -49,8 +49,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// - the parameter environment
     ///
     /// Invokes `evaluate_obligation`, so in the event that evaluating
-    /// `Ty: Trait` causes overflow, EvaluatedToErrStackDependent
-    /// (or EvaluatedToAmbigStackDependent) will be returned.
+    /// `Ty: Trait` causes overflow, EvaluatedToAmbigStackDependent will be returned.
     #[instrument(level = "debug", skip(self, params), ret)]
     fn type_implements_trait(
         &self,

@@ -9,21 +9,21 @@ use chalk_ir::{
     AdtId, DebruijnIndex, Scalar,
 };
 use hir_def::{
-    builtin_type::BuiltinType, generics::TypeOrConstParamData, ConstParamId, DefWithBodyId,
-    GenericDefId, TraitId, TypeAliasId,
+    builtin_type::BuiltinType, DefWithBodyId, GenericDefId, GenericParamId, TraitId, TypeAliasId,
 };
 use smallvec::SmallVec;
 
 use crate::{
-    consteval::unknown_const_as_generic, db::HirDatabase, infer::unify::InferenceTable, primitive,
-    to_assoc_type_id, to_chalk_trait_id, utils::generics, Binders, BoundVar, CallableSig,
-    GenericArg, GenericArgData, Interner, ProjectionTy, Substitution, TraitRef, Ty, TyDefId, TyExt,
-    TyKind,
+    consteval::unknown_const_as_generic, db::HirDatabase, error_lifetime,
+    infer::unify::InferenceTable, primitive, to_assoc_type_id, to_chalk_trait_id, utils::generics,
+    Binders, BoundVar, CallableSig, GenericArg, GenericArgData, Interner, ProjectionTy,
+    Substitution, TraitRef, Ty, TyDefId, TyExt, TyKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParamKind {
     Type,
+    Lifetime,
     Const(Ty),
 }
 
@@ -107,6 +107,9 @@ impl<D> TyBuilder<D> {
             ParamKind::Const(ty) => {
                 BoundVar::new(debruijn, idx).to_const(Interner, ty.clone()).cast(Interner)
             }
+            ParamKind::Lifetime => {
+                BoundVar::new(debruijn, idx).to_lifetime(Interner).cast(Interner)
+            }
         });
         this.vec.extend(filler.take(this.remaining()).casted(Interner));
         assert_eq!(this.remaining(), 0);
@@ -119,6 +122,7 @@ impl<D> TyBuilder<D> {
         let filler = this.param_kinds[this.vec.len()..].iter().map(|x| match x {
             ParamKind::Type => TyKind::Error.intern(Interner).cast(Interner),
             ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            ParamKind::Lifetime => error_lifetime().cast(Interner),
         });
         this.vec.extend(filler.casted(Interner));
         assert_eq!(this.remaining(), 0);
@@ -130,6 +134,7 @@ impl<D> TyBuilder<D> {
         self.fill(|x| match x {
             ParamKind::Type => table.new_type_var().cast(Interner),
             ParamKind::Const(ty) => table.new_const_var(ty.clone()).cast(Interner),
+            ParamKind::Lifetime => table.new_lifetime_var().cast(Interner),
         })
     }
 
@@ -142,7 +147,8 @@ impl<D> TyBuilder<D> {
     fn assert_match_kind(&self, a: &chalk_ir::GenericArg<Interner>, e: &ParamKind) {
         match (a.data(Interner), e) {
             (GenericArgData::Ty(_), ParamKind::Type)
-            | (GenericArgData::Const(_), ParamKind::Const(_)) => (),
+            | (GenericArgData::Const(_), ParamKind::Const(_))
+            | (GenericArgData::Lifetime(_), ParamKind::Lifetime) => (),
             _ => panic!("Mismatched kinds: {a:?}, {:?}, {:?}", self.vec, self.param_kinds),
         }
     }
@@ -201,10 +207,11 @@ impl TyBuilder<()> {
         Substitution::from_iter(
             Interner,
             params.iter_id().map(|id| match id {
-                either::Either::Left(_) => TyKind::Error.intern(Interner).cast(Interner),
-                either::Either::Right(id) => {
+                GenericParamId::TypeParamId(_) => TyKind::Error.intern(Interner).cast(Interner),
+                GenericParamId::ConstParamId(id) => {
                     unknown_const_as_generic(db.const_param_ty(id)).cast(Interner)
                 }
+                GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
             }),
         )
     }
@@ -219,11 +226,10 @@ impl TyBuilder<()> {
         assert!(generics.parent_generics().is_some() == parent_subst.is_some());
         let params = generics
             .iter_self()
-            .map(|(id, data)| match data {
-                TypeOrConstParamData::TypeParamData(_) => ParamKind::Type,
-                TypeOrConstParamData::ConstParamData(_) => {
-                    ParamKind::Const(db.const_param_ty(ConstParamId::from_unchecked(id)))
-                }
+            .map(|(id, _data)| match id {
+                GenericParamId::TypeParamId(_) => ParamKind::Type,
+                GenericParamId::ConstParamId(id) => ParamKind::Const(db.const_param_ty(id)),
+                GenericParamId::LifetimeParamId(_) => ParamKind::Lifetime,
             })
             .collect();
         TyBuilder::new((), params, parent_subst)
