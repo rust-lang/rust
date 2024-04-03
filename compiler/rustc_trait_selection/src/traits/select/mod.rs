@@ -60,6 +60,20 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 mod candidate_assembly;
 mod confirmation;
 
+/// Whether to consider the binder of higher ranked goals for the `leak_check` when
+/// evaluating higher-ranked goals. See #119820 for more info.
+///
+/// While this is a bit hacky, it is necessary to match the behavior of the new solver:
+/// We eagerly instantiate binders in the new solver, outside of candidate selection, so
+/// the leak check inside of candidates does not consider any bound vars from the higher
+/// ranked goal. However, we do exit the binder once we're completely finished with a goal,
+/// so the leak-check can be used in evaluate by causing nested higher-ranked goals to fail.
+#[derive(Debug, Copy, Clone)]
+enum LeakCheckHigherRankedGoal {
+    No,
+    Yes,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum IntercrateAmbiguityCause<'tcx> {
     DownstreamCrate { trait_ref: ty::TraitRef<'tcx>, self_ty: Option<Ty<'tcx>> },
@@ -384,7 +398,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let mut no_candidates_apply = true;
 
                     for c in candidate_set.vec.iter() {
-                        if self.evaluate_candidate(stack, c)?.may_apply() {
+                        if self
+                            .evaluate_candidate(stack, c, LeakCheckHigherRankedGoal::No)?
+                            .may_apply()
+                        {
                             no_candidates_apply = false;
                             break;
                         }
@@ -455,7 +472,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // is needed for specialization. Propagate overflow if it occurs.
         let mut candidates = candidates
             .into_iter()
-            .map(|c| match self.evaluate_candidate(stack, &c) {
+            .map(|c| match self.evaluate_candidate(stack, &c, LeakCheckHigherRankedGoal::No) {
                 Ok(eval) if eval.may_apply() => {
                     Ok(Some(EvaluatedCandidate { candidate: c, evaluation: eval }))
                 }
@@ -545,7 +562,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         debug_assert!(!self.infcx.next_trait_solver());
-        self.evaluation_probe(|this| {
+        self.evaluation_probe(|this, _outer_universe| {
             let goal =
                 this.infcx.resolve_vars_if_possible((obligation.predicate, obligation.param_env));
             let mut result = this.evaluate_predicate_recursively(
@@ -561,13 +578,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
+    /// Computes the evaluation result of `op`, discarding any constraints.
+    ///
+    /// This also runs for leak check to allow higher ranked region errors to impact
+    /// selection. By default it checks for leaks from all universes created inside of
+    /// `op`, but this can be overwritten if necessary.
     fn evaluation_probe(
         &mut self,
-        op: impl FnOnce(&mut Self) -> Result<EvaluationResult, OverflowError>,
+        op: impl FnOnce(&mut Self, &mut ty::UniverseIndex) -> Result<EvaluationResult, OverflowError>,
     ) -> Result<EvaluationResult, OverflowError> {
         self.infcx.probe(|snapshot| -> Result<EvaluationResult, OverflowError> {
-            let outer_universe = self.infcx.universe();
-            let result = op(self)?;
+            let mut outer_universe = self.infcx.universe();
+            let result = op(self, &mut outer_universe)?;
 
             match self.infcx.leak_check(outer_universe, Some(snapshot)) {
                 Ok(()) => {}
@@ -586,9 +608,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
-    /// Evaluates the predicates in `predicates` recursively. Note that
-    /// this applies projections in the predicates, and therefore
+    /// Evaluates the predicates in `predicates` recursively. This may
+    /// guide inference. If this is not desired, run it inside of a
     /// is run within an inference probe.
+    /// `probe`.
     #[instrument(skip(self, stack), level = "debug")]
     fn evaluate_predicates_recursively<'o, I>(
         &mut self,
@@ -1194,7 +1217,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match self.candidate_from_obligation(stack) {
-            Ok(Some(c)) => self.evaluate_candidate(stack, &c),
+            Ok(Some(c)) => self.evaluate_candidate(stack, &c, LeakCheckHigherRankedGoal::Yes),
             Ok(None) => Ok(EvaluatedToAmbig),
             Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
             Err(..) => Ok(EvaluatedToErr),
@@ -1219,6 +1242,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Further evaluates `candidate` to decide whether all type parameters match and whether nested
     /// obligations are met. Returns whether `candidate` remains viable after this further
     /// scrutiny.
+    ///
+    /// Depending on the value of [LeakCheckHigherRankedGoal], we may ignore the binder of the goal
+    /// when eagerly detecting higher ranked region errors via the `leak_check`. See that enum for
+    /// more info.
     #[instrument(
         level = "debug",
         skip(self, stack),
@@ -1229,10 +1256,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
         candidate: &SelectionCandidate<'tcx>,
+        leak_check_higher_ranked_goal: LeakCheckHigherRankedGoal,
     ) -> Result<EvaluationResult, OverflowError> {
-        let mut result = self.evaluation_probe(|this| {
-            let candidate = (*candidate).clone();
-            match this.confirm_candidate(stack.obligation, candidate) {
+        let mut result = self.evaluation_probe(|this, outer_universe| {
+            // We eagerly instantiate higher ranked goals to prevent universe errors
+            // from impacting candidate selection. This matches the behavior of the new
+            // solver. This slightly weakens type inference.
+            //
+            // In case there are no unresolved type or const variables this
+            // should still not be necessary to select a unique impl as any overlap
+            // relying on a universe error from higher ranked goals should have resulted
+            // in an overlap error in coherence.
+            let p = self.infcx.enter_forall_and_leak_universe(stack.obligation.predicate);
+            let obligation = stack.obligation.with(this.tcx(), ty::Binder::dummy(p));
+            match leak_check_higher_ranked_goal {
+                LeakCheckHigherRankedGoal::No => *outer_universe = self.infcx.universe(),
+                LeakCheckHigherRankedGoal::Yes => {}
+            }
+
+            match this.confirm_candidate(&obligation, candidate.clone()) {
                 Ok(selection) => {
                     debug!(?selection);
                     this.evaluate_predicates_recursively(
@@ -1657,8 +1699,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         stack: &TraitObligationStack<'o, 'tcx>,
         where_clause_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        self.evaluation_probe(|this| {
-            match this.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
+        self.evaluation_probe(|this, outer_universe| {
+            // Eagerly instantiate higher ranked goals.
+            //
+            // See the comment in `evaluate_candidate` to see why.
+            let p = self.infcx.enter_forall_and_leak_universe(stack.obligation.predicate);
+            let obligation = stack.obligation.with(this.tcx(), ty::Binder::dummy(p));
+            *outer_universe = self.infcx.universe();
+            match this.match_where_clause_trait_ref(&obligation, where_clause_trait_ref) {
                 Ok(obligations) => this.evaluate_predicates_recursively(stack.list(), obligations),
                 Err(()) => Ok(EvaluatedToErr),
             }
