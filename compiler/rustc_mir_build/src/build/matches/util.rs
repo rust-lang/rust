@@ -249,7 +249,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                 default_irrefutable()
             }
 
-            PatKind::DerefPattern { ref subpattern } => {
+            PatKind::DerefPattern { ref subpattern, .. } => {
                 // Create a new temporary for each deref pattern.
                 // FIXME(deref_patterns): dedup temporaries to avoid multiple `deref()` calls?
                 let temp = cx.temp(
