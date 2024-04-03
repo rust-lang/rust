@@ -52,6 +52,8 @@ pub trait FileDescriptor: std::fmt::Debug + Any {
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>>;
 
     fn is_tty(&self, _communicate_allowed: bool) -> bool {
+        // Most FDs are not tty's and the consequence of a wrong `false` are minor,
+        // so we use a default impl here.
         false
     }
 }

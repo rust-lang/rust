@@ -6,7 +6,6 @@ use crate::*;
 /// Pair of connected sockets.
 ///
 /// We currently don't allow sending any data through this pair, so this can be just a dummy.
-/// FIXME: show proper errors when trying to send/receive
 #[derive(Debug)]
 struct SocketPair;
 

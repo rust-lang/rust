@@ -1,12 +1,50 @@
-use std::cell::Cell;
+use std::io;
+
+use rustc_data_structures::fx::FxHashMap;
 
 use crate::shims::unix::*;
 use crate::*;
-use epoll::{Epoll, EpollEvent};
-use event::Event;
 
-pub mod epoll;
-pub mod event;
+/// An `Epoll` file descriptor connects file handles and epoll events
+#[derive(Clone, Debug, Default)]
+struct Epoll {
+    /// The file descriptors we are watching, and what we are watching for.
+    file_descriptors: FxHashMap<i32, EpollEvent>,
+}
+
+/// Epoll Events associate events with data.
+/// These fields are currently unused by miri.
+/// This matches the `epoll_event` struct defined
+/// by the epoll_ctl man page. For more information
+/// see the man page:
+///
+/// <https://man7.org/linux/man-pages/man2/epoll_ctl.2.html>
+#[derive(Clone, Debug)]
+struct EpollEvent {
+    #[allow(dead_code)]
+    events: u32,
+    /// `Scalar<Provenance>` is used to represent the
+    /// `epoll_data` type union.
+    #[allow(dead_code)]
+    data: Scalar<Provenance>,
+}
+
+impl FileDescriptor for Epoll {
+    fn name(&self) -> &'static str {
+        "epoll"
+    }
+
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+        Ok(Box::new(self.clone()))
+    }
+
+    fn close<'tcx>(
+        self: Box<Self>,
+        _communicate_allowed: bool,
+    ) -> InterpResult<'tcx, io::Result<i32>> {
+        Ok(Ok(0))
+    }
+}
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
@@ -155,50 +193,5 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         } else {
             Ok(Scalar::from_i32(this.fd_not_found()?))
         }
-    }
-
-    /// This function creates an `Event` that is used as an event wait/notify mechanism by
-    /// user-space applications, and by the kernel to notify user-space applications of events.
-    /// The `Event` contains an `u64` counter maintained by the kernel. The counter is initialized
-    /// with the value specified in the `initval` argument.
-    ///
-    /// A new file descriptor referring to the `Event` is returned. The `read`, `write`, `poll`,
-    /// `select`, and `close` operations can be performed on the file descriptor. For more
-    /// information on these operations, see the man page linked below.
-    ///
-    /// The `flags` are not currently implemented for eventfd.
-    /// The `flags` may be bitwise ORed to change the behavior of `eventfd`:
-    /// `EFD_CLOEXEC` - Set the close-on-exec (`FD_CLOEXEC`) flag on the new file descriptor.
-    /// `EFD_NONBLOCK` - Set the `O_NONBLOCK` file status flag on the new open file description.
-    /// `EFD_SEMAPHORE` - miri does not support semaphore-like semantics.
-    ///
-    /// <https://linux.die.net/man/2/eventfd>
-    #[expect(clippy::needless_if)]
-    fn eventfd(
-        &mut self,
-        val: &OpTy<'tcx, Provenance>,
-        flags: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
-        let this = self.eval_context_mut();
-
-        let val = this.read_scalar(val)?.to_u32()?;
-        let flags = this.read_scalar(flags)?.to_i32()?;
-
-        let efd_cloexec = this.eval_libc_i32("EFD_CLOEXEC");
-        let efd_nonblock = this.eval_libc_i32("EFD_NONBLOCK");
-        let efd_semaphore = this.eval_libc_i32("EFD_SEMAPHORE");
-
-        if flags & (efd_cloexec | efd_nonblock | efd_semaphore) == 0 {
-            throw_unsup_format!("{flags} is unsupported");
-        }
-        // FIXME handle the cloexec and nonblock flags
-        if flags & efd_cloexec == efd_cloexec {}
-        if flags & efd_nonblock == efd_nonblock {}
-        if flags & efd_semaphore == efd_semaphore {
-            throw_unsup_format!("EFD_SEMAPHORE is unsupported");
-        }
-
-        let fd = this.machine.fds.insert_fd(Box::new(Event { val: Cell::new(val.into()) }));
-        Ok(Scalar::from_i32(fd))
     }
 }
