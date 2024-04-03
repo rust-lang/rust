@@ -174,8 +174,12 @@ pub fn provide(providers: &mut Providers) {
             let parent_owner_id = tcx.local_def_id_to_hir_id(parent_def_id).owner;
             HirId {
                 owner: parent_owner_id,
-                local_id: tcx.hir_crate(()).owners[parent_owner_id.def_id].unwrap().parenting
-                    [&owner_id.def_id],
+                local_id: tcx.hir_crate(()).owners[parent_owner_id.def_id]
+                    .unwrap()
+                    .parenting
+                    .get(&owner_id.def_id)
+                    .copied()
+                    .unwrap_or(ItemLocalId::from_u32(0)),
             }
         })
     };
