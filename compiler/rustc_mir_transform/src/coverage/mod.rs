@@ -150,6 +150,9 @@ fn create_mappings<'tcx>(
                     true_term: term_for_bcb(true_bcb),
                     false_term: term_for_bcb(false_bcb),
                 },
+                BcbMappingKind::MCDCDecision { bitmap_idx, num_conditions } => {
+                    MappingKind::MCDCDecision { bitmap_idx, num_conditions }
+                }
             };
             let code_region = make_code_region(source_map, file_name, span, body_span)?;
             Some(Mapping { kind, code_region })

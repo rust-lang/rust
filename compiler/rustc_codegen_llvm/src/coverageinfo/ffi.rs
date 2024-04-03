@@ -102,8 +102,6 @@ pub enum RegionKind {
 
     /// A DecisionRegion represents a top-level boolean expression and is
     /// associated with a variable length bitmap index and condition number.
-    /// FIXME(dprn): Remove unused variables.
-    #[allow(dead_code)]
     MCDCDecisionRegion = 5,
 
     /// A Branch Region can be extended to include IDs to facilitate MC/DC.
@@ -208,6 +206,32 @@ impl CounterMappingRegion {
                 end_col,
                 None,
             ),
+            MappingKind::MCDCBranch { true_term, false_term, id, true_id, false_id } => {
+                Self::branch_region(
+                    Counter::from_term(true_term),
+                    Counter::from_term(false_term),
+                    local_file_id,
+                    start_line,
+                    start_col,
+                    end_line,
+                    end_col,
+                    Some(MCDCParameters {
+                        id,
+                        true_id,
+                        false_id,
+                        .. Default::default()
+                    }),
+                )
+            }
+            MappingKind::MCDCDecision { bitmap_idx, num_conditions } => Self::decision_region(
+                bitmap_idx,
+                num_conditions,
+                local_file_id,
+                start_line,
+                start_col,
+                end_line,
+                end_col,
+            ),
         }
     }
 
@@ -263,7 +287,6 @@ impl CounterMappingRegion {
         }
     }
 
-    #[allow(dead_code)]
     pub(crate) fn decision_region(
         bitmap_idx: u32,
         num_conditions: u32,
@@ -283,11 +306,7 @@ impl CounterMappingRegion {
             end_line,
             end_col,
             kind: RegionKind::MCDCDecisionRegion,
-            mcdc_params: MCDCParameters {
-                bitmap_idx,
-                num_conditions,
-                .. Default::default()
-            },
+            mcdc_params: MCDCParameters { bitmap_idx, num_conditions, ..Default::default() },
         }
     }
 

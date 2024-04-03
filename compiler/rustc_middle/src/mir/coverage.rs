@@ -287,16 +287,23 @@ pub enum MappingKind {
     Code(CovTerm),
     /// Associates a branch region with separate counters for true and false.
     Branch { true_term: CovTerm, false_term: CovTerm },
+    /// FIXME(dprn): doc
+    MCDCBranch { true_term: CovTerm, false_term: CovTerm, id: u32, true_id: u32, false_id: u32 },
+    /// Associates an MCDC Decision with
+    MCDCDecision { bitmap_idx: u32, num_conditions: u32 },
 }
 
 impl MappingKind {
     /// Iterator over all coverage terms in this mapping kind.
     pub fn terms(&self) -> impl Iterator<Item = CovTerm> {
-        let one = |a| std::iter::once(a).chain(None);
-        let two = |a, b| std::iter::once(a).chain(Some(b));
+        let zero = || std::iter::empty().chain(None).chain(None);
+        let one = |a| std::iter::empty().chain(Some(a)).chain(None);
+        let two = |a, b| std::iter::empty().chain(Some(a)).chain(Some(b));
         match *self {
             Self::Code(term) => one(term),
             Self::Branch { true_term, false_term } => two(true_term, false_term),
+            Self::MCDCBranch { .. } => zero(),
+            Self::MCDCDecision { .. } => zero(),
         }
     }
 
@@ -308,6 +315,7 @@ impl MappingKind {
             Self::Branch { true_term, false_term } => {
                 Self::Branch { true_term: map_fn(true_term), false_term: map_fn(false_term) }
             }
+            Self::MCDCBranch { .. } | Self::MCDCDecision { .. } => self.clone(),
         }
     }
 }

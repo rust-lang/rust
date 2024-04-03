@@ -9,12 +9,21 @@ use crate::coverage::ExtractedHirInfo;
 
 mod from_mir;
 
+// FIXME(dprn): Remove allow dead code
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug)]
 pub(super) enum BcbMappingKind {
     /// Associates an ordinary executable code span with its corresponding BCB.
     Code(BasicCoverageBlock),
     /// Associates a branch span with BCBs for its true and false arms.
-    Branch { true_bcb: BasicCoverageBlock, false_bcb: BasicCoverageBlock },
+    Branch {
+        true_bcb: BasicCoverageBlock,
+        false_bcb: BasicCoverageBlock,
+    },
+    MCDCDecision {
+        bitmap_idx: u32,
+        num_conditions: u32,
+    },
 }
 
 #[derive(Debug)]
@@ -92,6 +101,7 @@ pub(super) fn generate_coverage_spans(
                 insert(true_bcb);
                 insert(false_bcb);
             }
+            BcbMappingKind::MCDCDecision { .. } => (),
         }
     }
 
