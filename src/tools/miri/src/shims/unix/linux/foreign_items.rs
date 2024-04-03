@@ -6,7 +6,8 @@ use crate::machine::SIGRTMIN;
 use crate::shims::unix::*;
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
-use shims::unix::linux::fd::EvalContextExt as _;
+use shims::unix::linux::epoll::EvalContextExt as _;
+use shims::unix::linux::eventfd::EvalContextExt as _;
 use shims::unix::linux::mem::EvalContextExt as _;
 use shims::unix::linux::sync::futex;
 
