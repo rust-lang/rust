@@ -29,7 +29,7 @@ impl Thread {
         let p = Box::into_raw(Box::new(p));
         let tid = abi::spawn2(
             thread_start,
-            p.expose_addr(),
+            p.expose_provenance(),
             abi::Priority::into(abi::NORMAL_PRIO),
             stack,
             core_id,

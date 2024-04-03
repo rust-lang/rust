@@ -2797,17 +2797,17 @@ declare_lint! {
     /// Since this cast is lossy, it is considered good style to use the
     /// [`ptr::addr`] method instead, which has a similar effect, but doesn't
     /// "expose" the pointer provenance. This improves optimisation potential.
-    /// See the docs of [`ptr::addr`] and [`ptr::expose_addr`] for more information
+    /// See the docs of [`ptr::addr`] and [`ptr::expose_provenance`] for more information
     /// about exposing pointer provenance.
     ///
     /// If your code can't comply with strict provenance and needs to expose
-    /// the provenance, then there is [`ptr::expose_addr`] as an escape hatch,
+    /// the provenance, then there is [`ptr::expose_provenance`] as an escape hatch,
     /// which preserves the behaviour of `as usize` casts while being explicit
     /// about the semantics.
     ///
     /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
     /// [`ptr::addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.addr
-    /// [`ptr::expose_addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.expose_addr
+    /// [`ptr::expose_provenance`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.expose_provenance
     pub LOSSY_PROVENANCE_CASTS,
     Allow,
     "a lossy pointer to integer cast is used",

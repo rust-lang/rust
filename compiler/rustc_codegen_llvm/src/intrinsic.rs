@@ -2111,7 +2111,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(args[0].immediate());
     }
 
-    if name == sym::simd_expose_addr {
+    if name == sym::simd_expose_provenance {
         let (out_len, out_elem) = require_simd!(ret_ty, SimdReturn);
         require!(
             in_len == out_len,
