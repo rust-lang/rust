@@ -45,6 +45,9 @@ To enable a sanitizer compile with `-Zsanitizer=address`, `-Zsanitizer=cfi`,
 `-Zsanitizer=dataflow`,`-Zsanitizer=hwaddress`, `-Zsanitizer=leak`,
 `-Zsanitizer=memory`, `-Zsanitizer=memtag`, `-Zsanitizer=shadow-call-stack`, or
 `-Zsanitizer=thread`. You might also need the `--target` and `build-std` flags.
+If you're working with other languages that are also instrumented with sanitizers,
+you might need the `external-clangrt` flag. See the section on
+[working with other languages](#working-with-other-languages).
 
 Example:
 ```shell
@@ -852,6 +855,18 @@ instrumented standard library, for example using [cargo `-Zbuild-std`
 functionality][build-std].
 
 [build-std]: ../../cargo/reference/unstable.html#build-std
+
+# Working with other languages
+
+Sanitizers rely on compiler runtime libraries to function properly. Rust links
+in its own compiler runtime which might conflict with runtimes required by
+languages such as C++. Since Rust's runtime doesn't always contain the symbols
+required by C++ instrumented code, you might need to skip linking it so another
+runtime can be linked instead.
+
+A separate unstable option `-Zexternal-clangrt` can be used to make rustc skip
+linking the compiler runtime for the sanitizer. This will require you to link
+in an external runtime, such as from clang instead.
 
 # Build scripts and procedural macros
 
