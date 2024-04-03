@@ -43,11 +43,6 @@ fn main() {
     let target_dir = tmp_dir().join("target");
     let target = std::env::var("TARGET").unwrap();
 
-    if target.starts_with("x86_64-fortanix-unknown-sgx") {
-
-        return;
-    }
-
     println!("Testing compiler_builtins for {}", target);
 
     // Set up the tiniest Cargo project: An empty no_std library. Just enough to run -Zbuild-std.
