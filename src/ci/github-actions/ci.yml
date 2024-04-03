@@ -351,19 +351,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-4c
-
-          - name: mingw-check-tidy
-            <<: *job-linux-4c
-
-          - name: x86_64-gnu-llvm-17
+          - name: i686-mingw
             env:
-              ENABLE_GCC_CODEGEN: "1"
-            <<: *job-linux-16c
-
-          - name: x86_64-gnu-tools
-            <<: *job-linux-16c
+              RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+              SCRIPT: make ci-mingw
+              # We are intentionally allowing an old toolchain on this builder (and that's
+              # incompatible with LLVM downloads today).
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+            <<: *job-windows-8c
 
   auto:
     <<: *base-ci-job
