@@ -10,7 +10,7 @@ fn ptr_roundtrip_out_of_bounds() {
     let x: i32 = 3;
     let x_ptr = &x as *const i32;
 
-    let x_usize = x_ptr.wrapping_offset(128).expose_addr();
+    let x_usize = x_ptr.wrapping_offset(128).expose_provenance();
 
     let ptr = ptr::with_exposed_provenance::<i32>(x_usize).wrapping_offset(-128);
     assert_eq!(unsafe { *ptr }, 3);
@@ -24,8 +24,8 @@ fn ptr_roundtrip_confusion() {
     let x_ptr = &x as *const i32;
     let y_ptr = &y as *const i32;
 
-    let x_usize = x_ptr.expose_addr();
-    let y_usize = y_ptr.expose_addr();
+    let x_usize = x_ptr.expose_provenance();
+    let y_usize = y_ptr.expose_provenance();
 
     let ptr = ptr::with_exposed_provenance::<i32>(y_usize);
     let ptr = ptr.with_addr(x_usize);
@@ -37,7 +37,7 @@ fn ptr_roundtrip_imperfect() {
     let x: u8 = 3;
     let x_ptr = &x as *const u8;
 
-    let x_usize = x_ptr.expose_addr() + 128;
+    let x_usize = x_ptr.expose_provenance() + 128;
 
     let ptr = ptr::with_exposed_provenance::<u8>(x_usize).wrapping_offset(-128);
     assert_eq!(unsafe { *ptr }, 3);
@@ -48,7 +48,7 @@ fn ptr_roundtrip_null() {
     let x = &42;
     let x_ptr = x as *const i32;
     let x_null_ptr = x_ptr.with_addr(0); // addr 0, but still the provenance of x
-    let null = x_null_ptr.expose_addr();
+    let null = x_null_ptr.expose_provenance();
     assert_eq!(null, 0);
 
     let x_null_ptr_copy = ptr::with_exposed_provenance::<i32>(null); // just a roundtrip, so has provenance of x (angelically)

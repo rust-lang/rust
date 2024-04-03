@@ -183,7 +183,7 @@ pub fn check_intrinsic_type(
             let region = ty::Region::new_bound(
                 tcx,
                 ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon },
+                ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon },
             );
             let env_region = ty::Region::new_bound(
                 tcx,
@@ -495,7 +495,7 @@ pub fn check_intrinsic_type(
                 );
                 let discriminant_def_id = assoc_items[0];
 
-                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon };
+                let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon };
                 (
                     1,
                     0,
@@ -555,7 +555,7 @@ pub fn check_intrinsic_type(
             }
 
             sym::raw_eq => {
-                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon };
+                let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon };
                 let param_ty_lhs =
                     Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), param(0));
                 let br = ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrAnon };
@@ -627,7 +627,7 @@ pub fn check_intrinsic_type(
             sym::simd_cast
             | sym::simd_as
             | sym::simd_cast_ptr
-            | sym::simd_expose_addr
+            | sym::simd_expose_provenance
             | sym::simd_with_exposed_provenance => (2, 0, vec![param(0)], param(1)),
             sym::simd_bitmask => (2, 0, vec![param(0)], param(1)),
             sym::simd_select | sym::simd_select_bitmask => {

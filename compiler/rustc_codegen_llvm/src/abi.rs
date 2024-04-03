@@ -16,12 +16,14 @@ pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::Ty;
 use rustc_session::config;
 pub use rustc_target::abi::call::*;
-use rustc_target::abi::{self, HasDataLayout, Int};
+use rustc_target::abi::{self, HasDataLayout, Int, Size};
 pub use rustc_target::spec::abi::Abi;
 use rustc_target::spec::SanitizerSet;
 
 use libc::c_uint;
 use smallvec::SmallVec;
+
+use std::cmp;
 
 pub trait ArgAttributesExt {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);
@@ -130,42 +132,36 @@ impl LlvmType for Reg {
 impl LlvmType for CastTarget {
     fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
         let rest_ll_unit = self.rest.unit.llvm_type(cx);
-        let (rest_count, rem_bytes) = if self.rest.unit.size.bytes() == 0 {
-            (0, 0)
+        let rest_count = if self.rest.total == Size::ZERO {
+            0
         } else {
-            (
-                self.rest.total.bytes() / self.rest.unit.size.bytes(),
-                self.rest.total.bytes() % self.rest.unit.size.bytes(),
-            )
+            assert_ne!(
+                self.rest.unit.size,
+                Size::ZERO,
+                "total size {:?} cannot be divided into units of zero size",
+                self.rest.total
+            );
+            if self.rest.total.bytes() % self.rest.unit.size.bytes() != 0 {
+                assert_eq!(self.rest.unit.kind, RegKind::Integer, "only int regs can be split");
+            }
+            self.rest.total.bytes().div_ceil(self.rest.unit.size.bytes())
         };
 
+        // Simplify to a single unit or an array if there's no prefix.
+        // This produces the same layout, but using a simpler type.
         if self.prefix.iter().all(|x| x.is_none()) {
-            // Simplify to a single unit when there is no prefix and size <= unit size
-            if self.rest.total <= self.rest.unit.size {
+            if rest_count == 1 {
                 return rest_ll_unit;
             }
 
-            // Simplify to array when all chunks are the same size and type
-            if rem_bytes == 0 {
-                return cx.type_array(rest_ll_unit, rest_count);
-            }
+            return cx.type_array(rest_ll_unit, rest_count);
         }
 
-        // Create list of fields in the main structure
-        let mut args: Vec<_> = self
-            .prefix
-            .iter()
-            .flat_map(|option_reg| option_reg.map(|reg| reg.llvm_type(cx)))
-            .chain((0..rest_count).map(|_| rest_ll_unit))
-            .collect();
-
-        // Append final integer
-        if rem_bytes != 0 {
-            // Only integers can be really split further.
-            assert_eq!(self.rest.unit.kind, RegKind::Integer);
-            args.push(cx.type_ix(rem_bytes * 8));
-        }
-
+        // Generate a struct type with the prefix and the "rest" arguments.
+        let prefix_args =
+            self.prefix.iter().flat_map(|option_reg| option_reg.map(|reg| reg.llvm_type(cx)));
+        let rest_args = (0..rest_count).map(|_| rest_ll_unit);
+        let args: Vec<_> = prefix_args.chain(rest_args).collect();
         cx.type_struct(&args, false)
     }
 }
@@ -215,47 +211,33 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
             }
             PassMode::Cast { cast, pad_i32: _ } => {
-                // FIXME(eddyb): Figure out when the simpler Store is safe, clang
-                // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
-                let can_store_through_cast_ptr = false;
-                if can_store_through_cast_ptr {
-                    bx.store(val, dst.llval, self.layout.align.abi);
-                } else {
-                    // The actual return type is a struct, but the ABI
-                    // adaptation code has cast it into some scalar type. The
-                    // code that follows is the only reliable way I have
-                    // found to do a transform like i64 -> {i32,i32}.
-                    // Basically we dump the data onto the stack then memcpy it.
-                    //
-                    // Other approaches I tried:
-                    // - Casting rust ret pointer to the foreign type and using Store
-                    //   is (a) unsafe if size of foreign type > size of rust type and
-                    //   (b) runs afoul of strict aliasing rules, yielding invalid
-                    //   assembly under -O (specifically, the store gets removed).
-                    // - Truncating foreign type to correct integral type and then
-                    //   bitcasting to the struct type yields invalid cast errors.
-
-                    // We instead thus allocate some scratch space...
-                    let scratch_size = cast.size(bx);
-                    let scratch_align = cast.align(bx);
-                    let llscratch = bx.alloca(cast.llvm_type(bx), scratch_align);
-                    bx.lifetime_start(llscratch, scratch_size);
-
-                    // ... where we first store the value...
-                    bx.store(val, llscratch, scratch_align);
-
-                    // ... and then memcpy it to the intended destination.
-                    bx.memcpy(
-                        dst.llval,
-                        self.layout.align.abi,
-                        llscratch,
-                        scratch_align,
-                        bx.const_usize(self.layout.size.bytes()),
-                        MemFlags::empty(),
-                    );
-
-                    bx.lifetime_end(llscratch, scratch_size);
-                }
+                // The ABI mandates that the value is passed as a different struct representation.
+                // Spill and reload it from the stack to convert from the ABI representation to
+                // the Rust representation.
+                let scratch_size = cast.size(bx);
+                let scratch_align = cast.align(bx);
+                // Note that the ABI type may be either larger or smaller than the Rust type,
+                // due to the presence or absence of trailing padding. For example:
+                // - On some ABIs, the Rust layout { f64, f32, <f32 padding> } may omit padding
+                //   when passed by value, making it smaller.
+                // - On some ABIs, the Rust layout { u16, u16, u16 } may be padded up to 8 bytes
+                //   when passed by value, making it larger.
+                let copy_bytes = cmp::min(scratch_size.bytes(), self.layout.size.bytes());
+                // Allocate some scratch space...
+                let llscratch = bx.alloca(cast.llvm_type(bx), scratch_align);
+                bx.lifetime_start(llscratch, scratch_size);
+                // ...store the value...
+                bx.store(val, llscratch, scratch_align);
+                // ... and then memcpy it to the intended destination.
+                bx.memcpy(
+                    dst.llval,
+                    self.layout.align.abi,
+                    llscratch,
+                    scratch_align,
+                    bx.const_usize(copy_bytes),
+                    MemFlags::empty(),
+                );
+                bx.lifetime_end(llscratch, scratch_size);
             }
             _ => {
                 OperandRef::from_immediate_or_packed_pair(bx, val, self.layout).val.store(bx, dst);

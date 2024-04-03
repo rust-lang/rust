@@ -34,7 +34,7 @@ rustc_index::newtype_index! {
 }
 
 impl CounterId {
-    pub const START: Self = Self::from_u32(0);
+    pub const START: Self = Self::ZERO;
 }
 
 rustc_index::newtype_index! {
@@ -56,7 +56,7 @@ rustc_index::newtype_index! {
 }
 
 impl ExpressionId {
-    pub const START: Self = Self::from_u32(0);
+    pub const START: Self = Self::ZERO;
 }
 
 /// Enum that can hold a constant zero value, the ID of an physical coverage

@@ -1077,7 +1077,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                     // FIXME: Add Checks for these
                     CastKind::PointerWithExposedProvenance
-                    | CastKind::PointerExposeAddress
+                    | CastKind::PointerExposeProvenance
                     | CastKind::PointerCoercion(_) => {}
                     CastKind::IntToInt | CastKind::IntToFloat => {
                         let input_valid = op_ty.is_integral() || op_ty.is_char() || op_ty.is_bool();

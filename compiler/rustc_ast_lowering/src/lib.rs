@@ -157,7 +157,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             attrs: SortedMap::default(),
             children: Vec::default(),
             current_hir_id_owner: hir::CRATE_OWNER_ID,
-            item_local_id_counter: hir::ItemLocalId::new(0),
+            item_local_id_counter: hir::ItemLocalId::ZERO,
             node_id_to_local_id: Default::default(),
             trait_map: Default::default(),
 
@@ -583,7 +583,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // and the caller to refer to some of the subdefinitions' nodes' `LocalDefId`s.
 
         // Always allocate the first `HirId` for the owner itself.
-        let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::new(0));
+        let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::ZERO);
         debug_assert_eq!(_old, None);
 
         let item = f(self);
@@ -677,7 +677,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 v.insert(local_id);
                 self.item_local_id_counter.increment_by(1);
 
-                assert_ne!(local_id, hir::ItemLocalId::new(0));
+                assert_ne!(local_id, hir::ItemLocalId::ZERO);
                 if let Some(def_id) = self.opt_local_def_id(ast_node_id) {
                     self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
                 }
@@ -696,7 +696,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn next_id(&mut self) -> hir::HirId {
         let owner = self.current_hir_id_owner;
         let local_id = self.item_local_id_counter;
-        assert_ne!(local_id, hir::ItemLocalId::new(0));
+        assert_ne!(local_id, hir::ItemLocalId::ZERO);
         self.item_local_id_counter.increment_by(1);
         hir::HirId { owner, local_id }
     }

@@ -17,7 +17,7 @@ fn example(variant: bool) {
     unsafe {
         fn not_so_innocent(x: &mut u32) -> usize {
             let x_raw4 = x as *mut u32;
-            x_raw4.expose_addr()
+            x_raw4.expose_provenance()
         }
 
         let mut c = 42u32;
@@ -26,7 +26,7 @@ fn example(variant: bool) {
         // stack: [..., Unique(1)]
 
         let x_raw2 = x_unique1 as *mut u32;
-        let x_raw2_addr = x_raw2.expose_addr();
+        let x_raw2_addr = x_raw2.expose_provenance();
         // stack: [..., Unique(1), SharedRW(2)]
 
         let x_unique3 = &mut *x_raw2;

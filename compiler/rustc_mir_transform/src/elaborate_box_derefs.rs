@@ -3,7 +3,6 @@
 //! Box is not actually a pointer so it is incorrect to dereference it directly.
 
 use rustc_hir::def_id::DefId;
-use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
@@ -32,9 +31,9 @@ pub fn build_projection<'tcx>(
     ptr_ty: Ty<'tcx>,
 ) -> [PlaceElem<'tcx>; 3] {
     [
-        PlaceElem::Field(FieldIdx::new(0), unique_ty),
-        PlaceElem::Field(FieldIdx::new(0), nonnull_ty),
-        PlaceElem::Field(FieldIdx::new(0), ptr_ty),
+        PlaceElem::Field(FieldIdx::ZERO, unique_ty),
+        PlaceElem::Field(FieldIdx::ZERO, nonnull_ty),
+        PlaceElem::Field(FieldIdx::ZERO, ptr_ty),
     ]
 }
 
@@ -91,15 +90,14 @@ pub struct ElaborateBoxDerefs;
 impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if let Some(def_id) = tcx.lang_items().owned_box() {
-            let unique_did =
-                tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::from_u32(0)].did;
+            let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::ZERO].did;
 
             let Some(nonnull_def) = tcx.type_of(unique_did).instantiate_identity().ty_adt_def()
             else {
                 span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
             };
 
-            let nonnull_did = nonnull_def.non_enum_variant().fields[FieldIdx::from_u32(0)].did;
+            let nonnull_did = nonnull_def.non_enum_variant().fields[FieldIdx::ZERO].did;
 
             let patch = MirPatch::new(body);
 

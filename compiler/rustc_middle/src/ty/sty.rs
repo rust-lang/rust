@@ -1958,7 +1958,7 @@ impl<'tcx> Ty<'tcx> {
             Adt(def, args) => {
                 assert!(def.repr().simd(), "`simd_size_and_type` called on non-SIMD type");
                 let variant = def.non_enum_variant();
-                let f0_ty = variant.fields[FieldIdx::from_u32(0)].ty(tcx, args);
+                let f0_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
 
                 match f0_ty.kind() {
                     // If the first field is an array, we assume it is the only field and its
