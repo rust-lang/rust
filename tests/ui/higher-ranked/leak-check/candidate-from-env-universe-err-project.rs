@@ -5,9 +5,6 @@
 // the where-bound candidate for trait goals due to the leak check, but did
 // not do so for projection candidates and during normalization.
 //
-// FIXME(-Znext-solver): We currently prefer the impl over the where-bound
-// for trait goals because the impl does not result in any constraints.
-//
 // This results in an inconsistency between `Trait` and `Projection` goals as
 // normalizing always constraints the normalized-to term.
 trait Trait<'a> {
@@ -23,13 +20,14 @@ fn projection_bound<T: for<'a> Trait<'a, Assoc = usize>>() {}
 // We use a function with a trivial where-bound which is more
 // restrictive than the impl.
 fn function1<T: Trait<'static>>() {
-    // ok
+    // err
     //
-    // Proving `for<'a> T: Trait<'a>` using the where-bound results
-    // in a leak check failure, so we use the more general impl,
-    // causing this to succeed.
+    // Proving `for<'a> T: Trait<'a>` using the where-bound does not
+    // result in a leak check failure even though it does not apply.
+    // We prefer env candidates over impl candidatescausing this to succeed.
     trait_bound::<T>();
-    //[current]~^ ERROR mismatched types
+    //[next]~^ ERROR the trait bound `for<'a> T: Trait<'a>` is not satisfied
+    //[current]~^^ ERROR implementation of `Trait` is not general enough
 }
 
 fn function2<T: Trait<'static, Assoc = usize>>() {
@@ -40,7 +38,8 @@ fn function2<T: Trait<'static, Assoc = usize>>() {
     // to prefer it over the impl, resulting in a placeholder error.
     projection_bound::<T>();
     //[next]~^ ERROR type mismatch resolving `<T as Trait<'a>>::Assoc == usize`
-    //[current]~^^ ERROR mismatched types
+    //[next]~| ERROR the trait bound `for<'a> T: Trait<'a>` is not satisfied
+    //[current]~^^^ ERROR implementation of `Trait` is not general enough
     //[current]~| ERROR mismatched types
 }
 
@@ -54,7 +53,9 @@ fn function3<T: Trait<'static, Assoc = usize>>() {
     // leak check during candidate selection for normalization, this
     // case would still not compile.
     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
-    //[current]~^ ERROR mismatched types
+    //[next]~^ ERROR higher-ranked subtype error
+    //[next]~| ERROR higher-ranked subtype error
+    //[current]~^^^ ERROR mismatched types
     //[current]~| ERROR mismatched types
 }
 
