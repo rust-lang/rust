@@ -10,11 +10,11 @@ error[E0412]: cannot find type `T` in this scope
 LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
    |                                                       ^ not found in this scope
 
-error[E0109]: type and const arguments are not allowed on builtin type `str`
+error[E0109]: const and type arguments are not allowed on builtin type `str`
   --> $DIR/ensure-overriding-bindings-in-pattern-with-ty-err-doesnt-ice.rs:2:15
    |
 LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
-   |         ---   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^ type and const arguments not allowed
+   |         ---   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^ const and type arguments not allowed
    |         |
    |         not allowed on builtin type `str`
    |
