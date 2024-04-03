@@ -1,5 +1,5 @@
-- // MIR for `byref` before UninhabitedEnumBranching
-+ // MIR for `byref` after UninhabitedEnumBranching
+- // MIR for `byref` before UnreachableEnumBranching
++ // MIR for `byref` after UnreachableEnumBranching
   
   fn byref() -> () {
       let mut _0: ();

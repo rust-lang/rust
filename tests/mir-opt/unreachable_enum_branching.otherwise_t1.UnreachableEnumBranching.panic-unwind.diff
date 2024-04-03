@@ -1,10 +1,10 @@
-- // MIR for `otherwise_t4` before UninhabitedEnumBranching
-+ // MIR for `otherwise_t4` after UninhabitedEnumBranching
+- // MIR for `otherwise_t1` before UnreachableEnumBranching
++ // MIR for `otherwise_t1` after UnreachableEnumBranching
   
-  fn otherwise_t4() -> () {
+  fn otherwise_t1() -> () {
       let mut _0: ();
       let _1: &str;
-      let mut _2: Test4;
+      let mut _2: Test1;
       let mut _3: isize;
       let _4: &str;
       let _5: &str;
@@ -12,27 +12,28 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _2 = Test4::C;
+          _2 = Test1::C;
           _3 = discriminant(_2);
-          switchInt(move _3) -> [0: bb2, 1: bb3, otherwise: bb1];
+-         switchInt(move _3) -> [0: bb2, 1: bb3, otherwise: bb1];
++         switchInt(move _3) -> [0: bb5, 1: bb5, 2: bb1, otherwise: bb5];
       }
   
       bb1: {
           StorageLive(_5);
-          _5 = const "CD";
+          _5 = const "C";
           _1 = &(*_5);
           StorageDead(_5);
           goto -> bb4;
       }
   
       bb2: {
-          _1 = const "A(i32)";
+          _1 = const "A(Empty)";
           goto -> bb4;
       }
   
       bb3: {
           StorageLive(_4);
-          _4 = const "B(i32)";
+          _4 = const "B(Empty)";
           _1 = &(*_4);
           StorageDead(_4);
           goto -> bb4;
@@ -43,6 +44,10 @@
           StorageDead(_1);
           _0 = const ();
           return;
++     }
++ 
++     bb5: {
++         unreachable;
       }
   }
   
