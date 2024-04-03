@@ -12,7 +12,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BindingAnnotation, ByRef, RangeEnd};
+use rustc_hir::{BindingAnnotation, ByRef, MatchSource, RangeEnd};
 use rustc_index::newtype_index;
 use rustc_index::IndexVec;
 use rustc_middle::middle::region;
@@ -358,6 +358,7 @@ pub enum ExprKind<'tcx> {
         scrutinee: ExprId,
         scrutinee_hir_id: hir::HirId,
         arms: Box<[ArmId]>,
+        match_source: MatchSource,
     },
     /// A block.
     Block {
