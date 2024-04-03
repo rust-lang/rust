@@ -27,6 +27,12 @@ bitflags! {
         /// Generalize the instance by erasing the concrete `Self` type where possible.
         /// Only has an effect on `{kcfi_,}typeid_for_instance`.
         const ERASE_SELF_TYPE = 8;
+        /// If the leading argument is non-passed, skip it. This is used to support the cast of
+        /// non-capturing closures to function pointers. This is normally set automatically by
+        /// `typeid_for_instance` upon encountering a closure-like. It may be set for calls to
+        /// `typeid_for_fnabi` if the caller knows they're calling a `call` method to potentially
+        /// non-capturing closure.
+        const ERASE_LEADING_NONPASSED = 16;
     }
 }
 

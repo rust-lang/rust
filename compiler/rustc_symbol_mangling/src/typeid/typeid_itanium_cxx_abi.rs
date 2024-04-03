@@ -20,7 +20,7 @@ use rustc_middle::ty::{
 use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
-use rustc_target::abi::call::{Conv, FnAbi};
+use rustc_target::abi::call::{Conv, FnAbi, PassMode};
 use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
@@ -1073,12 +1073,19 @@ pub fn typeid_for_fnabi<'tcx>(
 
     // Encode the parameter types
     if !fn_abi.c_variadic {
-        if !fn_abi.args.is_empty() {
-            for arg in fn_abi.args.iter() {
-                let ty = transform_ty(tcx, arg.layout.ty, &mut Vec::new(), transform_ty_options);
-                typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
+        let mut pushed_arg = false;
+        for (idx, arg) in fn_abi.args.iter().enumerate() {
+            if idx == 0
+                && options.contains(TypeIdOptions::ERASE_LEADING_NONPASSED)
+                && arg.mode == PassMode::Ignore
+            {
+                continue;
             }
-        } else {
+            pushed_arg = true;
+            let ty = transform_ty(tcx, arg.layout.ty, &mut Vec::new(), transform_ty_options);
+            typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
+        }
+        if !pushed_arg {
             // Empty parameter lists, whether declared as () or conventionally as (void), are
             // encoded with a void parameter specifier "v".
             typeid.push('v');
@@ -1113,7 +1120,7 @@ pub fn typeid_for_fnabi<'tcx>(
 pub fn typeid_for_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut instance: Instance<'tcx>,
-    options: TypeIdOptions,
+    mut options: TypeIdOptions,
 ) -> String {
     if (matches!(instance.def, ty::InstanceDef::Virtual(..))
         && Some(instance.def_id()) == tcx.lang_items().drop_in_place_fn())
@@ -1240,6 +1247,12 @@ pub fn typeid_for_instance<'tcx>(
             instance.def = ty::InstanceDef::Virtual(call, 0);
             instance.args = abstract_args;
         }
+    }
+
+    if tcx.is_closure_like(instance.def_id())
+        || tcx.fn_sig(instance.def_id()).skip_binder().abi() == Abi::RustCall
+    {
+        options.insert(TypeIdOptions::ERASE_LEADING_NONPASSED)
     }
 
     let fn_abi = tcx
