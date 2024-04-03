@@ -1,17 +1,12 @@
 use std::cell::Cell;
 
-use rustc_middle::ty::ScalarInt;
-
+use crate::shims::unix::*;
 use crate::*;
 use epoll::{Epoll, EpollEvent};
 use event::Event;
-use socketpair::SocketPair;
-
-use shims::unix::fs::EvalContextExt as _;
 
 pub mod epoll;
 pub mod event;
-pub mod socketpair;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
@@ -35,7 +30,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("epoll_create1 flags {flags} are not implemented");
         }
 
-        let fd = this.machine.file_handler.insert_fd(Box::new(Epoll::default()));
+        let fd = this.machine.fds.insert_fd(Box::new(Epoll::default()));
         Ok(Scalar::from_i32(fd))
     }
 
@@ -79,7 +74,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let data = this.read_scalar(&data)?;
             let event = EpollEvent { events, data };
 
-            if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
+            if let Some(epfd) = this.machine.fds.get_mut(epfd) {
                 let epfd = epfd
                     .downcast_mut::<Epoll>()
                     .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
@@ -87,10 +82,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 epfd.file_descriptors.insert(fd, event);
                 Ok(Scalar::from_i32(0))
             } else {
-                Ok(Scalar::from_i32(this.handle_not_found()?))
+                Ok(Scalar::from_i32(this.fd_not_found()?))
             }
         } else if op == epoll_ctl_del {
-            if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
+            if let Some(epfd) = this.machine.fds.get_mut(epfd) {
                 let epfd = epfd
                     .downcast_mut::<Epoll>()
                     .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
@@ -98,7 +93,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 epfd.file_descriptors.remove(&fd);
                 Ok(Scalar::from_i32(0))
             } else {
-                Ok(Scalar::from_i32(this.handle_not_found()?))
+                Ok(Scalar::from_i32(this.fd_not_found()?))
             }
         } else {
             let einval = this.eval_libc("EINVAL");
@@ -150,7 +145,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let _maxevents = this.read_scalar(maxevents)?.to_i32()?;
         let _timeout = this.read_scalar(timeout)?.to_i32()?;
 
-        if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
+        if let Some(epfd) = this.machine.fds.get_mut(epfd) {
             let _epfd = epfd
                 .downcast_mut::<Epoll>()
                 .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
@@ -158,7 +153,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // FIXME return number of events ready when scheme for marking events ready exists
             throw_unsup_format!("returning ready events from epoll_wait is not yet implemented");
         } else {
-            Ok(Scalar::from_i32(this.handle_not_found()?))
+            Ok(Scalar::from_i32(this.fd_not_found()?))
         }
     }
 
@@ -203,51 +198,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("EFD_SEMAPHORE is unsupported");
         }
 
-        let fh = &mut this.machine.file_handler;
-        let fd = fh.insert_fd(Box::new(Event { val: Cell::new(val.into()) }));
+        let fd = this.machine.fds.insert_fd(Box::new(Event { val: Cell::new(val.into()) }));
         Ok(Scalar::from_i32(fd))
-    }
-
-    /// Currently this function creates new `SocketPair`s without specifying the domain, type, or
-    /// protocol of the new socket and these are stored in the socket values `sv` argument.
-    ///
-    /// This function creates an unnamed pair of connected sockets in the specified domain, of the
-    /// specified type, and using the optionally specified protocol.
-    ///
-    /// The `domain` argument specified a communication domain; this selects the protocol family
-    /// used for communication. The socket `type` specifies the communication semantics.
-    /// The `protocol` specifies a particular protocol to use with the socket. Normally there's
-    /// only a single protocol supported for a particular socket type within a given protocol
-    /// family, in which case `protocol` can be specified as 0. It is possible that many protocols
-    /// exist and in that case, a particular protocol must be specified.
-    ///
-    /// For more information on the arguments see the socket manpage:
-    /// <https://linux.die.net/man/2/socket>
-    ///
-    /// <https://linux.die.net/man/2/socketpair>
-    fn socketpair(
-        &mut self,
-        domain: &OpTy<'tcx, Provenance>,
-        type_: &OpTy<'tcx, Provenance>,
-        protocol: &OpTy<'tcx, Provenance>,
-        sv: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
-        let this = self.eval_context_mut();
-
-        let _domain = this.read_scalar(domain)?.to_i32()?;
-        let _type_ = this.read_scalar(type_)?.to_i32()?;
-        let _protocol = this.read_scalar(protocol)?.to_i32()?;
-        let sv = this.deref_pointer(sv)?;
-
-        let fh = &mut this.machine.file_handler;
-        let sv0 = fh.insert_fd(Box::new(SocketPair));
-        let sv0 = ScalarInt::try_from_int(sv0, sv.layout.size).unwrap();
-        let sv1 = fh.insert_fd(Box::new(SocketPair));
-        let sv1 = ScalarInt::try_from_int(sv1, sv.layout.size).unwrap();
-
-        this.write_scalar(sv0, &sv)?;
-        this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?)?;
-
-        Ok(Scalar::from_i32(0))
     }
 }

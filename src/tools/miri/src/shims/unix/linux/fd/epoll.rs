@@ -1,6 +1,6 @@
 use crate::*;
 
-use crate::shims::unix::fs::FileDescriptor;
+use crate::shims::unix::FileDescriptor;
 
 use rustc_data_structures::fx::FxHashMap;
 use std::io;

@@ -1,10 +1,9 @@
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
+use crate::shims::unix::*;
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
-use shims::unix::fs::EvalContextExt as _;
-use shims::unix::thread::EvalContextExt as _;
 
 pub fn is_dyn_sym(_name: &str) -> bool {
     false

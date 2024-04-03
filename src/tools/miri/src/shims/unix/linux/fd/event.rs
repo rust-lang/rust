@@ -1,4 +1,4 @@
-use crate::shims::unix::fs::FileDescriptor;
+use crate::shims::unix::FileDescriptor;
 
 use rustc_const_eval::interpret::InterpResult;
 use rustc_middle::ty::TyCtxt;

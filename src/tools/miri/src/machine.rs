@@ -31,7 +31,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::{
     concurrency::{data_race, weak_memory},
-    shims::unix::FileHandler,
+    shims::unix::FdTable,
     *,
 };
 
@@ -463,9 +463,9 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub(crate) validate: bool,
 
     /// The table of file descriptors.
-    pub(crate) file_handler: shims::unix::FileHandler,
+    pub(crate) fds: shims::unix::FdTable,
     /// The table of directory descriptors.
-    pub(crate) dir_handler: shims::unix::DirHandler,
+    pub(crate) dirs: shims::unix::DirTable,
 
     /// This machine's monotone clock.
     pub(crate) clock: Clock,
@@ -640,8 +640,8 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
             validate: config.validate,
-            file_handler: FileHandler::new(config.mute_stdout_stderr),
-            dir_handler: Default::default(),
+            fds: FdTable::new(config.mute_stdout_stderr),
+            dirs: Default::default(),
             layouts,
             threads: ThreadManager::default(),
             static_roots: Vec::new(),
@@ -774,11 +774,11 @@ impl VisitProvenance for MiriMachine<'_, '_> {
             argv,
             cmd_line,
             extern_statics,
-            dir_handler,
+            dirs,
             borrow_tracker,
             data_race,
             alloc_addresses,
-            file_handler,
+            fds,
             tcx: _,
             isolated_op: _,
             validate: _,
@@ -817,8 +817,8 @@ impl VisitProvenance for MiriMachine<'_, '_> {
         threads.visit_provenance(visit);
         tls.visit_provenance(visit);
         env_vars.visit_provenance(visit);
-        dir_handler.visit_provenance(visit);
-        file_handler.visit_provenance(visit);
+        dirs.visit_provenance(visit);
+        fds.visit_provenance(visit);
         data_race.visit_provenance(visit);
         borrow_tracker.visit_provenance(visit);
         alloc_addresses.visit_provenance(visit);
