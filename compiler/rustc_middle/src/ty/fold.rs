@@ -257,6 +257,7 @@ impl<'tcx> TyCtxt<'tcx> {
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
+        assert_eq!(value.bound_clauses(), ty::List::empty());
         let mut region_map = FxIndexMap::default();
         let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
         let value = self.instantiate_bound_regions_uncached(value, real_fld_r);

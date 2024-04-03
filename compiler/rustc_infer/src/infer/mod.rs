@@ -1372,6 +1372,8 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
+        assert_eq!(value.bound_clauses(), ty::List::empty());
+
         if let Some(inner) = value.no_bound_vars() {
             return inner;
         }
