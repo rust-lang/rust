@@ -4,7 +4,9 @@
 //!
 //! For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 //! see design document in the tracking issue #89653.
-use rustc_data_structures::base_n;
+use rustc_data_structures::base_n::ToBaseN;
+use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
+use rustc_data_structures::base_n::CASE_INSENSITIVE;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::bug;
@@ -736,7 +738,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
 /// <https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html>).
 fn to_disambiguator(num: u64) -> String {
     if let Some(num) = num.checked_sub(1) {
-        format!("s{}_", base_n::encode(num as u128, base_n::ALPHANUMERIC_ONLY))
+        format!("s{}_", num.to_base(ALPHANUMERIC_ONLY))
     } else {
         "s_".to_string()
     }
@@ -746,7 +748,7 @@ fn to_disambiguator(num: u64) -> String {
 /// <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangle.seq-id>).
 fn to_seq_id(num: usize) -> String {
     if let Some(num) = num.checked_sub(1) {
-        base_n::encode(num as u128, base_n::CASE_INSENSITIVE).to_uppercase()
+        (num as u64).to_base(CASE_INSENSITIVE).to_uppercase()
     } else {
         "".to_string()
     }
