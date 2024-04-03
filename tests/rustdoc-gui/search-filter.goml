@@ -1,7 +1,7 @@
 // Checks that the crate search filtering is handled correctly and changes the results.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true
-write: (".search-input", "test")
+write-into: (".search-input", "test")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...

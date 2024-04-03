@@ -4,7 +4,7 @@
 // First, try a search-by-name
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // Intentionally wrong spelling of "NotableStructWithLongName"
-write: (".search-input", "NotableStructWithLongNamr")
+write-into: (".search-input", "NotableStructWithLongNamr")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
@@ -41,7 +41,7 @@ assert-text: (
 // Now, explicit return values
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // Intentionally wrong spelling of "NotableStructWithLongName"
-write: (".search-input", "-> NotableStructWithLongNamr")
+write-into: (".search-input", "-> NotableStructWithLongNamr")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
@@ -58,7 +58,7 @@ assert-text: (
 // Now, generic correction
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // Intentionally wrong spelling of "NotableStructWithLongName"
-write: (".search-input", "NotableStructWithLongNamr, NotableStructWithLongNamr")
+write-into: (".search-input", "NotableStructWithLongNamr, NotableStructWithLongNamr")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
@@ -75,7 +75,7 @@ assert-text: (
 // Now, generic correction plus error
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // Intentionally wrong spelling of "NotableStructWithLongName"
-write: (".search-input", "Foo<NotableStructWithLongNamr>,y")
+write-into: (".search-input", "Foo<NotableStructWithLongNamr>,y")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
@@ -91,7 +91,7 @@ assert-text: (
 
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // Intentionally wrong spelling of "NotableStructWithLongName"
-write: (".search-input", "generic:NotableStructWithLongNamr<x>,y")
+write-into: (".search-input", "generic:NotableStructWithLongNamr<x>,y")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...

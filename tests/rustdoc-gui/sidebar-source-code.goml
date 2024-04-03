@@ -6,7 +6,7 @@ show-text: true
 // First, check the sidebar colors.
 define-function: (
     "check-colors",
-    (theme, color, background_color),
+    [theme, color, background_color],
     block {
         set-local-storage: {
             "rustdoc-theme": |theme|,

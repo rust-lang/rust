@@ -58,7 +58,7 @@ pub enum Message {
         /// The [`Config`] version.
         config_version: u32,
     },
-    /// The handle loaded the following files' content.
+    /// The handle loaded the following files' content for the first time.
     Loaded { files: Vec<(AbsPathBuf, Option<Vec<u8>>)> },
     /// The handle loaded the following files' content.
     Changed { files: Vec<(AbsPathBuf, Option<Vec<u8>>)> },

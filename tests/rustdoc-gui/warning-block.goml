@@ -5,7 +5,7 @@ show-text: true
 store-value: (default_y_pos, 5)
 define-function: (
     "check-warning",
-    (theme, color, border_color),
+    [theme, color, border_color],
     block {
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:

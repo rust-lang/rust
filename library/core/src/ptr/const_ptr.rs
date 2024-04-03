@@ -165,7 +165,7 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     #[deprecated(
         since = "1.67.0",
-        note = "replaced by the `ptr::from_exposed_addr` function, or update \
+        note = "replaced by the `ptr::with_exposed_provenance` function, or update \
             your code to follow the strict provenance rules using its APIs"
     )]
     #[allow(fuzzy_provenance_casts)] // this is an unstable and semi-deprecated cast function
@@ -187,7 +187,7 @@ impl<T: ?Sized> *const T {
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
     /// required provenance, then Strict Provenance might not be for you. Use pointer-integer casts
-    /// or [`expose_addr`][pointer::expose_addr] and [`from_exposed_addr`][from_exposed_addr]
+    /// or [`expose_addr`][pointer::expose_addr] and [`with_exposed_provenance`][with_exposed_provenance]
     /// instead. However, note that this makes your code less portable and less amenable to tools
     /// that check for compliance with the Rust memory model.
     ///
@@ -211,30 +211,30 @@ impl<T: ?Sized> *const T {
     }
 
     /// Gets the "address" portion of the pointer, and 'exposes' the "provenance" part for future
-    /// use in [`from_exposed_addr`][].
+    /// use in [`with_exposed_provenance`][].
     ///
     /// This is equivalent to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. Furthermore, this (like the `as` cast) has the implicit
     /// side-effect of marking the provenance as 'exposed', so on platforms that support it you can
-    /// later call [`from_exposed_addr`][] to reconstitute the original pointer including its
+    /// later call [`with_exposed_provenance`][] to reconstitute the original pointer including its
     /// provenance. (Reconstructing address space information, if required, is your responsibility.)
     ///
     /// Using this method means that code is *not* following [Strict
     /// Provenance][super#strict-provenance] rules. Supporting
-    /// [`from_exposed_addr`][] complicates specification and reasoning and may not be supported by
+    /// [`with_exposed_provenance`][] complicates specification and reasoning and may not be supported by
     /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
     /// use [`addr`][pointer::addr] wherever possible.
     ///
     /// On most platforms this will produce a value with the same bytes as the original pointer,
     /// because all the bytes are dedicated to describing the address. Platforms which need to store
     /// additional information in the pointer may not support this operation, since the 'expose'
-    /// side-effect which is required for [`from_exposed_addr`][] to work is typically not
+    /// side-effect which is required for [`with_exposed_provenance`][] to work is typically not
     /// available.
     ///
     /// It is unclear whether this method can be given a satisfying unambiguous specification. This
     /// API and its claimed semantics are part of [Exposed Provenance][super#exposed-provenance].
     ///
-    /// [`from_exposed_addr`]: from_exposed_addr
+    /// [`with_exposed_provenance`]: with_exposed_provenance
     #[must_use]
     #[inline(always)]
     #[unstable(feature = "exposed_provenance", issue = "95228")]

@@ -10,7 +10,7 @@ use syntax::{
 use tracing::{debug, warn};
 use tt::SmolStr;
 
-use crate::{db::ExpandDatabase, MacroCallKind, MacroCallLoc};
+use crate::{db::ExpandDatabase, proc_macro::ProcMacroKind, MacroCallLoc, MacroDefKind};
 
 fn check_cfg_attr(attr: &Attr, loc: &MacroCallLoc, db: &dyn ExpandDatabase) -> Option<bool> {
     if !attr.simple_name().as_deref().map(|v| v == "cfg")? {
@@ -139,7 +139,7 @@ fn process_enum(
     'variant: for variant in variants.variants() {
         for attr in variant.attrs() {
             if check_cfg_attr(&attr, loc, db).map(|enabled| !enabled).unwrap_or_default() {
-                // Rustc does not strip the attribute if it is enabled. So we will will leave it
+                // Rustc does not strip the attribute if it is enabled. So we will leave it
                 debug!("censoring type {:?}", variant.syntax());
                 remove.insert(variant.syntax().clone().into());
                 // We need to remove the , as well
@@ -180,7 +180,13 @@ pub(crate) fn process_cfg_attrs(
     db: &dyn ExpandDatabase,
 ) -> Option<FxHashSet<SyntaxElement>> {
     // FIXME: #[cfg_eval] is not implemented. But it is not stable yet
-    if !matches!(loc.kind, MacroCallKind::Derive { .. }) {
+    let is_derive = match loc.def.kind {
+        MacroDefKind::BuiltInDerive(..)
+        | MacroDefKind::ProcMacro(_, ProcMacroKind::CustomDerive, _) => true,
+        MacroDefKind::BuiltInAttr(expander, _) => expander.is_derive(),
+        _ => false,
+    };
+    if !is_derive {
         return None;
     }
     let mut remove = FxHashSet::default();

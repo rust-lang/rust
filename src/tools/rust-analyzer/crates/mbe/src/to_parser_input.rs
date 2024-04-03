@@ -1,11 +1,13 @@
 //! Convert macro-by-example tokens which are specific to macro expansion into a
 //! format that works for our parser.
 
+use std::fmt;
+
 use syntax::{SyntaxKind, SyntaxKind::*, T};
 
-use tt::{buffer::TokenBuffer, Span};
+use tt::buffer::TokenBuffer;
 
-pub(crate) fn to_parser_input<S: Span>(buffer: &TokenBuffer<'_, S>) -> parser::Input {
+pub(crate) fn to_parser_input<S: Copy + fmt::Debug>(buffer: &TokenBuffer<'_, S>) -> parser::Input {
     let mut res = parser::Input::default();
 
     let mut current = buffer.begin();

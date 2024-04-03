@@ -3,7 +3,7 @@ go-to: "file://" + |DOC_PATH| + "/src/link_to_definition/lib.rs.html"
 
 define-function: (
     "check-background-color",
-    (theme, background_color),
+    [theme, background_color],
     block {
         // Set the theme.
         set-local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false" }
@@ -17,6 +17,15 @@ define-function: (
     },
 )
 
-call-function: ("check-background-color", ("ayu", "#333"))
-call-function: ("check-background-color", ("dark", "#333"))
-call-function: ("check-background-color", ("light", "#eee"))
+call-function: ("check-background-color", {
+    "theme": "ayu",
+    "background_color": "#333",
+})
+call-function: ("check-background-color", {
+    "theme": "dark",
+    "background_color": "#333",
+})
+call-function: ("check-background-color", {
+    "theme": "light",
+    "background_color": "#eee",
+})

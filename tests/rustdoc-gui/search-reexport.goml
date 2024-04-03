@@ -6,7 +6,7 @@ reload:
 // First we check that the reexport has the correct ID and no background color.
 assert-text: ("//*[@id='reexport.TheStdReexport']", "pub use ::std as TheStdReexport;")
 assert-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "rgba(0, 0, 0, 0)"})
-write: (".search-input", "TheStdReexport")
+write-into: (".search-input", "TheStdReexport")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 wait-for: "//a[@class='result-import']"
@@ -22,7 +22,7 @@ wait-for-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "#494a
 // We now check that the alias is working as well on the reexport.
 // To be SURE that the search will be run.
 press-key: 'Enter'
-write: (".search-input", "AliasForTheStdReexport")
+write-into: (".search-input", "AliasForTheStdReexport")
 wait-for: "//a[@class='result-import']"
 assert-text: (
     "a.result-import .result-name",

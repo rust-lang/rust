@@ -194,7 +194,8 @@ pub struct TestItem {
 #[serde(rename_all = "camelCase")]
 pub struct DiscoverTestResults {
     pub tests: Vec<TestItem>,
-    pub scope: Vec<String>,
+    pub scope: Option<Vec<String>>,
+    pub scope_file: Option<Vec<TextDocumentIdentifier>>,
 }
 
 pub enum DiscoverTest {}
@@ -800,6 +801,7 @@ pub struct CompletionResolveData {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InlayHintResolveData {
     pub file_id: u32,
+    pub hash: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

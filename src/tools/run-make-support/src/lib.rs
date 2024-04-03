@@ -19,7 +19,11 @@ pub fn tmp_dir() -> PathBuf {
 }
 
 fn handle_failed_output(cmd: &str, output: Output, caller_line_number: u32) -> ! {
-    eprintln!("command failed at line {caller_line_number}");
+    if output.status.success() {
+        eprintln!("command incorrectly succeeded at line {caller_line_number}");
+    } else {
+        eprintln!("command failed at line {caller_line_number}");
+    }
     eprintln!("{cmd}");
     eprintln!("output status: `{}`", output.status);
     eprintln!("=== STDOUT ===\n{}\n\n", String::from_utf8(output.stdout).unwrap());

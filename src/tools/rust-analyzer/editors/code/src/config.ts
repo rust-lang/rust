@@ -19,13 +19,17 @@ export class Config {
     configureLang: vscode.Disposable | undefined;
 
     readonly rootSection = "rust-analyzer";
-    private readonly requiresReloadOpts = [
+    private readonly requiresServerReloadOpts = [
         "cargo",
         "procMacro",
         "serverPath",
         "server",
         "files",
     ].map((opt) => `${this.rootSection}.${opt}`);
+
+    private readonly requiresWindowReloadOpts = ["testExplorer"].map(
+        (opt) => `${this.rootSection}.${opt}`,
+    );
 
     readonly package: {
         version: string;
@@ -66,18 +70,31 @@ export class Config {
 
         this.configureLanguage();
 
-        const requiresReloadOpt = this.requiresReloadOpts.find((opt) =>
+        const requiresWindowReloadOpt = this.requiresWindowReloadOpts.find((opt) =>
             event.affectsConfiguration(opt),
         );
 
-        if (!requiresReloadOpt) return;
+        if (requiresWindowReloadOpt) {
+            const message = `Changing "${requiresWindowReloadOpt}" requires a window reload`;
+            const userResponse = await vscode.window.showInformationMessage(message, "Reload now");
+
+            if (userResponse) {
+                await vscode.commands.executeCommand("workbench.action.reloadWindow");
+            }
+        }
+
+        const requiresServerReloadOpt = this.requiresServerReloadOpts.find((opt) =>
+            event.affectsConfiguration(opt),
+        );
+
+        if (!requiresServerReloadOpt) return;
 
         if (this.restartServerOnConfigChange) {
             await vscode.commands.executeCommand("rust-analyzer.restartServer");
             return;
         }
 
-        const message = `Changing "${requiresReloadOpt}" requires a server restart`;
+        const message = `Changing "${requiresServerReloadOpt}" requires a server restart`;
         const userResponse = await vscode.window.showInformationMessage(message, "Restart now");
 
         if (userResponse) {

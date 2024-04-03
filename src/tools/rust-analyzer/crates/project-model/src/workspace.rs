@@ -6,13 +6,14 @@ use std::{collections::VecDeque, fmt, fs, iter, str::FromStr, sync};
 
 use anyhow::{format_err, Context};
 use base_db::{
-    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Edition, Env,
-    FileId, LangCrateOrigin, ProcMacroPaths, TargetLayoutLoadResult,
+    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env, FileId,
+    LangCrateOrigin, ProcMacroPaths, TargetLayoutLoadResult,
 };
 use cfg::{CfgAtom, CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
+use span::Edition;
 use stdx::always;
 use toolchain::Tool;
 use triomphe::Arc;
@@ -718,19 +719,22 @@ impl ProjectWorkspace {
     ) -> (CrateGraph, ProcMacroPaths) {
         let _p = tracing::span!(tracing::Level::INFO, "ProjectWorkspace::to_crate_graph").entered();
 
-        let (mut crate_graph, proc_macros) = match self {
+        let ((mut crate_graph, proc_macros), sysroot) = match self {
             ProjectWorkspace::Json {
                 project,
                 sysroot,
                 rustc_cfg,
                 toolchain: _,
                 target_layout: _,
-            } => project_json_to_crate_graph(
-                rustc_cfg.clone(),
-                load,
-                project,
-                sysroot.as_ref().ok(),
-                extra_env,
+            } => (
+                project_json_to_crate_graph(
+                    rustc_cfg.clone(),
+                    load,
+                    project,
+                    sysroot.as_ref().ok(),
+                    extra_env,
+                ),
+                sysroot,
             ),
             ProjectWorkspace::Cargo {
                 cargo,
@@ -742,14 +746,17 @@ impl ProjectWorkspace {
                 toolchain: _,
                 target_layout: _,
                 cargo_config_extra_env: _,
-            } => cargo_to_crate_graph(
-                load,
-                rustc.as_ref().map(|a| a.as_ref()).ok(),
-                cargo,
-                sysroot.as_ref().ok(),
-                rustc_cfg.clone(),
-                cfg_overrides,
-                build_scripts,
+            } => (
+                cargo_to_crate_graph(
+                    load,
+                    rustc.as_ref().map(|a| a.as_ref()).ok(),
+                    cargo,
+                    sysroot.as_ref().ok(),
+                    rustc_cfg.clone(),
+                    cfg_overrides,
+                    build_scripts,
+                ),
+                sysroot,
             ),
             ProjectWorkspace::DetachedFiles {
                 files,
@@ -757,11 +764,20 @@ impl ProjectWorkspace {
                 rustc_cfg,
                 toolchain: _,
                 target_layout: _,
-            } => {
-                detached_files_to_crate_graph(rustc_cfg.clone(), load, files, sysroot.as_ref().ok())
-            }
+            } => (
+                detached_files_to_crate_graph(
+                    rustc_cfg.clone(),
+                    load,
+                    files,
+                    sysroot.as_ref().ok(),
+                ),
+                sysroot,
+            ),
         };
-        if crate_graph.patch_cfg_if() {
+
+        if matches!(sysroot.as_ref().map(|it| it.mode()), Ok(SysrootMode::Workspace(_)))
+            && crate_graph.patch_cfg_if()
+        {
             tracing::debug!("Patched std to depend on cfg-if")
         } else {
             tracing::debug!("Did not patch std to depend on cfg-if")
@@ -1077,6 +1093,8 @@ fn cargo_to_crate_graph(
         }
     }
 
+    let mut delayed_dev_deps = vec![];
+
     // Now add a dep edge from all targets of upstream to the lib
     // target of downstream.
     for pkg in cargo.packages() {
@@ -1091,9 +1109,29 @@ fn cargo_to_crate_graph(
                     continue;
                 }
 
+                // If the dependency is a dev-dependency with both crates being member libraries of
+                // the workspace we delay adding the edge. The reason can be read up on in
+                // https://github.com/rust-lang/rust-analyzer/issues/14167
+                // but in short, such an edge is able to cause some form of cycle in the crate graph
+                // for normal dependencies. If we do run into a cycle like this, we want to prefer
+                // the non dev-dependency edge, and so the easiest way to do that is by adding the
+                // dev-dependency edges last.
+                if dep.kind == DepKind::Dev
+                    && matches!(kind, TargetKind::Lib { .. })
+                    && cargo[dep.pkg].is_member
+                    && cargo[pkg].is_member
+                {
+                    delayed_dev_deps.push((from, name.clone(), to));
+                    continue;
+                }
+
                 add_dep(crate_graph, from, name.clone(), to)
             }
         }
+    }
+
+    for (from, name, to) in delayed_dev_deps {
+        add_dep(crate_graph, from, name, to);
     }
 
     if has_private {
@@ -1151,7 +1189,6 @@ fn detached_files_to_crate_graph(
         };
         let display_name = detached_file
             .file_stem()
-            .and_then(|os_str| os_str.to_str())
             .map(|file_stem| CrateDisplayName::from_canonical_name(file_stem.to_owned()));
         let detached_file_crate = crate_graph.add_crate_root(
             file_id,
@@ -1228,6 +1265,7 @@ fn handle_rustc_crates(
                 let kind @ TargetKind::Lib { is_proc_macro } = rustc_workspace[tgt].kind else {
                     continue;
                 };
+                let pkg_crates = &mut rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new);
                 if let Some(file_id) = load(&rustc_workspace[tgt].root) {
                     let crate_id = add_target_crate_root(
                         crate_graph,
@@ -1246,7 +1284,7 @@ fn handle_rustc_crates(
                     if let Some(proc_macro) = libproc_macro {
                         add_proc_macro_dep(crate_graph, crate_id, proc_macro, is_proc_macro);
                     }
-                    rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
+                    pkg_crates.push(crate_id);
                 }
             }
         }
@@ -1533,7 +1571,7 @@ fn inject_cargo_env(package: &PackageData, env: &mut Env) {
     // CARGO_BIN_NAME, CARGO_BIN_EXE_<name>
 
     let manifest_dir = package.manifest.parent();
-    env.set("CARGO_MANIFEST_DIR", manifest_dir.as_os_str().to_string_lossy().into_owned());
+    env.set("CARGO_MANIFEST_DIR", manifest_dir.as_str().to_owned());
 
     // Not always right, but works for common cases.
     env.set("CARGO", "cargo".into());

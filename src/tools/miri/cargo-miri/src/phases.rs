@@ -89,8 +89,12 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     let verbose = num_arg_flag("-v");
 
     // Determine the involved architectures.
-    let rustc_version = VersionMeta::for_command(miri_for_host())
-        .expect("failed to determine underlying rustc version of Miri");
+    let rustc_version = VersionMeta::for_command(miri_for_host()).unwrap_or_else(|err| {
+        panic!(
+            "failed to determine underlying rustc version of Miri ({:?}):\n{err:?}",
+            miri_for_host()
+        )
+    });
     let host = &rustc_version.host;
     let target = get_arg_flag_value("--target");
     let target = target.as_ref().unwrap_or(host);
@@ -222,7 +226,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     }
 
     // Run cargo.
-    debug_cmd("[cargo-miri miri]", verbose, &cmd);
+    debug_cmd("[cargo-miri cargo]", verbose, &cmd);
     exec(cmd)
 }
 

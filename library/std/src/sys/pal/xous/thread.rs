@@ -140,13 +140,3 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     // We're unicore right now.
     Ok(unsafe { NonZero::new_unchecked(1) })
 }
-
-pub mod guard {
-    pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> {
-        None
-    }
-    pub unsafe fn init() -> Option<Guard> {
-        None
-    }
-}
