@@ -249,15 +249,15 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                 default_irrefutable()
             }
 
-            PatKind::DerefPattern { ref subpattern, .. } => {
+            PatKind::DerefPattern { ref subpattern, mutability } => {
                 // Create a new temporary for each deref pattern.
                 // FIXME(deref_patterns): dedup temporaries to avoid multiple `deref()` calls?
                 let temp = cx.temp(
-                    Ty::new_imm_ref(cx.tcx, cx.tcx.lifetimes.re_erased, subpattern.ty),
+                    Ty::new_ref(cx.tcx, cx.tcx.lifetimes.re_erased, subpattern.ty, mutability),
                     pattern.span,
                 );
                 subpairs.push(MatchPair::new(PlaceBuilder::from(temp).deref(), subpattern, cx));
-                TestCase::Deref { temp }
+                TestCase::Deref { temp, mutability }
             }
         };
 

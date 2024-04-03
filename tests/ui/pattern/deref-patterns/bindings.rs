@@ -24,6 +24,19 @@ fn nested_vec(vecvec: Vec<Vec<u32>>) -> u32 {
     }
 }
 
+fn ref_mut(val: u32) -> u32 {
+    let mut b = Box::new(0u32);
+    match &mut b {
+        deref!(_x) if false => unreachable!(),
+        deref!(x) => {
+            *x = val;
+        }
+        _ => unreachable!(),
+    }
+    let deref!(x) = &b else { unreachable!() };
+    *x
+}
+
 fn main() {
     assert_eq!(simple_vec(vec![1]), 1);
     assert_eq!(simple_vec(vec![1, 2]), 202);
@@ -34,4 +47,6 @@ fn main() {
     assert_eq!(nested_vec(vec![vec![1, 42]]), 42);
     assert_eq!(nested_vec(vec![vec![1, 2, 3]]), 6);
     assert_eq!(nested_vec(vec![vec![], vec![1, 2, 3]]), 1);
+
+    assert_eq!(ref_mut(42), 42)
 }

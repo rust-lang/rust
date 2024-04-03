@@ -1163,7 +1163,7 @@ enum TestCase<'pat, 'tcx> {
     Constant { value: mir::Const<'tcx> },
     Range(&'pat PatRange<'tcx>),
     Slice { len: usize, variable_length: bool },
-    Deref { temp: Place<'tcx> },
+    Deref { temp: Place<'tcx>, mutability: Mutability },
     Or { pats: Box<[FlatPat<'pat, 'tcx>]> },
 }
 
@@ -1224,10 +1224,11 @@ enum TestKind<'tcx> {
     /// Test that the length of the slice is equal to `len`.
     Len { len: u64, op: BinOp },
 
-    /// Call `Deref::deref` on the value.
+    /// Call `Deref::deref[_mut]` on the value.
     Deref {
-        /// Temporary to store the result of `deref()`.
+        /// Temporary to store the result of `deref()`/`deref_mut()`.
         temp: Place<'tcx>,
+        mutability: Mutability,
     },
 }
 
