@@ -190,7 +190,7 @@ rustc_index::newtype_index! {
     struct DropIdx {}
 }
 
-const ROOT_NODE: DropIdx = DropIdx::from_u32(0);
+const ROOT_NODE: DropIdx = DropIdx::ZERO;
 
 /// A tree of drops that we have deferred lowering. It's used for:
 ///

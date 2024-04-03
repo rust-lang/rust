@@ -82,7 +82,7 @@ impl CanonicalVarValues<'_> {
     }
 
     pub fn is_identity_modulo_regions(&self) -> bool {
-        let mut var = ty::BoundVar::from_u32(0);
+        let mut var = ty::BoundVar::ZERO;
         for arg in self.var_values {
             match arg.unpack() {
                 ty::GenericArgKind::Lifetime(r) => {

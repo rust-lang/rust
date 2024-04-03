@@ -13,7 +13,7 @@ use rustc_const_eval::interpret::{
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
-use rustc_index::{bit_set::BitSet, Idx, IndexVec};
+use rustc_index::{bit_set::BitSet, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
@@ -124,10 +124,8 @@ impl<'tcx> Value<'tcx> {
                     fields.ensure_contains_elem(*idx, || Value::Uninit)
                 }
                 (PlaceElem::Field(..), val @ Value::Uninit) => {
-                    *val = Value::Aggregate {
-                        variant: VariantIdx::new(0),
-                        fields: Default::default(),
-                    };
+                    *val =
+                        Value::Aggregate { variant: VariantIdx::ZERO, fields: Default::default() };
                     val.project_mut(&[*proj])?
                 }
                 _ => return None,
@@ -572,7 +570,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     self.use_ecx(|this| this.ecx.overflowing_binary_op(bin_op, &left, &right))?;
                 let overflowed = ImmTy::from_bool(overflowed, self.tcx);
                 Value::Aggregate {
-                    variant: VariantIdx::new(0),
+                    variant: VariantIdx::ZERO,
                     fields: [Value::from(val), overflowed.into()].into_iter().collect(),
                 }
             }
@@ -607,7 +605,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         | AggregateKind::Tuple
                         | AggregateKind::Closure(_, _)
                         | AggregateKind::Coroutine(_, _)
-                        | AggregateKind::CoroutineClosure(_, _) => VariantIdx::new(0),
+                        | AggregateKind::CoroutineClosure(_, _) => VariantIdx::ZERO,
                     },
                 }
             }

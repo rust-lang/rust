@@ -174,6 +174,9 @@ impl Parse for Newtype {
                 /// Maximum value the index can take.
                 #vis const MAX: Self = Self::from_u32(#max);
 
+                /// Zero value of the index.
+                #vis const ZERO: Self = Self::from_u32(0);
+
                 /// Creates a new index from a given `usize`.
                 ///
                 /// # Panics

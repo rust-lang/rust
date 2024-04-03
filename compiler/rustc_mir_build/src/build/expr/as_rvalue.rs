@@ -573,7 +573,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     result_value,
                     Rvalue::CheckedBinaryOp(op, Box::new((lhs.to_copy(), rhs.to_copy()))),
                 );
-                let val_fld = FieldIdx::new(0);
+                let val_fld = FieldIdx::ZERO;
                 let of_fld = FieldIdx::new(1);
 
                 let tcx = self.tcx;

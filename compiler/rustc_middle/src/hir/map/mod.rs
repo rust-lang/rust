@@ -13,7 +13,6 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
-use rustc_index::Idx;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -69,7 +68,7 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_id.local_id.index() != 0 {
-            self.current_id.local_id = ItemLocalId::new(0);
+            self.current_id.local_id = ItemLocalId::ZERO;
             let node = self.map.tcx.hir_owner_node(self.current_id.owner);
             return Some((self.current_id.owner, node));
         }
@@ -133,7 +132,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// If calling repeatedly and iterating over parents, prefer [`Map::parent_iter`].
     pub fn parent_hir_id(self, hir_id: HirId) -> HirId {
         let HirId { owner, local_id } = hir_id;
-        if local_id == ItemLocalId::from_u32(0) {
+        if local_id == ItemLocalId::ZERO {
             self.hir_owner_parent(owner)
         } else {
             let parent_local_id = self.hir_owner_nodes(owner).nodes[local_id].parent;

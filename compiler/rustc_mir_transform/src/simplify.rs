@@ -415,7 +415,7 @@ fn make_local_map<V>(
     used_locals: &UsedLocals,
 ) -> IndexVec<Local, Option<Local>> {
     let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, local_decls);
-    let mut used = Local::new(0);
+    let mut used = Local::ZERO;
 
     for alive_index in local_decls.indices() {
         // `is_used` treats the `RETURN_PLACE` and arguments as used.
