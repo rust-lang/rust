@@ -395,6 +395,12 @@ impl BodySourceMap {
         self.expr_map.get(&src).copied()
     }
 
+    pub fn expansions(
+        &self,
+    ) -> impl Iterator<Item = (&InFile<AstPtr<ast::MacroCall>>, &MacroFileId)> {
+        self.expansions.iter()
+    }
+
     pub fn implicit_format_args(
         &self,
         node: InFile<&ast::FormatArgsExpr>,

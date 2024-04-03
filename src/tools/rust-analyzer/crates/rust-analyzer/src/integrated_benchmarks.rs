@@ -74,7 +74,7 @@ fn integrated_highlighting_benchmark() {
         host.apply_change(change);
     }
 
-    let _g = crate::tracing::hprof::init("*>20");
+    let _g = crate::tracing::hprof::init("*>10");
 
     {
         let _it = stdx::timeit("after change");

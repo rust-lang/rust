@@ -24,11 +24,12 @@ use hir_def::{
     LocalFieldId, Lookup, ModuleDefId, TraitId, VariantId,
 };
 use hir_expand::{
-    builtin_fn_macro::BuiltinFnLikeExpander,
     mod_path::path,
-    name,
-    name::{AsName, Name},
     HirFileId, InFile, InMacroFile, MacroFileId, MacroFileIdExt,
+    {
+        name,
+        name::{AsName, Name},
+    },
 };
 use hir_ty::{
     diagnostics::{
@@ -822,6 +823,8 @@ impl SourceAnalyzer {
         macro_call: InFile<&ast::MacroCall>,
     ) -> Option<MacroFileId> {
         let krate = self.resolver.krate();
+        // FIXME: This causes us to parse, generally this is the wrong approach for resolving a
+        // macro call to a macro call id!
         let macro_call_id = macro_call.as_call_id(db.upcast(), krate, |path| {
             self.resolver.resolve_path_as_macro_def(db.upcast(), &path, Some(MacroSubNs::Bang))
         })?;
@@ -851,13 +854,8 @@ impl SourceAnalyzer {
                 hir_def::MacroId::MacroRulesId(it) => it.lookup(db.upcast()).expander,
                 _ => hir_def::MacroExpander::Declarative,
             };
-            match ex {
-                hir_def::MacroExpander::BuiltIn(e)
-                    if e == BuiltinFnLikeExpander::Asm || e == BuiltinFnLikeExpander::GlobalAsm =>
-                {
-                    return true
-                }
-                _ => (),
+            if matches!(ex, hir_def::MacroExpander::BuiltIn(ex) if ex.is_asm()) {
+                return true;
             }
         }
         let macro_expr = match macro_call
