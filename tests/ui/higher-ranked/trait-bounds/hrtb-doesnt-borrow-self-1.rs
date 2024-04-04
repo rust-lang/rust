@@ -1,6 +1,6 @@
 //@ normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 
-// rust-lang/rust#30786: the use of `for<'b> &'b mut A: Stream<Item=T`
+// rust-lang/rust#30786: the use of `for<'b> &'b mut A: Stream<Item=T>`
 // should act as assertion that item does not borrow from its stream;
 // but an earlier buggy rustc allowed `.map(|x: &_| x)` which does
 // have such an item.
@@ -97,10 +97,6 @@ where
 
 impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
 
-fn identity<T>(x: &T) -> &T {
-    x
-}
-
 fn variant1() {
     let source = Repeat(10);
 
@@ -118,19 +114,7 @@ fn variant1() {
     // guess.
     let map = source.mapx(|x: &_| x);
     let filter = map.filterx(|x: &_| true);
-    //~^ ERROR the method
-}
-
-fn variant2() {
-    let source = Repeat(10);
-
-    // Here, we use a function, which is not subject to the vagaries
-    // of closure signature inference. In this case, we get the error
-    // on `countx` as, I think, the test originally expected.
-    let map = source.mapx(identity);
-    let filter = map.filterx(|x: &_| true);
-    let count = filter.countx();
-    //~^ ERROR the method
+    //~^ ERROR the method `filterx` exists for struct
 }
 
 fn main() {}
