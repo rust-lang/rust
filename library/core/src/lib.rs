@@ -472,4 +472,7 @@ pub mod simd {
     pub use crate::core_simd::simd::*;
 }
 
+#[rustfmt::skip]
+pub mod colorize;
+
 include!("primitive_docs.rs");
