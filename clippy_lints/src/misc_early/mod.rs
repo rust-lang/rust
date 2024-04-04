@@ -394,7 +394,7 @@ impl EarlyLintPass for MiscEarlyLints {
                             cx,
                             DUPLICATE_UNDERSCORE_ARGUMENT,
                             *correspondence,
-                            &format!(
+                            format!(
                                 "`{arg_name}` already exists, having another argument having almost the same \
                                  name makes code comprehension and documentation more difficult"
                             ),

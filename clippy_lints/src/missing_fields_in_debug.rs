@@ -198,7 +198,7 @@ fn check_struct<'tcx>(
 }
 
 impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
-    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx rustc_hir::Item<'tcx>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         // is this an `impl Debug for X` block?
         if let ItemKind::Impl(Impl { of_trait: Some(trait_ref), self_ty, items, .. }) = item.kind
             && let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res

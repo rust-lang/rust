@@ -267,7 +267,7 @@ fn emit_invalid_type(cx: &LateContext<'_>, span: Span, disallowed: &DisallowedPa
         cx,
         AWAIT_HOLDING_INVALID_TYPE,
         span,
-        &format!(
+        format!(
             "`{}` may not be held across an `await` point per `clippy.toml`",
             disallowed.path()
         ),

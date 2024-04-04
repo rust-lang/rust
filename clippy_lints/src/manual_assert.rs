@@ -1,7 +1,7 @@
 use crate::rustc_lint::LintContext;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::root_macro_call;
-use clippy_utils::{is_else_clause, peel_blocks_with_stmt, span_extract_comment, sugg};
+use clippy_utils::{is_else_clause, is_parent_stmt, peel_blocks_with_stmt, span_extract_comment, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -63,7 +63,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
                 _ => (cond, "!"),
             };
             let cond_sugg = sugg::Sugg::hir_with_applicability(cx, cond, "..", &mut applicability).maybe_par();
-            let sugg = format!("assert!({not}{cond_sugg}, {format_args_snip});");
+            let semicolon = if is_parent_stmt(cx, expr.hir_id) { ";" } else { "" };
+            let sugg = format!("assert!({not}{cond_sugg}, {format_args_snip}){semicolon}");
             // we show to the user the suggestion without the comments, but when applying the fix, include the
             // comments in the block
             span_lint_and_then(

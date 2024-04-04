@@ -83,3 +83,13 @@ fn issue7730(a: u8) {
         panic!("panic with comment") // comment after `panic!`
     }
 }
+
+fn issue12505() {
+    struct Foo<T, const N: usize>(T);
+
+    impl<T, const N: usize> Foo<T, N> {
+        const BAR: () = if N == 0 {
+            panic!()
+        };
+    }
+}
