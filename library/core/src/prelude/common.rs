@@ -104,3 +104,5 @@ pub use crate::macros::builtin::type_ascribe;
     reason = "placeholder syntax for deref patterns"
 )]
 pub use crate::macros::builtin::deref;
+
+pub use crate::colorize::Colorize;
