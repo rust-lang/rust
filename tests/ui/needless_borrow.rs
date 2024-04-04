@@ -251,3 +251,10 @@ mod issue_10253 {
         (&S).f::<()>();
     }
 }
+
+fn issue_12268() {
+    let option = Some((&1,));
+    let x = (&1,);
+    // Lint here.
+    option.unwrap_or((&x.0,));
+}
