@@ -514,13 +514,32 @@ impl<'a> AstValidator<'a> {
     }
 
     /// An `fn` in `extern { ... }` cannot have qualifiers, e.g. `async fn`.
-    fn check_foreign_fn_headerless(&self, ident: Ident, span: Span, header: FnHeader) {
-        if header.has_qualifiers() {
+    fn check_foreign_fn_headerless(
+        &self,
+        // Deconstruct to ensure exhaustiveness
+        FnHeader { unsafety, coroutine_kind, constness, ext }: FnHeader,
+    ) {
+        let report_err = |span| {
             self.dcx().emit_err(errors::FnQualifierInExtern {
-                span: ident.span,
+                span: span,
                 block: self.current_extern_span(),
-                sugg_span: span.until(ident.span.shrink_to_lo()),
             });
+        };
+        match unsafety {
+            Unsafe::Yes(span) => report_err(span),
+            Unsafe::No => (),
+        }
+        match coroutine_kind {
+            Some(knd) => report_err(knd.span()),
+            None => (),
+        }
+        match constness {
+            Const::Yes(span) => report_err(span),
+            Const::No => (),
+        }
+        match ext {
+            Extern::None => (),
+            Extern::Implicit(span) | Extern::Explicit(_, span) => report_err(span),
         }
     }
 
@@ -1145,7 +1164,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ForeignItemKind::Fn(box Fn { defaultness, sig, body, .. }) => {
                 self.check_defaultness(fi.span, *defaultness);
                 self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
-                self.check_foreign_fn_headerless(fi.ident, fi.span, sig.header);
+                self.check_foreign_fn_headerless(sig.header);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::TyAlias(box TyAlias {
