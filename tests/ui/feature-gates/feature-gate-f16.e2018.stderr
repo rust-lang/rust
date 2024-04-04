@@ -1,5 +1,5 @@
 error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:3:10
+  --> $DIR/feature-gate-f16.rs:7:10
    |
 LL | const A: f16 = 10.0;
    |          ^^^
@@ -9,7 +9,7 @@ LL | const A: f16 = 10.0;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:6:12
+  --> $DIR/feature-gate-f16.rs:10:12
    |
 LL |     let a: f16 = 100.0;
    |            ^^^
@@ -19,7 +19,7 @@ LL |     let a: f16 = 100.0;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:11:11
+  --> $DIR/feature-gate-f16.rs:15:11
    |
 LL | fn foo(a: f16) {}
    |           ^^^
@@ -29,7 +29,7 @@ LL | fn foo(a: f16) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:14:8
+  --> $DIR/feature-gate-f16.rs:18:8
    |
 LL |     a: f16,
    |        ^^^
@@ -39,7 +39,7 @@ LL |     a: f16,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:7:13
+  --> $DIR/feature-gate-f16.rs:11:13
    |
 LL |     let b = 0.0f16;
    |             ^^^^^^
