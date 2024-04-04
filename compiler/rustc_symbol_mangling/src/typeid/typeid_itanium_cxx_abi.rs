@@ -11,13 +11,14 @@ use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{
     self, Const, ExistentialPredicate, FloatTy, FnSig, Instance, IntTy, List, Region, RegionKind,
     TermKind, Ty, TyCtxt, UintTy,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
+use rustc_middle::ty::{TypeFoldable, TypeVisitableExt};
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
 use rustc_target::abi::call::{Conv, FnAbi, PassMode};
@@ -182,14 +183,15 @@ fn encode_fnsig<'tcx>(
     // Encode the return type
     let transform_ty_options = TransformTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("encode_fnsig: invalid option(s) `{:?}`", options.bits()));
-    let ty = transform_ty(tcx, fn_sig.output(), &mut Vec::new(), transform_ty_options);
+    let mut type_folder = TransformTy::new(tcx, transform_ty_options);
+    let ty = fn_sig.output().fold_with(&mut type_folder);
     s.push_str(&encode_ty(tcx, ty, dict, encode_ty_options));
 
     // Encode the parameter types
     let tys = fn_sig.inputs();
     if !tys.is_empty() {
         for ty in tys {
-            let ty = transform_ty(tcx, *ty, &mut Vec::new(), transform_ty_options);
+            let ty = ty.fold_with(&mut type_folder);
             s.push_str(&encode_ty(tcx, ty, dict, encode_ty_options));
         }
 
@@ -523,15 +525,9 @@ fn encode_ty<'tcx>(
 
         ty::Array(ty0, len) => {
             // A<array-length><element-type>
+            let len = len.eval_target_usize(tcx, ty::ParamEnv::reveal_all());
             let mut s = String::from("A");
-            let _ = write!(
-                s,
-                "{}",
-                &len.try_to_scalar()
-                    .unwrap()
-                    .to_target_usize(&tcx.data_layout)
-                    .expect("Array lens are defined in usize")
-            );
+            let _ = write!(s, "{}", &len);
             s.push_str(&encode_ty(tcx, *ty0, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
@@ -756,278 +752,208 @@ fn encode_ty<'tcx>(
     typeid
 }
 
-/// Transforms predicates for being encoded and used in the substitution dictionary.
-fn transform_predicates<'tcx>(
+struct TransformTy<'tcx> {
     tcx: TyCtxt<'tcx>,
-    predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
-) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>> {
-    tcx.mk_poly_existential_predicates_from_iter(predicates.iter().filter_map(|predicate| {
-        match predicate.skip_binder() {
-            ty::ExistentialPredicate::Trait(trait_ref) => {
-                let trait_ref = ty::TraitRef::identity(tcx, trait_ref.def_id);
-                Some(ty::Binder::dummy(ty::ExistentialPredicate::Trait(
-                    ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
-                )))
-            }
-            ty::ExistentialPredicate::Projection(..) => None,
-            ty::ExistentialPredicate::AutoTrait(..) => Some(predicate),
-        }
-    }))
+    options: TransformTyOptions,
+    parents: Vec<Ty<'tcx>>,
 }
 
-/// Transforms args for being encoded and used in the substitution dictionary.
-fn transform_args<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
-    parents: &mut Vec<Ty<'tcx>>,
-    options: TransformTyOptions,
-) -> GenericArgsRef<'tcx> {
-    let args = args.iter().map(|arg| match arg.unpack() {
-        GenericArgKind::Type(ty) if ty.is_c_void(tcx) => Ty::new_unit(tcx).into(),
-        GenericArgKind::Type(ty) => transform_ty(tcx, ty, parents, options).into(),
-        _ => arg,
-    });
-    tcx.mk_args_from_iter(args)
+impl<'tcx> TransformTy<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, options: TransformTyOptions) -> Self {
+        TransformTy { tcx, options, parents: Vec::new() }
+    }
 }
 
-// Transforms a ty:Ty for being encoded and used in the substitution dictionary. It transforms all
-// c_void types into unit types unconditionally, generalizes pointers if
-// TransformTyOptions::GENERALIZE_POINTERS option is set, and normalizes integers if
-// TransformTyOptions::NORMALIZE_INTEGERS option is set.
-fn transform_ty<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    mut ty: Ty<'tcx>,
-    parents: &mut Vec<Ty<'tcx>>,
-    options: TransformTyOptions,
-) -> Ty<'tcx> {
-    match ty.kind() {
-        ty::Float(..) | ty::Str | ty::Never | ty::Foreign(..) | ty::CoroutineWitness(..) => {}
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
+    // Transforms a ty:Ty for being encoded and used in the substitution dictionary. It transforms
+    // all c_void types into unit types unconditionally, generalizes pointers if
+    // TransformTyOptions::GENERALIZE_POINTERS option is set, and normalizes integers if
+    // TransformTyOptions::NORMALIZE_INTEGERS option is set.
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        match t.kind() {
+            ty::Array(..)
+            | ty::Closure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineClosure(..)
+            | ty::CoroutineWitness(..)
+            | ty::Float(..)
+            | ty::FnDef(..)
+            | ty::Foreign(..)
+            | ty::Never
+            | ty::Slice(..)
+            | ty::Str
+            | ty::Tuple(..) => t.super_fold_with(self),
 
-        ty::Bool => {
-            if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
-                // Note: on all platforms that Rust's currently supports, its size and alignment are
-                // 1, and its ABI class is INTEGER - see Rust Layout and ABIs.
-                //
-                // (See https://rust-lang.github.io/unsafe-code-guidelines/layout/scalars.html#bool.)
-                //
-                // Clang represents bool as an 8-bit unsigned integer.
-                ty = tcx.types.u8;
-            }
-        }
-
-        ty::Char => {
-            if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
-                // Since #118032, char is guaranteed to have the same size, alignment, and function
-                // call ABI as u32 on all platforms.
-                ty = tcx.types.u32;
-            }
-        }
-
-        ty::Int(..) | ty::Uint(..) => {
-            if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
-                // Note: C99 7.18.2.4 requires uintptr_t and intptr_t to be at least 16-bit wide.
-                // All platforms we currently support have a C platform, and as a consequence,
-                // isize/usize are at least 16-bit wide for all of them.
-                //
-                // (See https://rust-lang.github.io/unsafe-code-guidelines/layout/scalars.html#isize-and-usize.)
-                match ty.kind() {
-                    ty::Int(IntTy::Isize) => match tcx.sess.target.pointer_width {
-                        16 => ty = tcx.types.i16,
-                        32 => ty = tcx.types.i32,
-                        64 => ty = tcx.types.i64,
-                        128 => ty = tcx.types.i128,
-                        _ => bug!(
-                            "transform_ty: unexpected pointer width `{}`",
-                            tcx.sess.target.pointer_width
-                        ),
-                    },
-                    ty::Uint(UintTy::Usize) => match tcx.sess.target.pointer_width {
-                        16 => ty = tcx.types.u16,
-                        32 => ty = tcx.types.u32,
-                        64 => ty = tcx.types.u64,
-                        128 => ty = tcx.types.u128,
-                        _ => bug!(
-                            "transform_ty: unexpected pointer width `{}`",
-                            tcx.sess.target.pointer_width
-                        ),
-                    },
-                    _ => (),
+            ty::Bool => {
+                if self.options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
+                    // Note: on all platforms that Rust's currently supports, its size and alignment
+                    // are 1, and its ABI class is INTEGER - see Rust Layout and ABIs.
+                    //
+                    // (See https://rust-lang.github.io/unsafe-code-guidelines/layout/scalars.html#bool.)
+                    //
+                    // Clang represents bool as an 8-bit unsigned integer.
+                    self.tcx.types.u8
+                } else {
+                    t
                 }
             }
-        }
 
-        _ if ty.is_unit() => {}
-
-        ty::Tuple(tys) => {
-            ty = Ty::new_tup_from_iter(
-                tcx,
-                tys.iter().map(|ty| transform_ty(tcx, ty, parents, options)),
-            );
-        }
-
-        ty::Array(ty0, len) => {
-            let len = len.eval_target_usize(tcx, ty::ParamEnv::reveal_all());
-
-            ty = Ty::new_array(tcx, transform_ty(tcx, *ty0, parents, options), len);
-        }
-
-        ty::Slice(ty0) => {
-            ty = Ty::new_slice(tcx, transform_ty(tcx, *ty0, parents, options));
-        }
-
-        ty::Adt(adt_def, args) => {
-            if ty.is_c_void(tcx) {
-                ty = Ty::new_unit(tcx);
-            } else if options.contains(TransformTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c()
-            {
-                ty = Ty::new_adt(tcx, *adt_def, ty::List::empty());
-            } else if adt_def.repr().transparent() && adt_def.is_struct() && !parents.contains(&ty)
-            {
-                // Don't transform repr(transparent) types with an user-defined CFI encoding to
-                // preserve the user-defined CFI encoding.
-                if let Some(_) = tcx.get_attr(adt_def.did(), sym::cfi_encoding) {
-                    return ty;
+            ty::Char => {
+                if self.options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
+                    // Since #118032, char is guaranteed to have the same size, alignment, and
+                    // function call ABI as u32 on all platforms.
+                    self.tcx.types.u32
+                } else {
+                    t
                 }
-                let variant = adt_def.non_enum_variant();
-                let param_env = tcx.param_env(variant.def_id);
-                let field = variant.fields.iter().find(|field| {
-                    let ty = tcx.type_of(field.did).instantiate_identity();
-                    let is_zst =
-                        tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| layout.is_zst());
-                    !is_zst
-                });
-                if let Some(field) = field {
-                    let ty0 = tcx.type_of(field.did).instantiate(tcx, args);
-                    // Generalize any repr(transparent) user-defined type that is either a pointer
-                    // or reference, and either references itself or any other type that contains or
-                    // references itself, to avoid a reference cycle.
+            }
 
-                    // If the self reference is not through a pointer, for example, due
-                    // to using `PhantomData`, need to skip normalizing it if we hit it again.
-                    parents.push(ty);
-                    if ty0.is_any_ptr() && ty0.contains(ty) {
-                        ty = transform_ty(
-                            tcx,
-                            ty0,
-                            parents,
-                            options | TransformTyOptions::GENERALIZE_POINTERS,
-                        );
-                    } else {
-                        ty = transform_ty(tcx, ty0, parents, options);
+            ty::Int(..) | ty::Uint(..) => {
+                if self.options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
+                    // Note: C99 7.18.2.4 requires uintptr_t and intptr_t to be at least 16-bit
+                    // wide. All platforms we currently support have a C platform, and as a
+                    // consequence, isize/usize are at least 16-bit wide for all of them.
+                    //
+                    // (See https://rust-lang.github.io/unsafe-code-guidelines/layout/scalars.html#isize-and-usize.)
+                    match t.kind() {
+                        ty::Int(IntTy::Isize) => match self.tcx.sess.target.pointer_width {
+                            16 => self.tcx.types.i16,
+                            32 => self.tcx.types.i32,
+                            64 => self.tcx.types.i64,
+                            128 => self.tcx.types.i128,
+                            _ => bug!(
+                                "fold_ty: unexpected pointer width `{}`",
+                                self.tcx.sess.target.pointer_width
+                            ),
+                        },
+                        ty::Uint(UintTy::Usize) => match self.tcx.sess.target.pointer_width {
+                            16 => self.tcx.types.u16,
+                            32 => self.tcx.types.u32,
+                            64 => self.tcx.types.u64,
+                            128 => self.tcx.types.u128,
+                            _ => bug!(
+                                "fold_ty: unexpected pointer width `{}`",
+                                self.tcx.sess.target.pointer_width
+                            ),
+                        },
+                        _ => t,
                     }
-                    parents.pop();
                 } else {
-                    // Transform repr(transparent) types without non-ZST field into ()
-                    ty = Ty::new_unit(tcx);
-                }
-            } else {
-                ty = Ty::new_adt(tcx, *adt_def, transform_args(tcx, args, parents, options));
-            }
-        }
-
-        ty::FnDef(def_id, args) => {
-            ty = Ty::new_fn_def(tcx, *def_id, transform_args(tcx, args, parents, options));
-        }
-
-        ty::Closure(def_id, args) => {
-            ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, parents, options));
-        }
-
-        ty::CoroutineClosure(def_id, args) => {
-            ty = Ty::new_coroutine_closure(
-                tcx,
-                *def_id,
-                transform_args(tcx, args, parents, options),
-            );
-        }
-
-        ty::Coroutine(def_id, args) => {
-            ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, parents, options));
-        }
-
-        ty::Ref(region, ty0, ..) => {
-            if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
-                if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_static, Ty::new_unit(tcx));
-                } else {
-                    ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, Ty::new_unit(tcx));
-                }
-            } else {
-                if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ref(tcx, *region, transform_ty(tcx, *ty0, parents, options));
-                } else {
-                    ty = Ty::new_imm_ref(tcx, *region, transform_ty(tcx, *ty0, parents, options));
+                    t
                 }
             }
-        }
 
-        ty::RawPtr(ptr_ty, _) => {
-            if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
-                if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ptr(tcx, Ty::new_unit(tcx));
+            ty::Adt(..) if t.is_c_void(self.tcx) => self.tcx.types.unit,
+
+            ty::Adt(adt_def, args) => {
+                if adt_def.repr().transparent() && adt_def.is_struct() && !self.parents.contains(&t)
+                {
+                    // Don't transform repr(transparent) types with an user-defined CFI encoding to
+                    // preserve the user-defined CFI encoding.
+                    if let Some(_) = self.tcx.get_attr(adt_def.did(), sym::cfi_encoding) {
+                        return t;
+                    }
+                    let variant = adt_def.non_enum_variant();
+                    let param_env = self.tcx.param_env(variant.def_id);
+                    let field = variant.fields.iter().find(|field| {
+                        let ty = self.tcx.type_of(field.did).instantiate_identity();
+                        let is_zst = self
+                            .tcx
+                            .layout_of(param_env.and(ty))
+                            .is_ok_and(|layout| layout.is_zst());
+                        !is_zst
+                    });
+                    if let Some(field) = field {
+                        let ty0 = self.tcx.type_of(field.did).instantiate(self.tcx, args);
+                        // Generalize any repr(transparent) user-defined type that is either a
+                        // pointer or reference, and either references itself or any other type that
+                        // contains or references itself, to avoid a reference cycle.
+
+                        // If the self reference is not through a pointer, for example, due
+                        // to using `PhantomData`, need to skip normalizing it if we hit it again.
+                        self.parents.push(t);
+                        let ty = if ty0.is_any_ptr() && ty0.contains(t) {
+                            let options = self.options;
+                            self.options |= TransformTyOptions::GENERALIZE_POINTERS;
+                            let ty = ty0.fold_with(self);
+                            self.options = options;
+                            ty
+                        } else {
+                            ty0.fold_with(self)
+                        };
+                        self.parents.pop();
+                        ty
+                    } else {
+                        // Transform repr(transparent) types without non-ZST field into ()
+                        self.tcx.types.unit
+                    }
                 } else {
-                    ty = Ty::new_imm_ptr(tcx, Ty::new_unit(tcx));
-                }
-            } else {
-                if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ptr(tcx, transform_ty(tcx, *ptr_ty, parents, options));
-                } else {
-                    ty = Ty::new_imm_ptr(tcx, transform_ty(tcx, *ptr_ty, parents, options));
+                    t.super_fold_with(self)
                 }
             }
-        }
 
-        ty::FnPtr(fn_sig) => {
-            if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
-                ty = Ty::new_imm_ptr(tcx, Ty::new_unit(tcx));
-            } else {
-                let parameters: Vec<Ty<'tcx>> = fn_sig
-                    .skip_binder()
-                    .inputs()
-                    .iter()
-                    .map(|ty| transform_ty(tcx, *ty, parents, options))
-                    .collect();
-                let output = transform_ty(tcx, fn_sig.skip_binder().output(), parents, options);
-                ty = Ty::new_fn_ptr(
-                    tcx,
-                    ty::Binder::bind_with_vars(
-                        tcx.mk_fn_sig(
-                            parameters,
-                            output,
-                            fn_sig.c_variadic(),
-                            fn_sig.unsafety(),
-                            fn_sig.abi(),
-                        ),
-                        fn_sig.bound_vars(),
-                    ),
+            ty::Ref(..) => {
+                if self.options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
+                    if t.is_mutable_ptr() {
+                        Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_static, self.tcx.types.unit)
+                    } else {
+                        Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_static, self.tcx.types.unit)
+                    }
+                } else {
+                    t.super_fold_with(self)
+                }
+            }
+
+            ty::RawPtr(..) => {
+                if self.options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
+                    if t.is_mutable_ptr() {
+                        Ty::new_mut_ptr(self.tcx, self.tcx.types.unit)
+                    } else {
+                        Ty::new_imm_ptr(self.tcx, self.tcx.types.unit)
+                    }
+                } else {
+                    t.super_fold_with(self)
+                }
+            }
+
+            ty::FnPtr(..) => {
+                if self.options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
+                    Ty::new_imm_ptr(self.tcx, self.tcx.types.unit)
+                } else {
+                    t.super_fold_with(self)
+                }
+            }
+
+            ty::Dynamic(predicates, _region, kind) => {
+                let predicates = self.tcx.mk_poly_existential_predicates_from_iter(
+                    predicates.iter().filter_map(|predicate| match predicate.skip_binder() {
+                        ty::ExistentialPredicate::Trait(trait_ref) => {
+                            let trait_ref = ty::TraitRef::identity(self.tcx, trait_ref.def_id);
+                            Some(ty::Binder::dummy(ty::ExistentialPredicate::Trait(
+                                ty::ExistentialTraitRef::erase_self_ty(self.tcx, trait_ref),
+                            )))
+                        }
+                        ty::ExistentialPredicate::Projection(..) => None,
+                        ty::ExistentialPredicate::AutoTrait(..) => Some(predicate),
+                    }),
                 );
+
+                Ty::new_dynamic(self.tcx, predicates, self.tcx.lifetimes.re_erased, *kind)
             }
-        }
 
-        ty::Dynamic(predicates, _region, kind) => {
-            ty = Ty::new_dynamic(
-                tcx,
-                transform_predicates(tcx, predicates),
-                tcx.lifetimes.re_erased,
-                *kind,
-            );
-        }
+            ty::Alias(..) => {
+                self.fold_ty(self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), t))
+            }
 
-        ty::Alias(..) => {
-            ty = transform_ty(
-                tcx,
-                tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty),
-                parents,
-                options,
-            );
-        }
-
-        ty::Bound(..) | ty::Error(..) | ty::Infer(..) | ty::Param(..) | ty::Placeholder(..) => {
-            bug!("transform_ty: unexpected `{:?}`", ty.kind());
+            ty::Bound(..) | ty::Error(..) | ty::Infer(..) | ty::Param(..) | ty::Placeholder(..) => {
+                bug!("fold_ty: unexpected `{:?}`", t.kind());
+            }
         }
     }
 
-    ty
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
 }
 
 /// Returns a type metadata identifier for the specified FnAbi using the Itanium C++ ABI with vendor
@@ -1068,7 +994,8 @@ pub fn typeid_for_fnabi<'tcx>(
     // Encode the return type
     let transform_ty_options = TransformTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("typeid_for_fnabi: invalid option(s) `{:?}`", options.bits()));
-    let ty = transform_ty(tcx, fn_abi.ret.layout.ty, &mut Vec::new(), transform_ty_options);
+    let mut type_folder = TransformTy::new(tcx, transform_ty_options);
+    let ty = fn_abi.ret.layout.ty.fold_with(&mut type_folder);
     typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
 
     // Encode the parameter types
@@ -1080,7 +1007,7 @@ pub fn typeid_for_fnabi<'tcx>(
         let mut pushed_arg = false;
         for arg in fn_abi.args.iter().filter(|arg| arg.mode != PassMode::Ignore) {
             pushed_arg = true;
-            let ty = transform_ty(tcx, arg.layout.ty, &mut Vec::new(), transform_ty_options);
+            let ty = arg.layout.ty.fold_with(&mut type_folder);
             typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
         }
         if !pushed_arg {
@@ -1093,8 +1020,7 @@ pub fn typeid_for_fnabi<'tcx>(
             if fn_abi.args[n].mode == PassMode::Ignore {
                 continue;
             }
-            let ty =
-                transform_ty(tcx, fn_abi.args[n].layout.ty, &mut Vec::new(), transform_ty_options);
+            let ty = fn_abi.args[n].layout.ty.fold_with(&mut type_folder);
             typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
         }
 

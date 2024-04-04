@@ -3,21 +3,12 @@
 use crate::sys::c;
 use crate::thread;
 
-use super::api;
-
-pub struct Handler;
-
-impl Handler {
-    pub unsafe fn new() -> Handler {
-        // This API isn't available on XP, so don't panic in that case and just
-        // pray it works out ok.
-        if c::SetThreadStackGuarantee(&mut 0x5000) == 0
-            && api::get_last_error().code != c::ERROR_CALL_NOT_IMPLEMENTED
-        {
-            panic!("failed to reserve stack space for exception handling");
-        }
-        Handler
-    }
+/// Reserve stack space for use in stack overflow exceptions.
+pub unsafe fn reserve_stack() {
+    let result = c::SetThreadStackGuarantee(&mut 0x5000);
+    // Reserving stack space is not critical so we allow it to fail in the released build of libstd.
+    // We still use debug assert here so that CI will test that we haven't made a mistake calling the function.
+    debug_assert_ne!(result, 0, "failed to reserve stack space for exception handling");
 }
 
 unsafe extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POINTERS) -> c::LONG {
@@ -36,9 +27,10 @@ unsafe extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POIN
 }
 
 pub unsafe fn init() {
-    if c::AddVectoredExceptionHandler(0, Some(vectored_handler)).is_null() {
-        panic!("failed to install exception handler");
-    }
+    let result = c::AddVectoredExceptionHandler(0, Some(vectored_handler));
+    // Similar to the above, adding the stack overflow handler is allowed to fail
+    // but a debug assert is used so CI will still test that it normally works.
+    debug_assert!(!result.is_null(), "failed to install exception handler");
     // Set the thread stack guarantee for the main thread.
-    let _h = Handler::new();
+    reserve_stack();
 }
