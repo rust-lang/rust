@@ -718,7 +718,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // FIXME(eddyb) add the type to `walker` instead of recursing.
                 let fn_sig = tcx.fn_sig(did).instantiate(tcx, args);
                 fn_sig.output().skip_binder().visit_with(self);
-                
+
                 let obligations = self.nominal_obligations(did, args);
                 self.out.extend(obligations);
             }
@@ -863,7 +863,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 
     fn visit_const(&mut self, c: <TyCtxt<'tcx> as ty::Interner>::Const) -> Self::Result {
         let tcx = self.tcx();
-        
+
         match c.kind() {
             ty::ConstKind::Unevaluated(uv) => {
                 if !c.has_escaping_bound_vars() {

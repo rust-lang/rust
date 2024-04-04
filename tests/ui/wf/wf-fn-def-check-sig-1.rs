@@ -8,8 +8,8 @@ fn foo<'b, 'a>() -> PhantomData<&'b &'a ()> {
 
 fn extend_lifetime<'a, 'b, T: ?Sized>(x: &'a T) -> &'b T {
     let f = foo::<'b, 'a>;
-    //~^ ERROR lifetime may not live long enough
     f.baz(x)
+    //~^ ERROR lifetime may not live long enough
 }
 
 trait Foo<'a, 'b, T: ?Sized> {
