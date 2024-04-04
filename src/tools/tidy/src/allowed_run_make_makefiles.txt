@@ -131,7 +131,6 @@ run-make/issue-53964/Makefile
 run-make/issue-64153/Makefile
 run-make/issue-68794-textrel-on-minimal-lib/Makefile
 run-make/issue-69368/Makefile
-run-make/issue-7349/Makefile
 run-make/issue-83045/Makefile
 run-make/issue-83112-incr-test-moved-file/Makefile
 run-make/issue-84395-lto-embed-bitcode/Makefile
