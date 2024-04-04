@@ -23,7 +23,7 @@ fn disjoint_ranges(_1: i32, _2: bool) -> u32 {
     }
 
     bb2: {
-        falseEdge -> [real: bb9, imaginary: bb4];
+        falseEdge -> [real: bb9, imaginary: bb3];
     }
 
     bb3: {
@@ -32,7 +32,7 @@ fn disjoint_ranges(_1: i32, _2: bool) -> u32 {
     }
 
     bb4: {
-        falseEdge -> [real: bb12, imaginary: bb6];
+        falseEdge -> [real: bb12, imaginary: bb5];
     }
 
     bb5: {
@@ -69,7 +69,7 @@ fn disjoint_ranges(_1: i32, _2: bool) -> u32 {
 
     bb11: {
         StorageDead(_8);
-        falseEdge -> [real: bb1, imaginary: bb4];
+        falseEdge -> [real: bb1, imaginary: bb3];
     }
 
     bb12: {
