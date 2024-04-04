@@ -2006,12 +2006,15 @@ impl Function {
 
     /// is this a `fn main` or a function with an `export_name` of `main`?
     pub fn is_main(self, db: &dyn HirDatabase) -> bool {
-        if !self.module(db).is_crate_root() {
-            return false;
-        }
         let data = db.function_data(self.id);
+        data.attrs.export_name() == Some("main")
+            || self.module(db).is_crate_root() && data.name.to_smol_str() == "main"
+    }
 
-        data.name.to_smol_str() == "main" || data.attrs.export_name() == Some("main")
+    /// Is this a function with an `export_name` of `main`?
+    pub fn exported_main(self, db: &dyn HirDatabase) -> bool {
+        let data = db.function_data(self.id);
+        data.attrs.export_name() == Some("main")
     }
 
     /// Does this function have the ignore attribute?

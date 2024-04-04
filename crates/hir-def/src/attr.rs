@@ -141,6 +141,10 @@ impl Attrs {
         }
     }
 
+    pub fn cfgs(&self) -> impl Iterator<Item = CfgExpr> + '_ {
+        self.by_key("cfg").tt_values().map(CfgExpr::parse)
+    }
+
     pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> bool {
         match self.cfg() {
             None => true,
