@@ -77,3 +77,14 @@ fn closure_addr_taken() {
     let call = Fn::<()>::call;
     use_closure(call, &f);
 }
+
+fn use_closure_once<C>(call: extern "rust-call" fn(C, ()) -> i32, f: C) -> i32 {
+    call(f, ())
+}
+
+#[test]
+fn closure_once_addr_taken() {
+    let g = || 3;
+    let call2 = FnOnce::<()>::call_once;
+    use_closure_once(call2, g);
+}
