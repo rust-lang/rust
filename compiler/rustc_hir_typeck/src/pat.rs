@@ -130,13 +130,14 @@ enum AdjustMode {
     /// Peel off all immediate reference types.
     Peel,
     /// Reset binding mode to the initial mode.
+    /// Used for destructuring assignment, where we don't want any match ergonomics.
     Reset,
     /// Produced by ref patterns.
     /// Reset the binding mode to the initial mode,
     /// and if the old biding mode was by-reference
     /// with mutability matching the pattern,
     /// mark the pattern as having consumed this reference.
-    RefReset(Mutability),
+    ResetAndConsumeRef(Mutability),
     /// Pass on the input binding mode and expected type.
     Pass,
 }
@@ -292,7 +293,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match adjust_mode {
             AdjustMode::Pass => (expected, def_bm, false),
             AdjustMode::Reset => (expected, INITIAL_BM, false),
-            AdjustMode::RefReset(mutbl) => (expected, INITIAL_BM, def_bm.0 == ByRef::Yes(mutbl)),
+            AdjustMode::ResetAndConsumeRef(mutbl) => {
+                (expected, INITIAL_BM, def_bm.0 == ByRef::Yes(mutbl))
+            }
             AdjustMode::Peel => {
                 let peeled = self.peel_off_references(pat, expected, def_bm);
                 (peeled.0, peeled.1, false)
@@ -351,7 +354,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // ```
             //
             // See issue #46688.
-            PatKind::Ref(_, mutbl) => AdjustMode::RefReset(*mutbl),
+            PatKind::Ref(_, mutbl) => AdjustMode::ResetAndConsumeRef(*mutbl),
             // A `_` pattern works with any expected type, so there's no need to do anything.
             PatKind::Wild
             // A malformed pattern doesn't have an expected type, so let's just accept any type.
