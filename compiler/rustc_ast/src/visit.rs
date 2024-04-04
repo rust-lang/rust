@@ -20,7 +20,6 @@ use rustc_span::Span;
 
 pub use rustc_ast_ir::visit::VisitorResult;
 pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
-use thin_vec::ThinVec;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AssocCtxt {
@@ -184,9 +183,6 @@ pub trait Visitor<'ast>: Sized {
     }
     fn visit_param_bound(&mut self, bounds: &'ast GenericBound, _ctxt: BoundKind) -> Self::Result {
         walk_param_bound(self, bounds)
-    }
-    fn visit_precise_capturing_args(&mut self, args: &'ast ThinVec<PreciseCapturingArg>) {
-        walk_precise_capturing_args(self, args);
     }
     fn visit_precise_capturing_arg(&mut self, arg: &'ast PreciseCapturingArg) {
         walk_precise_capturing_arg(self, arg);
@@ -466,7 +462,11 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
         }
         TyKind::ImplTrait(_, bounds, precise_capturing) => {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Impl);
-            visit_opt!(visitor, visit_precise_capturing_args, precise_capturing);
+            if let Some(precise_capturing) = precise_capturing {
+                for arg in precise_capturing {
+                    try_visit!(visitor.visit_precise_capturing_arg(arg));
+                }
+            }
         }
         TyKind::Typeof(expression) => try_visit!(visitor.visit_anon_const(expression)),
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Dummy | TyKind::Err(_) => {}
@@ -642,15 +642,6 @@ pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a GenericB
     match bound {
         GenericBound::Trait(typ, _modifier) => visitor.visit_poly_trait_ref(typ),
         GenericBound::Outlives(lifetime) => visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound),
-    }
-}
-
-pub fn walk_precise_capturing_args<'a, V: Visitor<'a>>(
-    visitor: &mut V,
-    args: &'a ThinVec<PreciseCapturingArg>,
-) {
-    for arg in args {
-        visitor.visit_precise_capturing_arg(arg);
     }
 }
 

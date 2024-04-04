@@ -48,6 +48,7 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -1525,7 +1526,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bounds: &GenericBounds,
         fn_kind: Option<FnDeclKind>,
         itctx: ImplTraitContext,
-        precise_capturing: Option<&[ast::PreciseCapturingArg]>,
+        precise_capturing_args: Option<&[PreciseCapturingArg]>,
     ) -> hir::TyKind<'hir> {
         // Make sure we know that some funky desugaring has been going on here.
         // This is a first: there is code in other places like for loop
@@ -1541,9 +1542,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 precise_capturing
                     .iter()
                     .filter_map(|arg| match arg {
-                        ast::PreciseCapturingArg::Lifetime(lt) => Some(*lt),
-                        ast::PreciseCapturingArg::Arg(..) => None,
+                        PreciseCapturingArg::Lifetime(lt) => Some(*lt),
+                        PreciseCapturingArg::Arg(..) => None,
                     })
+                    // Add in all the lifetimes mentioned in the bounds. We will error
+                    // them out later, but capturing them here is important to make sure
+                    // they actually get resolved in resolve_bound_vars.
+                    .chain(lifetime_collector::lifetimes_in_bounds(self.resolver, bounds))
                     .collect()
             } else {
                 match origin {
@@ -1592,6 +1597,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             captured_lifetimes_to_duplicate,
             span,
             opaque_ty_span,
+            precise_capturing_args,
             |this| this.lower_param_bounds(bounds, itctx),
         )
     }
@@ -1601,9 +1607,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         opaque_ty_node_id: NodeId,
         origin: hir::OpaqueTyOrigin,
         in_trait: bool,
-        captured_lifetimes_to_duplicate: Vec<Lifetime>,
+        captured_lifetimes_to_duplicate: FxIndexSet<Lifetime>,
         span: Span,
         opaque_ty_span: Span,
+        precise_capturing_args: Option<&[PreciseCapturingArg]>,
         lower_item_bounds: impl FnOnce(&mut Self) -> &'hir [hir::GenericBound<'hir>],
     ) -> hir::TyKind<'hir> {
         let opaque_ty_def_id = self.create_def(
@@ -1690,8 +1697,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // Install the remapping from old to new (if any). This makes sure that
             // any lifetimes that would have resolved to the def-id of captured
             // lifetimes are remapped to the new *synthetic* lifetimes of the opaque.
-            let bounds = this
-                .with_remapping(captured_to_synthesized_mapping, |this| lower_item_bounds(this));
+            let (bounds, precise_capturing_args) =
+                this.with_remapping(captured_to_synthesized_mapping, |this| {
+                    (
+                        lower_item_bounds(this),
+                        precise_capturing_args.map(|precise_capturing| {
+                            this.lower_precise_capturing_args(precise_capturing)
+                        }),
+                    )
+                });
 
             let generic_params =
                 this.arena.alloc_from_iter(synthesized_lifetime_definitions.iter().map(
@@ -1736,6 +1750,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 origin,
                 lifetime_mapping,
                 in_trait,
+                precise_capturing_args,
             };
 
             // Generate an `type Foo = impl Trait;` declaration.
@@ -1766,6 +1781,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             generic_args,
             in_trait,
         )
+    }
+
+    fn lower_precise_capturing_args(
+        &mut self,
+        precise_capturing_args: &[PreciseCapturingArg],
+    ) -> &'hir [hir::PreciseCapturingArg<'hir>] {
+        self.arena.alloc_from_iter(precise_capturing_args.iter().map(|arg| match arg {
+            PreciseCapturingArg::Lifetime(lt) => {
+                hir::PreciseCapturingArg::Lifetime(self.lower_lifetime(lt))
+            }
+            PreciseCapturingArg::Arg(_, node_id) => {
+                let res = self.resolver.get_partial_res(*node_id).map_or(Res::Err, |partial_res| {
+                    partial_res.full_res().expect("no partial res expected for precise capture arg")
+                });
+                hir::PreciseCapturingArg::Param(self.lower_res(res), self.lower_node_id(*node_id))
+            }
+        }))
     }
 
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Ident] {
@@ -1908,7 +1940,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_span =
             self.mark_span_with_reason(DesugaringKind::Async, span, allowed_features);
 
-        let captured_lifetimes: Vec<_> = self
+        let captured_lifetimes = self
             .resolver
             .take_extra_lifetime_params(opaque_ty_node_id)
             .into_iter()
@@ -1922,6 +1954,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             captured_lifetimes,
             span,
             opaque_ty_span,
+            None,
             |this| {
                 let bound = this.lower_coroutine_fn_output_type_to_bound(
                     output,
