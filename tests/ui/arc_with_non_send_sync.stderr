@@ -4,38 +4,31 @@ error: usage of an `Arc` that is not `Send` and `Sync`
 LL |     let _ = Arc::new(RefCell::new(42));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Arc<RefCell<i32>>` is not `Send` and `Sync` as:
-   = note: - the trait `Sync` is not implemented for `RefCell<i32>`
-   = help: consider using an `Rc` instead. `Arc` does not provide benefits for non `Send` and `Sync` types
-   = note: if you intend to use `Arc` with `Send` and `Sync` traits
-   = note: wrap the inner type with a `Mutex` or implement `Send` and `Sync` for `RefCell<i32>`
+   = note: `Arc<RefCell<i32>>` is not `Send` and `Sync` as `RefCell<i32>` is not `Sync`
+   = help: if the `Arc` will not used be across threads replace it with an `Rc`
+   = help: otherwise make `RefCell<i32>` `Send` and `Sync` or consider a wrapper type such as `Mutex`
    = note: `-D clippy::arc-with-non-send-sync` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::arc_with_non_send_sync)]`
 
 error: usage of an `Arc` that is not `Send` and `Sync`
-  --> tests/ui/arc_with_non_send_sync.rs:40:13
+  --> tests/ui/arc_with_non_send_sync.rs:38:13
    |
 LL |     let _ = Arc::new(mutex.lock().unwrap());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Arc<MutexGuard<'_, i32>>` is not `Send` and `Sync` as:
-   = note: - the trait `Send` is not implemented for `MutexGuard<'_, i32>`
-   = help: consider using an `Rc` instead. `Arc` does not provide benefits for non `Send` and `Sync` types
-   = note: if you intend to use `Arc` with `Send` and `Sync` traits
-   = note: wrap the inner type with a `Mutex` or implement `Send` and `Sync` for `MutexGuard<'_, i32>`
+   = note: `Arc<MutexGuard<'_, i32>>` is not `Send` and `Sync` as `MutexGuard<'_, i32>` is not `Send`
+   = help: if the `Arc` will not used be across threads replace it with an `Rc`
+   = help: otherwise make `MutexGuard<'_, i32>` `Send` and `Sync` or consider a wrapper type such as `Mutex`
 
 error: usage of an `Arc` that is not `Send` and `Sync`
-  --> tests/ui/arc_with_non_send_sync.rs:44:13
+  --> tests/ui/arc_with_non_send_sync.rs:40:13
    |
 LL |     let _ = Arc::new(&42 as *const i32);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Arc<*const i32>` is not `Send` and `Sync` as:
-   = note: - the trait `Send` is not implemented for `*const i32`
-   = note: - the trait `Sync` is not implemented for `*const i32`
-   = help: consider using an `Rc` instead. `Arc` does not provide benefits for non `Send` and `Sync` types
-   = note: if you intend to use `Arc` with `Send` and `Sync` traits
-   = note: wrap the inner type with a `Mutex` or implement `Send` and `Sync` for `*const i32`
+   = note: `Arc<*const i32>` is not `Send` and `Sync` as `*const i32` is neither `Send` nor `Sync`
+   = help: if the `Arc` will not used be across threads replace it with an `Rc`
+   = help: otherwise make `*const i32` `Send` and `Sync` or consider a wrapper type such as `Mutex`
 
 error: aborting due to 3 previous errors
 
