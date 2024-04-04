@@ -32,7 +32,24 @@ LL |     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missin
    |
    = help: the trait `Iterator` is not implemented for `()`
 
-error: aborting due to 4 previous errors
+warning: impl trait in impl method signature does not match trait method signature
+  --> $DIR/span-bug-issue-121457.rs:13:51
+   |
+LL |     fn iter(&self) -> impl Iterator;
+   |                       ------------- return type from trait method defined here
+...
+LL |     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missing>> {}
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this bound is stronger than that defined on the trait
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+   = note: `#[warn(refining_impl_trait_reachable)]` on by default
+help: replace the return type so that it matches the trait
+   |
+LL |     fn iter(&self) -> impl Iterator {}
+   |                       ~~~~~~~~~~~~~
+
+error: aborting due to 4 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0195, E0277, E0582.
 For more information about an error, try `rustc --explain E0195`.

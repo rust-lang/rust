@@ -1,4 +1,4 @@
-use crate::traits::{check_args_compatible, specialization_graph};
+use crate::traits::specialization_graph;
 
 use super::assembly::structural_traits::AsyncCallableRelevantTypes;
 use super::assembly::{self, structural_traits, Candidate};
@@ -247,7 +247,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 assoc_def.defining_node,
             );
 
-            if !check_args_compatible(tcx, assoc_def.item, args) {
+            if !tcx.check_args_compatible(assoc_def.item.def_id, args) {
                 return error_response(
                     ecx,
                     "associated item has mismatched generic item arguments",

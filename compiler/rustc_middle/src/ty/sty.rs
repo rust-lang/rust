@@ -1624,13 +1624,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_adt(tcx: TyCtxt<'tcx>, def: AdtDef<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        debug_assert_eq!(
-            tcx.generics_of(def.did()).count(),
-            args.len(),
-            "wrong number of args for ADT: {:#?} vs {:#?}",
-            tcx.generics_of(def.did()).params,
-            args
-        );
+        tcx.debug_assert_args_compatible(def.did(), args);
         Ty::new(tcx, Adt(def, args))
     }
 
@@ -1715,11 +1709,7 @@ impl<'tcx> Ty<'tcx> {
         def_id: DefId,
         closure_args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        debug_assert_eq!(
-            closure_args.len(),
-            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 3,
-            "closure constructed with incorrect generic parameters"
-        );
+        tcx.debug_assert_args_compatible(def_id, closure_args);
         Ty::new(tcx, Closure(def_id, closure_args))
     }
 
@@ -1729,11 +1719,7 @@ impl<'tcx> Ty<'tcx> {
         def_id: DefId,
         closure_args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        debug_assert_eq!(
-            closure_args.len(),
-            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 5,
-            "closure constructed with incorrect generic parameters"
-        );
+        tcx.debug_assert_args_compatible(def_id, closure_args);
         Ty::new(tcx, CoroutineClosure(def_id, closure_args))
     }
 
@@ -1743,11 +1729,7 @@ impl<'tcx> Ty<'tcx> {
         def_id: DefId,
         coroutine_args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        debug_assert_eq!(
-            coroutine_args.len(),
-            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 6,
-            "coroutine constructed with incorrect number of generic parameters"
-        );
+        tcx.debug_assert_args_compatible(def_id, coroutine_args);
         Ty::new(tcx, Coroutine(def_id, coroutine_args))
     }
 
