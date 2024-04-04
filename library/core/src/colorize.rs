@@ -1,4 +1,4 @@
-use super::*;
+use super::macros::format;
 
 const ANSI_RESET: &str = "\x1b[0m";
 
