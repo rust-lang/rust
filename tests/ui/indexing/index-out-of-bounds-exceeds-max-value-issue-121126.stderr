@@ -1,0 +1,10 @@
+error: this operation will panic at runtime
+  --> $DIR/issue-121126-index-out-of-bounds-exceeds-max-value.rs:8:5
+   |
+LL |     [0][0xFFFF_FF01];
+   |     ^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 4294967041
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: aborting due to 1 previous error
+
