@@ -10,7 +10,7 @@
 use std::{fmt, iter, ops::Not};
 
 use cfg::{CfgAtom, CfgDiff};
-use flycheck::FlycheckConfig;
+use flycheck::{CargoOptions, FlycheckConfig};
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
     HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayFieldsToResolve,
@@ -1364,6 +1364,22 @@ impl Config {
         self.data.check_workspace
     }
 
+    pub fn cargo_test_options(&self) -> CargoOptions {
+        CargoOptions {
+            target_triples: self.data.cargo_target.clone().into_iter().collect(),
+            all_targets: false,
+            no_default_features: self.data.cargo_noDefaultFeatures,
+            all_features: matches!(self.data.cargo_features, CargoFeaturesDef::All),
+            features: match self.data.cargo_features.clone() {
+                CargoFeaturesDef::All => vec![],
+                CargoFeaturesDef::Selected(it) => it,
+            },
+            extra_args: self.extra_args().clone(),
+            extra_env: self.extra_env().clone(),
+            target_dir: self.target_dir_from_config(),
+        }
+    }
+
     pub fn flycheck(&self) -> FlycheckConfig {
         match &self.data.check_overrideCommand {
             Some(args) if !args.is_empty() => {
@@ -1389,37 +1405,39 @@ impl Config {
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
                 command: self.data.check_command.clone(),
-                target_triples: self
-                    .data
-                    .check_targets
-                    .clone()
-                    .and_then(|targets| match &targets.0[..] {
-                        [] => None,
-                        targets => Some(targets.into()),
-                    })
-                    .unwrap_or_else(|| self.data.cargo_target.clone().into_iter().collect()),
-                all_targets: self.data.check_allTargets.unwrap_or(self.data.cargo_allTargets),
-                no_default_features: self
-                    .data
-                    .check_noDefaultFeatures
-                    .unwrap_or(self.data.cargo_noDefaultFeatures),
-                all_features: matches!(
-                    self.data.check_features.as_ref().unwrap_or(&self.data.cargo_features),
-                    CargoFeaturesDef::All
-                ),
-                features: match self
-                    .data
-                    .check_features
-                    .clone()
-                    .unwrap_or_else(|| self.data.cargo_features.clone())
-                {
-                    CargoFeaturesDef::All => vec![],
-                    CargoFeaturesDef::Selected(it) => it,
+                options: CargoOptions {
+                    target_triples: self
+                        .data
+                        .check_targets
+                        .clone()
+                        .and_then(|targets| match &targets.0[..] {
+                            [] => None,
+                            targets => Some(targets.into()),
+                        })
+                        .unwrap_or_else(|| self.data.cargo_target.clone().into_iter().collect()),
+                    all_targets: self.data.check_allTargets.unwrap_or(self.data.cargo_allTargets),
+                    no_default_features: self
+                        .data
+                        .check_noDefaultFeatures
+                        .unwrap_or(self.data.cargo_noDefaultFeatures),
+                    all_features: matches!(
+                        self.data.check_features.as_ref().unwrap_or(&self.data.cargo_features),
+                        CargoFeaturesDef::All
+                    ),
+                    features: match self
+                        .data
+                        .check_features
+                        .clone()
+                        .unwrap_or_else(|| self.data.cargo_features.clone())
+                    {
+                        CargoFeaturesDef::All => vec![],
+                        CargoFeaturesDef::Selected(it) => it,
+                    },
+                    extra_args: self.check_extra_args(),
+                    extra_env: self.check_extra_env(),
+                    target_dir: self.target_dir_from_config(),
                 },
-                extra_args: self.check_extra_args(),
-                extra_env: self.check_extra_env(),
                 ansi_color_output: self.color_diagnostic_output(),
-                target_dir: self.target_dir_from_config(),
             },
         }
     }
@@ -2772,7 +2790,7 @@ mod tests {
             .unwrap();
         assert_eq!(config.data.cargo_targetDir, None);
         assert!(
-            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir.is_none())
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir.is_none())
         );
     }
 
@@ -2791,7 +2809,7 @@ mod tests {
             .unwrap();
         assert_eq!(config.data.cargo_targetDir, Some(TargetDirectory::UseSubdirectory(true)));
         assert!(
-            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == Some(Utf8PathBuf::from("target/rust-analyzer")))
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("target/rust-analyzer")))
         );
     }
 
@@ -2813,7 +2831,7 @@ mod tests {
             Some(TargetDirectory::Directory(Utf8PathBuf::from("other_folder")))
         );
         assert!(
-            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == Some(Utf8PathBuf::from("other_folder")))
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("other_folder")))
         );
     }
 }

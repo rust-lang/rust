@@ -220,11 +220,11 @@ pub(crate) fn handle_run_test(
         None => "".to_owned(),
     };
     let handle = if lca.is_empty() {
-        flycheck::CargoTestHandle::new(None)
+        flycheck::CargoTestHandle::new(None, state.config.cargo_test_options())
     } else if let Some((_, path)) = lca.split_once("::") {
-        flycheck::CargoTestHandle::new(Some(path))
+        flycheck::CargoTestHandle::new(Some(path), state.config.cargo_test_options())
     } else {
-        flycheck::CargoTestHandle::new(None)
+        flycheck::CargoTestHandle::new(None, state.config.cargo_test_options())
     };
     state.test_run_session = Some(handle?);
     Ok(())

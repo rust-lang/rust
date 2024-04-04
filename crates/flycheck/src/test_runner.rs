@@ -7,7 +7,10 @@ use crossbeam_channel::Receiver;
 use serde::Deserialize;
 use toolchain::Tool;
 
-use crate::command::{CommandHandle, ParseFromLine};
+use crate::{
+    command::{CommandHandle, ParseFromLine},
+    CargoOptions,
+};
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "event", rename_all = "camelCase")]
@@ -58,13 +61,14 @@ pub struct CargoTestHandle {
 // cargo test --workspace --no-fail-fast -- module::func -Z unstable-options --format=json
 
 impl CargoTestHandle {
-    pub fn new(path: Option<&str>) -> std::io::Result<Self> {
+    pub fn new(path: Option<&str>, options: CargoOptions) -> std::io::Result<Self> {
         let mut cmd = Command::new(Tool::Cargo.path());
         cmd.env("RUSTC_BOOTSTRAP", "1");
         cmd.arg("test");
         cmd.arg("--workspace");
         // --no-fail-fast is needed to ensure that all requested tests will run
         cmd.arg("--no-fail-fast");
+        options.apply_on_command(&mut cmd);
         cmd.arg("--");
         if let Some(path) = path {
             cmd.arg(path);
