@@ -205,5 +205,8 @@ extern "C" void LLVMRustCoverageWriteMappingVarNameToString(RustStringRef Str) {
 }
 
 extern "C" uint32_t LLVMRustCoverageMappingVersion() {
-  return coverage::CovMapVersion::Version6;
+  // This should always be `CurrentVersion`, because that's the version LLVM
+  // will use when encoding the data we give it. If for some reason we ever
+  // want to override the version number we _emit_, do it on the Rust side.
+  return coverage::CovMapVersion::CurrentVersion;
 }
