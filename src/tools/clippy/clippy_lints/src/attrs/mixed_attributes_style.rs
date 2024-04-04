@@ -2,10 +2,10 @@ use super::MIXED_ATTRIBUTES_STYLE;
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::{AttrKind, AttrStyle, Attribute};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{SourceFile, Span, Symbol};
-use std::sync::Arc;
 
 #[derive(Hash, PartialEq, Eq)]
 enum SimpleAttrKind {
@@ -79,7 +79,7 @@ fn lint_mixed_attrs(cx: &LateContext<'_>, attrs: &[Attribute]) {
     );
 }
 
-fn attr_in_same_src_as_item(source_map: &SourceMap, item_src: &Arc<SourceFile>, attr_span: Span) -> bool {
+fn attr_in_same_src_as_item(source_map: &SourceMap, item_src: &Lrc<SourceFile>, attr_span: Span) -> bool {
     let attr_src = source_map.lookup_source_file(attr_span.lo());
-    Arc::ptr_eq(item_src, &attr_src)
+    Lrc::ptr_eq(item_src, &attr_src)
 }
