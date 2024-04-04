@@ -687,7 +687,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Using probe here, since we don't want this subtyping to affect inference.
             let subtyping_error = self.probe(|_| {
                 self.at(&self.misc(arg_span), self.param_env)
-                    .sup(DefineOpaqueTypes::No, formal_input_ty, coerced_ty)
+                    .sup(DefineOpaqueTypes::Yes, formal_input_ty, coerced_ty)
                     .err()
             });
 
