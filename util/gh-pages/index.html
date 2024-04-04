@@ -57,20 +57,17 @@ Otherwise, have a great day =^.^=
             background-color: var(--theme-hover);
         }
 
-        div.panel div.panel-body button.dropdown-toggle {
+        div.panel div.panel-body button {
             background: var(--searchbar-bg);
             color: var(--searchbar-fg);
             border-color: var(--theme-popup-border);
         }
 
-        div.panel div.panel-body button.dropdown-toggle:hover {
+        div.panel div.panel-body button:hover {
             box-shadow: 0 0 3px var(--searchbar-shadow-color);
         }
 
-        div.panel div.panel-body .open button.dropdown-toggle {
-            background: var(--searchbar-bg);
-            color: var(--searchbar-fg);
-            border-color: var(--theme-popup-border);
+        div.panel div.panel-body  button.open {
             filter: brightness(90%);
         }
 
@@ -96,7 +93,6 @@ Otherwise, have a great day =^.^=
         @media (min-width: 992px) {
             .search-control {
                 margin-top: 0;
-                float: right;
             }
         }
 
@@ -536,6 +532,14 @@ Otherwise, have a great day =^.^=
                                 </button>
                             </span>
                         </div>
+                    </div>
+                    <div class="btn-group">
+                        <button title="Collapse All" class="btn btn-default expansion-control" type="button" ng-click="toggleExpansion(data, false); $event.stopPropagation()">
+                            <span class="glyphicon glyphicon-collapse-up"></span>
+                        </button>
+                        <button title="Expand All" class="btn btn-default expansion-control" type="button" ng-click="toggleExpansion(data, true); $event.stopPropagation()">
+                            <span class="glyphicon glyphicon-collapse-down"></span>
+                        </button>
                     </div>
                 </div>
             </div>
