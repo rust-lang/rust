@@ -1,5 +1,5 @@
 use rustc_macros::Diagnostic;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_param_not_captured)]
@@ -30,4 +30,24 @@ pub struct BadPreciseCapture {
     pub span: Span,
     pub kind: &'static str,
     pub found: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_duplicate_precise_capture)]
+pub struct DuplicatePreciseCapture {
+    #[primary_span]
+    pub first_span: Span,
+    pub name: Symbol,
+    #[label]
+    pub second_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_lifetime_must_be_first)]
+pub struct LifetimesMustBeFirst {
+    #[primary_span]
+    pub lifetime_span: Span,
+    pub name: Symbol,
+    #[label]
+    pub other_span: Span,
 }

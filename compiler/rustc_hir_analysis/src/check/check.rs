@@ -4,7 +4,7 @@ use super::compare_impl_item::check_type_bounds;
 use super::compare_impl_item::{compare_impl_method, compare_impl_ty};
 use super::*;
 use rustc_attr as attr;
-use rustc_data_structures::unord::UnordSet;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{codes::*, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -484,22 +484,51 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
     };
 
     let mut expected_captures = UnordSet::default();
+    let mut seen_params = UnordMap::default();
+    let mut prev_non_lifetime_param = None;
     for arg in precise_capturing_args {
-        match *arg {
-            hir::PreciseCapturingArg::Lifetime(&hir::Lifetime { hir_id, .. })
-            | hir::PreciseCapturingArg::Param(hir::PreciseCapturingNonLifetimeArg {
-                hir_id, ..
-            }) => match tcx.named_bound_var(hir_id) {
-                Some(ResolvedArg::EarlyBound(def_id)) => {
-                    expected_captures.insert(def_id);
+        let (hir_id, ident) = match *arg {
+            hir::PreciseCapturingArg::Param(hir::PreciseCapturingNonLifetimeArg {
+                hir_id,
+                ident,
+                ..
+            }) => {
+                if prev_non_lifetime_param.is_none() {
+                    prev_non_lifetime_param = Some(ident);
                 }
-                _ => {
-                    tcx.dcx().span_delayed_bug(
-                        tcx.hir().span(hir_id),
-                        "parameter should have been resolved",
-                    );
+                (hir_id, ident)
+            }
+            hir::PreciseCapturingArg::Lifetime(&hir::Lifetime { hir_id, ident, .. }) => {
+                if let Some(prev_non_lifetime_param) = prev_non_lifetime_param {
+                    tcx.dcx().emit_err(errors::LifetimesMustBeFirst {
+                        lifetime_span: ident.span,
+                        name: ident.name,
+                        other_span: prev_non_lifetime_param.span,
+                    });
                 }
-            },
+                (hir_id, ident)
+            }
+        };
+
+        let ident = ident.normalize_to_macros_2_0();
+        if let Some(span) = seen_params.insert(ident, ident.span) {
+            tcx.dcx().emit_err(errors::DuplicatePreciseCapture {
+                name: ident.name,
+                first_span: span,
+                second_span: ident.span,
+            });
+        }
+
+        match tcx.named_bound_var(hir_id) {
+            Some(ResolvedArg::EarlyBound(def_id)) => {
+                expected_captures.insert(def_id);
+            }
+            _ => {
+                tcx.dcx().span_delayed_bug(
+                    tcx.hir().span(hir_id),
+                    "parameter should have been resolved",
+                );
+            }
         }
     }
 

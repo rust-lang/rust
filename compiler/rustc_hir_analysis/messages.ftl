@@ -113,6 +113,9 @@ hir_analysis_drop_impl_on_wrong_item =
 
 hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported
 
+hir_analysis_duplicate_precise_capture = cannot capture parameter `{$name}` twice
+    .label = parameter captured again here
+
 hir_analysis_empty_specialization = specialization impl does not specialize any associated items
     .note = impl is a specialization of this impl
 
@@ -215,6 +218,9 @@ hir_analysis_late_bound_lifetime_in_apit = `impl Trait` can only mention lifetim
 
 hir_analysis_late_bound_type_in_apit = `impl Trait` can only mention type parameters from an fn or impl
     .label = type parameter declared here
+
+hir_analysis_lifetime_must_be_first = lifetime parameter `{$name}` must be listed before non-lifetime parameters
+    .label = move the lifetime before this parameter
 
 hir_analysis_lifetime_not_captured = `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
     .label = lifetime captured due to being mentioned in the bounds of the `impl Trait`
