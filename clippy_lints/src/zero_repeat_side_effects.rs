@@ -78,7 +78,7 @@ fn inner_check(cx: &LateContext<'_>, expr: &'_ rustc_hir::Expr<'_>, inner_expr: 
         let parent_hir_node = cx.tcx.parent_hir_node(expr.hir_id);
         let return_type = cx.typeck_results().expr_ty(expr);
 
-        if let Node::Local(l) = parent_hir_node {
+        if let Node::LetStmt(l) = parent_hir_node {
             array_span_lint(
                 cx,
                 l.span,

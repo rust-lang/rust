@@ -3,7 +3,7 @@ use clippy_utils::get_enclosing_block;
 use clippy_utils::higher::{get_vec_init_kind, VecInitKind};
 use clippy_utils::source::snippet;
 
-use hir::{Expr, ExprKind, HirId, Local, PatKind, PathSegment, QPath, StmtKind};
+use hir::{Expr, ExprKind, HirId, LetStmt, PatKind, PathSegment, QPath, StmtKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -57,7 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
             }
 
             if let StmtKind::Let(local) = stmt.kind
-                && let Local {
+                && let LetStmt {
                     pat, init: Some(init), ..
                 } = local
                 && let PatKind::Binding(_, id, ident, _) = pat.kind

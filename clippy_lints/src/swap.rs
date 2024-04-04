@@ -10,7 +10,7 @@ use rustc_hir::intravisit::{walk_expr, Visitor};
 
 use crate::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
@@ -392,7 +392,7 @@ impl<'a, 'tcx> IndexBinding<'a, 'tcx> {
         for stmt in self.block.stmts {
             match stmt.kind {
                 StmtKind::Expr(expr) | StmtKind::Semi(expr) => v.visit_expr(expr),
-                StmtKind::Let(rustc_hir::Local { ref init, .. }) => {
+                StmtKind::Let(LetStmt { ref init, .. }) => {
                     if let Some(init) = init.as_ref() {
                         v.visit_expr(init);
                     }

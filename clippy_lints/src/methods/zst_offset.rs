@@ -6,7 +6,7 @@ use rustc_middle::ty;
 use super::ZST_OFFSET;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) {
-    if let ty::RawPtr(ty::TypeAndMut { ty, .. }) = cx.typeck_results().expr_ty(recv).kind()
+    if let ty::RawPtr(ty, _) = cx.typeck_results().expr_ty(recv).kind()
         && let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(*ty))
         && layout.is_zst()
     {

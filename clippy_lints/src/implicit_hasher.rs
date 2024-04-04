@@ -5,7 +5,7 @@ use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_inf, walk_ty, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
-use rustc_hir_analysis::hir_ty_to_ty;
+use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{Ty, TypeckResults};
@@ -227,7 +227,7 @@ impl<'tcx> ImplicitHasherType<'tcx> {
                 .collect();
             let params_len = params.len();
 
-            let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+            let ty = lower_ty(cx.tcx, hir_ty);
 
             if is_type_diagnostic_item(cx, ty, sym::HashMap) && params_len == 2 {
                 Some(ImplicitHasherType::HashMap(

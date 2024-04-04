@@ -242,7 +242,7 @@ fn path_segment_certainty(
             Node::Param(..) => Certainty::Certain(None),
             // A local's type is certain if its type annotation is certain or it has an initializer whose
             // type is certain.
-            Node::Local(local) => {
+            Node::LetStmt(local) => {
                 let lhs = local.ty.map_or(Certainty::Uncertain, |ty| type_certainty(cx, ty));
                 let rhs = local
                     .init

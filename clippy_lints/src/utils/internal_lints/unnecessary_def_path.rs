@@ -6,7 +6,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind, Local, Mutability, Node};
+use rustc_hir::{Expr, ExprKind, LetStmt, Mutability, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::interpret::{Allocation, GlobalAlloc};
 use rustc_middle::mir::ConstValue;
@@ -216,7 +216,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Vec<Str
     match peel_hir_expr_refs(expr).0.kind {
         ExprKind::Path(ref qpath) => match cx.qpath_res(qpath, expr.hir_id) {
             Res::Local(hir_id) => {
-                if let Node::Local(Local { init: Some(init), .. }) = cx.tcx.parent_hir_node(hir_id) {
+                if let Node::LetStmt(LetStmt { init: Some(init), .. }) = cx.tcx.parent_hir_node(hir_id) {
                     path_to_matched_type(cx, init)
                 } else {
                     None

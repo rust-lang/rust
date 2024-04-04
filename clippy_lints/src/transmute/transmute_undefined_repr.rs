@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_c_void;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, GenericArgsRef, IntTy, Ty, TypeAndMut, UintTy};
+use rustc_middle::ty::{self, GenericArgsRef, IntTy, Ty, UintTy};
 
 #[expect(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
@@ -45,8 +45,8 @@ pub(super) fn check<'tcx>(
 
             // ptr <-> ptr
             (ReducedTy::Other(from_sub_ty), ReducedTy::Other(to_sub_ty))
-                if matches!(from_sub_ty.kind(), ty::Ref(..) | ty::RawPtr(_))
-                    && matches!(to_sub_ty.kind(), ty::Ref(..) | ty::RawPtr(_)) =>
+                if matches!(from_sub_ty.kind(), ty::Ref(..) | ty::RawPtr(_, _))
+                    && matches!(to_sub_ty.kind(), ty::Ref(..) | ty::RawPtr(_, _)) =>
             {
                 from_ty = from_sub_ty;
                 to_ty = to_sub_ty;
@@ -196,21 +196,21 @@ fn reduce_refs<'tcx>(cx: &LateContext<'tcx>, mut from_ty: Ty<'tcx>, mut to_ty: T
     let (from_fat_ptr, to_fat_ptr) = loop {
         break match (from_ty.kind(), to_ty.kind()) {
             (
-                &(ty::Ref(_, from_sub_ty, _) | ty::RawPtr(TypeAndMut { ty: from_sub_ty, .. })),
-                &(ty::Ref(_, to_sub_ty, _) | ty::RawPtr(TypeAndMut { ty: to_sub_ty, .. })),
+                &(ty::Ref(_, from_sub_ty, _) | ty::RawPtr(from_sub_ty, _)),
+                &(ty::Ref(_, to_sub_ty, _) | ty::RawPtr(to_sub_ty, _)),
             ) => {
-                from_raw_ptr = matches!(*from_ty.kind(), ty::RawPtr(_));
+                from_raw_ptr = matches!(*from_ty.kind(), ty::RawPtr(_, _));
                 from_ty = from_sub_ty;
-                to_raw_ptr = matches!(*to_ty.kind(), ty::RawPtr(_));
+                to_raw_ptr = matches!(*to_ty.kind(), ty::RawPtr(_, _));
                 to_ty = to_sub_ty;
                 continue;
             },
-            (&(ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. })), _)
+            (&(ty::Ref(_, unsized_ty, _) | ty::RawPtr(unsized_ty, _)), _)
                 if !unsized_ty.is_sized(cx.tcx, cx.param_env) =>
             {
                 (true, false)
             },
-            (_, &(ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. })))
+            (_, &(ty::Ref(_, unsized_ty, _) | ty::RawPtr(unsized_ty, _)))
                 if !unsized_ty.is_sized(cx.tcx, cx.param_env) =>
             {
                 (false, true)

@@ -4,18 +4,13 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
-use rustc_middle::ty::{self, Ty, TypeAndMut};
+use rustc_middle::ty::{self, Ty};
 
 use super::AS_PTR_CAST_MUT;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_to: Ty<'_>) {
-    if let ty::RawPtr(TypeAndMut {
-        mutbl: Mutability::Mut,
-        ty: ptrty,
-    }) = cast_to.kind()
-        && let ty::RawPtr(TypeAndMut {
-            mutbl: Mutability::Not, ..
-        }) = cx.typeck_results().node_type(cast_expr.hir_id).kind()
+    if let ty::RawPtr(ptrty, Mutability::Mut) = cast_to.kind()
+        && let ty::RawPtr(_, Mutability::Not) = cx.typeck_results().node_type(cast_expr.hir_id).kind()
         && let ExprKind::MethodCall(method_name, receiver, [], _) = cast_expr.peel_blocks().kind
         && method_name.ident.name == rustc_span::sym::as_ptr
         && let Some(as_ptr_did) = cx

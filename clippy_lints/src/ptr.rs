@@ -604,7 +604,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
 
             match get_expr_use_or_unification_node(self.cx.tcx, e) {
                 Some((Node::Stmt(_), _)) => (),
-                Some((Node::Local(l), _)) => {
+                Some((Node::LetStmt(l), _)) => {
                     // Only trace simple bindings. e.g `let x = y;`
                     if let PatKind::Binding(BindingAnnotation::NONE, id, _, None) = l.pat.kind {
                         self.bindings.insert(id, args_idx);

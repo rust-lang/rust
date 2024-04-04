@@ -143,13 +143,13 @@ impl Msrv {
         None
     }
 
-    pub fn enter_lint_attrs(&mut self, sess: &Session, attrs: &[Attribute]) {
+    pub fn check_attributes(&mut self, sess: &Session, attrs: &[Attribute]) {
         if let Some(version) = Self::parse_attr(sess, attrs) {
             self.stack.push(version);
         }
     }
 
-    pub fn exit_lint_attrs(&mut self, sess: &Session, attrs: &[Attribute]) {
+    pub fn check_attributes_post(&mut self, sess: &Session, attrs: &[Attribute]) {
         if Self::parse_attr(sess, attrs).is_some() {
             self.stack.pop();
         }

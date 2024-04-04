@@ -857,11 +857,6 @@ mod tests {
         }
 
         assert!(
-            names.remove("allow-one-hash-in-raw-strings"),
-            "remove this when #11481 is fixed"
-        );
-
-        assert!(
             names.is_empty(),
             "Configuration variable lacks test: {names:?}\nAdd a test to `tests/ui-toml`"
         );

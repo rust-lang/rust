@@ -649,6 +649,8 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                     BindingAnnotation::REF => "REF",
                     BindingAnnotation::MUT => "MUT",
                     BindingAnnotation::REF_MUT => "REF_MUT",
+                    BindingAnnotation::MUT_REF => "MUT_REF",
+                    BindingAnnotation::MUT_REF_MUT => "MUT_REF_MUT",
                 };
                 kind!("Binding(BindingAnnotation::{ann}, _, {name}, {sub})");
                 self.ident(name);
@@ -687,6 +689,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             PatKind::Box(pat) => {
                 bind!(self, pat);
                 kind!("Box({pat})");
+                self.pat(pat);
+            },
+            PatKind::Deref(pat) => {
+                bind!(self, pat);
+                kind!("Deref({pat})");
                 self.pat(pat);
             },
             PatKind::Ref(pat, muta) => {

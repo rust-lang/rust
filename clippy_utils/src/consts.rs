@@ -17,7 +17,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::SyntaxContext;
 use rustc_target::abi::Size;
-use std::cmp::Ordering::{self, Equal};
+use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::iter;
 
@@ -207,7 +207,7 @@ impl<'tcx> Constant<'tcx> {
                     .zip(r)
                     .zip(tys)
                     .map(|((li, ri), cmp_type)| Self::partial_cmp(tcx, cmp_type, li, ri))
-                    .find(|r| r.map_or(true, |o| o != Equal))
+                    .find(|r| r.map_or(true, |o| o != Ordering::Equal))
                     .unwrap_or_else(|| Some(l.len().cmp(&r.len()))),
                 _ => None,
             },
@@ -217,7 +217,7 @@ impl<'tcx> Constant<'tcx> {
                 };
                 iter::zip(l, r)
                     .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
-                    .find(|r| r.map_or(true, |o| o != Equal))
+                    .find(|r| r.map_or(true, |o| o != Ordering::Equal))
                     .unwrap_or_else(|| Some(l.len().cmp(&r.len())))
             },
             (Self::Repeat(lv, ls), Self::Repeat(rv, rs)) => {
@@ -230,7 +230,7 @@ impl<'tcx> Constant<'tcx> {
                     lv,
                     rv,
                 ) {
-                    Some(Equal) => Some(ls.cmp(rs)),
+                    Some(Ordering::Equal) => Some(ls.cmp(rs)),
                     x => x,
                 }
             },
@@ -361,7 +361,7 @@ pub enum FullInt {
 impl PartialEq for FullInt {
     #[must_use]
     fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Equal
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -819,7 +819,7 @@ pub fn mir_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::Const<'tcx>) -> 
             ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
                 int.try_into().expect("invalid f64 bit representation"),
             ))),
-            ty::RawPtr(_) => Some(Constant::RawPtr(int.assert_bits(int.size()))),
+            ty::RawPtr(_, _) => Some(Constant::RawPtr(int.assert_bits(int.size()))),
             _ => None,
         },
         (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Str) => {

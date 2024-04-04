@@ -20,7 +20,7 @@ pub(super) fn check<'tcx>(
     msrv: &Msrv,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
-        (ty::RawPtr(from_ptr_ty), ty::Ref(_, to_ref_ty, mutbl)) => {
+        (ty::RawPtr(from_ptr_ty, _), ty::Ref(_, to_ref_ty, mutbl)) => {
             span_lint_and_then(
                 cx,
                 TRANSMUTE_PTR_TO_REF,
@@ -44,7 +44,7 @@ pub(super) fn check<'tcx>(
                         } else {
                             sugg::make_unop(deref, arg.as_ty(format!("{cast} {ty_snip}"))).to_string()
                         }
-                    } else if from_ptr_ty.ty == *to_ref_ty {
+                    } else if *from_ptr_ty == *to_ref_ty {
                         if from_ptr_ty.has_erased_regions() {
                             if msrv.meets(msrvs::POINTER_CAST) {
                                 format!("{deref}{}.cast::<{to_ref_ty}>()", arg.maybe_par())

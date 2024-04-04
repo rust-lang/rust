@@ -20,7 +20,7 @@ fn needs_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
 
     // some common cases where turbofish isn't needed:
     // - assigned to a local variable with a type annotation
-    if let hir::Node::Local(local) = parent
+    if let hir::Node::LetStmt(local) = parent
         && local.ty.is_some()
     {
         return false;

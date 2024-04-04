@@ -994,7 +994,7 @@ impl<'a, 'hir> Visitor<'hir> for ApplicabilityResolver<'a, 'hir> {
 }
 
 /// This returns the parent local node if the expression is a reference one
-fn get_parent_local<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Option<&'hir hir::Local<'hir>> {
+fn get_parent_local<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Option<&'hir hir::LetStmt<'hir>> {
     if let ExprKind::Path(QPath::Resolved(_, path)) = expr.kind {
         if let hir::def::Res::Local(local_hir) = path.res {
             return get_parent_local_hir_id(cx, local_hir);
@@ -1004,9 +1004,9 @@ fn get_parent_local<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -
     None
 }
 
-fn get_parent_local_hir_id<'hir>(cx: &LateContext<'hir>, hir_id: hir::HirId) -> Option<&'hir hir::Local<'hir>> {
+fn get_parent_local_hir_id<'hir>(cx: &LateContext<'hir>, hir_id: hir::HirId) -> Option<&'hir hir::LetStmt<'hir>> {
     match cx.tcx.parent_hir_node(hir_id) {
-        hir::Node::Local(local) => Some(local),
+        hir::Node::LetStmt(local) => Some(local),
         hir::Node::Pat(pattern) => get_parent_local_hir_id(cx, pattern.hir_id),
         _ => None,
     }

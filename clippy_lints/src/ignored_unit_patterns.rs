@@ -46,7 +46,7 @@ impl<'tcx> LateLintPass<'tcx> for IgnoredUnitPatterns {
                 // Ignore function parameters
                 return;
             },
-            Node::Local(local) if local.ty.is_some() => {
+            Node::LetStmt(local) if local.ty.is_some() => {
                 // Ignore let bindings with explicit type
                 return;
             },

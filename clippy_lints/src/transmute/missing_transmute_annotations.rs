@@ -1,17 +1,17 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_errors::Applicability;
-use rustc_hir::{GenericArg, HirId, Local, Node, Path, TyKind};
+use rustc_hir::{GenericArg, HirId, LetStmt, Node, Path, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
 
 use crate::transmute::MISSING_TRANSMUTE_ANNOTATIONS;
 
-fn get_parent_local_binding_ty<'tcx>(cx: &LateContext<'tcx>, expr_hir_id: HirId) -> Option<Local<'tcx>> {
+fn get_parent_local_binding_ty<'tcx>(cx: &LateContext<'tcx>, expr_hir_id: HirId) -> Option<LetStmt<'tcx>> {
     let mut parent_iter = cx.tcx.hir().parent_iter(expr_hir_id);
     if let Some((_, node)) = parent_iter.next() {
         match node {
-            Node::Local(local) => Some(*local),
+            Node::LetStmt(local) => Some(*local),
             Node::Block(_) => {
                 if let Some((parent_hir_id, Node::Expr(expr))) = parent_iter.next()
                     && matches!(expr.kind, rustc_hir::ExprKind::Block(_, _))

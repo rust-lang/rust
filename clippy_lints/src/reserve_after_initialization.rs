@@ -4,7 +4,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::{is_from_proc_macro, path_to_local_id};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Local, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, LetStmt, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
@@ -69,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
         self.searcher = None;
     }
 
-    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         if let Some(init_expr) = local.init
             && let PatKind::Binding(BindingAnnotation::MUT, id, _, None) = local.pat.kind
             && !in_external_macro(cx.sess(), local.span)

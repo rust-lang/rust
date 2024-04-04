@@ -125,7 +125,7 @@ fn strip_return<'hir>(expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
 fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>) -> bool {
     match cx.tcx.parent_hir_node(p_expr.hir_id) {
         // Compare match_expr ty with local in `let local = match match_expr {..}`
-        Node::Local(local) => {
+        Node::LetStmt(local) => {
             let results = cx.typeck_results();
             return same_type_and_consts(results.node_type(local.hir_id), results.expr_ty(expr));
         },
@@ -178,7 +178,7 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
                 },
             )),
         ) => {
-            return !matches!(annot, BindingAnnotation(ByRef::Yes, _)) && pat_ident.name == first_seg.ident.name;
+            return !matches!(annot, BindingAnnotation(ByRef::Yes(_), _)) && pat_ident.name == first_seg.ident.name;
         },
         // Example: `Custom::TypeA => Custom::TypeB`, or `None => None`
         (PatKind::Path(QPath::Resolved(_, p_path)), ExprKind::Path(QPath::Resolved(_, e_path))) => {

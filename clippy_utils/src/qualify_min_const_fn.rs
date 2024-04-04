@@ -112,7 +112,7 @@ fn check_rvalue<'tcx>(
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
         | Rvalue::Cast(
-            CastKind::PointerFromExposedAddress
+            CastKind::PointerWithExposedProvenance
             | CastKind::IntToInt
             | CastKind::FloatToInt
             | CastKind::IntToFloat
@@ -149,7 +149,7 @@ fn check_rvalue<'tcx>(
                 Err((span, "unsizing casts are not allowed in const fn".into()))
             }
         },
-        Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
+        Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => {
             Err((span, "casting pointers to ints is unstable in const fn".into()))
         },
         Rvalue::Cast(CastKind::DynStar, _, _) => {
@@ -174,7 +174,7 @@ fn check_rvalue<'tcx>(
                 ))
             }
         },
-        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbCheck(_), _)
+        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbChecks, _)
         | Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, tcx);

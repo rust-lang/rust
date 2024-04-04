@@ -163,7 +163,7 @@ fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallC
         // TODO: This check currently bails if the local variable has no initializer.
         // That is overly conservative - the lint should fire even if there was no initializer,
         // but the variable has been initialized before `lhs` was evaluated.
-        if let Some(Node::Local(local)) = cx.tcx.hir().parent_id_iter(local).next().map(|p| cx.tcx.hir_node(p))
+        if let Some(Node::LetStmt(local)) = cx.tcx.hir().parent_id_iter(local).next().map(|p| cx.tcx.hir_node(p))
             && local.init.is_none()
         {
             return false;
