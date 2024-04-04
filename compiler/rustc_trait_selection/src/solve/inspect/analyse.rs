@@ -130,17 +130,14 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     self.candidates_recur(candidates, nested_goals, probe);
                     nested_goals.truncate(num_goals);
                 }
-                inspect::ProbeStep::EvaluateGoals(_)
-                | inspect::ProbeStep::CommitIfOkStart
-                | inspect::ProbeStep::CommitIfOkSuccess => (),
+                inspect::ProbeStep::EvaluateGoals(_) => (),
             }
         }
 
         match probe.kind {
             inspect::ProbeKind::NormalizedSelfTyAssembly
             | inspect::ProbeKind::UnsizeAssembly
-            | inspect::ProbeKind::UpcastProjectionCompatibility
-            | inspect::ProbeKind::CommitIfOk => (),
+            | inspect::ProbeKind::UpcastProjectionCompatibility => (),
             // We add a candidate for the root evaluation if there
             // is only one way to prove a given goal, e.g. for `WellFormed`.
             //
@@ -157,7 +154,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     });
                 }
             }
-            inspect::ProbeKind::MiscCandidate { name: _, result }
+            inspect::ProbeKind::TryNormalizeNonRigid { result }
+            | inspect::ProbeKind::MiscCandidate { name: _, result }
             | inspect::ProbeKind::TraitCandidate { source: _, result } => {
                 candidates.push(InspectCandidate {
                     goal: self,
