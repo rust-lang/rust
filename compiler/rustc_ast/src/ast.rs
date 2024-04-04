@@ -2132,7 +2132,7 @@ pub enum TyKind {
     /// The `NodeId` exists to prevent lowering from having to
     /// generate `NodeId`s on the fly, which would complicate
     /// the generation of opaque `type Foo = impl Trait` items significantly.
-    ImplTrait(NodeId, GenericBounds, Option<P<GenericArgs>>),
+    ImplTrait(NodeId, GenericBounds, Option<ThinVec<PreciseCapturingArg>>),
     /// No-op; kept solely so that we can pretty-print faithfully.
     Paren(P<Ty>),
     /// Unused for now.
@@ -2186,6 +2186,14 @@ pub enum TraitObjectSyntax {
     Dyn,
     DynStar,
     None,
+}
+
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+pub enum PreciseCapturingArg {
+    /// Lifetime parameter
+    Lifetime(Lifetime),
+    /// Type or const parameter
+    Arg(Ident, NodeId),
 }
 
 /// Inline assembly operand explicit register or register class.

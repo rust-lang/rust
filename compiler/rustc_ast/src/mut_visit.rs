@@ -259,6 +259,14 @@ pub trait MutVisitor: Sized {
         noop_visit_param_bound(tpb, self);
     }
 
+    fn visit_precise_capturing_args(&mut self, args: &mut ThinVec<PreciseCapturingArg>) {
+        noop_visit_precise_capturing_args(args, self);
+    }
+
+    fn visit_precise_capturing_arg(&mut self, arg: &mut PreciseCapturingArg) {
+        noop_visit_precise_capturing_arg(arg, self);
+    }
+
     fn visit_mt(&mut self, mt: &mut MutTy) {
         noop_visit_mt(mt, self);
     }
@@ -522,7 +530,7 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             vis.visit_id(id);
             visit_vec(bounds, |bound| vis.visit_param_bound(bound));
             visit_opt(precise_capturing, |precise_capturing| {
-                vis.visit_generic_args(precise_capturing);
+                vis.visit_precise_capturing_args(precise_capturing);
             });
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
@@ -914,6 +922,27 @@ pub fn noop_visit_param_bound<T: MutVisitor>(pb: &mut GenericBound, vis: &mut T)
     match pb {
         GenericBound::Trait(ty, _modifier) => vis.visit_poly_trait_ref(ty),
         GenericBound::Outlives(lifetime) => noop_visit_lifetime(lifetime, vis),
+    }
+}
+
+pub fn noop_visit_precise_capturing_args<T: MutVisitor>(
+    args: &mut ThinVec<PreciseCapturingArg>,
+    vis: &mut T,
+) {
+    for arg in args {
+        vis.visit_precise_capturing_arg(arg);
+    }
+}
+
+pub fn noop_visit_precise_capturing_arg<T: MutVisitor>(arg: &mut PreciseCapturingArg, vis: &mut T) {
+    match arg {
+        PreciseCapturingArg::Lifetime(lt) => {
+            vis.visit_lifetime(lt);
+        }
+        PreciseCapturingArg::Arg(ident, id) => {
+            vis.visit_ident(ident);
+            vis.visit_id(id);
+        }
     }
 }
 

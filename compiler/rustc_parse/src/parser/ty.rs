@@ -1,4 +1,4 @@
-use super::{Parser, PathStyle, TokenType, Trailing};
+use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
 
 use crate::errors::{
     self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
@@ -14,7 +14,7 @@ use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, FnRetTy, GenericBound,
     GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability, PolyTraitRef,
-    TraitBoundModifiers, TraitObjectSyntax, Ty, TyKind, DUMMY_NODE_ID,
+    PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty, TyKind, DUMMY_NODE_ID,
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -671,13 +671,10 @@ impl<'a> Parser<'a> {
 
         // parse precise captures, if any.
         let precise_capturing = if self.eat_keyword(kw::Use) {
-            self.expect_lt()?;
             let use_span = self.prev_token.span;
             self.psess.gated_spans.gate(sym::precise_capturing, use_span);
-            let lo = self.token.span;
-            let args = self.parse_angle_args(None)?;
-            self.expect_gt()?;
-            Some(ast::AngleBracketedArgs { args, span: lo.to(self.prev_token.span) }.into())
+            let args = self.parse_precise_capturing_args()?;
+            Some(args)
         } else {
             None
         };
@@ -688,6 +685,25 @@ impl<'a> Parser<'a> {
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token.kind == TokenKind::BinOp(token::Plus);
 
         Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds, precise_capturing))
+    }
+
+    fn parse_precise_capturing_args(&mut self) -> PResult<'a, ThinVec<PreciseCapturingArg>> {
+        Ok(self
+            .parse_unspanned_seq(
+                &TokenKind::Lt,
+                &TokenKind::Gt,
+                SeqSep::trailing_allowed(token::Comma),
+                |self_| {
+                    if self_.check_ident() {
+                        Ok(PreciseCapturingArg::Arg(self_.parse_ident().unwrap(), DUMMY_NODE_ID))
+                    } else if self_.check_lifetime() {
+                        Ok(PreciseCapturingArg::Lifetime(self_.expect_lifetime()))
+                    } else {
+                        self_.unexpected_any()
+                    }
+                },
+            )?
+            .0)
     }
 
     /// Is a `dyn B0 + ... + Bn` type allowed here?

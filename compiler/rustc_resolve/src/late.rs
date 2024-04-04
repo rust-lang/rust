@@ -1047,8 +1047,18 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
         });
         self.diag_metadata.current_function = previous_value;
     }
+
     fn visit_lifetime(&mut self, lifetime: &'ast Lifetime, use_ctxt: visit::LifetimeCtxt) {
         self.resolve_lifetime(lifetime, use_ctxt)
+    }
+
+    fn visit_precise_capturing_arg(&mut self, arg: &'ast PreciseCapturingArg) {
+        match arg {
+            PreciseCapturingArg::Lifetime(_) => visit::walk_precise_capturing_arg(self, arg),
+            PreciseCapturingArg::Arg(ident, _) => {
+                todo!("cannot resolve args yet: {ident}");
+            }
+        }
     }
 
     fn visit_generics(&mut self, generics: &'ast Generics) {
