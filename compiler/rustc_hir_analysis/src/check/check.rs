@@ -1,10 +1,10 @@
 use crate::check::intrinsicck::InlineAsmCtxt;
-use crate::errors::LinkageType;
 
 use super::compare_impl_item::check_type_bounds;
 use super::compare_impl_item::{compare_impl_method, compare_impl_ty};
 use super::*;
 use rustc_attr as attr;
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{codes::*, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -12,6 +12,7 @@ use rustc_hir::Node;
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitEngineExt as _};
 use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
+use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::fold::BottomUpFolder;
@@ -474,6 +475,94 @@ fn sanity_check_found_hidden_type<'tcx>(
     }
 }
 
+fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDefId) {
+    let hir::OpaqueTy { precise_capturing_args, .. } =
+        *tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
+    let Some(precise_capturing_args) = precise_capturing_args else {
+        // No precise capturing args; nothing to validate
+        return;
+    };
+
+    let mut expected_captures = UnordSet::default();
+    for arg in precise_capturing_args {
+        match *arg {
+            hir::PreciseCapturingArg::Lifetime(&hir::Lifetime { hir_id, .. })
+            | hir::PreciseCapturingArg::Param(_, hir_id) => match tcx.named_bound_var(hir_id) {
+                Some(ResolvedArg::EarlyBound(def_id)) => {
+                    expected_captures.insert(def_id);
+                }
+                _ => {
+                    tcx.dcx().span_delayed_bug(
+                        tcx.hir().span(hir_id),
+                        "parameter should have been resolved",
+                    );
+                }
+            },
+        }
+    }
+
+    let variances = tcx.variances_of(opaque_def_id);
+    let mut def_id = Some(opaque_def_id.to_def_id());
+    while let Some(generics) = def_id {
+        let generics = tcx.generics_of(generics);
+        def_id = generics.parent;
+
+        for param in &generics.params {
+            if expected_captures.contains(&param.def_id) {
+                assert_eq!(
+                    variances[param.index as usize],
+                    ty::Invariant,
+                    "precise captured param should be invariant"
+                );
+                continue;
+            }
+
+            match param.kind {
+                ty::GenericParamDefKind::Lifetime => {
+                    // Check if the lifetime param was captured but isn't named in the precise captures list.
+                    if variances[param.index as usize] == ty::Invariant {
+                        let param_span =
+                            if let ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
+                            | ty::ReLateParam(ty::LateParamRegion {
+                                bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
+                                ..
+                            }) = *tcx
+                                .map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local())
+                            {
+                                Some(tcx.def_span(def_id))
+                            } else {
+                                None
+                            };
+                        // FIXME(precise_capturing): Structured suggestion for this would be useful
+                        tcx.dcx().emit_err(errors::LifetimeNotCaptured {
+                            use_span: tcx.def_span(param.def_id),
+                            param_span,
+                            opaque_span: tcx.def_span(opaque_def_id),
+                        });
+                        continue;
+                    }
+                }
+                ty::GenericParamDefKind::Type { .. } => {
+                    // FIXME(precise_capturing): Structured suggestion for this would be useful
+                    tcx.dcx().emit_err(errors::ParamNotCaptured {
+                        param_span: tcx.def_span(param.def_id),
+                        opaque_span: tcx.def_span(opaque_def_id),
+                        kind: "type",
+                    });
+                }
+                ty::GenericParamDefKind::Const { .. } => {
+                    // FIXME(precise_capturing): Structured suggestion for this would be useful
+                    tcx.dcx().emit_err(errors::ParamNotCaptured {
+                        param_span: tcx.def_span(param.def_id),
+                        opaque_span: tcx.def_span(opaque_def_id),
+                        kind: "const",
+                    });
+                }
+            }
+        }
+    }
+}
+
 fn is_enum_of_nonnullable_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     adt_def: AdtDef<'tcx>,
@@ -499,7 +588,7 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             ty::Adt(adt_def, args) => !is_enum_of_nonnullable_ptr(tcx, *adt_def, *args),
             _ => true,
         } {
-            tcx.dcx().emit_err(LinkageType { span: tcx.def_span(def_id) });
+            tcx.dcx().emit_err(errors::LinkageType { span: tcx.def_span(def_id) });
         }
     }
 }
@@ -566,6 +655,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             check_union(tcx, def_id);
         }
         DefKind::OpaqueTy => {
+            check_opaque_precise_captures(tcx, def_id);
+
             let origin = tcx.opaque_type_origin(def_id);
             if let hir::OpaqueTyOrigin::FnReturn(fn_def_id)
             | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin

@@ -1,0 +1,30 @@
+error[E0433]: failed to resolve: could not find type or const parameter
+  --> $DIR/bad-params.rs:4:26
+   |
+LL | fn missing() -> impl use<T> Sized {}
+   |                          ^ could not find type or const parameter
+
+error[E0433]: failed to resolve: could not find type or const parameter
+  --> $DIR/bad-params.rs:7:31
+   |
+LL | fn missing_self() -> impl use<Self> Sized {}
+   |                               ^^^^ could not find type or const parameter
+
+error[E0433]: failed to resolve: `Self` cannot be captured because it is not a type parameter
+  --> $DIR/bad-params.rs:12:40
+   |
+LL |     fn self_is_not_param() -> impl use<Self> Sized {}
+   |                                        ^^^^ `Self` cannot be captured because it is not a type parameter
+
+warning: the feature `precise_capturing` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/bad-params.rs:1:12
+   |
+LL | #![feature(precise_capturing)]
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #123432 <https://github.com/rust-lang/rust/issues/123432> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0433`.

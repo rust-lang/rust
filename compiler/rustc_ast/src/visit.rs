@@ -462,7 +462,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
         }
         TyKind::ImplTrait(_, bounds, precise_capturing) => {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Impl);
-            if let Some(precise_capturing) = precise_capturing {
+            if let Some((precise_capturing, _span)) = precise_capturing.as_deref() {
                 for arg in precise_capturing {
                     try_visit!(visitor.visit_precise_capturing_arg(arg));
                 }

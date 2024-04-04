@@ -674,7 +674,7 @@ impl<'a> Parser<'a> {
             let use_span = self.prev_token.span;
             self.psess.gated_spans.gate(sym::precise_capturing, use_span);
             let args = self.parse_precise_capturing_args()?;
-            Some(args)
+            Some(P((args, use_span)))
         } else {
             None
         };

@@ -535,8 +535,6 @@ declare_features! (
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "CURRENT_RUSTC_VERSION", Some(123076)),
-    /// Allows `use<'a, 'b, A, B>` in `impl use<...> Trait` for precise capture of generic args.
-    (incomplete, precise_capturing, "CURRENT_RUSTC_VERSION", Some(123432)),
     /// Allows using `#[naked]` on functions.
     (unstable, naked_functions, "1.9.0", Some(90957)),
     /// Allows specifying the as-needed link modifier
@@ -569,6 +567,8 @@ declare_features! (
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "CURRENT_RUSTC_VERSION", Some(121618)),
+    /// Allows `use<'a, 'b, A, B>` in `impl use<...> Trait` for precise capture of generic args.
+    (incomplete, precise_capturing, "CURRENT_RUSTC_VERSION", Some(123432)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.

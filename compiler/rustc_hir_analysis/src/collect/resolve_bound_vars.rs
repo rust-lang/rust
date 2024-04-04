@@ -569,7 +569,13 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 LifetimeName::Error => {}
                 LifetimeName::ImplicitObjectLifetimeDefault
                 | LifetimeName::Infer
-                | LifetimeName::Static => todo!("TODO: Error on invalid lifetime"),
+                | LifetimeName::Static => {
+                    self.tcx.dcx().emit_err(errors::BadPreciseCapture {
+                        span: lt.ident.span,
+                        kind: "lifetime",
+                        found: format!("`{}`", lt.ident.name),
+                    });
+                }
             },
             hir::PreciseCapturingArg::Param(res, hir_id) => match res {
                 Res::Def(DefKind::TyParam | DefKind::ConstParam, def_id)
@@ -577,7 +583,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     self.resolve_type_ref(def_id.expect_local(), hir_id);
                 }
                 Res::Err => {}
-                _ => todo!("TODO: Error on invalid param res"),
+                _ => {
+                    // This is handled in resolve
+                    self.tcx.dcx().delayed_bug(format!("parameter should have been resolved"));
+                }
             },
         }
     }

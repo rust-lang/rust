@@ -1054,7 +1054,10 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
 
     fn visit_precise_capturing_arg(&mut self, arg: &'ast PreciseCapturingArg) {
         match arg {
+            // Lower the lifetime regularly; we'll resolve the lifetime and check
+            // it's a parameter later on in HIR lowering.
             PreciseCapturingArg::Lifetime(_) => visit::walk_precise_capturing_arg(self, arg),
+
             PreciseCapturingArg::Arg(ident, node_id) => {
                 let ident = ident.normalize_to_macros_2_0();
                 'found: {
@@ -1064,6 +1067,38 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                         if let Some(res) = rib_t.bindings.get(&ident).or(rib_v.bindings.get(&ident))
                         {
                             self.r.record_partial_res(*node_id, PartialRes::new(*res));
+
+                            // Validate that this is a parameter
+                            match res {
+                                Res::Def(DefKind::TyParam | DefKind::ConstParam, _)
+                                | Res::SelfTyParam { .. } => {}
+                                Res::SelfTyAlias { .. } => {
+                                    self.report_error(
+                                        ident.span,
+                                        ResolutionError::FailedToResolve {
+                                            segment: Some(ident.name),
+                                            label: "`Self` cannot be captured because it is not a type parameter".to_string(),
+                                            suggestion: None,
+                                            module: None,
+                                        },
+                                    );
+                                }
+                                _ => {
+                                    self.report_error(
+                                        ident.span,
+                                        ResolutionError::FailedToResolve {
+                                            segment: Some(ident.name),
+                                            label: format!(
+                                                "expected type or const parameter, found {}",
+                                                res.descr()
+                                            ),
+                                            suggestion: None,
+                                            module: None,
+                                        },
+                                    );
+                                }
+                            }
+
                             break 'found;
                         }
                     }

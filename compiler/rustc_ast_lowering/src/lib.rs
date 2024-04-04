@@ -1409,13 +1409,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         bounds,
                         fn_kind,
                         itctx,
-                        precise_capturing.as_deref(),
+                        precise_capturing.as_deref().map(|(args, _)| args.as_slice()),
                     ),
                     ImplTraitContext::Universal => {
-                        assert!(
-                            precise_capturing.is_none(),
-                            "TODO: precise captures not supported on universals!"
-                        );
+                        if let Some(&(_, span)) = precise_capturing.as_deref() {
+                            self.tcx.dcx().emit_err(errors::NoPreciseCapturesOnApit { span });
+                        };
                         let span = t.span;
 
                         // HACK: pprust breaks strings with newlines when the type
