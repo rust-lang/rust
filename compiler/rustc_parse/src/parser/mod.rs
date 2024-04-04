@@ -109,7 +109,7 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
         if $allow_qpath_recovery
             && $self.may_recover()
-            && $self.look_ahead(1, |t| t == &token::ModSep)
+            && $self.look_ahead(1, |t| t == &token::PathSep)
             && let token::Interpolated(nt) = &$self.token.kind
             && let token::NtTy(ty) = &nt.0
         {
@@ -1532,7 +1532,7 @@ impl<'a> Parser<'a> {
 
     /// `::{` or `::*`
     fn is_import_coupler(&mut self) -> bool {
-        self.check(&token::ModSep)
+        self.check(&token::PathSep)
             && self.look_ahead(1, |t| {
                 *t == token::OpenDelim(Delimiter::Brace) || *t == token::BinOp(token::Star)
             })
