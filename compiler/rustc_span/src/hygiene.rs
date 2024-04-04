@@ -165,7 +165,7 @@ pub enum Transparency {
 
 impl LocalExpnId {
     /// The ID of the theoretical expansion that generates freshly parsed, unexpanded AST.
-    pub const ROOT: LocalExpnId = LocalExpnId::from_u32(0);
+    pub const ROOT: LocalExpnId = LocalExpnId::ZERO;
 
     #[inline]
     fn from_raw(idx: ExpnIndex) -> LocalExpnId {
@@ -242,7 +242,7 @@ impl ExpnId {
     /// The ID of the theoretical expansion that generates freshly parsed, unexpanded AST.
     /// Invariant: we do not create any ExpnId with local_id == 0 and krate != 0.
     pub const fn root() -> ExpnId {
-        ExpnId { krate: LOCAL_CRATE, local_id: ExpnIndex::from_u32(0) }
+        ExpnId { krate: LOCAL_CRATE, local_id: ExpnIndex::ZERO }
     }
 
     #[inline]

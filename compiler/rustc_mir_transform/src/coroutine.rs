@@ -168,7 +168,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                 Place {
                     local: SELF_ARG,
                     projection: self.tcx().mk_place_elems(&[ProjectionElem::Field(
-                        FieldIdx::new(0),
+                        FieldIdx::ZERO,
                         self.ref_coroutine_ty,
                     )]),
                 },
@@ -267,7 +267,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                 Rvalue::Aggregate(
                     Box::new(AggregateKind::Adt(
                         option_def_id,
-                        VariantIdx::from_usize(0),
+                        VariantIdx::ZERO,
                         self.tcx.mk_args(&[self.old_yield_ty.into()]),
                         None,
                         None,
@@ -329,7 +329,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                     Rvalue::Aggregate(
                         Box::new(AggregateKind::Adt(
                             poll_def_id,
-                            VariantIdx::from_usize(0),
+                            VariantIdx::ZERO,
                             args,
                             None,
                             None,
@@ -358,7 +358,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                     Rvalue::Aggregate(
                         Box::new(AggregateKind::Adt(
                             option_def_id,
-                            VariantIdx::from_usize(0),
+                            VariantIdx::ZERO,
                             args,
                             None,
                             None,
@@ -420,7 +420,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                     Rvalue::Aggregate(
                         Box::new(AggregateKind::Adt(
                             coroutine_state_def_id,
-                            VariantIdx::from_usize(0),
+                            VariantIdx::ZERO,
                             args,
                             None,
                             None,

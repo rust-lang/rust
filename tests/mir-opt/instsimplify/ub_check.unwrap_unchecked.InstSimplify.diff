@@ -5,23 +5,17 @@
       debug x => _1;
       let mut _0: i32;
       let mut _2: std::option::Option<i32>;
-      scope 1 {
-          scope 2 (inlined #[track_caller] Option::<i32>::unwrap_unchecked) {
-              debug self => _2;
-              let mut _3: isize;
-              scope 3 {
-                  debug val => _0;
-              }
-              scope 4 {
-                  scope 5 (inlined unreachable_unchecked) {
-                      let mut _4: bool;
-                      let _5: ();
-                      scope 6 {
-                      }
-                      scope 7 (inlined core::ub_checks::check_language_ub) {
-                          scope 8 (inlined core::ub_checks::check_language_ub::runtime) {
-                          }
-                      }
+      scope 1 (inlined #[track_caller] Option::<i32>::unwrap_unchecked) {
+          debug self => _2;
+          let mut _3: isize;
+          scope 2 {
+              debug val => _0;
+          }
+          scope 3 (inlined unreachable_unchecked) {
+              let mut _4: bool;
+              let _5: ();
+              scope 4 (inlined core::ub_checks::check_language_ub) {
+                  scope 5 (inlined core::ub_checks::check_language_ub::runtime) {
                   }
               }
           }

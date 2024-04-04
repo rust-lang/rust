@@ -7,8 +7,6 @@ fn unchecked_shr_signed_bigger(_1: i64, _2: u32) -> i64 {
     scope 1 (inlined core::num::<impl i64>::unchecked_shr) {
         debug self => _1;
         debug rhs => _2;
-        scope 2 {
-        }
     }
 
     bb0: {

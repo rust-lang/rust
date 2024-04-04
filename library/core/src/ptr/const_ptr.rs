@@ -136,7 +136,7 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     #[deprecated(
         since = "1.67.0",
-        note = "replaced by the `expose_addr` method, or update your code \
+        note = "replaced by the `expose_provenance` method, or update your code \
             to follow the strict provenance rules using its APIs"
     )]
     #[inline(always)]
@@ -187,7 +187,7 @@ impl<T: ?Sized> *const T {
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
     /// required provenance, then Strict Provenance might not be for you. Use pointer-integer casts
-    /// or [`expose_addr`][pointer::expose_addr] and [`with_exposed_provenance`][with_exposed_provenance]
+    /// or [`expose_provenance`][pointer::expose_provenance] and [`with_exposed_provenance`][with_exposed_provenance]
     /// instead. However, note that this makes your code less portable and less amenable to tools
     /// that check for compliance with the Rust memory model.
     ///
@@ -210,8 +210,8 @@ impl<T: ?Sized> *const T {
         unsafe { mem::transmute(self.cast::<()>()) }
     }
 
-    /// Gets the "address" portion of the pointer, and 'exposes' the "provenance" part for future
-    /// use in [`with_exposed_provenance`][].
+    /// Exposes the "provenance" part of the pointer for future use in
+    /// [`with_exposed_provenance`][] and returns the "address" portion.
     ///
     /// This is equivalent to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. Furthermore, this (like the `as` cast) has the implicit
@@ -238,7 +238,7 @@ impl<T: ?Sized> *const T {
     #[must_use]
     #[inline(always)]
     #[unstable(feature = "exposed_provenance", issue = "95228")]
-    pub fn expose_addr(self) -> usize {
+    pub fn expose_provenance(self) -> usize {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
         self.cast::<()>() as usize
     }

@@ -9,13 +9,9 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
         scope 2 {
             debug val => _0;
         }
-        scope 3 {
-            scope 4 (inlined unreachable_unchecked) {
-                scope 5 {
-                }
-                scope 6 (inlined core::ub_checks::check_language_ub) {
-                    scope 7 (inlined core::ub_checks::check_language_ub::runtime) {
-                    }
+        scope 3 (inlined unreachable_unchecked) {
+            scope 4 (inlined core::ub_checks::check_language_ub) {
+                scope 5 (inlined core::ub_checks::check_language_ub::runtime) {
                 }
             }
         }

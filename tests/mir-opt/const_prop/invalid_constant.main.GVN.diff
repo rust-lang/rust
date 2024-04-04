@@ -12,23 +12,17 @@
       scope 1 {
           debug _invalid_char => _1;
           let _3: [E; 1];
-          scope 3 {
+          scope 2 {
               debug _invalid_tag => _3;
               let _6: [Empty; 1];
-              scope 5 {
+              scope 3 {
                   debug _enum_without_variants => const [ZeroSized: Empty];
                   let _9: main::Str<"���">;
-                  scope 7 {
+                  scope 4 {
                       debug _non_utf8_str => const Str::<"���">;
                   }
               }
-              scope 6 {
-              }
           }
-          scope 4 {
-          }
-      }
-      scope 2 {
       }
   
       bb0: {

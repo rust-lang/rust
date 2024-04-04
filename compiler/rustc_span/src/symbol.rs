@@ -1659,7 +1659,7 @@ symbols! {
         simd_cttz,
         simd_div,
         simd_eq,
-        simd_expose_addr,
+        simd_expose_provenance,
         simd_extract,
         simd_fabs,
         simd_fcos,
