@@ -605,6 +605,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 && !this.tcx.features().f16
                                 && !ident.span.allows_unstable(sym::f16)
                                 && finalize.is_some()
+                                && innermost_result.is_none()
                             {
                                 feature_err(
                                     this.tcx.sess,
@@ -618,6 +619,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 && !this.tcx.features().f128
                                 && !ident.span.allows_unstable(sym::f128)
                                 && finalize.is_some()
+                                && innermost_result.is_none()
                             {
                                 feature_err(
                                     this.tcx.sess,

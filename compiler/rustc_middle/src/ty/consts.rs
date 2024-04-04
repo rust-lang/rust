@@ -59,7 +59,7 @@ pub struct ConstData<'tcx> {
     pub kind: ConstKind<'tcx>,
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 static_assert_size!(ConstData<'_>, 40);
 
 impl<'tcx> Const<'tcx> {
