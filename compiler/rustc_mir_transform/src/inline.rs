@@ -1077,7 +1077,7 @@ fn try_instance_mir<'tcx>(
         let fields = def.all_fields();
         for field in fields {
             let field_ty = field.ty(tcx, args);
-            if field_ty.has_param() && field_ty.has_projections() {
+            if field_ty.has_param() && field_ty.has_aliases() {
                 return Err("cannot build drop shim for polymorphic type");
             }
         }
