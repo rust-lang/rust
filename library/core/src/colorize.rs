@@ -1,5 +1,3 @@
-use super::macros::format;
-
 const ANSI_RESET: &str = "\x1b[0m";
 
 pub struct Style {
@@ -419,42 +417,42 @@ impl ColoredString {
 impl ToString for ColoredString {
     fn to_string(&self) -> String {
         if self.r != -1 {
-            let rgb_str = format!(
+            let rgb_str = $crate::format!(
                 "\x1b[38;2;{};{};{}",
                 self.r.to_string(),
                 self.g.to_string(),
                 self.b.to_string()
             );
 
-            return format!("{rgb_str}m{}{ANSI_RESET}", self.str);
+            return $crate::format!("{rgb_str}m{}{ANSI_RESET}", self.str);
         }
 
         let style = &self.attr;
 
         if style.bold {
-            let rgb_str = format!("\x1b[1m");
-            return format!("{rgb_str}{}{ANSI_RESET}", self.str);
+            let rgb_str = $crate::format!("\x1b[1m");
+            return $crate::format!("{rgb_str}{}{ANSI_RESET}", self.str);
         }
         if style.italic {
-            let rgb_str = format!("\x1b[3m");
-            return format!("{rgb_str}{}{ANSI_RESET}", self.str);
+            let rgb_str = $crate::format!("\x1b[3m");
+            return $crate::format!("{rgb_str}{}{ANSI_RESET}", self.str);
         }
         if style.underlined {
-            let rgb_str = format!("\x1b[4m");
-            return format!("{rgb_str}{}{ANSI_RESET}", self.str);
+            let rgb_str = $crate::format!("\x1b[4m");
+            return $crate::format!("{rgb_str}{}{ANSI_RESET}", self.str);
         }
         if style.strike {
-            let rgb_str = format!("\x1b[9m");
-            return format!("{rgb_str}{}{ANSI_RESET}", self.str);
+            let rgb_str = $crate::format!("\x1b[9m");
+            return $crate::format!("{rgb_str}{}{ANSI_RESET}", self.str);
         }
 
         if style.bg {
-            let rgb_str = format!("\x1b[48;2;{};{};{}",
+            let rgb_str = $crate::format!("\x1b[48;2;{};{};{}",
                 self.attr.bg_r.to_string(),
                 self.attr.bg_g.to_string(),
                 self.attr.bg_b.to_string(),);
 
-            return format!("{rgb_str}m{}{ANSI_RESET}", self.str);
+            return $crate::format!("{rgb_str}m{}{ANSI_RESET}", self.str);
         }
 
         String::new()
@@ -521,7 +519,7 @@ impl ColorEncoder {
 
             if _r != -1 && _g != -1 && _b != -1 {
                 str = str.replace(
-                    &format!("<&{}>", clr_str),
+                    &$crate::format!("<&{}>", clr_str),
                         &"".color(_r, _g, _b).replace(ANSI_RESET, ""));
             }
         }
