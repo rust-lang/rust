@@ -1,3 +1,5 @@
+use super::*;
+
 const ANSI_RESET: &str = "\x1b[0m";
 
 pub struct Style {
