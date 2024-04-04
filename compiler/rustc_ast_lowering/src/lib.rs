@@ -1399,7 +1399,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::TyKind::TraitObject(bounds, lifetime_bound, *kind)
             }
             TyKind::ImplTrait(def_node_id, bounds, precise_capturing) => {
-                assert!(precise_capturing.is_none(), "precise captures not supported yet!");
                 let span = t.span;
                 match itctx {
                     ImplTraitContext::OpaqueTy { origin, fn_kind } => self.lower_opaque_impl_trait(
@@ -1409,8 +1408,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         bounds,
                         fn_kind,
                         itctx,
+                        precise_capturing.as_deref(),
                     ),
                     ImplTraitContext::Universal => {
+                        assert!(
+                            precise_capturing.is_none(),
+                            "TODO: precise captures not supported on universals!"
+                        );
                         let span = t.span;
 
                         // HACK: pprust breaks strings with newlines when the type
@@ -1521,6 +1525,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bounds: &GenericBounds,
         fn_kind: Option<FnDeclKind>,
         itctx: ImplTraitContext,
+        precise_capturing: Option<&ast::GenericArgs>,
     ) -> hir::TyKind<'hir> {
         // Make sure we know that some funky desugaring has been going on here.
         // This is a first: there is code in other places like for loop
@@ -1529,40 +1534,56 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        let captured_lifetimes_to_duplicate = match origin {
-            hir::OpaqueTyOrigin::TyAlias { .. } => {
-                // type alias impl trait and associated type position impl trait were
-                // decided to capture all in-scope lifetimes, which we collect for
-                // all opaques during resolution.
-                self.resolver
-                    .take_extra_lifetime_params(opaque_ty_node_id)
-                    .into_iter()
-                    .map(|(ident, id, _)| Lifetime { id, ident })
-                    .collect()
-            }
-            hir::OpaqueTyOrigin::FnReturn(..) => {
-                if matches!(
-                    fn_kind.expect("expected RPITs to be lowered with a FnKind"),
-                    FnDeclKind::Impl | FnDeclKind::Trait
-                ) || self.tcx.features().lifetime_capture_rules_2024
-                    || span.at_least_rust_2024()
-                {
-                    // return-position impl trait in trait was decided to capture all
-                    // in-scope lifetimes, which we collect for all opaques during resolution.
+        let captured_lifetimes_to_duplicate = if let Some(precise_capturing) = precise_capturing {
+            let ast::GenericArgs::AngleBracketed(precise_capturing) = precise_capturing else {
+                panic!("we only parse angle-bracketed args")
+            };
+            // We'll actually validate these later on; all we need is the list of
+            // lifetimes to duplicate during this portion of lowering.
+            precise_capturing
+                .args
+                .iter()
+                .filter_map(|arg| match arg {
+                    ast::AngleBracketedArg::Arg(ast::GenericArg::Lifetime(lt)) => Some(*lt),
+                    _ => None,
+                })
+                .collect()
+        } else {
+            match origin {
+                hir::OpaqueTyOrigin::TyAlias { .. } => {
+                    // type alias impl trait and associated type position impl trait were
+                    // decided to capture all in-scope lifetimes, which we collect for
+                    // all opaques during resolution.
                     self.resolver
                         .take_extra_lifetime_params(opaque_ty_node_id)
                         .into_iter()
                         .map(|(ident, id, _)| Lifetime { id, ident })
                         .collect()
-                } else {
-                    // in fn return position, like the `fn test<'a>() -> impl Debug + 'a`
-                    // example, we only need to duplicate lifetimes that appear in the
-                    // bounds, since those are the only ones that are captured by the opaque.
-                    lifetime_collector::lifetimes_in_bounds(self.resolver, bounds)
                 }
-            }
-            hir::OpaqueTyOrigin::AsyncFn(..) => {
-                unreachable!("should be using `lower_async_fn_ret_ty`")
+                hir::OpaqueTyOrigin::FnReturn(..) => {
+                    if matches!(
+                        fn_kind.expect("expected RPITs to be lowered with a FnKind"),
+                        FnDeclKind::Impl | FnDeclKind::Trait
+                    ) || self.tcx.features().lifetime_capture_rules_2024
+                        || span.at_least_rust_2024()
+                    {
+                        // return-position impl trait in trait was decided to capture all
+                        // in-scope lifetimes, which we collect for all opaques during resolution.
+                        self.resolver
+                            .take_extra_lifetime_params(opaque_ty_node_id)
+                            .into_iter()
+                            .map(|(ident, id, _)| Lifetime { id, ident })
+                            .collect()
+                    } else {
+                        // in fn return position, like the `fn test<'a>() -> impl Debug + 'a`
+                        // example, we only need to duplicate lifetimes that appear in the
+                        // bounds, since those are the only ones that are captured by the opaque.
+                        lifetime_collector::lifetimes_in_bounds(self.resolver, bounds)
+                    }
+                }
+                hir::OpaqueTyOrigin::AsyncFn(..) => {
+                    unreachable!("should be using `lower_async_fn_ret_ty`")
+                }
             }
         };
         debug!(?captured_lifetimes_to_duplicate);
