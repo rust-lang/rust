@@ -401,7 +401,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
             self.cx,
             FORMAT_IN_FORMAT_ARGS,
             self.macro_call.span,
-            &format!("`format!` in `{name}!` args"),
+            format!("`format!` in `{name}!` args"),
             |diag| {
                 diag.help(format!(
                     "combine the `format!(..)` arguments with the outer `{name}!(..)` call"
@@ -431,7 +431,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
                     cx,
                     TO_STRING_IN_FORMAT_ARGS,
                     to_string_span.with_lo(receiver.span.hi()),
-                    &format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
+                    format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
                     "remove this",
                     String::new(),
                     Applicability::MachineApplicable,
@@ -441,7 +441,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
                     cx,
                     TO_STRING_IN_FORMAT_ARGS,
                     value.span,
-                    &format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
+                    format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
                     "use this",
                     format!(
                         "{}{:*>n_needed_derefs$}{receiver_snippet}",

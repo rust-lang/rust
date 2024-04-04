@@ -107,7 +107,7 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
         }
     }
 
-    fn check_expr(&mut self, _: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
+    fn check_expr(&mut self, _: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let Some(def_id) = path_to_local(expr) {
             // FIXME(rust/#120456) - is `swap_remove` correct?
             self.underscore_bindings.swap_remove(&def_id);

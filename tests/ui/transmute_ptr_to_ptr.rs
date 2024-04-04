@@ -1,5 +1,5 @@
 #![warn(clippy::transmute_ptr_to_ptr)]
-#![allow(clippy::borrow_as_ptr)]
+#![allow(clippy::borrow_as_ptr, clippy::missing_transmute_annotations)]
 
 // Make sure we can modify lifetimes, which is one of the recommended uses
 // of transmute

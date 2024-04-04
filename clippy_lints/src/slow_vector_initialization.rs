@@ -196,7 +196,7 @@ impl SlowVectorInit {
         };
     }
 
-    fn emit_lint(cx: &LateContext<'_>, slow_fill: &Expr<'_>, vec_alloc: &VecAllocation<'_>, msg: &str) {
+    fn emit_lint(cx: &LateContext<'_>, slow_fill: &Expr<'_>, vec_alloc: &VecAllocation<'_>, msg: &'static str) {
         let len_expr = Sugg::hir(
             cx,
             match vec_alloc.size_expr {

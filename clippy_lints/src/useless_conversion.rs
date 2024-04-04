@@ -184,7 +184,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            &format!("useless conversion to the same type: `{b}`"),
+                            format!("useless conversion to the same type: `{b}`"),
                             "consider removing `.into()`",
                             sugg.into_owned(),
                             app,
@@ -301,7 +301,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            &format!("useless conversion to the same type: `{b}`"),
+                            format!("useless conversion to the same type: `{b}`"),
                             "consider removing `.into_iter()`",
                             sugg,
                             Applicability::MachineApplicable, // snippet
@@ -321,7 +321,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         cx,
                         USELESS_CONVERSION,
                         e.span,
-                        &format!("useless conversion to the same type: `{b}`"),
+                        format!("useless conversion to the same type: `{b}`"),
                         None,
                         "consider removing `.try_into()`",
                     );
@@ -346,9 +346,9 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            &format!("useless conversion to the same type: `{b}`"),
+                            format!("useless conversion to the same type: `{b}`"),
                             None,
-                            &hint,
+                            hint,
                         );
                     }
 
@@ -360,8 +360,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            &format!("useless conversion to the same type: `{b}`"),
-                            &sugg_msg,
+                            format!("useless conversion to the same type: `{b}`"),
+                            sugg_msg,
                             sugg.to_string(),
                             app,
                         );

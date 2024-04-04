@@ -297,11 +297,11 @@ impl<'tcx> LateLintPass<'tcx> for Write {
         match diag_name {
             sym::print_macro | sym::println_macro if !allowed_in_tests => {
                 if !is_build_script {
-                    span_lint(cx, PRINT_STDOUT, macro_call.span, &format!("use of `{name}!`"));
+                    span_lint(cx, PRINT_STDOUT, macro_call.span, format!("use of `{name}!`"));
                 }
             },
             sym::eprint_macro | sym::eprintln_macro if !allowed_in_tests => {
-                span_lint(cx, PRINT_STDERR, macro_call.span, &format!("use of `{name}!`"));
+                span_lint(cx, PRINT_STDERR, macro_call.span, format!("use of `{name}!`"));
             },
             sym::write_macro | sym::writeln_macro => {},
             _ => return,
@@ -390,7 +390,7 @@ fn check_newline(cx: &LateContext<'_>, format_args: &FormatArgs, macro_call: &Ma
             cx,
             lint,
             macro_call.span,
-            &format!("using `{name}!()` with a format string that ends in a single newline"),
+            format!("using `{name}!()` with a format string that ends in a single newline"),
             |diag| {
                 let name_span = cx.sess().source_map().span_until_char(macro_call.span, '!');
                 let Some(format_snippet) = snippet_opt(cx, format_string_span) else {
@@ -440,7 +440,7 @@ fn check_empty_string(cx: &LateContext<'_>, format_args: &FormatArgs, macro_call
             cx,
             lint,
             macro_call.span,
-            &format!("empty string literal in `{name}!`"),
+            format!("empty string literal in `{name}!`"),
             |diag| {
                 diag.span_suggestion(
                     span,

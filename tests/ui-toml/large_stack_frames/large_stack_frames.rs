@@ -10,7 +10,7 @@ fn f() {
     let _x = create_array::<1000>();
 }
 fn f2() {
-    //~^ ERROR: this function allocates a large amount of stack space
+    //~^ ERROR: this function may allocate 1001 bytes on the stack
     let _x = create_array::<1001>();
 }
 

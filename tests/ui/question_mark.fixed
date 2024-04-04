@@ -283,3 +283,37 @@ fn issue12337() -> Option<i32> {
     };
     Some(42)
 }
+
+fn issue11983(option: &Option<String>) -> Option<()> {
+    // Don't lint, `&Option` dose not impl `Try`.
+    let Some(v) = option else { return None };
+
+    let opt = Some(String::new());
+    // Don't lint, `branch` method in `Try` takes ownership of `opt`,
+    // and `(&opt)?` also doesn't work since it's `&Option`.
+    let Some(v) = &opt else { return None };
+    let mov = opt;
+
+    Some(())
+}
+
+struct Foo {
+    owned: Option<String>,
+}
+struct Bar {
+    foo: Foo,
+}
+#[allow(clippy::disallowed_names)]
+fn issue12412(foo: &Foo, bar: &Bar) -> Option<()> {
+    // Don't lint, `owned` is behind a shared reference.
+    let Some(v) = &foo.owned else {
+        return None;
+    };
+    // Don't lint, `owned` is behind a shared reference.
+    let Some(v) = &bar.foo.owned else {
+        return None;
+    };
+    // lint
+    let v = bar.foo.owned.clone()?;
+    Some(())
+}

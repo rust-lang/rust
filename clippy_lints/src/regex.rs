@@ -134,13 +134,13 @@ fn lint_syntax_error(cx: &LateContext<'_>, error: &regex_syntax::Error, unescape
             vec![convert_span(primary)]
         };
 
-        span_lint(cx, INVALID_REGEX, spans, &format!("regex syntax error: {kind}"));
+        span_lint(cx, INVALID_REGEX, spans, format!("regex syntax error: {kind}"));
     } else {
         span_lint_and_help(
             cx,
             INVALID_REGEX,
             base,
-            &error.to_string(),
+            error.to_string(),
             None,
             "consider using a raw string literal: `r\"..\"`",
         );
@@ -223,7 +223,7 @@ fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
                     span_lint_and_help(cx, TRIVIAL_REGEX, expr.span, "trivial regex", None, repl);
                 }
             },
-            Err(e) => span_lint(cx, INVALID_REGEX, expr.span, &e.to_string()),
+            Err(e) => span_lint(cx, INVALID_REGEX, expr.span, e.to_string()),
         }
     }
 }

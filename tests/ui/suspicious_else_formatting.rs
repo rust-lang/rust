@@ -120,6 +120,34 @@ fn main() {
     /* whelp */
     {
     }
+
+    // #12497 Don't trigger lint as rustfmt wants it
+    if true {
+        println!("true");
+    }
+    /*else if false {
+}*/
+    else {
+        println!("false");
+    }
+
+    if true {
+        println!("true");
+    } // else if false {}
+    else {
+        println!("false");
+    }
+
+    if true {
+        println!("true");
+    } /* if true {
+        println!("true");
+}
+    */
+    else {
+        println!("false");
+    }
+
 }
 
 // #7650 - Don't lint. Proc-macro using bad spans for `if` expressions.

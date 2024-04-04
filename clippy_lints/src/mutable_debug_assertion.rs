@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for DebugAssertWithMutCall {
                     cx,
                     DEBUG_ASSERT_WITH_MUT_CALL,
                     span,
-                    &format!("do not call a function with mutable arguments inside of `{macro_name}!`"),
+                    format!("do not call a function with mutable arguments inside of `{macro_name}!`"),
                 );
             }
         }
@@ -93,10 +93,6 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match expr.kind {
             ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) => {
-                self.found = true;
-                return;
-            },
-            ExprKind::If(..) => {
                 self.found = true;
                 return;
             },

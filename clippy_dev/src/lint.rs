@@ -20,6 +20,8 @@ pub fn run<'a>(path: &str, args: impl Iterator<Item = &'a String>) {
                 .args(["--edition", "2021"])
                 .arg(path)
                 .args(args)
+                // Prevent rustc from creating `rustc-ice-*` files the console output is enough.
+                .env("RUSTC_ICE", "0")
                 .status(),
         );
     } else {
@@ -32,6 +34,8 @@ pub fn run<'a>(path: &str, args: impl Iterator<Item = &'a String>) {
         let status = Command::new(cargo_clippy_path())
             .arg("clippy")
             .args(args)
+            // Prevent rustc from creating `rustc-ice-*` files the console output is enough.
+            .env("RUSTC_ICE", "0")
             .current_dir(path)
             .status();
 
