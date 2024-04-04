@@ -45,3 +45,17 @@ deploy_url="s3://${DEPLOY_BUCKET}/${deploy_dir}/$(ciCommit)"
 
 retry aws s3 cp --storage-class INTELLIGENT_TIERING \
     --no-progress --recursive --acl public-read "${upload_dir}" "${deploy_url}"
+
+access_url="https://ci-artifacts.rust-lang.org/${deploy_dir}/$(ciCommit)"
+
+# Output URLs to the uploaded artifacts to GitHub summary (if it is available)
+# to make them easily accessible.
+if [ -n "${GITHUB_STEP_SUMMARY}" ]
+then
+  echo "# CI artifacts" >> "${GITHUB_STEP_SUMMARY}"
+
+  for filename in "${upload_dir}"/*.xz; do
+    filename=`basename "${filename}"`
+    echo "- [${filename}](${access_url}/${filename})" >> "${GITHUB_STEP_SUMMARY}"
+  done
+fi

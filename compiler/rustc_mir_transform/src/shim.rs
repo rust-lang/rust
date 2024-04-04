@@ -985,7 +985,7 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
     let locals = local_decls_for_sig(&sig, span);
 
     let source_info = SourceInfo::outermost(span);
-    // FIXME: use `expose_addr` once we figure out whether function pointers have meaningful provenance.
+    // FIXME: use `expose_provenance` once we figure out whether function pointers have meaningful provenance.
     let rvalue = Rvalue::Cast(
         CastKind::FnPtrToPtr,
         Operand::Move(Place::from(Local::new(1))),

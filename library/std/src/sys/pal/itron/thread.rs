@@ -181,7 +181,7 @@ impl Thread {
             abi::acre_tsk(&abi::T_CTSK {
                 // Activate this task immediately
                 tskatr: abi::TA_ACT,
-                exinf: p_inner.as_ptr().expose_addr() as abi::EXINF,
+                exinf: p_inner.as_ptr().expose_provenance() as abi::EXINF,
                 // The entry point
                 task: Some(trampoline),
                 // Inherit the calling task's base priority

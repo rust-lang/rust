@@ -15,13 +15,11 @@
 +     }
 +     scope 3 (inlined Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}>::new) {
 +         debug pointer => _3;
-+         scope 4 {
-+             scope 5 (inlined Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}>::new_unchecked) {
-+                 debug pointer => _3;
-+             }
++         scope 4 (inlined Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}>::new_unchecked) {
++             debug pointer => _3;
 +         }
 +     }
-+     scope 6 (inlined g::{closure#0}) {
++     scope 5 (inlined g::{closure#0}) {
 +         debug a => _5;
 +         let mut _6: &mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8};
 +         let mut _7: u32;

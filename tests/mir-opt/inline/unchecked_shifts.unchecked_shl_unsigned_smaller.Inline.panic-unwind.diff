@@ -10,8 +10,6 @@
 +     scope 1 (inlined core::num::<impl u16>::unchecked_shl) {
 +         debug self => _3;
 +         debug rhs => _4;
-+         scope 2 {
-+         }
 +     }
   
       bb0: {

@@ -1324,7 +1324,7 @@ impl VariantDef {
     pub fn single_field(&self) -> &FieldDef {
         assert!(self.fields.len() == 1);
 
-        &self.fields[FieldIdx::from_u32(0)]
+        &self.fields[FieldIdx::ZERO]
     }
 
     /// Returns the last field in this variant, if present.

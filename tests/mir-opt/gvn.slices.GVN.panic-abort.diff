@@ -69,16 +69,14 @@
                   debug u => _29;
                   let _41: &*const u8;
                   let _42: &*const u8;
-                  scope 7 {
+                  scope 6 {
                       debug left_val => _41;
                       debug right_val => _42;
                       let _47: core::panicking::AssertKind;
-                      scope 8 {
+                      scope 7 {
                           debug kind => _47;
                       }
                   }
-              }
-              scope 6 {
               }
           }
       }

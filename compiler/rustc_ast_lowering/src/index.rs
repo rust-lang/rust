@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
-use rustc_index::{Idx, IndexVec};
+use rustc_index::IndexVec;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, DUMMY_SP};
@@ -31,7 +31,7 @@ pub(super) fn index_hir<'hir>(
     bodies: &SortedMap<ItemLocalId, &'hir Body<'hir>>,
     num_nodes: usize,
 ) -> (IndexVec<ItemLocalId, ParentedNode<'hir>>, LocalDefIdMap<ItemLocalId>) {
-    let zero_id = ItemLocalId::new(0);
+    let zero_id = ItemLocalId::ZERO;
     let err_node = ParentedNode { parent: zero_id, node: Node::Err(item.span()) };
     let mut nodes = IndexVec::from_elem_n(err_node, num_nodes);
     // This node's parent should never be accessed: the owner's parent is computed by the
@@ -112,7 +112,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     }
 
     fn insert_nested(&mut self, item: LocalDefId) {
-        self.parenting.insert(item, self.parent_node);
+        if self.parent_node.as_u32() != 0 {
+            self.parenting.insert(item, self.parent_node);
+        }
     }
 }
 

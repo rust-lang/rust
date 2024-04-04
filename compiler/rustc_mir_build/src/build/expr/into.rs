@@ -69,7 +69,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // FIXME: Does this need extra logic to handle let-chains?
                         let source_info = if this.is_let(cond) {
                             let variable_scope =
-                                this.new_source_scope(then_span, LintLevel::Inherited, None);
+                                this.new_source_scope(then_span, LintLevel::Inherited);
                             this.source_scope = variable_scope;
                             SourceInfo { span: then_span, scope: variable_scope }
                         } else {

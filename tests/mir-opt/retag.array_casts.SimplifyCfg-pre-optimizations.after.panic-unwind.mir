@@ -36,22 +36,18 @@ fn array_casts() -> () {
             debug p => _2;
             let _8: [usize; 2];
             scope 3 {
-            }
-            scope 4 {
                 debug x => _8;
                 let _9: *const usize;
-                scope 5 {
+                scope 4 {
                     debug p => _9;
                     let _20: &usize;
                     let _21: &usize;
                     let mut _34: &usize;
-                    scope 6 {
-                    }
-                    scope 7 {
+                    scope 5 {
                         debug left_val => _20;
                         debug right_val => _21;
                         let _26: core::panicking::AssertKind;
-                        scope 8 {
+                        scope 6 {
                             debug kind => _26;
                         }
                     }

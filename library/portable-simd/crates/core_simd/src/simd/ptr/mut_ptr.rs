@@ -47,9 +47,9 @@ pub trait SimdMutPtr: Copy + Sealed {
     /// Equivalent to calling [`pointer::with_addr`] on each element.
     fn with_addr(self, addr: Self::Usize) -> Self;
 
-    /// Gets the "address" portion of the pointer, and "exposes" the provenance part for future use
-    /// in [`Self::with_exposed_provenance`].
-    fn expose_addr(self) -> Self::Usize;
+    /// Exposes the "provenance" part of the pointer for future use in
+    /// [`Self::with_exposed_provenance`] and returns the "address" portion.
+    fn expose_provenance(self) -> Self::Usize;
 
     /// Convert an address back to a pointer, picking up a previously "exposed" provenance.
     ///
@@ -128,9 +128,9 @@ where
     }
 
     #[inline]
-    fn expose_addr(self) -> Self::Usize {
+    fn expose_provenance(self) -> Self::Usize {
         // Safety: `self` is a pointer vector
-        unsafe { core::intrinsics::simd::simd_expose_addr(self) }
+        unsafe { core::intrinsics::simd::simd_expose_provenance(self) }
     }
 
     #[inline]

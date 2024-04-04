@@ -37,52 +37,42 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                 let _7: std::ptr::NonNull<T>;
                 scope 6 {
                     debug ptr => _7;
+                    let _11: *const T;
                     scope 7 {
-                        let _11: *const T;
-                        scope 8 {
-                            debug end_or_len => _11;
-                        }
-                        scope 14 (inlined without_provenance::<T>) {
-                            debug addr => _3;
-                            scope 15 {
-                            }
-                        }
-                        scope 16 (inlined NonNull::<T>::as_ptr) {
-                            debug self => _7;
-                        }
-                        scope 17 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
-                            debug self => _9;
-                            debug count => _3;
-                            scope 18 {
-                            }
-                        }
+                        debug end_or_len => _11;
+                    }
+                    scope 11 (inlined without_provenance::<T>) {
+                        debug addr => _3;
+                    }
+                    scope 12 (inlined NonNull::<T>::as_ptr) {
+                        debug self => _7;
+                    }
+                    scope 13 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
+                        debug self => _9;
+                        debug count => _3;
                     }
                 }
-                scope 9 (inlined <NonNull<[T]> as From<&[T]>>::from) {
+                scope 8 (inlined <NonNull<[T]> as From<&[T]>>::from) {
                     debug reference => _1;
                     let mut _4: *const [T];
-                    scope 10 {
-                    }
                 }
-                scope 11 (inlined NonNull::<[T]>::cast::<T>) {
+                scope 9 (inlined NonNull::<[T]>::cast::<T>) {
                     debug self => _5;
                     let mut _6: *const T;
-                    scope 12 {
-                        scope 13 (inlined NonNull::<[T]>::as_ptr) {
-                            debug self => _5;
-                        }
+                    scope 10 (inlined NonNull::<[T]>::as_ptr) {
+                        debug self => _5;
                     }
                 }
             }
         }
     }
-    scope 19 (inlined <std::slice::Iter<'_, T> as Iterator>::enumerate) {
+    scope 14 (inlined <std::slice::Iter<'_, T> as Iterator>::enumerate) {
         debug self => _13;
-        scope 20 (inlined Enumerate::<std::slice::Iter<'_, T>>::new) {
+        scope 15 (inlined Enumerate::<std::slice::Iter<'_, T>>::new) {
             debug iter => _13;
         }
     }
-    scope 21 (inlined <Enumerate<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) {
+    scope 16 (inlined <Enumerate<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) {
         debug self => _14;
     }
 

@@ -9,8 +9,6 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         debug index => _2;
         let mut _3: *mut [u32];
         let mut _4: *mut [u32];
-        scope 2 {
-        }
     }
 
     bb0: {
