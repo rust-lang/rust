@@ -1172,7 +1172,7 @@ pub fn typeid_for_instance<'tcx>(
         instance.args = tcx.mk_args_trait(invoke_ty, trait_ref.args.into_iter().skip(1));
     }
 
-    if !options.contains(EncodeTyOptions::NO_SELF_TYPE_ERASURE) {
+    if options.contains(EncodeTyOptions::ERASE_SELF_TYPE) {
         if let Some(impl_id) = tcx.impl_of_method(instance.def_id())
             && let Some(trait_ref) = tcx.impl_trait_ref(impl_id)
         {

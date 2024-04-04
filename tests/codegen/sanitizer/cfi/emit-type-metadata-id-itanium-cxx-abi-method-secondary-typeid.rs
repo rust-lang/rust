@@ -18,5 +18,5 @@ impl Trait1 for Type1 {
 }
 
 
-// CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u6regionEEE"}
-// CHECK: ![[TYPE2]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type1EE"}
+// CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type1EE"}
+// CHECK: ![[TYPE2]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u6regionEEE"}

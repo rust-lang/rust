@@ -4,7 +4,7 @@
 /// For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 /// see design document in the tracking issue #89653.
 use bitflags::bitflags;
-use rustc_middle::ty::{Instance, Ty, TyCtxt};
+use rustc_middle::ty::{Instance, InstanceDef, ReifyReason, Ty, TyCtxt};
 use rustc_target::abi::call::FnAbi;
 use std::hash::Hasher;
 use twox_hash::XxHash64;
@@ -24,9 +24,9 @@ bitflags! {
         /// `-fsanitize-cfi-icall-experimental-normalize-integers` option for cross-language LLVM
         /// CFI and  KCFI support.
         const NORMALIZE_INTEGERS = 4;
-        /// Do not perform self type erasure for attaching a secondary type id to methods with their
-        /// concrete self so they can be used as function pointers.
-        const NO_SELF_TYPE_ERASURE = 8;
+        /// Generalize the instance by erasing the concrete `Self` type where possible.
+        /// Only has an effect on `{kcfi_,}typeid_for_instance`.
+        const ERASE_SELF_TYPE = 8;
     }
 }
 
@@ -67,8 +67,13 @@ pub fn kcfi_typeid_for_fnabi<'tcx>(
 pub fn kcfi_typeid_for_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-    options: TypeIdOptions,
+    mut options: TypeIdOptions,
 ) -> u32 {
+    // If we receive a `ReifyShim` intended to produce a function pointer, we need to remain
+    // concrete - abstraction is for vtables.
+    if matches!(instance.def, InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr))) {
+        options.remove(TypeIdOptions::ERASE_SELF_TYPE);
+    }
     // A KCFI type metadata identifier is a 32-bit constant produced by taking the lower half of the
     // xxHash64 of the type metadata identifier. (See llvm/llvm-project@cff5bef.)
     let mut hash: XxHash64 = Default::default();
