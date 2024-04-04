@@ -794,6 +794,9 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
             let Some(clause) = clause.as_projection_clause() else {
                 return ControlFlow::Continue(());
             };
+            if clause.projection_def_id() != obligation.predicate.def_id {
+                return ControlFlow::Continue(());
+            }
 
             let is_match =
                 selcx.infcx.probe(|_| selcx.match_projection_projections(obligation, clause, true));
