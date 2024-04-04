@@ -7,29 +7,24 @@ LL | #![feature(precise_capturing)]
    = note: see issue #123432 <https://github.com/rust-lang/rust/issues/123432> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
-  --> $DIR/forgot-to-capture-type.rs:4:58
+error: `impl Trait` must mention all type parameters in scope
+  --> $DIR/forgot-to-capture-type.rs:4:15
    |
-LL | fn lifetime_in_bounds<'a>(x: &'a ()) -> impl use<> Into<&'a ()> { x }
-   |                       --                -----------------^^----
-   |                       |                 |
-   |                       |                 lifetime captured due to being mentioned in the bounds of the `impl Trait`
-   |                       this lifetime parameter is captured
+LL | fn type_param<T>() -> impl use<> Sized {}
+   |               ^       ---------------- type parameter is implicitly captured by this `impl Trait`
+   |
+   = note: currently, all type parameters are required to be mentioned in the precise captures list
 
-error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/forgot-to-capture-type.rs:7:60
+error: `impl Trait` must mention all type parameters in scope
+  --> $DIR/forgot-to-capture-type.rs:7:1
    |
-LL | fn lifetime_in_hidden<'a>(x: &'a ()) -> impl use<> Sized { x }
-   |                       --                ----------------   ^
-   |                       |                 |
-   |                       |                 opaque type defined here
-   |                       hidden type `&'a ()` captures the lifetime `'a` as defined here
+LL | trait Foo {
+   | ^^^^^^^^^
+LL |
+LL |     fn bar() -> impl use<> Sized;
+   |                 ---------------- type parameter is implicitly captured by this `impl Trait`
    |
-help: to declare that `impl Sized` captures `'a`, you can add an explicit `'a` lifetime bound
-   |
-LL | fn lifetime_in_hidden<'a>(x: &'a ()) -> impl use<> Sized + 'a { x }
-   |                                                          ++++
+   = note: currently, all type parameters are required to be mentioned in the precise captures list
 
 error: aborting due to 2 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0700`.

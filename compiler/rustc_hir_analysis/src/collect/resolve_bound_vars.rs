@@ -577,10 +577,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     });
                 }
             },
-            hir::PreciseCapturingArg::Param(res, hir_id) => match res {
+            hir::PreciseCapturingArg::Param(param) => match param.res {
                 Res::Def(DefKind::TyParam | DefKind::ConstParam, def_id)
                 | Res::SelfTyParam { trait_: def_id } => {
-                    self.resolve_type_ref(def_id.expect_local(), hir_id);
+                    self.resolve_type_ref(def_id.expect_local(), param.hir_id);
                 }
                 Res::Err => {}
                 _ => {

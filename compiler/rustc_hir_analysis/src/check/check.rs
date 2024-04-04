@@ -487,7 +487,9 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
     for arg in precise_capturing_args {
         match *arg {
             hir::PreciseCapturingArg::Lifetime(&hir::Lifetime { hir_id, .. })
-            | hir::PreciseCapturingArg::Param(_, hir_id) => match tcx.named_bound_var(hir_id) {
+            | hir::PreciseCapturingArg::Param(hir::PreciseCapturingNonLifetimeArg {
+                hir_id, ..
+            }) => match tcx.named_bound_var(hir_id) {
                 Some(ResolvedArg::EarlyBound(def_id)) => {
                     expected_captures.insert(def_id);
                 }

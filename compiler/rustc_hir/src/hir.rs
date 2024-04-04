@@ -2565,7 +2565,14 @@ pub struct OpaqueTy<'hir> {
 pub enum PreciseCapturingArg<'hir> {
     Lifetime(&'hir Lifetime),
     /// Non-lifetime argument (type or const)
-    Param(Res, HirId),
+    Param(PreciseCapturingNonLifetimeArg),
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct PreciseCapturingNonLifetimeArg {
+    pub hir_id: HirId,
+    pub ident: Ident,
+    pub res: Res,
 }
 
 /// From whence the opaque type came.
@@ -3544,6 +3551,7 @@ pub enum Node<'hir> {
     WhereBoundPredicate(&'hir WhereBoundPredicate<'hir>),
     // FIXME: Merge into `Node::Infer`.
     ArrayLenInfer(&'hir InferArg),
+    PreciseCapturingNonLifetimeArg(&'hir PreciseCapturingNonLifetimeArg),
     // Created by query feeding
     Synthetic,
     // Span by reference to minimize `Node`'s size
@@ -3580,6 +3588,7 @@ impl<'hir> Node<'hir> {
             Node::TypeBinding(b) => Some(b.ident),
             Node::PatField(f) => Some(f.ident),
             Node::ExprField(f) => Some(f.ident),
+            Node::PreciseCapturingNonLifetimeArg(a) => Some(a.ident),
             Node::Param(..)
             | Node::AnonConst(..)
             | Node::ConstBlock(..)
