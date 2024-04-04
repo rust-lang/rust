@@ -89,7 +89,7 @@ impl EarlyLintPass for Visibility {
                     cx,
                     NEEDLESS_PUB_SELF,
                     item.vis.span,
-                    &format!("unnecessary `pub({}self)`", if *shorthand { "" } else { "in " }),
+                    format!("unnecessary `pub({}self)`", if *shorthand { "" } else { "in " }),
                     "remove it",
                     String::new(),
                     Applicability::MachineApplicable,

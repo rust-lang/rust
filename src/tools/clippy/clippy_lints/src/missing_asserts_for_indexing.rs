@@ -65,7 +65,7 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(MissingAssertsForIndexing => [MISSING_ASSERTS_FOR_INDEXING]);
 
-fn report_lint<F>(cx: &LateContext<'_>, full_span: Span, msg: &str, indexes: &[Span], f: F)
+fn report_lint<F>(cx: &LateContext<'_>, full_span: Span, msg: &'static str, indexes: &[Span], f: F)
 where
     F: FnOnce(&mut Diag<'_, ()>),
 {
