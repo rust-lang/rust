@@ -1055,8 +1055,28 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
     fn visit_precise_capturing_arg(&mut self, arg: &'ast PreciseCapturingArg) {
         match arg {
             PreciseCapturingArg::Lifetime(_) => visit::walk_precise_capturing_arg(self, arg),
-            PreciseCapturingArg::Arg(ident, _) => {
-                todo!("cannot resolve args yet: {ident}");
+            PreciseCapturingArg::Arg(ident, node_id) => {
+                let ident = ident.normalize_to_macros_2_0();
+                'found: {
+                    for (rib_t, rib_v) in
+                        std::iter::zip(&self.ribs.type_ns, &self.ribs.value_ns).rev()
+                    {
+                        if let Some(res) = rib_t.bindings.get(&ident).or(rib_v.bindings.get(&ident))
+                        {
+                            self.r.record_partial_res(*node_id, PartialRes::new(*res));
+                            break 'found;
+                        }
+                    }
+                    self.report_error(
+                        ident.span,
+                        ResolutionError::FailedToResolve {
+                            segment: Some(ident.name),
+                            label: "could not find type or const parameter".to_string(),
+                            suggestion: None,
+                            module: None,
+                        },
+                    );
+                }
             }
         }
     }
