@@ -461,7 +461,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
-        t.has_free_regions() || t.has_projections() || t.has_infer_types()
+        t.has_free_regions() || t.has_aliases() || t.has_infer_types()
     }
 
     pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {

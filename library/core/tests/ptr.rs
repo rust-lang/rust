@@ -1,4 +1,5 @@
 use core::cell::RefCell;
+use core::marker::Freeze;
 use core::mem::{self, MaybeUninit};
 use core::num::NonZero;
 use core::ptr;
@@ -841,7 +842,7 @@ fn ptr_metadata_bounds() {
     fn static_assert_expected_bounds_for_metadata<Meta>()
     where
         // Keep this in sync with the associated type in `library/core/src/ptr/metadata.rs`
-        Meta: Debug + Copy + Send + Sync + Ord + std::hash::Hash + Unpin,
+        Meta: Debug + Copy + Send + Sync + Ord + std::hash::Hash + Unpin + Freeze,
     {
     }
 }
