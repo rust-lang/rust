@@ -30,7 +30,9 @@ bitflags! {
     }
 }
 
-mod typeid_itanium_cxx_abi;
+mod instance;
+mod itanium_cxx_abi;
+mod ty;
 
 /// Returns a type metadata identifier for the specified FnAbi.
 pub fn typeid_for_fnabi<'tcx>(
@@ -38,7 +40,7 @@ pub fn typeid_for_fnabi<'tcx>(
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
     options: TypeIdOptions,
 ) -> String {
-    typeid_itanium_cxx_abi::typeid_for_fnabi(tcx, fn_abi, options)
+    itanium_cxx_abi::typeid_for_fnabi(tcx, fn_abi, options)
 }
 
 /// Returns a type metadata identifier for the specified Instance.
@@ -47,7 +49,7 @@ pub fn typeid_for_instance<'tcx>(
     instance: Instance<'tcx>,
     options: TypeIdOptions,
 ) -> String {
-    typeid_itanium_cxx_abi::typeid_for_instance(tcx, instance, options)
+    instance::typeid_for_instance(tcx, instance, options)
 }
 
 /// Returns a KCFI type metadata identifier for the specified FnAbi.
@@ -59,7 +61,7 @@ pub fn kcfi_typeid_for_fnabi<'tcx>(
     // A KCFI type metadata identifier is a 32-bit constant produced by taking the lower half of the
     // xxHash64 of the type metadata identifier. (See llvm/llvm-project@cff5bef.)
     let mut hash: XxHash64 = Default::default();
-    hash.write(typeid_itanium_cxx_abi::typeid_for_fnabi(tcx, fn_abi, options).as_bytes());
+    hash.write(itanium_cxx_abi::typeid_for_fnabi(tcx, fn_abi, options).as_bytes());
     hash.finish() as u32
 }
 
@@ -77,6 +79,6 @@ pub fn kcfi_typeid_for_instance<'tcx>(
     // A KCFI type metadata identifier is a 32-bit constant produced by taking the lower half of the
     // xxHash64 of the type metadata identifier. (See llvm/llvm-project@cff5bef.)
     let mut hash: XxHash64 = Default::default();
-    hash.write(typeid_itanium_cxx_abi::typeid_for_instance(tcx, instance, options).as_bytes());
+    hash.write(instance::typeid_for_instance(tcx, instance, options).as_bytes());
     hash.finish() as u32
 }
