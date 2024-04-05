@@ -1,4 +1,5 @@
 // Check that the targeted element has the expected styles.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html#method.a_method"
 show-text: true
 
@@ -9,8 +10,7 @@ define-function: (
     "check-style",
     [theme, background, border],
     block {
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: ("#method\.a_method:target", {
             "background-color": |background|,
             "border-right": "3px solid " + |border|,

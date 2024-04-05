@@ -2,6 +2,7 @@
 // check that the rule isn't applied on other "<code>" elements.
 //
 // While we're at it, we also check it for the other themes.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 // If the text isn't displayed, the browser doesn't compute color style correctly...
 show-text: true
@@ -10,10 +11,7 @@ define-function: (
     "check-colors",
     [theme, doc_code_color, doc_inline_code_color],
     block {
-        // Set the theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        // We reload the page so the local storage settings are being used.
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (".docblock pre > code", {"color": |doc_code_color|}, ALL)
         assert-css: (".docblock > p > code", {"color": |doc_inline_code_color|}, ALL)
     },
