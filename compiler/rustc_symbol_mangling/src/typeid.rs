@@ -4,7 +4,7 @@
 /// For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 /// see design document in the tracking issue #89653.
 use bitflags::bitflags;
-use rustc_middle::ty::{Instance, InstanceDef, ReifyReason, Ty, TyCtxt};
+use rustc_middle::ty::{Instance, InstanceDef, List, ReifyReason, Ty, TyCtxt};
 use rustc_target::abi::call::FnAbi;
 use std::hash::Hasher;
 use twox_hash::XxHash64;
@@ -49,7 +49,13 @@ pub fn typeid_for_instance<'tcx>(
     instance: Instance<'tcx>,
     options: TypeIdOptions,
 ) -> String {
-    instance::typeid_for_instance(tcx, instance, options)
+    let instance = instance::transform(tcx, instance, options);
+    let fn_abi = tcx
+        .fn_abi_of_instance(tcx.param_env(instance.def_id()).and((instance, List::empty())))
+        .unwrap_or_else(|error| {
+            bug!("typeid_for_instance: couldn't get fn_abi of instance {instance:?}: {error:?}")
+        });
+    itanium_cxx_abi::typeid_for_fnabi(tcx, fn_abi, options)
 }
 
 /// Returns a KCFI type metadata identifier for the specified FnAbi.
@@ -79,6 +85,6 @@ pub fn kcfi_typeid_for_instance<'tcx>(
     // A KCFI type metadata identifier is a 32-bit constant produced by taking the lower half of the
     // xxHash64 of the type metadata identifier. (See llvm/llvm-project@cff5bef.)
     let mut hash: XxHash64 = Default::default();
-    hash.write(instance::typeid_for_instance(tcx, instance, options).as_bytes());
+    hash.write(typeid_for_instance(tcx, instance, options).as_bytes());
     hash.finish() as u32
 }

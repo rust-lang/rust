@@ -8,13 +8,21 @@ use std::iter;
 
 use crate::typeid::TypeIdOptions;
 
-/// Returns a type metadata identifier for the specified Instance using the Itanium C++ ABI with
-/// vendor extended type qualifiers and types for Rust types that are not used at the FFI boundary.
-pub fn typeid_for_instance<'tcx>(
+/// Transform an instance where needed prior to encoding
+///
+/// Always:
+///
+/// * `drop_in_place::<T>` -> `drop_in_place::<dyn Drop>`
+/// * `Trait::method::<dyn Foo + BarAuto>` -> `Trait::method::<dyn Trait>`
+/// * `FnOnce::call_once<T>` (`VTableShim`) -> `FnOnce::call_once::<dyn FnOnce(Args) + Output=R>`
+///
+/// If `ERASE_SELF_TYPE` is set:
+/// * `Trait::method::<T>` -> `Trait::method::<dyn Trait>`
+pub fn transform<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut instance: Instance<'tcx>,
     options: TypeIdOptions,
-) -> String {
+) -> Instance<'tcx> {
     if (matches!(instance.def, ty::InstanceDef::Virtual(..))
         && Some(instance.def_id()) == tcx.lang_items().drop_in_place_fn())
         || matches!(instance.def, ty::InstanceDef::DropGlue(..))
@@ -154,14 +162,7 @@ pub fn typeid_for_instance<'tcx>(
             instance.args = abstract_args;
         }
     }
-
-    let fn_abi = tcx
-        .fn_abi_of_instance(tcx.param_env(instance.def_id()).and((instance, ty::List::empty())))
-        .unwrap_or_else(|error| {
-            bug!("typeid_for_instance: couldn't get fn_abi of instance {instance:?}: {error:?}")
-        });
-
-    super::itanium_cxx_abi::typeid_for_fnabi(tcx, fn_abi, options)
+    instance
 }
 
 fn strip_receiver_auto<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
