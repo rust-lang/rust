@@ -58,7 +58,7 @@ pub(super) fn check<'tcx>(
         cx,
         TRANSMUTE_INT_TO_NON_ZERO,
         e.span,
-        &format!("transmute from a `{from_ty}` to a `{nonzero_alias}`"),
+        format!("transmute from a `{from_ty}` to a `{nonzero_alias}`"),
         |diag| {
             let arg = sugg::Sugg::hir(cx, arg, "..");
             diag.span_suggestion(

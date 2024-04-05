@@ -4,7 +4,7 @@ use clippy_utils::ty::is_c_void;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{RawPtr};
+use rustc_middle::ty::RawPtr;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -52,7 +52,7 @@ impl LateLintPass<'_> for FromRawWithVoidPtr {
                 cx,
                 FROM_RAW_WITH_VOID_PTR,
                 expr.span,
-                &msg,
+                msg,
                 Some(arg.span),
                 "cast this to a pointer of the appropriate type",
             );

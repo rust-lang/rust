@@ -41,7 +41,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
                 })
             },
             BinOpKind::Rem | BinOpKind::BitAnd => get_constant_bits(cx, right)
-                .unwrap_or(u64::max_value())
+                .unwrap_or(u64::MAX)
                 .min(apply_reductions(cx, nbits, left, signed)),
             BinOpKind::Shr => apply_reductions(cx, nbits, left, signed)
                 .saturating_sub(constant_int(cx, right).map_or(0, |s| u64::try_from(s).unwrap_or_default())),
@@ -56,7 +56,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             } else {
                 None
             };
-            apply_reductions(cx, nbits, left, signed).min(max_bits.unwrap_or(u64::max_value()))
+            apply_reductions(cx, nbits, left, signed).min(max_bits.unwrap_or(u64::MAX))
         },
         ExprKind::MethodCall(method, _, [lo, hi], _) => {
             if method.ident.as_str() == "clamp" {
@@ -142,7 +142,7 @@ pub(super) fn check(
                     cx,
                     CAST_ENUM_TRUNCATION,
                     expr.span,
-                    &format!(
+                    format!(
                         "casting `{cast_from}::{}` to `{cast_to}` will truncate the value{suffix}",
                         variant.name,
                     ),
@@ -163,7 +163,7 @@ pub(super) fn check(
         _ => return,
     };
 
-    span_lint_and_then(cx, CAST_POSSIBLE_TRUNCATION, expr.span, &msg, |diag| {
+    span_lint_and_then(cx, CAST_POSSIBLE_TRUNCATION, expr.span, msg, |diag| {
         diag.help("if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...");
         if !cast_from.is_floating_point() {
             offer_suggestion(cx, expr, cast_expr, cast_to_span, diag);

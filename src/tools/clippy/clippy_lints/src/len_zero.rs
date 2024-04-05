@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::snippet_with_context;
-use clippy_utils::sugg::Sugg;
+use clippy_utils::source::{snippet_opt, snippet_with_context};
+use clippy_utils::sugg::{has_enclosing_paren, Sugg};
 use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -192,7 +192,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
 
         if let ExprKind::Binary(Spanned { node: cmp, .. }, left, right) = expr.kind {
             // expr.span might contains parenthesis, see issue #10529
-            let actual_span = left.span.with_hi(right.span.hi());
+            let actual_span = span_without_enclosing_paren(cx, expr.span);
             match cmp {
                 BinOpKind::Eq => {
                     check_cmp(cx, actual_span, left, right, "", 0); // len == 0
@@ -215,6 +215,20 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
                 _ => (),
             }
         }
+    }
+}
+
+fn span_without_enclosing_paren(cx: &LateContext<'_>, span: Span) -> Span {
+    let Some(snippet) = snippet_opt(cx, span) else {
+        return span;
+    };
+    if has_enclosing_paren(snippet) {
+        let source_map = cx.tcx.sess.source_map();
+        let left_paren = source_map.start_point(span);
+        let right_parent = source_map.end_point(span);
+        left_paren.between(right_parent)
+    } else {
+        span
     }
 }
 
@@ -256,7 +270,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
             .items()
             .flat_map(|&i| cx.tcx.associated_items(i).filter_by_name_unhygienic(is_empty))
             .any(|i| {
-                i.kind == ty::AssocKind::Fn
+                i.kind == AssocKind::Fn
                     && i.fn_has_self_parameter
                     && cx.tcx.fn_sig(i.def_id).skip_binder().inputs().skip_binder().len() == 1
             });
@@ -266,7 +280,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
                 cx,
                 LEN_WITHOUT_IS_EMPTY,
                 visited_trait.span,
-                &format!(
+                format!(
                     "trait `{}` has a `len` method but no (possibly inherited) `is_empty` method",
                     visited_trait.ident.name
                 ),
@@ -484,7 +498,7 @@ fn check_for_is_empty(
         Some(_) => return,
     };
 
-    span_lint_and_then(cx, LEN_WITHOUT_IS_EMPTY, span, &msg, |db| {
+    span_lint_and_then(cx, LEN_WITHOUT_IS_EMPTY, span, msg, |db| {
         if let Some(span) = is_empty_span {
             db.span_note(span, "`is_empty` defined here");
         }
@@ -495,6 +509,10 @@ fn check_for_is_empty(
 }
 
 fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>, op: &str, compare_to: u32) {
+    if method.span.from_expansion() {
+        return;
+    }
+
     if let (&ExprKind::MethodCall(method_path, receiver, args, _), ExprKind::Lit(lit)) = (&method.kind, &lit.kind) {
         // check if we are in an is_empty() method
         if let Some(name) = get_item_name(cx, method) {
@@ -542,8 +560,8 @@ fn check_len(
                 cx,
                 LEN_ZERO,
                 span,
-                &format!("length comparison to {}", if compare_to == 0 { "zero" } else { "one" }),
-                &format!("using `{op}is_empty` is clearer and more explicit"),
+                format!("length comparison to {}", if compare_to == 0 { "zero" } else { "one" }),
+                format!("using `{op}is_empty` is clearer and more explicit"),
                 format!(
                     "{op}{}.is_empty()",
                     snippet_with_context(cx, receiver.span, span.ctxt(), "_", &mut applicability).0,
@@ -566,7 +584,7 @@ fn check_empty_expr(cx: &LateContext<'_>, span: Span, lit1: &Expr<'_>, lit2: &Ex
             COMPARISON_TO_EMPTY,
             span,
             "comparison to empty slice",
-            &format!("using `{op}is_empty` is clearer and more explicit"),
+            format!("using `{op}is_empty` is clearer and more explicit"),
             format!("{op}{lit_str}.is_empty()"),
             applicability,
         );
@@ -594,7 +612,7 @@ fn is_empty_array(expr: &Expr<'_>) -> bool {
 fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     /// Gets an `AssocItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext<'_>, item: &ty::AssocItem) -> bool {
-        if item.kind == ty::AssocKind::Fn {
+        if item.kind == AssocKind::Fn {
             let sig = cx.tcx.fn_sig(item.def_id).skip_binder();
             let ty = sig.skip_binder();
             ty.inputs().len() == 1

@@ -40,7 +40,7 @@ fn check_nested_misused_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
                     cx,
                     MAYBE_MISUSED_CFG,
                     meta.span,
-                    &format!("'test' may be misspelled as '{}'", ident.name.as_str()),
+                    format!("'test' may be misspelled as '{}'", ident.name.as_str()),
                     "did you mean",
                     "test".to_string(),
                     Applicability::MaybeIncorrect,

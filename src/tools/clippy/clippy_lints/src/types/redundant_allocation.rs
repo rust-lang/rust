@@ -29,7 +29,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath:
             cx,
             REDUNDANT_ALLOCATION,
             hir_ty.span,
-            &format!("usage of `{outer_sym}<{generic_snippet}>`"),
+            format!("usage of `{outer_sym}<{generic_snippet}>`"),
             |diag| {
                 diag.span_suggestion(hir_ty.span, "try", format!("{generic_snippet}"), applicability);
                 diag.note(format!(
@@ -73,7 +73,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath:
             cx,
             REDUNDANT_ALLOCATION,
             hir_ty.span,
-            &format!("usage of `{outer_sym}<{inner_sym}<{generic_snippet}>>`"),
+            format!("usage of `{outer_sym}<{inner_sym}<{generic_snippet}>>`"),
             |diag| {
                 diag.span_suggestion(
                     hir_ty.span,
@@ -92,7 +92,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath:
             cx,
             REDUNDANT_ALLOCATION,
             hir_ty.span,
-            &format!("usage of `{outer_sym}<{inner_sym}<{generic_snippet}>>`"),
+            format!("usage of `{outer_sym}<{inner_sym}<{generic_snippet}>>`"),
             |diag| {
                 diag.note(format!(
                     "`{inner_sym}<{generic_snippet}>` is already on the heap, `{outer_sym}<{inner_sym}<{generic_snippet}>>` makes an extra allocation"

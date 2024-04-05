@@ -65,7 +65,7 @@ impl AssigningClones {
 impl_lint_pass!(AssigningClones => [ASSIGNING_CLONES]);
 
 impl<'tcx> LateLintPass<'tcx> for AssigningClones {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, assign_expr: &'tcx hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, assign_expr: &'tcx Expr<'_>) {
         // Do not fire the lint in macros
         let expn_data = assign_expr.span().ctxt().outer_expn_data();
         match expn_data.kind {
@@ -181,6 +181,23 @@ fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallC
         return false;
     }
 
+    // If the call expression is inside an impl block that contains the method invoked by the
+    // call expression, we bail out to avoid suggesting something that could result in endless
+    // recursion.
+    if let Some(local_block_id) = impl_block.as_local()
+        && let Some(block) = cx.tcx.hir_node_by_def_id(local_block_id).as_owner()
+    {
+        let impl_block_owner = block.def_id();
+        if cx
+            .tcx
+            .hir()
+            .parent_id_iter(lhs.hir_id)
+            .any(|parent| parent.owner == impl_block_owner)
+        {
+            return false;
+        }
+    }
+
     // Find the function for which we want to check that it is implemented.
     let provided_fn = match call.target {
         TargetTrait::Clone => cx.tcx.get_diagnostic_item(sym::Clone).and_then(|clone| {
@@ -205,14 +222,9 @@ fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallC
     implemented_fns.contains_key(&provided_fn.def_id)
 }
 
-fn suggest<'tcx>(
-    cx: &LateContext<'tcx>,
-    assign_expr: &hir::Expr<'tcx>,
-    lhs: &hir::Expr<'tcx>,
-    call: &CallCandidate<'tcx>,
-) {
+fn suggest<'tcx>(cx: &LateContext<'tcx>, assign_expr: &Expr<'tcx>, lhs: &Expr<'tcx>, call: &CallCandidate<'tcx>) {
     span_lint_and_then(cx, ASSIGNING_CLONES, assign_expr.span, call.message(), |diag| {
-        let mut applicability = Applicability::MachineApplicable;
+        let mut applicability = Applicability::Unspecified;
 
         diag.span_suggestion(
             assign_expr.span,
@@ -263,7 +275,7 @@ impl<'tcx> CallCandidate<'tcx> {
     fn suggested_replacement(
         &self,
         cx: &LateContext<'tcx>,
-        lhs: &hir::Expr<'tcx>,
+        lhs: &Expr<'tcx>,
         applicability: &mut Applicability,
     ) -> String {
         match self.target {

@@ -119,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowedRef {
 
 fn check_subpatterns<'tcx>(
     cx: &LateContext<'tcx>,
-    message: &str,
+    message: &'static str,
     ref_pat: &Pat<'_>,
     pat: &Pat<'_>,
     subpatterns: impl IntoIterator<Item = &'tcx Pat<'tcx>>,

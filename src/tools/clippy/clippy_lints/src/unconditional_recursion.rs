@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// implementations.
     ///
     /// ### Why is this bad?
-    /// This is a hard to find infinite recursion that will crash any code.
+    /// This is a hard to find infinite recursion that will crash any code
     /// using it.
     ///
     /// ### Example

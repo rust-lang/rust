@@ -23,7 +23,7 @@ pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) -
             cx,
             SUSPICIOUS_TO_OWNED,
             expr.span,
-            &with_forced_trimmed_paths!(format!(
+            with_forced_trimmed_paths!(format!(
                 "this `to_owned` call clones the {input_type} itself and does not cause the {input_type} contents to become owned"
             )),
             |diag| {
