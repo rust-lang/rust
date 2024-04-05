@@ -52,6 +52,16 @@ check-aux:
 		src/tools/cargo \
 		src/tools/cargotest \
 		$(BOOTSTRAP_ARGS)
+	# Run standard library tests in Miri.
+	$(Q)$(BOOTSTRAP) miri --stage 2 \
+		library/core \
+		library/alloc \
+		--no-doc
+	$(Q)MIRIFLAGS="-Zmiri-ignore-leaks -Zmiri-disable-isolation" \
+		$(BOOTSTRAP) miri --stage 2 \
+		library/core \
+		library/alloc \
+		--doc
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 distcheck:
