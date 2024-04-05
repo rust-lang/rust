@@ -96,6 +96,10 @@ pub struct TypeckResults<'tcx> {
     /// <https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md#definitions>
     pat_adjustments: ItemLocalMap<Vec<Ty<'tcx>>>,
 
+    /// Set of reference patterns that match against a match-ergonomics inserted reference
+    /// (as opposed to against a reference in the scrutinee type).
+    skipped_ref_pats: ItemLocalSet,
+
     /// Records the reasons that we picked the kind of each closure;
     /// not all closures are present in the map.
     closure_kind_origins: ItemLocalMap<(Span, HirPlace<'tcx>)>,
@@ -228,6 +232,7 @@ impl<'tcx> TypeckResults<'tcx> {
             adjustments: Default::default(),
             pat_binding_modes: Default::default(),
             pat_adjustments: Default::default(),
+            skipped_ref_pats: Default::default(),
             closure_kind_origins: Default::default(),
             liberated_fn_sigs: Default::default(),
             fru_field_types: Default::default(),
@@ -435,6 +440,14 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_adjustments }
     }
 
+    pub fn skipped_ref_pats(&self) -> LocalSetInContext<'_> {
+        LocalSetInContext { hir_owner: self.hir_owner, data: &self.skipped_ref_pats }
+    }
+
+    pub fn skipped_ref_pats_mut(&mut self) -> LocalSetInContextMut<'_> {
+        LocalSetInContextMut { hir_owner: self.hir_owner, data: &mut self.skipped_ref_pats }
+    }
+
     /// Does the pattern recursively contain a `ref mut` binding in it?
     ///
     /// This is used to determined whether a `deref` pattern should emit a `Deref`
@@ -626,6 +639,49 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
             validate_hir_id_for_typeck_results(self.hir_owner, id);
             (id.local_id, value)
         }))
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct LocalSetInContext<'a> {
+    hir_owner: OwnerId,
+    data: &'a ItemLocalSet,
+}
+
+impl<'a> LocalSetInContext<'a> {
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    pub fn contains(&self, id: hir::HirId) -> bool {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.data.contains(&id.local_id)
+    }
+}
+
+#[derive(Debug)]
+pub struct LocalSetInContextMut<'a> {
+    hir_owner: OwnerId,
+    data: &'a mut ItemLocalSet,
+}
+
+impl<'a> LocalSetInContextMut<'a> {
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    pub fn contains(&self, id: hir::HirId) -> bool {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.data.contains(&id.local_id)
+    }
+    pub fn insert(&mut self, id: hir::HirId) -> bool {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.data.insert(id.local_id)
+    }
+
+    pub fn remove(&mut self, id: hir::HirId) -> bool {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.data.remove(&id.local_id)
     }
 }
 

@@ -79,4 +79,38 @@ async fn async_main() {
         };
         call_once(c).await;
     }
+
+    fn force_fnonce<T>(f: impl async FnOnce() -> T) -> impl async FnOnce() -> T {
+        f
+    }
+
+    // Capture something with `move`, but infer to `AsyncFnOnce`
+    {
+        let x = Hello(6);
+        let c = force_fnonce(async move || {
+            println!("{x:?}");
+        });
+        call_once(c).await;
+
+        let x = &Hello(7);
+        let c = force_fnonce(async move || {
+            println!("{x:?}");
+        });
+        call_once(c).await;
+    }
+
+    // Capture something by-ref, but infer to `AsyncFnOnce`
+    {
+        let x = Hello(8);
+        let c = force_fnonce(async || {
+            println!("{x:?}");
+        });
+        call_once(c).await;
+
+        let x = &Hello(9);
+        let c = force_fnonce(async || {
+            println!("{x:?}");
+        });
+        call_once(c).await;
+    }
 }

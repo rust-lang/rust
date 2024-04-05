@@ -3926,11 +3926,17 @@ impl<'test> TestCx<'test> {
             cmd.env("IS_MSVC", "1")
                 .env("IS_WINDOWS", "1")
                 .env("MSVC_LIB", format!("'{}' -nologo", lib.display()))
-                .env("CC", format!("'{}' {}", self.config.cc, cflags))
-                .env("CXX", format!("'{}' {}", &self.config.cxx, cxxflags));
+                // Note: we diverge from legacy run_make and don't lump `CC` the compiler and
+                // default flags together.
+                .env("CC_DEFAULT_FLAGS", &cflags)
+                .env("CC", &self.config.cc)
+                .env("CXX_DEFAULT_FLAGS", &cxxflags)
+                .env("CXX", &self.config.cxx);
         } else {
-            cmd.env("CC", format!("{} {}", self.config.cc, self.config.cflags))
-                .env("CXX", format!("{} {}", self.config.cxx, self.config.cxxflags))
+            cmd.env("CC_DEFAULT_FLAGS", &self.config.cflags)
+                .env("CC", &self.config.cc)
+                .env("CXX_DEFAULT_FLAGS", &self.config.cxxflags)
+                .env("CXX", &self.config.cxx)
                 .env("AR", &self.config.ar);
 
             if self.config.target.contains("windows") {

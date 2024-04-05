@@ -469,11 +469,11 @@ message = "Some changes occurred in need_type_info.rs"
 cc = ["@lcnr"]
 
 [mentions."compiler/rustc_middle/src/ty/relate.rs"]
-message = "Type relation code was changed"
+message = "changes to the core type system"
 cc = ["@compiler-errors", "@lcnr"]
 
 [mentions."compiler/rustc_infer/src/infer/relate"]
-message = "Type relation code was changed"
+message = "changes to the core type system"
 cc = ["@compiler-errors", "@lcnr"]
 
 [mentions."compiler/rustc_middle/src/mir/interpret"]
@@ -483,6 +483,10 @@ cc = ["@rust-lang/miri"]
 [mentions."compiler/rustc_mir_transform/src/"]
 message = "Some changes occurred to MIR optimizations"
 cc = ["@rust-lang/wg-mir-opt"]
+
+[mentions."compiler/rustc_trait_selection/src/traits/wf.rs"]
+message = "changes to the core type system"
+cc = ["@compiler-errors", "@lcnr"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/const_evaluatable.rs"]
 message = "Some changes occurred in `const_evaluatable.rs`"

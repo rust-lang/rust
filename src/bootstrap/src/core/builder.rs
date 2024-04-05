@@ -2102,12 +2102,10 @@ impl<'a> Builder<'a> {
             rustdocflags.arg("--cfg=parallel_compiler");
         }
 
-        // set rustc args passed from command line
-        let rustc_args =
-            self.config.cmd.rustc_args().iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        if !rustc_args.is_empty() {
-            cargo.env("RUSTFLAGS", &rustc_args.join(" "));
-        }
+        // Pass the value of `--rustc-args` from test command. If it's not a test command, this won't set anything.
+        self.config.cmd.rustc_args().iter().for_each(|v| {
+            rustflags.arg(v);
+        });
 
         Cargo {
             command: cargo,
