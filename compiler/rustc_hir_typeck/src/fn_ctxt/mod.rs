@@ -124,7 +124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         body_id: LocalDefId,
     ) -> FnCtxt<'a, 'tcx> {
         let (diverging_fallback_behavior, diverging_block_behavior) =
-            parse_never_type_options_attr(root_ctxt.tcx);
+            never_type_behavior(root_ctxt.tcx);
         FnCtxt {
             body_id,
             param_env,
@@ -380,9 +380,30 @@ impl<'tcx> LoweredTy<'tcx> {
     }
 }
 
+fn never_type_behavior(tcx: TyCtxt<'_>) -> (DivergingFallbackBehavior, DivergingBlockBehavior) {
+    let (fallback, block) = parse_never_type_options_attr(tcx);
+    let fallback = fallback.unwrap_or_else(|| default_fallback(tcx));
+    let block = block.unwrap_or_default();
+
+    (fallback, block)
+}
+
+/// Returns the default fallback which is used when there is no explicit override via `#![never_type_options(...)]`.
+fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
+    use DivergingFallbackBehavior::*;
+
+    // `feature(never_type_fallback)`: fallback to `!` or `()` trying to not break stuff
+    if tcx.features().never_type_fallback {
+        return FallbackToNiko;
+    }
+
+    // Otherwise: fallback to `()`
+    FallbackToUnit
+}
+
 fn parse_never_type_options_attr(
     tcx: TyCtxt<'_>,
-) -> (DivergingFallbackBehavior, DivergingBlockBehavior) {
+) -> (Option<DivergingFallbackBehavior>, Option<DivergingBlockBehavior>) {
     use DivergingFallbackBehavior::*;
 
     // Error handling is dubious here (unwraps), but that's probably fine for an internal attribute.
@@ -431,12 +452,6 @@ fn parse_never_type_options_attr(
             ),
         );
     }
-
-    let fallback = fallback.unwrap_or_else(|| {
-        if tcx.features().never_type_fallback { FallbackToNiko } else { FallbackToUnit }
-    });
-
-    let block = block.unwrap_or_default();
 
     (fallback, block)
 }
