@@ -438,6 +438,11 @@ fn parse_never_type_options_attr(
     }
 
     let fallback = fallback.unwrap_or_else(|| {
+        if true {
+            // For a crater experiment, set `fallback = !`
+            return FallbackToNever;
+        }
+
         if tcx.features().never_type_fallback { FallbackToNiko } else { FallbackToUnit }
     });
 
