@@ -1,4 +1,6 @@
 #![cfg(not(target_env = "sgx"))]
+// Process spawning does not work in Miri.
+#![cfg(not(miri))]
 
 use std::env;
 use std::fs;

@@ -1,4 +1,6 @@
 #![cfg(any(target_family = "unix", target_family = "windows"))]
+// Calls functions that are not supported by Miri.
+#![cfg(not(miri))]
 
 use std::fs::File;
 use std::io::{Read, Write};
