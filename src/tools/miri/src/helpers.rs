@@ -105,24 +105,41 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
         (path, None)
     };
 
-    // First find the crate.
-    let krate =
-        tcx.crates(()).iter().find(|&&krate| tcx.crate_name(krate).as_str() == crate_name)?;
-    let mut cur_item = DefId { krate: *krate, index: CRATE_DEF_INDEX };
-    // Then go over the modules.
-    for &segment in modules {
-        cur_item = find_children(tcx, cur_item, segment)
-            .find(|item| tcx.def_kind(item) == DefKind::Mod)?;
+    // There may be more than one crate with this name. We try them all.
+    // (This is particularly relevant when running `std` tests as then there are two `std` crates:
+    // the one in the sysroot and the one locally built by `cargo test`.)
+    // FIXME: can we prefer the one from the sysroot?
+    'crates: for krate in
+        tcx.crates(()).iter().filter(|&&krate| tcx.crate_name(krate).as_str() == crate_name)
+    {
+        let mut cur_item = DefId { krate: *krate, index: CRATE_DEF_INDEX };
+        // Go over the modules.
+        for &segment in modules {
+            let Some(next_item) = find_children(tcx, cur_item, segment)
+                .find(|item| tcx.def_kind(item) == DefKind::Mod)
+            else {
+                continue 'crates;
+            };
+            cur_item = next_item;
+        }
+        // Finally, look up the desired item in this module, if any.
+        match item {
+            Some((item_name, namespace)) => {
+                let Some(item) = find_children(tcx, cur_item, item_name)
+                    .find(|item| tcx.def_kind(item).ns() == Some(namespace))
+                else {
+                    continue 'crates;
+                };
+                return Some(item);
+            }
+            None => {
+                // Just return the module.
+                return Some(cur_item);
+            }
+        }
     }
-    // Finally, look up the desired item in this module, if any.
-    match item {
-        Some((item_name, namespace)) =>
-            Some(
-                find_children(tcx, cur_item, item_name)
-                    .find(|item| tcx.def_kind(item).ns() == Some(namespace))?,
-            ),
-        None => Some(cur_item),
-    }
+    // Item not found in any of the crates with the right name.
+    None
 }
 
 /// Convert a softfloat type to its corresponding hostfloat type.
