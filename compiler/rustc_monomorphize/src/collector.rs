@@ -1413,22 +1413,22 @@ fn collect_items_of_instance<'tcx>(
         skip_move_check_fns: None,
     };
 
+    let items = tcx.required_and_mentioned_items(instance.def);
+
     if mode == CollectionMode::UsedItems {
-        // Visit everything. Here we rely on the visitor also visiting `required_consts`, so that we
-        // evaluate them and abort compilation if any of them errors.
         collector.visit_body(body);
-    } else {
-        // We only need to evaluate all constants, but can ignore the rest of the MIR.
-        for const_op in &body.required_consts {
-            if let Some(val) = collector.eval_constant(const_op) {
-                collect_const_value(tcx, val, mentioned_items);
-            }
+    }
+
+    // Always evaluate all required constants.
+    for const_op in &items.required_consts {
+        if let Some(val) = collector.eval_constant(const_op) {
+            collect_const_value(tcx, val, mentioned_items);
         }
     }
 
     // Always gather mentioned items. We try to avoid processing items that we have already added to
     // `used_items` above.
-    for item in &body.mentioned_items {
+    for item in &items.mentioned_items {
         if !collector.used_mentioned_items.contains(&item.node) {
             let item_mono = collector.monomorphize(item.node);
             visit_mentioned_item(tcx, &item_mono, item.span, mentioned_items);
