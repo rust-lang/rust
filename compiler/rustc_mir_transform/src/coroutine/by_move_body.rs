@@ -71,7 +71,7 @@
 
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
-use rustc_middle::hir::place::{Projection, ProjectionKind};
+use rustc_middle::hir::place::{PlaceBase, Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{self, dump_mir, MirPass};
 use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt, TypeVisitableExt};
@@ -149,17 +149,25 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
                     bug!("we ran out of parent captures!")
                 };
 
+                let PlaceBase::Upvar(parent_base) = parent_capture.place.base else {
+                    bug!("expected capture to be an upvar");
+                };
+                let PlaceBase::Upvar(child_base) = child_capture.place.base else {
+                    bug!("expected capture to be an upvar");
+                };
+
                 assert!(
                     child_capture.place.projections.len() >= parent_capture.place.projections.len()
                 );
                 // A parent matches a child they share the same prefix of projections.
                 // The child may have more, if it is capturing sub-fields out of
                 // something that is captured by-move in the parent closure.
-                if !std::iter::zip(
-                    &child_capture.place.projections,
-                    &parent_capture.place.projections,
-                )
-                .all(|(child, parent)| child.kind == parent.kind)
+                if parent_base.var_path.hir_id != child_base.var_path.hir_id
+                    || !std::iter::zip(
+                        &child_capture.place.projections,
+                        &parent_capture.place.projections,
+                    )
+                    .all(|(child, parent)| child.kind == parent.kind)
                 {
                     // Make sure the field was used at least once.
                     assert!(
@@ -216,6 +224,12 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
                 break;
             }
         }
+
+        // Pop the last parent capture
+        if field_used_at_least_once {
+            let _ = parent_captures.next().unwrap();
+        }
+        assert_eq!(parent_captures.next(), None, "leftover parent captures?");
 
         if coroutine_kind == ty::ClosureKind::FnOnce {
             assert_eq!(field_remapping.len(), tcx.closure_captures(parent_def_id).len());
