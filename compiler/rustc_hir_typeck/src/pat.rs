@@ -1365,13 +1365,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let max_len = cmp::max(expected_len, elements.len());
 
-        let element_tys_iter = (0..max_len).map(|_| {
-            self.next_ty_var(
-                // FIXME: `MiscVariable` for now -- obtaining the span and name information
-                // from all tuple elements isn't trivial.
-                TypeVariableOrigin { param_def_id: None, span },
-            )
-        });
+        let element_tys_iter =
+            (0..max_len).map(|_| self.next_ty_var(TypeVariableOrigin { param_def_id: None, span }));
         let element_tys = tcx.mk_type_list_from_iter(element_tys_iter);
         let pat_ty = Ty::new_tup(tcx, element_tys);
         if let Some(err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, pat_info.top_info) {
