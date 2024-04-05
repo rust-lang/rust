@@ -289,10 +289,15 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
             // generating, we also are taking that field by value. Peel off a deref,
             // since a layer of reffing has now become redundant.
             let final_deref = if needs_deref {
-                let [mir::ProjectionElem::Deref] = projection else {
-                    bug!("There should only be a single deref for an upvar local initialization");
+                let Some((mir::ProjectionElem::Deref, projection)) = projection.split_first()
+                else {
+                    bug!(
+                        "There should be at least a single deref for an upvar local initialization, found {projection:#?}"
+                    );
                 };
-                &[]
+                // There may be more derefs, since we may also implicitly reborrow
+                // a captured mut pointer.
+                projection
             } else {
                 projection
             };
