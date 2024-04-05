@@ -714,8 +714,6 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // perfect and there may be ways to abuse the fact that we
                 // ignore requirements with escaping bound vars. That's a
                 // more general issue however.
-                //
-                // FIXME(eddyb) add the type to `walker` instead of recursing.
                 let fn_sig = tcx.fn_sig(did).instantiate(tcx, args);
                 fn_sig.output().skip_binder().visit_with(self);
 
