@@ -179,7 +179,7 @@ pub fn provide(providers: &mut Providers) {
                     .parenting
                     .get(&owner_id.def_id)
                     .copied()
-                    .unwrap_or(ItemLocalId::from_u32(0)),
+                    .unwrap_or(ItemLocalId::ZERO),
             }
         })
     };
