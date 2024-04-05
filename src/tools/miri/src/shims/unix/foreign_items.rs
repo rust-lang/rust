@@ -6,14 +6,9 @@ use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
+use crate::shims::unix::*;
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
-use shims::unix::fd::EvalContextExt as _;
-use shims::unix::fs::EvalContextExt as _;
-use shims::unix::mem::EvalContextExt as _;
-use shims::unix::socket::EvalContextExt as _;
-use shims::unix::sync::EvalContextExt as _;
-use shims::unix::thread::EvalContextExt as _;
 
 use shims::unix::freebsd::foreign_items as freebsd;
 use shims::unix::linux::foreign_items as linux;
