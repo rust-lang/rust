@@ -38,6 +38,7 @@
 #![feature(duration_constructors)]
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
+#![feature(freeze)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
 #![feature(float_minimum_maximum)]
