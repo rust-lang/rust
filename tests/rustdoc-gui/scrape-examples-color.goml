@@ -1,4 +1,5 @@
 // Check that scrape example code blocks have the expected colors.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
 show-text: true
 
@@ -7,8 +8,7 @@ define-function: (
     [theme, highlight, highlight_focus, help_border, help_color, help_hover_border,
      help_hover_color],
     block {
-        set-local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false", }
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         wait-for: ".more-examples-toggle"
         assert-css: (".scraped-example .example-wrap .rust span.highlight:not(.focus)", {
             "background-color": |highlight|,
@@ -66,8 +66,7 @@ define-function: (
     "check-background",
     [theme, background_color_start, background_color_end],
     block {
-        set-local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false", }
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (".scraped-example:not(.expanded) .code-wrapper::before", {
             "background-image": "linear-gradient(" + |background_color_start| + ", " +
                 |background_color_end| + ")",

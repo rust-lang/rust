@@ -1,4 +1,5 @@
 // This test checks links colors in sidebar before and after hover.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 
 // This is needed so that the text color is computed.
@@ -13,8 +14,7 @@ define-function: (
         type_hover_background, keyword, keyword_hover, keyword_hover_background,
     ],
     block {
-        set-local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false" }
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         // Struct
         assert-css: (
             ".sidebar .block.struct li:not(.current) a",

@@ -1,8 +1,8 @@
 // Checks that the reexports are present in the search index, can have
 // doc aliases and are highligted when their ID is the hash of the page.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
-reload:
+call-function: ("switch-theme", {"theme": "dark"})
 // First we check that the reexport has the correct ID and no background color.
 assert-text: ("//*[@id='reexport.TheStdReexport']", "pub use ::std as TheStdReexport;")
 assert-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "rgba(0, 0, 0, 0)"})

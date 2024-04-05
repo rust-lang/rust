@@ -1,4 +1,5 @@
 // Checks that the crate search filtering is handled correctly and changes the results.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=sa'%3Bda'%3Bds"
 show-text: true
 
@@ -6,11 +7,7 @@ define-function: (
     "check-colors",
     [theme, error_background],
     block {
-        // Setting the theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        // We reload the page so the local storage settings are being used.
-        reload:
-
+        call-function: ("switch-theme", {"theme": |theme|})
         wait-for: "#search .error code"
         assert-css: ("#search .error code", {"background-color": |error_background|})
     }
