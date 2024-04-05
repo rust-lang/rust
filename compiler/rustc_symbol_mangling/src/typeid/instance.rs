@@ -45,7 +45,7 @@ pub fn transform<'tcx>(
             .drop_trait()
             .unwrap_or_else(|| bug!("typeid_for_instance: couldn't get drop_trait lang item"));
         let predicate = ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef {
-            def_id: def_id,
+            def_id,
             args: List::empty(),
         });
         let predicates = tcx.mk_poly_existential_predicates(&[ty::Binder::dummy(predicate)]);

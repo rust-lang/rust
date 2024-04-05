@@ -128,7 +128,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                 {
                     // Don't transform repr(transparent) types with an user-defined CFI encoding to
                     // preserve the user-defined CFI encoding.
-                    if let Some(_) = self.tcx.get_attr(adt_def.did(), sym::cfi_encoding) {
+                    if self.tcx.get_attr(adt_def.did(), sym::cfi_encoding).is_some() {
                         return t;
                     }
                     let variant = adt_def.non_enum_variant();
