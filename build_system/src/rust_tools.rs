@@ -8,32 +8,36 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
-fn args() -> Result<Option<Vec<String>>, String> {
+fn args(command: &str) -> Result<Option<Vec<String>>, String> {
     // We skip the binary and the "cargo" option.
     if let Some("--help") = std::env::args().skip(2).next().as_deref() {
-        usage();
+        usage(command);
         return Ok(None);
     }
     let args = std::env::args().skip(2).collect::<Vec<_>>();
     if args.is_empty() {
-        return Err("Expected at least one argument for `cargo` subcommand, found none".to_string());
+        return Err(format!(
+            "Expected at least one argument for `{}` subcommand, found none",
+            command
+        ));
     }
     Ok(Some(args))
 }
 
-fn usage() {
+fn usage(command: &str) {
     println!(
         r#"
-`cargo` command help:
+`{}` command help:
 
     [args]     : Arguments to be passed to the cargo command
     --help     : Show this help
-"#
+"#,
+        command,
     )
 }
 
-pub fn run() -> Result<(), String> {
-    let args = match args()? {
+pub fn run_cargo() -> Result<(), String> {
+    let args = match args("cargo")? {
         Some(a) => a,
         None => return Ok(()),
     };

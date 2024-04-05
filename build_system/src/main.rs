@@ -2,12 +2,12 @@ use std::env;
 use std::process;
 
 mod build;
-mod cargo;
 mod clean;
 mod clone_gcc;
 mod config;
 mod info;
 mod prepare;
+mod rust_tools;
 mod rustc_info;
 mod test;
 mod utils;
@@ -75,7 +75,7 @@ fn main() {
     };
 
     if let Err(e) = match command {
-        Command::Cargo => cargo::run(),
+        Command::Cargo => rust_tools::run_cargo(),
         Command::Clean => clean::run(),
         Command::Prepare => prepare::run(),
         Command::Build => build::run(),
