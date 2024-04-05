@@ -1,7 +1,7 @@
 use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::build::matches::{Binding, Candidate, FlatPat, MatchPair, TestCase};
 use crate::build::Builder;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
@@ -271,7 +271,11 @@ pub(super) struct FakeBorrowCollector<'a, 'b, 'tcx> {
     /// Base of the scrutinee place. Used to distinguish bindings inside the scrutinee place from
     /// bindings inside deref patterns.
     scrutinee_base: PlaceBase,
-    fake_borrows: FxIndexSet<Place<'tcx>>,
+    /// Store for each place the kind of borrow to take. In case of conflicts, we take the strongest
+    /// borrow (i.e. Deep > Shallow).
+    /// Invariant: for any place in `fake_borrows`, all the prefixes of this place that are
+    /// dereferences are also borrowed with the same of stronger borrow kind.
+    fake_borrows: FxIndexMap<Place<'tcx>, FakeBorrowKind>,
 }
 
 /// Determine the set of places that have to be stable across match guards.
@@ -314,9 +318,9 @@ pub(super) fn collect_fake_borrows<'tcx>(
     candidates: &[&mut Candidate<'_, 'tcx>],
     temp_span: Span,
     scrutinee_base: PlaceBase,
-) -> Vec<(Place<'tcx>, Local)> {
+) -> Vec<(Place<'tcx>, Local, FakeBorrowKind)> {
     let mut collector =
-        FakeBorrowCollector { cx, scrutinee_base, fake_borrows: FxIndexSet::default() };
+        FakeBorrowCollector { cx, scrutinee_base, fake_borrows: FxIndexMap::default() };
     for candidate in candidates.iter() {
         collector.visit_candidate(candidate);
     }
@@ -325,40 +329,40 @@ pub(super) fn collect_fake_borrows<'tcx>(
     let tcx = cx.tcx;
     fake_borrows
         .iter()
-        .copied()
-        .map(|matched_place| {
+        .map(|(matched_place, borrow_kind)| {
             let fake_borrow_deref_ty = matched_place.ty(&cx.local_decls, tcx).ty;
             let fake_borrow_ty =
                 Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, fake_borrow_deref_ty);
             let mut fake_borrow_temp = LocalDecl::new(fake_borrow_ty, temp_span);
             fake_borrow_temp.local_info = ClearCrossCrate::Set(Box::new(LocalInfo::FakeBorrow));
             let fake_borrow_temp = cx.local_decls.push(fake_borrow_temp);
-            (matched_place, fake_borrow_temp)
+            (*matched_place, fake_borrow_temp, *borrow_kind)
         })
         .collect()
 }
 
 impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
     // Fake borrow this place and its dereference prefixes.
-    fn fake_borrow(&mut self, place: Place<'tcx>) {
-        let new = self.fake_borrows.insert(place);
-        if !new {
+    fn fake_borrow(&mut self, place: Place<'tcx>, kind: FakeBorrowKind) {
+        if self.fake_borrows.get(&place).is_some_and(|k| *k >= kind) {
             return;
         }
+        self.fake_borrows.insert(place, kind);
         // Also fake borrow the prefixes of any fake borrow.
-        self.fake_borrow_deref_prefixes(place);
+        self.fake_borrow_deref_prefixes(place, kind);
     }
 
     // Fake borrow the prefixes of this place that are dereferences.
-    fn fake_borrow_deref_prefixes(&mut self, place: Place<'tcx>) {
+    fn fake_borrow_deref_prefixes(&mut self, place: Place<'tcx>, kind: FakeBorrowKind) {
         for (place_ref, elem) in place.as_ref().iter_projections().rev() {
             if let ProjectionElem::Deref = elem {
                 // Insert a shallow borrow after a deref. For other projections the borrow of
                 // `place_ref` will conflict with any mutation of `place.base`.
-                let new = self.fake_borrows.insert(place_ref.to_place(self.cx.tcx));
-                if !new {
+                let place = place_ref.to_place(self.cx.tcx);
+                if self.fake_borrows.get(&place).is_some_and(|k| *k >= kind) {
                     return;
                 }
+                self.fake_borrows.insert(place, kind);
             }
         }
     }
@@ -399,15 +403,14 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
             //     // UB because we reached the unreachable.
             // }
             // ```
-            // FIXME(deref_patterns): Hence we fake borrow using a non-shallow borrow.
+            // Hence we fake borrow using a deep borrow.
             if let Some(place) = match_pair.place {
-                // FIXME(deref_patterns): use a non-shallow borrow.
-                self.fake_borrow(place);
+                self.fake_borrow(place, FakeBorrowKind::Deep);
             }
         } else {
             // Insert a Shallow borrow of any place that is switched on.
             if let Some(place) = match_pair.place {
-                self.fake_borrow(place);
+                self.fake_borrow(place, FakeBorrowKind::Shallow);
             }
 
             for subpair in &match_pair.subpairs {
@@ -447,7 +450,7 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
         //     _ if { u = true; false } => (),
         //     x => (),
         // }
-        self.fake_borrow_deref_prefixes(*source);
+        self.fake_borrow_deref_prefixes(*source, FakeBorrowKind::Shallow);
     }
 }
 

@@ -375,10 +375,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_start_span: Span,
         match_has_guard: bool,
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
-    ) -> Vec<(Place<'tcx>, Local)> {
+    ) -> Vec<(Place<'tcx>, Local, FakeBorrowKind)> {
         // The set of places that we are creating fake borrows of. If there are no match guards then
         // we don't need any fake borrows, so don't track them.
-        let fake_borrows: Vec<(Place<'tcx>, Local)> = if match_has_guard {
+        let fake_borrows: Vec<(Place<'tcx>, Local, FakeBorrowKind)> = if match_has_guard {
             util::collect_fake_borrows(
                 self,
                 candidates,
@@ -457,7 +457,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         arm_candidates: Vec<(&'_ Arm<'tcx>, Candidate<'_, 'tcx>)>,
         outer_source_info: SourceInfo,
-        fake_borrow_temps: Vec<(Place<'tcx>, Local)>,
+        fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)>,
     ) -> BlockAnd<()> {
         let arm_end_blocks: Vec<_> = arm_candidates
             .into_iter()
@@ -541,7 +541,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         outer_source_info: SourceInfo,
         candidate: Candidate<'_, 'tcx>,
-        fake_borrow_temps: &[(Place<'tcx>, Local)],
+        fake_borrow_temps: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
         storages_alive: bool,
@@ -1975,7 +1975,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
         parent_data: &[PatternExtraData<'tcx>],
-        fake_borrows: &[(Place<'tcx>, Local)],
+        fake_borrows: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
         schedule_drops: bool,
@@ -2105,9 +2105,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let re_erased = tcx.lifetimes.re_erased;
             let scrutinee_source_info = self.source_info(scrutinee_span);
-            for &(place, temp) in fake_borrows {
-                let borrow =
-                    Rvalue::Ref(re_erased, BorrowKind::Fake(FakeBorrowKind::Shallow), place);
+            for &(place, temp, kind) in fake_borrows {
+                let borrow = Rvalue::Ref(re_erased, BorrowKind::Fake(kind), place);
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
@@ -2130,7 +2129,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let guard_frame = self.guard_context.pop().unwrap();
             debug!("Exiting guard building context with locals: {:?}", guard_frame);
 
-            for &(_, temp) in fake_borrows {
+            for &(_, temp, _) in fake_borrows {
                 let cause = FakeReadCause::ForMatchGuard;
                 self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(temp));
             }
