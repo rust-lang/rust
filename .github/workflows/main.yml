@@ -10,6 +10,14 @@ defaults:
 
 permissions: {}
 
+env:
+  # Disabling incr comp reduces cache size and incr comp doesn't save as much
+  # on CI anyway.
+  CARGO_BUILD_INCREMENTAL: false
+  # Rust's CI denies warnings. Deny them here too to ensure subtree syncs don't
+  # fail because of warnings.
+  RUSTFLAGS: "-Dwarnings"
+
 jobs:
   rustfmt:
     runs-on: ubuntu-latest
