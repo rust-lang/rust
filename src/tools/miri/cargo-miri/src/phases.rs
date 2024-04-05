@@ -3,7 +3,7 @@
 use std::env;
 use std::fs::{self, File};
 use std::io::BufReader;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use rustc_version::VersionMeta;
@@ -412,9 +412,25 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     // Arguments are treated very differently depending on whether this crate is
     // for interpretation by Miri, or for use by a build script / proc macro.
     if target_crate {
-        // Forward arguments, but remove "link" from "--emit" to make this a check-only build.
+        // Forward arguments, but patched.
         let emit_flag = "--emit";
+        // This hack helps bootstrap run standard library tests in Miri. The issue is as follows:
+        // when running `cargo miri test` on libcore, cargo builds a local copy of core and makes it
+        // a dependency of the integration test crate. This copy duplicates all the lang items, so
+        // the build fails. (Regular testing avoids this because the sysroot is a literal copy of
+        // what `cargo build` produces, but since Miri builds its own sysroot this does not work for
+        // us.) So we need to make it so that the locally built libcore contains all the items from
+        // `core`, but does not re-define them -- we want to replace the entire crate but a
+        // re-export of the sysroot crate. We do this by swapping out the source file: if
+        // `MIRI_REPLACE_LIBRS_IF_NOT_TEST` is set and we are building a `lib.rs` file, and a
+        // `lib.miri.rs` file exists in the same folder, we build that instead. But crucially we
+        // only do that for the library, not the unit test crate (which would be runnable) or
+        // rustdoc (which would have a different `phase`).
+        let replace_librs = env::var_os("MIRI_REPLACE_LIBRS_IF_NOT_TEST").is_some()
+            && !runnable_crate
+            && phase == RustcPhase::Build;
         while let Some(arg) = args.next() {
+            // Patch `--emit`: remove "link" from "--emit" to make this a check-only build.
             if let Some(val) = arg.strip_prefix(emit_flag) {
                 // Patch this argument. First, extract its value.
                 let val =
@@ -429,13 +445,36 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
                     }
                 }
                 cmd.arg(format!("{emit_flag}={}", val.join(",")));
-            } else if arg == "--extern" {
-                // Patch `--extern` filenames, since Cargo sometimes passes stub `.rlib` files:
-                // https://github.com/rust-lang/miri/issues/1705
-                forward_patched_extern_arg(&mut args, &mut cmd);
-            } else {
-                cmd.arg(arg);
+                continue;
             }
+            // Patch `--extern` filenames, since Cargo sometimes passes stub `.rlib` files:
+            // https://github.com/rust-lang/miri/issues/1705
+            if arg == "--extern" {
+                forward_patched_extern_arg(&mut args, &mut cmd);
+                continue;
+            }
+            // If the REPLACE_LIBRS hack is enabled and we are building a `lib.rs` file, and a
+            // `lib.miri.rs` file exists, then build that instead. We only consider relative paths
+            // as cargo uses those for files in the workspace; dependencies from crates.io get
+            // absolute paths.
+            if replace_librs {
+                let path = Path::new(&arg);
+                if path.is_relative()
+                    && path.file_name().is_some_and(|f| f == "lib.rs")
+                    && path.is_file()
+                {
+                    let miri_rs = Path::new(&arg).with_extension("miri.rs");
+                    if miri_rs.is_file() {
+                        if verbose > 0 {
+                            eprintln!("Performing REPLACE_LIBRS hack: {arg:?} -> {miri_rs:?}");
+                        }
+                        cmd.arg(miri_rs);
+                        continue;
+                    }
+                }
+            }
+            // Fallback: just propagate the argument.
+            cmd.arg(arg);
         }
 
         // During setup, patch the panic runtime for `libpanic_abort` (mirroring what bootstrap usually does).
