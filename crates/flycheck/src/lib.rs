@@ -42,18 +42,49 @@ pub enum InvocationLocation {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CargoOptions {
+    pub target_triples: Vec<String>,
+    pub all_targets: bool,
+    pub no_default_features: bool,
+    pub all_features: bool,
+    pub features: Vec<String>,
+    pub extra_args: Vec<String>,
+    pub extra_env: FxHashMap<String, String>,
+    pub target_dir: Option<Utf8PathBuf>,
+}
+
+impl CargoOptions {
+    fn apply_on_command(&self, cmd: &mut Command) {
+        for target in &self.target_triples {
+            cmd.args(["--target", target.as_str()]);
+        }
+        if self.all_targets {
+            cmd.arg("--all-targets");
+        }
+        if self.all_features {
+            cmd.arg("--all-features");
+        } else {
+            if self.no_default_features {
+                cmd.arg("--no-default-features");
+            }
+            if !self.features.is_empty() {
+                cmd.arg("--features");
+                cmd.arg(self.features.join(" "));
+            }
+        }
+        if let Some(target_dir) = &self.target_dir {
+            cmd.arg("--target-dir").arg(target_dir);
+        }
+        cmd.envs(&self.extra_env);
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FlycheckConfig {
     CargoCommand {
         command: String,
-        target_triples: Vec<String>,
-        all_targets: bool,
-        no_default_features: bool,
-        all_features: bool,
-        features: Vec<String>,
-        extra_args: Vec<String>,
-        extra_env: FxHashMap<String, String>,
+        options: CargoOptions,
         ansi_color_output: bool,
-        target_dir: Option<Utf8PathBuf>,
     },
     CustomCommand {
         command: String,
@@ -332,18 +363,7 @@ impl FlycheckActor {
         saved_file: Option<&AbsPath>,
     ) -> Option<Command> {
         let (mut cmd, args) = match &self.config {
-            FlycheckConfig::CargoCommand {
-                command,
-                target_triples,
-                no_default_features,
-                all_targets,
-                all_features,
-                extra_args,
-                features,
-                extra_env,
-                ansi_color_output,
-                target_dir,
-            } => {
+            FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
                 let mut cmd = Command::new(Tool::Cargo.path());
                 if let Some(sysroot_root) = &self.sysroot_root {
                     cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
@@ -365,28 +385,8 @@ impl FlycheckActor {
                 cmd.arg("--manifest-path");
                 cmd.arg(self.root.join("Cargo.toml"));
 
-                for target in target_triples {
-                    cmd.args(["--target", target.as_str()]);
-                }
-                if *all_targets {
-                    cmd.arg("--all-targets");
-                }
-                if *all_features {
-                    cmd.arg("--all-features");
-                } else {
-                    if *no_default_features {
-                        cmd.arg("--no-default-features");
-                    }
-                    if !features.is_empty() {
-                        cmd.arg("--features");
-                        cmd.arg(features.join(" "));
-                    }
-                }
-                if let Some(target_dir) = target_dir {
-                    cmd.arg("--target-dir").arg(target_dir);
-                }
-                cmd.envs(extra_env);
-                (cmd, extra_args.clone())
+                options.apply_on_command(&mut cmd);
+                (cmd, options.extra_args.clone())
             }
             FlycheckConfig::CustomCommand {
                 command,
