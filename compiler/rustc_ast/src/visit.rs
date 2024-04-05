@@ -653,8 +653,8 @@ pub fn walk_precise_capturing_arg<'a, V: Visitor<'a>>(
         PreciseCapturingArg::Lifetime(lt) => {
             visitor.visit_lifetime(lt, LifetimeCtxt::GenericArg);
         }
-        PreciseCapturingArg::Arg(ident, _) => {
-            visitor.visit_ident(*ident);
+        PreciseCapturingArg::Arg(path, id) => {
+            visitor.visit_path(path, *id);
         }
     }
 }

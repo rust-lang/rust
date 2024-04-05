@@ -33,6 +33,16 @@ pub struct BadPreciseCapture {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_precise_capture_self_alias)]
+pub struct PreciseCaptureSelfAlias {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub self_span: Span,
+    pub what: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_duplicate_precise_capture)]
 pub struct DuplicatePreciseCapture {
     #[primary_span]

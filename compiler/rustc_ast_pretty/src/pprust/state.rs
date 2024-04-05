@@ -1156,7 +1156,7 @@ impl<'a> State<'a> {
                     self.word("use");
                     self.word("<");
                     self.commasep(Inconsistent, precise_capturing_args, |s, arg| match arg {
-                        ast::PreciseCapturingArg::Arg(a, _) => s.print_ident(*a),
+                        ast::PreciseCapturingArg::Arg(p, _) => s.print_path(p, false, 0),
                         ast::PreciseCapturingArg::Lifetime(lt) => s.print_lifetime(*lt),
                     });
                     self.word(">")

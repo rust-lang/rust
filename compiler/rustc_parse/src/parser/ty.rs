@@ -697,11 +697,14 @@ impl<'a> Parser<'a> {
                     if self_.check_keyword(kw::SelfUpper) {
                         self_.bump();
                         Ok(PreciseCapturingArg::Arg(
-                            self_.prev_token.ident().unwrap().0,
+                            ast::Path::from_ident(self_.prev_token.ident().unwrap().0),
                             DUMMY_NODE_ID,
                         ))
                     } else if self_.check_ident() {
-                        Ok(PreciseCapturingArg::Arg(self_.parse_ident().unwrap(), DUMMY_NODE_ID))
+                        Ok(PreciseCapturingArg::Arg(
+                            ast::Path::from_ident(self_.parse_ident()?),
+                            DUMMY_NODE_ID,
+                        ))
                     } else if self_.check_lifetime() {
                         Ok(PreciseCapturingArg::Lifetime(self_.expect_lifetime()))
                     } else {

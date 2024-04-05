@@ -1056,64 +1056,22 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
         match arg {
             // Lower the lifetime regularly; we'll resolve the lifetime and check
             // it's a parameter later on in HIR lowering.
-            PreciseCapturingArg::Lifetime(_) => visit::walk_precise_capturing_arg(self, arg),
+            PreciseCapturingArg::Lifetime(_) => {}
 
-            PreciseCapturingArg::Arg(ident, node_id) => {
-                let ident = ident.normalize_to_macros_2_0();
-                'found: {
-                    for (rib_t, rib_v) in
-                        std::iter::zip(&self.ribs.type_ns, &self.ribs.value_ns).rev()
-                    {
-                        if let Some(res) = rib_t.bindings.get(&ident).or(rib_v.bindings.get(&ident))
-                        {
-                            self.r.record_partial_res(*node_id, PartialRes::new(*res));
-
-                            // Validate that this is a parameter
-                            match res {
-                                Res::Def(DefKind::TyParam | DefKind::ConstParam, _)
-                                | Res::SelfTyParam { .. } => {}
-                                Res::SelfTyAlias { .. } => {
-                                    self.report_error(
-                                        ident.span,
-                                        ResolutionError::FailedToResolve {
-                                            segment: Some(ident.name),
-                                            label: "`Self` cannot be captured because it is not a type parameter".to_string(),
-                                            suggestion: None,
-                                            module: None,
-                                        },
-                                    );
-                                }
-                                _ => {
-                                    self.report_error(
-                                        ident.span,
-                                        ResolutionError::FailedToResolve {
-                                            segment: Some(ident.name),
-                                            label: format!(
-                                                "expected type or const parameter, found {}",
-                                                res.descr()
-                                            ),
-                                            suggestion: None,
-                                            module: None,
-                                        },
-                                    );
-                                }
-                            }
-
-                            break 'found;
-                        }
-                    }
-                    self.report_error(
-                        ident.span,
-                        ResolutionError::FailedToResolve {
-                            segment: Some(ident.name),
-                            label: "could not find type or const parameter".to_string(),
-                            suggestion: None,
-                            module: None,
-                        },
-                    );
+            PreciseCapturingArg::Arg(path, id) => {
+                let mut check_ns = |ns| {
+                    self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns).is_some()
+                };
+                // Like `Ty::Param`, we try resolving this as both a const and a type.
+                if !check_ns(TypeNS) && check_ns(ValueNS) {
+                    self.smart_resolve_path(*id, &None, path, PathSource::Expr(None));
+                } else {
+                    self.smart_resolve_path(*id, &None, path, PathSource::Type);
                 }
             }
         }
+
+        visit::walk_precise_capturing_arg(self, arg)
     }
 
     fn visit_generics(&mut self, generics: &'ast Generics) {

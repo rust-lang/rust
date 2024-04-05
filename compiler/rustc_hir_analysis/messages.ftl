@@ -39,6 +39,9 @@ hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit wh
 
 hir_analysis_bad_precise_capture = expected {$kind} parameter in `use<...>` precise captures list, found {$found}
 
+hir_analysis_precise_capture_self_alias = `Self` can't be captured in `use<...>` precise captures list, since it is an alias
+    .label = `Self` is not a generic argument, but an alias to the type of the {$what}
+
 hir_analysis_cannot_capture_late_bound_const =
     cannot capture late-bound const parameter in {$what}
     .label = parameter defined here

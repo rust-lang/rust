@@ -1790,13 +1790,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             PreciseCapturingArg::Lifetime(lt) => {
                 hir::PreciseCapturingArg::Lifetime(self.lower_lifetime(lt))
             }
-            PreciseCapturingArg::Arg(ident, node_id) => {
-                let res = self.resolver.get_partial_res(*node_id).map_or(Res::Err, |partial_res| {
+            PreciseCapturingArg::Arg(path, id) => {
+                let [segment] = path.segments.as_slice() else {
+                    panic!();
+                };
+                let res = self.resolver.get_partial_res(*id).map_or(Res::Err, |partial_res| {
                     partial_res.full_res().expect("no partial res expected for precise capture arg")
                 });
                 hir::PreciseCapturingArg::Param(hir::PreciseCapturingNonLifetimeArg {
-                    hir_id: self.lower_node_id(*node_id),
-                    ident: self.lower_ident(*ident),
+                    hir_id: self.lower_node_id(*id),
+                    ident: self.lower_ident(segment.ident),
                     res: self.lower_res(res),
                 })
             }

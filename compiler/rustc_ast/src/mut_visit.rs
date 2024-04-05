@@ -928,8 +928,8 @@ pub fn noop_visit_precise_capturing_arg<T: MutVisitor>(arg: &mut PreciseCapturin
         PreciseCapturingArg::Lifetime(lt) => {
             vis.visit_lifetime(lt);
         }
-        PreciseCapturingArg::Arg(ident, id) => {
-            vis.visit_ident(ident);
+        PreciseCapturingArg::Arg(path, id) => {
+            vis.visit_path(path);
             vis.visit_id(id);
         }
     }

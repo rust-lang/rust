@@ -2188,12 +2188,12 @@ pub enum TraitObjectSyntax {
     None,
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum PreciseCapturingArg {
     /// Lifetime parameter
     Lifetime(Lifetime),
     /// Type or const parameter
-    Arg(Ident, NodeId),
+    Arg(Path, NodeId),
 }
 
 /// Inline assembly operand explicit register or register class.

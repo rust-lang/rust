@@ -583,9 +583,19 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     self.resolve_type_ref(def_id.expect_local(), param.hir_id);
                 }
                 Res::Err => {}
-                _ => {
-                    // This is handled in resolve
-                    self.tcx.dcx().delayed_bug(format!("parameter should have been resolved"));
+                Res::SelfTyAlias { alias_to, .. } => {
+                    self.tcx.dcx().emit_err(errors::PreciseCaptureSelfAlias {
+                        span: param.ident.span,
+                        self_span: self.tcx.def_span(alias_to),
+                        what: self.tcx.def_descr(alias_to),
+                    });
+                }
+                res => {
+                    self.tcx.dcx().emit_err(errors::BadPreciseCapture {
+                        span: param.ident.span,
+                        kind: "type or const",
+                        found: res.descr().to_string(),
+                    });
                 }
             },
         }
