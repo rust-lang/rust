@@ -1,4 +1,9 @@
-#![allow(dead_code, clippy::borrow_as_ptr, clippy::needless_lifetimes)]
+#![allow(
+    dead_code,
+    clippy::borrow_as_ptr,
+    clippy::needless_lifetimes,
+    clippy::missing_transmute_annotations
+)]
 //@no-rustfix
 extern crate core;
 

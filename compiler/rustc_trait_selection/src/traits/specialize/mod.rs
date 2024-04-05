@@ -247,7 +247,12 @@ fn fulfill_implication<'tcx>(
     // do the impls unify? If not, no specialization.
     let Ok(InferOk { obligations: more_obligations, .. }) = infcx
         .at(&ObligationCause::dummy(), param_env)
-        .eq(DefineOpaqueTypes::No, source_trait, target_trait)
+        // Ok to use `Yes`, as all the generic params are already replaced by inference variables,
+        // which will match the opaque type no matter if it is defining or not.
+        // Any concrete type that would match the opaque would already be handled by coherence rules,
+        // and thus either be ok to match here and already have errored, or it won't match, in which
+        // case there is no issue anyway.
+        .eq(DefineOpaqueTypes::Yes, source_trait, target_trait)
     else {
         debug!("fulfill_implication: {:?} does not unify with {:?}", source_trait, target_trait);
         return Err(());

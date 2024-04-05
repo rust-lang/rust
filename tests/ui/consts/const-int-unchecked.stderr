@@ -37,8 +37,8 @@ LL | const SHL_I8: i8 = unsafe { intrinsics::unchecked_shl(5_i8, 8) };
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:30:31
    |
-LL | const SHL_I16: i16 = unsafe { intrinsics::unchecked_shl(5_16, 16) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by 16 in `unchecked_shl`
+LL | const SHL_I16: i16 = unsafe { intrinsics::unchecked_shl(5_i16, 16) };
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by 16 in `unchecked_shl`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:32:31
@@ -67,8 +67,8 @@ LL | const SHL_I8_NEG: i8 = unsafe { intrinsics::unchecked_shl(5_i8, -1) };
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:43:35
    |
-LL | const SHL_I16_NEG: i16 = unsafe { intrinsics::unchecked_shl(5_16, -1) };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by -1 in `unchecked_shl`
+LL | const SHL_I16_NEG: i16 = unsafe { intrinsics::unchecked_shl(5_i16, -1) };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by -1 in `unchecked_shl`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:45:35
@@ -97,8 +97,8 @@ LL | const SHL_I8_NEG_RANDOM: i8 = unsafe { intrinsics::unchecked_shl(5_i8, -6) 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:57:42
    |
-LL | const SHL_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shl(5_16, -13) };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by -13 in `unchecked_shl`
+LL | const SHL_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shl(5_i16, -13) };
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by -13 in `unchecked_shl`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:59:42
@@ -157,8 +157,8 @@ LL | const SHR_I8: i8 = unsafe { intrinsics::unchecked_shr(5_i8, 8) };
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:85:31
    |
-LL | const SHR_I16: i16 = unsafe { intrinsics::unchecked_shr(5_16, 16) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by 16 in `unchecked_shr`
+LL | const SHR_I16: i16 = unsafe { intrinsics::unchecked_shr(5_i16, 16) };
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by 16 in `unchecked_shr`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:87:31
@@ -187,8 +187,8 @@ LL | const SHR_I8_NEG: i8 = unsafe { intrinsics::unchecked_shr(5_i8, -1) };
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:98:35
    |
-LL | const SHR_I16_NEG: i16 = unsafe { intrinsics::unchecked_shr(5_16, -1) };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by -1 in `unchecked_shr`
+LL | const SHR_I16_NEG: i16 = unsafe { intrinsics::unchecked_shr(5_i16, -1) };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by -1 in `unchecked_shr`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:100:35
@@ -217,8 +217,8 @@ LL | const SHR_I8_NEG_RANDOM: i8 = unsafe { intrinsics::unchecked_shr(5_i8, -6) 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:112:42
    |
-LL | const SHR_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shr(5_16, -13) };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by -13 in `unchecked_shr`
+LL | const SHR_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shr(5_i16, -13) };
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by -13 in `unchecked_shr`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:114:42

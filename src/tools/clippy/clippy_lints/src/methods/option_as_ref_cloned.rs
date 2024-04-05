@@ -15,7 +15,7 @@ pub(super) fn check(cx: &LateContext<'_>, cloned_recv: &Expr<'_>, cloned_ident_s
             cx,
             OPTION_AS_REF_CLONED,
             as_ref_ident_span.to(cloned_ident_span),
-            &format!("cloning an `Option<_>` using `.{method}().cloned()`"),
+            format!("cloning an `Option<_>` using `.{method}().cloned()`"),
             "this can be written more concisely by cloning the `Option<_>` directly",
             "clone".into(),
             Applicability::MachineApplicable,

@@ -1,11 +1,11 @@
 //! Builtin macro
 
-use base_db::{AnchoredPath, Edition, FileId};
+use base_db::{AnchoredPath, FileId};
 use cfg::CfgExpr;
 use either::Either;
 use itertools::Itertools;
 use mbe::{parse_exprs_with_sep, parse_to_token_tree};
-use span::{Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
+use span::{Edition, Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
 use syntax::ast::{self, AstToken};
 
 use crate::{

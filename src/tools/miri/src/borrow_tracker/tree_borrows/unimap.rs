@@ -132,7 +132,7 @@ where
     /// the associated `UniIndex` from ALL `UniValMap`s.
     ///
     /// Example of such behavior:
-    /// ```
+    /// ```rust,ignore (private type can't be doctested)
     /// let mut keymap = UniKeyMap::<char>::default();
     /// let mut valmap = UniValMap::<char>::default();
     /// // Insert 'a' -> _ -> 'A'

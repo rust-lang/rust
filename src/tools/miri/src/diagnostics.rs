@@ -66,7 +66,7 @@ impl fmt::Display for TerminationInfo {
             Int2PtrWithStrictProvenance =>
                 write!(
                     f,
-                    "integer-to-pointer casts and `ptr::from_exposed_addr` are not supported with `-Zmiri-strict-provenance`"
+                    "integer-to-pointer casts and `ptr::with_exposed_provenance` are not supported with `-Zmiri-strict-provenance`"
                 ),
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
@@ -593,7 +593,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                     (
                         None,
                         format!(
-                            "This program is using integer-to-pointer casts or (equivalently) `ptr::from_exposed_addr`,"
+                            "This program is using integer-to-pointer casts or (equivalently) `ptr::with_exposed_provenance`,"
                         ),
                     ),
                     (
@@ -603,7 +603,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                     (
                         None,
                         format!(
-                            "See https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation."
+                            "See https://doc.rust-lang.org/nightly/std/ptr/fn.with_exposed_provenance.html for more details on that operation."
                         ),
                     ),
                     (
@@ -615,7 +615,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                     (
                         None,
                         format!(
-                            "You can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics."
+                            "You can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `with_exposed_provenance` semantics."
                         ),
                     ),
                     (

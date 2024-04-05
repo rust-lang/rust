@@ -100,6 +100,9 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             ProbeKind::Root { result } => {
                 write!(self.f, "ROOT RESULT: {result:?}")
             }
+            ProbeKind::TryNormalizeNonRigid { result } => {
+                write!(self.f, "TRY NORMALIZE NON-RIGID: {result:?}")
+            }
             ProbeKind::NormalizedSelfTyAssembly => {
                 write!(self.f, "NORMALIZING SELF TY FOR ASSEMBLY:")
             }
@@ -108,9 +111,6 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             }
             ProbeKind::UpcastProjectionCompatibility => {
                 write!(self.f, "PROBING FOR PROJECTION COMPATIBILITY FOR UPCASTING:")
-            }
-            ProbeKind::CommitIfOk => {
-                write!(self.f, "COMMIT_IF_OK:")
             }
             ProbeKind::MiscCandidate { name, result } => {
                 write!(self.f, "CANDIDATE {name}: {result:?}")
@@ -132,8 +132,6 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
                     }
                     ProbeStep::EvaluateGoals(eval) => this.format_added_goals_evaluation(eval)?,
                     ProbeStep::NestedProbe(probe) => this.format_probe(probe)?,
-                    ProbeStep::CommitIfOkStart => writeln!(this.f, "COMMIT_IF_OK START")?,
-                    ProbeStep::CommitIfOkSuccess => writeln!(this.f, "COMMIT_IF_OK SUCCESS")?,
                 }
             }
             Ok(())

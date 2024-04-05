@@ -52,13 +52,3 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     // UEFI is single threaded
     Ok(NonZero::new(1).unwrap())
 }
-
-pub mod guard {
-    pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> {
-        None
-    }
-    pub unsafe fn init() -> Option<Guard> {
-        None
-    }
-}

@@ -203,6 +203,7 @@ target | std | notes
 [`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | ? | 64-bit UEFI
 
 [^x86_32-floats-x87]: Floating-point support on `i586` targets is non-compliant: the `x87` registers and instructions used for these targets do not provide IEEE-754-compliant behavior, in particular when it comes to rounding and NaN payload bits. See [issue #114479][x86-32-float-issue].
+
 [wasi-rename]: https://github.com/rust-lang/compiler-team/issues/607
 
 [Fortanix ABI]: https://edp.fortanix.com/

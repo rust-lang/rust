@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 TRANSMUTE_BYTES_TO_STR,
                 e.span,
-                &format!("transmute from a `{from_ty}` to a `{to_ty}`"),
+                format!("transmute from a `{from_ty}` to a `{to_ty}`"),
                 "consider using",
                 if const_context {
                     format!("{top_crate}::str::from_utf8_unchecked{postfix}({snippet})")

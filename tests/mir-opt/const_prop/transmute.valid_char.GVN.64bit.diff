@@ -3,8 +3,6 @@
   
   fn valid_char() -> char {
       let mut _0: char;
-      scope 1 {
-      }
   
       bb0: {
 -         _0 = const 82_u32 as char (Transmute);

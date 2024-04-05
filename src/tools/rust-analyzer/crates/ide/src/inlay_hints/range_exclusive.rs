@@ -30,7 +30,6 @@ fn inlay_hint(token: SyntaxToken) -> InlayHint {
         kind: crate::InlayKind::RangeExclusive,
         label: crate::InlayHintLabel::from("<"),
         text_edit: None,
-        needs_resolve: false,
     }
 }
 

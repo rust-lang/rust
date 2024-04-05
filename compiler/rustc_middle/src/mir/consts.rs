@@ -70,7 +70,7 @@ pub enum ConstValue<'tcx> {
     },
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 static_assert_size!(ConstValue<'_>, 24);
 
 impl<'tcx> ConstValue<'tcx> {

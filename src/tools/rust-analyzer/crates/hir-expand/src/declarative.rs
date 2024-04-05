@@ -1,8 +1,8 @@
 //! Compiled declarative macro expanders (`macro_rules!`` and `macro`)
 use std::sync::OnceLock;
 
-use base_db::{CrateId, Edition, VersionReq};
-use span::{MacroCallId, Span};
+use base_db::{CrateId, VersionReq};
+use span::{MacroCallId, Span, SyntaxContextId};
 use syntax::{ast, AstNode};
 use triomphe::Arc;
 
@@ -10,13 +10,13 @@ use crate::{
     attrs::RawAttrs,
     db::ExpandDatabase,
     hygiene::{apply_mark, Transparency},
-    tt, AstId, ExpandError, ExpandResult,
+    tt, AstId, ExpandError, ExpandResult, Lookup,
 };
 
 /// Old-style `macro_rules` or the new macros 2.0
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DeclarativeMacroExpander {
-    pub mac: mbe::DeclarativeMacro<span::Span>,
+    pub mac: mbe::DeclarativeMacro,
     pub transparency: Transparency,
 }
 
@@ -94,8 +94,6 @@ impl DeclarativeMacroExpander {
         def_crate: CrateId,
         id: AstId<ast::Macro>,
     ) -> Arc<DeclarativeMacroExpander> {
-        let crate_data = &db.crate_graph()[def_crate];
-        let is_2021 = crate_data.edition >= Edition::Edition2021;
         let (root, map) = crate::db::parse_with_map(db, id.file_id);
         let root = root.syntax_node();
 
@@ -133,6 +131,16 @@ impl DeclarativeMacroExpander {
             )
         });
 
+        let edition = |ctx: SyntaxContextId| {
+            let crate_graph = db.crate_graph();
+            if ctx.is_root() {
+                crate_graph[def_crate].edition
+            } else {
+                let data = db.lookup_intern_syntax_context(ctx);
+                // UNWRAP-SAFETY: Only the root context has no outer expansion
+                crate_graph[data.outer_expn.unwrap().lookup(db).def.krate].edition
+            }
+        };
         let (mac, transparency) = match id.to_ptr(db).to_node(&root) {
             ast::Macro::MacroRules(macro_rules) => (
                 match macro_rules.token_tree() {
@@ -145,12 +153,11 @@ impl DeclarativeMacroExpander {
                             ),
                         );
 
-                        mbe::DeclarativeMacro::parse_macro_rules(&tt, is_2021, new_meta_vars)
+                        mbe::DeclarativeMacro::parse_macro_rules(&tt, edition, new_meta_vars)
                     }
-                    None => mbe::DeclarativeMacro::from_err(
-                        mbe::ParseError::Expected("expected a token tree".into()),
-                        is_2021,
-                    ),
+                    None => mbe::DeclarativeMacro::from_err(mbe::ParseError::Expected(
+                        "expected a token tree".into(),
+                    )),
                 },
                 transparency(&macro_rules).unwrap_or(Transparency::SemiTransparent),
             ),
@@ -163,12 +170,11 @@ impl DeclarativeMacroExpander {
                             map.span_for_range(macro_def.macro_token().unwrap().text_range()),
                         );
 
-                        mbe::DeclarativeMacro::parse_macro2(&tt, is_2021, new_meta_vars)
+                        mbe::DeclarativeMacro::parse_macro2(&tt, edition, new_meta_vars)
                     }
-                    None => mbe::DeclarativeMacro::from_err(
-                        mbe::ParseError::Expected("expected a token tree".into()),
-                        is_2021,
-                    ),
+                    None => mbe::DeclarativeMacro::from_err(mbe::ParseError::Expected(
+                        "expected a token tree".into(),
+                    )),
                 },
                 transparency(&macro_def).unwrap_or(Transparency::Opaque),
             ),

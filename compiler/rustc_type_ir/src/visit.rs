@@ -223,8 +223,8 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
         self.has_vars_bound_at_or_above(ty::INNERMOST)
     }
 
-    fn has_projections(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_PROJECTION)
+    fn has_aliases(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_ALIASES)
     }
 
     fn has_inherent_projections(&self) -> bool {

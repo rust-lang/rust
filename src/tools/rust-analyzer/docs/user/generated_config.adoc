@@ -520,6 +520,11 @@ How to render the offset information in a memory layout hover.
 --
 How to render the size information in a memory layout hover.
 --
+[[rust-analyzer.hover.show.structFields]]rust-analyzer.hover.show.structFields (default: `null`)::
++
+--
+How many fields of a struct to display when hovering a struct.
+--
 [[rust-analyzer.hover.show.traitAssocItems]]rust-analyzer.hover.show.traitAssocItems (default: `null`)::
 +
 --

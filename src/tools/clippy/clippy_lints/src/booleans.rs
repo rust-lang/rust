@@ -392,13 +392,13 @@ fn simple_negate(b: Bool) -> Bool {
         t @ Term(_) => Not(Box::new(t)),
         And(mut v) => {
             for el in &mut v {
-                *el = simple_negate(::std::mem::replace(el, True));
+                *el = simple_negate(std::mem::replace(el, True));
             }
             Or(v)
         },
         Or(mut v) => {
             for el in &mut v {
-                *el = simple_negate(::std::mem::replace(el, True));
+                *el = simple_negate(std::mem::replace(el, True));
             }
             And(v)
         },

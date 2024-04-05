@@ -4,7 +4,7 @@ show-text: true
 
 define-function: (
     "check-colors",
-    (
+    [
         theme,
         kw,
         kw2,
@@ -20,7 +20,7 @@ define-function: (
         question_mark,
         comment,
         doc_comment,
-    ),
+    ],
     block {
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:

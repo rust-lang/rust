@@ -1,5 +1,5 @@
 #![warn(clippy::missing_const_for_fn)]
-#![allow(incomplete_features, clippy::let_and_return)]
+#![allow(incomplete_features, clippy::let_and_return, clippy::missing_transmute_annotations)]
 #![feature(const_mut_refs)]
 #![feature(const_trait_impl)]
 

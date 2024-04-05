@@ -10,14 +10,10 @@
       let mut _6: u32;
       scope 1 {
           debug dwords => _2;
-          scope 3 {
+          scope 2 {
               debug ip => _4;
               let _4: u32;
-              scope 4 {
-              }
           }
-      }
-      scope 2 {
       }
   
       bb0: {

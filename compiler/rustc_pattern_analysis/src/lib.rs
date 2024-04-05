@@ -25,50 +25,9 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 use std::fmt;
 
-#[cfg(feature = "rustc")]
-pub mod index {
-    // Faster version when the indices of variants are `0..variants.len()`.
-    pub use rustc_index::bit_set::BitSet as IdxSet;
-    pub use rustc_index::Idx;
-    pub use rustc_index::IndexVec as IdxContainer;
-}
-#[cfg(not(feature = "rustc"))]
-pub mod index {
-    // Slower version when the indices of variants are something else.
-    pub trait Idx: Copy + PartialEq + Eq + std::hash::Hash {}
-    impl<T: Copy + PartialEq + Eq + std::hash::Hash> Idx for T {}
-
-    #[derive(Debug)]
-    pub struct IdxContainer<K, V>(pub rustc_hash::FxHashMap<K, V>);
-    impl<K: Idx, V> IdxContainer<K, V> {
-        pub fn len(&self) -> usize {
-            self.0.len()
-        }
-        pub fn iter_enumerated(&self) -> impl Iterator<Item = (K, &V)> {
-            self.0.iter().map(|(k, v)| (*k, v))
-        }
-    }
-
-    impl<V> FromIterator<V> for IdxContainer<usize, V> {
-        fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
-            Self(iter.into_iter().enumerate().collect())
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct IdxSet<T>(pub rustc_hash::FxHashSet<T>);
-    impl<T: Idx> IdxSet<T> {
-        pub fn new_empty(_len: usize) -> Self {
-            Self(Default::default())
-        }
-        pub fn contains(&self, elem: T) -> bool {
-            self.0.contains(&elem)
-        }
-        pub fn insert(&mut self, elem: T) {
-            self.0.insert(elem);
-        }
-    }
-}
+// Re-exports to avoid rustc_index version issues.
+pub use rustc_index::Idx;
+pub use rustc_index::IndexVec;
 
 #[cfg(feature = "rustc")]
 use rustc_middle::ty::Ty;
@@ -96,7 +55,7 @@ pub trait PatCx: Sized + fmt::Debug {
     /// Errors that can abort analysis.
     type Error: fmt::Debug;
     /// The index of an enum variant.
-    type VariantIdx: Clone + index::Idx + fmt::Debug;
+    type VariantIdx: Clone + Idx + fmt::Debug;
     /// A string literal
     type StrLit: Clone + PartialEq + fmt::Debug;
     /// Extra data to store in a match arm.

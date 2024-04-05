@@ -24,6 +24,7 @@ use crate::{
     nameres::{DefMap, MacroSubNs},
     path::{ModPath, Path, PathKind},
     per_ns::PerNs,
+    type_ref::LifetimeRef,
     visibility::{RawVisibility, Visibility},
     AdtId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId,
     ExternBlockId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId,
@@ -118,6 +119,12 @@ pub enum ValueNs {
     StructId(StructId),
     EnumVariantId(EnumVariantId),
     GenericParam(ConstParamId),
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum LifetimeNs {
+    Static,
+    LifetimeParam(LifetimeParamId),
 }
 
 impl Resolver {
@@ -416,6 +423,19 @@ impl Resolver {
         expected_macro_kind: Option<MacroSubNs>,
     ) -> Option<MacroDefId> {
         self.resolve_path_as_macro(db, path, expected_macro_kind).map(|(it, _)| db.macro_def(it))
+    }
+
+    pub fn resolve_lifetime(&self, lifetime: &LifetimeRef) -> Option<LifetimeNs> {
+        if lifetime.name == name::known::STATIC_LIFETIME {
+            return Some(LifetimeNs::Static);
+        }
+
+        self.scopes().find_map(|scope| match scope {
+            Scope::GenericParams { def, params } => {
+                params.find_lifetime_by_name(&lifetime.name, *def).map(LifetimeNs::LifetimeParam)
+            }
+            _ => None,
+        })
     }
 
     /// Returns a set of names available in the current scope.

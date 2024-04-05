@@ -153,7 +153,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitReturnExpectingOrd {
                                 cx,
                                 UNIT_RETURN_EXPECTING_ORD,
                                 span,
-                                &format!(
+                                format!(
                                     "this closure returns \
                                    the unit type which also implements {trait_name}"
                                 ),
@@ -164,7 +164,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitReturnExpectingOrd {
                                 cx,
                                 UNIT_RETURN_EXPECTING_ORD,
                                 span,
-                                &format!(
+                                format!(
                                     "this closure returns \
                                    the unit type which also implements {trait_name}"
                                 ),

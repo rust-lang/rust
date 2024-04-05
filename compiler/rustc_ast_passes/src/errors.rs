@@ -270,11 +270,10 @@ pub struct FnBodyInExtern {
 #[diag(ast_passes_extern_fn_qualifiers)]
 pub struct FnQualifierInExtern {
     #[primary_span]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub span: Span,
     #[label]
     pub block: Span,
-    #[suggestion(code = "fn ", applicability = "maybe-incorrect", style = "verbose")]
-    pub sugg_span: Span,
 }
 
 #[derive(Diagnostic)]

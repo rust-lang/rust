@@ -105,7 +105,6 @@ pub(super) fn hints(
                 pad_left: true,
                 pad_right: true,
                 kind: InlayKind::Drop,
-                needs_resolve: label.needs_resolve(),
                 label,
                 text_edit: None,
             })

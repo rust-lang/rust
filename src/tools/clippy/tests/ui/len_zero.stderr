@@ -142,5 +142,23 @@ error: length comparison to zero
 LL |     if b.len() != 0 {}
    |        ^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!b.is_empty()`
 
-error: aborting due to 23 previous errors
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:224:8
+   |
+LL |     if has_is_empty.len() == compare_to!(0) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:225:8
+   |
+LL |     if has_is_empty.len() == zero!() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> tests/ui/len_zero.rs:227:6
+   |
+LL |     (compare_to!(0) < has_is_empty.len()).then(|| println!("This can happen."));
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: aborting due to 26 previous errors
 

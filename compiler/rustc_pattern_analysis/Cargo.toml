@@ -24,7 +24,7 @@ tracing = "0.1"
 
 [dev-dependencies]
 tracing-subscriber = { version = "0.3.3", default-features = false, features = ["fmt", "env-filter", "ansi"] }
-tracing-tree = "0.2.0"
+tracing-tree = "0.3.0"
 
 [features]
 default = ["rustc"]

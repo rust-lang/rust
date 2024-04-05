@@ -12,7 +12,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, param: &GenericParam) {
                 cx,
                 BUILTIN_TYPE_SHADOW,
                 param.ident.span,
-                &format!("this generic shadows the built-in type `{}`", prim_ty.name()),
+                format!("this generic shadows the built-in type `{}`", prim_ty.name()),
             );
         }
     }

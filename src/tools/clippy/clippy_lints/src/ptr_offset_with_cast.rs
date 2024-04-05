@@ -64,13 +64,13 @@ impl<'tcx> LateLintPass<'tcx> for PtrOffsetWithCast {
                 cx,
                 PTR_OFFSET_WITH_CAST,
                 expr.span,
-                &msg,
+                msg,
                 "try",
                 sugg,
                 Applicability::MachineApplicable,
             );
         } else {
-            span_lint(cx, PTR_OFFSET_WITH_CAST, expr.span, &msg);
+            span_lint(cx, PTR_OFFSET_WITH_CAST, expr.span, msg);
         }
     }
 }

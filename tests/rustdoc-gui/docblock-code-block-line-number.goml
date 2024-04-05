@@ -10,7 +10,7 @@ assert-false: "pre.example-line-numbers"
 // Let's now check some CSS properties...
 define-function: (
     "check-colors",
-    (theme, color),
+    [theme, color],
     block {
         // We now set the setting to show the line numbers on code examples.
         set-local-storage: {

@@ -34,7 +34,7 @@ pub(super) fn check(
             cx,
             CAST_ABS_TO_UNSIGNED,
             span,
-            &format!("casting the result of `{cast_from}::abs()` to {cast_to}"),
+            format!("casting the result of `{cast_from}::abs()` to {cast_to}"),
             "replace with",
             format!("{}.unsigned_abs()", Sugg::hir(cx, receiver, "..").maybe_par()),
             Applicability::MachineApplicable,

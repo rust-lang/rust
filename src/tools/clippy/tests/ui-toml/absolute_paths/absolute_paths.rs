@@ -3,7 +3,7 @@
 //@revisions: allow_crates disallow_crates
 //@[allow_crates] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/allow_crates
 //@[disallow_crates] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/disallow_crates
-#![allow(clippy::no_effect, unused)]
+#![allow(clippy::no_effect, clippy::legacy_numeric_constants, unused)]
 #![warn(clippy::absolute_paths)]
 #![feature(decl_macro)]
 

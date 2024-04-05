@@ -13,18 +13,16 @@ pub struct ProcMacroDef {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ProcMacroKind {
-    CustomDerive { helpers: Box<[Name]> },
-    FnLike,
+    Derive { helpers: Box<[Name]> },
+    Bang,
     Attr,
 }
 
 impl ProcMacroKind {
     pub(super) fn to_basedb_kind(&self) -> hir_expand::proc_macro::ProcMacroKind {
         match self {
-            ProcMacroKind::CustomDerive { .. } => {
-                hir_expand::proc_macro::ProcMacroKind::CustomDerive
-            }
-            ProcMacroKind::FnLike => hir_expand::proc_macro::ProcMacroKind::FuncLike,
+            ProcMacroKind::Derive { .. } => hir_expand::proc_macro::ProcMacroKind::CustomDerive,
+            ProcMacroKind::Bang => hir_expand::proc_macro::ProcMacroKind::Bang,
             ProcMacroKind::Attr => hir_expand::proc_macro::ProcMacroKind::Attr,
         }
     }
@@ -34,13 +32,13 @@ impl Attrs {
     #[rustfmt::skip]
     pub fn parse_proc_macro_decl(&self, func_name: &Name) -> Option<ProcMacroDef> {
         if self.is_proc_macro() {
-            Some(ProcMacroDef { name: func_name.clone(), kind: ProcMacroKind::FnLike })
+            Some(ProcMacroDef { name: func_name.clone(), kind: ProcMacroKind::Bang })
         } else if self.is_proc_macro_attribute() {
             Some(ProcMacroDef { name: func_name.clone(), kind: ProcMacroKind::Attr })
         } else if self.by_key("proc_macro_derive").exists() {
             let derive = self.by_key("proc_macro_derive").tt_values().next()?;
             let def = parse_macro_name_and_helper_attrs(&derive.token_trees)
-                .map(|(name, helpers)| ProcMacroDef { name, kind: ProcMacroKind::CustomDerive { helpers } });
+                .map(|(name, helpers)| ProcMacroDef { name, kind: ProcMacroKind::Derive { helpers } });
 
             if def.is_none() {
                 tracing::trace!("malformed `#[proc_macro_derive]`: {}", derive);

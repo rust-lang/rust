@@ -339,9 +339,6 @@ pub enum Subcommand {
         #[arg(long)]
         /// run all tests regardless of failure
         no_fail_fast: bool,
-        #[arg(long, value_name = "SUBSTRING")]
-        /// skips tests matching SUBSTRING, if supported by test tool. May be passed multiple times
-        skip: Vec<PathBuf>,
         #[arg(long, value_name = "ARGS", allow_hyphen_values(true))]
         /// extra arguments to be passed for the test tool being used
         /// (e.g. libtest, compiletest or rustdoc)

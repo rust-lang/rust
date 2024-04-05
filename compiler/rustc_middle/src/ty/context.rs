@@ -956,6 +956,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self.get_lang_items(())
     }
 
+    /// Gets a `Ty` representing the [`LangItem::OrderingEnum`]
+    #[track_caller]
+    pub fn ty_ordering_enum(self, span: Option<Span>) -> Ty<'tcx> {
+        let ordering_enum = self.require_lang_item(hir::LangItem::OrderingEnum, span);
+        self.type_of(ordering_enum).no_bound_vars().unwrap()
+    }
+
     /// Obtain the given diagnostic item's `DefId`. Use `is_diagnostic_item` if you just want to
     /// compare against another `DefId`, since `is_diagnostic_item` is cheaper.
     pub fn get_diagnostic_item(self, name: Symbol) -> Option<DefId> {
@@ -1114,7 +1121,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
     /// session, if it still exists. This is used during incremental compilation to
     /// turn a deserialized `DefPathHash` into its current `DefId`.
-    pub fn def_path_hash_to_def_id(self, hash: DefPathHash, err: &mut dyn FnMut() -> !) -> DefId {
+    pub fn def_path_hash_to_def_id(
+        self,
+        hash: DefPathHash,
+        err_msg: &dyn std::fmt::Debug,
+    ) -> DefId {
         debug!("def_path_hash_to_def_id({:?})", hash);
 
         let stable_crate_id = hash.stable_crate_id();
@@ -1122,7 +1133,11 @@ impl<'tcx> TyCtxt<'tcx> {
         // If this is a DefPathHash from the local crate, we can look up the
         // DefId in the tcx's `Definitions`.
         if stable_crate_id == self.stable_crate_id(LOCAL_CRATE) {
-            self.untracked.definitions.read().local_def_path_hash_to_def_id(hash, err).to_def_id()
+            self.untracked
+                .definitions
+                .read()
+                .local_def_path_hash_to_def_id(hash, err_msg)
+                .to_def_id()
         } else {
             // If this is a DefPathHash from an upstream crate, let the CrateStore map
             // it to a DefId.
@@ -1954,33 +1969,104 @@ impl<'tcx> TyCtxt<'tcx> {
         if pred.kind() != binder { self.mk_predicate(binder) } else { pred }
     }
 
+    pub fn check_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) -> bool {
+        self.check_args_compatible_inner(def_id, args, false)
+    }
+
+    fn check_args_compatible_inner(
+        self,
+        def_id: DefId,
+        args: &'tcx [ty::GenericArg<'tcx>],
+        nested: bool,
+    ) -> bool {
+        let generics = self.generics_of(def_id);
+
+        // IATs themselves have a weird arg setup (self + own args), but nested items *in* IATs
+        // (namely: opaques, i.e. ATPITs) do not.
+        let own_args = if !nested
+            && let DefKind::AssocTy = self.def_kind(def_id)
+            && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id))
+        {
+            if generics.params.len() + 1 != args.len() {
+                return false;
+            }
+
+            if !matches!(args[0].unpack(), ty::GenericArgKind::Type(_)) {
+                return false;
+            }
+
+            &args[1..]
+        } else {
+            if generics.count() != args.len() {
+                return false;
+            }
+
+            let (parent_args, own_args) = args.split_at(generics.parent_count);
+
+            if let Some(parent) = generics.parent
+                && !self.check_args_compatible_inner(parent, parent_args, true)
+            {
+                return false;
+            }
+
+            own_args
+        };
+
+        for (param, arg) in std::iter::zip(&generics.params, own_args) {
+            match (&param.kind, arg.unpack()) {
+                (ty::GenericParamDefKind::Type { .. }, ty::GenericArgKind::Type(_))
+                | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Lifetime(_))
+                | (ty::GenericParamDefKind::Const { .. }, ty::GenericArgKind::Const(_)) => {}
+                _ => return false,
+            }
+        }
+
+        true
+    }
+
+    /// With `cfg(debug_assertions)`, assert that args are compatible with their generics,
+    /// and print out the args if not.
+    pub fn debug_assert_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) {
+        if cfg!(debug_assertions) {
+            if !self.check_args_compatible(def_id, args) {
+                if let DefKind::AssocTy = self.def_kind(def_id)
+                    && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id))
+                {
+                    bug!(
+                        "args not compatible with generics for {}: args={:#?}, generics={:#?}",
+                        self.def_path_str(def_id),
+                        args,
+                        // Make `[Self, GAT_ARGS...]` (this could be simplified)
+                        self.mk_args_from_iter(
+                            [self.types.self_param.into()].into_iter().chain(
+                                self.generics_of(def_id)
+                                    .own_args(ty::GenericArgs::identity_for_item(self, def_id))
+                                    .iter()
+                                    .copied()
+                            )
+                        )
+                    );
+                } else {
+                    bug!(
+                        "args not compatible with generics for {}: args={:#?}, generics={:#?}",
+                        self.def_path_str(def_id),
+                        args,
+                        ty::GenericArgs::identity_for_item(self, def_id)
+                    );
+                }
+            }
+        }
+    }
+
     #[inline(always)]
     pub(crate) fn check_and_mk_args(
         self,
-        _def_id: DefId,
+        def_id: DefId,
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> GenericArgsRef<'tcx> {
-        let args = args.into_iter().map(Into::into);
-        #[cfg(debug_assertions)]
-        {
-            let generics = self.generics_of(_def_id);
-
-            let n = if let DefKind::AssocTy = self.def_kind(_def_id)
-                && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(_def_id))
-            {
-                // If this is an inherent projection.
-                generics.params.len() + 1
-            } else {
-                generics.count()
-            };
-            assert_eq!(
-                (n, Some(n)),
-                args.size_hint(),
-                "wrong number of generic parameters for {_def_id:?}: {:?}",
-                args.collect::<Vec<_>>(),
-            );
-        }
-        self.mk_args_from_iter(args)
+        let args = self.mk_args_from_iter(args.into_iter().map(Into::into));
+        self.debug_assert_args_compatible(def_id, args);
+        args
     }
 
     #[inline]

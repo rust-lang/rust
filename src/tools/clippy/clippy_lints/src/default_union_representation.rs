@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultUnionRepresentation {
                 item.span,
                 "this union has the default representation",
                 None,
-                &format!(
+                format!(
                     "consider annotating `{}` with `#[repr(C)]` to explicitly specify memory layout",
                     cx.tcx.def_path_str(item.owner_id)
                 ),

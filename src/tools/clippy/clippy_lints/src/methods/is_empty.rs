@@ -23,7 +23,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, receiver: &Expr<'_
             cx,
             CONST_IS_EMPTY,
             expr.span,
-            &format!("this expression always evaluates to {init_is_empty:?}"),
+            format!("this expression always evaluates to {init_is_empty:?}"),
         );
     }
 }

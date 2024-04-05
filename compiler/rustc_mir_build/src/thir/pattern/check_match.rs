@@ -144,16 +144,8 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 });
                 return;
             }
-            ExprKind::Match { scrutinee, scrutinee_hir_id, box ref arms } => {
-                let source = match ex.span.desugaring_kind() {
-                    Some(DesugaringKind::ForLoop) => hir::MatchSource::ForLoopDesugar,
-                    Some(DesugaringKind::QuestionMark) => {
-                        hir::MatchSource::TryDesugar(scrutinee_hir_id)
-                    }
-                    Some(DesugaringKind::Await) => hir::MatchSource::AwaitDesugar,
-                    _ => hir::MatchSource::Normal,
-                };
-                self.check_match(scrutinee, arms, source, ex.span);
+            ExprKind::Match { scrutinee, scrutinee_hir_id: _, box ref arms, match_source } => {
+                self.check_match(scrutinee, arms, match_source, ex.span);
             }
             ExprKind::Let { box ref pat, expr } => {
                 self.check_let(pat, Some(expr), ex.span);
@@ -505,8 +497,41 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                     None,
                 );
             } else {
+                // span after scrutinee, or after `.match`. That is, the braces, arms,
+                // and any whitespace preceding the braces.
+                let braces_span = match source {
+                    hir::MatchSource::Normal => scrut
+                        .span
+                        .find_ancestor_in_same_ctxt(expr_span)
+                        .map(|scrut_span| scrut_span.shrink_to_hi().with_hi(expr_span.hi())),
+                    hir::MatchSource::Postfix => {
+                        // This is horrendous, and we should deal with it by just
+                        // stashing the span of the braces somewhere (like in the match source).
+                        scrut.span.find_ancestor_in_same_ctxt(expr_span).and_then(|scrut_span| {
+                            let sm = self.tcx.sess.source_map();
+                            let brace_span = sm.span_extend_to_next_char(scrut_span, '{', true);
+                            if sm.span_to_snippet(sm.next_point(brace_span)).as_deref() == Ok("{") {
+                                let sp = brace_span.shrink_to_hi().with_hi(expr_span.hi());
+                                // We also need to extend backwards for whitespace
+                                sm.span_extend_prev_while(sp, |c| c.is_whitespace()).ok()
+                            } else {
+                                None
+                            }
+                        })
+                    }
+                    hir::MatchSource::ForLoopDesugar
+                    | hir::MatchSource::TryDesugar(_)
+                    | hir::MatchSource::AwaitDesugar
+                    | hir::MatchSource::FormatArgs => None,
+                };
                 self.error = Err(report_non_exhaustive_match(
-                    &cx, self.thir, scrut.ty, scrut.span, witnesses, arms, expr_span,
+                    &cx,
+                    self.thir,
+                    scrut.ty,
+                    scrut.span,
+                    witnesses,
+                    arms,
+                    braces_span,
                 ));
             }
         }
@@ -929,7 +954,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     sp: Span,
     witnesses: Vec<WitnessPat<'p, 'tcx>>,
     arms: &[ArmId],
-    expr_span: Span,
+    braces_span: Option<Span>,
 ) -> ErrorGuaranteed {
     let is_empty_match = arms.is_empty();
     let non_empty_enum = match scrut_ty.kind() {
@@ -941,8 +966,8 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     if is_empty_match && !non_empty_enum {
         return cx.tcx.dcx().emit_err(NonExhaustivePatternsTypeNotEmpty {
             cx,
-            expr_span,
-            span: sp,
+            scrut_span: sp,
+            braces_span,
             ty: scrut_ty,
         });
     }
@@ -1028,7 +1053,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     let mut suggestion = None;
     let sm = cx.tcx.sess.source_map();
     match arms {
-        [] if sp.eq_ctxt(expr_span) => {
+        [] if let Some(braces_span) = braces_span => {
             // Get the span for the empty match body `{}`.
             let (indentation, more) = if let Some(snippet) = sm.indentation_before(sp) {
                 (format!("\n{snippet}"), "    ")
@@ -1036,7 +1061,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 (" ".to_string(), "")
             };
             suggestion = Some((
-                sp.shrink_to_hi().with_hi(expr_span.hi()),
+                braces_span,
                 format!(" {{{indentation}{more}{suggested_arm},{indentation}}}",),
             ));
         }

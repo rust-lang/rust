@@ -7,7 +7,6 @@ use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
-use rustc_trait_selection::traits::check_args_compatible;
 
 use crate::errors::{DuplicateArg, NotParam};
 
@@ -250,7 +249,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                 ty::GenericArgs::identity_for_item(self.tcx, parent),
                             );
 
-                            if check_args_compatible(self.tcx, assoc, impl_args) {
+                            if self.tcx.check_args_compatible(assoc.def_id, impl_args) {
                                 self.tcx
                                     .type_of(assoc.def_id)
                                     .instantiate(self.tcx, impl_args)

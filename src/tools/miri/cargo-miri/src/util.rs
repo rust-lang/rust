@@ -101,7 +101,12 @@ pub fn find_miri() -> PathBuf {
 }
 
 pub fn miri() -> Command {
-    Command::new(find_miri())
+    let mut cmd = Command::new(find_miri());
+    // We never want to inherit this from the environment.
+    // However, this is sometimes set in the environment to work around build scripts that don't
+    // honor RUSTC_WRAPPER. So remove it again in case it is set.
+    cmd.env_remove("MIRI_BE_RUSTC");
+    cmd
 }
 
 pub fn miri_for_host() -> Command {

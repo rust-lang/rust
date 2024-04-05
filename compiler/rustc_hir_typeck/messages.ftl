@@ -86,12 +86,12 @@ hir_typeck_invalid_callee = expected function, found {$ty}
 hir_typeck_lossy_provenance_int2ptr =
     strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`
     .suggestion = use `.with_addr()` to adjust a valid pointer in the same allocation, to this address
-    .help = if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::from_exposed_addr()` instead
+    .help = if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::with_exposed_provenance()` instead
 
 hir_typeck_lossy_provenance_ptr2int =
     under strict provenance it is considered bad style to cast pointer `{$expr_ty}` to integer `{$cast_ty}`
     .suggestion = use `.addr()` to obtain the address of a pointer
-    .help = if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_addr()` instead
+    .help = if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_provenance()` instead
 
 hir_typeck_method_call_on_unknown_raw_pointee =
     cannot call a method on a raw pointer with an unknown pointee type

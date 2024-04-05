@@ -355,7 +355,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     }
 
     fn insert_tuple(&mut self, values: Vec<VnIndex>) -> VnIndex {
-        self.insert(Value::Aggregate(AggregateTy::Tuple, VariantIdx::from_u32(0), values))
+        self.insert(Value::Aggregate(AggregateTy::Tuple, VariantIdx::ZERO, values))
     }
 
     #[instrument(level = "trace", skip(self), ret)]

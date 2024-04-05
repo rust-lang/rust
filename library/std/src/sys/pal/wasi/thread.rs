@@ -193,13 +193,3 @@ impl Thread {
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     unsupported()
 }
-
-pub mod guard {
-    pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> {
-        None
-    }
-    pub unsafe fn init() -> Option<Guard> {
-        None
-    }
-}

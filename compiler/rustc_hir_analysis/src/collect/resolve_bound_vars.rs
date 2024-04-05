@@ -418,8 +418,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         {
             if let &hir::ClosureBinder::For { span: for_sp, .. } = binder {
                 fn span_of_infer(ty: &hir::Ty<'_>) -> Option<Span> {
-                    struct V;
-                    impl<'v> Visitor<'v> for V {
+                    /// Look for `_` anywhere in the signature of a `for<> ||` closure.
+                    /// This is currently disallowed.
+                    struct FindInferInClosureWithBinder;
+                    impl<'v> Visitor<'v> for FindInferInClosureWithBinder {
                         type Result = ControlFlow<Span>;
                         fn visit_ty(&mut self, t: &'v hir::Ty<'v>) -> Self::Result {
                             if matches!(t.kind, hir::TyKind::Infer) {
@@ -429,7 +431,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                             }
                         }
                     }
-                    V.visit_ty(ty).break_value()
+                    FindInferInClosureWithBinder.visit_ty(ty).break_value()
                 }
 
                 let infer_in_rt_sp = match fn_decl.output {

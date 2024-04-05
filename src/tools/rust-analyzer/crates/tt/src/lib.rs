@@ -11,18 +11,13 @@ use stdx::impl_from;
 pub use smol_str::SmolStr;
 pub use text_size::{TextRange, TextSize};
 
-pub trait Span: std::fmt::Debug + Copy + Sized + Eq {}
-
-impl<Ctx> Span for span::SpanData<Ctx> where span::SpanData<Ctx>: std::fmt::Debug + Copy + Sized + Eq
-{}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenTree<S> {
     Leaf(Leaf<S>),
     Subtree(Subtree<S>),
 }
 impl_from!(Leaf<S>, Subtree<S> for TokenTree);
-impl<S: Span> TokenTree<S> {
+impl<S: Copy> TokenTree<S> {
     pub fn empty(span: S) -> Self {
         Self::Subtree(Subtree {
             delimiter: Delimiter::invisible_spanned(span),
@@ -72,7 +67,7 @@ pub struct Subtree<S> {
     pub token_trees: Box<[TokenTree<S>]>,
 }
 
-impl<S: Span> Subtree<S> {
+impl<S: Copy> Subtree<S> {
     pub fn empty(span: DelimSpan<S>) -> Self {
         Subtree { delimiter: Delimiter::invisible_delim_spanned(span), token_trees: Box::new([]) }
     }
@@ -114,7 +109,7 @@ pub struct Delimiter<S> {
     pub kind: DelimiterKind,
 }
 
-impl<S: Span> Delimiter<S> {
+impl<S: Copy> Delimiter<S> {
     pub const fn invisible_spanned(span: S) -> Self {
         Delimiter { open: span, close: span, kind: DelimiterKind::Invisible }
     }

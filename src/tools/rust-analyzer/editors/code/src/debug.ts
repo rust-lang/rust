@@ -81,8 +81,8 @@ async function getDebugConfiguration(
     if (!editor) return;
 
     const knownEngines: Record<string, DebugConfigProvider> = {
-        "ms-vscode.cpptools": getCCppDebugConfig,
         "vadimcn.vscode-lldb": getCodeLldbDebugConfig,
+        "ms-vscode.cpptools": getCCppDebugConfig,
         "webfreak.debug": getNativeDebugConfig,
     };
     const debugOptions = ctx.config.debug;
@@ -203,6 +203,10 @@ function getCCppDebugConfig(
         cwd: cargoWorkspace || runnable.args.workspaceRoot,
         sourceFileMap,
         env,
+        // See https://github.com/rust-lang/rust-analyzer/issues/16901#issuecomment-2024486941
+        osx: {
+            MIMode: "lldb",
+        },
     };
 }
 

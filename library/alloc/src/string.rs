@@ -72,9 +72,9 @@ use crate::vec::Vec;
 
 /// A UTF-8–encoded, growable string.
 ///
-/// The `String` type is the most common string type that has ownership over the
-/// contents of the string. It has a close relationship with its borrowed
-/// counterpart, the primitive [`str`].
+/// `String` is the most common string type. It has ownership over the contents
+/// of the string, stored in a heap-allocated buffer (see [Representation](#representation)).
+/// It is closely related to its borrowed counterpart, the primitive [`str`].
 ///
 /// # Examples
 ///

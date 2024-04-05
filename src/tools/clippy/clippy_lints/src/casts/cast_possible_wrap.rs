@@ -79,7 +79,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, ca
         ),
     };
 
-    span_lint_and_then(cx, CAST_POSSIBLE_WRAP, expr.span, &message, |diag| {
+    span_lint_and_then(cx, CAST_POSSIBLE_WRAP, expr.span, message, |diag| {
         if let EmitState::LintOnPtrSize(16) = should_lint {
             diag
                 .note("`usize` and `isize` may be as small as 16 bits on some platforms")

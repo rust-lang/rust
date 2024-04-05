@@ -348,9 +348,9 @@ impl Foo {
 // Make method unsafe ----------------------------------------------------------
 #[cfg(any(cfail1,cfail4))]
 impl Foo {
-    //------------------------------------------------------------------------------------
+    //----------------------------------------------------------------------
     //--------------------------
-    //------------------------------------------------------------------------------------
+    //----------------------------------------------------------------------
     //--------------------------
     pub        fn make_method_unsafe(&self) { }
 }
@@ -361,9 +361,9 @@ impl Foo {
 #[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,typeck,optimized_mir")]
+    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,fn_sig,typeck")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,typeck,optimized_mir")]
+    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,fn_sig,typeck")]
     #[rustc_clean(cfg="cfail6")]
     pub unsafe fn make_method_unsafe(&self) { }
 }

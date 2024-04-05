@@ -1,5 +1,5 @@
 #![warn(clippy::box_default)]
-#![allow(clippy::default_constructed_unit_structs)]
+#![allow(clippy::boxed_local, clippy::default_constructed_unit_structs)]
 
 #[derive(Default)]
 struct ImplementsDefault;
@@ -12,26 +12,50 @@ impl OwnDefault {
     }
 }
 
-macro_rules! outer {
-    ($e: expr) => {
-        $e
+macro_rules! default {
+    () => {
+        Default::default()
+    };
+}
+
+macro_rules! string_new {
+    () => {
+        String::new()
+    };
+}
+
+macro_rules! box_new {
+    ($e:expr) => {
+        Box::new($e)
     };
 }
 
 fn main() {
-    let _string: Box<String> = Box::new(Default::default());
-    let _byte = Box::new(u8::default());
-    let _vec = Box::new(Vec::<u8>::new());
-    let _impl = Box::new(ImplementsDefault::default());
-    let _impl2 = Box::new(<ImplementsDefault as Default>::default());
-    let _impl3: Box<ImplementsDefault> = Box::new(Default::default());
-    let _own = Box::new(OwnDefault::default()); // should not lint
-    let _in_macro = outer!(Box::new(String::new()));
-    let _string_default = outer!(Box::new(String::from("")));
-    let _vec2: Box<Vec<ImplementsDefault>> = Box::new(vec![]);
-    let _vec3: Box<Vec<bool>> = Box::new(Vec::from([]));
-    let _vec4: Box<_> = Box::new(Vec::from([false; 0]));
-    let _more = ret_ty_fn();
+    let string1: Box<String> = Box::new(Default::default());
+    let string2: Box<String> = Box::new(String::new());
+    let impl1: Box<ImplementsDefault> = Box::new(Default::default());
+    let vec: Box<Vec<u8>> = Box::new(Vec::new());
+    let byte: Box<u8> = Box::new(u8::default());
+    let vec2: Box<Vec<ImplementsDefault>> = Box::new(vec![]);
+    let vec3: Box<Vec<bool>> = Box::new(Vec::from([]));
+
+    let plain_default = Box::new(Default::default());
+    let _: Box<String> = plain_default;
+
+    let _: Box<String> = Box::new(default!());
+    let _: Box<String> = Box::new(string_new!());
+    let _: Box<String> = box_new!(Default::default());
+    let _: Box<String> = box_new!(String::new());
+    let _: Box<String> = box_new!(default!());
+    let _: Box<String> = box_new!(string_new!());
+
+    let own: Box<OwnDefault> = Box::new(OwnDefault::default()); // should not lint
+
+    // Do not suggest where a turbofish would be required
+    let impl2 = Box::new(ImplementsDefault::default());
+    let impl3 = Box::new(<ImplementsDefault as Default>::default());
+    let vec4: Box<_> = Box::new(Vec::from([false; 0]));
+    let more = ret_ty_fn();
     call_ty_fn(Box::new(u8::default()));
     issue_10381();
 
@@ -44,10 +68,9 @@ fn main() {
 }
 
 fn ret_ty_fn() -> Box<bool> {
-    Box::new(bool::default())
+    Box::new(bool::default()) // Could lint, currently doesn't
 }
 
-#[allow(clippy::boxed_local)]
 fn call_ty_fn(_b: Box<u8>) {
     issue_9621_dyn_trait();
 }
@@ -89,20 +112,6 @@ fn issue_10381() {
     }
 
     assert!(maybe_get_bar(2).is_some());
-}
-
-#[allow(unused)]
-fn issue_11868() {
-    fn foo(_: &mut Vec<usize>) {}
-
-    macro_rules! bar {
-        ($baz:expr) => {
-            Box::leak(Box::new($baz))
-        };
-    }
-
-    foo(bar!(vec![]));
-    foo(bar!(vec![1]));
 }
 
 // Issue #11927: The quickfix for the `Box::new` suggests replacing with `Box::<Inner>::default()`,

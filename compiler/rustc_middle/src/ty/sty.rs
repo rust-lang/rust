@@ -11,7 +11,7 @@ use crate::ty::{
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use crate::ty::{List, ParamEnv};
-use hir::def::DefKind;
+use hir::def::{CtorKind, DefKind};
 use rustc_data_structures::captures::Captures;
 use rustc_errors::{DiagArgValue, ErrorGuaranteed, IntoDiagArg, MultiSpan};
 use rustc_hir as hir;
@@ -1624,13 +1624,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_adt(tcx: TyCtxt<'tcx>, def: AdtDef<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        debug_assert_eq!(
-            tcx.generics_of(def.did()).count(),
-            args.len(),
-            "wrong number of args for ADT: {:#?} vs {:#?}",
-            tcx.generics_of(def.did()).params,
-            args
-        );
+        tcx.debug_assert_args_compatible(def.did(), args);
         Ty::new(tcx, Adt(def, args))
     }
 
@@ -1677,6 +1671,10 @@ impl<'tcx> Ty<'tcx> {
         def_id: DefId,
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> Ty<'tcx> {
+        debug_assert_matches!(
+            tcx.def_kind(def_id),
+            DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
+        );
         let args = tcx.check_and_mk_args(def_id, args);
         Ty::new(tcx, FnDef(def_id, args))
     }
@@ -1711,11 +1709,7 @@ impl<'tcx> Ty<'tcx> {
         def_id: DefId,
         closure_args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        debug_assert_eq!(
-            closure_args.len(),
-            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 3,
-            "closure constructed with incorrect generic parameters"
-        );
+        tcx.debug_assert_args_compatible(def_id, closure_args);
         Ty::new(tcx, Closure(def_id, closure_args))
     }
 
@@ -1725,11 +1719,7 @@ impl<'tcx> Ty<'tcx> {
         def_id: DefId,
         closure_args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        debug_assert_eq!(
-            closure_args.len(),
-            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 5,
-            "closure constructed with incorrect generic parameters"
-        );
+        tcx.debug_assert_args_compatible(def_id, closure_args);
         Ty::new(tcx, CoroutineClosure(def_id, closure_args))
     }
 
@@ -1739,11 +1729,7 @@ impl<'tcx> Ty<'tcx> {
         def_id: DefId,
         coroutine_args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        debug_assert_eq!(
-            coroutine_args.len(),
-            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 6,
-            "coroutine constructed with incorrect number of generic parameters"
-        );
+        tcx.debug_assert_args_compatible(def_id, coroutine_args);
         Ty::new(tcx, Coroutine(def_id, coroutine_args))
     }
 
@@ -1954,7 +1940,7 @@ impl<'tcx> Ty<'tcx> {
             Adt(def, args) => {
                 assert!(def.repr().simd(), "`simd_size_and_type` called on non-SIMD type");
                 let variant = def.non_enum_variant();
-                let f0_ty = variant.fields[FieldIdx::from_u32(0)].ty(tcx, args);
+                let f0_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
 
                 match f0_ty.kind() {
                     // If the first field is an array, we assume it is the only field and its
@@ -2699,7 +2685,7 @@ impl<'tcx> VarianceDiagInfo<'tcx> {
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;

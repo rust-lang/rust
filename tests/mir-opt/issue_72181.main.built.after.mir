@@ -15,8 +15,6 @@ fn main() -> () {
             debug f => _2;
             scope 3 {
             }
-            scope 4 {
-            }
         }
     }
 

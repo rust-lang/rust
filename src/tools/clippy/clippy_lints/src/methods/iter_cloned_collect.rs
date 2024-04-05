@@ -17,7 +17,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, method_name: &str, expr: &hir:
             cx,
             ITER_CLONED_COLLECT,
             to_replace,
-            &format!(
+            format!(
                 "called `iter().{method_name}().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
             more readable"
             ),

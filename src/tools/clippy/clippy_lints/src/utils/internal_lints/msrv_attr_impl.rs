@@ -51,8 +51,8 @@ impl LateLintPass<'_> for MsrvAttrImpl {
                 cx,
                 MISSING_MSRV_ATTR_IMPL,
                 span,
-                &format!("`extract_msrv_attr!` macro missing from `{lint_pass}` implementation"),
-                &format!("add `extract_msrv_attr!({context})` to the `{lint_pass}` implementation"),
+                format!("`extract_msrv_attr!` macro missing from `{lint_pass}` implementation"),
+                format!("add `extract_msrv_attr!({context})` to the `{lint_pass}` implementation"),
                 format!("{}\n    extract_msrv_attr!({context});", snippet(cx, span, "..")),
                 Applicability::MachineApplicable,
             );

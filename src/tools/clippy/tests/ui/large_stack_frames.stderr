@@ -1,42 +1,42 @@
-error: this function allocates a large amount of stack space
-  --> tests/ui/large_stack_frames.rs:25:1
+error: this function may allocate 250$PTR bytes on the stack
+  --> tests/ui/large_stack_frames.rs:27:4
    |
-LL | / fn many_small_arrays() {
-LL | |
-LL | |
-LL | |     let x = [0u8; 500_000];
-...  |
-LL | |     black_box((&x, &x2, &x3, &x4, &x5));
-LL | | }
-   | |_^
+LL | fn many_small_arrays() {
+   |    ^^^^^^^^^^^^^^^^^
+...
+LL |     let x5 = [0u8; 500_000];
+   |         -- `x5` is the largest part, at 500000 bytes for type `[u8; 500000]`
    |
-   = note: allocating large amounts of stack space can overflow the stack
+   = note: 250$PTR bytes is larger than Clippy's configured `stack-size-threshold` of 512000
+   = note: allocating large amounts of stack space can overflow the stack and cause the program to abort
    = note: `-D clippy::large-stack-frames` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::large_stack_frames)]`
 
-error: this function allocates a large amount of stack space
-  --> tests/ui/large_stack_frames.rs:36:1
+error: this function may allocate 1000000 bytes on the stack
+  --> tests/ui/large_stack_frames.rs:37:4
    |
-LL | / fn large_return_value() -> ArrayDefault<1_000_000> {
-LL | |
-LL | |
-LL | |     Default::default()
-LL | | }
-   | |_^
+LL | fn large_return_value() -> ArrayDefault<1_000_000> {
+   |    ^^^^^^^^^^^^^^^^^^      ----------------------- this is the largest part, at 1000000 bytes for type `ArrayDefault<1000000>`
    |
-   = note: allocating large amounts of stack space can overflow the stack
+   = note: 1000000 bytes is larger than Clippy's configured `stack-size-threshold` of 512000
 
-error: this function allocates a large amount of stack space
-  --> tests/ui/large_stack_frames.rs:42:1
+error: this function may allocate 100$PTR bytes on the stack
+  --> tests/ui/large_stack_frames.rs:42:4
    |
-LL | / fn large_fn_arg(x: ArrayDefault<1_000_000>) {
-LL | |
-LL | |
-LL | |     black_box(&x);
-LL | | }
-   | |_^
+LL | fn large_fn_arg(x: ArrayDefault<1_000_000>) {
+   |    ^^^^^^^^^^^^ - `x` is the largest part, at 1000000 bytes for type `ArrayDefault<1000000>`
    |
-   = note: allocating large amounts of stack space can overflow the stack
+   = note: 100$PTR bytes is larger than Clippy's configured `stack-size-threshold` of 512000
 
-error: aborting due to 3 previous errors
+error: this function may allocate 100$PTR bytes on the stack
+  --> tests/ui/large_stack_frames.rs:48:13
+   |
+LL |     let f = || black_box(&[0u8; 1_000_000]);
+   |             ^^^^^^^^^^^^^^----------------^
+   |                           |
+   |                           this is the largest part, at 1000000 bytes for type `[u8; 1000000]`
+   |
+   = note: 100$PTR bytes is larger than Clippy's configured `stack-size-threshold` of 512000
+
+error: aborting due to 4 previous errors
 

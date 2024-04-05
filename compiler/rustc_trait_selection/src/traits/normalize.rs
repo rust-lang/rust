@@ -101,6 +101,8 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     value: &T,
     reveal: Reveal,
 ) -> bool {
+    // This mirrors `ty::TypeFlags::HAS_ALIASES` except that we take `Reveal` into account.
+
     let mut flags = ty::TypeFlags::HAS_TY_PROJECTION
         | ty::TypeFlags::HAS_TY_WEAK
         | ty::TypeFlags::HAS_TY_INHERENT

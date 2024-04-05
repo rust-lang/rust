@@ -186,7 +186,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
 
     /// Returns the types of the fields for a given constructor. The result must have a length of
     /// `ctor.arity()`.
-    #[instrument(level = "trace", skip(self))]
     pub(crate) fn ctor_sub_tys<'a>(
         &'a self,
         ctor: &'a Constructor<'p, 'tcx>,
@@ -283,7 +282,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// Creates a set that represents all the constructors of `ty`.
     ///
     /// See [`crate::constructor`] for considerations of emptiness.
-    #[instrument(level = "debug", skip(self), ret)]
     pub fn ctors_for_ty(
         &self,
         ty: RevealedTy<'tcx>,

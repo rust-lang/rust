@@ -13,11 +13,9 @@
       let mut _9: &[i32; 3];
       scope 1 {
           debug a => _1;
+          let _5: i32;
           scope 2 {
-              let _5: i32;
-              scope 3 {
-                  debug _b => _5;
-              }
+              debug _b => _5;
           }
       }
   

@@ -53,7 +53,7 @@ fn lint_needless(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, self_
         cx,
         NEEDLESS_SPLITN,
         expr.span,
-        &format!("unnecessary use of `{r}splitn`"),
+        format!("unnecessary use of `{r}splitn`"),
         "try",
         format!(
             "{}.{r}split({})",
@@ -154,7 +154,7 @@ fn check_manual_split_once_indirect(
         let self_snip = snippet_with_context(cx, self_arg.span, ctxt, "..", &mut app).0;
         let pat_snip = snippet_with_context(cx, pat_arg.span, ctxt, "..", &mut app).0;
 
-        span_lint_and_then(cx, MANUAL_SPLIT_ONCE, local.span, &msg, |diag| {
+        span_lint_and_then(cx, MANUAL_SPLIT_ONCE, local.span, msg, |diag| {
             diag.span_label(first.span, "first usage here");
             diag.span_label(second.span, "second usage here");
 

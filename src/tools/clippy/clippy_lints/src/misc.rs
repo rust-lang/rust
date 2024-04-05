@@ -246,7 +246,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                 cx,
                 USED_UNDERSCORE_BINDING,
                 expr.span,
-                &format!(
+                format!(
                     "used binding `{name}` which is prefixed with an underscore. A leading \
                      underscore signals that a binding will not be used"
                 ),

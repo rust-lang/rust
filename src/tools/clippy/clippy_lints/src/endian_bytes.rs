@@ -197,7 +197,7 @@ fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: Prefix
         cx,
         lint.as_lint(),
         expr.span,
-        &format!(
+        format!(
             "usage of the {}`{ty}::{}`{}",
             if prefix == Prefix::From { "function " } else { "" },
             lint.as_name(prefix),

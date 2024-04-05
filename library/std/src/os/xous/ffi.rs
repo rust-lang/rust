@@ -389,7 +389,7 @@ pub(crate) unsafe fn map_memory<T>(
     let result = a0;
 
     if result == SyscallResult::MemoryRange as usize {
-        let start = core::ptr::from_exposed_addr_mut::<T>(a1);
+        let start = core::ptr::with_exposed_provenance_mut::<T>(a1);
         let len = a2 / core::mem::size_of::<T>();
         let end = unsafe { start.add(len) };
         Ok(unsafe { core::slice::from_raw_parts_mut(start, len) })

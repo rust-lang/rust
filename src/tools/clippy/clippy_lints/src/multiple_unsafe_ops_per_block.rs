@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleUnsafeOpsPerBlock {
                 cx,
                 MULTIPLE_UNSAFE_OPS_PER_BLOCK,
                 block.span,
-                &format!(
+                format!(
                     "this `unsafe` block contains {} unsafe operations, expected only one",
                     unsafe_ops.len()
                 ),

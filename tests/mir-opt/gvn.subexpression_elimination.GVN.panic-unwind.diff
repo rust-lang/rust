@@ -175,18 +175,16 @@
           let _135: &mut u64;
           scope 2 {
               debug b => _135;
+              let _145: *const u64;
               let _163: &u64;
               scope 3 {
-                  let _145: *const u64;
+                  debug c => _145;
+                  let _154: *mut u64;
                   scope 4 {
-                      debug c => _145;
-                      let _154: *mut u64;
-                      scope 5 {
-                          debug d => _154;
-                      }
+                      debug d => _154;
                   }
               }
-              scope 6 {
+              scope 5 {
                   debug e => _163;
               }
           }

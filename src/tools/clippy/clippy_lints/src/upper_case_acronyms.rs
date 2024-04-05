@@ -94,7 +94,7 @@ fn check_ident(cx: &LateContext<'_>, ident: &Ident, hir_id: HirId, be_aggressive
             UPPER_CASE_ACRONYMS,
             hir_id,
             span,
-            &format!("name `{ident}` contains a capitalized acronym"),
+            format!("name `{ident}` contains a capitalized acronym"),
             |diag| {
                 diag.span_suggestion(
                     span,

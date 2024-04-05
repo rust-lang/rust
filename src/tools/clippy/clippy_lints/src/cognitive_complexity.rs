@@ -121,7 +121,7 @@ impl CognitiveComplexity {
                 cx,
                 COGNITIVE_COMPLEXITY,
                 fn_span,
-                &format!(
+                format!(
                     "the function has a cognitive complexity of ({cc}/{})",
                     self.limit.limit()
                 ),

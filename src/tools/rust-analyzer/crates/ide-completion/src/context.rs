@@ -540,7 +540,7 @@ impl CompletionContext<'_> {
     /// Whether the given trait is an operator trait or not.
     pub(crate) fn is_ops_trait(&self, trait_: hir::Trait) -> bool {
         match trait_.attrs(self.db).lang() {
-            Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang.as_str()),
+            Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang),
             None => false,
         }
     }

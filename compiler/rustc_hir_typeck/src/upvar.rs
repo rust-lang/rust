@@ -343,10 +343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let closure_env_region: ty::Region<'_> = ty::Region::new_bound(
                 self.tcx,
                 ty::INNERMOST,
-                ty::BoundRegion {
-                    var: ty::BoundVar::from_usize(0),
-                    kind: ty::BoundRegionKind::BrEnv,
-                },
+                ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::BrEnv },
             );
             let tupled_upvars_ty_for_borrow = Ty::new_tup_from_iter(
                 self.tcx,

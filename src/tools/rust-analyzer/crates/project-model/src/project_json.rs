@@ -49,12 +49,12 @@
 //! user explores them belongs to that extension (it's totally valid to change
 //! rust-project.json over time via configuration request!)
 
-use base_db::{CrateDisplayName, CrateId, CrateName, Dependency, Edition};
+use base_db::{CrateDisplayName, CrateId, CrateName, Dependency};
 use la_arena::RawIdx;
-use paths::{AbsPath, AbsPathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::{de, Deserialize};
-use std::path::PathBuf;
+use span::Edition;
 
 use crate::cfg_flag::CfgFlag;
 
@@ -113,7 +113,7 @@ impl ProjectJson {
                         .unwrap_or_else(|| root_module.starts_with(base));
                     let (include, exclude) = match crate_data.source {
                         Some(src) => {
-                            let absolutize = |dirs: Vec<PathBuf>| {
+                            let absolutize = |dirs: Vec<Utf8PathBuf>| {
                                 dirs.into_iter().map(absolutize_on_base).collect::<Vec<_>>()
                             };
                             (absolutize(src.include_dirs), absolutize(src.exclude_dirs))
@@ -176,15 +176,15 @@ impl ProjectJson {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ProjectJsonData {
-    sysroot: Option<PathBuf>,
-    sysroot_src: Option<PathBuf>,
+    sysroot: Option<Utf8PathBuf>,
+    sysroot_src: Option<Utf8PathBuf>,
     crates: Vec<CrateData>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 struct CrateData {
     display_name: Option<String>,
-    root_module: PathBuf,
+    root_module: Utf8PathBuf,
     edition: EditionData,
     #[serde(default)]
     version: Option<semver::Version>,
@@ -194,7 +194,7 @@ struct CrateData {
     target: Option<String>,
     #[serde(default)]
     env: FxHashMap<String, String>,
-    proc_macro_dylib_path: Option<PathBuf>,
+    proc_macro_dylib_path: Option<Utf8PathBuf>,
     is_workspace_member: Option<bool>,
     source: Option<CrateSource>,
     #[serde(default)]
@@ -238,8 +238,8 @@ struct DepData {
 
 #[derive(Deserialize, Debug, Clone)]
 struct CrateSource {
-    include_dirs: Vec<PathBuf>,
-    exclude_dirs: Vec<PathBuf>,
+    include_dirs: Vec<Utf8PathBuf>,
+    exclude_dirs: Vec<Utf8PathBuf>,
 }
 
 fn deserialize_crate_name<'de, D>(de: D) -> std::result::Result<CrateName, D::Error>

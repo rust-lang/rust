@@ -7,7 +7,7 @@ assert: "#method\.a_method:target"
 
 define-function: (
     "check-style",
-    (theme, background, border),
+    [theme, background, border],
     block {
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:

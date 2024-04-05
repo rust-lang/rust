@@ -12,7 +12,12 @@ use crate::{adjusted_display_range, fix, Diagnostic, DiagnosticCode, Diagnostics
 pub(crate) fn remove_trailing_return(
     ctx: &DiagnosticsContext<'_>,
     d: &RemoveTrailingReturn,
-) -> Diagnostic {
+) -> Option<Diagnostic> {
+    if d.return_expr.file_id.macro_file().is_some() {
+        // FIXME: Our infra can't handle allow from within macro expansions rn
+        return None;
+    }
+
     let display_range = adjusted_display_range(ctx, d.return_expr, &|return_expr| {
         return_expr
             .syntax()
@@ -20,12 +25,14 @@ pub(crate) fn remove_trailing_return(
             .and_then(ast::ExprStmt::cast)
             .map(|stmt| stmt.syntax().text_range())
     });
-    Diagnostic::new(
-        DiagnosticCode::Clippy("needless_return"),
-        "replace return <expr>; with <expr>",
-        display_range,
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::Clippy("needless_return"),
+            "replace return <expr>; with <expr>",
+            display_range,
+        )
+        .with_fixes(fixes(ctx, d)),
     )
-    .with_fixes(fixes(ctx, d))
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveTrailingReturn) -> Option<Vec<Assist>> {

@@ -4,13 +4,13 @@
 //! but we can't process `.rlib` and need source code instead. The source code
 //! is typically installed with `rustup component add rust-src` command.
 
-use std::{env, fs, iter, ops, path::PathBuf, process::Command, sync::Arc};
+use std::{env, fs, iter, ops, process::Command, sync::Arc};
 
 use anyhow::{format_err, Result};
 use base_db::CrateName;
 use itertools::Itertools;
 use la_arena::{Arena, Idx};
-use paths::{AbsPath, AbsPathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use toolchain::{probe_for_binary, Tool};
 
@@ -419,7 +419,7 @@ fn discover_sysroot_dir(
     rustc.current_dir(current_dir).args(["--print", "sysroot"]);
     tracing::debug!("Discovering sysroot by {:?}", rustc);
     let stdout = utf8_stdout(rustc)?;
-    Ok(AbsPathBuf::assert(PathBuf::from(stdout)))
+    Ok(AbsPathBuf::assert(Utf8PathBuf::from(stdout)))
 }
 
 fn discover_sysroot_src_dir(sysroot_path: &AbsPathBuf) -> Option<AbsPathBuf> {

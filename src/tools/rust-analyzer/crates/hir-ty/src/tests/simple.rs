@@ -3092,7 +3092,7 @@ fn main() {
             389..394 'boxed': Box<Foo<i32>>
             389..406 'boxed....nner()': &i32
             416..421 'good1': &i32
-            424..438 'Foo::get_inner': fn get_inner<i32>(&Box<Foo<i32>>) -> &i32
+            424..438 'Foo::get_inner': fn get_inner<i32, 'static>(&Box<Foo<i32>>) -> &i32
             424..446 'Foo::g...boxed)': &i32
             439..445 '&boxed': &Box<Foo<i32>>
             440..445 'boxed': Box<Foo<i32>>
@@ -3100,7 +3100,7 @@ fn main() {
             464..469 'boxed': Box<Foo<i32>>
             464..480 'boxed....self()': &Foo<i32>
             490..495 'good2': &Foo<i32>
-            498..511 'Foo::get_self': fn get_self<i32>(&Box<Foo<i32>>) -> &Foo<i32>
+            498..511 'Foo::get_self': fn get_self<i32, 'static>(&Box<Foo<i32>>) -> &Foo<i32>
             498..519 'Foo::g...boxed)': &Foo<i32>
             512..518 '&boxed': &Box<Foo<i32>>
             513..518 'boxed': Box<Foo<i32>>
@@ -3659,7 +3659,7 @@ fn main() {
     let are = "are";
     let count = 10;
     builtin#format_args("hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
- // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'_>
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'static>
 }
 "#,
     );

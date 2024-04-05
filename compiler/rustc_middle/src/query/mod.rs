@@ -877,12 +877,6 @@ rustc_queries! {
         desc { |tcx| "collecting all inherent impls for `{:?}`", key }
     }
 
-    /// The result of unsafety-checking this `LocalDefId` with the old checker.
-    query mir_unsafety_check_result(key: LocalDefId) -> &'tcx mir::UnsafetyCheckResult {
-        desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { true }
-    }
-
     /// Unsafety-check this `LocalDefId`.
     query check_unsafety(key: LocalDefId) {
         desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key) }

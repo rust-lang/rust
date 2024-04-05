@@ -243,7 +243,7 @@ fn t10() {
         src_hash,
         stable_id,
         source_len.to_u32(),
-        CrateNum::new(0),
+        CrateNum::ZERO,
         FreezeLock::new(lines.read().clone()),
         multibyte_chars,
         non_narrow_chars,

@@ -6,12 +6,12 @@ show-text: true
 
 define-function: (
     "check-colors",
-    (
+    [
         theme, struct, struct_hover, struct_hover_background, enum, enum_hover,
         enum_hover_background, union, union_hover, union_hover_background, trait, trait_hover,
         trait_hover_background, fn, fn_hover, fn_hover_background, type, type_hover,
         type_hover_background, keyword, keyword_hover, keyword_hover_background,
-    ),
+    ],
     block {
         set-local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false" }
         reload:

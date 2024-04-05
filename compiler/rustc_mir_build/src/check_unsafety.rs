@@ -909,11 +909,6 @@ impl UnsafeOpKind {
 }
 
 pub fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
-    // THIR unsafeck can be disabled with `-Z thir-unsafeck=off`
-    if !tcx.sess.opts.unstable_opts.thir_unsafeck {
-        return;
-    }
-
     // Closures and inline consts are handled by their owner, if it has a body
     // Also, don't safety check custom MIR
     if tcx.is_typeck_child(def.to_def_id()) || tcx.has_attr(def, sym::custom_mir) {

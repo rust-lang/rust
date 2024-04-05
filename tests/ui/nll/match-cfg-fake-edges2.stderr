@@ -7,8 +7,8 @@ LL |     let r = &mut y.1;
 LL |     match y {
    |     ^^^^^^^ use of borrowed `y.1`
 ...
-LL |             r;
-   |             - borrow later used here
+LL |         (true, _) => drop(r),
+   |                           - borrow later used here
 
 error: aborting due to 1 previous error
 

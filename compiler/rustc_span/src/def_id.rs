@@ -22,7 +22,7 @@ rustc_index::newtype_index! {
 
 /// Item definitions in the currently-compiled crate would have the `CrateNum`
 /// `LOCAL_CRATE` in their `DefId`.
-pub const LOCAL_CRATE: CrateNum = CrateNum::from_u32(0);
+pub const LOCAL_CRATE: CrateNum = CrateNum::ZERO;
 
 impl CrateNum {
     #[inline]

@@ -30,7 +30,7 @@ pub(super) fn check<'cx>(cx: &LateContext<'cx>, name: Symbol, items: &[NestedMet
         cx,
         ALLOW_ATTRIBUTES_WITHOUT_REASON,
         attr.span,
-        &format!("`{}` attribute without specifying a reason", name.as_str()),
+        format!("`{}` attribute without specifying a reason", name.as_str()),
         None,
         "try adding a reason at the end with `, reason = \"..\"`",
     );

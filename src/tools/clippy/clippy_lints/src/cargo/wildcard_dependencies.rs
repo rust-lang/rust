@@ -17,7 +17,7 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata) {
                 cx,
                 WILDCARD_DEPENDENCIES,
                 DUMMY_SP,
-                &format!("wildcard dependency for `{}`", dep.name),
+                format!("wildcard dependency for `{}`", dep.name),
             );
         }
     }

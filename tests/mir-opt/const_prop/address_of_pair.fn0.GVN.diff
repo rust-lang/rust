@@ -14,8 +14,6 @@
               debug ptr => _3;
               let _5: bool;
               scope 3 {
-              }
-              scope 4 {
                   debug ret => _5;
               }
           }

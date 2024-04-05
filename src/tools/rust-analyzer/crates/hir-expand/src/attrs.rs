@@ -8,8 +8,8 @@ use intern::Interned;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
 use span::{Span, SyntaxContextId};
-use syntax::{ast, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
-use triomphe::Arc;
+use syntax::{ast, format_smolstr, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
+use triomphe::ThinArc;
 
 use crate::{
     db::ExpandDatabase,
@@ -22,8 +22,7 @@ use crate::{
 /// Syntactical attributes, without filtering of `cfg_attr`s.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct RawAttrs {
-    // FIXME: Make this a ThinArc
-    entries: Option<Arc<[Attr]>>,
+    entries: Option<ThinArc<(), Attr>>,
 }
 
 impl ops::Deref for RawAttrs {
@@ -31,7 +30,7 @@ impl ops::Deref for RawAttrs {
 
     fn deref(&self) -> &[Attr] {
         match &self.entries {
-            Some(it) => it,
+            Some(it) => &it.slice,
             None => &[],
         }
     }
@@ -45,20 +44,34 @@ impl RawAttrs {
         owner: &dyn ast::HasAttrs,
         span_map: SpanMapRef<'_>,
     ) -> Self {
-        let entries = collect_attrs(owner).filter_map(|(id, attr)| match attr {
-            Either::Left(attr) => {
-                attr.meta().and_then(|meta| Attr::from_src(db, meta, span_map, id))
-            }
-            Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
-                id,
-                input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
-                path: Interned::new(ModPath::from(crate::name!(doc))),
-                ctxt: span_map.span_for_range(comment.syntax().text_range()).ctx,
-            }),
-        });
-        let entries: Arc<[Attr]> = Arc::from_iter(entries);
+        let entries: Vec<_> = collect_attrs(owner)
+            .filter_map(|(id, attr)| match attr {
+                Either::Left(attr) => {
+                    attr.meta().and_then(|meta| Attr::from_src(db, meta, span_map, id))
+                }
+                Either::Right(comment) => comment.doc_comment().map(|doc| {
+                    let span = span_map.span_for_range(comment.syntax().text_range());
+                    Attr {
+                        id,
+                        input: Some(Interned::new(AttrInput::Literal(tt::Literal {
+                            // FIXME: Escape quotes from comment content
+                            text: SmolStr::new(format_smolstr!("\"{doc}\"",)),
+                            span,
+                        }))),
+                        path: Interned::new(ModPath::from(crate::name!(doc))),
+                        ctxt: span.ctx,
+                    }
+                }),
+            })
+            .collect();
 
-        Self { entries: if entries.is_empty() { None } else { Some(entries) } }
+        let entries = if entries.is_empty() {
+            None
+        } else {
+            Some(ThinArc::from_header_and_iter((), entries.into_iter()))
+        };
+
+        RawAttrs { entries }
     }
 
     pub fn from_attrs_owner(
@@ -75,16 +88,20 @@ impl RawAttrs {
             (None, entries @ Some(_)) => Self { entries },
             (Some(entries), None) => Self { entries: Some(entries.clone()) },
             (Some(a), Some(b)) => {
-                let last_ast_index = a.last().map_or(0, |it| it.id.ast_index() + 1) as u32;
-                Self {
-                    entries: Some(Arc::from_iter(a.iter().cloned().chain(b.iter().map(|it| {
+                let last_ast_index = a.slice.last().map_or(0, |it| it.id.ast_index() + 1) as u32;
+                let items = a
+                    .slice
+                    .iter()
+                    .cloned()
+                    .chain(b.slice.iter().map(|it| {
                         let mut it = it.clone();
                         it.id.id = (it.id.ast_index() as u32 + last_ast_index)
                             | (it.id.cfg_attr_index().unwrap_or(0) as u32)
                                 << AttrId::AST_INDEX_BITS;
                         it
-                    })))),
-                }
+                    }))
+                    .collect::<Vec<_>>();
+                Self { entries: Some(ThinArc::from_header_and_iter((), items.into_iter())) }
             }
         }
     }
@@ -100,41 +117,47 @@ impl RawAttrs {
         }
 
         let crate_graph = db.crate_graph();
-        let new_attrs = Arc::from_iter(self.iter().flat_map(|attr| -> SmallVec<[_; 1]> {
-            let is_cfg_attr =
-                attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]);
-            if !is_cfg_attr {
-                return smallvec![attr.clone()];
-            }
+        let new_attrs =
+            self.iter()
+                .flat_map(|attr| -> SmallVec<[_; 1]> {
+                    let is_cfg_attr =
+                        attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]);
+                    if !is_cfg_attr {
+                        return smallvec![attr.clone()];
+                    }
 
-            let subtree = match attr.token_tree_value() {
-                Some(it) => it,
-                _ => return smallvec![attr.clone()],
-            };
+                    let subtree = match attr.token_tree_value() {
+                        Some(it) => it,
+                        _ => return smallvec![attr.clone()],
+                    };
 
-            let (cfg, parts) = match parse_cfg_attr_input(subtree) {
-                Some(it) => it,
-                None => return smallvec![attr.clone()],
-            };
-            let index = attr.id;
-            let attrs = parts
-                .enumerate()
-                .take(1 << AttrId::CFG_ATTR_BITS)
-                .filter_map(|(idx, attr)| Attr::from_tt(db, attr, index.with_cfg_attr(idx)));
+                    let (cfg, parts) = match parse_cfg_attr_input(subtree) {
+                        Some(it) => it,
+                        None => return smallvec![attr.clone()],
+                    };
+                    let index = attr.id;
+                    let attrs = parts.enumerate().take(1 << AttrId::CFG_ATTR_BITS).filter_map(
+                        |(idx, attr)| Attr::from_tt(db, attr, index.with_cfg_attr(idx)),
+                    );
 
-            let cfg_options = &crate_graph[krate].cfg_options;
-            let cfg = Subtree { delimiter: subtree.delimiter, token_trees: Box::from(cfg) };
-            let cfg = CfgExpr::parse(&cfg);
-            if cfg_options.check(&cfg) == Some(false) {
-                smallvec![]
-            } else {
-                cov_mark::hit!(cfg_attr_active);
+                    let cfg_options = &crate_graph[krate].cfg_options;
+                    let cfg = Subtree { delimiter: subtree.delimiter, token_trees: Box::from(cfg) };
+                    let cfg = CfgExpr::parse(&cfg);
+                    if cfg_options.check(&cfg) == Some(false) {
+                        smallvec![]
+                    } else {
+                        cov_mark::hit!(cfg_attr_active);
 
-                attrs.collect()
-            }
-        }));
-
-        RawAttrs { entries: Some(new_attrs) }
+                        attrs.collect()
+                    }
+                })
+                .collect::<Vec<_>>();
+        let entries = if new_attrs.is_empty() {
+            None
+        } else {
+            Some(ThinArc::from_header_and_iter((), new_attrs.into_iter()))
+        };
+        RawAttrs { entries }
     }
 }
 
@@ -179,8 +202,7 @@ pub struct Attr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AttrInput {
     /// `#[attr = "string"]`
-    // FIXME: This is losing span
-    Literal(SmolStr),
+    Literal(tt::Literal),
     /// `#[attr(subtree)]`
     TokenTree(Box<tt::Subtree>),
 }
@@ -188,7 +210,7 @@ pub enum AttrInput {
 impl fmt::Display for AttrInput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AttrInput::Literal(lit) => write!(f, " = \"{}\"", lit.escape_debug()),
+            AttrInput::Literal(lit) => write!(f, " = {lit}"),
             AttrInput::TokenTree(tt) => tt.fmt(f),
         }
     }
@@ -208,11 +230,10 @@ impl Attr {
         })?);
         let span = span_map.span_for_range(range);
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
-            let value = match lit.kind() {
-                ast::LiteralKind::String(string) => string.value()?.into(),
-                _ => lit.syntax().first_token()?.text().trim_matches('"').into(),
-            };
-            Some(Interned::new(AttrInput::Literal(value)))
+            Some(Interned::new(AttrInput::Literal(tt::Literal {
+                text: lit.token().text().into(),
+                span,
+            })))
         } else if let Some(tt) = ast.token_tree() {
             let tree = syntax_node_to_token_tree(tt.syntax(), span_map, span);
             Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
@@ -245,9 +266,8 @@ impl Attr {
             }
             Some(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '=', .. }))) => {
                 let input = match input.get(1) {
-                    Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal { text, .. }))) => {
-                        //FIXME the trimming here isn't quite right, raw strings are not handled
-                        Some(Interned::new(AttrInput::Literal(text.trim_matches('"').into())))
+                    Some(tt::TokenTree::Leaf(tt::Leaf::Literal(lit))) => {
+                        Some(Interned::new(AttrInput::Literal(lit.clone())))
                     }
                     _ => None,
                 };
@@ -265,9 +285,14 @@ impl Attr {
 
 impl Attr {
     /// #[path = "string"]
-    pub fn string_value(&self) -> Option<&SmolStr> {
+    pub fn string_value(&self) -> Option<&str> {
         match self.input.as_deref()? {
-            AttrInput::Literal(it) => Some(it),
+            AttrInput::Literal(it) => match it.text.strip_prefix('r') {
+                Some(it) => it.trim_matches('#'),
+                None => it.text.as_str(),
+            }
+            .strip_prefix('"')?
+            .strip_suffix('"'),
             _ => None,
         }
     }

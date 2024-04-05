@@ -58,7 +58,7 @@ pub(super) fn check(
                 clippy_lints,
                 "no need to put clippy lints behind a `clippy` cfg",
                 None,
-                &format!(
+                format!(
                     "write instead: `#{}[{}({})]`",
                     if attr.style == AttrStyle::Inner { "!" } else { "" },
                     ident.name,

@@ -7,7 +7,7 @@ show-text: true
 
 define-function: (
     "check-run-button",
-    (theme, color, background, hover_color, hover_background),
+    [theme, color, background, hover_color, hover_background],
     block {
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:

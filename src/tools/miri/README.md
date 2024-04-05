@@ -324,7 +324,7 @@ environment variable. We first document the most relevant and most commonly used
   number of available CPUs is `1`. Note that this flag does not affect how miri handles threads in
   any way.
 * `-Zmiri-permissive-provenance` disables the warning for integer-to-pointer casts and
-  [`ptr::from_exposed_addr`](https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html).
+  [`ptr::with_exposed_provenance`](https://doc.rust-lang.org/nightly/std/ptr/fn.with_exposed_provenance.html).
   This will necessarily miss some bugs as those operations are not efficiently and accurately
   implementable in a sanitizer, but it will only miss bugs that concern memory/pointers which is
   subject to these operations.

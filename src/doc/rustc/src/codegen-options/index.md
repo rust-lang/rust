@@ -553,9 +553,17 @@ Supported values for this option are:
   of MSVC).
 - `debuginfo` - debuginfo sections and debuginfo symbols from the symbol table
   section are stripped at link time and are not copied to the produced binary
-  or separate files.
-- `symbols` - same as `debuginfo`, but the rest of the symbol table section is
-  stripped as well if the linker supports it.
+  or separate files. This should leave backtraces mostly-intact but may make
+  using a debugger like gdb or lldb ineffectual.
+- `symbols` - same as `debuginfo`, but the rest of the symbol table section is stripped as well,
+  depending on platform support. On platforms which depend on this symbol table for backtraces,
+  profiling, and similar, this can affect them so negatively as to make the trace incomprehensible.
+  Programs which may be combined with others, such as CLI pipelines and developer tooling,
+  or even anything which wants crash-reporting, should usually avoid `-Cstrip=symbols`.
+
+Note that, at any level, removing debuginfo only necessarily impacts "friendly" introspection.
+`-Cstrip` cannot be relied on as a meaningful security or obfuscation measure, as disassemblers
+and decompilers can extract considerable information even in the absence of symbols.
 
 ## symbol-mangling-version
 

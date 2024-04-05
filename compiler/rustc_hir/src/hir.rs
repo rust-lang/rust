@@ -846,9 +846,8 @@ pub struct OwnerNodes<'tcx> {
 
 impl<'tcx> OwnerNodes<'tcx> {
     pub fn node(&self) -> OwnerNode<'tcx> {
-        use rustc_index::Idx;
         // Indexing must ensure it is an OwnerNode.
-        self.nodes[ItemLocalId::new(0)].node.as_owner().unwrap()
+        self.nodes[ItemLocalId::ZERO].node.as_owner().unwrap()
     }
 }
 
@@ -856,7 +855,7 @@ impl fmt::Debug for OwnerNodes<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OwnerNodes")
             // Do not print all the pointers to all the nodes, as it would be unreadable.
-            .field("node", &self.nodes[ItemLocalId::from_u32(0)])
+            .field("node", &self.nodes[ItemLocalId::ZERO])
             .field(
                 "parents",
                 &self
@@ -3762,7 +3761,7 @@ impl<'hir> Node<'hir> {
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
     // tidy-alphabetical-start

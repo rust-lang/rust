@@ -12,7 +12,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BindingAnnotation, ByRef, RangeEnd};
+use rustc_hir::{BindingAnnotation, ByRef, MatchSource, RangeEnd};
 use rustc_index::newtype_index;
 use rustc_index::IndexVec;
 use rustc_middle::middle::region;
@@ -358,6 +358,7 @@ pub enum ExprKind<'tcx> {
         scrutinee: ExprId,
         scrutinee_hir_id: hir::HirId,
         arms: Box<[ArmId]>,
+        match_source: MatchSource,
     },
     /// A block.
     Block {
@@ -1120,7 +1121,8 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                             printed += 1;
                         }
 
-                        if printed < variant.fields.len() {
+                        let is_union = self.ty.ty_adt_def().is_some_and(|adt| adt.is_union());
+                        if printed < variant.fields.len() && (!is_union || printed == 0) {
                             write!(f, "{}..", start_or_comma())?;
                         }
 
@@ -1204,7 +1206,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
     // tidy-alphabetical-start

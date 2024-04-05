@@ -4,7 +4,7 @@ show-text: true
 
 define-function: (
     "check-colors",
-    (theme, background, color, border),
+    [theme, background, color, border],
     block {
         // Setting the theme.
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}

@@ -409,7 +409,7 @@ impl<'tcx> Rvalue<'tcx> {
             // Pointer to int casts may be side-effects due to exposing the provenance.
             // While the model is undecided, we should be conservative. See
             // <https://www.ralfj.de/blog/2022/04/11/provenance-exposed.html>
-            Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => false,
+            Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => false,
 
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(_)
@@ -426,7 +426,7 @@ impl<'tcx> Rvalue<'tcx> {
                 | CastKind::FnPtrToPtr
                 | CastKind::PtrToPtr
                 | CastKind::PointerCoercion(_)
-                | CastKind::PointerFromExposedAddress
+                | CastKind::PointerWithExposedProvenance
                 | CastKind::DynStar
                 | CastKind::Transmute,
                 _,

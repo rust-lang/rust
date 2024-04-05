@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
             cx,
             RANGE_ZIP_WITH_LEN,
             expr.span,
-            &format!(
+            format!(
                 "it is more idiomatic to use `{}.iter().enumerate()`",
                 snippet(cx, recv.span, "_")
             ),

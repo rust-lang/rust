@@ -5,8 +5,6 @@
       let mut _0: !;
       let _1: ();
       let mut _2: !;
-      scope 1 {
-      }
   
       bb0: {
           StorageLive(_1);

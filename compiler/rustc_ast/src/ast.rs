@@ -1276,7 +1276,8 @@ impl Expr {
             ExprKind::While(..) => ExprPrecedence::While,
             ExprKind::ForLoop { .. } => ExprPrecedence::ForLoop,
             ExprKind::Loop(..) => ExprPrecedence::Loop,
-            ExprKind::Match(..) => ExprPrecedence::Match,
+            ExprKind::Match(_, _, MatchKind::Prefix) => ExprPrecedence::Match,
+            ExprKind::Match(_, _, MatchKind::Postfix) => ExprPrecedence::PostfixMatch,
             ExprKind::Closure(..) => ExprPrecedence::Closure,
             ExprKind::Block(..) => ExprPrecedence::Block,
             ExprKind::TryBlock(..) => ExprPrecedence::TryBlock,
@@ -2483,6 +2484,14 @@ pub enum CoroutineKind {
 }
 
 impl CoroutineKind {
+    pub fn span(self) -> Span {
+        match self {
+            CoroutineKind::Async { span, .. } => span,
+            CoroutineKind::Gen { span, .. } => span,
+            CoroutineKind::AsyncGen { span, .. } => span,
+        }
+    }
+
     pub fn is_async(self) -> bool {
         matches!(self, CoroutineKind::Async { .. })
     }
@@ -3341,7 +3350,7 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 pub type ForeignItem = Item<ForeignItemKind>;
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;

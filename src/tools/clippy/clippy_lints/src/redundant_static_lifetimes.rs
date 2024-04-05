@@ -48,7 +48,7 @@ impl_lint_pass!(RedundantStaticLifetimes => [REDUNDANT_STATIC_LIFETIMES]);
 
 impl RedundantStaticLifetimes {
     // Recursively visit types
-    fn visit_type(ty: &Ty, cx: &EarlyContext<'_>, reason: &str) {
+    fn visit_type(ty: &Ty, cx: &EarlyContext<'_>, reason: &'static str) {
         match ty.kind {
             // Be careful of nested structures (arrays and tuples)
             TyKind::Array(ref ty, _) | TyKind::Slice(ref ty) => {

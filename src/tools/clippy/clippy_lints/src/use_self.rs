@@ -207,7 +207,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, hir_ty: &Ty<'tcx>) {
         if !hir_ty.span.from_expansion()
             && self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS)
             && let Some(&StackItem::Check {
@@ -286,7 +286,7 @@ impl<'tcx> Visitor<'tcx> for SkipTyCollector {
 
         walk_inf(self, inf);
     }
-    fn visit_ty(&mut self, hir_ty: &hir::Ty<'_>) {
+    fn visit_ty(&mut self, hir_ty: &Ty<'_>) {
         self.types_to_skip.push(hir_ty.hir_id);
 
         walk_ty(self, hir_ty);

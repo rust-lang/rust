@@ -15,15 +15,13 @@ fn test() -> Option<Box<u32>> {
     let mut _11: std::option::Option<std::convert::Infallible>;
     let _12: u32;
     scope 1 {
-    }
-    scope 2 {
         debug residual => _9;
-        scope 3 {
+        scope 2 {
         }
     }
-    scope 4 {
+    scope 3 {
         debug val => _12;
-        scope 5 {
+        scope 4 {
         }
     }
 

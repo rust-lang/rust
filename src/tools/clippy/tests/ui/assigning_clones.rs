@@ -153,6 +153,19 @@ fn clone_inside_macro() {
     clone_inside!(a, b);
 }
 
+// Make sure that we don't suggest the lint when we call clone inside a Clone impl
+// https://github.com/rust-lang/rust-clippy/issues/12600
+pub struct AvoidRecursiveCloneFrom;
+
+impl Clone for AvoidRecursiveCloneFrom {
+    fn clone(&self) -> Self {
+        Self
+    }
+    fn clone_from(&mut self, source: &Self) {
+        *self = source.clone();
+    }
+}
+
 // ToOwned
 fn owned_method_mut_ref(mut_string: &mut String, ref_str: &str) {
     *mut_string = ref_str.to_owned();

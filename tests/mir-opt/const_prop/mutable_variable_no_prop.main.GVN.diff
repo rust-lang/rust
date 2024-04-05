@@ -11,8 +11,6 @@
           debug x => _1;
           let _5: u32;
           scope 2 {
-          }
-          scope 3 {
               debug y => _5;
           }
       }

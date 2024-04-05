@@ -21,8 +21,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, map_
             cx,
             MAP_FLATTEN,
             expr.span.with_lo(map_span.lo()),
-            &format!("called `map(..).flatten()` on `{caller_ty_name}`"),
-            &format!("try replacing `map` with `{method_to_use}` and remove the `.flatten()`"),
+            format!("called `map(..).flatten()` on `{caller_ty_name}`"),
+            format!("try replacing `map` with `{method_to_use}` and remove the `.flatten()`"),
             format!("{method_to_use}({closure_snippet})"),
             applicability,
         );

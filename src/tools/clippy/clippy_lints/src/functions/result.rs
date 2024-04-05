@@ -2,7 +2,7 @@ use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Adt, Ty};
+use rustc_middle::ty::{Adt, Ty};
 use rustc_span::{sym, Span};
 
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
@@ -25,7 +25,7 @@ fn result_err_ty<'tcx>(
             .tcx
             .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(id).instantiate_identity().output())
         && is_type_diagnostic_item(cx, ty, sym::Result)
-        && let ty::Adt(_, args) = ty.kind()
+        && let Adt(_, args) = ty.kind()
     {
         let err_ty = args.type_at(1);
         Some((hir_ty, err_ty))

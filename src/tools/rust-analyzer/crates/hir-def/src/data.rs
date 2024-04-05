@@ -453,8 +453,8 @@ impl ProcMacroData {
             (
                 def.name,
                 match def.kind {
-                    ProcMacroKind::CustomDerive { helpers } => Some(helpers),
-                    ProcMacroKind::FnLike | ProcMacroKind::Attr => None,
+                    ProcMacroKind::Derive { helpers } => Some(helpers),
+                    ProcMacroKind::Bang | ProcMacroKind::Attr => None,
                 },
             )
         } else {
@@ -484,10 +484,11 @@ impl ExternCrateDeclData {
         let extern_crate = &item_tree[loc.id.value];
 
         let name = extern_crate.name.clone();
+        let krate = loc.container.krate();
         let crate_id = if name == hir_expand::name![self] {
-            Some(loc.container.krate())
+            Some(krate)
         } else {
-            db.crate_def_map(loc.container.krate())
+            db.crate_def_map(krate)
                 .extern_prelude()
                 .find(|&(prelude_name, ..)| *prelude_name == name)
                 .map(|(_, (root, _))| root.krate())

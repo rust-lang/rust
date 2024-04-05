@@ -31,11 +31,22 @@ fn check_duplicated_attr(
     attr_paths: &mut FxHashMap<String, Span>,
     parent: &mut Vec<String>,
 ) {
+    if attr.span.from_expansion() {
+        return;
+    }
     let Some(ident) = attr.ident() else { return };
     let name = ident.name;
     if name == sym::doc || name == sym::cfg_attr {
         // FIXME: Would be nice to handle `cfg_attr` as well. Only problem is to check that cfg
         // conditions are the same.
+        return;
+    }
+    if let Some(direct_parent) = parent.last()
+        && ["cfg", "cfg_attr"].contains(&direct_parent.as_str())
+        && [sym::all, sym::not, sym::any].contains(&name)
+    {
+        // FIXME: We don't correctly check `cfg`s for now, so if it's more complex than just a one
+        // level `cfg`, we leave.
         return;
     }
     if let Some(value) = attr.value_str() {

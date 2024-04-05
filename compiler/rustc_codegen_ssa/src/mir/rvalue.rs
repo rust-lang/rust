@@ -3,10 +3,11 @@ use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
 use crate::base;
-use crate::common::{self, IntPredicate};
+use crate::common::IntPredicate;
 use crate::traits::*;
 use crate::MemFlags;
 
+use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::Operand;
 use rustc_middle::ty::cast::{CastTy, IntTy};
@@ -404,7 +405,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cast = bx.cx().layout_of(self.monomorphize(mir_cast_ty));
 
                 let val = match *kind {
-                    mir::CastKind::PointerExposeAddress => {
+                    mir::CastKind::PointerExposeProvenance => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let llptr = operand.immediate();
                         let llcast_ty = bx.cx().immediate_backend_type(cast);
@@ -508,7 +509,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // Since int2ptr can have arbitrary integer types as input (so we have to do
                     // sign extension and all that), it is currently best handled in the same code
                     // path as the other integer-to-X casts.
-                    | mir::CastKind::PointerFromExposedAddress => {
+                    | mir::CastKind::PointerWithExposedProvenance => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);
                         if operand.layout.abi.is_uninhabited() {
@@ -860,14 +861,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.inbounds_gep(llty, lhs, &[rhs])
                 }
             }
-            mir::BinOp::Shl => common::build_masked_lshift(bx, lhs, rhs),
-            mir::BinOp::ShlUnchecked => {
-                let rhs = base::cast_shift_expr_rhs(bx, lhs, rhs);
+            mir::BinOp::Shl | mir::BinOp::ShlUnchecked => {
+                let rhs = base::build_shift_expr_rhs(bx, lhs, rhs, op == mir::BinOp::ShlUnchecked);
                 bx.shl(lhs, rhs)
             }
-            mir::BinOp::Shr => common::build_masked_rshift(bx, input_ty, lhs, rhs),
-            mir::BinOp::ShrUnchecked => {
-                let rhs = base::cast_shift_expr_rhs(bx, lhs, rhs);
+            mir::BinOp::Shr | mir::BinOp::ShrUnchecked => {
+                let rhs = base::build_shift_expr_rhs(bx, lhs, rhs, op == mir::BinOp::ShrUnchecked);
                 if is_signed { bx.ashr(lhs, rhs) } else { bx.lshr(lhs, rhs) }
             }
             mir::BinOp::Ne
@@ -880,6 +879,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.fcmp(base::bin_op_to_fcmp_predicate(op.to_hir_binop()), lhs, rhs)
                 } else {
                     bx.icmp(base::bin_op_to_icmp_predicate(op.to_hir_binop(), is_signed), lhs, rhs)
+                }
+            }
+            mir::BinOp::Cmp => {
+                use std::cmp::Ordering;
+                debug_assert!(!is_float);
+                let pred = |op| base::bin_op_to_icmp_predicate(op, is_signed);
+                if bx.cx().tcx().sess.opts.optimize == OptLevel::No {
+                    // FIXME: This actually generates tighter assembly, and is a classic trick
+                    // <https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign>
+                    // However, as of 2023-11 it optimizes worse in things like derived
+                    // `PartialOrd`, so only use it in debug for now. Once LLVM can handle it
+                    // better (see <https://github.com/llvm/llvm-project/issues/73417>), it'll
+                    // be worth trying it in optimized builds as well.
+                    let is_gt = bx.icmp(pred(hir::BinOpKind::Gt), lhs, rhs);
+                    let gtext = bx.zext(is_gt, bx.type_i8());
+                    let is_lt = bx.icmp(pred(hir::BinOpKind::Lt), lhs, rhs);
+                    let ltext = bx.zext(is_lt, bx.type_i8());
+                    bx.unchecked_ssub(gtext, ltext)
+                } else {
+                    // These operations are those expected by `tests/codegen/integer-cmp.rs`,
+                    // from <https://github.com/rust-lang/rust/pull/63767>.
+                    let is_lt = bx.icmp(pred(hir::BinOpKind::Lt), lhs, rhs);
+                    let is_ne = bx.icmp(pred(hir::BinOpKind::Ne), lhs, rhs);
+                    let ge = bx.select(
+                        is_ne,
+                        bx.cx().const_i8(Ordering::Greater as i8),
+                        bx.cx().const_i8(Ordering::Equal as i8),
+                    );
+                    bx.select(is_lt, bx.cx().const_i8(Ordering::Less as i8), ge)
                 }
             }
         }

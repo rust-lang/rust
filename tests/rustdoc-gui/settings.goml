@@ -304,7 +304,7 @@ wait-for: "#settings"
 assert-css: (".setting-radio", {"cursor": "pointer"})
 
 assert-attribute-false: ("#settings", {"class": "popover"}, CONTAINS)
-compare-elements-position: (".sub form", "#settings", ("x"))
+compare-elements-position: (".sub form", "#settings", ["x"])
 
 // Check that setting-line has the same margin in this mode as in the popover.
 assert-css: (".setting-line", {"margin": |setting_line_margin|})

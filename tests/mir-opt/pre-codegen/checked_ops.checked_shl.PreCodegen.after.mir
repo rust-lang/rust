@@ -21,13 +21,9 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
                 debug self => _1;
                 debug rhs => _2;
                 let mut _3: u32;
-                scope 5 {
-                    scope 6 (inlined core::num::<impl u32>::unchecked_shl) {
-                        debug self => _1;
-                        debug rhs => _3;
-                        scope 7 {
-                        }
-                    }
+                scope 5 (inlined core::num::<impl u32>::unchecked_shl) {
+                    debug self => _1;
+                    debug rhs => _3;
                 }
             }
         }

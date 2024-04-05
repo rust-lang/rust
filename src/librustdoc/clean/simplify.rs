@@ -12,6 +12,7 @@
 //! bounds by special casing scenarios such as these. Fun!
 
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
 use thin_vec::ThinVec;
@@ -21,7 +22,7 @@ use crate::clean::GenericArgs as PP;
 use crate::clean::WherePredicate as WP;
 use crate::core::DocContext;
 
-pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> ThinVec<WP> {
+pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVec<WP> {
     // First, partition the where clause into its separate components.
     //
     // We use `FxIndexMap` so that the insertion order is preserved to prevent messing up to
@@ -126,6 +127,48 @@ fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId)
             }
         })
         .any(|did| trait_is_same_or_supertrait(cx, did, trait_))
+}
+
+pub(crate) fn sized_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Generics) {
+    let mut sized_params = UnordSet::new();
+
+    // In the surface language, all type parameters except `Self` have an
+    // implicit `Sized` bound unless removed with `?Sized`.
+    // However, in the list of where-predicates below, `Sized` appears like a
+    // normal bound: It's either present (the type is sized) or
+    // absent (the type might be unsized) but never *maybe* (i.e. `?Sized`).
+    //
+    // This is unsuitable for rendering.
+    // Thus, as a first step remove all `Sized` bounds that should be implicit.
+    //
+    // Note that associated types also have an implicit `Sized` bound but we
+    // don't actually know the set of associated types right here so that
+    // should be handled when cleaning associated types.
+    generics.where_predicates.retain(|pred| {
+        if let WP::BoundPredicate { ty: clean::Generic(param), bounds, .. } = pred
+            && *param != rustc_span::symbol::kw::SelfUpper
+            && bounds.iter().any(|b| b.is_sized_bound(cx))
+        {
+            sized_params.insert(*param);
+            false
+        } else {
+            true
+        }
+    });
+
+    // As a final step, go through the type parameters again and insert a
+    // `?Sized` bound for each one we didn't find to be `Sized`.
+    for param in &generics.params {
+        if let clean::GenericParamDefKind::Type { .. } = param.kind
+            && !sized_params.contains(&param.name)
+        {
+            generics.where_predicates.push(WP::BoundPredicate {
+                ty: clean::Type::Generic(param.name),
+                bounds: vec![clean::GenericBound::maybe_sized(cx)],
+                bound_params: Vec::new(),
+            })
+        }
+    }
 }
 
 /// Move bounds that are (likely) directly attached to generic parameters from the where-clause to

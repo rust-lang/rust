@@ -68,7 +68,7 @@ ast_passes_extern_block_suggestion = if you meant to declare an externally defin
 
 ast_passes_extern_fn_qualifiers = functions in `extern` blocks cannot have qualifiers
     .label = in this `extern` block
-    .suggestion = remove the qualifiers
+    .suggestion = remove this qualifier
 
 ast_passes_extern_item_ascii = items in `extern` blocks cannot use non-ascii identifiers
     .label = in this `extern` block

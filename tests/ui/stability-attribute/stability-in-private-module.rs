@@ -1,4 +1,4 @@
 fn main() {
-    let _ = std::thread::thread_info::current_thread();
-    //~^ERROR module `thread_info` is private
+    let _ = std::sys::os::errno();
+    //~^ERROR module `sys` is private
 }

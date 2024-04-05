@@ -37,7 +37,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
                     cx,
                     FOR_KV_MAP,
                     arg_span,
-                    &format!("you seem to want to iterate on a map's {kind}s"),
+                    format!("you seem to want to iterate on a map's {kind}s"),
                     |diag| {
                         let map = sugg::Sugg::hir(cx, arg, "map");
                         multispan_sugg(

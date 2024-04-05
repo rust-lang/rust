@@ -18,106 +18,38 @@ LL | #![allow(dead_code)]
    = help: to override `-D warnings` add `#[allow(clippy::duplicated_attributes)]`
 
 error: duplicated attribute
-  --> tests/ui/duplicated_attributes.rs:5:12
-   |
-LL | #![cfg(any(unix, windows))]
-   |            ^^^^
-   |
-note: first defined here
-  --> tests/ui/duplicated_attributes.rs:2:12
-   |
-LL | #![cfg(any(unix, windows))]
-   |            ^^^^
-help: remove this attribute
-  --> tests/ui/duplicated_attributes.rs:5:12
-   |
-LL | #![cfg(any(unix, windows))]
-   |            ^^^^
-
-error: duplicated attribute
-  --> tests/ui/duplicated_attributes.rs:5:18
-   |
-LL | #![cfg(any(unix, windows))]
-   |                  ^^^^^^^
-   |
-note: first defined here
-  --> tests/ui/duplicated_attributes.rs:2:18
-   |
-LL | #![cfg(any(unix, windows))]
-   |                  ^^^^^^^
-help: remove this attribute
-  --> tests/ui/duplicated_attributes.rs:5:18
-   |
-LL | #![cfg(any(unix, windows))]
-   |                  ^^^^^^^
-
-error: duplicated attribute
-  --> tests/ui/duplicated_attributes.rs:11:9
+  --> tests/ui/duplicated_attributes.rs:9:9
    |
 LL | #[allow(dead_code)]
    |         ^^^^^^^^^
    |
 note: first defined here
-  --> tests/ui/duplicated_attributes.rs:10:9
+  --> tests/ui/duplicated_attributes.rs:8:9
    |
 LL | #[allow(dead_code)]
    |         ^^^^^^^^^
 help: remove this attribute
-  --> tests/ui/duplicated_attributes.rs:11:9
+  --> tests/ui/duplicated_attributes.rs:9:9
    |
 LL | #[allow(dead_code)]
    |         ^^^^^^^^^
 
 error: duplicated attribute
-  --> tests/ui/duplicated_attributes.rs:12:11
+  --> tests/ui/duplicated_attributes.rs:15:7
    |
-LL | #[cfg(any(unix, windows, target_os = "linux"))]
-   |           ^^^^
-   |
-note: first defined here
-  --> tests/ui/duplicated_attributes.rs:9:11
-   |
-LL | #[cfg(any(unix, windows, target_os = "linux"))]
-   |           ^^^^
-help: remove this attribute
-  --> tests/ui/duplicated_attributes.rs:12:11
-   |
-LL | #[cfg(any(unix, windows, target_os = "linux"))]
-   |           ^^^^
-
-error: duplicated attribute
-  --> tests/ui/duplicated_attributes.rs:12:17
-   |
-LL | #[cfg(any(unix, windows, target_os = "linux"))]
-   |                 ^^^^^^^
+LL | #[cfg(unix)]
+   |       ^^^^
    |
 note: first defined here
-  --> tests/ui/duplicated_attributes.rs:9:17
+  --> tests/ui/duplicated_attributes.rs:13:7
    |
-LL | #[cfg(any(unix, windows, target_os = "linux"))]
-   |                 ^^^^^^^
+LL | #[cfg(unix)]
+   |       ^^^^
 help: remove this attribute
-  --> tests/ui/duplicated_attributes.rs:12:17
+  --> tests/ui/duplicated_attributes.rs:15:7
    |
-LL | #[cfg(any(unix, windows, target_os = "linux"))]
-   |                 ^^^^^^^
+LL | #[cfg(unix)]
+   |       ^^^^
 
-error: duplicated attribute
-  --> tests/ui/duplicated_attributes.rs:12:26
-   |
-LL | #[cfg(any(unix, windows, target_os = "linux"))]
-   |                          ^^^^^^^^^^^^^^^^^^^
-   |
-note: first defined here
-  --> tests/ui/duplicated_attributes.rs:9:26
-   |
-LL | #[cfg(any(unix, windows, target_os = "linux"))]
-   |                          ^^^^^^^^^^^^^^^^^^^
-help: remove this attribute
-  --> tests/ui/duplicated_attributes.rs:12:26
-   |
-LL | #[cfg(any(unix, windows, target_os = "linux"))]
-   |                          ^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 7 previous errors
+error: aborting due to 3 previous errors
 

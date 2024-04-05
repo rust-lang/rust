@@ -23,7 +23,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 TRANSMUTE_INT_TO_CHAR,
                 e.span,
-                &format!("transmute from a `{from_ty}` to a `char`"),
+                format!("transmute from a `{from_ty}` to a `char`"),
                 |diag| {
                     let Some(top_crate) = std_or_core(cx) else { return };
                     let arg = sugg::Sugg::hir(cx, arg, "..");

@@ -11,6 +11,7 @@ pub use self::RealPredicate::*;
 use libc::c_uint;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_llvm::RustString;
+use rustc_target::abi::Align;
 use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::str::FromStr;
@@ -229,9 +230,9 @@ pub fn set_visibility(llglobal: &Value, visibility: Visibility) {
     }
 }
 
-pub fn set_alignment(llglobal: &Value, bytes: usize) {
+pub fn set_alignment(llglobal: &Value, align: Align) {
     unsafe {
-        ffi::LLVMSetAlignment(llglobal, bytes as c_uint);
+        ffi::LLVMSetAlignment(llglobal, align.bytes() as c_uint);
     }
 }
 

@@ -2,7 +2,7 @@
 
 define-function: (
     "check-colors",
-    (theme, main_color, title_color, main_heading_color, main_heading_type_color, src_link_color, sidebar_link_color),
+    [theme, main_color, title_color, main_heading_color, main_heading_type_color, src_link_color, sidebar_link_color],
     block {
         go-to: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
         // This is needed to ensure that the text color is computed.

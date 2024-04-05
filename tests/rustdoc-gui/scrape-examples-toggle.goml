@@ -5,7 +5,7 @@ go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
 show-text: true
 define-function: (
     "check-color",
-    (theme, toggle_line_color, toggle_line_hover_color),
+    [theme, toggle_line_color, toggle_line_hover_color],
     block {
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:

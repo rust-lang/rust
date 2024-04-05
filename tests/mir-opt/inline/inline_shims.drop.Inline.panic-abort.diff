@@ -8,18 +8,14 @@
       let _3: ();
       let mut _4: *mut std::vec::Vec<A>;
       let mut _5: *mut std::option::Option<B>;
-      scope 1 {
-+         scope 3 (inlined std::ptr::drop_in_place::<Vec<A>> - shim(Some(Vec<A>))) {
-+             let mut _6: &mut std::vec::Vec<A>;
-+             let mut _7: ();
-+         }
-      }
-      scope 2 {
-+         scope 4 (inlined std::ptr::drop_in_place::<Option<B>> - shim(Some(Option<B>))) {
-+             let mut _8: isize;
-+             let mut _9: isize;
-+         }
-      }
++     scope 1 (inlined std::ptr::drop_in_place::<Vec<A>> - shim(Some(Vec<A>))) {
++         let mut _6: &mut std::vec::Vec<A>;
++         let mut _7: ();
++     }
++     scope 2 (inlined std::ptr::drop_in_place::<Option<B>> - shim(Some(Option<B>))) {
++         let mut _8: isize;
++         let mut _9: isize;
++     }
   
       bb0: {
           StorageLive(_3);

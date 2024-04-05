@@ -127,8 +127,8 @@ impl ProjectManifest {
                 .filter_map(Result::ok)
                 .map(|it| it.path().join("Cargo.toml"))
                 .filter(|it| it.exists())
-                .map(AbsPathBuf::assert)
-                .filter_map(|it| it.try_into().ok())
+                .map(AbsPathBuf::try_from)
+                .filter_map(|it| it.ok()?.try_into().ok())
                 .collect()
         }
     }

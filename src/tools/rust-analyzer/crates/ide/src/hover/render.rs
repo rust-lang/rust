@@ -410,6 +410,9 @@ pub(super) fn definition(
         Definition::Trait(trait_) => {
             trait_.display_limited(db, config.max_trait_assoc_items_count).to_string()
         }
+        Definition::Adt(Adt::Struct(struct_)) => {
+            struct_.display_limited(db, config.max_struct_field_count).to_string()
+        }
         _ => def.label(db),
     };
     let docs = def.docs(db, famous_defs);

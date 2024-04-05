@@ -31,7 +31,6 @@ anstream = "0.6.0"
 
 [dev-dependencies]
 ui_test = "0.22.2"
-tester = "0.9"
 regex = "1.5.5"
 toml = "0.7.3"
 walkdir = "2.3"

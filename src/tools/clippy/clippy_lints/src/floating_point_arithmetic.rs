@@ -552,9 +552,9 @@ fn is_testing_negative(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -
 /// Returns true iff expr is some zero literal
 fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match constant_simple(cx, cx.typeck_results(), expr) {
-        Some(Constant::Int(i)) => i == 0,
-        Some(Constant::F32(f)) => f == 0.0,
-        Some(Constant::F64(f)) => f == 0.0,
+        Some(Int(i)) => i == 0,
+        Some(F32(f)) => f == 0.0,
+        Some(F64(f)) => f == 0.0,
         _ => false,
     }
 }

@@ -50,3 +50,10 @@ macro_rules! macro_with_panic {
         panic!()
     };
 }
+
+#[macro_export]
+macro_rules! bad_transmute {
+    ($e:expr) => {
+        std::mem::transmute($e)
+    };
+}

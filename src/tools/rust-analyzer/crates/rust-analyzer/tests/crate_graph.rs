@@ -60,7 +60,7 @@ fn get_fake_sysroot() -> Sysroot {
     let sysroot_path = get_fake_sysroot_path();
     // there's no `libexec/` directory with a `proc-macro-srv` binary in that
     // fake sysroot, so we give them both the same path:
-    let sysroot_dir = AbsPathBuf::assert(sysroot_path);
+    let sysroot_dir = AbsPathBuf::assert_utf8(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
     Sysroot::load(sysroot_dir, Some(Ok(sysroot_src_dir)), false)
 }

@@ -47,18 +47,18 @@ assert-css: (".mobile-topbar h2", {"overflow-x": "hidden"})
 // On desktop, they wrap when too big.
 set-window-size: (1100, 800)
 go-to: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
-compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ("y"))
+compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ["y"])
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
-compare-elements-position: (".main-heading h1", ".main-heading .out-of-band", ("y"))
+compare-elements-position: (".main-heading h1", ".main-heading .out-of-band", ["y"])
 // make sure there is a gap between them
 compare-elements-position-near-false: (".main-heading h1", ".main-heading .out-of-band", {"x": 550})
 
 // On mobile, they always wrap.
 set-window-size: (600, 600)
 go-to: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
-compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ("y"))
+compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ["y"])
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
-compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ("y"))
+compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ["y"])
 
 // Now we will check that the scrolling is working.
 // First on an item with "hidden methods".

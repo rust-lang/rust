@@ -365,7 +365,7 @@ type S = &'static str;
 /// Pretty-printing details
 ///
 /// Example:
-/// ```
+/// ```rust,ignore (private type)
 /// DisplayFmtWrapper {
 ///     top: '>',
 ///     bot: '<',
@@ -393,7 +393,7 @@ struct DisplayFmtWrapper {
 /// Formating of the permissions on each range.
 ///
 /// Example:
-/// ```
+/// ```rust,ignore (private type)
 /// DisplayFmtPermission {
 ///     open: "[",
 ///     sep: "|",
@@ -425,7 +425,7 @@ struct DisplayFmtPermission {
 /// Formating of the tree structure.
 ///
 /// Example:
-/// ```
+/// ```rust,ignore (private type)
 /// DisplayFmtPadding {
 ///     join_middle: "|-",
 ///     join_last: "'-",
@@ -463,7 +463,7 @@ struct DisplayFmtPadding {
 /// How to show whether a location has been accessed
 ///
 /// Example:
-/// ```
+/// ```rust,ignore (private type)
 /// DisplayFmtAccess {
 ///     yes: " ",
 ///     no: "?",

@@ -97,7 +97,7 @@ fn check_arm<'tcx>(
         } else {
             String::new()
         };
-        span_lint_and_then(cx, COLLAPSIBLE_MATCH, inner_expr.span, &msg, |diag| {
+        span_lint_and_then(cx, COLLAPSIBLE_MATCH, inner_expr.span, msg, |diag| {
             let mut help_span = MultiSpan::from_spans(vec![binding_span, inner_then_pat.span]);
             help_span.push_span_label(binding_span, "replace this binding");
             help_span.push_span_label(inner_then_pat.span, format!("with this pattern{replace_msg}"));

@@ -30,9 +30,9 @@ show-text: true
 
 define-function: (
     "check-colors",
-    (
+    [
         theme, color, color_hover, background, background_hover, background_toggle,
-    ),
+    ],
     block {
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:

@@ -30,7 +30,7 @@ pub(super) fn check(
             cx,
             lint,
             info.expr.span,
-            &format!("you should use the `{suggest}` method"),
+            format!("you should use the `{suggest}` method"),
             "like this",
             format!(
                 "{}{}.{suggest}({})",

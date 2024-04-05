@@ -329,6 +329,7 @@ pub enum BinOp {
     Ne,
     Ge,
     Gt,
+    Cmp,
     Offset,
 }
 
@@ -367,6 +368,9 @@ impl BinOp {
                 let lhs_kind = lhs_ty.kind();
                 assert!(lhs_kind.is_primitive() || lhs_kind.is_raw_ptr() || lhs_kind.is_fn_ptr());
                 Ty::bool_ty()
+            }
+            BinOp::Cmp => {
+                unimplemented!("Should cmp::Ordering be a RigidTy?");
             }
         }
     }
@@ -967,8 +971,9 @@ pub enum PointerCoercion {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CastKind {
+    // FIXME(smir-rename): rename this to PointerExposeProvenance
     PointerExposeAddress,
-    PointerFromExposedAddress,
+    PointerWithExposedProvenance,
     PointerCoercion(PointerCoercion),
     DynStar,
     IntToInt,

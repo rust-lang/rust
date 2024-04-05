@@ -19,7 +19,7 @@ use rustc_hir::{
     hir_id::OwnerId,
     BindingAnnotation, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
 };
-use rustc_index::{Idx, IndexVec};
+use rustc_index::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::mir::FakeReadCause;
 use rustc_session::Session;
@@ -680,7 +680,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                     return false;
                 }
 
-                iter::zip(user_args.args, BoundVar::new(0)..).all(|(kind, cvar)| {
+                iter::zip(user_args.args, BoundVar::ZERO..).all(|(kind, cvar)| {
                     match kind.unpack() {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {

@@ -235,6 +235,7 @@ pub struct RunTests {
 #[derive(Debug)]
 pub struct RustcTests {
     pub rustc_repo: PathBuf,
+
     pub filter: Option<String>,
 }
 

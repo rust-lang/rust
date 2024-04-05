@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use std::fs::{read_link, symlink_metadata};
 use std::io::{BufWriter, Write};
 use std::path::Path;
-use tar::{Builder, Header};
+use tar::{Builder, Header, HeaderMode};
 use walkdir::WalkDir;
 
 use crate::{
@@ -53,14 +53,19 @@ impl Tarballer {
         // Sort files by their suffix, to group files with the same name from
         // different locations (likely identical) and files with the same
         // extension (likely containing similar data).
-        let (dirs, mut files) = get_recursive_paths(&self.work_dir, &self.input)
+        // Sorting of file and directory paths also helps with the reproducibility
+        // of the resulting archive.
+        let (mut dirs, mut files) = get_recursive_paths(&self.work_dir, &self.input)
             .context("failed to collect file paths")?;
+        dirs.sort();
         files.sort_by(|a, b| a.bytes().rev().cmp(b.bytes().rev()));
 
         // Write the tar into both encoded files. We write all directories
         // first, so files may be directly created. (See rust-lang/rustup.rs#1092.)
         let buf = BufWriter::with_capacity(1024 * 1024, encoder);
         let mut builder = Builder::new(buf);
+        // Make uid, gid and mtime deterministic to improve reproducibility
+        builder.mode(HeaderMode::Deterministic);
 
         let pool = rayon::ThreadPoolBuilder::new().num_threads(2).build().unwrap();
         pool.install(move || {
@@ -91,7 +96,8 @@ impl Tarballer {
 fn append_path<W: Write>(builder: &mut Builder<W>, src: &Path, path: &String) -> Result<()> {
     let stat = symlink_metadata(src)?;
     let mut header = Header::new_gnu();
-    header.set_metadata(&stat);
+    header.set_metadata_in_mode(&stat, HeaderMode::Deterministic);
+
     if stat.file_type().is_symlink() {
         let link = read_link(src)?;
         builder.append_link(&mut header, path, &link)?;

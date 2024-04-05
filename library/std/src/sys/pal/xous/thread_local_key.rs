@@ -49,7 +49,7 @@ fn tls_ptr_addr() -> *mut *mut u8 {
             out(reg) tp,
         );
     }
-    core::ptr::from_exposed_addr_mut::<*mut u8>(tp)
+    core::ptr::with_exposed_provenance_mut::<*mut u8>(tp)
 }
 
 /// Create an area of memory that's unique per thread. This area will

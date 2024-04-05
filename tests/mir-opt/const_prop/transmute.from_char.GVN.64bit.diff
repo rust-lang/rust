@@ -3,8 +3,6 @@
   
   fn from_char() -> i32 {
       let mut _0: i32;
-      scope 1 {
-      }
   
       bb0: {
 -         _0 = const 'R' as i32 (Transmute);

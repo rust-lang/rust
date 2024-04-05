@@ -1,22 +1,41 @@
-error[E0277]: expected a `FnOnce(&mut UIView<'_, T>)` closure, found `F`
-  --> $DIR/issue-100690.rs:37:23
+error: lifetime may not live long enough
+  --> $DIR/issue-100690.rs:34:9
+   |
+LL | impl<'a, T: 'a> Handle<'a, T, UIView<'a, T>, Result<(), io::Error>> for TUIHandle<T> {
+   |      -- lifetime `'a` defined here
+...
+LL |         real_dispatch(f)
+   |         ^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+   |
+note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+  --> $DIR/issue-100690.rs:8:8
+   |
+LL |     F: FnOnce(&mut UIView<T>) -> Result<(), io::Error> + Send + 'static,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-100690.rs:34:9
    |
 LL |         real_dispatch(f)
-   |         ------------- ^ expected an `FnOnce(&mut UIView<'_, T>)` closure, found `F`
-   |         |
-   |         required by a bound introduced by this call
+   |         ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: expected a closure with arguments `(&mut UIView<'a, _>,)`
-              found a closure with arguments `(&mut UIView<'_, _>,)`
-note: required by a bound in `real_dispatch`
-  --> $DIR/issue-100690.rs:9:8
+   = note: `F` must implement `FnOnce<(&mut UIView<'0, T>,)>`, for any lifetime `'0`...
+   = note: ...but it actually implements `FnOnce<(&mut UIView<'1, T>,)>`, for some specific lifetime `'1`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-100690.rs:34:9
    |
-LL | fn real_dispatch<T, F>(f: F) -> Result<(), io::Error>
-   |    ------------- required by a bound in this function
-...
+LL |         real_dispatch(f)
+   |         ^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected associated type `<F as FnOnce<(&mut UIView<'_, T>,)>>::Output`
+              found associated type `<F as FnOnce<(&mut UIView<'_, T>,)>>::Output`
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-100690.rs:8:34
+   |
 LL |     F: FnOnce(&mut UIView<T>) -> Result<(), io::Error> + Send + 'static,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `real_dispatch`
+   |                                  ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0308`.

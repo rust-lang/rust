@@ -214,7 +214,7 @@ impl<'a, 'tcx> FormatImplExpr<'a, 'tcx> {
                 self.cx,
                 RECURSIVE_FORMAT_IMPL,
                 self.expr.span,
-                &format!("using `self` as `{name}` in `impl {name}` will cause infinite recursion"),
+                format!("using `self` as `{name}` in `impl {name}` will cause infinite recursion"),
             );
         }
     }
@@ -235,7 +235,7 @@ impl<'a, 'tcx> FormatImplExpr<'a, 'tcx> {
                 self.cx,
                 PRINT_IN_FORMAT_IMPL,
                 macro_call.span,
-                &format!("use of `{name}!` in `{}` impl", self.format_trait_impl.name),
+                format!("use of `{name}!` in `{}` impl", self.format_trait_impl.name),
                 "replace with",
                 if let Some(formatter_name) = self.format_trait_impl.formatter_name {
                     format!("{replacement}!({formatter_name}, ..)")

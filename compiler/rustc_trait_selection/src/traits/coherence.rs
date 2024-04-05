@@ -210,7 +210,7 @@ fn overlap<'tcx>(
         .intercrate(true)
         .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
         .build();
-    let selcx = &mut SelectionContext::with_treat_inductive_cycle_as_ambig(&infcx);
+    let selcx = &mut SelectionContext::new(&infcx);
     if track_ambiguity_causes.is_yes() {
         selcx.enable_tracking_intercrate_ambiguity_causes();
     }
@@ -477,7 +477,8 @@ fn plug_infer_with_placeholders<'tcx>(
             if ty.is_ty_var() {
                 let Ok(InferOk { value: (), obligations }) =
                     self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
-                        DefineOpaqueTypes::No,
+                        // Comparing against a type variable never registers hidden types anyway
+                        DefineOpaqueTypes::Yes,
                         ty,
                         Ty::new_placeholder(
                             self.infcx.tcx,
@@ -504,7 +505,9 @@ fn plug_infer_with_placeholders<'tcx>(
             if ct.is_ct_infer() {
                 let Ok(InferOk { value: (), obligations }) =
                     self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
-                        DefineOpaqueTypes::No,
+                        // The types of the constants are the same, so there is no hidden type
+                        // registration happening anyway.
+                        DefineOpaqueTypes::Yes,
                         ct,
                         ty::Const::new_placeholder(
                             self.infcx.tcx,
@@ -532,7 +535,8 @@ fn plug_infer_with_placeholders<'tcx>(
                 if r.is_var() {
                     let Ok(InferOk { value: (), obligations }) =
                         self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
-                            DefineOpaqueTypes::No,
+                            // Lifetimes don't contain opaque types (or any types for that matter).
+                            DefineOpaqueTypes::Yes,
                             r,
                             ty::Region::new_placeholder(
                                 self.infcx.tcx,
@@ -554,11 +558,7 @@ fn plug_infer_with_placeholders<'tcx>(
         }
     }
 
-    value.visit_with(&mut PlugInferWithPlaceholder {
-        infcx,
-        universe,
-        var: ty::BoundVar::from_u32(0),
-    });
+    value.visit_with(&mut PlugInferWithPlaceholder { infcx, universe, var: ty::BoundVar::ZERO });
 }
 
 fn try_prove_negated_where_clause<'tcx>(

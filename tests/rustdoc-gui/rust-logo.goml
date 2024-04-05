@@ -3,7 +3,7 @@ go-to: "file://" + |DOC_PATH| + "/staged_api/index.html"
 
 define-function: (
     "check-logo",
-    (theme, filter),
+    [theme, filter],
     block {
         // Going to the doc page.
         go-to: "file://" + |DOC_PATH| + "/staged_api/index.html"

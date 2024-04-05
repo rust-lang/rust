@@ -21,7 +21,7 @@ pub(super) fn check(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Att
                     cx,
                     INLINE_ALWAYS,
                     attr.span,
-                    &format!("you have declared `#[inline(always)]` on `{name}`. This is usually a bad idea"),
+                    format!("you have declared `#[inline(always)]` on `{name}`. This is usually a bad idea"),
                 );
             }
         }

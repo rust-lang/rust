@@ -2589,7 +2589,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
                     ty::BrAnon | ty::BrEnv => r,
                     _ => {
                         // Index doesn't matter, since this is just for naming and these never get bound
-                        let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind };
+                        let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind };
                         *self
                             .region_map
                             .entry(br)

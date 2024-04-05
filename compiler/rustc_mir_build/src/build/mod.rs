@@ -66,17 +66,10 @@ pub(crate) fn mir_build<'tcx>(tcx: TyCtxtAt<'tcx>, def: LocalDefId) -> Body<'tcx
             // maybe move the check to a MIR pass?
             tcx.ensure().check_liveness(def);
 
-            if tcx.sess.opts.unstable_opts.thir_unsafeck {
-                // Don't steal here if THIR unsafeck is being used. Instead
-                // steal in unsafeck. This is so that pattern inline constants
-                // can be evaluated as part of building the THIR of the parent
-                // function without a cycle.
-                build_mir(&thir.borrow())
-            } else {
-                // We ran all queries that depended on THIR at the beginning
-                // of `mir_build`, so now we can steal it
-                build_mir(&thir.steal())
-            }
+            // Don't steal here, instead steal in unsafeck. This is so that
+            // pattern inline constants can be evaluated as part of building the
+            // THIR of the parent function without a cycle.
+            build_mir(&thir.borrow())
         }
     };
 
@@ -189,9 +182,6 @@ struct Builder<'a, 'tcx> {
     /// distinguish the context of EXPR1 from the context of EXPR2 in
     /// `{ STMTS; EXPR1 } + EXPR2`.
     block_context: BlockContext,
-
-    /// The current unsafe block in scope
-    in_scope_unsafe: Safety,
 
     /// The vector of all scopes that we have created thus far;
     /// we track this for debuginfo later.
@@ -470,11 +460,6 @@ fn construct_fn<'tcx>(
         .output
         .span();
 
-    let safety = match fn_sig.unsafety {
-        hir::Unsafety::Normal => Safety::Safe,
-        hir::Unsafety::Unsafe => Safety::FnUnsafe,
-    };
-
     let mut abi = fn_sig.abi;
     if let DefKind::Closure = tcx.def_kind(fn_def) {
         // HACK(eddyb) Avoid having RustCall on closures,
@@ -520,7 +505,6 @@ fn construct_fn<'tcx>(
         fn_id,
         span_with_body,
         arguments.len(),
-        safety,
         return_ty,
         return_ty_span,
         coroutine,
@@ -590,18 +574,8 @@ fn construct_const<'a, 'tcx>(
     };
 
     let infcx = tcx.infer_ctxt().build();
-    let mut builder = Builder::new(
-        thir,
-        infcx,
-        def,
-        hir_id,
-        span,
-        0,
-        Safety::Safe,
-        const_ty,
-        const_ty_span,
-        None,
-    );
+    let mut builder =
+        Builder::new(thir, infcx, def, hir_id, span, 0, const_ty, const_ty_span, None);
 
     let mut block = START_BLOCK;
     unpack!(block = builder.expr_into_dest(Place::return_place(), block, expr));
@@ -723,10 +697,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         parent_scope: None,
         inlined: None,
         inlined_parent_scope: None,
-        local_data: ClearCrossCrate::Set(SourceScopeLocalData {
-            lint_root: hir_id,
-            safety: Safety::Safe,
-        }),
+        local_data: ClearCrossCrate::Set(SourceScopeLocalData { lint_root: hir_id }),
     });
 
     cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
@@ -753,7 +724,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         hir_id: hir::HirId,
         span: Span,
         arg_count: usize,
-        safety: Safety,
         return_ty: Ty<'tcx>,
         return_span: Span,
         coroutine: Option<Box<CoroutineInfo<'tcx>>>,
@@ -795,7 +765,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             guard_context: vec![],
             fixed_temps: Default::default(),
             fixed_temps_scope: None,
-            in_scope_unsafe: safety,
             local_decls: IndexVec::from_elem_n(LocalDecl::new(return_ty, return_span), 1),
             canonical_user_type_annotations: IndexVec::new(),
             upvars: CaptureMap::new(),
@@ -807,10 +776,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
-        assert_eq!(
-            builder.new_source_scope(span, lint_level, Some(safety)),
-            OUTERMOST_SOURCE_SCOPE
-        );
+        assert_eq!(builder.new_source_scope(span, lint_level), OUTERMOST_SOURCE_SCOPE);
         builder.source_scopes[OUTERMOST_SOURCE_SCOPE].parent_scope = None;
 
         builder
@@ -1024,7 +990,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .as_ref()
             .assert_crate_local()
             .lint_root;
-        self.maybe_new_source_scope(pattern_span, None, arg_hir_id, parent_id);
+        self.maybe_new_source_scope(pattern_span, arg_hir_id, parent_id);
     }
 
     fn get_unit_temp(&mut self) -> Place<'tcx> {

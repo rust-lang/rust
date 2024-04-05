@@ -1,16 +1,11 @@
 //! Handles dynamic library loading for proc macro
 
-use std::{
-    fmt,
-    fs::File,
-    io,
-    path::{Path, PathBuf},
-};
+use std::{fmt, fs::File, io};
 
 use libloading::Library;
 use memmap2::Mmap;
 use object::Object;
-use paths::AbsPath;
+use paths::{AbsPath, Utf8Path, Utf8PathBuf};
 use proc_macro::bridge;
 use proc_macro_api::{read_dylib_info, ProcMacroKind};
 
@@ -26,7 +21,7 @@ fn is_derive_registrar_symbol(symbol: &str) -> bool {
     symbol.contains(NEW_REGISTRAR_SYMBOL)
 }
 
-fn find_registrar_symbol(file: &Path) -> io::Result<Option<String>> {
+fn find_registrar_symbol(file: &Utf8Path) -> io::Result<Option<String>> {
     let file = File::open(file)?;
     let buffer = unsafe { Mmap::map(&file)? };
 
@@ -62,12 +57,12 @@ fn find_registrar_symbol(file: &Path) -> io::Result<Option<String>> {
 ///
 /// It seems that on Windows that behaviour is default, so we do nothing in that case.
 #[cfg(windows)]
-fn load_library(file: &Path) -> Result<Library, libloading::Error> {
+fn load_library(file: &Utf8Path) -> Result<Library, libloading::Error> {
     unsafe { Library::new(file) }
 }
 
 #[cfg(unix)]
-fn load_library(file: &Path) -> Result<Library, libloading::Error> {
+fn load_library(file: &Utf8Path) -> Result<Library, libloading::Error> {
     use libloading::os::unix::Library as UnixLibrary;
     use std::os::raw::c_int;
 
@@ -116,14 +111,14 @@ struct ProcMacroLibraryLibloading {
 }
 
 impl ProcMacroLibraryLibloading {
-    fn open(file: &Path) -> Result<Self, LoadProcMacroDylibError> {
+    fn open(file: &Utf8Path) -> Result<Self, LoadProcMacroDylibError> {
         let symbol_name = find_registrar_symbol(file)?.ok_or_else(|| {
-            invalid_data_err(format!("Cannot find registrar symbol in file {}", file.display()))
+            invalid_data_err(format!("Cannot find registrar symbol in file {file}"))
         })?;
 
-        let abs_file: &AbsPath = file.try_into().map_err(|_| {
-            invalid_data_err(format!("expected an absolute path, got {}", file.display()))
-        })?;
+        let abs_file: &AbsPath = file
+            .try_into()
+            .map_err(|_| invalid_data_err(format!("expected an absolute path, got {file}")))?;
         let version_info = read_dylib_info(abs_file)?;
 
         let lib = load_library(file).map_err(invalid_data_err)?;
@@ -138,10 +133,10 @@ pub struct Expander {
 }
 
 impl Expander {
-    pub fn new(lib: &Path) -> Result<Expander, LoadProcMacroDylibError> {
+    pub fn new(lib: &Utf8Path) -> Result<Expander, LoadProcMacroDylibError> {
         // Some libraries for dynamic loading require canonicalized path even when it is
         // already absolute
-        let lib = lib.canonicalize()?;
+        let lib = lib.canonicalize_utf8()?;
 
         let lib = ensure_file_with_lock_free_access(&lib)?;
 
@@ -176,30 +171,26 @@ impl Expander {
 
 /// Copy the dylib to temp directory to prevent locking in Windows
 #[cfg(windows)]
-fn ensure_file_with_lock_free_access(path: &Path) -> io::Result<PathBuf> {
+fn ensure_file_with_lock_free_access(path: &Utf8Path) -> io::Result<Utf8PathBuf> {
     use std::collections::hash_map::RandomState;
-    use std::ffi::OsString;
     use std::hash::{BuildHasher, Hasher};
 
     if std::env::var("RA_DONT_COPY_PROC_MACRO_DLL").is_ok() {
         return Ok(path.to_path_buf());
     }
 
-    let mut to = std::env::temp_dir();
+    let mut to = Utf8PathBuf::from_path_buf(std::env::temp_dir()).unwrap();
 
     let file_name = path.file_name().ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!("File path is invalid: {}", path.display()),
-        )
+        io::Error::new(io::ErrorKind::InvalidInput, format!("File path is invalid: {path}"))
     })?;
 
     // Generate a unique number by abusing `HashMap`'s hasher.
     // Maybe this will also "inspire" a libs team member to finally put `rand` in libstd.
     let t = RandomState::new().build_hasher().finish();
 
-    let mut unique_name = OsString::from(t.to_string());
-    unique_name.push(file_name);
+    let mut unique_name = t.to_string();
+    unique_name.push_str(file_name);
 
     to.push(unique_name);
     std::fs::copy(path, &to).unwrap();
@@ -207,6 +198,6 @@ fn ensure_file_with_lock_free_access(path: &Path) -> io::Result<PathBuf> {
 }
 
 #[cfg(unix)]
-fn ensure_file_with_lock_free_access(path: &Path) -> io::Result<PathBuf> {
-    Ok(path.to_path_buf())
+fn ensure_file_with_lock_free_access(path: &Utf8Path) -> io::Result<Utf8PathBuf> {
+    Ok(path.to_owned())
 }

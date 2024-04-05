@@ -1144,6 +1144,15 @@
                         }
                     ]
                 },
+                "rust-analyzer.hover.show.structFields": {
+                    "markdownDescription": "How many fields of a struct to display when hovering a struct.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
+                    "minimum": 0
+                },
                 "rust-analyzer.hover.show.traitAssocItems": {
                     "markdownDescription": "How many associated items of a trait to display when hovering a trait.",
                     "default": null,

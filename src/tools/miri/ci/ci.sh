@@ -22,17 +22,24 @@ if [ "$HOST_TARGET" = i686-pc-windows-msvc ]; then
   BASH="C:/Program Files/Git/usr/bin/bash"
 fi
 
-# Determine configuration for installed build
-echo "Installing release version of Miri"
+# Global configuration
 export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--locked"
+
+# Determine configuration for installed build
+echo "Installing release version of Miri"
 ./miri install
 
-# Prepare debug build for direct `./miri` invocations
-echo "Building debug version of Miri"
+echo "Checking various feature flag configurations"
 ./miri check --no-default-features # make sure this can be built
-./miri check --all-features # and this, too
+./miri check # and this, too
+# `--all-features` is used for the build below, so no extra check needed.
+
+# Prepare debug build for direct `./miri` invocations.
+# We enable all features to make sure the Stacked Borrows consistency check runs.
+echo "Building debug version of Miri"
+export CARGO_EXTRA_FLAGS="$CARGO_EXTRA_FLAGS --all-features"
 ./miri build --all-targets # the build that all the `./miri test` below will use
 
 endgroup
@@ -46,8 +53,8 @@ function run_tests {
   fi
 
   ## ui test suite
-  # On the host and on Linux, also stress-test the GC.
-  if [ -z "${MIRI_TEST_TARGET:-}" ] || [ "$HOST_TARGET" = x86_64-unknown-linux-gnu ]; then
+  # On the host, also stress-test the GC.
+  if [ -z "${MIRI_TEST_TARGET:-}" ]; then
     MIRIFLAGS="${MIRIFLAGS:-} -Zmiri-provenance-gc=1" ./miri test
   else
     ./miri test
@@ -130,6 +137,8 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
     MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
     MIRI_TEST_TARGET=i686-pc-windows-gnu run_tests
+    MIRI_TEST_TARGET=x86_64-pc-windows-gnu run_tests
+    MIRI_TEST_TARGET=arm-unknown-linux-gnueabi run_tests
     # Some targets are only partially supported.
     MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthread-threadname libc-getentropy libc-getrandom libc-misc libc-fs atomic env align num_cpus
     MIRI_TEST_TARGET=i686-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthread-threadname libc-getentropy libc-getrandom libc-misc libc-fs atomic env align num_cpus
@@ -145,9 +154,7 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=x86_64-pc-windows-msvc run_tests
     ;;
   i686-pc-windows-msvc)
-    MIRI_TEST_TARGET=arm-unknown-linux-gnueabi run_tests
     MIRI_TEST_TARGET=x86_64-unknown-linux-gnu run_tests
-    MIRI_TEST_TARGET=x86_64-pc-windows-gnu run_tests
     ;;
   *)
     echo "FATAL: unknown OS"

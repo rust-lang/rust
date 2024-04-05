@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 PTR_EQ,
                 expr.span,
-                &format!("use `{top_crate}::ptr::eq` when comparing raw pointers"),
+                format!("use `{top_crate}::ptr::eq` when comparing raw pointers"),
                 "try",
                 format!("{top_crate}::ptr::eq({left_snip}, {right_snip})"),
                 Applicability::MachineApplicable,

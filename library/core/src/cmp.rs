@@ -376,6 +376,10 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
+// This is a lang item only so that `BinOp::Cmp` in MIR can return it.
+// It has no special behaviour, but does require that the three variants
+// `Less`/`Equal`/`Greater` remain `-1_i8`/`0_i8`/`+1_i8` respectively.
+#[cfg_attr(not(bootstrap), lang = "Ordering")]
 #[repr(i8)]
 pub enum Ordering {
     /// An ordering where a compared value is less than another.
@@ -1493,8 +1497,11 @@ mod impls {
     }
 
     partial_eq_impl! {
-        bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
+        bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64
     }
+
+    #[cfg(not(bootstrap))]
+    partial_eq_impl! { f16 f128 }
 
     macro_rules! eq_impl {
         ($($t:ty)*) => ($(
@@ -1546,7 +1553,10 @@ mod impls {
         }
     }
 
-    partial_ord_impl! { f16 f32 f64 f128 }
+    partial_ord_impl! { f32 f64 }
+
+    #[cfg(not(bootstrap))]
+    partial_ord_impl! { f16 f128 }
 
     macro_rules! ord_impl {
         ($($t:ty)*) => ($(
@@ -1554,7 +1564,14 @@ mod impls {
             impl PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
-                    Some(self.cmp(other))
+                    #[cfg(bootstrap)]
+                    {
+                        Some(self.cmp(other))
+                    }
+                    #[cfg(not(bootstrap))]
+                    {
+                        Some(crate::intrinsics::three_way_compare(*self, *other))
+                    }
                 }
                 #[inline(always)]
                 fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
@@ -1570,11 +1587,18 @@ mod impls {
             impl Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &$t) -> Ordering {
-                    // The order here is important to generate more optimal assembly.
-                    // See <https://github.com/rust-lang/rust/issues/63758> for more info.
-                    if *self < *other { Less }
-                    else if *self == *other { Equal }
-                    else { Greater }
+                    #[cfg(bootstrap)]
+                    {
+                        // The order here is important to generate more optimal assembly.
+                        // See <https://github.com/rust-lang/rust/issues/63758> for more info.
+                        if *self < *other { Less }
+                        else if *self == *other { Equal }
+                        else { Greater }
+                    }
+                    #[cfg(not(bootstrap))]
+                    {
+                        crate::intrinsics::three_way_compare(*self, *other)
+                    }
                 }
             }
         )*)

@@ -381,7 +381,7 @@ fn replace_types<'tcx>(
     fn_sig: FnSig<'tcx>,
     arg_index: usize,
     projection_predicates: &[ProjectionPredicate<'tcx>],
-    args: &mut [ty::GenericArg<'tcx>],
+    args: &mut [GenericArg<'tcx>],
 ) -> bool {
     let mut replaced = BitSet::new_empty(args.len());
 
@@ -399,7 +399,7 @@ fn replace_types<'tcx>(
             return false;
         }
 
-        args[param_ty.index as usize] = ty::GenericArg::from(new_ty);
+        args[param_ty.index as usize] = GenericArg::from(new_ty);
 
         // The `replaced.insert(...)` check provides some protection against infinite loops.
         if replaced.insert(param_ty.index) {
@@ -414,7 +414,7 @@ fn replace_types<'tcx>(
                     ));
 
                     if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, projection)
-                        && args[term_param_ty.index as usize] != ty::GenericArg::from(projected_ty)
+                        && args[term_param_ty.index as usize] != GenericArg::from(projected_ty)
                     {
                         deque.push_back((*term_param_ty, projected_ty));
                     }

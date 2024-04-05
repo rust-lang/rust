@@ -14,6 +14,7 @@ use rustc_middle::ty::adjustment::CustomCoerceUnsized;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{self, Ty};
+use rustc_span::def_id::DefId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::ErrorGuaranteed;
 
@@ -57,13 +58,24 @@ fn custom_coerce_unsize_info<'tcx>(
 /// linkers will optimize such that dead calls to unresolved symbols are not an error, but this is
 /// not guaranteed. So we used this function in codegen backends to ensure we do not generate any
 /// unlinkable calls.
+///
+/// Note that calls to LLVM intrinsics are uniquely okay because they won't make it to the linker.
 pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
 ) -> bool {
-    !instance.def_id().is_local()
+    fn is_llvm_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+        if let Some(name) = tcx.codegen_fn_attrs(def_id).link_name {
+            name.as_str().starts_with("llvm.")
+        } else {
+            false
+        }
+    }
+
+    let def_id = instance.def_id();
+    !def_id.is_local()
         && tcx.is_compiler_builtins(LOCAL_CRATE)
-        && tcx.codegen_fn_attrs(instance.def_id()).link_name.is_none()
+        && !is_llvm_intrinsic(tcx, def_id)
         && !should_codegen_locally(tcx, instance)
 }
 

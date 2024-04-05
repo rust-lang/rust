@@ -17,7 +17,7 @@ impl Debug for OwnerId {
 
 impl From<OwnerId> for HirId {
     fn from(owner: OwnerId) -> HirId {
-        HirId { owner, local_id: ItemLocalId::from_u32(0) }
+        HirId { owner, local_id: ItemLocalId::ZERO }
     }
 }
 
@@ -110,7 +110,7 @@ impl HirId {
 
     #[inline]
     pub fn make_owner(owner: LocalDefId) -> Self {
-        Self { owner: OwnerId { def_id: owner }, local_id: ItemLocalId::from_u32(0) }
+        Self { owner: OwnerId { def_id: owner }, local_id: ItemLocalId::ZERO }
     }
 
     pub fn index(self) -> (usize, usize) {
@@ -172,6 +172,6 @@ unsafe impl StableOrd for ItemLocalId {
 
 /// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_ID`.
 pub const CRATE_HIR_ID: HirId =
-    HirId { owner: OwnerId { def_id: CRATE_DEF_ID }, local_id: ItemLocalId::from_u32(0) };
+    HirId { owner: OwnerId { def_id: CRATE_DEF_ID }, local_id: ItemLocalId::ZERO };
 
 pub const CRATE_OWNER_ID: OwnerId = OwnerId { def_id: CRATE_DEF_ID };

@@ -33,12 +33,8 @@ text-edit.workspace = true
 [dev-dependencies]
 rayon.workspace = true
 expect-test = "1.4.0"
-proc-macro2 = "1.0.47"
-quote = "1.0.20"
-ungrammar = "1.16.1"
 
 test-utils.workspace = true
-sourcegen.workspace = true
 
 [features]
 in-rust-tree = []

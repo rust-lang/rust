@@ -30,10 +30,11 @@ use triomphe::Arc;
 
 use std::{fmt, hash::Hash};
 
-use base_db::{salsa::impl_intern_value_trivial, CrateId, Edition, FileId};
+use base_db::{salsa::impl_intern_value_trivial, CrateId, FileId};
 use either::Either;
 use span::{
-    ErasedFileAstId, FileRange, HirFileIdRepr, Span, SpanAnchor, SyntaxContextData, SyntaxContextId,
+    Edition, ErasedFileAstId, FileRange, HirFileIdRepr, Span, SpanAnchor, SyntaxContextData,
+    SyntaxContextId,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -53,10 +54,8 @@ use crate::{
 
 pub use crate::files::{AstId, ErasedAstId, InFile, InMacroFile, InRealFile};
 
-pub use mbe::ValueResult;
+pub use mbe::{DeclarativeMacro, ValueResult};
 pub use span::{HirFileId, MacroCallId, MacroFileId};
-
-pub type DeclarativeMacro = ::mbe::DeclarativeMacro<tt::Span>;
 
 pub mod tt {
     pub use span::Span;
@@ -201,7 +200,7 @@ pub struct EagerCallInfo {
     /// Call id of the eager macro's input file (this is the macro file for its fully expanded input).
     arg_id: MacroCallId,
     error: Option<ExpandError>,
-    /// TODO: Doc
+    /// The call site span of the eager macro
     span: Span,
 }
 
@@ -212,7 +211,7 @@ pub enum MacroCallKind {
         expand_to: ExpandTo,
         /// Some if this is a macro call for an eager macro. Note that this is `None`
         /// for the eager input macro file.
-        // FIXME: This is being interned, subtrees can vary quickly differ just slightly causing
+        // FIXME: This is being interned, subtrees can vary quickly differing just slightly causing
         // leakage problems here
         eager: Option<Arc<EagerCallInfo>>,
     },
@@ -225,6 +224,9 @@ pub enum MacroCallKind {
         derive_attr_index: AttrId,
         /// Index of the derive macro in the derive attribute
         derive_index: u32,
+        /// The "parent" macro call.
+        /// We will resolve the same token tree for all derive macros in the same derive attribute.
+        derive_macro_id: MacroCallId,
     },
     Attr {
         ast_id: AstId<ast::Item>,
@@ -484,7 +486,7 @@ impl MacroDefId {
         matches!(
             self.kind,
             MacroDefKind::BuiltIn(..)
-                | MacroDefKind::ProcMacro(_, ProcMacroKind::FuncLike, _)
+                | MacroDefKind::ProcMacro(_, ProcMacroKind::Bang, _)
                 | MacroDefKind::BuiltInEager(..)
                 | MacroDefKind::Declarative(..)
         )
@@ -806,7 +808,8 @@ impl ExpansionInfo {
         let (parse, exp_map) = db.parse_macro_expansion(macro_file).value;
         let expanded = InMacroFile { file_id: macro_file, value: parse.syntax_node() };
 
-        let (macro_arg, _, _) = db.macro_arg(macro_file.macro_call_id);
+        let (macro_arg, _, _) =
+            db.macro_arg_considering_derives(macro_file.macro_call_id, &loc.kind);
 
         let def = loc.def.ast_id().left().and_then(|id| {
             let def_tt = match id.to_node(db) {

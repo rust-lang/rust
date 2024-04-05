@@ -716,10 +716,11 @@ impl<'tcx> Cx<'tcx> {
                 then: self.mirror_expr(then),
                 else_opt: else_opt.map(|el| self.mirror_expr(el)),
             },
-            hir::ExprKind::Match(discr, arms, _) => ExprKind::Match {
+            hir::ExprKind::Match(discr, arms, match_source) => ExprKind::Match {
                 scrutinee: self.mirror_expr(discr),
                 scrutinee_hir_id: discr.hir_id,
                 arms: arms.iter().map(|a| self.convert_arm(a)).collect(),
+                match_source,
             },
             hir::ExprKind::Loop(body, ..) => {
                 let block_ty = self.typeck_results().node_type(body.hir_id);

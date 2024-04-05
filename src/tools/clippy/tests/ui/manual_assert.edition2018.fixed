@@ -66,3 +66,11 @@ fn issue7730(a: u8) {
 // comment after `panic!`
 assert!(!(a > 2), "panic with comment");
 }
+
+fn issue12505() {
+    struct Foo<T, const N: usize>(T);
+
+    impl<T, const N: usize> Foo<T, N> {
+        const BAR: () = assert!(!(N == 0), );
+    }
+}

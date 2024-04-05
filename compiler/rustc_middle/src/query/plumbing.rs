@@ -339,7 +339,7 @@ macro_rules! define_callbacks {
                 pub type Storage<'tcx> = <$($K)* as keys::Key>::Cache<Erase<$V>>;
 
                 // Ensure that keys grow no larger than 64 bytes
-                #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+                #[cfg(all(any(target_arch = "x86_64", target_arch="aarch64"), target_pointer_width = "64"))]
                 const _: () = {
                     if mem::size_of::<Key<'static>>() > 64 {
                         panic!("{}", concat!(
@@ -353,7 +353,7 @@ macro_rules! define_callbacks {
                 };
 
                 // Ensure that values grow no larger than 64 bytes
-                #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+                #[cfg(all(any(target_arch = "x86_64", target_arch="aarch64"), target_pointer_width = "64"))]
                 const _: () = {
                     if mem::size_of::<Value<'static>>() > 64 {
                         panic!("{}", concat!(

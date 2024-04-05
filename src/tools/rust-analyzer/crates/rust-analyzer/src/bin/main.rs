@@ -190,7 +190,7 @@ fn run_server() -> anyhow::Result<()> {
         Some(it) => it,
         None => {
             let cwd = env::current_dir()?;
-            AbsPathBuf::assert(cwd)
+            AbsPathBuf::assert_utf8(cwd)
         }
     };
 

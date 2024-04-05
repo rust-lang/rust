@@ -10,8 +10,6 @@
 +     scope 1 (inlined instruction_set_default) {
 +     }
 +     scope 2 (inlined inline_always_and_using_inline_asm) {
-+         scope 3 {
-+         }
 +     }
   
       bb0: {

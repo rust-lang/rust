@@ -72,7 +72,7 @@ fn dominators_impl<G: ControlFlowGraph>(graph: &G) -> Inner<G::Node> {
         IndexVec::with_capacity(graph.num_nodes());
 
     let mut stack = vec![PreOrderFrame {
-        pre_order_idx: PreorderIndex::new(0),
+        pre_order_idx: PreorderIndex::ZERO,
         iter: graph.successors(graph.start_node()),
     }];
     let mut pre_order_to_real: IndexVec<PreorderIndex, G::Node> =
@@ -80,8 +80,8 @@ fn dominators_impl<G: ControlFlowGraph>(graph: &G) -> Inner<G::Node> {
     let mut real_to_pre_order: IndexVec<G::Node, Option<PreorderIndex>> =
         IndexVec::from_elem_n(None, graph.num_nodes());
     pre_order_to_real.push(graph.start_node());
-    parent.push(PreorderIndex::new(0)); // the parent of the root node is the root for now.
-    real_to_pre_order[graph.start_node()] = Some(PreorderIndex::new(0));
+    parent.push(PreorderIndex::ZERO); // the parent of the root node is the root for now.
+    real_to_pre_order[graph.start_node()] = Some(PreorderIndex::ZERO);
     let mut post_order_idx = 0;
 
     // Traverse the graph, collecting a number of things:
@@ -111,7 +111,7 @@ fn dominators_impl<G: ControlFlowGraph>(graph: &G) -> Inner<G::Node> {
 
     let reachable_vertices = pre_order_to_real.len();
 
-    let mut idom = IndexVec::from_elem_n(PreorderIndex::new(0), reachable_vertices);
+    let mut idom = IndexVec::from_elem_n(PreorderIndex::ZERO, reachable_vertices);
     let mut semi = IndexVec::from_fn_n(std::convert::identity, reachable_vertices);
     let mut label = semi.clone();
     let mut bucket = IndexVec::from_elem_n(vec![], reachable_vertices);

@@ -1,5 +1,6 @@
 mod crosspointer_transmute;
 mod eager_transmute;
+mod missing_transmute_annotations;
 mod transmute_float_to_int;
 mod transmute_int_to_bool;
 mod transmute_int_to_char;
@@ -520,6 +521,37 @@ declare_clippy_lint! {
     "eager evaluation of `transmute`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks if transmute calls have all generics specified.
+    ///
+    /// ### Why is this bad?
+    /// If not set, some unexpected output type could be retrieved instead of the expected one,
+    /// potentially leading to invalid code.
+    ///
+    /// This is particularly dangerous in case a seemingly innocent/unrelated change can cause type
+    /// inference to start inferring a different type. E.g. the transmute is the tail expression of
+    /// an `if` branch, and a different branches type changes, causing the transmute to silently
+    /// have a different type, instead of a proper error.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # unsafe {
+    /// let x: i32 = std::mem::transmute([1u16, 2u16]);
+    /// # }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # unsafe {
+    /// let x = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
+    /// # }
+    /// ```
+    #[clippy::version = "1.77.0"]
+    pub MISSING_TRANSMUTE_ANNOTATIONS,
+    suspicious,
+    "warns if a transmute call doesn't have all generics specified"
+}
+
 pub struct Transmute {
     msrv: Msrv,
 }
@@ -542,6 +574,7 @@ impl_lint_pass!(Transmute => [
     TRANSMUTING_NULL,
     TRANSMUTE_NULL_TO_FN,
     EAGER_TRANSMUTE,
+    MISSING_TRANSMUTE_ANNOTATIONS,
 ]);
 impl Transmute {
     #[must_use]
@@ -579,6 +612,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 | transmuting_null::check(cx, e, arg, to_ty)
                 | transmute_null_to_fn::check(cx, e, arg, to_ty)
                 | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, &self.msrv)
+                | missing_transmute_annotations::check(cx, path, from_ty, to_ty, e.hir_id)
                 | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
                 | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
                 | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg)

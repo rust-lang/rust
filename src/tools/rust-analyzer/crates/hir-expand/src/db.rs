@@ -24,7 +24,8 @@ use crate::{
     HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
     MacroFileId,
 };
-
+/// This is just to ensure the types of smart_macro_arg and macro_arg are the same
+type MacroArgResult = (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span);
 /// Total limit on the number of tokens produced by any macro invocation.
 ///
 /// If an invocation produces more tokens than this limit, it will not be stored in the database and
@@ -98,7 +99,13 @@ pub trait ExpandDatabase: SourceDatabase {
     /// Lowers syntactic macro call to a token tree representation. That's a firewall
     /// query, only typing in the macro call itself changes the returned
     /// subtree.
-    fn macro_arg(&self, id: MacroCallId) -> (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span);
+    fn macro_arg(&self, id: MacroCallId) -> MacroArgResult;
+    #[salsa::transparent]
+    fn macro_arg_considering_derives(
+        &self,
+        id: MacroCallId,
+        kind: &MacroCallKind,
+    ) -> MacroArgResult;
     /// Fetches the expander for this macro.
     #[salsa::transparent]
     #[salsa::invoke(TokenExpander::macro_expander)]
@@ -144,7 +151,7 @@ pub fn expand_speculative(
     let span_map = RealSpanMap::absolute(FileId::BOGUS);
     let span_map = SpanMapRef::RealSpanMap(&span_map);
 
-    let (_, _, span) = db.macro_arg(actual_macro_call);
+    let (_, _, span) = db.macro_arg_considering_derives(actual_macro_call, &loc.kind);
 
     // Build the subtree and token mapping for the speculative args
     let (mut tt, undo_info) = match loc.kind {
@@ -339,12 +346,24 @@ pub(crate) fn parse_with_map(
     }
 }
 
-// FIXME: for derive attributes, this will return separate copies of the same structures! Though
-// they may differ in spans due to differing call sites...
-fn macro_arg(
+/// This resolves the [MacroCallId] to check if it is a derive macro if so get the [macro_arg] for the derive.
+/// Other wise return the [macro_arg] for the macro_call_id.
+///
+/// This is not connected to the database so it does not cached the result. However, the inner [macro_arg] query is
+fn macro_arg_considering_derives(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
-) -> (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span) {
+    kind: &MacroCallKind,
+) -> MacroArgResult {
+    match kind {
+        // Get the macro arg for the derive macro
+        MacroCallKind::Derive { derive_macro_id, .. } => db.macro_arg(*derive_macro_id),
+        // Normal macro arg
+        _ => db.macro_arg(id),
+    }
+}
+
+fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
     let loc = db.lookup_intern_macro_call(id);
 
     if let MacroCallLoc {
@@ -414,29 +433,30 @@ fn macro_arg(
             }
             return (Arc::new(tt), SyntaxFixupUndoInfo::NONE, span);
         }
-        MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
-            let node = ast_id.to_ptr(db).to_node(&root);
-            let censor_derive_input = censor_derive_input(derive_attr_index, &node);
-            let item_node = node.into();
-            let attr_source = attr_source(derive_attr_index, &item_node);
-            // FIXME: This is wrong, this should point to the path of the derive attribute`
-            let span =
-                map.span_for_range(attr_source.as_ref().and_then(|it| it.path()).map_or_else(
-                    || item_node.syntax().text_range(),
-                    |it| it.syntax().text_range(),
-                ));
-            (censor_derive_input, item_node, span)
+        // MacroCallKind::Derive should not be here. As we are getting the argument for the derive macro
+        MacroCallKind::Derive { .. } => {
+            unreachable!("`ExpandDatabase::macro_arg` called with `MacroCallKind::Derive`")
         }
         MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
             let node = ast_id.to_ptr(db).to_node(&root);
             let attr_source = attr_source(invoc_attr_index, &node);
+
             let span = map.span_for_range(
                 attr_source
                     .as_ref()
                     .and_then(|it| it.path())
                     .map_or_else(|| node.syntax().text_range(), |it| it.syntax().text_range()),
             );
-            (attr_source.into_iter().map(|it| it.syntax().clone().into()).collect(), node, span)
+            // If derive attribute we need to censor the derive input
+            if matches!(loc.def.kind, MacroDefKind::BuiltInAttr(expander, ..) if expander.is_derive())
+                && ast::Adt::can_cast(node.syntax().kind())
+            {
+                let adt = ast::Adt::cast(node.syntax().clone()).unwrap();
+                let censor_derive_input = censor_derive_input(invoc_attr_index, &adt);
+                (censor_derive_input, node, span)
+            } else {
+                (attr_source.into_iter().map(|it| it.syntax().clone().into()).collect(), node, span)
+            }
         }
     };
 
@@ -526,7 +546,8 @@ fn macro_expand(
     let (ExpandResult { value: tt, err }, span) = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id).map(CowArc::Arc),
         _ => {
-            let (macro_arg, undo_info, span) = db.macro_arg(macro_call_id);
+            let (macro_arg, undo_info, span) =
+                db.macro_arg_considering_derives(macro_call_id, &loc.kind);
 
             let arg = &*macro_arg;
             let res =
@@ -603,7 +624,7 @@ fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
 
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt::Subtree>> {
     let loc = db.lookup_intern_macro_call(id);
-    let (macro_arg, undo_info, span) = db.macro_arg(id);
+    let (macro_arg, undo_info, span) = db.macro_arg_considering_derives(id, &loc.kind);
 
     let (expander, ast) = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, _, ast) => (expander, ast),

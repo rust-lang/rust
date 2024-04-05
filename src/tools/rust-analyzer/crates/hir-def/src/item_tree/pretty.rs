@@ -526,7 +526,7 @@ impl Printer<'_> {
     }
 
     fn print_generic_params(&mut self, params: &GenericParams) {
-        if params.type_or_consts.is_empty() && params.lifetimes.is_empty() {
+        if params.is_empty() {
             return;
         }
 

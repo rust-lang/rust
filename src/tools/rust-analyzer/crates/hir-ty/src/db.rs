@@ -11,7 +11,7 @@ use base_db::{
 use hir_def::{
     db::DefDatabase, hir::ExprId, layout::TargetDataLayout, AdtId, BlockId, ConstParamId,
     DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
-    LifetimeParamId, LocalFieldId, StaticId, TypeOrConstParamId, VariantId,
+    LifetimeParamId, LocalFieldId, StaticId, TypeAliasId, TypeOrConstParamId, VariantId,
 };
 use la_arena::ArenaMap;
 use smallvec::SmallVec;
@@ -23,9 +23,9 @@ use crate::{
     layout::{Layout, LayoutError},
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
-    Binders, CallableDefId, ClosureId, Const, FnDefId, GenericArg, ImplTraitId, InferenceResult,
-    Interner, PolyFnSig, QuantifiedWhereClause, ReturnTypeImplTraits, Substitution,
-    TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId,
+    Binders, CallableDefId, ClosureId, Const, FnDefId, GenericArg, ImplTraitId, ImplTraits,
+    InferenceResult, Interner, PolyFnSig, QuantifiedWhereClause, Substitution, TraitEnvironment,
+    TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
 
@@ -132,10 +132,10 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn callable_item_signature(&self, def: CallableDefId) -> PolyFnSig;
 
     #[salsa::invoke(crate::lower::return_type_impl_traits)]
-    fn return_type_impl_traits(
-        &self,
-        def: FunctionId,
-    ) -> Option<Arc<Binders<ReturnTypeImplTraits>>>;
+    fn return_type_impl_traits(&self, def: FunctionId) -> Option<Arc<Binders<ImplTraits>>>;
+
+    #[salsa::invoke(crate::lower::type_alias_impl_traits)]
+    fn type_alias_impl_traits(&self, def: TypeAliasId) -> Option<Arc<Binders<ImplTraits>>>;
 
     #[salsa::invoke(crate::lower::generic_predicates_for_param_query)]
     #[salsa::cycle(crate::lower::generic_predicates_for_param_recover)]

@@ -12,8 +12,6 @@
           let _2: *mut i32;
           scope 2 {
               debug a => _2;
-              scope 3 {
-              }
           }
       }
   

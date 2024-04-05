@@ -225,6 +225,26 @@ fn convert_path(
     let mut segments = path.segments();
 
     let segment = &segments.next()?;
+    let handle_super_kw = &mut |init_deg| {
+        let mut deg = init_deg;
+        let mut next_segment = None;
+        for segment in segments.by_ref() {
+            match segment.kind()? {
+                ast::PathSegmentKind::SuperKw => deg += 1,
+                ast::PathSegmentKind::Name(name) => {
+                    next_segment = Some(name.as_name());
+                    break;
+                }
+                ast::PathSegmentKind::Type { .. }
+                | ast::PathSegmentKind::SelfTypeKw
+                | ast::PathSegmentKind::SelfKw
+                | ast::PathSegmentKind::CrateKw => return None,
+            }
+        }
+
+        Some(ModPath::from_segments(PathKind::Super(deg), next_segment))
+    };
+
     let mut mod_path = match segment.kind()? {
         ast::PathSegmentKind::Name(name_ref) => {
             if name_ref.text() == "$crate" {
@@ -245,26 +265,8 @@ fn convert_path(
             ModPath::from_segments(PathKind::Plain, Some(known::SELF_TYPE))
         }
         ast::PathSegmentKind::CrateKw => ModPath::from_segments(PathKind::Crate, iter::empty()),
-        ast::PathSegmentKind::SelfKw => ModPath::from_segments(PathKind::Super(0), iter::empty()),
-        ast::PathSegmentKind::SuperKw => {
-            let mut deg = 1;
-            let mut next_segment = None;
-            for segment in segments.by_ref() {
-                match segment.kind()? {
-                    ast::PathSegmentKind::SuperKw => deg += 1,
-                    ast::PathSegmentKind::Name(name) => {
-                        next_segment = Some(name.as_name());
-                        break;
-                    }
-                    ast::PathSegmentKind::Type { .. }
-                    | ast::PathSegmentKind::SelfTypeKw
-                    | ast::PathSegmentKind::SelfKw
-                    | ast::PathSegmentKind::CrateKw => return None,
-                }
-            }
-
-            ModPath::from_segments(PathKind::Super(deg), next_segment)
-        }
+        ast::PathSegmentKind::SelfKw => handle_super_kw(0)?,
+        ast::PathSegmentKind::SuperKw => handle_super_kw(1)?,
         ast::PathSegmentKind::Type { .. } => {
             // not allowed in imports
             return None;

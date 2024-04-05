@@ -112,7 +112,7 @@ fn check_rvalue<'tcx>(
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
         | Rvalue::Cast(
-            CastKind::PointerFromExposedAddress
+            CastKind::PointerWithExposedProvenance
             | CastKind::IntToInt
             | CastKind::FloatToInt
             | CastKind::IntToFloat
@@ -149,7 +149,7 @@ fn check_rvalue<'tcx>(
                 Err((span, "unsizing casts are not allowed in const fn".into()))
             }
         },
-        Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
+        Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => {
             Err((span, "casting pointers to ints is unstable in const fn".into()))
         },
         Rvalue::Cast(CastKind::DynStar, _, _) => {

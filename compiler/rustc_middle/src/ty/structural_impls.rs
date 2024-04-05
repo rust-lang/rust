@@ -449,6 +449,7 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::ClosureKind,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
+    crate::ty::instance::ReifyReason,
     interpret::AllocId,
     interpret::CtfeProvenance,
     interpret::Scalar,

@@ -4,7 +4,7 @@ show-text: true
 
 define-function: (
     "check-no-result",
-    (theme, link, link_hover),
+    [theme, link, link_hover],
     block {
         // Changing theme.
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}

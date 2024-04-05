@@ -240,9 +240,9 @@ fn check_fields(cx: &LateContext<'_>, threshold: u64, item: &Item<'_>, fields: &
             cx,
             STRUCT_FIELD_NAMES,
             item.span,
-            &format!("all fields have the same {what}fix: `{value}`"),
+            format!("all fields have the same {what}fix: `{value}`"),
             None,
-            &format!("remove the {what}fixes"),
+            format!("remove the {what}fixes"),
         );
     }
 }
@@ -370,9 +370,9 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
         cx,
         ENUM_VARIANT_NAMES,
         span,
-        &format!("all variants have the same {what}fix: `{value}`"),
+        format!("all variants have the same {what}fix: `{value}`"),
         None,
-        &format!(
+        format!(
             "remove the {what}fixes and use full paths to \
              the variants instead of glob imports"
         ),

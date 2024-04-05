@@ -5,8 +5,6 @@ mod tests;
 
 mod intra_doc_links;
 
-use std::ffi::OsStr;
-
 use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::{cmark_resume_with_options, Options as CMarkOptions};
 use stdx::format_to;
@@ -134,8 +132,8 @@ pub(crate) fn remove_links(markdown: &str) -> String {
 pub(crate) fn external_docs(
     db: &RootDatabase,
     FilePosition { file_id, offset }: FilePosition,
-    target_dir: Option<&OsStr>,
-    sysroot: Option<&OsStr>,
+    target_dir: Option<&str>,
+    sysroot: Option<&str>,
 ) -> Option<DocumentationLinks> {
     let sema = &Semantics::new(db);
     let file = sema.parse(file_id).syntax().clone();
@@ -331,8 +329,8 @@ fn broken_link_clone_cb(link: BrokenLink<'_>) -> Option<(CowStr<'_>, CowStr<'_>)
 fn get_doc_links(
     db: &RootDatabase,
     def: Definition,
-    target_dir: Option<&OsStr>,
-    sysroot: Option<&OsStr>,
+    target_dir: Option<&str>,
+    sysroot: Option<&str>,
 ) -> DocumentationLinks {
     let join_url = |base_url: Option<Url>, path: &str| -> Option<Url> {
         base_url.and_then(|url| url.join(path).ok())
@@ -479,15 +477,13 @@ fn map_links<'e>(
 fn get_doc_base_urls(
     db: &RootDatabase,
     def: Definition,
-    target_dir: Option<&OsStr>,
-    sysroot: Option<&OsStr>,
+    target_dir: Option<&str>,
+    sysroot: Option<&str>,
 ) -> (Option<Url>, Option<Url>) {
     let local_doc = target_dir
-        .and_then(|path| path.to_str())
         .and_then(|path| Url::parse(&format!("file:///{path}/")).ok())
         .and_then(|it| it.join("doc/").ok());
     let system_doc = sysroot
-        .and_then(|it| it.to_str())
         .map(|sysroot| format!("file:///{sysroot}/share/doc/rust/html/"))
         .and_then(|it| Url::parse(&it).ok());
 

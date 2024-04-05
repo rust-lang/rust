@@ -7,11 +7,9 @@
       let mut _2: E;
       let mut _3: &U;
       let _4: U;
+      let mut _5: &U;
       scope 1 {
           debug i => _1;
-      }
-      scope 2 {
-          let mut _5: &U;
       }
   
       bb0: {

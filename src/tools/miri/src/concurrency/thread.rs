@@ -1046,7 +1046,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Run the core interpreter loop. Returns only when an interrupt occurs (an error or program
     /// termination).
     fn run_threads(&mut self) -> InterpResult<'tcx, !> {
-       let this = self.eval_context_mut();
+        let this = self.eval_context_mut();
         loop {
             if CTRL_C_RECEIVED.load(Relaxed) {
                 this.machine.handle_abnormal_termination();

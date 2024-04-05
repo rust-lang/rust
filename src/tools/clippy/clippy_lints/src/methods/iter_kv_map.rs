@@ -54,7 +54,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 ITER_KV_MAP,
                 expr.span,
-                &format!("iterating on a map's {replacement_kind}s"),
+                format!("iterating on a map's {replacement_kind}s"),
                 "try",
                 format!("{recv_snippet}.{into_prefix}{replacement_kind}s()"),
                 applicability,
@@ -64,7 +64,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 ITER_KV_MAP,
                 expr.span,
-                &format!("iterating on a map's {replacement_kind}s"),
+                format!("iterating on a map's {replacement_kind}s"),
                 "try",
                 format!(
                     "{recv_snippet}.{into_prefix}{replacement_kind}s().map(|{}{bound_ident}| {})",

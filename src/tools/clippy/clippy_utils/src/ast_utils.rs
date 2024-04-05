@@ -97,8 +97,8 @@ pub fn eq_path_seg(l: &PathSegment, r: &PathSegment) -> bool {
 
 pub fn eq_generic_args(l: &GenericArgs, r: &GenericArgs) -> bool {
     match (l, r) {
-        (GenericArgs::AngleBracketed(l), GenericArgs::AngleBracketed(r)) => over(&l.args, &r.args, eq_angle_arg),
-        (GenericArgs::Parenthesized(l), GenericArgs::Parenthesized(r)) => {
+        (AngleBracketed(l), AngleBracketed(r)) => over(&l.args, &r.args, eq_angle_arg),
+        (Parenthesized(l), Parenthesized(r)) => {
             over(&l.inputs, &r.inputs, |l, r| eq_ty(l, r)) && eq_fn_ret_ty(&l.output, &r.output)
         },
         _ => false,
@@ -304,25 +304,25 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (ExternCrate(l), ExternCrate(r)) => l == r,
         (Use(l), Use(r)) => eq_use_tree(l, r),
         (
-            Static(box ast::StaticItem {
+            Static(box StaticItem {
                 ty: lt,
                 mutability: lm,
                 expr: le,
             }),
-            Static(box ast::StaticItem {
+            Static(box StaticItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,
             }),
         ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
-            Const(box ast::ConstItem {
+            Const(box ConstItem {
                 defaultness: ld,
                 generics: lg,
                 ty: lt,
                 expr: le,
             }),
-            Const(box ast::ConstItem {
+            Const(box ConstItem {
                 defaultness: rd,
                 generics: rg,
                 ty: rt,
@@ -493,13 +493,13 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
     use AssocItemKind::*;
     match (l, r) {
         (
-            Const(box ast::ConstItem {
+            Const(box ConstItem {
                 defaultness: ld,
                 generics: lg,
                 ty: lt,
                 expr: le,
             }),
-            Const(box ast::ConstItem {
+            Const(box ConstItem {
                 defaultness: rd,
                 generics: rg,
                 ty: rt,
@@ -523,14 +523,14 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
             eq_defaultness(*ld, *rd) && eq_fn_sig(lf, rf) && eq_generics(lg, rg) && both(lb, rb, |l, r| eq_block(l, r))
         },
         (
-            Type(box ast::TyAlias {
+            Type(box TyAlias {
                 defaultness: ld,
                 generics: lg,
                 bounds: lb,
                 ty: lt,
                 ..
             }),
-            Type(box ast::TyAlias {
+            Type(box TyAlias {
                 defaultness: rd,
                 generics: rg,
                 bounds: rb,

@@ -474,9 +474,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             VariantData::Unit(..) | VariantData::Struct { .. } => {
                 tcx.type_of(tcx.hir().get_parent_item(hir_id)).instantiate_identity()
             }
-            VariantData::Tuple(..) => {
+            VariantData::Tuple(_, _, ctor) => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                Ty::new_fn_def(tcx, def_id.to_def_id(), args)
+                Ty::new_fn_def(tcx, ctor.to_def_id(), args)
             }
         },
 

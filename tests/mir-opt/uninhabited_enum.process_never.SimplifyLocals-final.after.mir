@@ -7,8 +7,6 @@ fn process_never(_1: *const !) -> () {
     scope 1 {
         debug _input => _2;
     }
-    scope 2 {
-    }
 
     bb0: {
         unreachable;

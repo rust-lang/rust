@@ -532,7 +532,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let mut seen_spans = FxHashSet::default();
         let mut errors = vec![];
-        let mut prev_root_id: NodeId = NodeId::from_u32(0);
+        let mut prev_root_id: NodeId = NodeId::ZERO;
         let determined_imports = mem::take(&mut self.determined_imports);
         let indeterminate_imports = mem::take(&mut self.indeterminate_imports);
 
@@ -556,8 +556,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
 
-                if prev_root_id.as_u32() != 0
-                    && prev_root_id.as_u32() != import.root_id.as_u32()
+                if prev_root_id != NodeId::ZERO
+                    && prev_root_id != import.root_id
                     && !errors.is_empty()
                 {
                     // In the case of a new import line, throw a diagnostic message

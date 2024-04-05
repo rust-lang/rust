@@ -14,8 +14,6 @@
           let _5: *const [u8];
           scope 2 {
               debug arr => _5;
-              scope 3 {
-              }
           }
       }
   

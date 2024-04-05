@@ -129,9 +129,9 @@ impl EarlyLintPass for ModStyle {
                         cx,
                         SELF_NAMED_MODULE_FILES,
                         Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
-                        &format!("`mod.rs` files are required, found `{}`", path.display()),
+                        format!("`mod.rs` files are required, found `{}`", path.display()),
                         None,
-                        &format!("move `{}` to `{}`", path.display(), correct.display(),),
+                        format!("move `{}` to `{}`", path.display(), correct.display(),),
                     );
                 }
             }
@@ -169,9 +169,9 @@ fn check_self_named_mod_exists(cx: &EarlyContext<'_>, path: &Path, file: &Source
             cx,
             MOD_MODULE_FILES,
             Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
-            &format!("`mod.rs` files are not allowed, found `{}`", path.display()),
+            format!("`mod.rs` files are not allowed, found `{}`", path.display()),
             None,
-            &format!("move `{}` to `{}`", path.display(), mod_file.display()),
+            format!("move `{}` to `{}`", path.display(), mod_file.display()),
         );
     }
 }

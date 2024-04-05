@@ -261,7 +261,6 @@ complete -c x.py -n "__fish_seen_subcommand_from doc" -l llvm-profile-generate -
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -s h -l help -d 'Print help (see more with \'--help\')'
-complete -c x.py -n "__fish_seen_subcommand_from test" -l skip -d 'skips tests matching SUBSTRING, if supported by test tool. May be passed multiple times' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from test" -l test-args -d 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l rustc-args -d 'extra options to pass the compiler when running tests' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l extra-checks -d 'comma-separated list of other files types to check (accepts py, py:lint, py:fmt, shell)' -r
@@ -274,6 +273,7 @@ complete -c x.py -n "__fish_seen_subcommand_from test" -l build -d 'build target
 complete -c x.py -n "__fish_seen_subcommand_from test" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from test" -l target -d 'target targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from test" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from test" -l skip -d 'build paths to skip' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from test" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from test" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
 complete -c x.py -n "__fish_seen_subcommand_from test" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f

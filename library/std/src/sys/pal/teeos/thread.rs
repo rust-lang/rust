@@ -151,18 +151,6 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     ))
 }
 
-// stub
-pub mod guard {
-    use crate::ops::Range;
-    pub type Guard = Range<usize>;
-    pub unsafe fn current() -> Option<Guard> {
-        None
-    }
-    pub unsafe fn init() -> Option<Guard> {
-        None
-    }
-}
-
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     libc::PTHREAD_STACK_MIN.try_into().expect("Infallible")
 }

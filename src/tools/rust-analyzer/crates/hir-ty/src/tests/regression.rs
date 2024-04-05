@@ -896,13 +896,13 @@ fn flush(&self) {
 "#,
         expect![[r#"
             123..127 'self': &Mutex<T>
-            150..152 '{}': MutexGuard<'_, T>
+            150..152 '{}': MutexGuard<'static, T>
             234..238 'self': &{unknown}
             240..290 '{     ...()); }': ()
             250..251 'w': &Mutex<BufWriter>
             276..287 '*(w.lock())': BufWriter
             278..279 'w': &Mutex<BufWriter>
-            278..286 'w.lock()': MutexGuard<'_, BufWriter>
+            278..286 'w.lock()': MutexGuard<'static, BufWriter>
         "#]],
     );
 }

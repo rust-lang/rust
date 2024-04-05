@@ -151,7 +151,7 @@ fn check_open_options(cx: &LateContext<'_>, settings: &[(OpenOption, Argument, S
                 cx,
                 NONSENSICAL_OPEN_OPTIONS,
                 prev_span,
-                &format!("the method `{}` is called more than once", &option),
+                format!("the method `{}` is called more than once", &option),
             );
         }
     }

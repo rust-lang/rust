@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeFuture {
                     cx,
                     LARGE_FUTURES,
                     expr.span,
-                    &format!("large future with a size of {} bytes", size.bytes()),
+                    format!("large future with a size of {} bytes", size.bytes()),
                     "consider `Box::pin` on it",
                     format!("Box::pin({})", snippet(cx, expr.span, "..")),
                     Applicability::Unspecified,

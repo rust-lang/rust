@@ -1,4 +1,5 @@
 use std::env;
+use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Command, Output};
 
@@ -104,6 +105,20 @@ impl Rustc {
         self
     }
 
+    /// Specify the crate type.
+    pub fn crate_type(&mut self, crate_type: &str) -> &mut Self {
+        self.cmd.arg("--crate-type");
+        self.cmd.arg(crate_type);
+        self
+    }
+
+    /// Specify the edition year.
+    pub fn edition(&mut self, edition: &str) -> &mut Self {
+        self.cmd.arg("--edition");
+        self.cmd.arg(edition);
+        self
+    }
+
     /// Generic command arguments provider. Use `.arg("-Zname")` over `.arg("-Z").arg("arg")`.
     /// This method will panic if a plain `-Z` or `-C` is passed, or if `-Z <name>` or `-C <name>`
     /// is passed (note the space).
@@ -116,6 +131,11 @@ impl Rustc {
         }
 
         self.cmd.args(args);
+        self
+    }
+
+    pub fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self {
+        self.cmd.env(name, value);
         self
     }
 
@@ -134,6 +154,18 @@ impl Rustc {
 
         let output = self.cmd.output().unwrap();
         if !output.status.success() {
+            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+        }
+        output
+    }
+
+    #[track_caller]
+    pub fn run_fail(&mut self) -> Output {
+        let caller_location = std::panic::Location::caller();
+        let caller_line_number = caller_location.line();
+
+        let output = self.cmd.output().unwrap();
+        if output.status.success() {
             handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
         }
         output

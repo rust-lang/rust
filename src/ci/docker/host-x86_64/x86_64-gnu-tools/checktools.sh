@@ -2,6 +2,7 @@
 # ignore-tidy-linelength
 
 set -eu
+set -x # so one can see where we are in the script
 
 X_PY="$1"
 

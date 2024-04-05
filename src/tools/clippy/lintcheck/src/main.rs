@@ -5,6 +5,13 @@
 // When a new lint is introduced, we can search the results for new warnings and check for false
 // positives.
 
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    rust_2018_idioms,
+    unused_lifetimes,
+    unused_qualifications
+)]
 #![allow(clippy::collapsible_else_if)]
 
 mod config;
@@ -189,13 +196,13 @@ impl CrateSource {
                 // don't download/extract if we already have done so
                 if !krate_file_path.is_file() {
                     // create a file path to download and write the crate data into
-                    let mut krate_dest = std::fs::File::create(&krate_file_path).unwrap();
+                    let mut krate_dest = fs::File::create(&krate_file_path).unwrap();
                     let mut krate_req = get(&url).unwrap().into_reader();
                     // copy the crate into the file
-                    std::io::copy(&mut krate_req, &mut krate_dest).unwrap();
+                    io::copy(&mut krate_req, &mut krate_dest).unwrap();
 
                     // unzip the tarball
-                    let ungz_tar = flate2::read::GzDecoder::new(std::fs::File::open(&krate_file_path).unwrap());
+                    let ungz_tar = flate2::read::GzDecoder::new(fs::File::open(&krate_file_path).unwrap());
                     // extract the tar archive
                     let mut archive = tar::Archive::new(ungz_tar);
                     archive.unpack(&extract_dir).expect("Failed to extract!");
@@ -257,7 +264,7 @@ impl CrateSource {
             },
             CrateSource::Path { name, path, options } => {
                 fn is_cache_dir(entry: &DirEntry) -> bool {
-                    std::fs::read(entry.path().join("CACHEDIR.TAG"))
+                    fs::read(entry.path().join("CACHEDIR.TAG"))
                         .map(|x| x.starts_with(b"Signature: 8a477f597d28d172789f06886806bc55"))
                         .unwrap_or(false)
                 }
@@ -268,7 +275,7 @@ impl CrateSource {
                 let dest_crate_root = PathBuf::from(LINTCHECK_SOURCES).join(name);
                 if dest_crate_root.exists() {
                     println!("Deleting existing directory at {dest_crate_root:?}");
-                    std::fs::remove_dir_all(&dest_crate_root).unwrap();
+                    fs::remove_dir_all(&dest_crate_root).unwrap();
                 }
 
                 println!("Copying {path:?} to {dest_crate_root:?}");
@@ -281,9 +288,9 @@ impl CrateSource {
                     let metadata = entry_path.symlink_metadata().unwrap();
 
                     if metadata.is_dir() {
-                        std::fs::create_dir(dest_path).unwrap();
+                        fs::create_dir(dest_path).unwrap();
                     } else if metadata.is_file() {
-                        std::fs::copy(entry_path, dest_path).unwrap();
+                        fs::copy(entry_path, dest_path).unwrap();
                     }
                 }
 
@@ -330,7 +337,7 @@ impl Crate {
             );
         }
 
-        let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
+        let cargo_clippy_path = fs::canonicalize(cargo_clippy_path).unwrap();
 
         let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir");
 
@@ -353,7 +360,7 @@ impl Crate {
             clippy_args.push("--cap-lints=warn");
         } else {
             clippy_args.push("--cap-lints=allow");
-            clippy_args.extend(lint_filter.iter().map(std::string::String::as_str));
+            clippy_args.extend(lint_filter.iter().map(String::as_str));
         }
 
         if let Some(server) = server {
@@ -454,7 +461,7 @@ fn build_clippy() {
 /// Read a `lintcheck_crates.toml` file
 fn read_crates(toml_path: &Path) -> (Vec<CrateSource>, RecursiveOptions) {
     let toml_content: String =
-        std::fs::read_to_string(toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
+        fs::read_to_string(toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
     let crate_list: SourceList =
         toml::from_str(&toml_content).unwrap_or_else(|e| panic!("Failed to parse {}: \n{e}", toml_path.display()));
     // parse the hashmap of the toml file into a list of crates
@@ -549,7 +556,7 @@ fn main() {
     }
 
     // assert that we launch lintcheck from the repo root (via cargo lintcheck)
-    if std::fs::metadata("lintcheck/Cargo.toml").is_err() {
+    if fs::metadata("lintcheck/Cargo.toml").is_err() {
         eprintln!("lintcheck needs to be run from clippy's repo root!\nUse `cargo lintcheck` alternatively.");
         std::process::exit(3);
     }
@@ -570,7 +577,7 @@ fn main() {
         cargo_clippy_path.display()
     );
 
-    let clippy_ver = std::process::Command::new(&cargo_clippy_path)
+    let clippy_ver = Command::new(&cargo_clippy_path)
         .arg("--version")
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
@@ -699,7 +706,7 @@ fn main() {
 
 /// read the previous stats from the lintcheck-log file
 fn read_stats_from_file(file_path: &Path) -> HashMap<String, usize> {
-    let file_content: String = match std::fs::read_to_string(file_path).ok() {
+    let file_content: String = match fs::read_to_string(file_path).ok() {
         Some(content) => content,
         None => {
             return HashMap::new();
@@ -779,17 +786,17 @@ fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, us
 ///
 /// This function panics if creating one of the dirs fails.
 fn create_dirs(krate_download_dir: &Path, extract_dir: &Path) {
-    std::fs::create_dir("target/lintcheck/").unwrap_or_else(|err| {
+    fs::create_dir("target/lintcheck/").unwrap_or_else(|err| {
         assert_eq!(
             err.kind(),
             ErrorKind::AlreadyExists,
             "cannot create lintcheck target dir"
         );
     });
-    std::fs::create_dir(krate_download_dir).unwrap_or_else(|err| {
+    fs::create_dir(krate_download_dir).unwrap_or_else(|err| {
         assert_eq!(err.kind(), ErrorKind::AlreadyExists, "cannot create crate download dir");
     });
-    std::fs::create_dir(extract_dir).unwrap_or_else(|err| {
+    fs::create_dir(extract_dir).unwrap_or_else(|err| {
         assert_eq!(
             err.kind(),
             ErrorKind::AlreadyExists,
@@ -816,7 +823,7 @@ fn lintcheck_test() {
         "--crates-toml",
         "lintcheck/test_sources.toml",
     ];
-    let status = std::process::Command::new(env::var("CARGO").unwrap_or("cargo".into()))
+    let status = Command::new(env::var("CARGO").unwrap_or("cargo".into()))
         .args(args)
         .current_dir("..") // repo root
         .status();

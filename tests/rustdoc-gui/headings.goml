@@ -156,7 +156,7 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
 
 define-function: (
     "check-colors",
-    (theme, heading_color, small_heading_color, heading_border_color),
+    [theme, heading_color, small_heading_color, heading_border_color],
     block {
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
@@ -220,7 +220,7 @@ call-function: (
 
 define-function: (
     "check-since-color",
-    (theme),
+    [theme],
     block {
         set-local-storage: {"rustdoc-theme": |theme|}
         reload:
@@ -229,6 +229,6 @@ define-function: (
 )
 
 go-to: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
-call-function: ("check-since-color", ("ayu"))
-call-function: ("check-since-color", ("dark"))
-call-function: ("check-since-color", ("light"))
+call-function: ("check-since-color", {"theme": "ayu"})
+call-function: ("check-since-color", {"theme": "dark"})
+call-function: ("check-since-color", {"theme": "light"})

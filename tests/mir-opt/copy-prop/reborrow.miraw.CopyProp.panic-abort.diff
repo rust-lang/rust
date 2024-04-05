@@ -13,12 +13,10 @@
           scope 2 {
               debug b => _3;
               let _4: *mut u8;
-              scope 4 {
+              scope 3 {
 -                 debug c => _4;
 +                 debug c => _2;
               }
-          }
-          scope 3 {
           }
       }
   

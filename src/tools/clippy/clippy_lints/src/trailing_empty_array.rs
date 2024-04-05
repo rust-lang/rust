@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for TrailingEmptyArray {
                 item.span,
                 "trailing zero-sized array in a struct which is not marked with a `repr` attribute",
                 None,
-                &format!(
+                format!(
                     "consider annotating `{}` with `#[repr(C)]` or another `repr` attribute",
                     cx.tcx.def_path_str(item.owner_id)
                 ),

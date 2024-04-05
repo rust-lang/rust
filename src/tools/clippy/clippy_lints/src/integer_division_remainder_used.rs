@@ -43,7 +43,7 @@ impl LateLintPass<'_> for IntegerDivisionRemainderUsed {
                 cx,
                 INTEGER_DIVISION_REMAINDER_USED,
                 expr.span.source_callsite(),
-                &format!("use of {} has been disallowed in this context", op.node.as_str()),
+                format!("use of {} has been disallowed in this context", op.node.as_str()),
             );
         }
     }

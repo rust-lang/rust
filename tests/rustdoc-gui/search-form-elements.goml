@@ -4,10 +4,10 @@ show-text: true
 
 define-function: (
     "check-search-colors",
-    (
+    [
         theme, border, background, search_input_color, search_input_border_focus,
         menu_button_border, menu_button_a_color, menu_button_a_border_hover, menu_a_color,
-    ),
+    ],
     block {
         set-local-storage: {
             "rustdoc-theme": |theme|,

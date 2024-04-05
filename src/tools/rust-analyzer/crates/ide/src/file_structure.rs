@@ -134,15 +134,22 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 if let Some(type_param_list) = it.generic_param_list() {
                     collapse_ws(type_param_list.syntax(), &mut detail);
                 }
-                if let Some(param_list) = it.param_list() {
+                let has_self_param = if let Some(param_list) = it.param_list() {
                     collapse_ws(param_list.syntax(), &mut detail);
-                }
+                    param_list.self_param().is_some()
+                } else {
+                    false
+                };
                 if let Some(ret_type) = it.ret_type() {
                     detail.push(' ');
                     collapse_ws(ret_type.syntax(), &mut detail);
                 }
 
-                decl_with_detail(&it, Some(detail), StructureNodeKind::SymbolKind(SymbolKind::Function))
+                decl_with_detail(&it, Some(detail), StructureNodeKind::SymbolKind(if has_self_param {
+                    SymbolKind::Method
+                } else {
+                    SymbolKind::Function
+                }))
             },
             ast::Struct(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Struct)),
             ast::Union(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Union)),

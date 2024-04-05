@@ -109,7 +109,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
         }
     }
 
-    fn fake_read(&mut self, _: &rustc_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 impl MutatePairDelegate<'_, '_> {
@@ -141,7 +141,7 @@ impl BreakAfterExprVisitor {
     }
 }
 
-impl<'tcx> intravisit::Visitor<'tcx> for BreakAfterExprVisitor {
+impl<'tcx> Visitor<'tcx> for BreakAfterExprVisitor {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if self.past_candidate {
             return;

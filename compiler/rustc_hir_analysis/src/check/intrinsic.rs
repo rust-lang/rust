@@ -107,6 +107,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::cttz
         | sym::bswap
         | sym::bitreverse
+        | sym::three_way_compare
         | sym::discriminant_value
         | sym::type_id
         | sym::likely
@@ -182,7 +183,7 @@ pub fn check_intrinsic_type(
             let region = ty::Region::new_bound(
                 tcx,
                 ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon },
+                ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon },
             );
             let env_region = ty::Region::new_bound(
                 tcx,
@@ -418,6 +419,10 @@ pub fn check_intrinsic_type(
             | sym::bswap
             | sym::bitreverse => (1, 0, vec![param(0)], param(0)),
 
+            sym::three_way_compare => {
+                (1, 0, vec![param(0), param(0)], tcx.ty_ordering_enum(Some(span)))
+            }
+
             sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
                 (1, 0, vec![param(0), param(0)], Ty::new_tup(tcx, &[param(0), tcx.types.bool]))
             }
@@ -454,9 +459,8 @@ pub fn check_intrinsic_type(
             sym::unchecked_div | sym::unchecked_rem | sym::exact_div => {
                 (1, 0, vec![param(0), param(0)], param(0))
             }
-            sym::unchecked_shl | sym::unchecked_shr | sym::rotate_left | sym::rotate_right => {
-                (1, 0, vec![param(0), param(0)], param(0))
-            }
+            sym::unchecked_shl | sym::unchecked_shr => (2, 0, vec![param(0), param(1)], param(0)),
+            sym::rotate_left | sym::rotate_right => (1, 0, vec![param(0), param(0)], param(0)),
             sym::unchecked_add | sym::unchecked_sub | sym::unchecked_mul => {
                 (1, 0, vec![param(0), param(0)], param(0))
             }
@@ -491,7 +495,7 @@ pub fn check_intrinsic_type(
                 );
                 let discriminant_def_id = assoc_items[0];
 
-                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon };
+                let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon };
                 (
                     1,
                     0,
@@ -551,7 +555,7 @@ pub fn check_intrinsic_type(
             }
 
             sym::raw_eq => {
-                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon };
+                let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon };
                 let param_ty_lhs =
                     Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), param(0));
                 let br = ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrAnon };
@@ -623,8 +627,8 @@ pub fn check_intrinsic_type(
             sym::simd_cast
             | sym::simd_as
             | sym::simd_cast_ptr
-            | sym::simd_expose_addr
-            | sym::simd_from_exposed_addr => (2, 0, vec![param(0)], param(1)),
+            | sym::simd_expose_provenance
+            | sym::simd_with_exposed_provenance => (2, 0, vec![param(0)], param(1)),
             sym::simd_bitmask => (2, 0, vec![param(0)], param(1)),
             sym::simd_select | sym::simd_select_bitmask => {
                 (2, 0, vec![param(0), param(1), param(1)], param(1))

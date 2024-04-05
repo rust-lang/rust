@@ -11,8 +11,6 @@
           debug v => _1;
           let _4: bool;
           scope 2 {
-          }
-          scope 3 {
               debug y => _4;
           }
       }

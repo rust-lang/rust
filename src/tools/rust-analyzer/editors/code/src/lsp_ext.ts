@@ -83,7 +83,11 @@ export type TestItem = {
     range?: lc.Range | undefined;
     runnable?: Runnable | undefined;
 };
-export type DiscoverTestResults = { tests: TestItem[]; scope: string[] };
+export type DiscoverTestResults = {
+    tests: TestItem[];
+    scope: string[] | undefined;
+    scopeFile: lc.TextDocumentIdentifier[] | undefined;
+};
 export type TestState =
     | { tag: "failed"; message: string }
     | { tag: "passed" }

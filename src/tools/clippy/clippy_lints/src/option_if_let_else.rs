@@ -304,7 +304,7 @@ impl<'tcx> LateLintPass<'tcx> for OptionIfLetElse {
                 cx,
                 OPTION_IF_LET_ELSE,
                 expr.span,
-                format!("use Option::{} instead of an if let/else", det.method_sugg).as_str(),
+                format!("use Option::{} instead of an if let/else", det.method_sugg),
                 "try",
                 format!(
                     "{}.{}({}, {})",

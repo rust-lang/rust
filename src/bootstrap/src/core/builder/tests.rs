@@ -599,7 +599,6 @@ mod dist {
             pass: None,
             run: None,
             only_modified: false,
-            skip: vec![],
             extra_checks: None,
         };
 
@@ -664,7 +663,6 @@ mod dist {
             no_fail_fast: false,
             doc: true,
             no_doc: false,
-            skip: vec![],
             bless: false,
             force_rerun: false,
             compare_mode: None,

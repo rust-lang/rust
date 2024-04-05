@@ -42,6 +42,7 @@ pub(super) struct LocationState {
     /// protected, that is *not* the case for uninitialized locations. Instead we just have a latent
     /// "future initial permission" of `Disabled`, causing UB only if an access is ever actually
     /// performed.
+    /// Note that the tree root is also always initialized, as if the allocation was a write access.
     initialized: bool,
     /// This pointer's current permission / future initial permission.
     permission: Permission,
@@ -55,17 +56,18 @@ pub(super) struct LocationState {
 }
 
 impl LocationState {
-    /// Default initial state has never been accessed and has been subjected to no
-    /// foreign access.
-    fn new(permission: Permission) -> Self {
+    /// Constructs a new initial state. It has neither been accessed, nor been subjected
+    /// to any foreign access yet.
+    /// The permission is not allowed to be `Active`.
+    fn new_uninit(permission: Permission) -> Self {
+        assert!(permission.is_initial() || permission.is_disabled());
         Self { permission, initialized: false, latest_foreign_access: None }
     }
 
-    /// Record that this location was accessed through a child pointer by
-    /// marking it as initialized
-    fn with_access(mut self) -> Self {
-        self.initialized = true;
-        self
+    /// Constructs a new initial state. It has not yet been subjected
+    /// to any foreign access. However, it is already marked as having been accessed.
+    fn new_init(permission: Permission) -> Self {
+        Self { permission, initialized: true, latest_foreign_access: None }
     }
 
     /// Check if the location has been initialized, i.e. if it has
@@ -238,8 +240,10 @@ pub(super) struct Node {
     /// If the pointer was reborrowed, it has children.
     // FIXME: bench to compare this to FxHashSet and to other SmallVec sizes
     pub children: SmallVec<[UniIndex; 4]>,
-    /// Either `Reserved` or `Frozen`, the permission this tag will be lazily initialized
-    /// to on the first access.
+    /// Either `Reserved`,  `Frozen`, or `Disabled`, it is the permission this tag will
+    /// lazily be initialized to on the first access.
+    /// It is only ever `Disabled` for a tree root, since the root is initialized to `Active` by
+    /// its own separate mechanism.
     default_initial_perm: Permission,
     /// Some extra information useful only for debugging purposes
     pub debug_info: NodeDebugInfo,
@@ -444,12 +448,14 @@ impl<'tree> TreeVisitor<'tree> {
 impl Tree {
     /// Create a new tree, with only a root pointer.
     pub fn new(root_tag: BorTag, size: Size, span: Span) -> Self {
-        let root_perm = Permission::new_active();
+        // The root has `Disabled` as the default permission,
+        // so that any access out of bounds is invalid.
+        let root_default_perm = Permission::new_disabled();
         let mut tag_mapping = UniKeyMap::default();
         let root_idx = tag_mapping.insert(root_tag);
         let nodes = {
             let mut nodes = UniValMap::<Node>::default();
-            let mut debug_info = NodeDebugInfo::new(root_tag, root_perm, span);
+            let mut debug_info = NodeDebugInfo::new(root_tag, root_default_perm, span);
             // name the root so that all allocations contain one named pointer
             debug_info.add_name("root of the allocation");
             nodes.insert(
@@ -458,7 +464,7 @@ impl Tree {
                     tag: root_tag,
                     parent: None,
                     children: SmallVec::default(),
-                    default_initial_perm: root_perm,
+                    default_initial_perm: root_default_perm,
                     debug_info,
                 },
             );
@@ -466,7 +472,11 @@ impl Tree {
         };
         let rperms = {
             let mut perms = UniValMap::default();
-            perms.insert(root_idx, LocationState::new(root_perm).with_access());
+            // We manually set it to `Active` on all in-bounds positions.
+            // We also ensure that it is initalized, so that no `Active` but
+            // not yet initialized nodes exist. Essentially, we pretend there
+            // was a write that initialized these to `Active`.
+            perms.insert(root_idx, LocationState::new_init(Permission::new_active()));
             RangeMap::new(size, perms)
         };
         Self { root: root_idx, nodes, rperms, tag_mapping }
@@ -500,7 +510,7 @@ impl<'tcx> Tree {
         // Register new_tag as a child of parent_tag
         self.nodes.get_mut(parent_idx).unwrap().children.push(idx);
         // Initialize perms
-        let perm = LocationState::new(default_initial_perm).with_access();
+        let perm = LocationState::new_init(default_initial_perm);
         for (_perms_range, perms) in self.rperms.iter_mut(reborrow_range.start, reborrow_range.size)
         {
             perms.insert(idx, perm);
@@ -599,7 +609,7 @@ impl<'tcx> Tree {
          -> Result<ContinueTraversal, TransitionError> {
             let NodeAppArgs { node, mut perm, rel_pos } = args;
 
-            let old_state = perm.or_insert(LocationState::new(node.default_initial_perm));
+            let old_state = perm.or_insert(LocationState::new_uninit(node.default_initial_perm));
 
             match old_state.skip_if_known_noop(access_kind, rel_pos) {
                 ContinueTraversal::SkipChildren => return Ok(ContinueTraversal::SkipChildren),

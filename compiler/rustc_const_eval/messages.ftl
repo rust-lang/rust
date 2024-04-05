@@ -222,6 +222,7 @@ const_eval_mut_deref =
 
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 
+const_eval_nested_static_in_thread_local = #[thread_local] does not support implicit nested statics, please create explicit static items and refer to them instead
 const_eval_non_const_fmt_macro_call =
     cannot call non-const formatting macro in {const_eval_const_context}s
 

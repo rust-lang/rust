@@ -182,7 +182,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
         ty::Region::new_bound(
             tcx,
             ty::INNERMOST,
-            ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon },
+            ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon },
         ),
         panic_info_ty,
     );

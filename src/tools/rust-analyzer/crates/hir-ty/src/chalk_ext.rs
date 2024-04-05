@@ -268,6 +268,13 @@ impl TyExt for Ty {
                             data.substitute(Interner, &subst).into_value_and_skipped_binders().0
                         })
                     }
+                    ImplTraitId::AssociatedTypeImplTrait(alias, idx) => {
+                        db.type_alias_impl_traits(alias).map(|it| {
+                            let data =
+                                (*it).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
+                            data.substitute(Interner, &subst).into_value_and_skipped_binders().0
+                        })
+                    }
                 }
             }
             TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
@@ -275,6 +282,13 @@ impl TyExt for Ty {
                 {
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         db.return_type_impl_traits(func).map(|it| {
+                            let data =
+                                (*it).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
+                            data.substitute(Interner, &opaque_ty.substitution)
+                        })
+                    }
+                    ImplTraitId::AssociatedTypeImplTrait(alias, idx) => {
+                        db.type_alias_impl_traits(alias).map(|it| {
                             let data =
                                 (*it).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
                             data.substitute(Interner, &opaque_ty.substitution)

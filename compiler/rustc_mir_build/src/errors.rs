@@ -456,8 +456,8 @@ pub enum UnusedUnsafeEnclosing {
 
 pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
     pub cx: &'m RustcPatCtxt<'p, 'tcx>,
-    pub expr_span: Span,
-    pub span: Span,
+    pub scrut_span: Span,
+    pub braces_span: Option<Span>,
     pub ty: Ty<'tcx>,
 }
 
@@ -465,7 +465,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNo
     fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'_, G> {
         let mut diag =
             Diag::new(dcx, level, fluent::mir_build_non_exhaustive_patterns_type_not_empty);
-        diag.span(self.span);
+        diag.span(self.scrut_span);
         diag.code(E0004);
         let peeled_ty = self.ty.peel_refs();
         diag.arg("ty", self.ty);
@@ -502,26 +502,19 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNo
             }
         }
 
-        let mut suggestion = None;
         let sm = self.cx.tcx.sess.source_map();
-        if self.span.eq_ctxt(self.expr_span) {
+        if let Some(braces_span) = self.braces_span {
             // Get the span for the empty match body `{}`.
-            let (indentation, more) = if let Some(snippet) = sm.indentation_before(self.span) {
+            let (indentation, more) = if let Some(snippet) = sm.indentation_before(self.scrut_span)
+            {
                 (format!("\n{snippet}"), "    ")
             } else {
                 (" ".to_string(), "")
             };
-            suggestion = Some((
-                self.span.shrink_to_hi().with_hi(self.expr_span.hi()),
-                format!(" {{{indentation}{more}_ => todo!(),{indentation}}}",),
-            ));
-        }
-
-        if let Some((span, sugg)) = suggestion {
             diag.span_suggestion_verbose(
-                span,
+                braces_span,
                 fluent::mir_build_suggestion,
-                sugg,
+                format!(" {{{indentation}{more}_ => todo!(),{indentation}}}"),
                 Applicability::HasPlaceholders,
             );
         } else {

@@ -338,7 +338,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                         UNNECESSARY_UNWRAP,
                         expr.hir_id,
                         expr.span,
-                        &format!(
+                        format!(
                             "called `{}` on `{unwrappable_variable_name}` after checking its variant with `{}`",
                             method_name.ident.name,
                             unwrappable.check_name.ident.as_str(),
@@ -373,7 +373,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                         PANICKING_UNWRAP,
                         expr.hir_id,
                         expr.span,
-                        &format!("this call to `{}()` will always panic", method_name.ident.name),
+                        format!("this call to `{}()` will always panic", method_name.ident.name),
                         |diag| {
                             diag.span_label(unwrappable.check.span, "because of this check");
                         },

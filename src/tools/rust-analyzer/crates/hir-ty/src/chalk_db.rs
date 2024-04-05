@@ -272,6 +272,19 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                 };
                 chalk_ir::Binders::new(binders, bound)
             }
+            crate::ImplTraitId::AssociatedTypeImplTrait(alias, idx) => {
+                let datas = self
+                    .db
+                    .type_alias_impl_traits(alias)
+                    .expect("impl trait id without impl traits");
+                let (datas, binders) = (*datas).as_ref().into_value_and_skipped_binders();
+                let data = &datas.impl_traits[idx];
+                let bound = OpaqueTyDatumBound {
+                    bounds: make_single_type_binders(data.bounds.skip_binders().to_vec()),
+                    where_clauses: chalk_ir::Binders::empty(Interner, vec![]),
+                };
+                chalk_ir::Binders::new(binders, bound)
+            }
             crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                 if let Some((future_trait, future_output)) = self
                     .db

@@ -43,7 +43,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
                 cx,
                 MATCH_AS_REF,
                 expr.span,
-                &format!("use `{suggestion}()` instead"),
+                format!("use `{suggestion}()` instead"),
                 "try",
                 format!(
                     "{}.{suggestion}(){cast}",

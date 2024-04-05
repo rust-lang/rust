@@ -14,7 +14,7 @@ pub struct PlaceTy<'tcx> {
 }
 
 // At least on 64 bit systems, `PlaceTy` should not be larger than two or three pointers.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 static_assert_size!(PlaceTy<'_>, 16);
 
 impl<'tcx> PlaceTy<'tcx> {
@@ -276,6 +276,11 @@ impl<'tcx> BinOp {
             &BinOp::Eq | &BinOp::Lt | &BinOp::Le | &BinOp::Ne | &BinOp::Ge | &BinOp::Gt => {
                 tcx.types.bool
             }
+            &BinOp::Cmp => {
+                // these should be integer-like types of the same size.
+                assert_eq!(lhs_ty, rhs_ty);
+                tcx.ty_ordering_enum(None)
+            }
         }
     }
 }
@@ -312,7 +317,8 @@ impl BinOp {
             BinOp::Gt => hir::BinOpKind::Gt,
             BinOp::Le => hir::BinOpKind::Le,
             BinOp::Ge => hir::BinOpKind::Ge,
-            BinOp::AddUnchecked
+            BinOp::Cmp
+            | BinOp::AddUnchecked
             | BinOp::SubUnchecked
             | BinOp::MulUnchecked
             | BinOp::ShlUnchecked

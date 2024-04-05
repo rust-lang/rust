@@ -860,6 +860,7 @@ impl<'a> Parser<'a> {
                     ExprKind::MethodCall(_) => "a method call",
                     ExprKind::Call(_, _) => "a function call",
                     ExprKind::Await(_, _) => "`.await`",
+                    ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
                     ExprKind::Err(_) => return Ok(with_postfix),
                     _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
                 }

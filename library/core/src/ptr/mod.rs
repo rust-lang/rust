@@ -340,13 +340,13 @@
 //! clear where a satisfying unambiguous semantics can be defined for Exposed Provenance.
 //! Furthermore, Exposed Provenance will not work (well) with tools like [Miri] and [CHERI].
 //!
-//! Exposed Provenance is provided by the [`expose_addr`] and [`from_exposed_addr`] methods, which
-//! are meant to replace `as` casts between pointers and integers. [`expose_addr`] is a lot like
+//! Exposed Provenance is provided by the [`expose_provenance`] and [`with_exposed_provenance`] methods,
+//! which are meant to replace `as` casts between pointers and integers. [`expose_provenance`] is a lot like
 //! [`addr`], but additionally adds the provenance of the pointer to a global list of 'exposed'
 //! provenances. (This list is purely conceptual, it exists for the purpose of specifying Rust but
-//! is not materialized in actual executions, except in tools like [Miri].) [`from_exposed_addr`]
+//! is not materialized in actual executions, except in tools like [Miri].) [`with_exposed_provenance`]
 //! can be used to construct a pointer with one of these previously 'exposed' provenances.
-//! [`from_exposed_addr`] takes only `addr: usize` as arguments, so unlike in [`with_addr`] there is
+//! [`with_exposed_provenance`] takes only `addr: usize` as arguments, so unlike in [`with_addr`] there is
 //! no indication of what the correct provenance for the returned pointer is -- and that is exactly
 //! what makes pointer-usize-pointer roundtrips so tricky to rigorously specify! There is no
 //! algorithm that decides which provenance will be used. You can think of this as "guessing" the
@@ -355,10 +355,10 @@
 //! there is *no* previously 'exposed' provenance that justifies the way the returned pointer will
 //! be used, the program has undefined behavior.
 //!
-//! Using [`expose_addr`] or [`from_exposed_addr`] (or the `as` casts) means that code is
+//! Using [`expose_provenance`] or [`with_exposed_provenance`] (or the `as` casts) means that code is
 //! *not* following Strict Provenance rules. The goal of the Strict Provenance experiment is to
-//! determine how far one can get in Rust without the use of [`expose_addr`] and
-//! [`from_exposed_addr`], and to encourage code to be written with Strict Provenance APIs only.
+//! determine how far one can get in Rust without the use of [`expose_provenance`] and
+//! [`with_exposed_provenance`], and to encourage code to be written with Strict Provenance APIs only.
 //! Maximizing the amount of such code is a major win for avoiding specification complexity and to
 //! facilitate adoption of tools like [CHERI] and [Miri] that can be a big help in increasing the
 //! confidence in (unsafe) Rust code.
@@ -374,8 +374,8 @@
 //! [`map_addr`]: pointer::map_addr
 //! [`addr`]: pointer::addr
 //! [`ptr::dangling`]: core::ptr::dangling
-//! [`expose_addr`]: pointer::expose_addr
-//! [`from_exposed_addr`]: from_exposed_addr
+//! [`expose_provenance`]: pointer::expose_provenance
+//! [`with_exposed_provenance`]: with_exposed_provenance
 //! [Miri]: https://github.com/rust-lang/miri
 //! [CHERI]: https://www.cl.cam.ac.uk/research/security/ctsrd/cheri/
 //! [Strict Provenance]: https://github.com/rust-lang/rust/issues/95228
@@ -581,7 +581,7 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 /// little more than a usize address in disguise.
 ///
 /// This is different from `addr as *const T`, which creates a pointer that picks up a previously
-/// exposed provenance. See [`from_exposed_addr`] for more details on that operation.
+/// exposed provenance. See [`with_exposed_provenance`] for more details on that operation.
 ///
 /// This API and its claimed semantics are part of the Strict Provenance experiment,
 /// see the [module documentation][crate::ptr] for details.
@@ -592,7 +592,7 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
     // We use transmute rather than a cast so tools like Miri can tell that this
-    // is *not* the same as from_exposed_addr.
+    // is *not* the same as with_exposed_provenance.
     // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
     // pointer).
     unsafe { mem::transmute(addr) }
@@ -625,7 +625,7 @@ pub const fn dangling<T>() -> *const T {
 /// little more than a usize address in disguise.
 ///
 /// This is different from `addr as *mut T`, which creates a pointer that picks up a previously
-/// exposed provenance. See [`from_exposed_addr_mut`] for more details on that operation.
+/// exposed provenance. See [`with_exposed_provenance_mut`] for more details on that operation.
 ///
 /// This API and its claimed semantics are part of the Strict Provenance experiment,
 /// see the [module documentation][crate::ptr] for details.
@@ -636,7 +636,7 @@ pub const fn dangling<T>() -> *const T {
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
     // We use transmute rather than a cast so tools like Miri can tell that this
-    // is *not* the same as from_exposed_addr.
+    // is *not* the same as with_exposed_provenance.
     // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
     // pointer).
     unsafe { mem::transmute(addr) }
@@ -663,7 +663,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 ///
 /// This is a more rigorously specified alternative to `addr as *const T`. The provenance of the
 /// returned pointer is that of *any* pointer that was previously exposed by passing it to
-/// [`expose_addr`][pointer::expose_addr], or a `ptr as usize` cast. In addition, memory which is
+/// [`expose_provenance`][pointer::expose_provenance], or a `ptr as usize` cast. In addition, memory which is
 /// outside the control of the Rust abstract machine (MMIO registers, for example) is always
 /// considered to be exposed, so long as this memory is disjoint from memory that will be used by
 /// the abstract machine such as the stack, heap, and statics.
@@ -699,7 +699,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 #[unstable(feature = "exposed_provenance", issue = "95228")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
-pub fn from_exposed_addr<T>(addr: usize) -> *const T
+pub fn with_exposed_provenance<T>(addr: usize) -> *const T
 where
     T: Sized,
 {
@@ -711,7 +711,7 @@ where
 ///
 /// This is a more rigorously specified alternative to `addr as *mut T`. The provenance of the
 /// returned pointer is that of *any* pointer that was previously passed to
-/// [`expose_addr`][pointer::expose_addr] or a `ptr as usize` cast. If there is no previously
+/// [`expose_provenance`][pointer::expose_provenance] or a `ptr as usize` cast. If there is no previously
 /// 'exposed' provenance that justifies the way this pointer will be used, the program has undefined
 /// behavior. Note that there is no algorithm that decides which provenance will be used. You can
 /// think of this as "guessing" the right provenance, and the guess will be "maximally in your
@@ -739,7 +739,7 @@ where
 #[unstable(feature = "exposed_provenance", issue = "95228")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
-pub fn from_exposed_addr_mut<T>(addr: usize) -> *mut T
+pub fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T
 where
     T: Sized,
 {
@@ -1781,9 +1781,19 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
     use intrinsics::{
-        assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_shl,
-        unchecked_shr, unchecked_sub, wrapping_add, wrapping_mul, wrapping_sub,
+        assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_sub,
+        wrapping_add, wrapping_mul, wrapping_sub,
     };
+    #[cfg(bootstrap)]
+    const unsafe fn unchecked_shl(value: usize, shift: usize) -> usize {
+        value << shift
+    }
+    #[cfg(bootstrap)]
+    const unsafe fn unchecked_shr(value: usize, shift: usize) -> usize {
+        value >> shift
+    }
+    #[cfg(not(bootstrap))]
+    use intrinsics::{unchecked_shl, unchecked_shr};
 
     /// Calculate multiplicative modular inverse of `x` modulo `m`.
     ///

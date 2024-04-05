@@ -918,7 +918,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let param = callee_args.const_at(host_effect_index);
         let cause = self.misc(span);
-        match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::No, effect, param) {
+        // We know the type of `effect` to be `bool`, there will be no opaque type inference.
+        match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::Yes, effect, param) {
             Ok(infer::InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             }

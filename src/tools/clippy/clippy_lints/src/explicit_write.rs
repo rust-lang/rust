@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                 cx,
                 EXPLICIT_WRITE,
                 expr.span,
-                &format!("use of `{used}.unwrap()`"),
+                format!("use of `{used}.unwrap()`"),
                 "try",
                 format!("{prefix}{sugg_mac}!({inputs_snippet})"),
                 applicability,

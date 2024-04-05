@@ -193,7 +193,7 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
             cx,
             MEM_REPLACE_WITH_DEFAULT,
             expr_span,
-            &format!(
+            format!(
                 "replacing a value of type `T` with `T::default()` is better expressed using `{top_crate}::mem::take`"
             ),
             |diag| {

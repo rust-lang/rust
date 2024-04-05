@@ -31,7 +31,7 @@ assert-css: ("#settings-menu .popover", {"display": "none"})
 
 define-function: (
     "check-popover-colors",
-    (theme, border_color),
+    [theme, border_color],
     block {
         set-local-storage: {
             "rustdoc-theme": |theme|,

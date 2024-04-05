@@ -74,7 +74,7 @@ impl LateLintPass<'_> for LargeIncludeFile {
                 expr.span,
                 "attempted to include a large file",
                 None,
-                &format!(
+                format!(
                     "the configuration allows a maximum size of {} bytes",
                     self.max_file_size
                 ),

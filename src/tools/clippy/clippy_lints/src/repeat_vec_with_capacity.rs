@@ -55,7 +55,7 @@ fn emit_lint(cx: &LateContext<'_>, span: Span, kind: &str, note: &'static str, s
         cx,
         REPEAT_VEC_WITH_CAPACITY,
         span,
-        &format!("repeating `Vec::with_capacity` using `{kind}`, which does not retain capacity"),
+        format!("repeating `Vec::with_capacity` using `{kind}`, which does not retain capacity"),
         |diag| {
             diag.note(note);
             diag.span_suggestion_verbose(span, sugg_msg, sugg, Applicability::MaybeIncorrect);

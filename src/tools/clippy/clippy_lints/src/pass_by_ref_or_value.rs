@@ -206,7 +206,7 @@ impl<'tcx> PassByRefOrValue {
                             cx,
                             TRIVIALLY_COPY_PASS_BY_REF,
                             input.span,
-                            &format!(
+                            format!(
                                 "this argument ({size} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)",
                                 self.ref_min_size
                             ),
@@ -236,7 +236,7 @@ impl<'tcx> PassByRefOrValue {
                             cx,
                             LARGE_TYPES_PASSED_BY_VALUE,
                             input.span,
-                            &format!(
+                            format!(
                                 "this argument ({size} byte) is passed by value, but might be more efficient if passed by reference (limit: {} byte)",
                                 self.value_max_size
                             ),

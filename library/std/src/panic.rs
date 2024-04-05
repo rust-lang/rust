@@ -126,6 +126,9 @@ where
 /// Also note that unwinding into Rust code with a foreign exception (e.g.
 /// an exception thrown from C++ code) is undefined behavior.
 ///
+/// Finally, be **careful in how you drop the result of this function**.
+/// If it is `Err`, it contains the panic payload, and dropping that may in turn panic!
+///
 /// # Examples
 ///
 /// ```

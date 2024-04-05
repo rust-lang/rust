@@ -6,7 +6,7 @@ compare-elements-css: (".impl-items .docblock table td", ".top-doc .docblock tab
 
 define-function: (
     "check-colors",
-    (theme, border_color, zebra_stripe_color),
+    [theme, border_color, zebra_stripe_color],
     block {
         set-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": |theme|}
         reload:

@@ -23,7 +23,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 TRANSMUTE_FLOAT_TO_INT,
                 e.span,
-                &format!("transmute from a `{from_ty}` to a `{to_ty}`"),
+                format!("transmute from a `{from_ty}` to a `{to_ty}`"),
                 |diag| {
                     let mut sugg = sugg::Sugg::hir(cx, arg, "..");
 

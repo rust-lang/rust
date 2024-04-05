@@ -6,218 +6,196 @@
       debug multiple => _2;
       let mut _0: ();
       let _3: ();
+      let _4: usize;
       let _7: ();
       let mut _8: ();
       let _9: ();
+      let _10: usize;
       let mut _13: *const usize;
       let _15: ();
       let mut _16: ();
       let _17: ();
+      let _18: usize;
       let _22: ();
       let mut _23: &*const usize;
       let _24: ();
+      let _25: usize;
       let _29: ();
       let mut _30: *mut *const usize;
       let _31: ();
+      let _32: usize;
       let _35: ();
       let mut _36: *const usize;
       let _37: ();
+      let _38: usize;
       let _44: ();
       let mut _45: *const usize;
       let _46: ();
+      let _47: *const T;
       let _49: ();
       let mut _50: ();
       let _51: ();
+      let _52: *const T;
       let mut _53: *const T;
       let _55: ();
       let mut _56: ();
       let _57: ();
+      let _58: usize;
       let _62: ();
       let mut _63: ();
       let _64: ();
+      let _65: usize;
       let _69: ();
       let mut _70: ();
+      let _71: usize;
       let _75: ();
       let mut _76: ();
       scope 1 {
-          let _4: usize;
+          debug a => _4;
+          let _5: *const usize;
           scope 2 {
-              debug a => _4;
-              let _5: *const usize;
+              debug b => _5;
+              let _6: usize;
               scope 3 {
-                  debug b => _5;
-                  let _6: usize;
-                  scope 4 {
-                      debug c => _6;
+                  debug c => _6;
+              }
+          }
+      }
+      scope 4 {
+          debug a => _10;
+          let _11: usize;
+          scope 5 {
+              debug a2 => _11;
+              let mut _12: *const usize;
+              scope 6 {
+                  debug b => _12;
+                  let _14: usize;
+                  scope 7 {
+                      debug c => _14;
                   }
               }
           }
       }
-      scope 5 {
-          let _10: usize;
-          scope 6 {
-              debug a => _10;
-              let _11: usize;
-              scope 7 {
-                  debug a2 => _11;
-                  let mut _12: *const usize;
-                  scope 8 {
-                      debug b => _12;
-                      let _14: usize;
-                      scope 9 {
-                          debug c => _14;
-                      }
+      scope 8 {
+          debug a => _18;
+          let _19: *const usize;
+          scope 9 {
+              debug b => _19;
+              let _20: &*const usize;
+              scope 10 {
+                  debug d => _20;
+                  let _21: usize;
+                  scope 11 {
+                      debug c => _21;
                   }
               }
           }
       }
-      scope 10 {
-          let _18: usize;
-          scope 11 {
-              debug a => _18;
-              let _19: *const usize;
-              scope 12 {
-                  debug b => _19;
-                  let _20: &*const usize;
-                  scope 13 {
-                      debug d => _20;
-                      let _21: usize;
-                      scope 14 {
-                          debug c => _21;
-                      }
+      scope 12 {
+          debug a => _25;
+          let mut _26: *const usize;
+          scope 13 {
+              debug b => _26;
+              let _27: *mut *const usize;
+              scope 14 {
+                  debug d => _27;
+                  let _28: usize;
+                  scope 15 {
+                      debug c => _28;
                   }
               }
           }
       }
-      scope 15 {
-          let _25: usize;
-          scope 16 {
-              debug a => _25;
-              let mut _26: *const usize;
-              scope 17 {
-                  debug b => _26;
-                  let _27: *mut *const usize;
-                  scope 18 {
-                      debug d => _27;
-                      let _28: usize;
-                      scope 19 {
-                          debug c => _28;
-                      }
-                  }
+      scope 16 {
+          debug a => _32;
+          let _33: *const usize;
+          scope 17 {
+              debug b => _33;
+              let _34: usize;
+              scope 18 {
+                  debug c => _34;
               }
           }
       }
-      scope 20 {
-          let _32: usize;
-          scope 21 {
-              debug a => _32;
-              let _33: *const usize;
-              scope 22 {
-                  debug b => _33;
-                  let _34: usize;
-                  scope 23 {
-                      debug c => _34;
-                  }
-              }
-          }
-      }
-      scope 24 {
-          let _38: usize;
-          scope 25 {
-              debug a => _38;
-              let _39: *const usize;
-              scope 26 {
-                  debug b1 => _39;
-                  let _40: usize;
-                  scope 27 {
-                      debug c => _40;
-                      let _41: *const usize;
-                      scope 28 {
-                          debug b2 => _41;
-                          let _42: usize;
-                          scope 29 {
-                              debug c2 => _42;
-                              let _43: *const usize;
-                              scope 30 {
-                                  debug b3 => _43;
-                              }
+      scope 19 {
+          debug a => _38;
+          let _39: *const usize;
+          scope 20 {
+              debug b1 => _39;
+              let _40: usize;
+              scope 21 {
+                  debug c => _40;
+                  let _41: *const usize;
+                  scope 22 {
+                      debug b2 => _41;
+                      let _42: usize;
+                      scope 23 {
+                          debug c2 => _42;
+                          let _43: *const usize;
+                          scope 24 {
+                              debug b3 => _43;
                           }
                       }
                   }
               }
           }
       }
-      scope 31 {
-          let _47: *const T;
-          scope 32 {
--             debug a => _47;
-+             debug a => _1;
-              let _48: T;
-              scope 33 {
-                  debug b => _48;
+      scope 25 {
+-         debug a => _47;
++         debug a => _1;
+          let _48: T;
+          scope 26 {
+              debug b => _48;
+          }
+      }
+      scope 27 {
+          debug a => _52;
+          let _54: T;
+          scope 28 {
+              debug b => _54;
+          }
+      }
+      scope 29 {
+          debug a => _58;
+          let _59: *const usize;
+          scope 30 {
+              debug b => _59;
+              let _60: *const usize;
+              scope 31 {
+                  debug c => _60;
+                  let _61: usize;
+                  scope 32 {
+                      debug e => _61;
+                  }
               }
           }
       }
-      scope 34 {
-          let _52: *const T;
-          scope 35 {
-              debug a => _52;
-              let _54: T;
-              scope 36 {
-                  debug b => _54;
+      scope 33 {
+          debug a => _65;
+          let _66: *const usize;
+          scope 34 {
+              debug b => _66;
+              let _67: &*const usize;
+              scope 35 {
+                  debug d => _67;
+                  let _68: usize;
+                  scope 36 {
+                      debug c => _68;
+                  }
               }
           }
       }
       scope 37 {
-          let _58: usize;
+          debug a => _71;
+          let mut _72: *const usize;
           scope 38 {
-              debug a => _58;
-              let _59: *const usize;
+              debug b => _72;
+              let _73: &mut *const usize;
               scope 39 {
-                  debug b => _59;
-                  let _60: *const usize;
+                  debug d => _73;
+                  let _74: usize;
                   scope 40 {
-                      debug c => _60;
-                      let _61: usize;
-                      scope 41 {
-                          debug e => _61;
-                      }
-                  }
-              }
-          }
-      }
-      scope 42 {
-          let _65: usize;
-          scope 43 {
-              debug a => _65;
-              let _66: *const usize;
-              scope 44 {
-                  debug b => _66;
-                  let _67: &*const usize;
-                  scope 45 {
-                      debug d => _67;
-                      let _68: usize;
-                      scope 46 {
-                          debug c => _68;
-                      }
-                  }
-              }
-          }
-      }
-      scope 47 {
-          let _71: usize;
-          scope 48 {
-              debug a => _71;
-              let mut _72: *const usize;
-              scope 49 {
-                  debug b => _72;
-                  let _73: &mut *const usize;
-                  scope 50 {
-                      debug d => _73;
-                      let _74: usize;
-                      scope 51 {
-                          debug c => _74;
-                      }
+                      debug c => _74;
                   }
               }
           }

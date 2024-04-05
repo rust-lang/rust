@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedNames {
                     cx,
                     DISALLOWED_NAMES,
                     ident.span,
-                    &format!("use of a disallowed/placeholder name `{}`", ident.name),
+                    format!("use of a disallowed/placeholder name `{}`", ident.name),
                 );
             }
         }

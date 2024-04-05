@@ -9,7 +9,12 @@
     clippy::cast_sign_loss,
     clippy::cast_possible_wrap
 )]
-#![allow(clippy::cast_abs_to_unsigned, clippy::no_effect, clippy::unnecessary_operation)]
+#![allow(
+    clippy::cast_abs_to_unsigned,
+    clippy::no_effect,
+    clippy::unnecessary_operation,
+    clippy::unnecessary_literal_unwrap
+)]
 
 fn main() {
     // Test clippy::cast_precision_loss
@@ -456,4 +461,9 @@ fn issue11642() {
         (a.abs() * b.pow(2) / c.abs()) as u32
         //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
     }
+}
+
+fn issue12506() -> usize {
+    let bar: Result<Option<i64>, u32> = Ok(Some(10));
+    bar.unwrap().unwrap() as usize
 }

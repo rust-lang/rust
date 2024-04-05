@@ -67,7 +67,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::RawPtr(ty, _) if self.is_thin_ptr_ty(ty) => Some(asm_ty_isize),
             ty::Adt(adt, args) if adt.repr().simd() => {
                 let fields = &adt.non_enum_variant().fields;
-                let elem_ty = fields[FieldIdx::from_u32(0)].ty(self.tcx, args);
+                let elem_ty = fields[FieldIdx::ZERO].ty(self.tcx, args);
 
                 let (size, ty) = match elem_ty.kind() {
                     ty::Array(ty, len) => {
@@ -146,7 +146,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     "expected first field of `MaybeUnit` to be `ManuallyDrop`"
                 );
                 let fields = &ty.non_enum_variant().fields;
-                let ty = fields[FieldIdx::from_u32(0)].ty(self.tcx, args);
+                let ty = fields[FieldIdx::ZERO].ty(self.tcx, args);
                 self.get_asm_ty(ty)
             }
             _ => self.get_asm_ty(ty),

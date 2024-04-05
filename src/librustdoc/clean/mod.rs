@@ -21,10 +21,8 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::lower_ty;
-use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
-use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt};
@@ -35,9 +33,7 @@ use rustc_span::{self, ExpnKind};
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
 use std::borrow::Cow;
-use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
-use std::hash::Hash;
 use std::mem;
 use thin_vec::ThinVec;
 
@@ -502,6 +498,7 @@ fn projection_to_path_segment<'tcx>(
 
 fn clean_generic_param_def<'tcx>(
     def: &ty::GenericParamDef,
+    defaults: ParamDefaults,
     cx: &mut DocContext<'tcx>,
 ) -> GenericParamDef {
     let (name, kind) = match def.kind {
@@ -509,7 +506,9 @@ fn clean_generic_param_def<'tcx>(
             (def.name, GenericParamDefKind::Lifetime { outlives: ThinVec::new() })
         }
         ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
-            let default = if has_default {
+            let default = if let ParamDefaults::Yes = defaults
+                && has_default
+            {
                 Some(clean_middle_ty(
                     ty::Binder::dummy(cx.tcx.type_of(def.def_id).instantiate_identity()),
                     cx,
@@ -542,11 +541,14 @@ fn clean_generic_param_def<'tcx>(
                     Some(def.def_id),
                     None,
                 )),
-                default: match has_default {
-                    true => Some(Box::new(
+                default: if let ParamDefaults::Yes = defaults
+                    && has_default
+                {
+                    Some(Box::new(
                         cx.tcx.const_param_default(def.def_id).instantiate_identity().to_string(),
-                    )),
-                    false => None,
+                    ))
+                } else {
+                    None
                 },
                 is_host_effect,
             },
@@ -554,6 +556,12 @@ fn clean_generic_param_def<'tcx>(
     };
 
     GenericParamDef { name, def_id: def.def_id, kind }
+}
+
+/// Whether to clean generic parameter defaults or not.
+enum ParamDefaults {
+    Yes,
+    No,
 }
 
 fn clean_generic_param<'tcx>(
@@ -759,34 +767,30 @@ fn clean_ty_generics<'tcx>(
     gens: &ty::Generics,
     preds: ty::GenericPredicates<'tcx>,
 ) -> Generics {
-    // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
-    // since `Clean for ty::Predicate` would consume them.
+    // Don't populate `cx.impl_trait_bounds` before cleaning where clauses,
+    // since `clean_predicate` would consume them.
     let mut impl_trait = BTreeMap::<u32, Vec<GenericBound>>::default();
 
-    // Bounds in the type_params and lifetimes fields are repeated in the
-    // predicates field (see rustc_hir_analysis::collect::ty_generics), so remove
-    // them.
-    let stripped_params = gens
+    let params: ThinVec<_> = gens
         .params
         .iter()
-        .filter_map(|param| match param.kind {
-            ty::GenericParamDefKind::Lifetime if param.is_anonymous_lifetime() => None,
-            ty::GenericParamDefKind::Lifetime => Some(clean_generic_param_def(param, cx)),
+        .filter(|param| match param.kind {
+            ty::GenericParamDefKind::Lifetime => !param.is_anonymous_lifetime(),
             ty::GenericParamDefKind::Type { synthetic, .. } => {
                 if param.name == kw::SelfUpper {
-                    assert_eq!(param.index, 0);
-                    return None;
+                    debug_assert_eq!(param.index, 0);
+                    return false;
                 }
                 if synthetic {
                     impl_trait.insert(param.index, vec![]);
-                    return None;
+                    return false;
                 }
-                Some(clean_generic_param_def(param, cx))
+                true
             }
-            ty::GenericParamDefKind::Const { is_host_effect: true, .. } => None,
-            ty::GenericParamDefKind::Const { .. } => Some(clean_generic_param_def(param, cx)),
+            ty::GenericParamDefKind::Const { is_host_effect, .. } => !is_host_effect,
         })
-        .collect::<ThinVec<GenericParamDef>>();
+        .map(|param| clean_generic_param_def(param, ParamDefaults::Yes, cx))
+        .collect();
 
     // param index -> [(trait DefId, associated type name & generics, term)]
     let mut impl_trait_proj =
@@ -882,56 +886,13 @@ fn clean_ty_generics<'tcx>(
 
     // Now that `cx.impl_trait_bounds` is populated, we can process
     // remaining predicates which could contain `impl Trait`.
-    let mut where_predicates =
-        where_predicates.into_iter().flat_map(|p| clean_predicate(*p, cx)).collect::<Vec<_>>();
+    let where_predicates =
+        where_predicates.into_iter().flat_map(|p| clean_predicate(*p, cx)).collect();
 
-    // In the surface language, all type parameters except `Self` have an
-    // implicit `Sized` bound unless removed with `?Sized`.
-    // However, in the list of where-predicates below, `Sized` appears like a
-    // normal bound: It's either present (the type is sized) or
-    // absent (the type might be unsized) but never *maybe* (i.e. `?Sized`).
-    //
-    // This is unsuitable for rendering.
-    // Thus, as a first step remove all `Sized` bounds that should be implicit.
-    //
-    // Note that associated types also have an implicit `Sized` bound but we
-    // don't actually know the set of associated types right here so that's
-    // handled when cleaning associated types.
-    let mut sized_params = FxHashSet::default();
-    where_predicates.retain(|pred| {
-        if let WherePredicate::BoundPredicate { ty: Generic(g), bounds, .. } = pred
-            && *g != kw::SelfUpper
-            && bounds.iter().any(|b| b.is_sized_bound(cx))
-        {
-            sized_params.insert(*g);
-            false
-        } else {
-            true
-        }
-    });
-
-    // As a final step, go through the type parameters again and insert a
-    // `?Sized` bound for each one we didn't find to be `Sized`.
-    for tp in &stripped_params {
-        if let types::GenericParamDefKind::Type { .. } = tp.kind
-            && !sized_params.contains(&tp.name)
-        {
-            where_predicates.push(WherePredicate::BoundPredicate {
-                ty: Type::Generic(tp.name),
-                bounds: vec![GenericBound::maybe_sized(cx)],
-                bound_params: Vec::new(),
-            })
-        }
-    }
-
-    // It would be nice to collect all of the bounds on a type and recombine
-    // them if possible, to avoid e.g., `where T: Foo, T: Bar, T: Sized, T: 'a`
-    // and instead see `where T: Foo + Bar + Sized + 'a`
-
-    Generics {
-        params: stripped_params,
-        where_predicates: simplify::where_clauses(cx, where_predicates),
-    }
+    let mut generics = Generics { params, where_predicates };
+    simplify::sized_bounds(cx, &mut generics);
+    generics.where_predicates = simplify::where_clauses(cx, generics.where_predicates);
+    generics
 }
 
 fn clean_ty_alias_inner_type<'tcx>(

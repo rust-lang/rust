@@ -17,11 +17,11 @@ use rustc_span::Symbol;
 
 /// Generates and exports the Coverage Map.
 ///
-/// Rust Coverage Map generation supports LLVM Coverage Mapping Format version
-/// 6 (zero-based encoded as 5), as defined at
-/// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
+/// Rust Coverage Map generation supports LLVM Coverage Mapping Format versions
+/// 6 and 7 (encoded as 5 and 6 respectively), as described at
+/// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/18.0-2024-02-13/llvm/docs/CoverageMappingFormat.rst).
 /// These versions are supported by the LLVM coverage tools (`llvm-profdata` and `llvm-cov`)
-/// bundled with Rust's fork of LLVM.
+/// distributed in the `llvm-tools-preview` rustup component.
 ///
 /// Consequently, Rust's bundled version of Clang also generates Coverage Maps compliant with
 /// the same version. Clang's implementation of Coverage Map generation was referenced when
@@ -31,10 +31,21 @@ use rustc_span::Symbol;
 pub fn finalize(cx: &CodegenCx<'_, '_>) {
     let tcx = cx.tcx;
 
-    // Ensure the installed version of LLVM supports Coverage Map Version 6
-    // (encoded as a zero-based value: 5), which was introduced with LLVM 13.
-    let version = coverageinfo::mapping_version();
-    assert_eq!(version, 5, "The `CoverageMappingVersion` exposed by `llvm-wrapper` is out of sync");
+    // Ensure that LLVM is using a version of the coverage mapping format that
+    // agrees with our Rust-side code. Expected versions (encoded as n-1) are:
+    // - `CovMapVersion::Version6` (5) used by LLVM 13-17
+    // - `CovMapVersion::Version7` (6) used by LLVM 18
+    let covmap_version = {
+        let llvm_covmap_version = coverageinfo::mapping_version();
+        let expected_versions = 5..=6;
+        assert!(
+            expected_versions.contains(&llvm_covmap_version),
+            "Coverage mapping version exposed by `llvm-wrapper` is out of sync; \
+            expected {expected_versions:?} but was {llvm_covmap_version}"
+        );
+        // This is the version number that we will embed in the covmap section:
+        llvm_covmap_version
+    };
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
 
@@ -74,7 +85,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 
     // Generate the coverage map header, which contains the filenames used by
     // this CGU's coverage mappings, and store it in a well-known global.
-    let cov_data_val = generate_coverage_map(cx, version, filenames_size, filenames_val);
+    let cov_data_val = generate_coverage_map(cx, covmap_version, filenames_size, filenames_val);
     coverageinfo::save_cov_data_to_mod(cx, cov_data_val);
 
     let mut unused_function_names = Vec::new();

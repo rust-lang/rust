@@ -73,7 +73,7 @@ use std::{
 use base_db::{
     impl_intern_key,
     salsa::{self, impl_intern_value_trivial},
-    CrateId, Edition,
+    CrateId,
 };
 use hir_expand::{
     builtin_attr_macro::BuiltinAttrExpander,
@@ -90,7 +90,7 @@ use hir_expand::{
 use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
-use span::{AstIdNode, FileAstId, FileId, SyntaxContextId};
+use span::{AstIdNode, Edition, FileAstId, FileId, SyntaxContextId};
 use stdx::impl_from;
 use syntax::{ast, AstNode};
 

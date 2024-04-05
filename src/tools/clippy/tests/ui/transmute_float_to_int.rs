@@ -1,4 +1,5 @@
 #![warn(clippy::transmute_float_to_int)]
+#![allow(clippy::missing_transmute_annotations)]
 
 fn float_to_int() {
     let _: u32 = unsafe { std::mem::transmute(1f32) };

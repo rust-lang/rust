@@ -469,7 +469,7 @@ impl Step for Rustdoc {
             features.push("jemalloc".to_string());
         }
 
-        let mut cargo = prepare_tool_cargo(
+        let cargo = prepare_tool_cargo(
             builder,
             build_compiler,
             Mode::ToolRustc,
@@ -479,10 +479,6 @@ impl Step for Rustdoc {
             SourceType::InTree,
             features.as_slice(),
         );
-
-        if builder.config.rustc_parallel {
-            cargo.rustflag("--cfg=parallel_compiler");
-        }
 
         let _guard = builder.msg_tool(
             Mode::ToolRustc,
@@ -732,7 +728,7 @@ impl Step for LlvmBitcodeLinker {
         builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
         builder.ensure(compile::Rustc::new(self.compiler, self.target));
 
-        let mut cargo = prepare_tool_cargo(
+        let cargo = prepare_tool_cargo(
             builder,
             self.compiler,
             Mode::ToolRustc,
@@ -742,10 +738,6 @@ impl Step for LlvmBitcodeLinker {
             SourceType::InTree,
             &self.extra_features,
         );
-
-        if builder.config.rustc_parallel {
-            cargo.rustflag("--cfg=parallel_compiler");
-        }
 
         builder.run(&mut cargo.into());
 

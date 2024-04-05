@@ -6,8 +6,6 @@
 -     let _1: u32;
 -     let mut _2: &mut u32;
 -     let mut _3: *mut u32;
-      scope 1 {
-      }
   
       bb0: {
 -         StorageLive(_1);

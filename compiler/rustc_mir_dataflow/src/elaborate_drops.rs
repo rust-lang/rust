@@ -420,14 +420,14 @@ where
     ) -> BasicBlock {
         // drop glue is sent straight to codegen
         // box cannot be directly dereferenced
-        let unique_ty = adt.non_enum_variant().fields[FieldIdx::new(0)].ty(self.tcx(), args);
+        let unique_ty = adt.non_enum_variant().fields[FieldIdx::ZERO].ty(self.tcx(), args);
         let unique_variant = unique_ty.ty_adt_def().unwrap().non_enum_variant();
-        let nonnull_ty = unique_variant.fields[FieldIdx::from_u32(0)].ty(self.tcx(), args);
+        let nonnull_ty = unique_variant.fields[FieldIdx::ZERO].ty(self.tcx(), args);
         let ptr_ty = Ty::new_imm_ptr(self.tcx(), args[0].expect_ty());
 
-        let unique_place = self.tcx().mk_place_field(self.place, FieldIdx::new(0), unique_ty);
-        let nonnull_place = self.tcx().mk_place_field(unique_place, FieldIdx::new(0), nonnull_ty);
-        let ptr_place = self.tcx().mk_place_field(nonnull_place, FieldIdx::new(0), ptr_ty);
+        let unique_place = self.tcx().mk_place_field(self.place, FieldIdx::ZERO, unique_ty);
+        let nonnull_place = self.tcx().mk_place_field(unique_place, FieldIdx::ZERO, nonnull_ty);
+        let ptr_place = self.tcx().mk_place_field(nonnull_place, FieldIdx::ZERO, ptr_ty);
         let interior = self.tcx().mk_place_deref(ptr_place);
 
         let interior_path = self.elaborator.deref_subpath(self.path);

@@ -84,7 +84,7 @@ fn check_sig(cx: &LateContext<'_>, name: &str, sig: &FnSig<'_>, fn_id: LocalDefI
                 cx,
                 ITER_NOT_RETURNING_ITERATOR,
                 sig.span,
-                &format!("this method is named `{name}` but its return type does not implement `Iterator`"),
+                format!("this method is named `{name}` but its return type does not implement `Iterator`"),
             );
         }
     }

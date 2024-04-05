@@ -1,29 +1,28 @@
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/no-const-fn-in-extern-block.rs:2:14
+  --> $DIR/no-const-fn-in-extern-block.rs:2:5
    |
 LL | extern "C" {
    | ---------- in this `extern` block
 LL |     const fn foo();
-   |              ^^^
-   |
-help: remove the qualifiers
-   |
-LL |     fn foo();
-   |     ~~
+   |     ^^^^^ help: remove this qualifier
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/no-const-fn-in-extern-block.rs:4:21
+  --> $DIR/no-const-fn-in-extern-block.rs:4:11
    |
 LL | extern "C" {
    | ---------- in this `extern` block
 ...
 LL |     const unsafe fn bar();
-   |                     ^^^
-   |
-help: remove the qualifiers
-   |
-LL |     fn bar();
-   |     ~~
+   |           ^^^^^^ help: remove this qualifier
 
-error: aborting due to 2 previous errors
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/no-const-fn-in-extern-block.rs:4:5
+   |
+LL | extern "C" {
+   | ---------- in this `extern` block
+...
+LL |     const unsafe fn bar();
+   |     ^^^^^ help: remove this qualifier
+
+error: aborting due to 3 previous errors
 

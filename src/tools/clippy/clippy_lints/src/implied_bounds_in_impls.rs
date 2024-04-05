@@ -56,7 +56,7 @@ fn emit_lint(
     index: usize,
     // The bindings that were implied, used for suggestion purposes since removing a bound with associated types
     // means we might need to then move it to a different bound
-    implied_bindings: &[rustc_hir::TypeBinding<'_>],
+    implied_bindings: &[TypeBinding<'_>],
     bound: &ImplTraitBound<'_>,
 ) {
     let implied_by = snippet(cx, bound.span, "..");
@@ -65,7 +65,7 @@ fn emit_lint(
         cx,
         IMPLIED_BOUNDS_IN_IMPLS,
         poly_trait.span,
-        &format!("this bound is already specified as the supertrait of `{implied_by}`"),
+        format!("this bound is already specified as the supertrait of `{implied_by}`"),
         |diag| {
             // If we suggest removing a bound, we may also need to extend the span
             // to include the `+` token that is ahead or behind,
