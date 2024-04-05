@@ -669,7 +669,9 @@ impl<'a> Parser<'a> {
             })
         }
 
-        // parse precise captures, if any.
+        // parse precise captures, if any. This is `use<'lt, 'lt, P, P>`; a list of
+        // lifetimes and ident params (including SelfUpper). These are validated later
+        // for order, duplication, and whether they actually reference params.
         let precise_capturing = if self.eat_keyword(kw::Use) {
             let use_span = self.prev_token.span;
             self.psess.gated_spans.gate(sym::precise_capturing, use_span);

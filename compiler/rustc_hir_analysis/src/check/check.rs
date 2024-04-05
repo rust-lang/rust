@@ -475,6 +475,14 @@ fn sanity_check_found_hidden_type<'tcx>(
     }
 }
 
+/// Check that the opaque's precise captures list is valid (if present).
+/// We check this for regular `impl Trait`s and also RPITITs, even though the latter
+/// are technically GATs.
+///
+/// This function is responsible for:
+/// 1. Checking that all type/const params are mention in the captures list.
+/// 2. Checking that all lifetimes that are implicitly captured are mentioned.
+/// 3. Asserting that all parameters mentioned in the captures list are invariant.
 fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDefId) {
     let hir::OpaqueTy { precise_capturing_args, .. } =
         *tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();

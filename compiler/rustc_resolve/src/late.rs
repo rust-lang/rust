@@ -1059,6 +1059,12 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
             PreciseCapturingArg::Lifetime(_) => {}
 
             PreciseCapturingArg::Arg(path, id) => {
+                // we want `impl use<C>` to try to resolve `C` as both a type parameter or
+                // a const parameter. Since the resolver specifically doesn't allow having
+                // two generic params with the same name, even if they're a different namespace,
+                // it doesn't really matter which we try resolving first, but just like
+                // `Ty::Param` we just fall back to the value namespace only if it's missing
+                // from the type namespace.
                 let mut check_ns = |ns| {
                     self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns).is_some()
                 };

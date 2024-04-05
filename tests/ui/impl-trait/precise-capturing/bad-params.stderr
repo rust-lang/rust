@@ -34,7 +34,13 @@ LL | impl MyType {
 LL |     fn self_is_not_param() -> impl use<Self> Sized {}
    |                                        ^^^^
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: expected type or const parameter in `use<...>` precise captures list, found function
+  --> $DIR/bad-params.rs:16:24
+   |
+LL | fn hello() -> impl use<hello> Sized {}
+   |                        ^^^^^
+
+error: aborting due to 4 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0411, E0412.
 For more information about an error, try `rustc --explain E0411`.

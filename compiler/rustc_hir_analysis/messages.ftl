@@ -39,9 +39,6 @@ hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit wh
 
 hir_analysis_bad_precise_capture = expected {$kind} parameter in `use<...>` precise captures list, found {$found}
 
-hir_analysis_precise_capture_self_alias = `Self` can't be captured in `use<...>` precise captures list, since it is an alias
-    .label = `Self` is not a generic argument, but an alias to the type of the {$what}
-
 hir_analysis_cannot_capture_late_bound_const =
     cannot capture late-bound const parameter in {$what}
     .label = parameter defined here
@@ -373,6 +370,9 @@ hir_analysis_pattern_type_wild_pat = "wildcard patterns are not permitted for pa
     .label = "this type is the same as the inner type without a pattern"
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
+
+hir_analysis_precise_capture_self_alias = `Self` can't be captured in `use<...>` precise captures list, since it is an alias
+    .label = `Self` is not a generic argument, but an alias to the type of the {$what}
 
 hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
     .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`

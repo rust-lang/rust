@@ -13,4 +13,7 @@ impl MyType {
     //~^ ERROR `Self` can't be captured in `use<...>` precise captures list, since it is an alias
 }
 
+fn hello() -> impl use<hello> Sized {}
+//~^ ERROR expected type or const parameter in `use<...>` precise captures list, found function
+
 fn main() {}
