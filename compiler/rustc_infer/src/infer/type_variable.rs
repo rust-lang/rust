@@ -37,7 +37,9 @@ pub struct TypeVariableTable<'a, 'tcx> {
 #[derive(Copy, Clone, Debug)]
 pub struct TypeVariableOrigin {
     pub span: Span,
-    // `DefId` of the type parameter this was instantiated for, if any.
+    /// `DefId` of the type parameter this was instantiated for, if any.
+    ///
+    /// This should only be used for diagnostics.
     pub param_def_id: Option<DefId>,
 }
 

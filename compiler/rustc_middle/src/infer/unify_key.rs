@@ -106,7 +106,9 @@ impl ToType for ty::FloatVarValue {
 #[derive(Copy, Clone, Debug)]
 pub struct ConstVariableOrigin {
     pub span: Span,
-    // `DefId` of the const parameter this was instantiated for, if any.
+    /// `DefId` of the const parameter this was instantiated for, if any.
+    ///
+    /// This should only be used for diagnostics.
     pub param_def_id: Option<DefId>,
 }
 

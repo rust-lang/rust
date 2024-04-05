@@ -100,11 +100,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // Create a type variable (for now) to represent the closure kind.
                     // It will be unified during the upvar inference phase (`upvar.rs`)
-                    None => self.next_ty_var(TypeVariableOrigin {
-                        // FIXME(eddyb) distinguish closure kind inference variables from the rest.
-                        param_def_id: None,
-                        span: expr_span,
-                    }),
+                    None => {
+                        self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: expr_span })
+                    }
                 };
 
                 let closure_args = ty::ClosureArgs::new(
