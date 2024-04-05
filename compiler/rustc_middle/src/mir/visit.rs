@@ -1055,11 +1055,6 @@ macro_rules! super_body {
         }
 
         $self.visit_span($(& $mutability)? $body.span);
-
-        for const_ in &$($mutability)? $body.required_consts {
-            let location = Location::START;
-            $self.visit_constant(const_, location);
-        }
     }
 }
 

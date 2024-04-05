@@ -19,6 +19,28 @@ LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 note: erroneous constant encountered
+  --> $DIR/issue-44578.rs:25:14
+   |
+LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
+   |              ^^^^
+
+note: erroneous constant encountered
+  --> $DIR/issue-44578.rs:25:14
+   |
+LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
+   |              ^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-44578.rs:25:20
+   |
+LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
   --> $DIR/issue-44578.rs:25:20
    |
 LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);

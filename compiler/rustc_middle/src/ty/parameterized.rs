@@ -126,6 +126,7 @@ macro_rules! parameterized_over_tcx {
 parameterized_over_tcx! {
     crate::middle::exported_symbols::ExportedSymbol,
     crate::mir::Body,
+    crate::mir::RequiredAndMentionedItems,
     crate::mir::CoroutineLayout,
     crate::mir::interpret::ConstAllocation,
     ty::Ty,

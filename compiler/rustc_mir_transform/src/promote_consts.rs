@@ -934,7 +934,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         // Now that we did promotion, we know whether we'll want to add this to `required_consts`.
         if self.add_to_required {
-            self.source.required_consts.push(promoted_op);
+            // self.source.required_consts.push(promoted_op);
         }
 
         self.promoted
@@ -955,7 +955,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 
     fn visit_constant(&mut self, constant: &mut ConstOperand<'tcx>, _location: Location) {
         if constant.const_.is_required_const() {
-            self.promoted.required_consts.push(*constant);
+            // self.promoted.required_consts.push(*constant);
         }
 
         // Skipping `super_constant` as the visitor is otherwise only looking for locals.

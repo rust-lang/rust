@@ -1282,15 +1282,16 @@ fn collect_items_of_instance<'tcx>(
         move_check: MoveCheckState::new(),
     };
 
+    let items = tcx.required_and_mentioned_items(instance.def);
+
     if mode == CollectionMode::UsedItems {
         for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
             collector.visit_basic_block_data(bb, data)
         }
     }
 
-    // Always visit all `required_consts`, so that we evaluate them and abort compilation if any of
-    // them errors.
-    for const_op in &body.required_consts {
+    // Always evaluate all required consts and abort compilation if any of them errors.
+    for const_op in &items.required_consts {
         if let Some(val) = collector.eval_constant(const_op) {
             collect_const_value(tcx, val, mentioned_items);
         }
@@ -1298,7 +1299,7 @@ fn collect_items_of_instance<'tcx>(
 
     // Always gather mentioned items. We try to avoid processing items that we have already added to
     // `used_items` above.
-    for item in &body.mentioned_items {
+    for item in &items.mentioned_items {
         if !collector.used_mentioned_items.contains(&item.node) {
             let item_mono = collector.monomorphize(item.node);
             visit_mentioned_item(tcx, &item_mono, item.span, mentioned_items);

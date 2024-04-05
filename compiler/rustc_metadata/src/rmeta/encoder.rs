@@ -12,7 +12,7 @@ use rustc_hir::definitions::DefPathData;
 use rustc_hir_pretty::id_to_string;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::metadata_symbol_name;
-use rustc_middle::mir::interpret;
+use rustc_middle::mir::{interpret, RequiredAndMentionedItems};
 use rustc_middle::query::LocalCrate;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
@@ -1648,6 +1648,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         });
         for (def_id, encode_const, encode_opt) in keys_and_jobs {
             debug_assert!(encode_const || encode_opt);
+
+            let items = tcx.required_and_mentioned_items_of_item(def_id);
+            let RequiredAndMentionedItems { required_consts, mentioned_items } = items;
+            if !required_consts.is_empty() || !mentioned_items.is_empty() {
+                record!(self.tables.required_and_mentioned_items_of_item[def_id.to_def_id()] <- items);
+            }
 
             debug!("EntryBuilder::encode_mir({:?})", def_id);
             if encode_opt {

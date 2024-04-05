@@ -29,7 +29,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
-    traversal, AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs,
+    self, traversal, AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs,
     LocalDecl, MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
     SourceInfo, Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
@@ -126,6 +126,10 @@ pub fn provide(providers: &mut Providers) {
         mir_built,
         mir_const_qualif,
         mir_promoted,
+        required_and_mentioned_items_of_item: |tcx, key| {
+            required_and_mentioned_items(tcx, ty::InstanceDef::Item(key.into()))
+        },
+        required_and_mentioned_items_of_shim: required_and_mentioned_items,
         mir_drops_elaborated_and_const_checked,
         mir_for_ctfe,
         mir_coroutine_witnesses: coroutine::mir_coroutine_witnesses,
@@ -326,19 +330,11 @@ fn mir_promoted(
     };
     // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
     tcx.ensure_with_value().has_ffi_unwind_calls(def);
+    tcx.ensure().required_and_mentioned_items_of_item(def);
     let mut body = tcx.mir_built(def).steal();
     if let Some(error_reported) = const_qualifs.tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
     }
-
-    // Collect `required_consts` *before* promotion, so if there are any consts being promoted
-    // we still add them to the list in the outer MIR body.
-    let mut required_consts = Vec::new();
-    let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
-    for (bb, bb_data) in traversal::reverse_postorder(&body) {
-        required_consts_visitor.visit_basic_block_data(bb, bb_data);
-    }
-    body.required_consts = required_consts;
 
     // What we need to run borrowck etc.
     let promote_pass = promote_consts::PromoteTemps::default();
@@ -351,6 +347,41 @@ fn mir_promoted(
 
     let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
+}
+
+fn required_and_mentioned_items<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: ty::InstanceDef<'tcx>,
+) -> mir::RequiredAndMentionedItems<'tcx> {
+    let tmp;
+    let body = match key {
+        ty::InstanceDef::Item(id)
+            if matches!(tcx.def_kind(id), DefKind::Ctor(..))
+                || !tcx.is_mir_available(id)
+                || tcx.lang_items().drop_in_place_fn() == Some(id) =>
+        {
+            return Default::default();
+        }
+        ty::InstanceDef::Item(id) => {
+            tmp = tcx.mir_built(id.expect_local()).borrow();
+            &*tmp
+        }
+        _ => tcx.mir_shims(key),
+    };
+
+    trace!("{body:#?}");
+
+    let mut required_consts = Vec::new();
+    let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
+    for (bb, bb_data) in traversal::reverse_postorder(body) {
+        required_consts_visitor.visit_basic_block_data(bb, bb_data);
+    }
+
+    let mut mentioned_items = Vec::new();
+    mentioned_items::MentionedItemsVisitor { tcx, body, mentioned_items: &mut mentioned_items }
+        .visit_body(body);
+
+    mir::RequiredAndMentionedItems { required_consts, mentioned_items }
 }
 
 /// Compute the MIR that is used during CTFE (and thus has no optimizations run on it)
@@ -555,9 +586,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         tcx,
         body,
         &[
-            // Before doing anything, remember which items are being mentioned so that the set of items
-            // visited does not depend on the optimization level.
-            &mentioned_items::MentionedItems,
             // Add some UB checks before any UB gets optimized away.
             &check_alignment::CheckAlignment,
             // Before inlining: trim down MIR with passes to reduce inlining work.

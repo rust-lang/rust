@@ -824,9 +824,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.stack_mut().push(frame);
 
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
-        for &const_ in &body.required_consts {
-            let c =
-                self.instantiate_from_current_frame_and_normalize_erasing_regions(const_.const_)?;
+        for &const_ in &self.tcx.required_and_mentioned_items(instance.def).required_consts {
+            let c = self
+                .instantiate_from_current_frame_and_normalize_erasing_regions(const_.const_)?;
             c.eval(*self.tcx, self.param_env, const_.span).map_err(|err| {
                 err.emit_note(*self.tcx);
                 err

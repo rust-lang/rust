@@ -10,6 +10,20 @@ note: erroneous constant encountered
 LL |         Self::I_AM_ZERO_SIZED;
    |         ^^^^^^^^^^^^^^^^^^^^^
 
+note: erroneous constant encountered
+  --> $DIR/assoc_const_generic_impl.rs:12:18
+   |
+LL |         println!("requires_zero_size called");
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/assoc_const_generic_impl.rs:11:9
+   |
+LL |         Self::I_AM_ZERO_SIZED;
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 note: the above error was encountered while instantiating `fn <u32 as ZeroSized>::requires_zero_size`
   --> $DIR/assoc_const_generic_impl.rs:18:5
    |
