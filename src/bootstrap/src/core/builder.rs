@@ -808,6 +808,7 @@ impl<'a> Builder<'a> {
                 test::EditionGuide,
                 test::Rustfmt,
                 test::Miri,
+                test::CargoMiri,
                 test::Clippy,
                 test::RustDemangler,
                 test::CompiletestTest,
