@@ -1,5 +1,7 @@
 // This test ensures that the color of the items in the type decl are working as expected.
 
+include: "utils.goml"
+
 // We need to disable this check because `trait.impl/test_docs/trait.TraitWithoutGenerics.js`
 // doesn't exist.
 fail-on-request-error: false
@@ -21,8 +23,8 @@ define-function: (
         go-to: "file://" + |DOC_PATH| + "/test_docs/struct.WithGenerics.html"
         show-text: true
 
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
+
         assert-css: (".item-decl .code-attribute", {"color": |attr_color|}, ALL)
         assert-css: (".item-decl .trait", {"color": |trait_color|}, ALL)
         // We need to add `code` here because otherwise it would select the parent too.

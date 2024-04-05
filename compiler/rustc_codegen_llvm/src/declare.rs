@@ -147,7 +147,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 for options in [
                     TypeIdOptions::GENERALIZE_POINTERS,
                     TypeIdOptions::NORMALIZE_INTEGERS,
-                    TypeIdOptions::ERASE_SELF_TYPE,
+                    TypeIdOptions::USE_CONCRETE_SELF,
                 ]
                 .into_iter()
                 .powerset()
@@ -173,9 +173,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         if self.tcx.sess.is_sanitizer_kcfi_enabled() {
             // LLVM KCFI does not support multiple !kcfi_type attachments
-            // Default to erasing the self type. If we need the concrete type, there will be a
-            // hint in the instance.
-            let mut options = TypeIdOptions::ERASE_SELF_TYPE;
+            let mut options = TypeIdOptions::empty();
             if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
                 options.insert(TypeIdOptions::GENERALIZE_POINTERS);
             }

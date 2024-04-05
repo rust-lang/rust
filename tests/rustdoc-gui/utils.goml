@@ -1,0 +1,11 @@
+// This file contains code to be re-used by other tests.
+define-function: (
+    "switch-theme",
+    [theme],
+    block {
+        // Set the theme.
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        // We reload the page so the local storage settings are being used.
+        reload:
+    },
+)

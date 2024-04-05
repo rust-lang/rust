@@ -286,6 +286,11 @@ trigger_files = [
     "library/std/src/os/windows"
 ]
 
+[autolabel."O-visionos"]
+trigger_files = [
+    "library/std/src/os/visionos"
+]
+
 [autolabel."T-bootstrap"]
 trigger_files = [
     "x.py",
@@ -793,6 +798,7 @@ compiler-team-contributors = [
     "@fmease",
     "@fee1-dead",
     "@BoxyUwU",
+    "@jieyouxu",
 ]
 compiler = [
     "compiler-team",
@@ -973,10 +979,12 @@ project-exploit-mitigations = [
 "/src/llvm-project" =                                    ["@cuviper"]
 "/src/rustdoc-json-types" =                              ["rustdoc"]
 "/src/stage0.json" =                                     ["bootstrap"]
+"/tests/run-make" =                                      ["@jieyouxu"]
 "/tests/ui" =                                            ["compiler"]
 "/src/tools/cargo" =                                     ["@ehuss"]
-"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors"]
+"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors", "@jieyouxu"]
 "/src/tools/linkchecker" =                               ["@ehuss"]
+"/src/tools/run-make-support" =                          ["@jieyouxu"]
 "/src/tools/rust-installer" =                            ["bootstrap"]
 "/src/tools/rustbook" =                                  ["@ehuss"]
 "/src/tools/rustdoc" =                                   ["rustdoc"]
