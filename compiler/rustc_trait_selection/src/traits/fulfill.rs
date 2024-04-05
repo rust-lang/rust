@@ -311,7 +311,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
         let infcx = self.selcx.infcx;
 
-        if obligation.predicate.has_projections() {
+        if obligation.predicate.has_aliases() {
             let mut obligations = Vec::new();
             let predicate = normalize_with_depth_to(
                 &mut self.selcx,
