@@ -719,7 +719,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 self.cat_pattern_(subplace, subpat, op)?;
             }
             PatKind::Deref(subpat) => {
+                let mutable = self.typeck_results.pat_has_ref_mut_binding(subpat);
+                let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
+                let re_erased = self.tcx().lifetimes.re_erased;
                 let ty = self.pat_ty_adjusted(subpat)?;
+                let ty = Ty::new_ref(self.tcx(), re_erased, ty, mutability);
                 // A deref pattern generates a temporary.
                 let place = self.cat_rvalue(pat.hir_id, ty);
                 self.cat_pattern_(place, subpat, op)?;

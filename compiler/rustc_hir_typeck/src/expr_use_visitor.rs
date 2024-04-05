@@ -750,6 +750,15 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         }
                     }
                 }
+            } else if let PatKind::Deref(subpattern) = pat.kind {
+                // A deref pattern is a bit special: the binding mode of its inner bindings
+                // determines whether to borrow *at the level of the deref pattern* rather than
+                // borrowing the bound place (since that inner place is inside the temporary that
+                // stores the result of calling `deref()`/`deref_mut()` so can't be captured).
+                let mutable = mc.typeck_results.pat_has_ref_mut_binding(subpattern);
+                let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
+                let bk = ty::BorrowKind::from_mutbl(mutability);
+                delegate.borrow(place, discr_place.hir_id, bk);
             }
         }));
     }
