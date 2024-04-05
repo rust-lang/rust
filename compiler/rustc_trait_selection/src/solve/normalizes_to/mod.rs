@@ -7,6 +7,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_infer::traits::query::NoSolution;
+use rustc_infer::traits::solve::inspect::ProbeKind;
 use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
 use rustc_middle::traits::solve::{
@@ -30,14 +31,41 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
-        let def_id = goal.predicate.def_id();
-        let def_kind = self.tcx().def_kind(def_id);
-        match def_kind {
-            DefKind::OpaqueTy => return self.normalize_opaque_type(goal),
-            _ => self.set_is_normalizes_to_goal(),
-        }
-
+        self.set_is_normalizes_to_goal();
         debug_assert!(self.term_is_fully_unconstrained(goal));
+        let normalize_result = self
+            .probe(|&result| ProbeKind::TryNormalizeNonRigid { result })
+            .enter(|this| this.normalize_at_least_one_step(goal));
+
+        match normalize_result {
+            Ok(res) => Ok(res),
+            Err(NoSolution) => {
+                let Goal { param_env, predicate: NormalizesTo { alias, term } } = goal;
+                if alias.opt_kind(self.tcx()).is_some() {
+                    self.relate_rigid_alias_non_alias(
+                        param_env,
+                        alias,
+                        ty::Variance::Invariant,
+                        term,
+                    )?;
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                } else {
+                    // FIXME(generic_const_exprs): we currently do not support rigid
+                    // unevaluated constants.
+                    Err(NoSolution)
+                }
+            }
+        }
+    }
+
+    /// Normalize the given alias by at least one step. If the alias is rigid, this
+    /// returns `NoSolution`.
+    #[instrument(level = "debug", skip(self), ret)]
+    fn normalize_at_least_one_step(
+        &mut self,
+        goal: Goal<'tcx, NormalizesTo<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        let def_id = goal.predicate.def_id();
         match self.tcx().def_kind(def_id) {
             DefKind::AssocTy | DefKind::AssocConst => {
                 match self.tcx().associated_item(def_id).container {
@@ -52,35 +80,22 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
             DefKind::AnonConst => self.normalize_anon_const(goal),
             DefKind::TyAlias => self.normalize_weak_type(goal),
+            DefKind::OpaqueTy => self.normalize_opaque_type(goal),
             kind => bug!("unknown DefKind {} in normalizes-to goal: {goal:#?}", kind.descr(def_id)),
         }
     }
 
-    /// When normalizing an associated item, constrain the result to `term`.
+    /// When normalizing an associated item, constrain the expected term to `term`.
     ///
-    /// While `NormalizesTo` goals have the normalized-to term as an argument,
-    /// this argument is always fully unconstrained for associated items.
-    /// It is therefore appropriate to instead think of these `NormalizesTo` goals
-    /// as function returning a term after normalizing.
-    ///
-    /// When equating an inference variable and an alias, we tend to emit `alias-relate`
-    /// goals and only actually instantiate the inference variable with an alias if the
-    /// alias is rigid. However, this means that constraining the expected term of
-    /// such goals ends up fully structurally normalizing the resulting type instead of
-    /// only by one step. To avoid this we instead use structural equality here, resulting
-    /// in each `NormalizesTo` only projects by a single step.
-    ///
-    /// Not doing so, currently causes issues because trying to normalize an opaque type
-    /// during alias-relate doesn't actually constrain the opaque if the concrete type
-    /// is an inference variable. This means that `NormalizesTo` for associated types
-    /// normalizing to an opaque type always resulted in ambiguity, breaking tests e.g.
-    /// tests/ui/type-alias-impl-trait/issue-78450.rs.
+    /// We know `term` to always be a fully unconstrained inference variable, so
+    /// `eq` should never fail here. However, in case `term` contains aliases, we
+    /// emit nested `AliasRelate` goals to structurally normalize the alias.
     pub fn instantiate_normalizes_to_term(
         &mut self,
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
         term: ty::Term<'tcx>,
     ) {
-        self.eq_structurally_relating_aliases(goal.param_env, goal.predicate.term, term)
+        self.eq(goal.param_env, goal.predicate.term, term)
             .expect("expected goal term to be fully unconstrained");
     }
 }
