@@ -11,7 +11,6 @@ use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{
     self, Const, ExistentialPredicate, FloatTy, FnSig, IntTy, List, Region, RegionKind, TermKind,
     Ty, TyCtxt, UintTy,
@@ -24,7 +23,9 @@ use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 use std::fmt::Write as _;
 
-use super::{ty::{TransformTy, TransformTyOptions}, TypeIdOptions};
+use super::TypeIdOptions;
+use crate::typeid;
+use crate::typeid::ty::TransformTyOptions;
 
 type EncodeTyOptions = TypeIdOptions;
 
@@ -175,15 +176,14 @@ fn encode_fnsig<'tcx>(
     // Encode the return type
     let transform_ty_options = TransformTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("encode_fnsig: invalid option(s) `{:?}`", options.bits()));
-    let mut type_folder = TransformTy::new(tcx, transform_ty_options);
-    let ty = fn_sig.output().fold_with(&mut type_folder);
+    let ty = typeid::ty::transform(tcx, transform_ty_options, fn_sig.output());
     s.push_str(&encode_ty(tcx, ty, dict, encode_ty_options));
 
     // Encode the parameter types
     let tys = fn_sig.inputs();
     if !tys.is_empty() {
         for ty in tys {
-            let ty = ty.fold_with(&mut type_folder);
+            let ty = typeid::ty::transform(tcx, transform_ty_options, *ty);
             s.push_str(&encode_ty(tcx, ty, dict, encode_ty_options));
         }
 
@@ -782,8 +782,7 @@ pub fn typeid_for_fnabi<'tcx>(
     // Encode the return type
     let transform_ty_options = TransformTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("typeid_for_fnabi: invalid option(s) `{:?}`", options.bits()));
-    let mut type_folder = TransformTy::new(tcx, transform_ty_options);
-    let ty = fn_abi.ret.layout.ty.fold_with(&mut type_folder);
+    let ty = typeid::ty::transform(tcx, transform_ty_options, fn_abi.ret.layout.ty);
     typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
 
     // Encode the parameter types
@@ -795,7 +794,7 @@ pub fn typeid_for_fnabi<'tcx>(
         let mut pushed_arg = false;
         for arg in fn_abi.args.iter().filter(|arg| arg.mode != PassMode::Ignore) {
             pushed_arg = true;
-            let ty = arg.layout.ty.fold_with(&mut type_folder);
+            let ty = typeid::ty::transform(tcx, transform_ty_options, arg.layout.ty);
             typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
         }
         if !pushed_arg {
@@ -808,7 +807,7 @@ pub fn typeid_for_fnabi<'tcx>(
             if fn_abi.args[n].mode == PassMode::Ignore {
                 continue;
             }
-            let ty = fn_abi.args[n].layout.ty.fold_with(&mut type_folder);
+            let ty = typeid::ty::transform(tcx, transform_ty_options, fn_abi.args[n].layout.ty);
             typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
         }
 

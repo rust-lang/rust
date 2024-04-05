@@ -8,7 +8,8 @@ use crate::typeid::TypeIdOptions;
 
 pub type TransformTyOptions = TypeIdOptions;
 
-/// A type folder which normalizes a type to a form suitable for encoding.
+/// Normalizes a type to a form suitable for encoding.
+///
 /// Always:
 ///
 /// * `c_void` -> `()`
@@ -27,14 +28,18 @@ pub type TransformTyOptions = TypeIdOptions;
 /// * `*mut T` / `*const T` -> `*mut ()` / `*const ()`
 /// * `&mut T` / `&T` -> `&mut ()` / `&()`
 /// * `fn(..) -> T` -> `*const ()`
-pub struct TransformTy<'tcx> {
+pub fn transform<'tcx>(tcx: TyCtxt<'tcx>, options: TransformTyOptions, ty: Ty<'tcx>) -> Ty<'tcx> {
+    TransformTy::new(tcx, options).fold_ty(ty)
+}
+
+struct TransformTy<'tcx> {
     tcx: TyCtxt<'tcx>,
     options: TransformTyOptions,
     parents: Vec<Ty<'tcx>>,
 }
 
 impl<'tcx> TransformTy<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, options: TransformTyOptions) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, options: TransformTyOptions) -> Self {
         TransformTy { tcx, options, parents: Vec::new() }
     }
 }
