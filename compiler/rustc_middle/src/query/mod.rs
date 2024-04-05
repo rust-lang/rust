@@ -587,7 +587,7 @@ rustc_queries! {
     /// Cross-crate cache of `required_and_mentioned_items`. Do not call directly.
     query required_and_mentioned_items_of_item(key: DefId) -> &'tcx mir::RequiredAndMentionedItems<'tcx> {
         desc { |tcx| "computing required and mentioned items for `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { true }
+        cache_on_disk_if { key.is_local() }
         arena_cache
         separate_provide_extern
     }
