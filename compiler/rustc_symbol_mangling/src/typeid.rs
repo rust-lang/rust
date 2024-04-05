@@ -24,9 +24,14 @@ bitflags! {
         /// `-fsanitize-cfi-icall-experimental-normalize-integers` option for cross-language LLVM
         /// CFI and  KCFI support.
         const NORMALIZE_INTEGERS = 4;
-        /// Generalize the instance by erasing the concrete `Self` type where possible.
-        /// Only has an effect on `{kcfi_,}typeid_for_instance`.
-        const ERASE_SELF_TYPE = 8;
+        /// Do not perform self type erasure for attaching a secondary type id to methods with their
+        /// concrete self so they can be used as function pointers.
+        ///
+        /// (This applies to typeid_for_instance only and should be used to attach a secondary type
+        /// id to methods during their declaration/definition so they match the type ids returned by
+        /// either typeid_for_instance or typeid_for_fnabi at call sites during code generation for
+        /// type membership tests when methods are used as function pointers.)
+        const USE_CONCRETE_SELF = 8;
     }
 }
 
@@ -69,10 +74,23 @@ pub fn kcfi_typeid_for_instance<'tcx>(
     instance: Instance<'tcx>,
     mut options: TypeIdOptions,
 ) -> u32 {
-    // If we receive a `ReifyShim` intended to produce a function pointer, we need to remain
-    // concrete - abstraction is for vtables.
+    // KCFI support for Rust shares most of its implementation with the CFI support, with some key
+    // differences:
+    //
+    // 1. KCFI performs type tests differently and are implemented as different LLVM passes than CFI
+    //    to not require LTO.
+    // 2. KCFI has the limitation that a function or method may have one type id assigned only.
+    //
+    // Because of the limitation listed above (2), the current KCFI implementation (not CFI) does
+    // reifying of types (i.e., adds shims/trampolines for indirect calls in these cases) for:
+    //
+    // * Supporting casting between function items, closures, and Fn trait objects.
+    // * Supporting methods being cast as function pointers.
+    //
+    // This was implemented for KCFI support in #123106 and #123052 (which introduced the
+    // ReifyReason). The tracking issue for KCFI support for Rust is #123479.
     if matches!(instance.def, InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr))) {
-        options.remove(TypeIdOptions::ERASE_SELF_TYPE);
+        options.insert(TypeIdOptions::USE_CONCRETE_SELF);
     }
     // A KCFI type metadata identifier is a 32-bit constant produced by taking the lower half of the
     // xxHash64 of the type metadata identifier. (See llvm/llvm-project@cff5bef.)
