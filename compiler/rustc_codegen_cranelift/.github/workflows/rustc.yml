@@ -3,6 +3,8 @@ name: Various rustc tests
 on:
   - push
 
+permissions: {}
+
 jobs:
   bootstrap_rustc:
     runs-on: ubuntu-latest
