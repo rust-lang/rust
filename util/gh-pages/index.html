@@ -496,7 +496,32 @@ Otherwise, have a great day =^.^=
                                 </ul>
                             </div>
                         </div>
-
+                        <div class="btn-group" filter-dropdown>
+                            <button type="button" class="btn btn-default dropdown-toggle">
+                                Applicability <span class="badge">{{selectedValuesCount(applicabilities)}}</span> <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li class="checkbox">
+                                    <label ng-click="toggleApplicabilities(true)">
+                                        <input type="checkbox" class="invisible" />
+                                        All
+                                    </label>
+                                </li>
+                                <li class="checkbox">
+                                    <label ng-click="toggleApplicabilities(false)">
+                                        <input type="checkbox" class="invisible" />
+                                        None
+                                    </label>
+                                </li>
+                                <li role="separator" class="divider"></li>
+                                <li class="checkbox" ng-repeat="(applicability, enabled) in applicabilities">
+                                    <label class="text-capitalize">
+                                        <input type="checkbox" ng-model="applicabilities[applicability]" />
+                                        {{applicability}}
+                                    </label>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                     <div class="col-12 col-md-7 search-control">
                         <div class="input-group">

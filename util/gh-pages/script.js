@@ -156,6 +156,16 @@
                 Object.entries(versionFilterKeyMap).map(([key, value]) => [value, key])
             );
 
+            const APPLICABILITIES_DEFAULT = {
+                unspecified: true,
+                unresolved: true,
+                machineApplicable: true,
+                maybeIncorrect: true,
+                hasPlaceholders: true
+            };
+
+            $scope.applicabilities = APPLICABILITIES_DEFAULT;
+
             // loadFromURLParameters retrieves filter settings from the URL parameters and assigns them
             // to corresponding $scope variables.
             function loadFromURLParameters() {
