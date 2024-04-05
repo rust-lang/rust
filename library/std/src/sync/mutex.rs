@@ -186,22 +186,24 @@ pub struct Mutex<T: ?Sized> {
 
 /// SAFETY
 ///
-/// The `Send` and `Sync` implementations for `Mutex` ensure that it is safe to
-/// share instances of `Mutex` between threads when the protected data is also
-/// thread-safe. The following explains the safety guarantees:
+/// - impl Send for Mutex
 ///
-/// - `Send` is implemented for `Mutex<T>` if and only if `T` is also `Send`.
-///   This guarantees that `Mutex<T>` can be safely transferred between threads,
-///   and `T` can be sent across thread boundaries. This is crucial for allowing
-///   safe access to the protected data from multiple threads.
+/// Mutex is a container that wraps `T`, so it's necessary for `T` to be `Send`
+/// to safely send `Mutex` to another thread. This ensures that the protected
+/// data can be accessed safely from multiple threads without causing data races
+/// or other unsafe behavior.
+
 ///
-/// - `Sync` is implemented for `Mutex<T>` if and only if `T` is `Send`,
-///   since passing around a &Mutex<T> is basically the same as passing a &mut T.
-///   This ensures that `Mutex<T>` can be safely shared between threads
-///   without requiring further synchronization, assuming `T` can be sent across
-///   thread boundaries. It guarantees that multiple threads can safely access the
-///   protected data concurrently without data races.
+/// - impl Sync for Mutex
 ///
+/// Mutex<T> provides mutable access to `T` to one thread at a time. However, it's essential
+/// for `T` to be `Send` because it's not safe for non-`Send` structures to be accessed in
+/// this manner. For instance, consider `Rc`, a non-atomic reference counted smart pointer,
+/// which is not `Send`. With `Rc`, we can have multiple copies pointing to the same heap
+/// allocation with a non-atomic reference count. If we were to use `Mutex<Rc<_>>`, it would
+/// only protect one instance of `Rc` from shared access, leaving other copies vulnerable
+/// to potential data races.
+
 /// It's important to note that `Mutex` can be `Sync` even if its inner type `T`
 /// is not `Sync` itself. This is because `Mutex` provides a safe interface for
 /// accessing `T` through locking mechanisms, ensuring that only one thread can
