@@ -392,6 +392,11 @@ fn never_type_behavior(tcx: TyCtxt<'_>) -> (DivergingFallbackBehavior, Diverging
 fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
     use DivergingFallbackBehavior::*;
 
+    // Edition 2024: fallback to `!`
+    if tcx.sess.edition().at_least_rust_2024() {
+        return FallbackToNever;
+    }
+
     // `feature(never_type_fallback)`: fallback to `!` or `()` trying to not break stuff
     if tcx.features().never_type_fallback {
         return FallbackToNiko;
