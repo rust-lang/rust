@@ -6,7 +6,7 @@ use rustc_middle::ty::{self, Instance, List, Ty, TyCtxt};
 use rustc_trait_selection::traits;
 use std::iter;
 
-use crate::typeid::TypeIdOptions;
+use crate::typeid;
 
 /// Transform an instance where needed prior to encoding
 ///
@@ -21,7 +21,7 @@ use crate::typeid::TypeIdOptions;
 pub fn transform<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut instance: Instance<'tcx>,
-    options: TypeIdOptions,
+    options: typeid::Options,
 ) -> Instance<'tcx> {
     if (matches!(instance.def, ty::InstanceDef::Virtual(..))
         && Some(instance.def_id()) == tcx.lang_items().drop_in_place_fn())
@@ -72,7 +72,7 @@ pub fn transform<'tcx>(
         instance.args = tcx.mk_args_trait(invoke_ty, trait_ref.args.into_iter().skip(1));
     }
 
-    if options.contains(TypeIdOptions::ERASE_SELF_TYPE) {
+    if options.contains(typeid::Options::ERASE_SELF_TYPE) {
         if let Some(impl_id) = tcx.impl_of_method(instance.def_id())
             && let Some(trait_ref) = tcx.impl_trait_ref(impl_id)
         {

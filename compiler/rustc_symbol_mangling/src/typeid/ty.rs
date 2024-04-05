@@ -4,9 +4,7 @@ use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, IntTy, Ty, TyCtxt, UintTy};
 use rustc_span::sym;
 
-use crate::typeid::TypeIdOptions;
-
-pub type TransformTyOptions = TypeIdOptions;
+use crate::typeid;
 
 /// Normalizes a type to a form suitable for encoding.
 ///
@@ -28,18 +26,18 @@ pub type TransformTyOptions = TypeIdOptions;
 /// * `*mut T` / `*const T` -> `*mut ()` / `*const ()`
 /// * `&mut T` / `&T` -> `&mut ()` / `&()`
 /// * `fn(..) -> T` -> `*const ()`
-pub fn transform<'tcx>(tcx: TyCtxt<'tcx>, options: TransformTyOptions, ty: Ty<'tcx>) -> Ty<'tcx> {
+pub fn transform<'tcx>(tcx: TyCtxt<'tcx>, options: typeid::Options, ty: Ty<'tcx>) -> Ty<'tcx> {
     TransformTy::new(tcx, options).fold_ty(ty)
 }
 
 struct TransformTy<'tcx> {
     tcx: TyCtxt<'tcx>,
-    options: TransformTyOptions,
+    options: typeid::Options,
     parents: Vec<Ty<'tcx>>,
 }
 
 impl<'tcx> TransformTy<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, options: TransformTyOptions) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, options: typeid::Options) -> Self {
         TransformTy { tcx, options, parents: Vec::new() }
     }
 }
@@ -47,8 +45,8 @@ impl<'tcx> TransformTy<'tcx> {
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
     // Transforms a ty:Ty for being encoded and used in the substitution dictionary. It transforms
     // all c_void types into unit types unconditionally, generalizes pointers if
-    // TransformTyOptions::GENERALIZE_POINTERS option is set, and normalizes integers if
-    // TransformTyOptions::NORMALIZE_INTEGERS option is set.
+    // Options::GENERALIZE_POINTERS option is set, and normalizes integers if
+    // Options::NORMALIZE_INTEGERS option is set.
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.kind() {
             ty::Array(..)
@@ -65,7 +63,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             | ty::Tuple(..) => t.super_fold_with(self),
 
             ty::Bool => {
-                if self.options.contains(TransformTyOptions::NORMALIZE_INTEGERS) {
+                if self.options.contains(typeid::Options::NORMALIZE_INTEGERS) {
                     // Note: on all platforms that Rust's currently supports, its size and alignment
                     // are 1, and its ABI class is INTEGER - see Rust Layout and ABIs.
                     //
@@ -79,7 +77,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             }
 
             ty::Char => {
-                if self.options.contains(TransformTyOptions::NORMALIZE_INTEGERS) {
+                if self.options.contains(typeid::Options::NORMALIZE_INTEGERS) {
                     // Since #118032, char is guaranteed to have the same size, alignment, and
                     // function call ABI as u32 on all platforms.
                     self.tcx.types.u32
@@ -89,7 +87,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             }
 
             ty::Int(..) | ty::Uint(..) => {
-                if self.options.contains(TransformTyOptions::NORMALIZE_INTEGERS) {
+                if self.options.contains(typeid::Options::NORMALIZE_INTEGERS) {
                     // Note: C99 7.18.2.4 requires uintptr_t and intptr_t to be at least 16-bit
                     // wide. All platforms we currently support have a C platform, and as a
                     // consequence, isize/usize are at least 16-bit wide for all of them.
@@ -154,7 +152,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                         self.parents.push(t);
                         let ty = if ty0.is_any_ptr() && ty0.contains(t) {
                             let options = self.options;
-                            self.options |= TransformTyOptions::GENERALIZE_POINTERS;
+                            self.options |= typeid::Options::GENERALIZE_POINTERS;
                             let ty = ty0.fold_with(self);
                             self.options = options;
                             ty
@@ -173,7 +171,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             }
 
             ty::Ref(..) => {
-                if self.options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
+                if self.options.contains(typeid::Options::GENERALIZE_POINTERS) {
                     if t.is_mutable_ptr() {
                         Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_static, self.tcx.types.unit)
                     } else {
@@ -185,7 +183,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             }
 
             ty::RawPtr(..) => {
-                if self.options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
+                if self.options.contains(typeid::Options::GENERALIZE_POINTERS) {
                     if t.is_mutable_ptr() {
                         Ty::new_mut_ptr(self.tcx, self.tcx.types.unit)
                     } else {
@@ -197,7 +195,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             }
 
             ty::FnPtr(..) => {
-                if self.options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
+                if self.options.contains(typeid::Options::GENERALIZE_POINTERS) {
                     Ty::new_imm_ptr(self.tcx, self.tcx.types.unit)
                 } else {
                     t.super_fold_with(self)

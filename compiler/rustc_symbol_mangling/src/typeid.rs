@@ -12,7 +12,7 @@ use twox_hash::XxHash64;
 bitflags! {
     /// Options for typeid_for_fnabi.
     #[derive(Clone, Copy, Debug)]
-    pub struct TypeIdOptions: u32 {
+    pub struct Options: u32 {
         /// Generalizes pointers for compatibility with Clang
         /// `-fsanitize-cfi-icall-generalize-pointers` option for cross-language LLVM CFI and KCFI
         /// support.
@@ -38,7 +38,7 @@ mod ty;
 pub fn typeid_for_fnabi<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-    options: TypeIdOptions,
+    options: Options,
 ) -> String {
     itanium_cxx_abi::typeid_for_fnabi(tcx, fn_abi, options)
 }
@@ -47,7 +47,7 @@ pub fn typeid_for_fnabi<'tcx>(
 pub fn typeid_for_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-    options: TypeIdOptions,
+    options: Options,
 ) -> String {
     let instance = instance::transform(tcx, instance, options);
     let fn_abi = tcx
@@ -62,7 +62,7 @@ pub fn typeid_for_instance<'tcx>(
 pub fn kcfi_typeid_for_fnabi<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-    options: TypeIdOptions,
+    options: Options,
 ) -> u32 {
     // A KCFI type metadata identifier is a 32-bit constant produced by taking the lower half of the
     // xxHash64 of the type metadata identifier. (See llvm/llvm-project@cff5bef.)
@@ -75,12 +75,12 @@ pub fn kcfi_typeid_for_fnabi<'tcx>(
 pub fn kcfi_typeid_for_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-    mut options: TypeIdOptions,
+    mut options: Options,
 ) -> u32 {
     // If we receive a `ReifyShim` intended to produce a function pointer, we need to remain
     // concrete - abstraction is for vtables.
     if matches!(instance.def, InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr))) {
-        options.remove(TypeIdOptions::ERASE_SELF_TYPE);
+        options.remove(Options::ERASE_SELF_TYPE);
     }
     // A KCFI type metadata identifier is a 32-bit constant produced by taking the lower half of the
     // xxHash64 of the type metadata identifier. (See llvm/llvm-project@cff5bef.)

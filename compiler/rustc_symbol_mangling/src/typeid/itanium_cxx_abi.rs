@@ -23,11 +23,7 @@ use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 use std::fmt::Write as _;
 
-use super::TypeIdOptions;
 use crate::typeid;
-use crate::typeid::ty::TransformTyOptions;
-
-type EncodeTyOptions = TypeIdOptions;
 
 /// Type and extended type qualifiers.
 #[derive(Eq, Hash, PartialEq)]
@@ -90,7 +86,7 @@ fn encode_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     c: Const<'tcx>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
-    options: EncodeTyOptions,
+    options: typeid::Options,
 ) -> String {
     // L<element-type>[n][<element-value>]E as literal argument
     let mut s = String::from('L');
@@ -157,34 +153,26 @@ fn encode_fnsig<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_sig: &FnSig<'tcx>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
-    options: TypeIdOptions,
+    mut options: typeid::Options,
 ) -> String {
     // Function types are delimited by an "F..E" pair
     let mut s = String::from("F");
 
-    let mut encode_ty_options = EncodeTyOptions::from_bits(options.bits())
-        .unwrap_or_else(|| bug!("encode_fnsig: invalid option(s) `{:?}`", options.bits()));
     match fn_sig.abi {
-        Abi::C { .. } => {
-            encode_ty_options.insert(EncodeTyOptions::GENERALIZE_REPR_C);
-        }
-        _ => {
-            encode_ty_options.remove(EncodeTyOptions::GENERALIZE_REPR_C);
-        }
+        Abi::C { .. } => options.insert(typeid::Options::GENERALIZE_REPR_C),
+        _ => options.remove(typeid::Options::GENERALIZE_REPR_C),
     }
 
     // Encode the return type
-    let transform_ty_options = TransformTyOptions::from_bits(options.bits())
-        .unwrap_or_else(|| bug!("encode_fnsig: invalid option(s) `{:?}`", options.bits()));
-    let ty = typeid::ty::transform(tcx, transform_ty_options, fn_sig.output());
-    s.push_str(&encode_ty(tcx, ty, dict, encode_ty_options));
+    let ty = typeid::ty::transform(tcx, options, fn_sig.output());
+    s.push_str(&encode_ty(tcx, ty, dict, options));
 
     // Encode the parameter types
     let tys = fn_sig.inputs();
     if !tys.is_empty() {
         for ty in tys {
-            let ty = typeid::ty::transform(tcx, transform_ty_options, *ty);
-            s.push_str(&encode_ty(tcx, ty, dict, encode_ty_options));
+            let ty = typeid::ty::transform(tcx, options, *ty);
+            s.push_str(&encode_ty(tcx, ty, dict, options));
         }
 
         if fn_sig.c_variadic {
@@ -212,7 +200,7 @@ fn encode_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicate: ty::PolyExistentialPredicate<'tcx>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
-    options: EncodeTyOptions,
+    options: typeid::Options,
 ) -> String {
     // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>, as vendor
     // extended type.
@@ -247,7 +235,7 @@ fn encode_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
-    options: EncodeTyOptions,
+    options: typeid::Options,
 ) -> String {
     // <predicate1[..predicateN]>E as part of vendor extended type
     let mut s = String::new();
@@ -297,7 +285,7 @@ fn encode_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     args: GenericArgsRef<'tcx>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
-    options: EncodeTyOptions,
+    options: typeid::Options,
 ) -> String {
     // [I<subst1..substN>E] as part of vendor extended type
     let mut s = String::new();
@@ -425,7 +413,7 @@ fn encode_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
-    options: EncodeTyOptions,
+    options: typeid::Options,
 ) -> String {
     let mut typeid = String::new();
 
@@ -570,7 +558,7 @@ fn encode_ty<'tcx>(
                 } else {
                     bug!("encode_ty: invalid `cfi_encoding` for `{:?}`", ty.kind());
                 }
-            } else if options.contains(EncodeTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c() {
+            } else if options.contains(typeid::Options::GENERALIZE_REPR_C) && adt_def.repr().c() {
                 // For cross-language LLVM CFI support, the encoding must be compatible at the FFI
                 // boundary. For instance:
                 //
@@ -702,7 +690,7 @@ fn encode_ty<'tcx>(
         ty::FnPtr(fn_sig) => {
             // PF<return-type><parameter-type1..parameter-typeN>E
             let mut s = String::from("P");
-            s.push_str(&encode_fnsig(tcx, &fn_sig.skip_binder(), dict, TypeIdOptions::empty()));
+            s.push_str(&encode_fnsig(tcx, &fn_sig.skip_binder(), dict, typeid::Options::empty()));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
@@ -750,7 +738,7 @@ fn encode_ty<'tcx>(
 pub fn typeid_for_fnabi<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-    options: TypeIdOptions,
+    mut options: typeid::Options,
 ) -> String {
     // A name is mangled by prefixing "_Z" to an encoding of its name, and in the case of functions
     // its type.
@@ -768,22 +756,14 @@ pub fn typeid_for_fnabi<'tcx>(
     // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-compression).
     let mut dict: FxHashMap<DictKey<'tcx>, usize> = FxHashMap::default();
 
-    let mut encode_ty_options = EncodeTyOptions::from_bits(options.bits())
-        .unwrap_or_else(|| bug!("typeid_for_fnabi: invalid option(s) `{:?}`", options.bits()));
     match fn_abi.conv {
-        Conv::C => {
-            encode_ty_options.insert(EncodeTyOptions::GENERALIZE_REPR_C);
-        }
-        _ => {
-            encode_ty_options.remove(EncodeTyOptions::GENERALIZE_REPR_C);
-        }
+        Conv::C => options.insert(typeid::Options::GENERALIZE_REPR_C),
+        _ => options.remove(typeid::Options::GENERALIZE_REPR_C),
     }
 
     // Encode the return type
-    let transform_ty_options = TransformTyOptions::from_bits(options.bits())
-        .unwrap_or_else(|| bug!("typeid_for_fnabi: invalid option(s) `{:?}`", options.bits()));
-    let ty = typeid::ty::transform(tcx, transform_ty_options, fn_abi.ret.layout.ty);
-    typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
+    let ty = typeid::ty::transform(tcx, options, fn_abi.ret.layout.ty);
+    typeid.push_str(&encode_ty(tcx, ty, &mut dict, options));
 
     // Encode the parameter types
 
@@ -794,8 +774,8 @@ pub fn typeid_for_fnabi<'tcx>(
         let mut pushed_arg = false;
         for arg in fn_abi.args.iter().filter(|arg| arg.mode != PassMode::Ignore) {
             pushed_arg = true;
-            let ty = typeid::ty::transform(tcx, transform_ty_options, arg.layout.ty);
-            typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
+            let ty = typeid::ty::transform(tcx, options, arg.layout.ty);
+            typeid.push_str(&encode_ty(tcx, ty, &mut dict, options));
         }
         if !pushed_arg {
             // Empty parameter lists, whether declared as () or conventionally as (void), are
@@ -807,8 +787,8 @@ pub fn typeid_for_fnabi<'tcx>(
             if fn_abi.args[n].mode == PassMode::Ignore {
                 continue;
             }
-            let ty = typeid::ty::transform(tcx, transform_ty_options, fn_abi.args[n].layout.ty);
-            typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
+            let ty = typeid::ty::transform(tcx, options, fn_abi.args[n].layout.ty);
+            typeid.push_str(&encode_ty(tcx, ty, &mut dict, options));
         }
 
         typeid.push('z');
@@ -818,11 +798,11 @@ pub fn typeid_for_fnabi<'tcx>(
     typeid.push('E');
 
     // Add encoding suffixes
-    if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
+    if options.contains(typeid::Options::NORMALIZE_INTEGERS) {
         typeid.push_str(".normalized");
     }
 
-    if options.contains(EncodeTyOptions::GENERALIZE_POINTERS) {
+    if options.contains(typeid::Options::GENERALIZE_POINTERS) {
         typeid.push_str(".generalized");
     }
 
