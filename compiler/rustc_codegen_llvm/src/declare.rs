@@ -22,9 +22,7 @@ use itertools::Itertools;
 use rustc_codegen_ssa::traits::TypeMembershipMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
-use rustc_symbol_mangling::typeid::{
-    self, kcfi_typeid_for_fnabi, kcfi_typeid_for_instance, typeid_for_fnabi, typeid_for_instance,
-};
+use rustc_symbol_mangling::typeid;
 use smallvec::SmallVec;
 
 /// Declare a function.
@@ -152,7 +150,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 .powerset()
                 .map(typeid::Options::from_iter)
                 {
-                    let typeid = typeid_for_instance(self.tcx, instance, options);
+                    let typeid = typeid::from_instance(self.tcx, instance, options);
                     if typeids.insert(typeid.clone()) {
                         self.add_type_metadata(llfn, typeid);
                     }
@@ -164,7 +162,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                         .powerset()
                         .map(typeid::Options::from_iter)
                 {
-                    let typeid = typeid_for_fnabi(self.tcx, fn_abi, options);
+                    let typeid = typeid::from_fnabi(self.tcx, fn_abi, options);
                     self.add_type_metadata(llfn, typeid);
                 }
             }
@@ -183,10 +181,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             }
 
             if let Some(instance) = instance {
-                let kcfi_typeid = kcfi_typeid_for_instance(self.tcx, instance, options);
+                let kcfi_typeid = typeid::from_instance_kcfi(self.tcx, instance, options);
                 self.set_kcfi_type_metadata(llfn, kcfi_typeid);
             } else {
-                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi, options);
+                let kcfi_typeid = typeid::from_fnabi_kcfi(self.tcx, fn_abi, options);
                 self.set_kcfi_type_metadata(llfn, kcfi_typeid);
             }
         }

@@ -25,7 +25,7 @@ bitflags! {
         /// CFI and  KCFI support.
         const NORMALIZE_INTEGERS = 4;
         /// Generalize the instance by erasing the concrete `Self` type where possible.
-        /// Only has an effect on `{kcfi_,}typeid_for_instance`.
+        /// Only has an effect on `from_instance{_kcfi,}`.
         const ERASE_SELF_TYPE = 8;
     }
 }
@@ -35,7 +35,7 @@ mod itanium_cxx_abi;
 mod ty;
 
 /// Returns a type metadata identifier for the specified FnAbi.
-pub fn typeid_for_fnabi<'tcx>(
+pub fn from_fnabi<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
     options: Options,
@@ -44,7 +44,7 @@ pub fn typeid_for_fnabi<'tcx>(
 }
 
 /// Returns a type metadata identifier for the specified Instance.
-pub fn typeid_for_instance<'tcx>(
+pub fn from_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     options: Options,
@@ -59,7 +59,7 @@ pub fn typeid_for_instance<'tcx>(
 }
 
 /// Returns a KCFI type metadata identifier for the specified FnAbi.
-pub fn kcfi_typeid_for_fnabi<'tcx>(
+pub fn from_fnabi_kcfi<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
     options: Options,
@@ -72,7 +72,7 @@ pub fn kcfi_typeid_for_fnabi<'tcx>(
 }
 
 /// Returns a KCFI type metadata identifier for the specified Instance.
-pub fn kcfi_typeid_for_instance<'tcx>(
+pub fn from_instance_kcfi<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     mut options: Options,
@@ -85,6 +85,6 @@ pub fn kcfi_typeid_for_instance<'tcx>(
     // A KCFI type metadata identifier is a 32-bit constant produced by taking the lower half of the
     // xxHash64 of the type metadata identifier. (See llvm/llvm-project@cff5bef.)
     let mut hash: XxHash64 = Default::default();
-    hash.write(typeid_for_instance(tcx, instance, options).as_bytes());
+    hash.write(from_instance(tcx, instance, options).as_bytes());
     hash.finish() as u32
 }
