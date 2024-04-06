@@ -8,4 +8,4 @@
 #![no_core]
 #![no_main]
 
-//~? ERROR `-Zsanitizer-cfi-generalize-pointers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`
+//~? ERROR `-Zsanitizer-cfi-generalize-pointers` requires `-Csanitize=cfi` or `-Csanitize=kcfi`

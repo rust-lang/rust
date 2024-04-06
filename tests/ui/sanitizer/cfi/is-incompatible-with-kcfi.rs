@@ -12,4 +12,4 @@
 #![no_main]
 
 //~? ERROR cfi sanitizer is not supported for this target
-//~? ERROR `-Zsanitizer=cfi` is incompatible with `-Zsanitizer=kcfi`
+//~? ERROR `-Csanitize=cfi` is incompatible with `-Csanitize=kcfi`

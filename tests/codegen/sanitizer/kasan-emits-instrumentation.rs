@@ -1,7 +1,7 @@
 // Verifies that `-Csanitize=kernel-address` emits sanitizer instrumentation.
 
 //@ add-core-stubs
-//@ compile-flags: -Zunstable-options -Zsanitizer=kernel-address -Copt-level=0
+//@ compile-flags: -Zunstable-options -Csanitize=kernel-address -Copt-level=0
 //@ revisions: aarch64 riscv64imac riscv64gc x86_64
 //@[aarch64] compile-flags: --target aarch64-unknown-none
 //@[aarch64] needs-llvm-components: aarch64

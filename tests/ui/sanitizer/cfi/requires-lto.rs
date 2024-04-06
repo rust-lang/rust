@@ -7,4 +7,4 @@
 #![no_core]
 #![no_main]
 
-//~? ERROR `-Zsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`
+//~? ERROR `-Csanitize=cfi` requires `-Clto` or `-Clinker-plugin-lto`

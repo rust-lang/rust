@@ -7,3 +7,5 @@
 #![feature(no_core)]
 #![no_core]
 #![no_main]
+
+//~? ERROR kernel-address sanitizer is not supported for this target
