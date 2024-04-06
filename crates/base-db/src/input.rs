@@ -285,6 +285,7 @@ pub struct CrateData {
     /// For purposes of analysis, crates are anonymous (only names in
     /// `Dependency` matters), this name should only be used for UI.
     pub display_name: Option<CrateDisplayName>,
+    // FIXME: Arc this
     pub cfg_options: CfgOptions,
     /// The cfg options that could be used by the crate
     pub potential_cfg_options: Option<CfgOptions>,

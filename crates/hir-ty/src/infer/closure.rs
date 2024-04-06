@@ -26,7 +26,7 @@ use crate::{
     mir::{BorrowKind, MirSpan, MutBorrowKind, ProjectionElem},
     to_chalk_trait_id,
     traits::FnTrait,
-    utils::{self, elaborate_clause_supertraits, generics, Generics},
+    utils::{self, elaborate_clause_supertraits, Generics},
     Adjust, Adjustment, AliasEq, AliasTy, Binders, BindingMode, ChalkTraitId, ClosureId, DynTy,
     DynTyExt, FnAbi, FnPointer, FnSig, Interner, OpaqueTy, ProjectionTyExt, Substitution, Ty,
     TyExt, WhereClause,
@@ -331,14 +331,10 @@ impl CapturedItemWithoutTy {
             place: self.place,
             kind: self.kind,
             span: self.span,
-            ty: replace_placeholder_with_binder(ctx.db, ctx.owner, ty),
+            ty: replace_placeholder_with_binder(ctx, ty),
         };
 
-        fn replace_placeholder_with_binder(
-            db: &dyn HirDatabase,
-            owner: DefWithBodyId,
-            ty: Ty,
-        ) -> Binders<Ty> {
+        fn replace_placeholder_with_binder(ctx: &mut InferenceContext<'_>, ty: Ty) -> Binders<Ty> {
             struct Filler<'a> {
                 db: &'a dyn HirDatabase,
                 generics: Generics,
@@ -379,12 +375,12 @@ impl CapturedItemWithoutTy {
                     Ok(BoundVar::new(outer_binder, idx).to_ty(Interner))
                 }
             }
-            let Some(generic_def) = owner.as_generic_def_id() else {
+            let Some(generics) = ctx.generics() else {
                 return Binders::empty(Interner, ty);
             };
-            let filler = &mut Filler { db, generics: generics(db.upcast(), generic_def) };
+            let filler = &mut Filler { db: ctx.db, generics };
             let result = ty.clone().try_fold_with(filler, DebruijnIndex::INNERMOST).unwrap_or(ty);
-            make_binders(db, &filler.generics, result)
+            make_binders(ctx.db, &filler.generics, result)
         }
     }
 }

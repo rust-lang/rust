@@ -21,7 +21,6 @@ use crate::{
 pub struct Expander {
     cfg_options: CfgOptions,
     span_map: OnceCell<SpanMap>,
-    krate: CrateId,
     current_file_id: HirFileId,
     pub(crate) module: ModuleId,
     /// `recursion_depth == usize::MAX` indicates that the recursion limit has been reached.
@@ -45,8 +44,11 @@ impl Expander {
             recursion_limit,
             cfg_options: db.crate_graph()[module.krate].cfg_options.clone(),
             span_map: OnceCell::new(),
-            krate: module.krate,
         }
+    }
+
+    pub fn krate(&self) -> CrateId {
+        self.module.krate
     }
 
     pub fn enter_expand<T: ast::AstNode>(
@@ -112,7 +114,7 @@ impl Expander {
     pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> Attrs {
         Attrs::filter(
             db,
-            self.krate,
+            self.krate(),
             RawAttrs::new(
                 db.upcast(),
                 owner,

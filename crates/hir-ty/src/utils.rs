@@ -262,7 +262,7 @@ impl<'a> ClosureSubst<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Generics {
     def: GenericDefId,
     pub(crate) params: Interned<GenericParams>,
@@ -272,6 +272,10 @@ pub(crate) struct Generics {
 impl Generics {
     pub(crate) fn iter_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
         self.iter().map(|(id, _)| id)
+    }
+
+    pub(crate) fn def(&self) -> GenericDefId {
+        self.def
     }
 
     /// Iterator over types and const params of self, then parent.
@@ -448,6 +452,10 @@ impl Generics {
 
     pub(crate) fn parent_generics(&self) -> Option<&Generics> {
         self.parent_generics.as_deref()
+    }
+
+    pub(crate) fn parent_or_self(&self) -> &Generics {
+        self.parent_generics.as_deref().unwrap_or(self)
     }
 
     /// Returns a Substitution that replaces each parameter by a bound variable.
