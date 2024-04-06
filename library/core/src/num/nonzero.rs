@@ -11,7 +11,6 @@ use crate::ptr;
 use crate::str::FromStr;
 use crate::ub_checks;
 
-use super::from_str_radix;
 use super::{IntErrorKind, ParseIntError};
 
 /// A marker trait for primitive types which can be zero.
@@ -804,7 +803,7 @@ macro_rules! nonzero_integer {
         impl FromStr for $Ty {
             type Err = ParseIntError;
             fn from_str(src: &str) -> Result<Self, Self::Err> {
-                Self::new(from_str_radix(src, 10)?)
+                Self::new(<$Int>::from_str_radix(src, 10)?)
                     .ok_or(ParseIntError {
                         kind: IntErrorKind::Zero
                     })

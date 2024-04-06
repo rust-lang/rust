@@ -3,9 +3,7 @@
 use crate::mir;
 use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::unord::UnordSet;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::{Idx, IndexVec};
@@ -17,67 +15,6 @@ use std::cell::Cell;
 use std::fmt::{self, Debug};
 
 use super::{ConstValue, SourceInfo};
-
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
-pub enum UnsafetyViolationKind {
-    /// Unsafe operation outside `unsafe`.
-    General,
-    /// Unsafe operation in an `unsafe fn` but outside an `unsafe` block.
-    /// Has to be handled as a lint for backwards compatibility.
-    UnsafeFn,
-}
-
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
-pub enum UnsafetyViolationDetails {
-    CallToUnsafeFunction,
-    UseOfInlineAssembly,
-    InitializingTypeWith,
-    CastOfPointerToInt,
-    UseOfMutableStatic,
-    UseOfExternStatic,
-    DerefOfRawPointer,
-    AccessToUnionField,
-    MutationOfLayoutConstrainedField,
-    BorrowOfLayoutConstrainedField,
-    CallToFunctionWith {
-        /// Target features enabled in callee's `#[target_feature]` but missing in
-        /// caller's `#[target_feature]`.
-        missing: Vec<Symbol>,
-        /// Target features in `missing` that are enabled at compile time
-        /// (e.g., with `-C target-feature`).
-        build_enabled: Vec<Symbol>,
-    },
-}
-
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
-pub struct UnsafetyViolation {
-    pub source_info: SourceInfo,
-    pub lint_root: hir::HirId,
-    pub kind: UnsafetyViolationKind,
-    pub details: UnsafetyViolationDetails,
-}
-
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
-pub enum UnusedUnsafe {
-    /// `unsafe` block contains no unsafe operations
-    /// > ``unnecessary `unsafe` block``
-    Unused,
-    /// `unsafe` block nested under another (used) `unsafe` block
-    /// > ``… because it's nested under this `unsafe` block``
-    InUnsafeBlock(hir::HirId),
-}
-
-#[derive(TyEncodable, TyDecodable, HashStable, Debug)]
-pub struct UnsafetyCheckResult {
-    /// Violations that are propagated *upwards* from this function.
-    pub violations: Vec<UnsafetyViolation>,
-
-    /// Used `unsafe` blocks in this function. This is used for the "unused_unsafe" lint.
-    pub used_unsafe_blocks: UnordSet<hir::HirId>,
-
-    /// This is `Some` iff the item is not a closure.
-    pub unused_unsafes: Option<Vec<(hir::HirId, UnusedUnsafe)>>,
-}
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
@@ -276,7 +213,7 @@ pub struct ClosureOutlivesRequirement<'tcx> {
 }
 
 // Make sure this enum doesn't unintentionally grow
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
 
 /// Outlives-constraints can be categorized to determine whether and why they

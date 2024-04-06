@@ -986,6 +986,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             )
                         }
                     }
+                    Cmp => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot three-way compare non-integer type {:?}",
+                                ty::Char | ty::Uint(..) | ty::Int(..)
+                            )
+                        }
+                    }
                     AddUnchecked | SubUnchecked | MulUnchecked | Shl | ShlUnchecked | Shr
                     | ShrUnchecked => {
                         for x in [a, b] {
@@ -1067,8 +1076,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // FIXME(dyn-star): make sure nothing needs to be done here.
                     }
                     // FIXME: Add Checks for these
-                    CastKind::PointerFromExposedAddress
-                    | CastKind::PointerExposeAddress
+                    CastKind::PointerWithExposedProvenance
+                    | CastKind::PointerExposeProvenance
                     | CastKind::PointerCoercion(_) => {}
                     CastKind::IntToInt | CastKind::IntToFloat => {
                         let input_valid = op_ty.is_integral() || op_ty.is_char() || op_ty.is_bool();

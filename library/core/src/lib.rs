@@ -94,6 +94,7 @@
 ))]
 #![no_core]
 #![rustc_coherence_is_core]
+#![cfg_attr(not(bootstrap), rustc_preserve_ub_checks)]
 //
 // Lints:
 #![deny(rust_2021_incompatible_or_patterns)]
@@ -136,7 +137,7 @@
 #![feature(const_heap)]
 #![feature(const_hint_assert_unchecked)]
 #![feature(const_index_range_slice_index)]
-#![feature(const_int_unchecked_arith)]
+#![feature(const_int_from_str)]
 #![feature(const_intrinsic_copy)]
 #![feature(const_intrinsic_forget)]
 #![feature(const_ipv4)]
@@ -196,7 +197,6 @@
 #![feature(str_split_inclusive_remainder)]
 #![feature(str_split_remainder)]
 #![feature(strict_provenance)]
-#![feature(unchecked_math)]
 #![feature(unchecked_shifts)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]
@@ -205,6 +205,8 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(not(bootstrap), feature(f128))]
+#![cfg_attr(not(bootstrap), feature(f16))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]

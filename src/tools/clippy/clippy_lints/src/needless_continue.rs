@@ -313,7 +313,7 @@ fn emit_warning(cx: &EarlyContext<'_>, data: &LintData<'_>, header: &str, typ: L
         expr.span,
         message,
         None,
-        &format!("{header}\n{snip}"),
+        format!("{header}\n{snip}"),
     );
 }
 

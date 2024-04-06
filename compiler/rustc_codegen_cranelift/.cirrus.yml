@@ -13,4 +13,7 @@ task:
     - ./y.sh prepare
   test_script:
     - . $HOME/.cargo/env
+    # Disabling incr comp reduces cache size and incr comp doesn't save as much
+    # on CI anyway.
+    - export CARGO_BUILD_INCREMENTAL=false
     - ./y.sh test

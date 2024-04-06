@@ -1,10 +1,12 @@
 //! Performs various peephole optimizations.
 
 use crate::simplify::simplify_duplicate_switch_targets;
+use rustc_ast::attr;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};
+use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
@@ -22,10 +24,15 @@ impl<'tcx> MirPass<'tcx> for InstSimplify {
             local_decls: &body.local_decls,
             param_env: tcx.param_env_reveal_all_normalized(body.source.def_id()),
         };
+        let preserve_ub_checks =
+            attr::contains_name(tcx.hir().krate_attrs(), sym::rustc_preserve_ub_checks);
         for block in body.basic_blocks.as_mut() {
             for statement in block.statements.iter_mut() {
                 match statement.kind {
                     StatementKind::Assign(box (_place, ref mut rvalue)) => {
+                        if !preserve_ub_checks {
+                            ctx.simplify_ub_check(&statement.source_info, rvalue);
+                        }
                         ctx.simplify_bool_cmp(&statement.source_info, rvalue);
                         ctx.simplify_ref_deref(&statement.source_info, rvalue);
                         ctx.simplify_len(&statement.source_info, rvalue);
@@ -137,6 +144,14 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                 let constant = ConstOperand { span: source_info.span, const_, user_ty: None };
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
             }
+        }
+    }
+
+    fn simplify_ub_check(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+        if let Rvalue::NullaryOp(NullOp::UbChecks, _) = *rvalue {
+            let const_ = Const::from_bool(self.tcx, self.tcx.sess.opts.debug_assertions);
+            let constant = ConstOperand { span: source_info.span, const_, user_ty: None };
+            *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
         }
     }
 

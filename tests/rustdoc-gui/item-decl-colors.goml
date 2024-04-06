@@ -6,7 +6,7 @@ fail-on-request-error: false
 
 define-function: (
     "check-colors",
-    (
+    [
         theme,
         attr_color,
         trait_color,
@@ -16,7 +16,7 @@ define-function: (
         constant_color,
         fn_color,
         assoc_type_color,
-    ),
+    ],
     block {
         go-to: "file://" + |DOC_PATH| + "/test_docs/struct.WithGenerics.html"
         show-text: true

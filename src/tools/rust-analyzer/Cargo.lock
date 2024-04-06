@@ -594,6 +594,7 @@ dependencies = [
  "rustc-hash",
  "scoped-tls",
  "smallvec",
+ "span",
  "stdx",
  "syntax",
  "test-fixture",
@@ -637,6 +638,7 @@ dependencies = [
  "pulldown-cmark",
  "pulldown-cmark-to-cmark",
  "smallvec",
+ "span",
  "stdx",
  "syntax",
  "test-fixture",
@@ -732,6 +734,7 @@ dependencies = [
  "ide-db",
  "itertools",
  "once_cell",
+ "paths",
  "serde_json",
  "stdx",
  "syntax",
@@ -931,6 +934,7 @@ dependencies = [
  "hir-expand",
  "ide-db",
  "itertools",
+ "paths",
  "proc-macro-api",
  "project-model",
  "span",
@@ -1225,6 +1229,9 @@ checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
 [[package]]
 name = "paths"
 version = "0.0.0"
+dependencies = [
+ "camino",
+]
 
 [[package]]
 name = "percent-encoding"
@@ -1375,6 +1382,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "span",
  "stdx",
  "toolchain",
  "tracing",
@@ -1432,9 +1440,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_abi"
-version = "0.42.0"
+version = "0.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2ae52e2d5b08762c9464b541345f519b8719d57b643b73632bade43ecece9dc"
+checksum = "b8709df2a746f055316bc0c62bd30948695a25e734863bf6e1f9755403e010ab"
 dependencies = [
  "bitflags 2.4.2",
  "ra-ap-rustc_index",
@@ -1443,9 +1451,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index"
-version = "0.42.0"
+version = "0.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfd7e10c7853fe79443d46e1d2d8ab09fe99926118e59653fb8b480d5045f126"
+checksum = "9ad68bacffb87dcdbb23a3ce11261375078aaa06b85d348c49f39ffd5510dc20"
 dependencies = [
  "arrayvec",
  "ra-ap-rustc_index_macros",
@@ -1454,9 +1462,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index_macros"
-version = "0.42.0"
+version = "0.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47f1d1c589be6c9a9e852fadee0e60329c0f862e87442ac2fe5adae30663cc76"
+checksum = "8782aaf3a113837c533dfb1c45df91cd17e1fdd1d2f9a20c2e0d1976025c4f1f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1466,9 +1474,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_lexer"
-version = "0.42.0"
+version = "0.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa852373a757b4c723bbdc96ced7f575cad68a1e266e45fee12bc4c69a482d80"
+checksum = "aab683fc8579d09eb72033bd5dc9ba6d701aa9645b5fed087ef19af71184dff3"
 dependencies = [
  "unicode-properties",
  "unicode-xid",
@@ -1476,9 +1484,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_parse_format"
-version = "0.42.0"
+version = "0.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2afe3c49accd95a53ac4d72ae13bafc7d115bdd80c8cd56ab09e6fc68f482210"
+checksum = "0bcf9ff5edbf784b67b8ad5e03a068f1300fcc24062c0d476b3018965135d933"
 dependencies = [
  "ra-ap-rustc_index",
  "ra-ap-rustc_lexer",
@@ -1486,9 +1494,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.42.0"
+version = "0.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1253da23515d80c377a3998731e0ec3794997b62b989fd47db73efbde6a0bd7c"
+checksum = "d63d1e1d5b2a13273cee1a10011147418f40e12b70f70578ce1dee0f1cafc334"
 dependencies = [
  "ra-ap-rustc_index",
  "rustc-hash",
@@ -1598,6 +1606,7 @@ dependencies = [
  "oorandom",
  "parking_lot",
  "parser",
+ "paths",
  "proc-macro-api",
  "profile",
  "project-model",
@@ -1869,20 +1878,16 @@ dependencies = [
  "itertools",
  "once_cell",
  "parser",
- "proc-macro2",
- "quote",
  "ra-ap-rustc_lexer",
  "rayon",
  "rowan",
  "rustc-hash",
  "smol_str",
- "sourcegen",
  "stdx",
  "test-utils",
  "text-edit",
  "tracing",
  "triomphe",
- "ungrammar",
 ]
 
 [[package]]
@@ -2024,6 +2029,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 name = "toolchain"
 version = "0.0.0"
 dependencies = [
+ "camino",
  "home",
 ]
 
@@ -2109,7 +2115,6 @@ name = "tt"
 version = "0.0.0"
 dependencies = [
  "smol_str",
- "span",
  "stdx",
  "text-size",
 ]
@@ -2438,8 +2443,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "flate2",
+ "itertools",
+ "proc-macro2",
+ "quote",
  "stdx",
  "time",
+ "ungrammar",
  "write-json",
  "xflags",
  "xshell",

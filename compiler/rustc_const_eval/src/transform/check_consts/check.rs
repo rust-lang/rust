@@ -544,10 +544,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // Unsizing is implemented for CTFE.
             }
 
-            Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
+            Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => {
                 self.check_op(ops::RawPtrToIntCast);
             }
-            Rvalue::Cast(CastKind::PointerFromExposedAddress, _, _) => {
+            Rvalue::Cast(CastKind::PointerWithExposedProvenance, _, _) => {
                 // Since no pointer can ever get exposed (rejected above), this is easy to support.
             }
 

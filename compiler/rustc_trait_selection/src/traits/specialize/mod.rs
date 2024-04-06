@@ -239,15 +239,20 @@ fn fulfill_implication<'tcx>(
 
     let source_trait = ImplSubject::Trait(source_trait_ref);
 
-    let selcx = &mut SelectionContext::new(infcx);
+    let selcx = SelectionContext::new(infcx);
     let target_args = infcx.fresh_args_for_item(DUMMY_SP, target_impl);
     let (target_trait, obligations) =
-        util::impl_subject_and_oblig(selcx, param_env, target_impl, target_args, error_cause);
+        util::impl_subject_and_oblig(&selcx, param_env, target_impl, target_args, error_cause);
 
     // do the impls unify? If not, no specialization.
     let Ok(InferOk { obligations: more_obligations, .. }) = infcx
         .at(&ObligationCause::dummy(), param_env)
-        .eq(DefineOpaqueTypes::No, source_trait, target_trait)
+        // Ok to use `Yes`, as all the generic params are already replaced by inference variables,
+        // which will match the opaque type no matter if it is defining or not.
+        // Any concrete type that would match the opaque would already be handled by coherence rules,
+        // and thus either be ok to match here and already have errored, or it won't match, in which
+        // case there is no issue anyway.
+        .eq(DefineOpaqueTypes::Yes, source_trait, target_trait)
     else {
         debug!("fulfill_implication: {:?} does not unify with {:?}", source_trait, target_trait);
         return Err(());
@@ -402,10 +407,6 @@ fn report_conflicting_impls<'tcx>(
         impl_span: Span,
         err: &mut Diag<'_, G>,
     ) {
-        if (overlap.trait_ref, overlap.self_ty).references_error() {
-            err.downgrade_to_delayed_bug();
-        }
-
         match tcx.span_of_impl(overlap.with_impl) {
             Ok(span) => {
                 err.span_label(span, "first implementation here");
@@ -457,6 +458,11 @@ fn report_conflicting_impls<'tcx>(
             }
         )
     });
+
+    // Don't report overlap errors if the header references error
+    if let Err(err) = (overlap.trait_ref, overlap.self_ty).error_reported() {
+        return Err(err);
+    }
 
     match used_to_be_allowed {
         None => {

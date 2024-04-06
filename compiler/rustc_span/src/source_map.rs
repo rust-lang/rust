@@ -1129,6 +1129,21 @@ impl FilePathMapping {
         }
     }
 
+    /// Applies any path prefix substitution as defined by the mapping.
+    /// The return value is the local path with a "virtual path" representing the remapped
+    /// part if any remapping was performed.
+    pub fn to_real_filename<'a>(&self, local_path: impl Into<Cow<'a, Path>>) -> RealFileName {
+        let local_path = local_path.into();
+        if let (remapped_path, true) = self.map_prefix(&*local_path) {
+            RealFileName::Remapped {
+                virtual_name: remapped_path.into_owned(),
+                local_path: Some(local_path.into_owned()),
+            }
+        } else {
+            RealFileName::LocalPath(local_path.into_owned())
+        }
+    }
+
     /// Expand a relative path to an absolute path with remapping taken into account.
     /// Use this when absolute paths are required (e.g. debuginfo or crate metadata).
     ///

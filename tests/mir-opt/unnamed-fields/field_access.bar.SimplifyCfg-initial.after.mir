@@ -11,8 +11,6 @@ fn bar(_1: Bar) -> () {
     let mut _7: bool;
     let _8: ();
     let mut _9: [u8; 1];
-    scope 1 {
-    }
 
     bb0: {
         StorageLive(_2);

@@ -38,7 +38,7 @@ pub fn load_workspace_at(
     load_config: &LoadCargoConfig,
     progress: &dyn Fn(String),
 ) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroServer>)> {
-    let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
+    let root = AbsPathBuf::assert_utf8(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
     let mut workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
 
@@ -387,7 +387,7 @@ fn expander_to_proc_macro(
     let name = From::from(expander.name());
     let kind = match expander.kind() {
         proc_macro_api::ProcMacroKind::CustomDerive => ProcMacroKind::CustomDerive,
-        proc_macro_api::ProcMacroKind::FuncLike => ProcMacroKind::FuncLike,
+        proc_macro_api::ProcMacroKind::Bang => ProcMacroKind::Bang,
         proc_macro_api::ProcMacroKind::Attr => ProcMacroKind::Attr,
     };
     let disabled = ignored_macros.iter().any(|replace| **replace == name);

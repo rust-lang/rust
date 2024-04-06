@@ -2,7 +2,7 @@
 #![warn(clippy::transmuting_null)]
 #![allow(clippy::zero_ptr)]
 #![allow(clippy::transmute_ptr_to_ref)]
-#![allow(clippy::eq_op)]
+#![allow(clippy::eq_op, clippy::missing_transmute_annotations)]
 
 // Easy to lint because these only span one line.
 fn one_liners() {

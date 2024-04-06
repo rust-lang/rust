@@ -166,7 +166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         body_id: hir::BodyId,
         body: &'tcx hir::Body<'tcx>,
-        capture_clause: hir::CaptureBy,
+        mut capture_clause: hir::CaptureBy,
     ) {
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
@@ -259,6 +259,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
         .consume_body(body);
 
+        // If a coroutine is comes from a coroutine-closure that is `move`, but
+        // the coroutine-closure was inferred to be `FnOnce` during signature
+        // inference, then it's still possible that we try to borrow upvars from
+        // the coroutine-closure because they are not used by the coroutine body
+        // in a way that forces a move.
+        //
+        // This would lead to an impossible to satisfy situation, since `AsyncFnOnce`
+        // coroutine bodies can't borrow from their parent closure. To fix this,
+        // we force the inner coroutine to also be `move`. This only matters for
+        // coroutine-closures that are `move` since otherwise they themselves will
+        // be borrowing from the outer environment, so there's no self-borrows occuring.
+        if let UpvarArgs::Coroutine(..) = args
+            && let hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure) =
+                self.tcx.coroutine_kind(closure_def_id).expect("coroutine should have kind")
+            && let parent_hir_id =
+                self.tcx.local_def_id_to_hir_id(self.tcx.local_parent(closure_def_id))
+            && let parent_ty = self.node_ty(parent_hir_id)
+            && let Some(ty::ClosureKind::FnOnce) = self.closure_kind(parent_ty)
+        {
+            capture_clause = self.tcx.hir_node(parent_hir_id).expect_closure().capture_clause;
+        }
+
         debug!(
             "For closure={:?}, capture_information={:#?}",
             closure_def_id, delegate.capture_information
@@ -343,10 +365,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let closure_env_region: ty::Region<'_> = ty::Region::new_bound(
                 self.tcx,
                 ty::INNERMOST,
-                ty::BoundRegion {
-                    var: ty::BoundVar::from_usize(0),
-                    kind: ty::BoundRegionKind::BrEnv,
-                },
+                ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::BrEnv },
             );
             let tupled_upvars_ty_for_borrow = Ty::new_tup_from_iter(
                 self.tcx,
@@ -402,16 +421,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
 
             // Additionally, we can now constrain the coroutine's kind type.
-            let ty::Coroutine(_, coroutine_args) =
-                *self.typeck_results.borrow().expr_ty(body.value).kind()
-            else {
-                bug!();
-            };
-            self.demand_eqtype(
-                span,
-                coroutine_args.as_coroutine().kind_ty(),
-                Ty::from_coroutine_closure_kind(self.tcx, closure_kind),
-            );
+            //
+            // We only do this if `infer_kind`, because if we have constrained
+            // the kind from closure signature inference, the kind inferred
+            // for the inner coroutine may actually be more restrictive.
+            if infer_kind {
+                let ty::Coroutine(_, coroutine_args) =
+                    *self.typeck_results.borrow().expr_ty(body.value).kind()
+                else {
+                    bug!();
+                };
+                self.demand_eqtype(
+                    span,
+                    coroutine_args.as_coroutine().kind_ty(),
+                    Ty::from_coroutine_closure_kind(self.tcx, closure_kind),
+                );
+            }
         }
 
         self.log_closure_min_capture_info(closure_def_id, span);
@@ -1711,10 +1736,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let bm = *typeck_results.pat_binding_modes().get(var_hir_id).expect("missing binding mode");
 
-        let mut is_mutbl = match bm {
-            ty::BindByValue(mutability) => mutability,
-            ty::BindByReference(_) => hir::Mutability::Not,
-        };
+        let mut is_mutbl = bm.1;
 
         for pointer_ty in place.deref_tys() {
             match pointer_ty.kind() {

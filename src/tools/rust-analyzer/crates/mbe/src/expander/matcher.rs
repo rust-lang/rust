@@ -62,8 +62,9 @@
 use std::rc::Rc;
 
 use smallvec::{smallvec, SmallVec};
+use span::Span;
 use syntax::SmolStr;
-use tt::{DelimSpan, Span};
+use tt::DelimSpan;
 
 use crate::{
     expander::{Binding, Bindings, ExpandResult, Fragment},
@@ -72,7 +73,7 @@ use crate::{
     ExpandError, MetaTemplate, ValueResult,
 };
 
-impl<S: Span> Bindings<S> {
+impl Bindings {
     fn push_optional(&mut self, name: &SmolStr) {
         self.inner.insert(name.clone(), Binding::Fragment(Fragment::Empty));
     }
@@ -81,14 +82,14 @@ impl<S: Span> Bindings<S> {
         self.inner.insert(name.clone(), Binding::Empty);
     }
 
-    fn bindings(&self) -> impl Iterator<Item = &Binding<S>> {
+    fn bindings(&self) -> impl Iterator<Item = &Binding> {
         self.inner.values()
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(super) struct Match<S> {
-    pub(super) bindings: Bindings<S>,
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
+pub(super) struct Match {
+    pub(super) bindings: Bindings,
     /// We currently just keep the first error and count the rest to compare matches.
     pub(super) err: Option<ExpandError>,
     pub(super) err_count: usize,
@@ -98,19 +99,7 @@ pub(super) struct Match<S> {
     pub(super) bound_count: usize,
 }
 
-impl<S> Default for Match<S> {
-    fn default() -> Self {
-        Self {
-            bindings: Default::default(),
-            err: Default::default(),
-            err_count: Default::default(),
-            unmatched_tts: Default::default(),
-            bound_count: Default::default(),
-        }
-    }
-}
-
-impl<S> Match<S> {
+impl Match {
     fn add_err(&mut self, err: ExpandError) {
         let prev_err = self.err.take();
         self.err = prev_err.or(Some(err));
@@ -119,16 +108,12 @@ impl<S> Match<S> {
 }
 
 /// Matching errors are added to the `Match`.
-pub(super) fn match_<S: Span>(
-    pattern: &MetaTemplate<S>,
-    input: &tt::Subtree<S>,
-    is_2021: bool,
-) -> Match<S> {
-    let mut res = match_loop(pattern, input, is_2021);
+pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree<Span>) -> Match {
+    let mut res = match_loop(pattern, input);
     res.bound_count = count(res.bindings.bindings());
     return res;
 
-    fn count<'a, S: 'a>(bindings: impl Iterator<Item = &'a Binding<S>>) -> usize {
+    fn count<'a>(bindings: impl Iterator<Item = &'a Binding>) -> usize {
         bindings
             .map(|it| match it {
                 Binding::Fragment(_) => 1,
@@ -141,10 +126,10 @@ pub(super) fn match_<S: Span>(
 }
 
 #[derive(Debug, Clone)]
-enum BindingKind<S> {
+enum BindingKind {
     Empty(SmolStr),
     Optional(SmolStr),
-    Fragment(SmolStr, Fragment<S>),
+    Fragment(SmolStr, Fragment),
     Missing(SmolStr, MetaVarKind),
     Nested(usize, usize),
 }
@@ -158,18 +143,13 @@ enum LinkNode<T> {
     Parent { idx: usize, len: usize },
 }
 
-struct BindingsBuilder<S> {
-    nodes: Vec<Vec<LinkNode<Rc<BindingKind<S>>>>>,
+#[derive(Default)]
+struct BindingsBuilder {
+    nodes: Vec<Vec<LinkNode<Rc<BindingKind>>>>,
     nested: Vec<Vec<LinkNode<usize>>>,
 }
 
-impl<S> Default for BindingsBuilder<S> {
-    fn default() -> Self {
-        Self { nodes: Default::default(), nested: Default::default() }
-    }
-}
-
-impl<S: Span> BindingsBuilder<S> {
+impl BindingsBuilder {
     fn alloc(&mut self) -> BindingsIdx {
         let idx = self.nodes.len();
         self.nodes.push(Vec::new());
@@ -206,7 +186,7 @@ impl<S: Span> BindingsBuilder<S> {
         self.nodes[idx.0].push(LinkNode::Node(Rc::new(BindingKind::Optional(var.clone()))));
     }
 
-    fn push_fragment(&mut self, idx: &mut BindingsIdx, var: &SmolStr, fragment: Fragment<S>) {
+    fn push_fragment(&mut self, idx: &mut BindingsIdx, var: &SmolStr, fragment: Fragment) {
         self.nodes[idx.0]
             .push(LinkNode::Node(Rc::new(BindingKind::Fragment(var.clone(), fragment))));
     }
@@ -227,11 +207,11 @@ impl<S: Span> BindingsBuilder<S> {
         idx.0 = new_idx;
     }
 
-    fn build(self, idx: &BindingsIdx) -> Bindings<S> {
+    fn build(self, idx: &BindingsIdx) -> Bindings {
         self.build_inner(&self.nodes[idx.0])
     }
 
-    fn build_inner(&self, link_nodes: &[LinkNode<Rc<BindingKind<S>>>]) -> Bindings<S> {
+    fn build_inner(&self, link_nodes: &[LinkNode<Rc<BindingKind>>]) -> Bindings {
         let mut bindings = Bindings::default();
         let mut nodes = Vec::new();
         self.collect_nodes(link_nodes, &mut nodes);
@@ -281,7 +261,7 @@ impl<S: Span> BindingsBuilder<S> {
         &'a self,
         id: usize,
         len: usize,
-        nested_refs: &mut Vec<&'a [LinkNode<Rc<BindingKind<S>>>]>,
+        nested_refs: &mut Vec<&'a [LinkNode<Rc<BindingKind>>]>,
     ) {
         self.nested[id].iter().take(len).for_each(|it| match it {
             LinkNode::Node(id) => nested_refs.push(&self.nodes[*id]),
@@ -289,7 +269,7 @@ impl<S: Span> BindingsBuilder<S> {
         });
     }
 
-    fn collect_nested(&self, idx: usize, nested_idx: usize, nested: &mut Vec<Bindings<S>>) {
+    fn collect_nested(&self, idx: usize, nested_idx: usize, nested: &mut Vec<Bindings>) {
         let last = &self.nodes[idx];
         let mut nested_refs: Vec<&[_]> = Vec::new();
         self.nested[nested_idx].iter().for_each(|it| match *it {
@@ -300,7 +280,7 @@ impl<S: Span> BindingsBuilder<S> {
         nested.extend(nested_refs.into_iter().map(|iter| self.build_inner(iter)));
     }
 
-    fn collect_nodes_ref<'a>(&'a self, id: usize, len: usize, nodes: &mut Vec<&'a BindingKind<S>>) {
+    fn collect_nodes_ref<'a>(&'a self, id: usize, len: usize, nodes: &mut Vec<&'a BindingKind>) {
         self.nodes[id].iter().take(len).for_each(|it| match it {
             LinkNode::Node(it) => nodes.push(it),
             LinkNode::Parent { idx, len } => self.collect_nodes_ref(*idx, *len, nodes),
@@ -309,8 +289,8 @@ impl<S: Span> BindingsBuilder<S> {
 
     fn collect_nodes<'a>(
         &'a self,
-        link_nodes: &'a [LinkNode<Rc<BindingKind<S>>>],
-        nodes: &mut Vec<&'a BindingKind<S>>,
+        link_nodes: &'a [LinkNode<Rc<BindingKind>>],
+        nodes: &mut Vec<&'a BindingKind>,
     ) {
         link_nodes.iter().for_each(|it| match it {
             LinkNode::Node(it) => nodes.push(it),
@@ -320,22 +300,22 @@ impl<S: Span> BindingsBuilder<S> {
 }
 
 #[derive(Debug, Clone)]
-struct MatchState<'t, S> {
+struct MatchState<'t> {
     /// The position of the "dot" in this matcher
-    dot: OpDelimitedIter<'t, S>,
+    dot: OpDelimitedIter<'t>,
 
     /// Token subtree stack
     /// When matching against matchers with nested delimited submatchers (e.g., `pat ( pat ( .. )
     /// pat ) pat`), we need to keep track of the matchers we are descending into. This stack does
     /// that where the bottom of the stack is the outermost matcher.
-    stack: SmallVec<[OpDelimitedIter<'t, S>; 4]>,
+    stack: SmallVec<[OpDelimitedIter<'t>; 4]>,
 
     /// The "parent" matcher position if we are in a repetition. That is, the matcher position just
     /// before we enter the repetition.
-    up: Option<Box<MatchState<'t, S>>>,
+    up: Option<Box<MatchState<'t>>>,
 
     /// The separator if we are in a repetition.
-    sep: Option<Separator<S>>,
+    sep: Option<Separator>,
 
     /// The KleeneOp of this sequence if we are in a repetition.
     sep_kind: Option<RepeatKind>,
@@ -347,7 +327,7 @@ struct MatchState<'t, S> {
     bindings: BindingsIdx,
 
     /// Cached result of meta variable parsing
-    meta_result: Option<(TtIter<'t, S>, ExpandResult<Option<Fragment<S>>>)>,
+    meta_result: Option<(TtIter<'t, Span>, ExpandResult<Option<Fragment>>)>,
 
     /// Is error occurred in this state, will `poised` to "parent"
     is_error: bool,
@@ -372,18 +352,17 @@ struct MatchState<'t, S> {
 /// - `bb_items`: the set of items that are waiting for the black-box parser.
 /// - `error_items`: the set of items in errors, used for error-resilient parsing
 #[inline]
-fn match_loop_inner<'t, S: Span>(
-    src: TtIter<'t, S>,
-    stack: &[TtIter<'t, S>],
-    res: &mut Match<S>,
-    bindings_builder: &mut BindingsBuilder<S>,
-    cur_items: &mut SmallVec<[MatchState<'t, S>; 1]>,
-    bb_items: &mut SmallVec<[MatchState<'t, S>; 1]>,
-    next_items: &mut Vec<MatchState<'t, S>>,
-    eof_items: &mut SmallVec<[MatchState<'t, S>; 1]>,
-    error_items: &mut SmallVec<[MatchState<'t, S>; 1]>,
-    is_2021: bool,
-    delim_span: tt::DelimSpan<S>,
+fn match_loop_inner<'t>(
+    src: TtIter<'t, Span>,
+    stack: &[TtIter<'t, Span>],
+    res: &mut Match,
+    bindings_builder: &mut BindingsBuilder,
+    cur_items: &mut SmallVec<[MatchState<'t>; 1]>,
+    bb_items: &mut SmallVec<[MatchState<'t>; 1]>,
+    next_items: &mut Vec<MatchState<'t>>,
+    eof_items: &mut SmallVec<[MatchState<'t>; 1]>,
+    error_items: &mut SmallVec<[MatchState<'t>; 1]>,
+    delim_span: tt::DelimSpan<Span>,
 ) {
     macro_rules! try_push {
         ($items: expr, $it:expr) => {
@@ -494,7 +473,7 @@ fn match_loop_inner<'t, S: Span>(
             OpDelimited::Op(Op::Var { kind, name, .. }) => {
                 if let &Some(kind) = kind {
                     let mut fork = src.clone();
-                    let match_res = match_meta_var(kind, &mut fork, is_2021, delim_span);
+                    let match_res = match_meta_var(kind, &mut fork, delim_span);
                     match match_res.err {
                         None => {
                             // Some meta variables are optional (e.g. vis)
@@ -607,10 +586,10 @@ fn match_loop_inner<'t, S: Span>(
     }
 }
 
-fn match_loop<S: Span>(pattern: &MetaTemplate<S>, src: &tt::Subtree<S>, is_2021: bool) -> Match<S> {
+fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree<Span>) -> Match {
     let span = src.delimiter.delim_span();
     let mut src = TtIter::new(src);
-    let mut stack: SmallVec<[TtIter<'_, S>; 1]> = SmallVec::new();
+    let mut stack: SmallVec<[TtIter<'_, Span>; 1]> = SmallVec::new();
     let mut res = Match::default();
     let mut error_recover_item = None;
 
@@ -647,7 +626,6 @@ fn match_loop<S: Span>(pattern: &MetaTemplate<S>, src: &tt::Subtree<S>, is_2021:
             &mut next_items,
             &mut eof_items,
             &mut error_items,
-            is_2021,
             span,
         );
         stdx::always!(cur_items.is_empty());
@@ -758,12 +736,11 @@ fn match_loop<S: Span>(pattern: &MetaTemplate<S>, src: &tt::Subtree<S>, is_2021:
     }
 }
 
-fn match_meta_var<S: Span>(
+fn match_meta_var(
     kind: MetaVarKind,
-    input: &mut TtIter<'_, S>,
-    is_2021: bool,
-    delim_span: DelimSpan<S>,
-) -> ExpandResult<Option<Fragment<S>>> {
+    input: &mut TtIter<'_, Span>,
+    delim_span: DelimSpan<Span>,
+) -> ExpandResult<Option<Fragment>> {
     let fragment = match kind {
         MetaVarKind::Path => {
             return input.expect_fragment(parser::PrefixEntryPoint::Path).map(|it| {
@@ -771,8 +748,7 @@ fn match_meta_var<S: Span>(
             });
         }
         MetaVarKind::Ty => parser::PrefixEntryPoint::Ty,
-        MetaVarKind::Pat if is_2021 => parser::PrefixEntryPoint::PatTop,
-        MetaVarKind::Pat => parser::PrefixEntryPoint::Pat,
+        MetaVarKind::Pat => parser::PrefixEntryPoint::PatTop,
         MetaVarKind::PatParam => parser::PrefixEntryPoint::Pat,
         MetaVarKind::Stmt => parser::PrefixEntryPoint::Stmt,
         MetaVarKind::Block => parser::PrefixEntryPoint::Block,
@@ -846,7 +822,7 @@ fn match_meta_var<S: Span>(
     input.expect_fragment(fragment).map(|it| it.map(Fragment::Tokens))
 }
 
-fn collect_vars<S: Span>(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate<S>) {
+fn collect_vars(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate) {
     for op in pattern.iter() {
         match op {
             Op::Var { name, .. } => collector_fun(name.clone()),
@@ -859,11 +835,11 @@ fn collect_vars<S: Span>(collector_fun: &mut impl FnMut(SmolStr), pattern: &Meta
         }
     }
 }
-impl<S: Span> MetaTemplate<S> {
-    fn iter_delimited_with(&self, delimiter: tt::Delimiter<S>) -> OpDelimitedIter<'_, S> {
+impl MetaTemplate {
+    fn iter_delimited_with(&self, delimiter: tt::Delimiter<Span>) -> OpDelimitedIter<'_> {
         OpDelimitedIter { inner: &self.0, idx: 0, delimited: delimiter }
     }
-    fn iter_delimited(&self, span: tt::DelimSpan<S>) -> OpDelimitedIter<'_, S> {
+    fn iter_delimited(&self, span: tt::DelimSpan<Span>) -> OpDelimitedIter<'_> {
         OpDelimitedIter {
             inner: &self.0,
             idx: 0,
@@ -873,27 +849,27 @@ impl<S: Span> MetaTemplate<S> {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum OpDelimited<'a, S> {
-    Op(&'a Op<S>),
+enum OpDelimited<'a> {
+    Op(&'a Op),
     Open,
     Close,
 }
 
 #[derive(Debug, Clone, Copy)]
-struct OpDelimitedIter<'a, S> {
-    inner: &'a [Op<S>],
-    delimited: tt::Delimiter<S>,
+struct OpDelimitedIter<'a> {
+    inner: &'a [Op],
+    delimited: tt::Delimiter<Span>,
     idx: usize,
 }
 
-impl<'a, S: Span> OpDelimitedIter<'a, S> {
+impl<'a> OpDelimitedIter<'a> {
     fn is_eof(&self) -> bool {
         let len = self.inner.len()
             + if self.delimited.kind != tt::DelimiterKind::Invisible { 2 } else { 0 };
         self.idx >= len
     }
 
-    fn peek(&self) -> Option<OpDelimited<'a, S>> {
+    fn peek(&self) -> Option<OpDelimited<'a>> {
         match self.delimited.kind {
             tt::DelimiterKind::Invisible => self.inner.get(self.idx).map(OpDelimited::Op),
             _ => match self.idx {
@@ -909,8 +885,8 @@ impl<'a, S: Span> OpDelimitedIter<'a, S> {
     }
 }
 
-impl<'a, S: Span> Iterator for OpDelimitedIter<'a, S> {
-    type Item = OpDelimited<'a, S>;
+impl<'a> Iterator for OpDelimitedIter<'a> {
+    type Item = OpDelimited<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let res = self.peek();
@@ -926,8 +902,8 @@ impl<'a, S: Span> Iterator for OpDelimitedIter<'a, S> {
     }
 }
 
-impl<S: Span> TtIter<'_, S> {
-    fn expect_separator(&mut self, separator: &Separator<S>) -> bool {
+impl TtIter<'_, Span> {
+    fn expect_separator(&mut self, separator: &Separator) -> bool {
         let mut fork = self.clone();
         let ok = match separator {
             Separator::Ident(lhs) => match fork.expect_ident_or_underscore() {
@@ -957,7 +933,7 @@ impl<S: Span> TtIter<'_, S> {
         ok
     }
 
-    fn expect_tt(&mut self) -> Result<tt::TokenTree<S>, ()> {
+    fn expect_tt(&mut self) -> Result<tt::TokenTree<Span>, ()> {
         if let Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) = self.peek_n(0) {
             if punct.char == '\'' {
                 self.expect_lifetime()
@@ -976,7 +952,7 @@ impl<S: Span> TtIter<'_, S> {
         }
     }
 
-    fn expect_lifetime(&mut self) -> Result<tt::TokenTree<S>, ()> {
+    fn expect_lifetime(&mut self) -> Result<tt::TokenTree<Span>, ()> {
         let punct = self.expect_single_punct()?;
         if punct.char != '\'' {
             return Err(());
@@ -997,7 +973,7 @@ impl<S: Span> TtIter<'_, S> {
         .into())
     }
 
-    fn eat_char(&mut self, c: char) -> Option<tt::TokenTree<S>> {
+    fn eat_char(&mut self, c: char) -> Option<tt::TokenTree<Span>> {
         let mut fork = self.clone();
         match fork.expect_char(c) {
             Ok(_) => {

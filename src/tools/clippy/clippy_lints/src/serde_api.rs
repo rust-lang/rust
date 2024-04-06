@@ -9,7 +9,7 @@ declare_clippy_lint! {
     /// Checks for misuses of the serde API.
     ///
     /// ### Why is this bad?
-    /// Serde is very finnicky about how its API should be
+    /// Serde is very finicky about how its API should be
     /// used, but the type system can't be used to enforce it (yet?).
     ///
     /// ### Example

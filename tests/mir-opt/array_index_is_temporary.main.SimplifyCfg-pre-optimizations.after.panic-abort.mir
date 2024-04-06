@@ -17,8 +17,6 @@ fn main() -> () {
             let _3: *mut usize;
             scope 3 {
                 debug z => _3;
-                scope 4 {
-                }
             }
         }
     }

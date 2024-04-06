@@ -426,7 +426,13 @@ marker_impls! {
         bool, char,
         {T: ?Sized} *const T,
         {T: ?Sized} *mut T,
+}
 
+#[cfg(not(bootstrap))]
+marker_impls! {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    Copy for
+        f16, f128,
 }
 
 #[unstable(feature = "never_type", issue = "35121")]
@@ -817,6 +823,13 @@ pub trait DiscriminantKind {
 /// This can be used to declare that a constant with a generic type
 /// will not contain interior mutability, and subsequently allow
 /// placing the constant behind references.
+///
+/// # Safety
+///
+/// This trait is a core part of the language, it is just expressed as a trait in libcore for
+/// convenience. Do *not* implement it for other types.
+// FIXME: Eventually this trait should become `#[rustc_deny_explicit_impl]`.
+// That requires porting the impls below to native internal impls.
 #[lang = "freeze"]
 #[unstable(feature = "freeze", issue = "121675")]
 pub unsafe auto trait Freeze {}

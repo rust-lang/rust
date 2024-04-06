@@ -50,14 +50,14 @@ pub trait SimdConstPtr: Copy + Sealed {
     /// Equivalent to calling [`pointer::with_addr`] on each element.
     fn with_addr(self, addr: Self::Usize) -> Self;
 
-    /// Gets the "address" portion of the pointer, and "exposes" the provenance part for future use
-    /// in [`Self::from_exposed_addr`].
-    fn expose_addr(self) -> Self::Usize;
+    /// Exposes the "provenance" part of the pointer for future use in
+    /// [`Self::with_exposed_provenance`] and returns the "address" portion.
+    fn expose_provenance(self) -> Self::Usize;
 
     /// Convert an address back to a pointer, picking up a previously "exposed" provenance.
     ///
-    /// Equivalent to calling [`core::ptr::from_exposed_addr`] on each element.
-    fn from_exposed_addr(addr: Self::Usize) -> Self;
+    /// Equivalent to calling [`core::ptr::with_exposed_provenance`] on each element.
+    fn with_exposed_provenance(addr: Self::Usize) -> Self;
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     ///
@@ -131,15 +131,15 @@ where
     }
 
     #[inline]
-    fn expose_addr(self) -> Self::Usize {
+    fn expose_provenance(self) -> Self::Usize {
         // Safety: `self` is a pointer vector
-        unsafe { core::intrinsics::simd::simd_expose_addr(self) }
+        unsafe { core::intrinsics::simd::simd_expose_provenance(self) }
     }
 
     #[inline]
-    fn from_exposed_addr(addr: Self::Usize) -> Self {
+    fn with_exposed_provenance(addr: Self::Usize) -> Self {
         // Safety: `self` is a pointer vector
-        unsafe { core::intrinsics::simd::simd_from_exposed_addr(addr) }
+        unsafe { core::intrinsics::simd::simd_with_exposed_provenance(addr) }
     }
 
     #[inline]

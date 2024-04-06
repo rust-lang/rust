@@ -19,12 +19,12 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = _1;
-          _2 = move _3 as usize (PointerExposeAddress);
+          _2 = move _3 as usize (PointerExposeProvenance);
           StorageDead(_3);
           StorageLive(_4);
           StorageLive(_5);
           _5 = _1;
-          _4 = move _5 as isize (PointerExposeAddress);
+          _4 = move _5 as isize (PointerExposeProvenance);
           StorageDead(_5);
           _0 = const ();
           StorageDead(_4);

@@ -6,8 +6,8 @@ show-text: true
 
 define-function: (
     "check-colors",
-    (theme, mod, macro, struct, enum, trait, fn, type, union, keyword,
-     sidebar, sidebar_current, sidebar_current_background),
+    [theme, mod, macro, struct, enum, trait, fn, type, union, keyword,
+     sidebar, sidebar_current, sidebar_current_background],
     block {
         set-local-storage: {
             "rustdoc-theme": |theme|,

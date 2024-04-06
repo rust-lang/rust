@@ -16,14 +16,13 @@ use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Instance;
+use rustc_target::abi::Align;
 
 use std::cell::RefCell;
 
 pub(crate) mod ffi;
 pub(crate) mod map_data;
 pub mod mapgen;
-
-const VAR_ALIGN_BYTES: usize = 8;
 
 /// A context object for maintaining all state needed by the coverageinfo module.
 pub struct CrateCoverageContext<'ll, 'tcx> {
@@ -225,7 +224,8 @@ pub(crate) fn save_cov_data_to_mod<'ll, 'tcx>(
     llvm::set_global_constant(llglobal, true);
     llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
     llvm::set_section(llglobal, &covmap_section_name);
-    llvm::set_alignment(llglobal, VAR_ALIGN_BYTES);
+    // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
+    llvm::set_alignment(llglobal, Align::EIGHT);
     cx.add_used_global(llglobal);
 }
 
@@ -255,7 +255,8 @@ pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
     llvm::set_linkage(llglobal, llvm::Linkage::LinkOnceODRLinkage);
     llvm::set_visibility(llglobal, llvm::Visibility::Hidden);
     llvm::set_section(llglobal, covfun_section_name);
-    llvm::set_alignment(llglobal, VAR_ALIGN_BYTES);
+    // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
+    llvm::set_alignment(llglobal, Align::EIGHT);
     llvm::set_comdat(cx.llmod, llglobal, &func_record_var_name);
     cx.add_used_global(llglobal);
 }

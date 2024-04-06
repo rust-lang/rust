@@ -737,9 +737,10 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
         // If we get to this point, then all of the query inputs were green,
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
-        self.tcx.def_path_hash_to_def_id(def_path_hash, &mut || {
-            panic!("Failed to convert DefPathHash {def_path_hash:?}")
-        })
+        self.tcx.def_path_hash_to_def_id(
+            def_path_hash,
+            &("Failed to convert DefPathHash", def_path_hash),
+        )
     }
 
     fn decode_attr_id(&mut self) -> rustc_span::AttrId {

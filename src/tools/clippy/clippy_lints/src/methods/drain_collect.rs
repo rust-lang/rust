@@ -70,7 +70,7 @@ pub(super) fn check(cx: &LateContext<'_>, args: &[Expr<'_>], expr: &Expr<'_>, re
             cx,
             DRAIN_COLLECT,
             expr.span,
-            &format!("you seem to be trying to move all elements into a new `{typename}`"),
+            format!("you seem to be trying to move all elements into a new `{typename}`"),
             "consider using `mem::take`",
             sugg,
             Applicability::MachineApplicable,

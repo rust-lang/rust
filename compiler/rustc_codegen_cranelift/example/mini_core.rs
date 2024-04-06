@@ -90,8 +90,9 @@ unsafe impl Sync for i16 {}
 unsafe impl Sync for i32 {}
 unsafe impl Sync for isize {}
 unsafe impl Sync for char {}
+unsafe impl Sync for f32 {}
 unsafe impl<'a, T: ?Sized> Sync for &'a T {}
-unsafe impl Sync for [u8; 16] {}
+unsafe impl<T: Sync, const N: usize> Sync for [T; N] {}
 
 #[lang = "freeze"]
 unsafe auto trait Freeze {}
@@ -463,6 +464,35 @@ pub fn panic(_msg: &'static str) -> ! {
         libc::puts("Panicking\n\0" as *const str as *const i8);
         intrinsics::abort();
     }
+}
+
+macro_rules! panic_const {
+    ($($lang:ident = $message:expr,)+) => {
+        pub mod panic_const {
+            use super::*;
+
+            $(
+                #[track_caller]
+                #[lang = stringify!($lang)]
+                pub fn $lang() -> ! {
+                    panic($message);
+                }
+            )+
+        }
+    }
+}
+
+panic_const! {
+    panic_const_add_overflow = "attempt to add with overflow",
+    panic_const_sub_overflow = "attempt to subtract with overflow",
+    panic_const_mul_overflow = "attempt to multiply with overflow",
+    panic_const_div_overflow = "attempt to divide with overflow",
+    panic_const_rem_overflow = "attempt to calculate the remainder with overflow",
+    panic_const_neg_overflow = "attempt to negate with overflow",
+    panic_const_shr_overflow = "attempt to shift right with overflow",
+    panic_const_shl_overflow = "attempt to shift left with overflow",
+    panic_const_div_by_zero = "attempt to divide by zero",
+    panic_const_rem_by_zero = "attempt to calculate the remainder with a divisor of zero",
 }
 
 #[lang = "panic_bounds_check"]

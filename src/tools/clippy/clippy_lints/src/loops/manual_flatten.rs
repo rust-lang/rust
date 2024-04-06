@@ -62,7 +62,7 @@ pub(super) fn check<'tcx>(
             "...and remove the `if let` statement in the for loop"
         };
 
-        span_lint_and_then(cx, MANUAL_FLATTEN, span, &msg, |diag| {
+        span_lint_and_then(cx, MANUAL_FLATTEN, span, msg, |diag| {
             diag.span_suggestion(arg.span, "try", sugg, applicability);
             diag.span_help(inner_expr.span, help_msg);
         });

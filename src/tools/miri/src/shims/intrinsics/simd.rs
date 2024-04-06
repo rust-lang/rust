@@ -514,7 +514,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     dest.transmute(this.machine.layouts.uint(dest.layout.size).unwrap(), this)?;
                 this.write_int(res, &dest)?;
             }
-            "cast" | "as" | "cast_ptr" | "expose_addr" | "from_exposed_addr" => {
+            "cast" | "as" | "cast_ptr" | "expose_provenance" | "with_exposed_provenance" => {
                 let [op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
                 let (dest, dest_len) = this.mplace_to_simd(dest)?;
@@ -524,8 +524,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let unsafe_cast = intrinsic_name == "cast";
                 let safe_cast = intrinsic_name == "as";
                 let ptr_cast = intrinsic_name == "cast_ptr";
-                let expose_cast = intrinsic_name == "expose_addr";
-                let from_exposed_cast = intrinsic_name == "from_exposed_addr";
+                let expose_cast = intrinsic_name == "expose_provenance";
+                let from_exposed_cast = intrinsic_name == "with_exposed_provenance";
 
                 for i in 0..dest_len {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
@@ -557,9 +557,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             this.ptr_to_ptr(&op, dest.layout)?,
                         // Ptr/Int casts
                         (ty::RawPtr(..), ty::Int(_) | ty::Uint(_)) if expose_cast =>
-                            this.pointer_expose_address_cast(&op, dest.layout)?,
+                            this.pointer_expose_provenance_cast(&op, dest.layout)?,
                         (ty::Int(_) | ty::Uint(_), ty::RawPtr(..)) if from_exposed_cast =>
-                            this.pointer_from_exposed_address_cast(&op, dest.layout)?,
+                            this.pointer_with_exposed_provenance_cast(&op, dest.layout)?,
                         // Error otherwise
                         _ =>
                             throw_unsup_format!(

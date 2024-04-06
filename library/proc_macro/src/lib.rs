@@ -1360,7 +1360,7 @@ impl Literal {
     }
 
     /// Byte character literal.
-    #[unstable(feature = "proc_macro_byte_character", issue = "115268")]
+    #[stable(feature = "proc_macro_byte_character", since = "CURRENT_RUSTC_VERSION")]
     pub fn byte_character(byte: u8) -> Literal {
         let string = [byte].escape_ascii().to_string();
         Literal::new(bridge::LitKind::Byte, &string, None)
@@ -1374,7 +1374,7 @@ impl Literal {
     }
 
     /// C string literal.
-    #[unstable(feature = "proc_macro_c_str_literals", issue = "119750")]
+    #[stable(feature = "proc_macro_c_str_literals", since = "CURRENT_RUSTC_VERSION")]
     pub fn c_string(string: &CStr) -> Literal {
         let string = string.to_bytes().escape_ascii().to_string();
         Literal::new(bridge::LitKind::CStr, &string, None)

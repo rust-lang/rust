@@ -657,14 +657,24 @@ fn lint_nan<'tcx>(
     cx.emit_span_lint(INVALID_NAN_COMPARISONS, e.span, lint);
 }
 
+#[derive(Debug, PartialEq)]
+enum ComparisonOp {
+    BinOp(hir::BinOpKind),
+    Other,
+}
+
 fn lint_wide_pointer<'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx hir::Expr<'tcx>,
-    binop: hir::BinOpKind,
+    cmpop: ComparisonOp,
     l: &'tcx hir::Expr<'tcx>,
     r: &'tcx hir::Expr<'tcx>,
 ) {
-    let ptr_unsized = |mut ty: Ty<'tcx>| -> Option<(usize, bool)> {
+    let ptr_unsized = |mut ty: Ty<'tcx>| -> Option<(
+        /* number of refs */ usize,
+        /* modifiers */ String,
+        /* is dyn */ bool,
+    )> {
         let mut refs = 0;
         // here we remove any "implicit" references and count the number
         // of them to correctly suggest the right number of deref
@@ -672,14 +682,23 @@ fn lint_wide_pointer<'tcx>(
             ty = *inner_ty;
             refs += 1;
         }
-        match ty.kind() {
-            ty::RawPtr(ty, _) => (!ty.is_sized(cx.tcx, cx.param_env))
-                .then(|| (refs, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn)))),
-            _ => None,
-        }
+
+        // get the inner type of a pointer (or akin)
+        let mut modifiers = String::new();
+        ty = match ty.kind() {
+            ty::RawPtr(ty, _) => *ty,
+            ty::Adt(def, args) if cx.tcx.is_diagnostic_item(sym::NonNull, def.did()) => {
+                modifiers.push_str(".as_ptr()");
+                args.type_at(0)
+            }
+            _ => return None,
+        };
+
+        (!ty.is_sized(cx.tcx, cx.param_env))
+            .then(|| (refs, modifiers, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn))))
     };
 
-    // PartialEq::{eq,ne} takes references, remove any explicit references
+    // the left and right operands can have references, remove any explicit references
     let l = l.peel_borrows();
     let r = r.peel_borrows();
 
@@ -690,10 +709,10 @@ fn lint_wide_pointer<'tcx>(
         return;
     };
 
-    let Some((l_ty_refs, l_inner_ty_is_dyn)) = ptr_unsized(l_ty) else {
+    let Some((l_ty_refs, l_modifiers, l_inner_ty_is_dyn)) = ptr_unsized(l_ty) else {
         return;
     };
-    let Some((r_ty_refs, r_inner_ty_is_dyn)) = ptr_unsized(r_ty) else {
+    let Some((r_ty_refs, r_modifiers, r_inner_ty_is_dyn)) = ptr_unsized(r_ty) else {
         return;
     };
 
@@ -707,8 +726,8 @@ fn lint_wide_pointer<'tcx>(
         );
     };
 
-    let ne = if binop == hir::BinOpKind::Ne { "!" } else { "" };
-    let is_eq_ne = matches!(binop, hir::BinOpKind::Eq | hir::BinOpKind::Ne);
+    let ne = if cmpop == ComparisonOp::BinOp(hir::BinOpKind::Ne) { "!" } else { "" };
+    let is_eq_ne = matches!(cmpop, ComparisonOp::BinOp(hir::BinOpKind::Eq | hir::BinOpKind::Ne));
     let is_dyn_comparison = l_inner_ty_is_dyn && r_inner_ty_is_dyn;
 
     let left = e.span.shrink_to_lo().until(l_span.shrink_to_lo());
@@ -717,6 +736,9 @@ fn lint_wide_pointer<'tcx>(
 
     let deref_left = &*"*".repeat(l_ty_refs);
     let deref_right = &*"*".repeat(r_ty_refs);
+
+    let l_modifiers = &*l_modifiers;
+    let r_modifiers = &*r_modifiers;
 
     cx.emit_span_lint(
         AMBIGUOUS_WIDE_POINTER_COMPARISONS,
@@ -727,6 +749,8 @@ fn lint_wide_pointer<'tcx>(
                     ne,
                     deref_left,
                     deref_right,
+                    l_modifiers,
+                    r_modifiers,
                     left,
                     middle,
                     right,
@@ -737,6 +761,8 @@ fn lint_wide_pointer<'tcx>(
                     ne,
                     deref_left,
                     deref_right,
+                    l_modifiers,
+                    r_modifiers,
                     left,
                     middle,
                     right,
@@ -745,12 +771,14 @@ fn lint_wide_pointer<'tcx>(
                 AmbiguousWidePointerComparisonsAddrSuggestion::Cast {
                     deref_left,
                     deref_right,
-                    // those two Options are required for correctness as having
-                    // an empty span and an empty suggestion is not permitted
-                    left_before: (l_ty_refs != 0).then_some(left),
-                    right_before: (r_ty_refs != 0).then(|| r_span.shrink_to_lo()),
-                    left: l_span.shrink_to_hi(),
-                    right,
+                    l_modifiers,
+                    r_modifiers,
+                    paren_left: if l_ty_refs != 0 { ")" } else { "" },
+                    paren_right: if r_ty_refs != 0 { ")" } else { "" },
+                    left_before: (l_ty_refs != 0).then_some(l_span.shrink_to_lo()),
+                    left_after: l_span.shrink_to_hi(),
+                    right_before: (r_ty_refs != 0).then_some(r_span.shrink_to_lo()),
+                    right_after: r_span.shrink_to_hi(),
                 }
             },
         },
@@ -773,7 +801,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                         cx.emit_span_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
                     } else {
                         lint_nan(cx, e, binop, l, r);
-                        lint_wide_pointer(cx, e, binop.node, l, r);
+                        lint_wide_pointer(cx, e, ComparisonOp::BinOp(binop.node), l, r);
                     }
                 }
             }
@@ -782,16 +810,16 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                 if let ExprKind::Path(ref qpath) = path.kind
                     && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
                     && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
-                    && let Some(binop) = partialeq_binop(diag_item) =>
+                    && let Some(cmpop) = diag_item_cmpop(diag_item) =>
             {
-                lint_wide_pointer(cx, e, binop, l, r);
+                lint_wide_pointer(cx, e, cmpop, l, r);
             }
             hir::ExprKind::MethodCall(_, l, [r], _)
                 if let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
                     && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
-                    && let Some(binop) = partialeq_binop(diag_item) =>
+                    && let Some(cmpop) = diag_item_cmpop(diag_item) =>
             {
-                lint_wide_pointer(cx, e, binop, l, r);
+                lint_wide_pointer(cx, e, cmpop, l, r);
             }
             _ => {}
         };
@@ -876,14 +904,20 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             )
         }
 
-        fn partialeq_binop(diag_item: Symbol) -> Option<hir::BinOpKind> {
-            if diag_item == sym::cmp_partialeq_eq {
-                Some(hir::BinOpKind::Eq)
-            } else if diag_item == sym::cmp_partialeq_ne {
-                Some(hir::BinOpKind::Ne)
-            } else {
-                None
-            }
+        fn diag_item_cmpop(diag_item: Symbol) -> Option<ComparisonOp> {
+            Some(match diag_item {
+                sym::cmp_ord_max => ComparisonOp::Other,
+                sym::cmp_ord_min => ComparisonOp::Other,
+                sym::ord_cmp_method => ComparisonOp::Other,
+                sym::cmp_partialeq_eq => ComparisonOp::BinOp(hir::BinOpKind::Eq),
+                sym::cmp_partialeq_ne => ComparisonOp::BinOp(hir::BinOpKind::Ne),
+                sym::cmp_partialord_cmp => ComparisonOp::Other,
+                sym::cmp_partialord_ge => ComparisonOp::BinOp(hir::BinOpKind::Ge),
+                sym::cmp_partialord_gt => ComparisonOp::BinOp(hir::BinOpKind::Gt),
+                sym::cmp_partialord_le => ComparisonOp::BinOp(hir::BinOpKind::Le),
+                sym::cmp_partialord_lt => ComparisonOp::BinOp(hir::BinOpKind::Lt),
+                _ => return None,
+            })
         }
     }
 }

@@ -3842,7 +3842,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             self.probe(|_| {
                                 match self
                                     .at(&ObligationCause::misc(expr.span, body_id), param_env)
-                                    .eq(DefineOpaqueTypes::No, expected, actual)
+                                    // Doesn't actually matter if we define opaque types here, this is just used for
+                                    // diagnostics, and the result is never kept around.
+                                    .eq(DefineOpaqueTypes::Yes, expected, actual)
                                 {
                                     Ok(_) => (), // We ignore nested obligations here for now.
                                     Err(err) => type_diffs.push(err),
@@ -4931,7 +4933,7 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
         let hir::WherePredicate::BoundPredicate(pred) = pred else {
             continue;
         };
-        let mut bounds = pred.bounds.iter().peekable();
+        let mut bounds = pred.bounds.iter();
         while let Some(bound) = bounds.next() {
             let Some(trait_ref) = bound.trait_ref() else {
                 continue;

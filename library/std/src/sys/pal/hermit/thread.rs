@@ -29,7 +29,7 @@ impl Thread {
         let p = Box::into_raw(Box::new(p));
         let tid = abi::spawn2(
             thread_start,
-            p.expose_addr(),
+            p.expose_provenance(),
             abi::Priority::into(abi::NORMAL_PRIO),
             stack,
             core_id,
@@ -47,7 +47,7 @@ impl Thread {
         extern "C" fn thread_start(main: usize) {
             unsafe {
                 // Finally, let's run some code.
-                Box::from_raw(ptr::from_exposed_addr::<Box<dyn FnOnce()>>(main).cast_mut())();
+                Box::from_raw(ptr::with_exposed_provenance::<Box<dyn FnOnce()>>(main).cast_mut())();
 
                 // run all destructors
                 run_dtors();
@@ -103,14 +103,4 @@ impl Thread {
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     unsafe { Ok(NonZero::new_unchecked(abi::get_processor_count())) }
-}
-
-pub mod guard {
-    pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> {
-        None
-    }
-    pub unsafe fn init() -> Option<Guard> {
-        None
-    }
 }

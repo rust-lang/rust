@@ -247,15 +247,15 @@ LL |     _ = &&0 == Foo;
    |
    = help: the trait `PartialEq<Foo>` is not implemented for `&&{integer}`
    = help: the following other types implement trait `PartialEq<Rhs>`:
+             f128
+             f16
              f32
              f64
              i128
              i16
              i32
              i64
-             i8
-             isize
-           and 6 others
+           and 8 others
 
 error[E0369]: binary operation `==` cannot be applied to type `Foo`
   --> $DIR/binary-op-suggest-deref.rs:60:13

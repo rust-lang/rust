@@ -1376,7 +1376,7 @@ pub struct TyParamSome<'a> {
 }
 
 #[derive(Diagnostic)]
-pub enum OnlyCurrentTraits<'a> {
+pub enum OnlyCurrentTraits {
     #[diag(hir_analysis_only_current_traits_outside, code = E0117)]
     Outside {
         #[primary_span]
@@ -1384,18 +1384,6 @@ pub enum OnlyCurrentTraits<'a> {
         span: Span,
         #[note(hir_analysis_only_current_traits_note)]
         note: (),
-        #[subdiagnostic]
-        opaque: Vec<OnlyCurrentTraitsOpaque>,
-        #[subdiagnostic]
-        foreign: Vec<OnlyCurrentTraitsForeign>,
-        #[subdiagnostic]
-        name: Vec<OnlyCurrentTraitsName<'a>>,
-        #[subdiagnostic]
-        pointer: Vec<OnlyCurrentTraitsPointer<'a>>,
-        #[subdiagnostic]
-        ty: Vec<OnlyCurrentTraitsTy<'a>>,
-        #[subdiagnostic]
-        sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
     },
     #[diag(hir_analysis_only_current_traits_primitive, code = E0117)]
     Primitive {
@@ -1404,18 +1392,6 @@ pub enum OnlyCurrentTraits<'a> {
         span: Span,
         #[note(hir_analysis_only_current_traits_note)]
         note: (),
-        #[subdiagnostic]
-        opaque: Vec<OnlyCurrentTraitsOpaque>,
-        #[subdiagnostic]
-        foreign: Vec<OnlyCurrentTraitsForeign>,
-        #[subdiagnostic]
-        name: Vec<OnlyCurrentTraitsName<'a>>,
-        #[subdiagnostic]
-        pointer: Vec<OnlyCurrentTraitsPointer<'a>>,
-        #[subdiagnostic]
-        ty: Vec<OnlyCurrentTraitsTy<'a>>,
-        #[subdiagnostic]
-        sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
     },
     #[diag(hir_analysis_only_current_traits_arbitrary, code = E0117)]
     Arbitrary {
@@ -1424,18 +1400,6 @@ pub enum OnlyCurrentTraits<'a> {
         span: Span,
         #[note(hir_analysis_only_current_traits_note)]
         note: (),
-        #[subdiagnostic]
-        opaque: Vec<OnlyCurrentTraitsOpaque>,
-        #[subdiagnostic]
-        foreign: Vec<OnlyCurrentTraitsForeign>,
-        #[subdiagnostic]
-        name: Vec<OnlyCurrentTraitsName<'a>>,
-        #[subdiagnostic]
-        pointer: Vec<OnlyCurrentTraitsPointer<'a>>,
-        #[subdiagnostic]
-        ty: Vec<OnlyCurrentTraitsTy<'a>>,
-        #[subdiagnostic]
-        sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
     },
 }
 
@@ -1445,7 +1409,6 @@ pub struct OnlyCurrentTraitsOpaque {
     #[primary_span]
     pub span: Span,
 }
-
 #[derive(Subdiagnostic)]
 #[label(hir_analysis_only_current_traits_foreign)]
 pub struct OnlyCurrentTraitsForeign {
@@ -1475,6 +1438,14 @@ pub struct OnlyCurrentTraitsTy<'a> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'a>,
+}
+
+#[derive(Subdiagnostic)]
+#[label(hir_analysis_only_current_traits_adt)]
+pub struct OnlyCurrentTraitsAdt {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
 }
 
 #[derive(Subdiagnostic)]

@@ -13,7 +13,7 @@ are currently defined running NetBSD:
 
 |          Target name           | NetBSD Platform |
 |--------------------------------|-----------------|
-| `amd64-unknown-netbsd`         | [amd64 / x86_64 systems](https://wiki.netbsd.org/ports/amd64/) |
+| `x86_64-unknown-netbsd`        | [amd64 / x86_64 systems](https://wiki.netbsd.org/ports/amd64/) |
 | `armv7-unknown-netbsd-eabihf`  | [32-bit ARMv7 systems with hard-float](https://wiki.netbsd.org/ports/evbarm/) |
 | `armv6-unknown-netbsd-eabihf`  | [32-bit ARMv6 systems with hard-float](https://wiki.netbsd.org/ports/evbarm/) |
 | `aarch64-unknown-netbsd`       | [64-bit ARM systems, little-endian](https://wiki.netbsd.org/ports/evbarm/) |
@@ -22,7 +22,7 @@ are currently defined running NetBSD:
 | `i686-unknown-netbsd`          | [32-bit i386 with SSE](https://wiki.netbsd.org/ports/i386/) |
 | `mipsel-unknown-netbsd`        | [32-bit mips, requires mips32 cpu support](https://wiki.netbsd.org/ports/evbmips/) |
 | `powerpc-unknown-netbsd`       | [Various 32-bit PowerPC systems, e.g. MacPPC](https://wiki.netbsd.org/ports/macppc/) |
-| `riscv64gc-unknown-netbsd`     | [64-bit RISC-V](https://wiki.netbsd.org/ports/riscv/)
+| `riscv64gc-unknown-netbsd`     | [64-bit RISC-V](https://wiki.netbsd.org/ports/riscv/) |
 | `sparc64-unknown-netbsd`       | [Sun UltraSPARC systems](https://wiki.netbsd.org/ports/sparc64/) |
 
 All use the "native" `stdc++` library which goes along with the natively
@@ -43,7 +43,7 @@ bug reporting system.
 
 ## Requirements
 
-The `amd64-unknown-netbsd` artifacts is being distributed by the
+The `x86_64-unknown-netbsd` artifacts is being distributed by the
 rust project.
 
 The other targets are built by the designated developers (see above),
@@ -95,7 +95,7 @@ capable systems we build and test `firefox` (amd64, i386, aarch64).
 
 ## Building Rust programs
 
-Rust ships pre-compiled artifacts for the `amd64-unknown-netbsd`
+Rust ships pre-compiled artifacts for the `x86_64-unknown-netbsd`
 target.
 
 For the other systems mentioned above, using the `pkgsrc` route is

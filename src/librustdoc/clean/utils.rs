@@ -1,4 +1,4 @@
-use crate::clean::auto_trait::AutoTraitFinder;
+use crate::clean::auto_trait::synthesize_auto_trait_impls;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
@@ -251,15 +251,6 @@ pub(super) fn clean_middle_path<'tcx>(
     }
 }
 
-/// Remove the generic arguments from a path.
-pub(crate) fn strip_path_generics(mut path: Path) -> Path {
-    for ps in path.segments.iter_mut() {
-        ps.args = GenericArgs::AngleBracketed { args: Default::default(), bindings: ThinVec::new() }
-    }
-
-    path
-}
-
 pub(crate) fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     let segments = match *p {
         hir::QPath::Resolved(_, path) => &path.segments,
@@ -486,6 +477,7 @@ pub(crate) fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
     }
 }
 
+// FIXME(fmease): Update the `get_*` terminology to the `synthesize_` one.
 pub(crate) fn get_auto_trait_and_blanket_impls(
     cx: &mut DocContext<'_>,
     item_def_id: DefId,
@@ -493,8 +485,8 @@ pub(crate) fn get_auto_trait_and_blanket_impls(
     let auto_impls = cx
         .sess()
         .prof
-        .generic_activity("get_auto_trait_impls")
-        .run(|| AutoTraitFinder::new(cx).get_auto_trait_impls(item_def_id));
+        .generic_activity("synthesize_auto_trait_impls")
+        .run(|| synthesize_auto_trait_impls(cx, item_def_id));
     let blanket_impls = cx
         .sess()
         .prof

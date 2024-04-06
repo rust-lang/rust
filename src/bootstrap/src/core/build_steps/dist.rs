@@ -995,9 +995,9 @@ impl Step for PlainSourceTarball {
         if builder.rust_info().is_managed_git_subrepository()
             || builder.rust_info().is_from_tarball()
         {
-            if builder.rust_info().is_managed_git_subrepository() {
-                // Ensure we have the submodules checked out.
-                builder.update_submodule(Path::new("src/tools/cargo"));
+            // Ensure we have all submodules from src and other directories checked out.
+            for submodule in builder.get_all_submodules() {
+                builder.update_submodule(Path::new(submodule));
             }
 
             // Vendor all Cargo dependencies
@@ -1010,6 +1010,8 @@ impl Step for PlainSourceTarball {
                 .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
+                .arg("--sync")
+                .arg(builder.src.join("./compiler/rustc_codegen_gcc/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
                 // Will read the libstd Cargo.toml
@@ -1026,6 +1028,20 @@ impl Step for PlainSourceTarball {
             let cargo_config_dir = plain_dst_src.join(".cargo");
             builder.create_dir(&cargo_config_dir);
             builder.create(&cargo_config_dir.join("config.toml"), &config);
+        }
+
+        // Delete extraneous directories
+        // FIXME: if we're managed by git, we should probably instead ask git if the given path
+        // is managed by it?
+        for entry in walkdir::WalkDir::new(tarball.image_dir())
+            .follow_links(true)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            if entry.path().is_dir() && entry.path().file_name() == Some(OsStr::new("__pycache__"))
+            {
+                t!(fs::remove_dir_all(entry.path()));
+            }
         }
 
         tarball.bare()

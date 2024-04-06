@@ -5,7 +5,7 @@
 
 use std::{cmp::Ordering, iter, mem, ops::Not};
 
-use base_db::{CrateId, Dependency, Edition, FileId};
+use base_db::{CrateId, Dependency, FileId};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
@@ -22,9 +22,9 @@ use itertools::{izip, Itertools};
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{ErasedFileAstId, FileAstId, Span, SyntaxContextId};
+use span::{Edition, ErasedFileAstId, FileAstId, Span, SyntaxContextId};
 use stdx::always;
-use syntax::{ast, SmolStr};
+use syntax::ast;
 use triomphe::Arc;
 
 use crate::{
@@ -237,6 +237,8 @@ enum MacroDirectiveKind {
         derive_attr: AttrId,
         derive_pos: usize,
         ctxt: SyntaxContextId,
+        /// The "parent" macro it is resolved to.
+        derive_macro_id: MacroCallId,
     },
     Attr {
         ast_id: AstIdWithPath<ast::Item>,
@@ -312,7 +314,7 @@ impl DefCollector<'_> {
                     }
                 }
                 () if *attr_name == hir_expand::name![crate_type] => {
-                    if let Some("proc-macro") = attr.string_value().map(SmolStr::as_str) {
+                    if let Some("proc-macro") = attr.string_value() {
                         self.is_proc_macro = true;
                     }
                 }
@@ -602,7 +604,7 @@ impl DefCollector<'_> {
         .intern(self.db);
         self.define_proc_macro(def.name.clone(), proc_macro_id);
         let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
-        if let ProcMacroKind::CustomDerive { helpers } = def.kind {
+        if let ProcMacroKind::Derive { helpers } = def.kind {
             crate_data.exported_derives.insert(self.db.macro_def(proc_macro_id.into()), helpers);
         }
         crate_data.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);
@@ -1146,7 +1148,13 @@ impl DefCollector<'_> {
                         return Resolved::Yes;
                     }
                 }
-                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos, ctxt: call_site } => {
+                MacroDirectiveKind::Derive {
+                    ast_id,
+                    derive_attr,
+                    derive_pos,
+                    ctxt: call_site,
+                    derive_macro_id,
+                } => {
                     let id = derive_macro_as_call_id(
                         self.db,
                         ast_id,
@@ -1155,6 +1163,7 @@ impl DefCollector<'_> {
                         *call_site,
                         self.def_map.krate,
                         resolver,
+                        *derive_macro_id,
                     );
 
                     if let Ok((macro_id, def_id, call_id)) = id {
@@ -1224,6 +1233,8 @@ impl DefCollector<'_> {
                         _ => return Resolved::No,
                     };
 
+                    let call_id =
+                        attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def);
                     if let MacroDefId {
                         kind:
                             MacroDefKind::BuiltInAttr(
@@ -1252,6 +1263,7 @@ impl DefCollector<'_> {
                                 return recollect_without(self);
                             }
                         };
+
                         let ast_id = ast_id.with_value(ast_adt_id);
 
                         match attr.parse_path_comma_token_tree(self.db.upcast()) {
@@ -1267,6 +1279,7 @@ impl DefCollector<'_> {
                                             derive_attr: attr.id,
                                             derive_pos: idx,
                                             ctxt: call_site.ctx,
+                                            derive_macro_id: call_id,
                                         },
                                         container: directive.container,
                                     });
@@ -1300,10 +1313,6 @@ impl DefCollector<'_> {
 
                         return recollect_without(self);
                     }
-
-                    // Not resolved to a derive helper or the derive attribute, so try to treat as a normal attribute.
-                    let call_id =
-                        attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def);
 
                     // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
                     // due to duplicating functions into macro expansions
@@ -1460,13 +1469,20 @@ impl DefCollector<'_> {
                         ));
                     }
                 }
-                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos, ctxt: _ } => {
+                MacroDirectiveKind::Derive {
+                    ast_id,
+                    derive_attr,
+                    derive_pos,
+                    derive_macro_id,
+                    ..
+                } => {
                     self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
                         directive.module_id,
                         MacroCallKind::Derive {
                             ast_id: ast_id.ast_id,
                             derive_attr_index: *derive_attr,
                             derive_index: *derive_pos as u32,
+                            derive_macro_id: *derive_macro_id,
                         },
                         ast_id.path.clone(),
                     ));
@@ -1902,7 +1918,7 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect_module(&mut self, module_id: FileItemTreeId<Mod>, attrs: &Attrs) {
-        let path_attr = attrs.by_key("path").string_value().map(SmolStr::as_str);
+        let path_attr = attrs.by_key("path").string_value();
         let is_macro_use = attrs.by_key("macro_use").exists();
         let module = &self.item_tree[module_id];
         match &module.kind {
@@ -2146,7 +2162,7 @@ impl ModCollector<'_, '_> {
                 Some(it) => {
                     // FIXME: a hacky way to create a Name from string.
                     name = tt::Ident {
-                        text: it.clone(),
+                        text: it.into(),
                         span: Span {
                             range: syntax::TextRange::empty(syntax::TextSize::new(0)),
                             anchor: span::SpanAnchor {

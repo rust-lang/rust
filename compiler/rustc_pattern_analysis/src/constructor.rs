@@ -140,6 +140,34 @@
 //! [`ConstructorSet::split`]. The invariants of [`SplitConstructorSet`] are also of interest.
 //!
 //!
+//! ## Unions
+//!
+//! Unions allow us to match a value via several overlapping representations at the same time. For
+//! example, the following is exhaustive because when seeing the value as a boolean we handled all
+//! possible cases (other cases such as `n == 3` would trigger UB).
+//!
+//! ```rust
+//! # fn main() {
+//! union U8AsBool {
+//!     n: u8,
+//!     b: bool,
+//! }
+//! let x = U8AsBool { n: 1 };
+//! unsafe {
+//!     match x {
+//!         U8AsBool { n: 2 } => {}
+//!         U8AsBool { b: true } => {}
+//!         U8AsBool { b: false } => {}
+//!     }
+//! }
+//! # }
+//! ```
+//!
+//! Pattern-matching has no knowledge that e.g. `false as u8 == 0`, so the values we consider in the
+//! algorithm look like `U8AsBool { b: true, n: 2 }`. In other words, for the most part a union is
+//! treated like a struct with the same fields. The difference lies in how we construct witnesses of
+//! non-exhaustiveness.
+//!
 //!
 //! ## Opaque patterns
 //!
@@ -155,13 +183,13 @@ use std::iter::once;
 use smallvec::SmallVec;
 
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
-use rustc_index::bit_set::GrowableBitSet;
+use rustc_index::bit_set::{BitSet, GrowableBitSet};
+use rustc_index::IndexVec;
 
 use self::Constructor::*;
 use self::MaybeInfiniteInt::*;
 use self::SliceKind::*;
 
-use crate::index;
 use crate::PatCx;
 
 /// Whether we have seen a constructor in the column or not.
@@ -920,10 +948,7 @@ pub enum ConstructorSet<Cx: PatCx> {
     Struct { empty: bool },
     /// This type has the following list of constructors. If `variants` is empty and
     /// `non_exhaustive` is false, don't use this; use `NoConstructors` instead.
-    Variants {
-        variants: index::IdxContainer<Cx::VariantIdx, VariantVisibility>,
-        non_exhaustive: bool,
-    },
+    Variants { variants: IndexVec<Cx::VariantIdx, VariantVisibility>, non_exhaustive: bool },
     /// The type is `&T`.
     Ref,
     /// The type is a union.
@@ -977,7 +1002,6 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
     /// any) are missing; 2/ split constructors to handle non-trivial intersections e.g. on ranges
     /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation
     /// and its invariants.
-    #[instrument(level = "debug", skip(self, ctors), ret)]
     pub fn split<'a>(
         &self,
         ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
@@ -1025,7 +1049,7 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                 }
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
-                let mut seen_set = index::IdxSet::new_empty(variants.len());
+                let mut seen_set = BitSet::new_empty(variants.len());
                 for idx in seen.iter().filter_map(|c| c.as_variant()) {
                     seen_set.insert(idx);
                 }

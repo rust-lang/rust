@@ -142,7 +142,7 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     #[deprecated(
         since = "1.67.0",
-        note = "replaced by the `expose_addr` method, or update your code \
+        note = "replaced by the `expose_provenance` method, or update your code \
             to follow the strict provenance rules using its APIs"
     )]
     #[inline(always)]
@@ -171,7 +171,7 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     #[deprecated(
         since = "1.67.0",
-        note = "replaced by the `ptr::from_exposed_addr_mut` function, or \
+        note = "replaced by the `ptr::with_exposed_provenance_mut` function, or \
             update your code to follow the strict provenance rules using its APIs"
     )]
     #[allow(fuzzy_provenance_casts)] // this is an unstable and semi-deprecated cast function
@@ -194,7 +194,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
     /// required provenance, then Strict Provenance might not be for you. Use pointer-integer casts
-    /// or [`expose_addr`][pointer::expose_addr] and [`from_exposed_addr`][from_exposed_addr]
+    /// or [`expose_provenance`][pointer::expose_provenance] and [`with_exposed_provenance`][with_exposed_provenance]
     /// instead. However, note that this makes your code less portable and less amenable to tools
     /// that check for compliance with the Rust memory model.
     ///
@@ -217,35 +217,34 @@ impl<T: ?Sized> *mut T {
         unsafe { mem::transmute(self.cast::<()>()) }
     }
 
-    /// Gets the "address" portion of the pointer, and 'exposes' the "provenance" part for future
-    /// use in [`from_exposed_addr`][].
+    /// Exposes the "provenance" part of the pointer for future use in
+    /// [`with_exposed_provenance`][] and returns the "address" portion.
     ///
     /// This is equivalent to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. Furthermore, this (like the `as` cast) has the implicit
     /// side-effect of marking the provenance as 'exposed', so on platforms that support it you can
-    /// later call [`from_exposed_addr_mut`][] to reconstitute the original pointer including its
+    /// later call [`with_exposed_provenance_mut`][] to reconstitute the original pointer including its
     /// provenance. (Reconstructing address space information, if required, is your responsibility.)
     ///
     /// Using this method means that code is *not* following [Strict
     /// Provenance][super#strict-provenance] rules. Supporting
-    /// [`from_exposed_addr_mut`][] complicates specification and reasoning and may not be supported
+    /// [`with_exposed_provenance_mut`][] complicates specification and reasoning and may not be supported
     /// by tools that help you to stay conformant with the Rust memory model, so it is recommended
     /// to use [`addr`][pointer::addr] wherever possible.
     ///
     /// On most platforms this will produce a value with the same bytes as the original pointer,
     /// because all the bytes are dedicated to describing the address. Platforms which need to store
     /// additional information in the pointer may not support this operation, since the 'expose'
-    /// side-effect which is required for [`from_exposed_addr_mut`][] to work is typically not
+    /// side-effect which is required for [`with_exposed_provenance_mut`][] to work is typically not
     /// available.
     ///
     /// It is unclear whether this method can be given a satisfying unambiguous specification. This
     /// API and its claimed semantics are part of [Exposed Provenance][super#exposed-provenance].
     ///
-    /// [`from_exposed_addr_mut`]: from_exposed_addr_mut
-    #[must_use]
+    /// [`with_exposed_provenance_mut`]: with_exposed_provenance_mut
     #[inline(always)]
     #[unstable(feature = "exposed_provenance", issue = "95228")]
-    pub fn expose_addr(self) -> usize {
+    pub fn expose_provenance(self) -> usize {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
         self.cast::<()>() as usize
     }
@@ -1119,8 +1118,6 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    // We could always go back to wrapping if unchecked becomes unacceptable
-    #[rustc_allow_const_fn_unstable(const_int_unchecked_arith)]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn sub(self, count: usize) -> Self
@@ -1662,8 +1659,6 @@ impl<T: ?Sized> *mut T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
-    ///
     /// // On some platforms, the alignment of i32 is less than 4.
     /// #[repr(align(4))]
     /// struct AlignedI32(i32);
@@ -1686,7 +1681,6 @@ impl<T: ?Sized> *mut T {
     /// underlying allocation.
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     /// #![feature(const_mut_refs)]
     ///
@@ -1713,7 +1707,6 @@ impl<T: ?Sized> *mut T {
     /// pointer is aligned, even if the compiletime pointer wasn't aligned.
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
     /// // On some platforms, the alignment of primitives is less than their size.
@@ -1740,7 +1733,6 @@ impl<T: ?Sized> *mut T {
     /// runtime and compiletime.
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
     /// // On some platforms, the alignment of primitives is less than their size.
@@ -1764,7 +1756,7 @@ impl<T: ?Sized> *mut T {
     /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
-    #[unstable(feature = "pointer_is_aligned", issue = "96284")]
+    #[stable(feature = "pointer_is_aligned", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
     pub const fn is_aligned(self) -> bool
     where
@@ -1785,7 +1777,7 @@ impl<T: ?Sized> *mut T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
+    /// #![feature(pointer_is_aligned_to)]
     ///
     /// // On some platforms, the alignment of i32 is less than 4.
     /// #[repr(align(4))]
@@ -1814,7 +1806,7 @@ impl<T: ?Sized> *mut T {
     /// cannot be stricter aligned than the reference's underlying allocation.
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
+    /// #![feature(pointer_is_aligned_to)]
     /// #![feature(const_pointer_is_aligned)]
     /// #![feature(const_mut_refs)]
     ///
@@ -1840,7 +1832,7 @@ impl<T: ?Sized> *mut T {
     /// pointer is aligned, even if the compiletime pointer wasn't aligned.
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
+    /// #![feature(pointer_is_aligned_to)]
     /// #![feature(const_pointer_is_aligned)]
     ///
     /// // On some platforms, the alignment of i32 is less than 4.
@@ -1865,7 +1857,7 @@ impl<T: ?Sized> *mut T {
     /// runtime and compiletime.
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
+    /// #![feature(pointer_is_aligned_to)]
     /// #![feature(const_pointer_is_aligned)]
     ///
     /// const _: () = {
@@ -1881,7 +1873,7 @@ impl<T: ?Sized> *mut T {
     /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
-    #[unstable(feature = "pointer_is_aligned", issue = "96284")]
+    #[unstable(feature = "pointer_is_aligned_to", issue = "96284")]
     #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
     pub const fn is_aligned_to(self, align: usize) -> bool {
         if !align.is_power_of_two() {
@@ -2275,6 +2267,7 @@ impl<T: ?Sized> Ord for *mut T {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialOrd for *mut T {
     #[inline(always)]
+    #[allow(ambiguous_wide_pointer_comparisons)]
     fn partial_cmp(&self, other: &*mut T) -> Option<Ordering> {
         Some(self.cmp(other))
     }

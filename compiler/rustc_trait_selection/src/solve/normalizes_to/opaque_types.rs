@@ -58,12 +58,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     }
                 }
 
-                let expected = self.structurally_normalize_ty(goal.param_env, expected)?;
-                if expected.is_ty_var() {
-                    return self
-                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
-                }
-
                 // Otherwise, define a new opaque type
                 self.insert_hidden_type(opaque_type_key, goal.param_env, expected)?;
                 self.add_item_bounds_for_hidden_type(

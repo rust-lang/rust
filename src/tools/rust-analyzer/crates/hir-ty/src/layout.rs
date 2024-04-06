@@ -389,6 +389,9 @@ pub fn layout_of_ty_query(
                     let infer = db.infer(func.into());
                     return db.layout_of_ty(infer.type_of_rpit[idx].clone(), trait_env);
                 }
+                crate::ImplTraitId::AssociatedTypeImplTrait(..) => {
+                    return Err(LayoutError::NotImplemented);
+                }
                 crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
                     return Err(LayoutError::NotImplemented)
                 }

@@ -1,7 +1,7 @@
 use std::fmt::{self, Debug, Display, Formatter};
 
 use rustc_hir::def_id::DefId;
-use rustc_session::RemapFileNameExt;
+use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{HasDataLayout, Size};
 
@@ -70,7 +70,7 @@ pub enum ConstValue<'tcx> {
     },
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 static_assert_size!(ConstValue<'_>, 24);
 
 impl<'tcx> ConstValue<'tcx> {
@@ -516,7 +516,11 @@ impl<'tcx> TyCtxt<'tcx> {
         let caller = self.sess.source_map().lookup_char_pos(topmost.lo());
         self.const_caller_location(
             rustc_span::symbol::Symbol::intern(
-                &caller.file.name.for_codegen(self.sess).to_string_lossy(),
+                &caller
+                    .file
+                    .name
+                    .for_scope(self.sess, RemapPathScopeComponents::MACRO)
+                    .to_string_lossy(),
             ),
             caller.line as u32,
             caller.col_display as u32 + 1,

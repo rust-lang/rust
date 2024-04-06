@@ -11,6 +11,7 @@ use rustc_session::config::IncrementalStateAssertion;
 use rustc_session::Session;
 use rustc_span::ErrorGuaranteed;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use super::data::*;
 use super::file_format;
@@ -88,7 +89,7 @@ fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
     work_product::delete_workproduct_files(sess, &swp.work_product);
 }
 
-fn load_dep_graph(sess: &Session) -> LoadResult<(SerializedDepGraph, WorkProductMap)> {
+fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkProductMap)> {
     let prof = sess.prof.clone();
 
     if sess.opts.incremental.is_none() {

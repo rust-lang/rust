@@ -62,9 +62,8 @@ $ cargo dev new_lint --name=lint_name --pass=late --category=pedantic
 There are two things to note here:
 
 1. `--pass`: We set `--pass=late` in this command to do a late lint pass. The
-   alternative is an `early` lint pass. We will discuss this difference in a
-   later chapter.
-   <!-- FIXME: Link that "later chapter" when lint_passes.md is merged -->
+   alternative is an `early` lint pass. We will discuss this difference in the
+   [Lint Passes] chapter.
 2. `--category`: If not provided, the `category` of this new lint will default
    to `nursery`.
 
@@ -194,8 +193,7 @@ store.register_late_pass(|_| Box::new(foo_functions::FooFunctions));
 
 As you might have guessed, where there's something late, there is something
 early: in Clippy there is a `register_early_pass` method as well. More on early
-vs. late passes in a later chapter.
-<!-- FIXME: Link that "later chapter" when lint_passes.md is merged -->
+vs. late passes in the [Lint Passes] chapter.
 
 Without a call to one of `register_early_pass` or `register_late_pass`, the lint
 pass in question will not be run.
@@ -203,3 +201,4 @@ pass in question will not be run.
 
 [all_lints]: https://rust-lang.github.io/rust-clippy/master/
 [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
+[Lint Passes]: lint_passes.md

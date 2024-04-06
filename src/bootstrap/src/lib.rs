@@ -250,6 +250,8 @@ pub enum Mode {
     /// directory. This is for miscellaneous sets of tools that are built
     /// using the bootstrap stage0 compiler in its entirety (target libraries
     /// and all). Typically these tools compile with stable Rust.
+    ///
+    /// Only works for stage 0.
     ToolBootstrap,
 
     /// Build a tool which uses the locally built std, placing output in the

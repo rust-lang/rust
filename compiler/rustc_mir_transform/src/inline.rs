@@ -324,7 +324,7 @@ impl<'tcx> Inliner<'tcx> {
             // do not need to catch this here, we can wait until the inliner decides to continue
             // inlining a second time.
             InstanceDef::VTableShim(_)
-            | InstanceDef::ReifyShim(_)
+            | InstanceDef::ReifyShim(..)
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::ConstructCoroutineInClosureShim { .. }
@@ -1077,7 +1077,7 @@ fn try_instance_mir<'tcx>(
         let fields = def.all_fields();
         for field in fields {
             let field_ty = field.ty(tcx, args);
-            if field_ty.has_param() && field_ty.has_projections() {
+            if field_ty.has_param() && field_ty.has_aliases() {
                 return Err("cannot build drop shim for polymorphic type");
             }
         }

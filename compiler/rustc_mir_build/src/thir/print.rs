@@ -635,9 +635,8 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_pat(subpattern, depth_lvl + 3);
                 print_indented!(self, "}", depth_lvl + 1);
             }
-            PatKind::Binding { mutability, name, mode, var, ty, subpattern, is_primary } => {
+            PatKind::Binding { name, mode, var, ty, subpattern, is_primary } => {
                 print_indented!(self, "Binding {", depth_lvl + 1);
-                print_indented!(self, format!("mutability: {:?}", mutability), depth_lvl + 2);
                 print_indented!(self, format!("name: {:?}", name), depth_lvl + 2);
                 print_indented!(self, format!("mode: {:?}", mode), depth_lvl + 2);
                 print_indented!(self, format!("var: {:?}", var), depth_lvl + 2);

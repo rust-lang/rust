@@ -17,8 +17,10 @@ use rustc_data_structures::captures::Captures;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
-use rustc_hir::{self, CoroutineDesugaring, CoroutineKind, ImplicitSelfKind};
-use rustc_hir::{self as hir, HirId};
+use rustc_hir::{
+    self as hir, BindingAnnotation, ByRef, CoroutineDesugaring, CoroutineKind, HirId,
+    ImplicitSelfKind,
+};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::{FieldIdx, VariantIdx};
@@ -843,17 +845,6 @@ impl<'tcx> Body<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, TyEncodable, TyDecodable, HashStable)]
-pub enum Safety {
-    Safe,
-    /// Unsafe because of compiler-generated unsafe code, like `await` desugaring
-    BuiltinUnsafe,
-    /// Unsafe because of an unsafe fn
-    FnUnsafe,
-    /// Unsafe because of an `unsafe` block
-    ExplicitUnsafe(hir::HirId),
-}
-
 impl<'tcx> Index<BasicBlock> for Body<'tcx> {
     type Output = BasicBlockData<'tcx>;
 
@@ -992,8 +983,8 @@ pub enum LocalKind {
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct VarBindingForm<'tcx> {
-    /// Is variable bound via `x`, `mut x`, `ref x`, or `ref mut x`?
-    pub binding_mode: ty::BindingMode,
+    /// Is variable bound via `x`, `mut x`, `ref x`, `ref mut x`, `mut ref x`, or `mut ref mut x`?
+    pub binding_mode: BindingAnnotation,
     /// If an explicit type was provided for this variable binding,
     /// this holds the source Span of that type.
     ///
@@ -1218,7 +1209,7 @@ impl<'tcx> LocalDecl<'tcx> {
             self.local_info(),
             LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
-                    binding_mode: ty::BindingMode::BindByValue(_),
+                    binding_mode: BindingAnnotation(ByRef::No, _),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
@@ -1235,7 +1226,7 @@ impl<'tcx> LocalDecl<'tcx> {
             self.local_info(),
             LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
-                    binding_mode: ty::BindingMode::BindByValue(_),
+                    binding_mode: BindingAnnotation(ByRef::No, _),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
@@ -1609,8 +1600,6 @@ pub struct SourceScopeData<'tcx> {
 pub struct SourceScopeLocalData {
     /// An `HirId` with lint levels equivalent to this scope's lint levels.
     pub lint_root: hir::HirId,
-    /// The unsafe block that contains this node.
-    pub safety: Safety,
 }
 
 /// A collection of projections into user types.
@@ -1879,14 +1868,14 @@ impl DefLocation {
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(BasicBlockData<'_>, 144);
     static_assert_size!(LocalDecl<'_>, 40);
-    static_assert_size!(SourceScopeData<'_>, 72);
+    static_assert_size!(SourceScopeData<'_>, 64);
     static_assert_size!(Statement<'_>, 32);
     static_assert_size!(StatementKind<'_>, 16);
     static_assert_size!(Terminator<'_>, 112);

@@ -111,7 +111,7 @@ pub fn block_in_cycle(body: &Body<'_>, block: BasicBlock) -> bool {
 }
 
 /// Convenience wrapper around `visit_local_usage`.
-pub fn used_exactly_once(mir: &Body<'_>, local: rustc_middle::mir::Local) -> Option<bool> {
+pub fn used_exactly_once(mir: &Body<'_>, local: Local) -> Option<bool> {
     visit_local_usage(
         &[local],
         mir,

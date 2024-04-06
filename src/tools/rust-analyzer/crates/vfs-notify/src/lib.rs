@@ -136,7 +136,7 @@ impl NotifyActor {
                     Message::Invalidate(path) => {
                         let contents = read(path.as_path());
                         let files = vec![(path, contents)];
-                        self.send(loader::Message::Loaded { files });
+                        self.send(loader::Message::Changed { files });
                     }
                 },
                 Event::NotifyEvent(event) => {
@@ -205,7 +205,7 @@ impl NotifyActor {
                             if !entry.file_type().is_dir() {
                                 return true;
                             }
-                            let path = AbsPath::assert(entry.path());
+                            let path = entry.path();
                             root == path
                                 || dirs.exclude.iter().chain(&dirs.include).all(|it| it != path)
                         });
@@ -214,7 +214,7 @@ impl NotifyActor {
                         let depth = entry.depth();
                         let is_dir = entry.file_type().is_dir();
                         let is_file = entry.file_type().is_file();
-                        let abs_path = AbsPathBuf::assert(entry.into_path());
+                        let abs_path = AbsPathBuf::try_from(entry.into_path()).unwrap();
                         if depth < 2 && is_dir {
                             self.send(make_message(abs_path.clone()));
                         }

@@ -71,7 +71,7 @@ pub(super) fn check<'tcx>(
                     cx,
                     TRANSMUTE_UNDEFINED_REPR,
                     e.span,
-                    &format!("transmute from `{from_ty_orig}` which has an undefined layout"),
+                    format!("transmute from `{from_ty_orig}` which has an undefined layout"),
                     |diag| {
                         if from_ty_orig.peel_refs() != from_ty.peel_refs() {
                             diag.note(format!("the contained type `{from_ty}` has an undefined layout"));
@@ -85,7 +85,7 @@ pub(super) fn check<'tcx>(
                     cx,
                     TRANSMUTE_UNDEFINED_REPR,
                     e.span,
-                    &format!("transmute to `{to_ty_orig}` which has an undefined layout"),
+                    format!("transmute to `{to_ty_orig}` which has an undefined layout"),
                     |diag| {
                         if to_ty_orig.peel_refs() != to_ty.peel_refs() {
                             diag.note(format!("the contained type `{to_ty}` has an undefined layout"));
@@ -111,7 +111,7 @@ pub(super) fn check<'tcx>(
                     cx,
                     TRANSMUTE_UNDEFINED_REPR,
                     e.span,
-                    &format!(
+                    format!(
                         "transmute from `{from_ty_orig}` to `{to_ty_orig}`, both of which have an undefined layout"
                     ),
                     |diag| {
@@ -140,7 +140,7 @@ pub(super) fn check<'tcx>(
                     cx,
                     TRANSMUTE_UNDEFINED_REPR,
                     e.span,
-                    &format!("transmute from `{from_ty_orig}` which has an undefined layout"),
+                    format!("transmute from `{from_ty_orig}` which has an undefined layout"),
                     |diag| {
                         if from_ty_orig.peel_refs() != from_ty {
                             diag.note(format!("the contained type `{from_ty}` has an undefined layout"));
@@ -157,7 +157,7 @@ pub(super) fn check<'tcx>(
                     cx,
                     TRANSMUTE_UNDEFINED_REPR,
                     e.span,
-                    &format!("transmute into `{to_ty_orig}` which has an undefined layout"),
+                    format!("transmute into `{to_ty_orig}` which has an undefined layout"),
                     |diag| {
                         if to_ty_orig.peel_refs() != to_ty {
                             diag.note(format!("the contained type `{to_ty}` has an undefined layout"));

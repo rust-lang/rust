@@ -216,7 +216,7 @@ fn check_fn_inner<'tcx>(
                     None
                 }))
                 .collect_vec(),
-            &format!("the following explicit lifetimes could be elided: {lts}"),
+            format!("the following explicit lifetimes could be elided: {lts}"),
             |diag| {
                 if sig.header.is_async() {
                     // async functions have usages whose spans point at the lifetime declaration which messes up

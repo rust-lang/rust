@@ -84,7 +84,7 @@ pub(crate) trait BindInsteadOfMap {
                 "{option_snip}.{}({closure_args_snip} {some_inner_snip})",
                 Self::GOOD_METHOD_NAME
             );
-            span_lint_and_sugg(cx, BIND_INSTEAD_OF_MAP, expr.span, &msg, "try", note, app);
+            span_lint_and_sugg(cx, BIND_INSTEAD_OF_MAP, expr.span, msg, "try", note, app);
             true
         } else {
             false
@@ -114,7 +114,7 @@ pub(crate) trait BindInsteadOfMap {
         } else {
             return false;
         };
-        span_lint_and_then(cx, BIND_INSTEAD_OF_MAP, expr.span, &msg, |diag| {
+        span_lint_and_then(cx, BIND_INSTEAD_OF_MAP, expr.span, msg, |diag| {
             multispan_sugg_with_applicability(
                 diag,
                 "try",
@@ -157,7 +157,7 @@ pub(crate) trait BindInsteadOfMap {
                         cx,
                         BIND_INSTEAD_OF_MAP,
                         expr.span,
-                        &msg,
+                        msg,
                         "use the expression directly",
                         snippet(cx, recv.span, "..").into(),
                         Applicability::MachineApplicable,

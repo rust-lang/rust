@@ -324,7 +324,7 @@ environment variable. We first document the most relevant and most commonly used
   number of available CPUs is `1`. Note that this flag does not affect how miri handles threads in
   any way.
 * `-Zmiri-permissive-provenance` disables the warning for integer-to-pointer casts and
-  [`ptr::from_exposed_addr`](https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html).
+  [`ptr::with_exposed_provenance`](https://doc.rust-lang.org/nightly/std/ptr/fn.with_exposed_provenance.html).
   This will necessarily miss some bugs as those operations are not efficiently and accurately
   implementable in a sanitizer, but it will only miss bugs that concern memory/pointers which is
   subject to these operations.
@@ -507,6 +507,8 @@ binaries, and as such worth documenting:
   crate currently being compiled.
 * `MIRI_ORIG_RUSTDOC` is set and read by different phases of `cargo-miri` to remember the
   value of `RUSTDOC` from before it was overwritten.
+* `MIRI_REPLACE_LIBRS_IF_NOT_TEST` when set to any value enables a hack that helps bootstrap
+  run the standard library tests in Miri.
 * `MIRI_VERBOSE` when set to any value tells the various `cargo-miri` phases to
   perform verbose logging.
 * `MIRI_HOST_SYSROOT` is set by bootstrap to tell `cargo-miri` which sysroot to use for *host*

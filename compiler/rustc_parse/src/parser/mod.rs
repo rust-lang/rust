@@ -24,12 +24,11 @@ use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{AttributesData, DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
-use rustc_ast::AttrId;
-use rustc_ast::CoroutineKind;
-use rustc_ast::DUMMY_NODE_ID;
-use rustc_ast::{self as ast, AnonConst, Const, DelimArgs, Extern};
-use rustc_ast::{AttrArgs, AttrArgsEq, Expr, ExprKind, Mutability, StrLit};
-use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
+use rustc_ast::{
+    self as ast, AnonConst, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind, DelimArgs,
+    Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, StrLit, Unsafe, Visibility,
+    VisibilityKind, DUMMY_NODE_ID,
+};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::PResult;
@@ -180,7 +179,7 @@ pub struct Parser<'a> {
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Parser<'_>, 264);
 
 /// Stores span information about a closure.
@@ -1271,6 +1270,11 @@ impl<'a> Parser<'a> {
     /// Parses mutability (`mut` or nothing).
     fn parse_mutability(&mut self) -> Mutability {
         if self.eat_keyword(kw::Mut) { Mutability::Mut } else { Mutability::Not }
+    }
+
+    /// Parses reference binding mode (`ref`, `ref mut`, or nothing).
+    fn parse_byref(&mut self) -> ByRef {
+        if self.eat_keyword(kw::Ref) { ByRef::Yes(self.parse_mutability()) } else { ByRef::No }
     }
 
     /// Possibly parses mutability (`const` or `mut`).

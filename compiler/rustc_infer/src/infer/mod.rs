@@ -483,7 +483,7 @@ pub enum SubregionOrigin<'tcx> {
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
 static_assert_size!(SubregionOrigin<'_>, 32);
 
 impl<'tcx> SubregionOrigin<'tcx> {
@@ -843,7 +843,9 @@ impl<'tcx> InferCtxt<'tcx> {
     {
         let origin = &ObligationCause::dummy();
         self.probe(|_| {
-            self.at(origin, param_env).sub(DefineOpaqueTypes::No, expected, actual).is_ok()
+            // We're only answering whether there could be a subtyping relation, and with
+            // opaque types, "there could be one", via registering a hidden type.
+            self.at(origin, param_env).sub(DefineOpaqueTypes::Yes, expected, actual).is_ok()
         })
     }
 
@@ -852,7 +854,9 @@ impl<'tcx> InferCtxt<'tcx> {
         T: at::ToTrace<'tcx>,
     {
         let origin = &ObligationCause::dummy();
-        self.probe(|_| self.at(origin, param_env).eq(DefineOpaqueTypes::No, a, b).is_ok())
+        // We're only answering whether the types could be the same, and with
+        // opaque types, "they can be the same", via registering a hidden type.
+        self.probe(|_| self.at(origin, param_env).eq(DefineOpaqueTypes::Yes, a, b).is_ok())
     }
 
     #[instrument(skip(self), level = "debug")]

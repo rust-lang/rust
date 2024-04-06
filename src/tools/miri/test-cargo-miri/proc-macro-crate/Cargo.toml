@@ -1,0 +1,13 @@
+[package]
+# regression test for issue 1760
+name = "proc_macro_crate"
+version = "0.1.0"
+authors = ["Miri Team"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+# A common dependency of proc macros, let's make sure that works.
+proc-macro2 = "1.0"

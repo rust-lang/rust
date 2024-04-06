@@ -899,7 +899,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
             struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot be empty").emit();
             return;
         }
-        let e = fields[FieldIdx::from_u32(0)].ty(tcx, args);
+        let e = fields[FieldIdx::ZERO].ty(tcx, args);
         if !fields.iter().all(|f| f.ty(tcx, args) == e) {
             struct_span_code_err!(tcx.dcx(), sp, E0076, "SIMD vector should be homogeneous")
                 .with_span_label(sp, "SIMD elements must have the same type")
@@ -964,7 +964,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
             for r in attr::parse_repr_attr(tcx.sess, attr) {
                 if let attr::ReprPacked(pack) = r
                     && let Some(repr_pack) = repr.pack
-                    && pack as u64 != repr_pack.bytes()
+                    && pack != repr_pack
                 {
                     struct_span_code_err!(
                         tcx.dcx(),

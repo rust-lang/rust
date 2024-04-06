@@ -3,12 +3,10 @@
 fn main() -> () {
     let mut _0: ();
     let _1: *mut u8;
+    let _2: &u8;
     let mut _3: *mut u8;
     scope 1 {
-        let _2: &u8;
-        scope 2 {
-            debug a => _2;
-        }
+        debug a => _2;
     }
 
     bb0: {

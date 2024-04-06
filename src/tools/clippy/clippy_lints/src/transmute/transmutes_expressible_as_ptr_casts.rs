@@ -53,7 +53,7 @@ pub(super) fn check<'tcx>(
         cx,
         TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
         e.span,
-        &format!("transmute from `{from_ty}` to `{to_ty}` which could be expressed as a pointer cast instead"),
+        format!("transmute from `{from_ty}` to `{to_ty}` which could be expressed as a pointer cast instead"),
         "try",
         sugg,
         app,

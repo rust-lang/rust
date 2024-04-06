@@ -643,13 +643,13 @@ impl Step for StdLink {
             t!(fs::create_dir_all(&sysroot_bin_dir));
             builder.cp_link_r(&stage0_bin_dir, &sysroot_bin_dir);
 
-            // Copy all *.so files from stage0/lib to stage0-sysroot/lib
+            // Copy all files from stage0/lib to stage0-sysroot/lib
             let stage0_lib_dir = builder.out.join(host).join("stage0/lib");
             if let Ok(files) = fs::read_dir(stage0_lib_dir) {
                 for file in files {
                     let file = t!(file);
                     let path = file.path();
-                    if path.is_file() && is_dylib(&file.file_name().into_string().unwrap()) {
+                    if path.is_file() {
                         builder
                             .copy_link(&path, &sysroot.join("lib").join(path.file_name().unwrap()));
                     }
@@ -825,6 +825,7 @@ fn cp_rustc_component_to_ci_sysroot(
 #[derive(Debug, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     pub target: TargetSelection,
+    /// The **previous** compiler used to compile this compiler.
     pub compiler: Compiler,
     /// Whether to build a subset of crates, rather than the whole compiler.
     ///
@@ -1130,12 +1131,6 @@ pub fn rustc_cargo_env(
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
 
-    if builder.config.rustc_parallel {
-        // keep in sync with `bootstrap/lib.rs:Build::rustc_features`
-        // `cfg` option for rustc, `features` option for cargo, for conditional compilation
-        cargo.rustflag("--cfg=parallel_compiler");
-        cargo.rustdocflag("--cfg=parallel_compiler");
-    }
     if builder.config.rust_verify_llvm_ir {
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
     }
@@ -1518,12 +1513,9 @@ impl Step for Sysroot {
         run.never()
     }
 
-    /// Returns the sysroot for the `compiler` specified that *this build system
-    /// generates*.
-    ///
-    /// That is, the sysroot for the stage0 compiler is not what the compiler
-    /// thinks it is by default, but it's the same as the default for stages
-    /// 1-3.
+    /// Returns the sysroot that `compiler` is supposed to use.
+    /// For the stage0 compiler, this is stage0-sysroot (because of the initial std build).
+    /// For all other stages, it's the same stage directory that the compiler lives in.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let compiler = self.compiler;
         let host_dir = builder.out.join(compiler.host.triple);

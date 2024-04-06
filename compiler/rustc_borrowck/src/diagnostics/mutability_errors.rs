@@ -4,9 +4,8 @@
 use core::ops::ControlFlow;
 use hir::{ExprKind, Param};
 use rustc_errors::{Applicability, Diag};
-use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::Node;
+use rustc_hir::{self as hir, BindingAnnotation, ByRef, Node};
 use rustc_infer::traits;
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, InstanceDef, ToPredicate, Ty, TyCtxt};
@@ -304,7 +303,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 {
                     match *decl.local_info() {
                         LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
-                            binding_mode: ty::BindingMode::BindByValue(Mutability::Not),
+                            binding_mode: BindingAnnotation(ByRef::No, Mutability::Not),
                             opt_ty_info: Some(sp),
                             opt_match_place: _,
                             pat_span: _,
@@ -342,7 +341,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 } else if decl.mutability.is_not() {
                     if matches!(
                         decl.local_info(),
-                        LocalInfo::User(BindingForm::ImplicitSelf(hir::ImplicitSelfKind::MutRef))
+                        LocalInfo::User(BindingForm::ImplicitSelf(hir::ImplicitSelfKind::RefMut))
                     ) {
                         err.note(
                             "as `Self` may be unsized, this call attempts to take `&mut &mut self`",
@@ -407,7 +406,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             if let Some(fn_decl) = node.fn_decl() {
                                 if !matches!(
                                     fn_decl.implicit_self,
-                                    hir::ImplicitSelfKind::ImmRef | hir::ImplicitSelfKind::MutRef
+                                    hir::ImplicitSelfKind::RefImm | hir::ImplicitSelfKind::RefMut
                                 ) {
                                     err.span_suggestion(
                                         upvar_ident.span,
@@ -541,19 +540,23 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
     }
 
+    /// Suggest `map[k] = v` => `map.insert(k, v)` and the like.
     fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diag<'tcx>, span: Span) {
         let Some(adt) = ty.ty_adt_def() else { return };
         let did = adt.did();
         if self.infcx.tcx.is_diagnostic_item(sym::HashMap, did)
             || self.infcx.tcx.is_diagnostic_item(sym::BTreeMap, did)
         {
-            struct V<'a, 'tcx> {
+            /// Walks through the HIR, looking for the corresponding span for this error.
+            /// When it finds it, see if it corresponds to assignment operator whose LHS
+            /// is an index expr.
+            struct SuggestIndexOperatorAlternativeVisitor<'a, 'tcx> {
                 assign_span: Span,
                 err: &'a mut Diag<'tcx>,
                 ty: Ty<'tcx>,
                 suggested: bool,
             }
-            impl<'a, 'tcx> Visitor<'tcx> for V<'a, 'tcx> {
+            impl<'a, 'tcx> Visitor<'tcx> for SuggestIndexOperatorAlternativeVisitor<'a, 'tcx> {
                 fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
                     hir::intravisit::walk_stmt(self, stmt);
                     let expr = match stmt.kind {
@@ -646,7 +649,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let Some(body_id) = hir_map.maybe_body_owned_by(local_def_id) else { return };
             let body = self.infcx.tcx.hir().body(body_id);
 
-            let mut v = V { assign_span: span, err, ty, suggested: false };
+            let mut v = SuggestIndexOperatorAlternativeVisitor {
+                assign_span: span,
+                err,
+                ty,
+                suggested: false,
+            };
             v.visit_body(body);
             if !v.suggested {
                 err.help(format!(
@@ -717,7 +725,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         debug!("local_decl: {:?}", local_decl);
         let pat_span = match *local_decl.local_info() {
             LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
-                binding_mode: ty::BindingMode::BindByValue(Mutability::Not),
+                binding_mode: BindingAnnotation(ByRef::No, Mutability::Not),
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span,
@@ -1070,7 +1078,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-                binding_mode: ty::BindingMode::BindByValue(_),
+                binding_mode: BindingAnnotation(ByRef::No, _),
                 opt_ty_info,
                 ..
             })) => {
@@ -1138,7 +1146,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-                binding_mode: ty::BindingMode::BindByReference(_),
+                binding_mode: BindingAnnotation(ByRef::Yes(_), _),
                 ..
             })) => {
                 let pattern_span: Span = local_decl.source_info.span;
@@ -1329,7 +1337,7 @@ pub fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<
     match *local_decl.local_info() {
         // Check if mutably borrowing a mutable reference.
         LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-            binding_mode: ty::BindingMode::BindByValue(Mutability::Not),
+            binding_mode: BindingAnnotation(ByRef::No, Mutability::Not),
             ..
         })) => matches!(local_decl.ty.kind(), ty::Ref(_, _, hir::Mutability::Mut)),
         LocalInfo::User(mir::BindingForm::ImplicitSelf(kind)) => {
@@ -1338,7 +1346,7 @@ pub fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<
             //
             // Deliberately fall into this case for all implicit self types,
             // so that we don't fall into the next case with them.
-            kind == hir::ImplicitSelfKind::MutRef
+            kind == hir::ImplicitSelfKind::RefMut
         }
         _ if Some(kw::SelfLower) == local_name => {
             // Otherwise, check if the name is the `self` keyword - in which case

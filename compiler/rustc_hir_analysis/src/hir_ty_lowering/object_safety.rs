@@ -1,5 +1,4 @@
 use crate::bounds::Bounds;
-use crate::errors::TraitObjectDeclaredWithNoTraits;
 use crate::hir_ty_lowering::{GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{codes::*, struct_span_code_err};
@@ -7,9 +6,10 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{DynKind, ToPredicate};
-use rustc_span::Span;
+use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_object_safety_violations};
 
@@ -86,47 +86,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
-            let first_trait = &regular_traits[0];
-            let additional_trait = &regular_traits[1];
-            let mut err = struct_span_code_err!(
-                tcx.dcx(),
-                additional_trait.bottom().1,
-                E0225,
-                "only auto traits can be used as additional traits in a trait object"
-            );
-            additional_trait.label_with_exp_info(
-                &mut err,
-                "additional non-auto trait",
-                "additional use",
-            );
-            first_trait.label_with_exp_info(&mut err, "first non-auto trait", "first use");
-            err.help(format!(
-                "consider creating a new trait with all of these as supertraits and using that \
-             trait here instead: `trait NewTrait: {} {{}}`",
-                regular_traits
-                    .iter()
-                    // FIXME: This should `print_sugared`, but also needs to integrate projection bounds...
-                    .map(|t| t.trait_ref().print_only_trait_path().to_string())
-                    .collect::<Vec<_>>()
-                    .join(" + "),
-            ));
-            err.note(
-                "auto-traits like `Send` and `Sync` are traits that have special properties; \
-             for more information on them, visit \
-             <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>",
-            );
-            self.set_tainted_by_errors(err.emit());
-        }
-
-        if regular_traits.is_empty() && auto_traits.is_empty() {
-            let trait_alias_span = trait_bounds
-                .iter()
-                .map(|&(trait_ref, _)| trait_ref.def_id())
-                .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
-                .map(|trait_ref| tcx.def_span(trait_ref));
-            let reported =
-                tcx.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
-            self.set_tainted_by_errors(reported);
+            let _ = self.report_trait_object_addition_traits_error(&regular_traits);
+        } else if regular_traits.is_empty() && auto_traits.is_empty() {
+            let reported = self.report_trait_object_with_no_traits_error(span, &trait_bounds);
             return Ty::new_error(tcx, reported);
         }
 
@@ -267,12 +229,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         if arg == dummy_self.into() {
                             let param = &generics.params[index];
                             missing_type_params.push(param.name);
-                            return Ty::new_misc_error(tcx).into();
+                            Ty::new_misc_error(tcx).into()
                         } else if arg.walk().any(|arg| arg == dummy_self.into()) {
                             references_self = true;
-                            return Ty::new_misc_error(tcx).into();
+                            let guar = tcx.dcx().span_delayed_bug(
+                                span,
+                                "trait object trait bounds reference `Self`",
+                            );
+                            replace_dummy_self_with_error(tcx, arg, guar)
+                        } else {
+                            arg
                         }
-                        arg
                     })
                     .collect();
                 let args = tcx.mk_args(&args);
@@ -327,18 +294,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     let guar = tcx
                         .dcx()
                         .span_delayed_bug(span, "trait object projection bounds reference `Self`");
-                    let args: Vec<_> = b
-                        .projection_ty
-                        .args
-                        .iter()
-                        .map(|arg| {
-                            if arg.walk().any(|arg| arg == dummy_self.into()) {
-                                return Ty::new_error(tcx, guar).into();
-                            }
-                            arg
-                        })
-                        .collect();
-                    b.projection_ty.args = tcx.mk_args(&args);
+                    b.projection_ty = replace_dummy_self_with_error(tcx, b.projection_ty, guar);
                 }
 
                 ty::ExistentialProjection::erase_self_ty(tcx, b)
@@ -395,4 +351,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         Ty::new_dynamic(tcx, existential_predicates, region_bound, representation)
     }
+}
+
+fn replace_dummy_self_with_error<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+    tcx: TyCtxt<'tcx>,
+    t: T,
+    guar: ErrorGuaranteed,
+) -> T {
+    t.fold_with(&mut BottomUpFolder {
+        tcx,
+        ty_op: |ty| {
+            if ty == tcx.types.trait_object_dummy_self { Ty::new_error(tcx, guar) } else { ty }
+        },
+        lt_op: |lt| lt,
+        ct_op: |ct| ct,
+    })
 }

@@ -312,11 +312,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     fn forced_ambiguity(&mut self, cause: MaybeCause) -> Vec<Candidate<'tcx>> {
         let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
         let certainty = Certainty::Maybe(cause);
-        let result = self.evaluate_added_goals_and_make_canonical_response(certainty).unwrap();
+        // This may fail if `try_evaluate_added_goals` overflows because it
+        // fails to reach a fixpoint but ends up getting an error after
+        // running for some additional step.
+        //
+        // FIXME: Add a test for this. It seems to be necessary for typenum but
+        // is incredibly hard to minimize as it may rely on being inside of a
+        // trait solver cycle.
+        let result = self.evaluate_added_goals_and_make_canonical_response(certainty);
         let mut dummy_probe = self.inspect.new_probe();
-        dummy_probe.probe_kind(ProbeKind::TraitCandidate { source, result: Ok(result) });
+        dummy_probe.probe_kind(ProbeKind::TraitCandidate { source, result });
         self.inspect.finish_probe(dummy_probe);
-        vec![Candidate { source, result }]
+        if let Ok(result) = result { vec![Candidate { source, result }] } else { vec![] }
     }
 
     #[instrument(level = "debug", skip_all)]
