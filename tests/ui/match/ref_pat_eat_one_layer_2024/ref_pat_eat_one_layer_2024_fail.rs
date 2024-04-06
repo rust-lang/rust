@@ -17,4 +17,12 @@ pub fn main() {
     if let Some(&Some(&x)) = Some(&Some(&mut 0)) {
         //~^ ERROR: mismatched types
     }
+
+    let &mut x = &&0;
+    //~^ ERROR: mismatched types
+    let _: &u32 = x;
+
+    let &mut x = &&&&&&&&&&&&&&&&&&&&&&&&&&&&0;
+    //~^ ERROR: mismatched types
+    let _: &u32 = x;
 }

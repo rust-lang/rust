@@ -299,18 +299,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if mutbls_match {
                         (expected, INITIAL_BM, true)
                     } else {
-                        let mut new_bm = def_bm;
-                        if new_bm.0 == ByRef::Yes(Mutability::Mut) && mutbl == Mutability::Not {
-                            new_bm.0 = ByRef::Yes(Mutability::Not);
-                        }
-                        (expected, new_bm, false)
+                        let (new_ty, new_bm) = if mutbl == Mutability::Mut {
+                            self.peel_off_references(pat, expected, def_bm, Mutability::Not)
+                        } else {
+                            let new_byref = if def_bm.0 == ByRef::Yes(Mutability::Mut) {
+                                ByRef::Yes(Mutability::Not)
+                            } else {
+                                def_bm.0
+                            };
+                            (expected, BindingAnnotation(new_byref, def_bm.1))
+                        };
+                        (new_ty, new_bm, false)
                     }
                 } else {
                     (expected, INITIAL_BM, mutbls_match)
                 }
             }
             AdjustMode::Peel => {
-                let peeled = self.peel_off_references(pat, expected, def_bm);
+                let peeled = self.peel_off_references(pat, expected, def_bm, Mutability::Mut);
                 (peeled.0, peeled.1, false)
             }
         }
@@ -392,6 +398,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
         mut def_bm: BindingAnnotation,
+        max_mutability: Mutability,
     ) -> (Ty<'tcx>, BindingAnnotation) {
         let mut expected = self.try_structurally_resolve_type(pat.span, expected);
         // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
@@ -403,7 +410,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // See the examples in `ui/match-defbm*.rs`.
         let mut pat_adjustments = vec![];
-        while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
+        while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind()
+            && inner_mutability <= max_mutability
+        {
             debug!("inspecting {:?}", expected);
 
             debug!("current discriminant is Ref, inserting implicit deref");
