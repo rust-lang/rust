@@ -6,7 +6,7 @@
 //@ [aarch64] needs-llvm-components: aarch64
 //@ [x86_64] compile-flags: --target x86_64-unknown-none
 //@ [x86_64] needs-llvm-components: x86
-//@ compile-flags: -Cno-prepopulate-passes -Zsanitizer=kcfi -Copt-level=0
+//@ compile-flags: -Copt-level=0 -Ctarget-feature=-crt-static -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=kcfi
 
 #![crate_type = "lib"]
 #![feature(no_core, sanitize, lang_items)]

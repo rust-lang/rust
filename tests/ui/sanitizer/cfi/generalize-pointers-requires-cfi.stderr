@@ -1,4 +1,4 @@
-error: `-Zsanitizer-cfi-generalize-pointers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`
+error: `-Zsanitizer-cfi-generalize-pointers` requires `-Csanitize=cfi` or `-Csanitize=kcfi`
 
 error: aborting due to 1 previous error
 
