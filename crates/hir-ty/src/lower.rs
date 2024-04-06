@@ -62,8 +62,8 @@ use crate::{
     mapping::{from_chalk_trait_id, lt_to_placeholder_idx, ToChalk},
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::{
-        all_super_trait_refs, associated_type_by_name_including_super_traits, generics, Generics,
-        InTypeConstIdMetadata,
+        self, all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
+        Generics, InTypeConstIdMetadata,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, Const, ConstScalar, DebruijnIndex, DynTy,
     FnAbi, FnPointer, FnSig, FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime,
@@ -245,13 +245,8 @@ impl<'a> TyLoweringContext<'a> {
         )
     }
 
-    fn generics(&self) -> Generics {
-        generics(
-            self.db.upcast(),
-            self.resolver
-                .generic_def()
-                .expect("there should be generics if there's a generic param"),
-        )
+    fn generics(&self) -> Option<Generics> {
+        Some(generics(self.db.upcast(), self.resolver.generic_def()?))
     }
 
     pub fn lower_ty_ext(&self, type_ref: &TypeRef) -> (Ty, Option<TypeNs>) {
@@ -321,7 +316,7 @@ impl<'a> TyLoweringContext<'a> {
                         // place even if we encounter more opaque types while
                         // lowering the bounds
                         let idx = opaque_type_data.borrow_mut().alloc(ImplTrait {
-                            bounds: crate::make_single_type_binders(Vec::new()),
+                            bounds: crate::make_single_type_binders(Vec::default()),
                         });
                         // We don't want to lower the bounds inside the binders
                         // we're currently in, because they don't end up inside
@@ -352,8 +347,7 @@ impl<'a> TyLoweringContext<'a> {
                         let idx = counter.get();
                         // FIXME we're probably doing something wrong here
                         counter.set(idx + count_impl_traits(type_ref) as u16);
-                        if let Some(def) = self.resolver.generic_def() {
-                            let generics = generics(self.db.upcast(), def);
+                        if let Some(generics) = self.generics() {
                             let param = generics
                                 .iter()
                                 .filter(|(_, data)| {
@@ -388,8 +382,7 @@ impl<'a> TyLoweringContext<'a> {
                             const_params,
                             _impl_trait_params,
                             _lifetime_params,
-                        ) = if let Some(def) = self.resolver.generic_def() {
-                            let generics = generics(self.db.upcast(), def);
+                        ) = if let Some(generics) = self.generics() {
                             generics.provenance_split()
                         } else {
                             (0, 0, 0, 0, 0, 0)
@@ -577,44 +570,40 @@ impl<'a> TyLoweringContext<'a> {
                 // FIXME(trait_alias): Implement trait alias.
                 return (TyKind::Error.intern(Interner), None);
             }
-            TypeNs::GenericParam(param_id) => {
-                let generics = generics(
-                    self.db.upcast(),
-                    self.resolver.generic_def().expect("generics in scope"),
-                );
-                match self.type_param_mode {
-                    ParamLoweringMode::Placeholder => {
-                        TyKind::Placeholder(to_placeholder_idx(self.db, param_id.into()))
-                    }
-                    ParamLoweringMode::Variable => {
-                        let idx = match generics.param_idx(param_id.into()) {
-                            None => {
-                                never!("no matching generics");
-                                return (TyKind::Error.intern(Interner), None);
-                            }
-                            Some(idx) => idx,
-                        };
-
-                        TyKind::BoundVar(BoundVar::new(self.in_binders, idx))
-                    }
+            TypeNs::GenericParam(param_id) => match self.type_param_mode {
+                ParamLoweringMode::Placeholder => {
+                    TyKind::Placeholder(to_placeholder_idx(self.db, param_id.into()))
                 }
-                .intern(Interner)
+                ParamLoweringMode::Variable => {
+                    let idx = match self
+                        .generics()
+                        .expect("generics in scope")
+                        .type_or_const_param_idx(param_id.into())
+                    {
+                        None => {
+                            never!("no matching generics");
+                            return (TyKind::Error.intern(Interner), None);
+                        }
+                        Some(idx) => idx,
+                    };
+
+                    TyKind::BoundVar(BoundVar::new(self.in_binders, idx))
+                }
             }
+            .intern(Interner),
             TypeNs::SelfType(impl_id) => {
-                let def =
-                    self.resolver.generic_def().expect("impl should have generic param scope");
-                let generics = generics(self.db.upcast(), def);
+                let generics = self.generics().expect("impl should have generic param scope");
 
                 match self.type_param_mode {
                     ParamLoweringMode::Placeholder => {
                         // `def` can be either impl itself or item within, and we need impl itself
                         // now.
-                        let generics = generics.parent_generics().unwrap_or(&generics);
+                        let generics = generics.parent_or_self();
                         let subst = generics.placeholder_subst(self.db);
                         self.db.impl_self_ty(impl_id).substitute(Interner, &subst)
                     }
                     ParamLoweringMode::Variable => {
-                        let starting_from = match def {
+                        let starting_from = match generics.def() {
                             GenericDefId::ImplId(_) => 0,
                             // `def` is an item within impl. We need to substitute `BoundVar`s but
                             // remember that they are for parent (i.e. impl) generic params so they
@@ -682,12 +671,12 @@ impl<'a> TyLoweringContext<'a> {
     }
 
     fn select_associated_type(&self, res: Option<TypeNs>, segment: PathSegment<'_>) -> Ty {
-        let Some((def, res)) = self.resolver.generic_def().zip(res) else {
+        let Some((generics, res)) = self.generics().zip(res) else {
             return TyKind::Error.intern(Interner);
         };
         let ty = named_associated_type_shorthand_candidates(
             self.db,
-            def,
+            generics.def(),
             res,
             Some(segment.name.clone()),
             move |name, t, associated_ty| {
@@ -699,7 +688,6 @@ impl<'a> TyLoweringContext<'a> {
                 let parent_subst = match self.type_param_mode {
                     ParamLoweringMode::Placeholder => {
                         // if we're lowering to placeholders, we have to put them in now.
-                        let generics = generics(self.db.upcast(), def);
                         let s = generics.placeholder_subst(self.db);
                         s.apply(parent_subst, Interner)
                     }
@@ -721,7 +709,7 @@ impl<'a> TyLoweringContext<'a> {
                     None,
                 );
 
-                let len_self = generics(self.db.upcast(), associated_ty.into()).len_self();
+                let len_self = utils::generics(self.db.upcast(), associated_ty.into()).len_self();
 
                 let substs = Substitution::from_iter(
                     Interner,
@@ -1019,46 +1007,43 @@ impl<'a> TyLoweringContext<'a> {
         self.substs_from_path_segment(segment, Some(resolved.into()), false, explicit_self_ty)
     }
 
-    pub(crate) fn lower_where_predicate(
-        &self,
-        where_predicate: &WherePredicate,
+    pub(crate) fn lower_where_predicate<'b>(
+        &'b self,
+        where_predicate: &'b WherePredicate,
         ignore_bindings: bool,
-    ) -> impl Iterator<Item = QuantifiedWhereClause> {
+    ) -> impl Iterator<Item = QuantifiedWhereClause> + 'b {
         match where_predicate {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
                 let self_ty = match target {
                     WherePredicateTypeTarget::TypeRef(type_ref) => self.lower_ty(type_ref),
-                    WherePredicateTypeTarget::TypeOrConstParam(param_id) => {
-                        let generic_def = self.resolver.generic_def().expect("generics in scope");
-                        let generics = generics(self.db.upcast(), generic_def);
-                        let param_id = hir_def::TypeOrConstParamId {
-                            parent: generic_def,
-                            local_id: *param_id,
-                        };
-                        let placeholder = to_placeholder_idx(self.db, param_id);
+                    &WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
+                        let def = self.resolver.generic_def().expect("generics in scope");
+                        let param_id = hir_def::TypeOrConstParamId { parent: def, local_id };
                         match self.type_param_mode {
-                            ParamLoweringMode::Placeholder => TyKind::Placeholder(placeholder),
+                            ParamLoweringMode::Placeholder => {
+                                TyKind::Placeholder(to_placeholder_idx(self.db, param_id))
+                            }
                             ParamLoweringMode::Variable => {
-                                let idx = generics.param_idx(param_id).expect("matching generics");
+                                let idx = generics(self.db.upcast(), def)
+                                    .type_or_const_param_idx(param_id)
+                                    .expect("matching generics");
                                 TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, idx))
                             }
                         }
                         .intern(Interner)
                     }
                 };
-                self.lower_type_bound(bound, self_ty, ignore_bindings)
-                    .collect::<Vec<_>>()
-                    .into_iter()
+                Either::Left(self.lower_type_bound(bound, self_ty, ignore_bindings))
             }
-            WherePredicate::Lifetime { bound, target } => {
-                vec![crate::wrap_empty_binders(WhereClause::LifetimeOutlives(LifetimeOutlives {
+            WherePredicate::Lifetime { bound, target } => Either::Right(iter::once(
+                crate::wrap_empty_binders(WhereClause::LifetimeOutlives(LifetimeOutlives {
                     a: self.lower_lifetime(bound),
                     b: self.lower_lifetime(target),
-                }))]
-                .into_iter()
-            }
+                })),
+            )),
         }
+        .into_iter()
     }
 
     pub(crate) fn lower_type_bound(
@@ -1218,8 +1203,8 @@ impl<'a> TyLoweringContext<'a> {
                                     });
                                 if let Some(target_param_idx) = target_param_idx {
                                     let mut counter = 0;
-                                    for (idx, data) in self.generics().params.type_or_consts.iter()
-                                    {
+                                    let generics = self.generics().expect("generics in scope");
+                                    for (idx, data) in generics.params.type_or_consts.iter() {
                                         // Count the number of `impl Trait` things that appear before
                                         // the target of our `bound`.
                                         // Our counter within `impl_trait_mode` should be that number
@@ -1393,8 +1378,8 @@ impl<'a> TyLoweringContext<'a> {
                     crate::wrap_empty_binders(clause)
                 });
                 predicates.extend(sized_clause);
-                predicates.shrink_to_fit();
             }
+            predicates.shrink_to_fit();
             predicates
         });
         ImplTrait { bounds: crate::make_single_type_binders(predicates) }
@@ -1409,10 +1394,7 @@ impl<'a> TyLoweringContext<'a> {
                         LifetimeData::Placeholder(lt_to_placeholder_idx(self.db, id))
                     }
                     ParamLoweringMode::Variable => {
-                        let generics = generics(
-                            self.db.upcast(),
-                            self.resolver.generic_def().expect("generics in scope"),
-                        );
+                        let generics = self.generics().expect("generics in scope");
                         let idx = match generics.lifetime_idx(id) {
                             None => return error_lifetime(),
                             Some(idx) => idx,
@@ -1523,7 +1505,7 @@ fn named_associated_type_shorthand_candidates<R>(
             // Handle `Self::Type` referring to own associated type in trait definitions
             if let GenericDefId::TraitId(trait_id) = param_id.parent() {
                 let trait_generics = generics(db.upcast(), trait_id.into());
-                if trait_generics.params.type_or_consts[param_id.local_id()].is_trait_self() {
+                if trait_generics.params[param_id.local_id()].is_trait_self() {
                     let def_generics = generics(db.upcast(), def);
                     let starting_idx = match def {
                         GenericDefId::TraitId(_) => 0,
@@ -2258,7 +2240,7 @@ pub(crate) fn const_or_path_to_chalk(
     expected_ty: Ty,
     value: &ConstRef,
     mode: ParamLoweringMode,
-    args: impl FnOnce() -> Generics,
+    args: impl FnOnce() -> Option<Generics>,
     debruijn: DebruijnIndex,
 ) -> Const {
     match value {
@@ -2277,7 +2259,7 @@ pub(crate) fn const_or_path_to_chalk(
             .unwrap_or_else(|| unknown_const(expected_ty))
         }
         &ConstRef::Complex(it) => {
-            let crate_data = &db.crate_graph()[owner.module(db.upcast()).krate()];
+            let crate_data = &db.crate_graph()[resolver.krate()];
             if crate_data.env.get("__ra_is_test_fixture").is_none() && crate_data.origin.is_local()
             {
                 // FIXME: current `InTypeConstId` is very unstable, so we only use it in non local crate

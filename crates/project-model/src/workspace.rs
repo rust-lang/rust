@@ -913,12 +913,14 @@ fn project_json_to_crate_graph(
                     *edition,
                     display_name.clone(),
                     version.clone(),
-                    target_cfgs
-                        .iter()
-                        .chain(cfg.iter())
-                        .chain(iter::once(&r_a_cfg_flag))
-                        .cloned()
-                        .collect(),
+                    Arc::new(
+                        target_cfgs
+                            .iter()
+                            .chain(cfg.iter())
+                            .chain(iter::once(&r_a_cfg_flag))
+                            .cloned()
+                            .collect(),
+                    ),
                     None,
                     env,
                     *is_proc_macro,
@@ -1179,6 +1181,7 @@ fn detached_files_to_crate_graph(
 
     let mut cfg_options = create_cfg_options(rustc_cfg);
     cfg_options.insert_atom("rust_analyzer".into());
+    let cfg_options = Arc::new(cfg_options);
 
     for detached_file in detached_files {
         let file_id = match load(detached_file) {
@@ -1380,8 +1383,8 @@ fn add_target_crate_root(
         edition,
         Some(display_name),
         Some(pkg.version.to_string()),
-        cfg_options,
-        potential_cfg_options,
+        Arc::new(cfg_options),
+        potential_cfg_options.map(Arc::new),
         env,
         matches!(kind, TargetKind::Lib { is_proc_macro: true }),
         origin,
@@ -1437,7 +1440,7 @@ fn sysroot_to_crate_graph(
             let diff = CfgDiff::new(vec![], vec![CfgAtom::Flag("test".into())]).unwrap();
             for (cid, c) in cg.iter_mut() {
                 // uninject `test` flag so `core` keeps working.
-                c.cfg_options.apply_diff(diff.clone());
+                Arc::make_mut(&mut c.cfg_options).apply_diff(diff.clone());
                 // patch the origin
                 if c.origin.is_local() {
                     let lang_crate = LangCrateOrigin::from(
@@ -1486,7 +1489,7 @@ fn sysroot_to_crate_graph(
             (SysrootPublicDeps { deps: pub_deps }, libproc_macro)
         }
         SysrootMode::Stitched(stitched) => {
-            let cfg_options = create_cfg_options(rustc_cfg);
+            let cfg_options = Arc::new(create_cfg_options(rustc_cfg));
             let sysroot_crates: FxHashMap<SysrootCrate, CrateId> = stitched
                 .crates()
                 .filter_map(|krate| {

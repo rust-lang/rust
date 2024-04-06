@@ -737,7 +737,7 @@ impl<'a> AssocItemCollector<'a> {
                     &AstIdWithPath::new(file_id, ast_id, Clone::clone(path)),
                     ctxt,
                     expand_to,
-                    self.expander.module.krate(),
+                    self.expander.krate(),
                     resolver,
                 ) {
                     Ok(Some(call_id)) => {

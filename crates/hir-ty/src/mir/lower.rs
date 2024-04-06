@@ -495,9 +495,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                     ty,
                                     value: chalk_ir::ConstValue::BoundVar(BoundVar::new(
                                         DebruijnIndex::INNERMOST,
-                                        gen.param_idx(p.into()).ok_or(MirLowerError::TypeError(
-                                            "fail to lower const generic param",
-                                        ))?,
+                                        gen.type_or_const_param_idx(p.into()).ok_or(
+                                            MirLowerError::TypeError(
+                                                "fail to lower const generic param",
+                                            ),
+                                        )?,
                                     )),
                                 }
                                 .intern(Interner),

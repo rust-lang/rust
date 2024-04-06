@@ -60,7 +60,7 @@ use crate::{
     lower::ImplTraitLoweringMode,
     to_assoc_type_id,
     traits::FnTrait,
-    utils::{InTypeConstIdMetadata, UnevaluatedConstEvaluatorFolder},
+    utils::{Generics, InTypeConstIdMetadata, UnevaluatedConstEvaluatorFolder},
     AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, Goal, ImplTraitId,
     ImplTraitIdx, InEnvironment, Interner, Lifetime, OpaqueTyId, ProjectionTy, Substitution,
     TraitEnvironment, Ty, TyBuilder, TyExt,
@@ -628,6 +628,10 @@ impl<'a> InferenceContext<'a> {
             deferred_closures: FxHashMap::default(),
             closure_dependencies: FxHashMap::default(),
         }
+    }
+
+    pub(crate) fn generics(&self) -> Option<Generics> {
+        Some(crate::utils::generics(self.db.upcast(), self.resolver.generic_def()?))
     }
 
     // FIXME: This function should be private in module. It is currently only used in the consteval, since we need

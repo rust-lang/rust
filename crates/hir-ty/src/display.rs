@@ -453,7 +453,7 @@ impl HirDisplay for Const {
             ConstValue::Placeholder(idx) => {
                 let id = from_placeholder_idx(f.db, *idx);
                 let generics = generics(f.db.upcast(), id.parent);
-                let param_data = &generics.params.type_or_consts[id.local_id];
+                let param_data = &generics.params[id.local_id];
                 write!(f, "{}", param_data.name().unwrap().display(f.db.upcast()))?;
                 Ok(())
             }
@@ -1176,7 +1176,7 @@ impl HirDisplay for Ty {
             TyKind::Placeholder(idx) => {
                 let id = from_placeholder_idx(db, *idx);
                 let generics = generics(db.upcast(), id.parent);
-                let param_data = &generics.params.type_or_consts[id.local_id];
+                let param_data = &generics.params[id.local_id];
                 match param_data {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                         TypeParamProvenance::TypeParamList | TypeParamProvenance::TraitSelf => {
@@ -1724,7 +1724,7 @@ impl HirDisplay for LifetimeData {
             LifetimeData::Placeholder(idx) => {
                 let id = lt_from_placeholder_idx(f.db, *idx);
                 let generics = generics(f.db.upcast(), id.parent);
-                let param_data = &generics.params.lifetimes[id.local_id];
+                let param_data = &generics.params[id.local_id];
                 write!(f, "{}", param_data.name.display(f.db.upcast()))?;
                 Ok(())
             }
