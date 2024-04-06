@@ -1,1 +1,1 @@
-fn foo(/* cooment */) {}
+fn foo(/* comment */) {}

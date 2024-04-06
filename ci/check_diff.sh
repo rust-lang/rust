@@ -87,7 +87,7 @@ function check_diff() {
     )
 
     if [ -z "$diff" ]; then
-        echo "no diff detected between rustfmt and the feture branch"
+        echo "no diff detected between rustfmt and the feature branch"
         return 0
     else
         echo "$diff"
