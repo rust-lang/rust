@@ -81,11 +81,25 @@ define-function: (
             "hover_color": |fn_color|,
         })
 
-        call-function: ("check-container-color", {
-            "path_color": |path_color|,
-            "hover_path_color": |hover_path_color|,
-            "hover_background": |hover_background|,
-        })
+        // Checking the `<a>` container.
+        move-cursor-to: ".search-input"
+        focus: ".search-input" // To ensure the `<a>` container isn't focused or hovered.
+        assert-css: (
+            "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
+            {"color": |path_color|, "background-color": "transparent"},
+            ALL,
+        )
+
+        // Checking color and background on hover.
+        move-cursor-to: "//*[@class='desc'][text()='Just a normal struct.']"
+        assert-css: (
+            "//*[@class='result-name']//*[text()='test_docs::']",
+            {"color": |hover_path_color|},
+        )
+        assert-css: (
+            "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
+            {"color": |hover_path_color|, "background-color": |hover_background|},
+        )
     }
 )
 
@@ -124,32 +138,6 @@ define-function: (
             ALL,
         )
     },
-)
-
-define-function: (
-    "check-container-color",
-    [path_color, hover_path_color, hover_background],
-    block {
-        // Checking the `<a>` container.
-        move-cursor-to: ".search-input"
-        focus: ".search-input" // To ensure the `<a>` container isn't focused or hovered.
-        assert-css: (
-            "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
-            {"color": |path_color|, "background-color": "transparent"},
-            ALL,
-        )
-
-        // Checking color and background on hover.
-        move-cursor-to: "//*[@class='desc'][text()='Just a normal struct.']"
-        assert-css: (
-            "//*[@class='result-name']//*[text()='test_docs::']",
-            {"color": |hover_path_color|},
-        )
-        assert-css: (
-            "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
-            {"color": |hover_path_color|, "background-color": |hover_background|},
-        )
-    }
 )
 
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=coo"
