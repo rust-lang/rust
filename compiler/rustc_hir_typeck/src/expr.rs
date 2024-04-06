@@ -544,13 +544,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if tcx.fn_sig(did).skip_binder().abi() == RustIntrinsic
                 && tcx.item_name(did) == sym::transmute
             {
-                let from = fn_sig.inputs().skip_binder()[0];
+                let Some(from) = fn_sig.inputs().skip_binder().get(0) else {
+                    let e = self.dcx().span_delayed_bug(
+                        tcx.def_span(did),
+                        "intrinsic fn `transmute` defined with no parameters",
+                    );
+                    self.set_tainted_by_errors(e);
+                    return Ty::new_error(tcx, e);
+                };
                 let to = fn_sig.output().skip_binder();
                 // We defer the transmute to the end of typeck, once all inference vars have
                 // been resolved or we errored. This is important as we can only check transmute
                 // on concrete types, but the output type may not be known yet (it would only
                 // be known if explicitly specified via turbofish).
-                self.deferred_transmute_checks.borrow_mut().push((from, to, expr.hir_id));
+                self.deferred_transmute_checks.borrow_mut().push((*from, to, expr.hir_id));
             }
             if !tcx.features().unsized_fn_params {
                 // We want to remove some Sized bounds from std functions,
