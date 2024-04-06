@@ -501,10 +501,11 @@ only running the main `coverage` suite.
 ## Building auxiliary crates
 
 It is common that some tests require additional auxiliary crates to be compiled.
-There are two [headers](headers.md) to assist with that:
+There are three [headers](headers.md) to assist with that:
 
 * `aux-build`
 * `aux-crate`
+* `aux-bin`
 
 `aux-build` will build a separate crate from the named source file.
 The source file should be in a directory called `auxiliary` beside the test file.
@@ -528,6 +529,10 @@ as renaming a dependency.
 For example, `// aux-crate:foo=bar.rs` will compile `auxiliary/bar.rs` and
 make it available under then name `foo` within the test.
 This is similar to how Cargo does dependency renaming.
+
+`aux-bin` is similar to `aux-build` but will build a binary instead of a
+library. The binary will be available in `auxiliary/bin` relative to the working
+directory of the test.
 
 ### Auxiliary proc-macro
 
