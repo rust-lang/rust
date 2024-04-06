@@ -2484,6 +2484,14 @@ pub enum CoroutineKind {
 }
 
 impl CoroutineKind {
+    pub fn span(self) -> Span {
+        match self {
+            CoroutineKind::Async { span, .. } => span,
+            CoroutineKind::Gen { span, .. } => span,
+            CoroutineKind::AsyncGen { span, .. } => span,
+        }
+    }
+
     pub fn is_async(self) -> bool {
         matches!(self, CoroutineKind::Async { .. })
     }

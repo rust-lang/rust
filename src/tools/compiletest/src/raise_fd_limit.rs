@@ -4,7 +4,7 @@
 /// on the number of cores available.
 ///
 /// This fixes issue #7772.
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "visionos"))]
 #[allow(non_camel_case_types)]
 pub unsafe fn raise_fd_limit() {
     use std::cmp;

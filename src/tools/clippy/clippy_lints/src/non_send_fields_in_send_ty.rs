@@ -119,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                     cx,
                     NON_SEND_FIELDS_IN_SEND_TY,
                     item.span,
-                    &format!(
+                    format!(
                         "some fields in `{}` are not safe to be sent to another thread",
                         snippet(cx, hir_impl.self_ty.span, "Unknown")
                     ),

@@ -495,8 +495,8 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
                 cx,
                 TRIM_SPLIT_WHITESPACE,
                 trim_span.with_hi(split_ws_span.lo()),
-                &format!("found call to `str::{trim_fn_name}` before `str::split_whitespace`"),
-                &format!("remove `{trim_fn_name}()`"),
+                format!("found call to `str::{trim_fn_name}` before `str::split_whitespace`"),
+                format!("remove `{trim_fn_name}()`"),
                 String::new(),
                 Applicability::MachineApplicable,
             );

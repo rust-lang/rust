@@ -137,7 +137,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 WRONG_SELF_CONVENTION,
                 first_arg_span,
-                &format!(
+                format!(
                     "{suggestion} usually take {}",
                     &self_kinds
                         .iter()

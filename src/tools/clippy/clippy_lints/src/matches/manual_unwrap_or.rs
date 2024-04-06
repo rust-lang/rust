@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, scrutinee: 
             cx,
             MANUAL_UNWRAP_OR,
             expr.span,
-            &format!("this pattern reimplements `{ty_name}::unwrap_or`"),
+            format!("this pattern reimplements `{ty_name}::unwrap_or`"),
             "replace with",
             format!("{suggestion}.unwrap_or({reindented_or_body})",),
             app,

@@ -34,6 +34,7 @@ impl LazyInit for AllocatedCondvar {
                 target_os = "ios",
                 target_os = "tvos",
                 target_os = "watchos",
+                target_os = "visionos",
                 target_os = "l4re",
                 target_os = "android",
                 target_os = "redox"
@@ -127,6 +128,7 @@ impl Condvar {
         target_os = "ios",
         target_os = "tvos",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "android",
         target_os = "espidf",
         target_os = "horizon"
@@ -162,6 +164,7 @@ impl Condvar {
         target_os = "ios",
         target_os = "tvos",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "android",
         target_os = "espidf",
         target_os = "horizon"

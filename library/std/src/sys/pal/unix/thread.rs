@@ -1,5 +1,5 @@
 use crate::cmp;
-use crate::ffi::{CStr, CString};
+use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
 use crate::num::NonZero;
@@ -150,7 +150,13 @@ impl Thread {
         }
     }
 
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "visionos",
+        target_os = "tvos"
+    ))]
     pub fn set_name(name: &CStr) {
         unsafe {
             let name = truncate_cstr::<{ libc::MAXTHREADNAMESIZE }>(name);
@@ -228,78 +234,6 @@ impl Thread {
         // Newlib, Emscripten, and VxWorks have no way to set a thread name.
     }
 
-    #[cfg(any(
-        target_os = "linux",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "solaris",
-        target_os = "illumos"
-    ))]
-    pub fn get_name() -> Option<CString> {
-        #[cfg(target_os = "linux")]
-        const TASK_COMM_LEN: usize = 16;
-        #[cfg(target_os = "freebsd")]
-        const TASK_COMM_LEN: usize = libc::MAXCOMLEN + 1;
-        #[cfg(any(target_os = "netbsd", target_os = "solaris", target_os = "illumos"))]
-        const TASK_COMM_LEN: usize = 32;
-        let mut name = vec![0u8; TASK_COMM_LEN];
-        let res = unsafe {
-            libc::pthread_getname_np(libc::pthread_self(), name.as_mut_ptr().cast(), name.len())
-        };
-        if res != 0 {
-            return None;
-        }
-        name.truncate(name.iter().position(|&c| c == 0)?);
-        CString::new(name).ok()
-    }
-
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
-    pub fn get_name() -> Option<CString> {
-        let mut name = vec![0u8; libc::MAXTHREADNAMESIZE];
-        let res = unsafe {
-            libc::pthread_getname_np(libc::pthread_self(), name.as_mut_ptr().cast(), name.len())
-        };
-        if res != 0 {
-            return None;
-        }
-        name.truncate(name.iter().position(|&c| c == 0)?);
-        CString::new(name).ok()
-    }
-
-    #[cfg(target_os = "haiku")]
-    pub fn get_name() -> Option<CString> {
-        unsafe {
-            let mut tinfo = mem::MaybeUninit::<libc::thread_info>::uninit();
-            // See BeOS teams group and threads api.
-            // https://www.haiku-os.org/legacy-docs/bebook/TheKernelKit_ThreadsAndTeams_Overview.html
-            let thread_self = libc::find_thread(ptr::null_mut());
-            let res = libc::get_thread_info(thread_self, tinfo.as_mut_ptr());
-            if res != libc::B_OK {
-                return None;
-            }
-            let info = tinfo.assume_init();
-            let name =
-                core::slice::from_raw_parts(info.name.as_ptr() as *const u8, info.name.len());
-            CStr::from_bytes_until_nul(name).map(CStr::to_owned).ok()
-        }
-    }
-
-    #[cfg(not(any(
-        target_os = "linux",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "haiku",
-        target_os = "solaris",
-        target_os = "illumos"
-    )))]
-    pub fn get_name() -> Option<CString> {
-        None
-    }
-
     #[cfg(not(target_os = "espidf"))]
     pub fn sleep(dur: Duration) {
         let mut secs = dur.as_secs();
@@ -371,6 +305,7 @@ impl Drop for Thread {
     target_os = "ios",
     target_os = "tvos",
     target_os = "watchos",
+    target_os = "visionos",
     target_os = "nto",
     target_os = "solaris",
     target_os = "illumos",

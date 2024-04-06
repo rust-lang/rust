@@ -90,8 +90,9 @@ unsafe impl Sync for i16 {}
 unsafe impl Sync for i32 {}
 unsafe impl Sync for isize {}
 unsafe impl Sync for char {}
+unsafe impl Sync for f32 {}
 unsafe impl<'a, T: ?Sized> Sync for &'a T {}
-unsafe impl Sync for [u8; 16] {}
+unsafe impl<T: Sync, const N: usize> Sync for [T; N] {}
 
 #[lang = "freeze"]
 unsafe auto trait Freeze {}
@@ -467,7 +468,6 @@ pub fn panic(_msg: &'static str) -> ! {
 
 macro_rules! panic_const {
     ($($lang:ident = $message:expr,)+) => {
-        #[cfg(not(bootstrap))]
         pub mod panic_const {
             use super::*;
 

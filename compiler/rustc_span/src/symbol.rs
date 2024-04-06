@@ -1456,6 +1456,7 @@ symbols! {
         receiver,
         recursion_limit,
         reexport_test_harness_main,
+        ref_pat_everywhere,
         ref_unwind_safe_trait,
         reference,
         reflect,

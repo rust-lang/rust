@@ -127,7 +127,7 @@ fn emit(cx: &LateContext<'_>, name: &str, span: Span, conf: &DisallowedPath) {
         cx,
         DISALLOWED_TYPES,
         span,
-        &format!("`{name}` is not allowed according to config"),
+        format!("`{name}` is not allowed according to config"),
         |diag| {
             if let Some(reason) = conf.reason() {
                 diag.note(reason);

@@ -231,14 +231,16 @@ impl<'a> Renderer<'a> {
         print!("\ntest result: ");
         self.builder.colored_stdout(|stdout| outcome.write_long(stdout)).unwrap();
         println!(
-            ". {} passed; {} failed; {} ignored; {} measured; {} filtered out; \
-             finished in {:.2?}\n",
+            ". {} passed; {} failed; {} ignored; {} measured; {} filtered out{time}\n",
             suite.passed,
             suite.failed,
             suite.ignored,
             suite.measured,
             suite.filtered_out,
-            Duration::from_secs_f64(suite.exec_time)
+            time = match suite.exec_time {
+                Some(t) => format!("; finished in {:.2?}", Duration::from_secs_f64(t)),
+                None => format!(""),
+            }
         );
     }
 
@@ -374,7 +376,9 @@ struct SuiteOutcome {
     ignored: usize,
     measured: usize,
     filtered_out: usize,
-    exec_time: f64,
+    /// The time it took to execute this test suite, or `None` if time measurement was not possible
+    /// (e.g. due to running inside Miri).
+    exec_time: Option<f64>,
 }
 
 #[derive(serde_derive::Deserialize)]

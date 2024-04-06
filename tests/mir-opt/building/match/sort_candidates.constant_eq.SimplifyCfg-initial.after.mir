@@ -40,7 +40,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb4: {
-        falseEdge -> [real: bb12, imaginary: bb9];
+        falseEdge -> [real: bb12, imaginary: bb7];
     }
 
     bb5: {
@@ -48,7 +48,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb6: {
-        falseEdge -> [real: bb16, imaginary: bb3];
+        falseEdge -> [real: bb16, imaginary: bb1];
     }
 
     bb7: {
@@ -60,7 +60,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb9: {
-        falseEdge -> [real: bb15, imaginary: bb6];
+        falseEdge -> [real: bb15, imaginary: bb5];
     }
 
     bb10: {
@@ -89,7 +89,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
 
     bb14: {
         StorageDead(_10);
-        falseEdge -> [real: bb5, imaginary: bb9];
+        falseEdge -> [real: bb5, imaginary: bb7];
     }
 
     bb15: {

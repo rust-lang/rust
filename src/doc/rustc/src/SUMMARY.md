@@ -21,6 +21,7 @@
     - [arm64ec-pc-windows-msvc](platform-support/arm64ec-pc-windows-msvc.md)
     - [\*-apple-tvos](platform-support/apple-tvos.md)
     - [\*-apple-watchos\*](platform-support/apple-watchos.md)
+    - [aarch64-apple-visionos\*](platform-support/apple-visionos.md)
     - [aarch64-nintendo-switch-freestanding](platform-support/aarch64-nintendo-switch-freestanding.md)
     - [armeb-unknown-linux-gnueabi](platform-support/armeb-unknown-linux-gnueabi.md)
     - [arm-none-eabi](platform-support/arm-none-eabi.md)

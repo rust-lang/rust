@@ -2315,8 +2315,14 @@ in src-script.js and main.js
 	tooling to ensure different themes all define all the variables. Do not
 	alter their formatting. */
 
+/*
+About `:root:not([data-theme])`: if for any reason the JS is enabled but cannot be loaded,
+`noscript` won't be enabled and the doc will have no color applied. To do around this, we
+add a selector check that if `data-theme` is not defined, then we apply the light theme
+by default.
+*/
 /* Begin theme: light */
-:root[data-theme="light"] {
+:root[data-theme="light"], :root:not([data-theme]) {
 	--main-background-color: white;
 	--main-color: black;
 	--settings-input-color: #2196f3;

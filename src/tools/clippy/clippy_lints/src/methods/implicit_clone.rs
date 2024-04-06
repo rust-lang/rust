@@ -27,7 +27,7 @@ pub fn check(cx: &LateContext<'_>, method_name: &str, expr: &hir::Expr<'_>, recv
             cx,
             IMPLICIT_CLONE,
             expr.span,
-            &format!("implicitly cloning a `{ty_name}` by calling `{method_name}` on its dereferenced type"),
+            format!("implicitly cloning a `{ty_name}` by calling `{method_name}` on its dereferenced type"),
             "consider using",
             if ref_count > 1 {
                 format!("({}{recv_snip}).clone()", "*".repeat(ref_count - 1))

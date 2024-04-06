@@ -22,6 +22,7 @@ fn main() {
         || target_os == "ios"
         || target_os == "tvos"
         || target_os == "watchos"
+        || target_os == "visionos"
         || target_os == "windows"
         || target_os == "fuchsia"
         || (target_vendor == "fortanix" && target_env == "sgx")

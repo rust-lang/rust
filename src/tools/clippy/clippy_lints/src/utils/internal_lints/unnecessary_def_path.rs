@@ -4,10 +4,9 @@ use clippy_utils::{def_path_def_ids, is_lint_allowed, match_any_def_paths, peel_
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::Applicability;
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind, Local, Mutability, Node};
+use rustc_hir::{Expr, ExprKind, LetStmt, Mutability, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::interpret::{Allocation, GlobalAlloc};
 use rustc_middle::mir::ConstValue;
@@ -49,7 +48,7 @@ pub struct UnnecessaryDefPath {
 }
 
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryDefPath {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if is_lint_allowed(cx, UNNECESSARY_DEF_PATH, expr.hir_id) {
             return;
         }
@@ -79,9 +78,9 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryDefPath {
                 cx,
                 UNNECESSARY_DEF_PATH,
                 span,
-                &format!("hardcoded path to a {msg}"),
+                format!("hardcoded path to a {msg}"),
                 None,
-                &format!("convert all references to use `{sugg}`"),
+                format!("convert all references to use `{sugg}`"),
             );
         }
     }
@@ -213,11 +212,11 @@ impl UnnecessaryDefPath {
     }
 }
 
-fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Vec<String>> {
+fn path_to_matched_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Vec<String>> {
     match peel_hir_expr_refs(expr).0.kind {
         ExprKind::Path(ref qpath) => match cx.qpath_res(qpath, expr.hir_id) {
             Res::Local(hir_id) => {
-                if let Node::LetStmt(Local { init: Some(init), .. }) = cx.tcx.parent_hir_node(hir_id) {
+                if let Node::LetStmt(LetStmt { init: Some(init), .. }) = cx.tcx.parent_hir_node(hir_id) {
                     path_to_matched_type(cx, init)
                 } else {
                     None

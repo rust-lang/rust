@@ -1,3 +1,7 @@
+//@ revisions: e2015 e2018
+//
+//@[e2018] edition:2018
+
 #![allow(unused)]
 
 const A: f16 = 10.0; //~ ERROR the type `f16` is unstable

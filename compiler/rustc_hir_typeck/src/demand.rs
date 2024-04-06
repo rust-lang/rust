@@ -400,7 +400,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // what our ideal rcvr ty would look like.
                     let _ = self
                         .at(&ObligationCause::dummy(), self.param_env)
-                        .eq(DefineOpaqueTypes::No, method.sig.inputs()[idx + 1], arg_ty)
+                        .eq(DefineOpaqueTypes::Yes, method.sig.inputs()[idx + 1], arg_ty)
                         .ok()?;
                     self.select_obligations_where_possible(|errs| {
                         // Yeet the errors, we're already reporting errors.
@@ -479,7 +479,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .and_then(|method| {
                         let _ = self
                             .at(&ObligationCause::dummy(), self.param_env)
-                            .eq(DefineOpaqueTypes::No, ideal_rcvr_ty, expected_ty)
+                            .eq(DefineOpaqueTypes::Yes, ideal_rcvr_ty, expected_ty)
                             .ok()?;
                         Some(method)
                     });

@@ -1,4 +1,5 @@
 // This test ensures that opening the help page in its own tab works.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/help.html"
 set-window-size: (1000, 1000) // Try desktop size first.
 wait-for: "#help"
@@ -19,10 +20,7 @@ define-function: (
     "check-colors",
     [theme, color, background, box_shadow],
     block {
-        // Setting the theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        // We reload the page so the local storage settings are being used.
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: ("#help kbd", {
             "color": |color|,
             "background-color": |background|,

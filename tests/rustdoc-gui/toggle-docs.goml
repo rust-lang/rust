@@ -1,4 +1,5 @@
 // Checks that the documentation toggles have the correct position, style and work as expected.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-attribute: ("#main-content > details.top-doc", {"open": ""})
 assert-text: ("#toggle-all-docs", "[−]")
@@ -51,10 +52,7 @@ define-function: (
     "check-color",
     [theme, filter],
     block {
-        // Setting the theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        // We reload the page so the local storage settings are being used.
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
 
         assert-css: ("details.toggle > summary::before", {
             "opacity": "0.5",

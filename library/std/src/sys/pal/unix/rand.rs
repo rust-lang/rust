@@ -16,6 +16,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     not(target_os = "ios"),
     not(target_os = "tvos"),
     not(target_os = "watchos"),
+    not(target_os = "visionos"),
     not(target_os = "openbsd"),
     not(target_os = "netbsd"),
     not(target_os = "fuchsia"),
@@ -62,15 +63,21 @@ mod imp {
         unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), libc::GRND_NONBLOCK) }
     }
 
-    #[cfg(any(
-        target_os = "espidf",
-        target_os = "horizon",
-        target_os = "freebsd",
-        target_os = "dragonfly",
-        netbsd10
-    ))]
+    #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "freebsd", netbsd10))]
     fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
         unsafe { libc::getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
+    }
+
+    #[cfg(target_os = "dragonfly")]
+    fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
+        extern "C" {
+            fn getrandom(
+                buf: *mut libc::c_void,
+                buflen: libc::size_t,
+                flags: libc::c_uint,
+            ) -> libc::ssize_t;
+        }
+        unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
     }
 
     #[cfg(not(any(

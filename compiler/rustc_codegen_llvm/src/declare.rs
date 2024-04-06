@@ -147,7 +147,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 for options in [
                     TypeIdOptions::GENERALIZE_POINTERS,
                     TypeIdOptions::NORMALIZE_INTEGERS,
-                    TypeIdOptions::NO_SELF_TYPE_ERASURE,
+                    TypeIdOptions::USE_CONCRETE_SELF,
                 ]
                 .into_iter()
                 .powerset()

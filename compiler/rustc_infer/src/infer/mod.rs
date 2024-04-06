@@ -843,7 +843,9 @@ impl<'tcx> InferCtxt<'tcx> {
     {
         let origin = &ObligationCause::dummy();
         self.probe(|_| {
-            self.at(origin, param_env).sub(DefineOpaqueTypes::No, expected, actual).is_ok()
+            // We're only answering whether there could be a subtyping relation, and with
+            // opaque types, "there could be one", via registering a hidden type.
+            self.at(origin, param_env).sub(DefineOpaqueTypes::Yes, expected, actual).is_ok()
         })
     }
 
@@ -852,7 +854,9 @@ impl<'tcx> InferCtxt<'tcx> {
         T: at::ToTrace<'tcx>,
     {
         let origin = &ObligationCause::dummy();
-        self.probe(|_| self.at(origin, param_env).eq(DefineOpaqueTypes::No, a, b).is_ok())
+        // We're only answering whether the types could be the same, and with
+        // opaque types, "they can be the same", via registering a hidden type.
+        self.probe(|_| self.at(origin, param_env).eq(DefineOpaqueTypes::Yes, a, b).is_ok())
     }
 
     #[instrument(skip(self), level = "debug")]

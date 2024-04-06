@@ -11,6 +11,7 @@
 // 18px  1.125em
 // 16px  1rem
 // 14px  0.875rem
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
 
 assert-css: (".main-heading h1", {"font-size": "24px"})
@@ -158,8 +159,8 @@ define-function: (
     "check-colors",
     [theme, heading_color, small_heading_color, heading_border_color],
     block {
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
+
         assert-css: (
             ".top-doc .docblock h2",
             {"color": |heading_color|, "border-bottom": "1px solid " + |heading_border_color|},
@@ -222,8 +223,7 @@ define-function: (
     "check-since-color",
     [theme],
     block {
-        set-local-storage: {"rustdoc-theme": |theme|}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (".since", {"color": "#808080"}, ALL)
     },
 )

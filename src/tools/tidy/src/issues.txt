@@ -1132,7 +1132,6 @@
 "ui/generics/issue-98432.rs",
 "ui/higher-ranked/trait-bounds/issue-100689.rs",
 "ui/higher-ranked/trait-bounds/issue-102899.rs",
-"ui/higher-ranked/trait-bounds/issue-30786.rs",
 "ui/higher-ranked/trait-bounds/issue-36139-normalize-closure-sig.rs",
 "ui/higher-ranked/trait-bounds/issue-39292.rs",
 "ui/higher-ranked/trait-bounds/issue-42114.rs",

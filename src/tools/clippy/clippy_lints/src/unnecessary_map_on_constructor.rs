@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
                 hir::QPath::LangItem(..) => return,
             };
             match constructor_symbol {
-                sym::Some | sym::Ok if path.ident.name == rustc_span::sym::map => (),
+                sym::Some | sym::Ok if path.ident.name == sym::map => (),
                 sym::Err if path.ident.name == sym::map_err => (),
                 _ => return,
             }
@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
                     cx,
                     UNNECESSARY_MAP_ON_CONSTRUCTOR,
                     expr.span,
-                    &format!(
+                    format!(
                         "unnecessary {} on constructor {constructor_snippet}(_)",
                         path.ident.name
                     ),
