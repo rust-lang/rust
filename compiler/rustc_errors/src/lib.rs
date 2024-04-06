@@ -502,7 +502,7 @@ struct DiagCtxtInner {
 }
 
 /// A key denoting where from a diagnostic was stashed.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum StashKey {
     ItemNoType,
     UnderscoreForArrayLengths,
@@ -779,7 +779,7 @@ impl DiagCtxt {
             // We delay a bug here so that `-Ztreat-err-as-bug -Zeagerly-emit-delayed-bugs`
             // can be used to create a backtrace at the stashing site insted of whenever the
             // diagnostic context is dropped and thus delayed bugs are emitted.
-            Error => Some(self.span_delayed_bug(span, "stashing {key:?}")),
+            Error => Some(self.span_delayed_bug(span, format!("stashing {key:?}"))),
             DelayedBug => return self.inner.borrow_mut().emit_diagnostic(diag),
             ForceWarning(_) | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
             | Expect(_) => None,
