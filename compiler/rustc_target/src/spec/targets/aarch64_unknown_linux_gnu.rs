@@ -25,13 +25,14 @@ pub(crate) fn target() -> Target {
             stack_probes: StackProbeType::Inline,
             supported_sanitizers: SanitizerSet::ADDRESS
                 | SanitizerSet::CFI
+                | SanitizerSet::HWADDRESS
                 | SanitizerSet::KCFI
                 | SanitizerSet::LEAK
                 | SanitizerSet::MEMORY
                 | SanitizerSet::MEMTAG
-                | SanitizerSet::THREAD
-                | SanitizerSet::HWADDRESS
-                | SanitizerSet::REALTIME,
+                | SanitizerSet::REALTIME
+                | SanitizerSet::THREAD,
+            stable_sanitizers: SanitizerSet::ADDRESS | SanitizerSet::LEAK,
             supports_xray: true,
             ..base::linux_gnu::opts()
         },
