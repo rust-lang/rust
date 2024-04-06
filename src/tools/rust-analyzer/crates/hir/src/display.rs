@@ -188,12 +188,7 @@ impl HirDisplay for Struct {
             StructKind::Record => {
                 let has_where_clause = write_where_clause(def_id, f)?;
                 if let Some(limit) = f.entity_limit {
-                    display_fields_or_variants(
-                        &self.fields(f.db),
-                        has_where_clause,
-                        limit,
-                        f,
-                    )?;
+                    display_fields_or_variants(&self.fields(f.db), has_where_clause, limit, f)?;
                 }
             }
             StructKind::Unit => _ = write_where_clause(def_id, f)?,
@@ -213,12 +208,7 @@ impl HirDisplay for Enum {
 
         let has_where_clause = write_where_clause(def_id, f)?;
         if let Some(limit) = f.entity_limit {
-            display_fields_or_variants(
-                &self.variants(f.db),
-                has_where_clause,
-                limit,
-                f,
-            )?;
+            display_fields_or_variants(&self.variants(f.db), has_where_clause, limit, f)?;
         }
 
         Ok(())
@@ -235,12 +225,7 @@ impl HirDisplay for Union {
 
         let has_where_clause = write_where_clause(def_id, f)?;
         if let Some(limit) = f.entity_limit {
-            display_fields_or_variants(
-                &self.fields(f.db),
-                has_where_clause,
-                limit,
-                f,
-            )?;
+            display_fields_or_variants(&self.fields(f.db), has_where_clause, limit, f)?;
         }
         Ok(())
     }
@@ -251,7 +236,7 @@ fn display_fields_or_variants<T: HirDisplay>(
     has_where_clause: bool,
     limit: usize,
     f: &mut HirFormatter<'_>,
-)-> Result<(), HirDisplayError> {
+) -> Result<(), HirDisplayError> {
     let count = fields_or_variants.len().min(limit);
     f.write_char(if !has_where_clause { ' ' } else { '\n' })?;
     if count == 0 {

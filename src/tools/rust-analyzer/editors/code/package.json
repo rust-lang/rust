@@ -1152,9 +1152,9 @@
                         }
                     ]
                 },
-                "rust-analyzer.hover.show.structFields": {
-                    "markdownDescription": "How many fields of a struct to display when hovering a struct.",
-                    "default": null,
+                "rust-analyzer.hover.show.adtFieldsOrVariants": {
+                    "markdownDescription": "How many fields or variants of an ADT (struct, enum or union) to display when hovering on. Show none if empty.",
+                    "default": 10,
                     "type": [
                         "null",
                         "integer"
