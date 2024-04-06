@@ -59,7 +59,7 @@ fn coverage_ids_info<'tcx>(
             _ => None,
         })
         .max()
-        .unwrap_or(CounterId::START);
+        .unwrap_or(CounterId::ZERO);
 
     CoverageIdsInfo { max_counter_id }
 }

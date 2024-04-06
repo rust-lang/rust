@@ -33,10 +33,6 @@ rustc_index::newtype_index! {
     pub struct CounterId {}
 }
 
-impl CounterId {
-    pub const START: Self = Self::ZERO;
-}
-
 rustc_index::newtype_index! {
     /// ID of a coverage-counter expression. Values ascend from 0.
     ///
@@ -53,10 +49,6 @@ rustc_index::newtype_index! {
     #[max = 0xFFFF_FFFF]
     #[debug_format = "ExpressionId({})"]
     pub struct ExpressionId {}
-}
-
-impl ExpressionId {
-    pub const START: Self = Self::ZERO;
 }
 
 /// Enum that can hold a constant zero value, the ID of an physical coverage

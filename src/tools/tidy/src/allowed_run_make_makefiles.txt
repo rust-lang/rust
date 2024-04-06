@@ -5,7 +5,6 @@ run-make/allocator-shim-circular-deps/Makefile
 run-make/allow-non-lint-warnings-cmdline/Makefile
 run-make/allow-warnings-cmdline-stability/Makefile
 run-make/archive-duplicate-names/Makefile
-run-make/arguments-non-c-like-enum/Makefile
 run-make/atomic-lock-free/Makefile
 run-make/bare-outfile/Makefile
 run-make/branch-protection-check-IBT/Makefile
@@ -86,7 +85,6 @@ run-make/foreign-exceptions/Makefile
 run-make/foreign-rust-exceptions/Makefile
 run-make/fpic/Makefile
 run-make/glibc-staticlib-args/Makefile
-run-make/hir-tree/Makefile
 run-make/inaccessible-temp-dir/Makefile
 run-make/include_bytes_deps/Makefile
 run-make/incr-add-rust-src-component/Makefile
@@ -132,7 +130,6 @@ run-make/issue-53964/Makefile
 run-make/issue-64153/Makefile
 run-make/issue-68794-textrel-on-minimal-lib/Makefile
 run-make/issue-69368/Makefile
-run-make/issue-7349/Makefile
 run-make/issue-83045/Makefile
 run-make/issue-83112-incr-test-moved-file/Makefile
 run-make/issue-84395-lto-embed-bitcode/Makefile

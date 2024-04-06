@@ -593,7 +593,6 @@ dependencies = [
  "syn 2.0.55",
  "tempfile",
  "termize",
- "tester",
  "tokio",
  "toml 0.7.8",
  "ui_test 0.22.2",
@@ -5506,19 +5505,6 @@ dependencies = [
  "panic_abort",
  "panic_unwind",
  "std",
-]
-
-[[package]]
-name = "tester"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89e8bf7e0eb2dd7b4228cc1b6821fc5114cd6841ae59f652a85488c016091e5f"
-dependencies = [
- "cfg-if",
- "getopts",
- "libc",
- "num_cpus",
- "term",
 ]
 
 [[package]]

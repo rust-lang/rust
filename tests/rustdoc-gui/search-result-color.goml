@@ -1,5 +1,6 @@
 // The goal of this test is to ensure the color of the text is the one expected.
 
+include: "utils.goml"
 define-function: (
     "check-result-color",
     [result_kind, color, hover_color],
@@ -43,11 +44,7 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=coo"
 show-text: true
 
 // Ayu theme
-set-local-storage: {
-    "rustdoc-theme": "ayu",
-    "rustdoc-use-system-theme": "false",
-}
-reload:
+call-function: ("switch-theme", {"theme": "ayu"})
 
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
@@ -155,11 +152,7 @@ assert-css: (
 )
 
 // Dark theme
-set-local-storage: {
-    "rustdoc-theme": "dark",
-    "rustdoc-use-system-theme": "false",
-}
-reload:
+call-function: ("switch-theme", {"theme": "dark"})
 
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
@@ -255,8 +248,7 @@ assert-css: (
 )
 
 // Light theme
-set-local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
-reload:
+call-function: ("switch-theme", {"theme": "light"})
 
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
@@ -360,8 +352,7 @@ define-function: (
     "check-alias",
     [theme, alias, grey],
     block {
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         write-into: (".search-input", "thisisanalias")
         // To be SURE that the search will be run.
         press-key: 'Enter'

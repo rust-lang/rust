@@ -2022,7 +2022,7 @@ impl Config {
             Subcommand::Build { .. } => {
                 flags.stage.or(build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
-            Subcommand::Test { .. } => {
+            Subcommand::Test { .. } | Subcommand::Miri { .. } => {
                 flags.stage.or(test_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Bench { .. } => flags.stage.or(bench_stage).unwrap_or(2),
@@ -2044,6 +2044,7 @@ impl Config {
         if flags.stage.is_none() && crate::CiEnv::current() != crate::CiEnv::None {
             match config.cmd {
                 Subcommand::Test { .. }
+                | Subcommand::Miri { .. }
                 | Subcommand::Doc { .. }
                 | Subcommand::Build { .. }
                 | Subcommand::Bench { .. }
@@ -2099,7 +2100,9 @@ impl Config {
 
     pub(crate) fn test_args(&self) -> Vec<&str> {
         let mut test_args = match self.cmd {
-            Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {
+            Subcommand::Test { ref test_args, .. }
+            | Subcommand::Bench { ref test_args, .. }
+            | Subcommand::Miri { ref test_args, .. } => {
                 test_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
             _ => vec![],

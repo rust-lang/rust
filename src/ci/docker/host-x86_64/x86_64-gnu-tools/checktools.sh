@@ -62,3 +62,8 @@ case $HOST_TARGET in
     exit 1
     ;;
 esac
+# Also smoke-test `x.py miri`. This doesn't run any actual tests (that would take too long),
+# but it ensures that the crates build properly when tested with Miri.
+python3 "$X_PY" miri --stage 2 library/core --test-args notest
+python3 "$X_PY" miri --stage 2 library/alloc --test-args notest
+python3 "$X_PY" miri --stage 2 library/std --test-args notest

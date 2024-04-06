@@ -1,5 +1,6 @@
 // This test ensures that the settings menu display is working as expected and that
 // the settings page is also rendered as expected.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true // needed when we check for colors below.
 // First, we check that the settings page doesn't exist.
@@ -35,8 +36,7 @@ wait-for: "#alternative-display #search"
 assert: "#main-content.hidden"
 
 // Now let's check the content of the settings menu.
-set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
-reload:
+call-function: ("switch-theme", {"theme": "dark"})
 click: "#settings-menu"
 wait-for: "#settings"
 

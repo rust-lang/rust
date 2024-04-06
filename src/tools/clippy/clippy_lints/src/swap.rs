@@ -1,10 +1,16 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::snippet_with_context;
+use clippy_utils::source::{snippet_indent, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
+
 use clippy_utils::{can_mut_borrow_both, eq_expr_value, in_constant, std_or_core};
+use itertools::Itertools;
+
+use rustc_hir::intravisit::{walk_expr, Visitor};
+
+use crate::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
@@ -80,7 +86,17 @@ impl<'tcx> LateLintPass<'tcx> for Swap {
     }
 }
 
-fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, span: Span, is_xor_based: bool) {
+#[allow(clippy::too_many_arguments)]
+fn generate_swap_warning<'tcx>(
+    block: &'tcx Block<'tcx>,
+    cx: &LateContext<'tcx>,
+    e1: &'tcx Expr<'tcx>,
+    e2: &'tcx Expr<'tcx>,
+    rhs1: &'tcx Expr<'tcx>,
+    rhs2: &'tcx Expr<'tcx>,
+    span: Span,
+    is_xor_based: bool,
+) {
     let ctxt = span.ctxt();
     let mut applicability = Applicability::MachineApplicable;
 
@@ -99,14 +115,25 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
                 || is_type_diagnostic_item(cx, ty, sym::VecDeque)
             {
                 let slice = Sugg::hir_with_applicability(cx, lhs1, "<slice>", &mut applicability);
+
                 span_lint_and_sugg(
                     cx,
                     MANUAL_SWAP,
                     span,
-                    &format!("this looks like you are swapping elements of `{slice}` manually"),
+                    format!("this looks like you are swapping elements of `{slice}` manually"),
                     "try",
                     format!(
-                        "{}.swap({}, {});",
+                        "{}{}.swap({}, {});",
+                        IndexBinding {
+                            block,
+                            swap1_idx: idx1,
+                            swap2_idx: idx2,
+                            suggest_span: span,
+                            cx,
+                            ctxt,
+                            applicability: &mut applicability,
+                        }
+                        .snippet_index_bindings(&[idx1, idx2, rhs1, rhs2]),
                         slice.maybe_par(),
                         snippet_with_context(cx, idx1.span, ctxt, "..", &mut applicability).0,
                         snippet_with_context(cx, idx2.span, ctxt, "..", &mut applicability).0,
@@ -126,7 +153,7 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
         cx,
         MANUAL_SWAP,
         span,
-        &format!("this looks like you are swapping `{first}` and `{second}` manually"),
+        format!("this looks like you are swapping `{first}` and `{second}` manually"),
         |diag| {
             diag.span_suggestion(
                 span,
@@ -142,7 +169,7 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
 }
 
 /// Implementation of the `MANUAL_SWAP` lint.
-fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
+fn check_manual_swap<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
     if in_constant(cx, block.hir_id) {
         return;
     }
@@ -160,10 +187,10 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
             // bar() = t;
             && let StmtKind::Semi(second) = s3.kind
             && let ExprKind::Assign(lhs2, rhs2, _) = second.kind
-            && let ExprKind::Path(QPath::Resolved(None, rhs2)) = rhs2.kind
-            && rhs2.segments.len() == 1
+            && let ExprKind::Path(QPath::Resolved(None, rhs2_path)) = rhs2.kind
+            && rhs2_path.segments.len() == 1
 
-            && ident.name == rhs2.segments[0].ident.name
+            && ident.name == rhs2_path.segments[0].ident.name
             && eq_expr_value(cx, tmp_init, lhs1)
             && eq_expr_value(cx, rhs1, lhs2)
 
@@ -174,7 +201,7 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
             && second.span.ctxt() == ctxt
         {
             let span = s1.span.to(s3.span);
-            generate_swap_warning(cx, lhs1, lhs2, span, false);
+            generate_swap_warning(block, cx, lhs1, lhs2, rhs1, rhs2, span, false);
         }
     }
 }
@@ -201,7 +228,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
                 cx,
                 ALMOST_SWAPPED,
                 span,
-                &format!("this looks like you are trying to swap `{lhs_sugg}` and `{rhs_sugg}`"),
+                format!("this looks like you are trying to swap `{lhs_sugg}` and `{rhs_sugg}`"),
                 |diag| {
                     diag.span_suggestion(
                         span,
@@ -254,7 +281,7 @@ fn parse<'a, 'hir>(stmt: &'a Stmt<'hir>) -> Option<(ExprOrIdent<'hir>, &'a Expr<
 }
 
 /// Implementation of the xor case for `MANUAL_SWAP` lint.
-fn check_xor_swap(cx: &LateContext<'_>, block: &Block<'_>) {
+fn check_xor_swap<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
     for [s1, s2, s3] in block.stmts.array_windows::<3>() {
         let ctxt = s1.span.ctxt();
         if let Some((lhs0, rhs0)) = extract_sides_of_xor_assign(s1, ctxt)
@@ -268,7 +295,7 @@ fn check_xor_swap(cx: &LateContext<'_>, block: &Block<'_>) {
             && s3.span.ctxt() == ctxt
         {
             let span = s1.span.to(s3.span);
-            generate_swap_warning(cx, lhs0, rhs0, span, true);
+            generate_swap_warning(block, cx, lhs0, rhs0, rhs1, rhs2, span, true);
         };
     }
 }
@@ -292,5 +319,132 @@ fn extract_sides_of_xor_assign<'a, 'hir>(
         Some((lhs, rhs))
     } else {
         None
+    }
+}
+
+struct IndexBinding<'a, 'tcx> {
+    block: &'a Block<'a>,
+    swap1_idx: &'a Expr<'a>,
+    swap2_idx: &'a Expr<'a>,
+    suggest_span: Span,
+    cx: &'a LateContext<'tcx>,
+    ctxt: SyntaxContext,
+    applicability: &'a mut Applicability,
+}
+
+impl<'a, 'tcx> IndexBinding<'a, 'tcx> {
+    fn snippet_index_bindings(&mut self, exprs: &[&'tcx Expr<'tcx>]) -> String {
+        let mut bindings = FxHashSet::default();
+        for expr in exprs {
+            bindings.insert(self.snippet_index_binding(expr));
+        }
+        bindings.into_iter().join("")
+    }
+
+    fn snippet_index_binding(&mut self, expr: &'tcx Expr<'tcx>) -> String {
+        match expr.kind {
+            ExprKind::Binary(_, lhs, rhs) => {
+                if matches!(lhs.kind, ExprKind::Lit(_)) && matches!(rhs.kind, ExprKind::Lit(_)) {
+                    return String::new();
+                }
+                let lhs_snippet = self.snippet_index_binding(lhs);
+                let rhs_snippet = self.snippet_index_binding(rhs);
+                format!("{lhs_snippet}{rhs_snippet}")
+            },
+            ExprKind::Path(QPath::Resolved(_, path)) => {
+                let init = self.cx.expr_or_init(expr);
+
+                let Some(first_segment) = path.segments.first() else {
+                    return String::new();
+                };
+                if !self.suggest_span.contains(init.span) || !self.is_used_other_than_swapping(first_segment.ident) {
+                    return String::new();
+                }
+
+                let init_str = snippet_with_context(self.cx, init.span, self.ctxt, "", self.applicability)
+                    .0
+                    .to_string();
+                let indent_str = snippet_indent(self.cx, init.span);
+                let indent_str = indent_str.as_deref().unwrap_or("");
+
+                format!("let {} = {init_str};\n{indent_str}", first_segment.ident)
+            },
+            _ => String::new(),
+        }
+    }
+
+    fn is_used_other_than_swapping(&mut self, idx_ident: Ident) -> bool {
+        if Self::is_used_slice_indexed(self.swap1_idx, idx_ident)
+            || Self::is_used_slice_indexed(self.swap2_idx, idx_ident)
+        {
+            return true;
+        }
+        self.is_used_after_swap(idx_ident)
+    }
+
+    fn is_used_after_swap(&mut self, idx_ident: Ident) -> bool {
+        let mut v = IndexBindingVisitor {
+            found_used: false,
+            suggest_span: self.suggest_span,
+            idx: idx_ident,
+        };
+
+        for stmt in self.block.stmts {
+            match stmt.kind {
+                StmtKind::Expr(expr) | StmtKind::Semi(expr) => v.visit_expr(expr),
+                StmtKind::Let(LetStmt { ref init, .. }) => {
+                    if let Some(init) = init.as_ref() {
+                        v.visit_expr(init);
+                    }
+                },
+                StmtKind::Item(_) => {},
+            }
+        }
+
+        v.found_used
+    }
+
+    fn is_used_slice_indexed(swap_index: &Expr<'_>, idx_ident: Ident) -> bool {
+        match swap_index.kind {
+            ExprKind::Binary(_, lhs, rhs) => {
+                if matches!(lhs.kind, ExprKind::Lit(_)) && matches!(rhs.kind, ExprKind::Lit(_)) {
+                    return false;
+                }
+                Self::is_used_slice_indexed(lhs, idx_ident) || Self::is_used_slice_indexed(rhs, idx_ident)
+            },
+            ExprKind::Path(QPath::Resolved(_, path)) => {
+                path.segments.first().map_or(false, |idx| idx.ident == idx_ident)
+            },
+            _ => false,
+        }
+    }
+}
+
+struct IndexBindingVisitor {
+    idx: Ident,
+    suggest_span: Span,
+    found_used: bool,
+}
+
+impl<'tcx> Visitor<'tcx> for IndexBindingVisitor {
+    fn visit_path_segment(&mut self, path_segment: &'tcx rustc_hir::PathSegment<'tcx>) -> Self::Result {
+        if path_segment.ident == self.idx {
+            self.found_used = true;
+        }
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> Self::Result {
+        if expr.span.hi() <= self.suggest_span.hi() {
+            return;
+        }
+
+        match expr.kind {
+            ExprKind::Path(QPath::Resolved(_, path)) => {
+                for segment in path.segments {
+                    self.visit_path_segment(segment);
+                }
+            },
+            _ => walk_expr(self, expr),
+        }
     }
 }

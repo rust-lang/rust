@@ -595,7 +595,7 @@ impl Step for Miri {
         // This is for the tests so everything is done with the target compiler.
         let miri_sysroot = Miri::build_miri_sysroot(builder, target_compiler, target);
         builder.ensure(compile::Std::new(target_compiler, host));
-        let sysroot = builder.sysroot(target_compiler);
+        let host_sysroot = builder.sysroot(target_compiler);
 
         // # Run `cargo test`.
         // This is with the Miri crate, so it uses the host compiler.
@@ -618,7 +618,7 @@ impl Step for Miri {
 
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
-        cargo.env("MIRI_HOST_SYSROOT", &sysroot);
+        cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
         cargo.env("MIRI", &miri);
 
         // Set the target.
@@ -680,10 +680,6 @@ impl Step for Miri {
                 cargo.arg("--doc");
             }
         }
-
-        // Tell `cargo miri` where to find the sysroots.
-        cargo.env("MIRI_SYSROOT", &miri_sysroot);
-        cargo.env("MIRI_HOST_SYSROOT", sysroot);
 
         // Finally, pass test-args and run everything.
         cargo.arg("--").args(builder.config.test_args());
@@ -2540,9 +2536,14 @@ fn prepare_cargo_test(
     //
     // Note that to run the compiler we need to run with the *host* libraries,
     // but our wrapper scripts arrange for that to be the case anyway.
-    let mut dylib_path = dylib_path();
-    dylib_path.insert(0, PathBuf::from(&*builder.sysroot_libdir(compiler, target)));
-    cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+    //
+    // We skip everything on Miri as then this overwrites the libdir set up
+    // by `Cargo::new` and that actually makes things go wrong.
+    if builder.kind != Kind::Miri {
+        let mut dylib_path = dylib_path();
+        dylib_path.insert(0, PathBuf::from(&*builder.sysroot_libdir(compiler, target)));
+        cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+    }
 
     if builder.remote_tested(target) {
         cargo.env(
@@ -2598,13 +2599,9 @@ impl Step for Crate {
         let target = self.target;
         let mode = self.mode;
 
+        // Prepare sysroot
         // See [field@compile::Std::force_recompile].
         builder.ensure(compile::Std::force_recompile(compiler, compiler.host));
-
-        if builder.config.build != target {
-            builder.ensure(compile::Std::force_recompile(compiler, target));
-            builder.ensure(RemoteCopyLibs { compiler, target });
-        }
 
         // If we're not doing a full bootstrap but we're testing a stage2
         // version of libstd, then what we're actually testing is the libstd
@@ -2612,14 +2609,52 @@ impl Step for Crate {
         // we're working with automatically.
         let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
 
-        let mut cargo = builder::Cargo::new(
-            builder,
-            compiler,
-            mode,
-            SourceType::InTree,
-            target,
-            builder.kind.as_str(),
-        );
+        let mut cargo = if builder.kind == Kind::Miri {
+            if builder.top_stage == 0 {
+                eprintln!("ERROR: `x.py miri` requires stage 1 or higher");
+                std::process::exit(1);
+            }
+
+            // Build `cargo miri test` command
+            // (Implicitly prepares target sysroot)
+            let mut cargo = builder::Cargo::new(
+                builder,
+                compiler,
+                mode,
+                SourceType::InTree,
+                target,
+                "miri-test",
+            );
+            // This hack helps bootstrap run standard library tests in Miri. The issue is as
+            // follows: when running `cargo miri test` on libcore, cargo builds a local copy of core
+            // and makes it a dependency of the integration test crate. This copy duplicates all the
+            // lang items, so the build fails. (Regular testing avoids this because the sysroot is a
+            // literal copy of what `cargo build` produces, but since Miri builds its own sysroot
+            // this does not work for us.) So we need to make it so that the locally built libcore
+            // contains all the items from `core`, but does not re-define them -- we want to replace
+            // the entire crate but a re-export of the sysroot crate. We do this by swapping out the
+            // source file: if `MIRI_REPLACE_LIBRS_IF_NOT_TEST` is set and we are building a
+            // `lib.rs` file, and a `lib.miri.rs` file exists in the same folder, we build that
+            // instead. But crucially we only do that for the library, not the test builds.
+            cargo.env("MIRI_REPLACE_LIBRS_IF_NOT_TEST", "1");
+            cargo
+        } else {
+            // Also prepare a sysroot for the target.
+            if builder.config.build != target {
+                builder.ensure(compile::Std::force_recompile(compiler, target));
+                builder.ensure(RemoteCopyLibs { compiler, target });
+            }
+
+            // Build `cargo test` command
+            builder::Cargo::new(
+                builder,
+                compiler,
+                mode,
+                SourceType::InTree,
+                target,
+                builder.kind.as_str(),
+            )
+        };
 
         match mode {
             Mode::Std => {

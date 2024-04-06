@@ -14,7 +14,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, lhs: &'tcx 
             cx,
             SELF_ASSIGNMENT,
             e.span,
-            &format!("self-assignment of `{rhs}` to `{lhs}`"),
+            format!("self-assignment of `{rhs}` to `{lhs}`"),
         );
     }
 }

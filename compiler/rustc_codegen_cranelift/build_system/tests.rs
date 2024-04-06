@@ -130,16 +130,10 @@ pub(crate) static REGEX_REPO: GitRepo = GitRepo::github(
 
 pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex_target");
 
-pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
-    "rust-lang",
-    "portable-simd",
-    "5794c837bc605c4cd9dbb884285976dfdb293cce",
-    "a64d8fdd0ed0d9c4",
-    "portable-simd",
-);
+pub(crate) static PORTABLE_SIMD_SRC: RelPath = RelPath::BUILD.join("coretests");
 
 pub(crate) static PORTABLE_SIMD: CargoProject =
-    CargoProject::new(&PORTABLE_SIMD_REPO.source_dir(), "portable-simd_target");
+    CargoProject::new(&PORTABLE_SIMD_SRC, "portable-simd_target");
 
 static LIBCORE_TESTS_SRC: RelPath = RelPath::BUILD.join("coretests");
 
@@ -221,7 +215,12 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.portable-simd", &|runner| {
-        PORTABLE_SIMD_REPO.patch(&runner.dirs);
+        apply_patches(
+            &runner.dirs,
+            "portable-simd",
+            &runner.stdlib_source.join("library/portable-simd"),
+            &PORTABLE_SIMD_SRC.to_path(&runner.dirs),
+        );
 
         PORTABLE_SIMD.clean(&runner.dirs);
 

@@ -16,6 +16,7 @@ cfg_if::cfg_if! {
             target_os = "macos",
             target_os = "ios",
             target_os = "watchos",
+            target_os = "visionos",
             target_os = "tvos",
         ),
         not(miri),

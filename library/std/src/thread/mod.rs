@@ -694,9 +694,7 @@ pub(crate) fn set_current(thread: Thread) {
 /// In contrast to the public `current` function, this will not panic if called
 /// from inside a TLS destructor.
 pub(crate) fn try_current() -> Option<Thread> {
-    CURRENT
-        .try_with(|current| current.get_or_init(|| Thread::new(imp::Thread::get_name())).clone())
-        .ok()
+    CURRENT.try_with(|current| current.get_or_init(|| Thread::new(None)).clone()).ok()
 }
 
 /// Gets a handle to the thread that invokes it.
@@ -1247,9 +1245,16 @@ impl ThreadId {
 // Thread
 ////////////////////////////////////////////////////////////////////////////////
 
+/// The internal representation of a `Thread`'s name.
+enum ThreadName {
+    Main,
+    Other(CString),
+    Unnamed,
+}
+
 /// The internal representation of a `Thread` handle
 struct Inner {
-    name: Option<CString>, // Guaranteed to be UTF-8
+    name: ThreadName, // Guaranteed to be UTF-8
     id: ThreadId,
     parker: Parker,
 }
@@ -1286,8 +1291,20 @@ pub struct Thread {
 
 impl Thread {
     // Used only internally to construct a thread object without spawning
-    // Panics if the name contains nuls.
     pub(crate) fn new(name: Option<CString>) -> Thread {
+        if let Some(name) = name {
+            Self::new_inner(ThreadName::Other(name))
+        } else {
+            Self::new_inner(ThreadName::Unnamed)
+        }
+    }
+
+    // Used in runtime to construct main thread
+    pub(crate) fn new_main() -> Thread {
+        Self::new_inner(ThreadName::Main)
+    }
+
+    fn new_inner(name: ThreadName) -> Thread {
         // We have to use `unsafe` here to construct the `Parker` in-place,
         // which is required for the UNIX implementation.
         //
@@ -1414,7 +1431,11 @@ impl Thread {
     }
 
     fn cname(&self) -> Option<&CStr> {
-        self.inner.name.as_deref()
+        match &self.inner.name {
+            ThreadName::Main => Some(c"main"),
+            ThreadName::Other(other) => Some(&other),
+            ThreadName::Unnamed => None,
+        }
     }
 }
 

@@ -142,7 +142,7 @@ fn check_must_use_candidate<'tcx>(
     item_span: Span,
     item_id: hir::OwnerId,
     fn_span: Span,
-    msg: &str,
+    msg: &'static str,
 ) {
     if has_mutable_arg(cx, body)
         || mutates_static(cx, body)
@@ -207,9 +207,7 @@ fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, tys: &mut DefIdSet)
         },
         ty::Tuple(args) => args.iter().any(|ty| is_mutable_ty(cx, ty, tys)),
         ty::Array(ty, _) | ty::Slice(ty) => is_mutable_ty(cx, ty, tys),
-        ty::RawPtr(ty, mutbl) | ty::Ref(_, ty, mutbl) => {
-            mutbl == hir::Mutability::Mut || is_mutable_ty(cx, ty, tys)
-        },
+        ty::RawPtr(ty, mutbl) | ty::Ref(_, ty, mutbl) => mutbl == hir::Mutability::Mut || is_mutable_ty(cx, ty, tys),
         // calling something constitutes a side effect, so return true on all callables
         // also never calls need not be used, so return true for them, too
         _ => true,

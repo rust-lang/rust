@@ -431,7 +431,7 @@ pub(super) fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
             let projected_term = selcx.infcx.resolve_vars_if_possible(projected_term);
 
-            let mut result = if projected_term.has_projections() {
+            let mut result = if projected_term.has_aliases() {
                 let normalized_ty = normalize_with_depth_to(
                     selcx,
                     param_env,
@@ -595,7 +595,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
     let ty = tcx.type_of(alias_ty.def_id).instantiate(tcx, args);
 
     let mut ty = selcx.infcx.resolve_vars_if_possible(ty);
-    if ty.has_projections() {
+    if ty.has_aliases() {
         ty = normalize_with_depth_to(selcx, param_env, cause.clone(), depth + 1, ty, obligations);
     }
 

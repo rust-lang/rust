@@ -1,4 +1,5 @@
 // Checks that the setting "line numbers" is working as expected.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 
 // Otherwise, we can't check text color
@@ -13,14 +14,10 @@ define-function: (
     [theme, color],
     block {
         // We now set the setting to show the line numbers on code examples.
-        set-local-storage: {
-            "rustdoc-theme": |theme|,
-            "rustdoc-use-system-theme": "false",
-            "rustdoc-line-numbers": "true"
-        }
-        // We reload to make the line numbers appear and change theme.
-        reload:
-        // We wait for them to be added into the DOM by the JS...
+        set-local-storage: {"rustdoc-line-numbers": "true"}
+        // Page will be reloaded in "switch-theme".
+        call-function: ("switch-theme", {"theme": |theme|})
+        // We wait for the line numbers to be added into the DOM by the JS...
         wait-for: "pre.example-line-numbers"
         // If the test didn't fail, it means that it was found!
         assert-css: (

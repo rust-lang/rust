@@ -380,14 +380,19 @@ impl Definitions {
     pub fn local_def_path_hash_to_def_id(
         &self,
         hash: DefPathHash,
-        err: &mut dyn FnMut() -> !,
+        err_msg: &dyn std::fmt::Debug,
     ) -> LocalDefId {
         debug_assert!(hash.stable_crate_id() == self.table.stable_crate_id);
+        #[cold]
+        #[inline(never)]
+        fn err(err_msg: &dyn std::fmt::Debug) -> ! {
+            panic!("{err_msg:?}")
+        }
         self.table
             .def_path_hash_to_index
             .get(&hash.local_hash())
             .map(|local_def_index| LocalDefId { local_def_index })
-            .unwrap_or_else(|| err())
+            .unwrap_or_else(|| err(err_msg))
     }
 
     pub fn def_path_hash_to_def_index_map(&self) -> &DefPathHashMap {

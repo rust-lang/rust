@@ -39,7 +39,7 @@ pub(super) fn check<'tcx>(
                 && let closure_body = cx.tcx.hir().body(body)
                 && let Some(closure_arg) = closure_body.params.first()
             {
-                if let hir::PatKind::Ref(..) = closure_arg.pat.kind {
+                if let PatKind::Ref(..) = closure_arg.pat.kind {
                     Some(search_snippet.replacen('&', "", 1))
                 } else if let PatKind::Binding(..) = strip_pat_refs(closure_arg.pat).kind {
                     // `find()` provides a reference to the item, but `any` does not,
@@ -62,7 +62,7 @@ pub(super) fn check<'tcx>(
                     cx,
                     SEARCH_IS_SOME,
                     method_span.with_hi(expr.span.hi()),
-                    &msg,
+                    msg,
                     "consider using",
                     format!(
                         "any({})",
@@ -76,7 +76,7 @@ pub(super) fn check<'tcx>(
                     cx,
                     SEARCH_IS_SOME,
                     expr.span,
-                    &msg,
+                    msg,
                     "consider using",
                     format!(
                         "!{iter}.any({})",
@@ -94,7 +94,7 @@ pub(super) fn check<'tcx>(
                     ""
                 }
             );
-            span_lint_and_help(cx, SEARCH_IS_SOME, expr.span, &msg, None, &hint);
+            span_lint_and_help(cx, SEARCH_IS_SOME, expr.span, msg, None, hint);
         }
     }
     // lint if `find()` is called by `String` or `&str`
@@ -117,7 +117,7 @@ pub(super) fn check<'tcx>(
                         cx,
                         SEARCH_IS_SOME,
                         method_span.with_hi(expr.span.hi()),
-                        &msg,
+                        msg,
                         "consider using",
                         format!("contains({find_arg})"),
                         applicability,
@@ -131,7 +131,7 @@ pub(super) fn check<'tcx>(
                         cx,
                         SEARCH_IS_SOME,
                         expr.span,
-                        &msg,
+                        msg,
                         "consider using",
                         format!("!{string}.contains({find_arg})"),
                         applicability,

@@ -19,7 +19,7 @@ struct NodeCollector<'a, 'hir> {
     parenting: LocalDefIdMap<ItemLocalId>,
 
     /// The parent of this node
-    parent_node: hir::ItemLocalId,
+    parent_node: ItemLocalId,
 
     owner: OwnerId,
 }
@@ -31,17 +31,16 @@ pub(super) fn index_hir<'hir>(
     bodies: &SortedMap<ItemLocalId, &'hir Body<'hir>>,
     num_nodes: usize,
 ) -> (IndexVec<ItemLocalId, ParentedNode<'hir>>, LocalDefIdMap<ItemLocalId>) {
-    let zero_id = ItemLocalId::ZERO;
-    let err_node = ParentedNode { parent: zero_id, node: Node::Err(item.span()) };
+    let err_node = ParentedNode { parent: ItemLocalId::ZERO, node: Node::Err(item.span()) };
     let mut nodes = IndexVec::from_elem_n(err_node, num_nodes);
     // This node's parent should never be accessed: the owner's parent is computed by the
     // hir_owner_parent query. Make it invalid (= ItemLocalId::MAX) to force an ICE whenever it is
     // used.
-    nodes[zero_id] = ParentedNode { parent: ItemLocalId::INVALID, node: item.into() };
+    nodes[ItemLocalId::ZERO] = ParentedNode { parent: ItemLocalId::INVALID, node: item.into() };
     let mut collector = NodeCollector {
         tcx,
         owner: item.def_id(),
-        parent_node: zero_id,
+        parent_node: ItemLocalId::ZERO,
         nodes,
         bodies,
         parenting: Default::default(),
@@ -112,7 +111,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     }
 
     fn insert_nested(&mut self, item: LocalDefId) {
-        if self.parent_node.as_u32() != 0 {
+        if self.parent_node != ItemLocalId::ZERO {
             self.parenting.insert(item, self.parent_node);
         }
     }

@@ -16,8 +16,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(unused_macros)]
 
-use crate::ffi::CString;
-
 // Re-export some of our utilities which are expected by other crates.
 pub use crate::panicking::{begin_panic, panic_count};
 pub use core::panicking::{panic_display, panic_fmt};
@@ -96,7 +94,7 @@ unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
         sys::init(argc, argv, sigpipe);
 
         // Set up the current thread to give it the right name.
-        let thread = Thread::new(Some(rtunwrap!(Ok, CString::new("main"))));
+        let thread = Thread::new_main();
         thread::set_current(thread);
     }
 }

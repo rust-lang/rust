@@ -1644,8 +1644,8 @@ fn test_file_times() {
     use crate::os::macos::fs::FileTimesExt;
     #[cfg(target_os = "tvos")]
     use crate::os::tvos::fs::FileTimesExt;
-    #[cfg(target_os = "tvos")]
-    use crate::os::tvos::fs::FileTimesExt;
+    #[cfg(target_os = "visionos")]
+    use crate::os::visionos::fs::FileTimesExt;
     #[cfg(target_os = "watchos")]
     use crate::os::watchos::fs::FileTimesExt;
     #[cfg(windows)]
@@ -1662,6 +1662,7 @@ fn test_file_times() {
         target_os = "macos",
         target_os = "ios",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "tvos",
     ))]
     let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
@@ -1670,6 +1671,7 @@ fn test_file_times() {
         target_os = "macos",
         target_os = "ios",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "tvos",
     ))]
     {
@@ -1701,6 +1703,7 @@ fn test_file_times() {
         target_os = "macos",
         target_os = "ios",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "tvos",
     ))]
     {
@@ -1709,7 +1712,13 @@ fn test_file_times() {
 }
 
 #[test]
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "tvos",
+    target_os = "watchos",
+    target_os = "visionos"
+))]
 fn test_file_times_pre_epoch_with_nanos() {
     #[cfg(target_os = "ios")]
     use crate::os::ios::fs::FileTimesExt;
@@ -1717,6 +1726,8 @@ fn test_file_times_pre_epoch_with_nanos() {
     use crate::os::macos::fs::FileTimesExt;
     #[cfg(target_os = "tvos")]
     use crate::os::tvos::fs::FileTimesExt;
+    #[cfg(target_os = "visionos")]
+    use crate::os::visionos::fs::FileTimesExt;
     #[cfg(target_os = "watchos")]
     use crate::os::watchos::fs::FileTimesExt;
 

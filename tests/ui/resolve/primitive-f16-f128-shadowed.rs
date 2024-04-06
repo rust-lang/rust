@@ -1,5 +1,8 @@
 //@ compile-flags: --crate-type=lib
 //@ check-pass
+//@ revisions: e2015 e2018
+//
+//@[e2018] edition:2018
 
 // Verify that gates for the `f16` and `f128` features do not apply to user types
 
