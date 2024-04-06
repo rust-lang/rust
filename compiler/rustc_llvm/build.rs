@@ -112,28 +112,10 @@ fn main() {
 
     restore_library_path();
 
-    let target = env::var("TARGET").expect("TARGET was not set");
     let llvm_config =
-        tracked_env_var_os("LLVM_CONFIG").map(|x| Some(PathBuf::from(x))).unwrap_or_else(|| {
-            if let Some(dir) = tracked_env_var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
-                let to_test = dir
-                    .parent()
-                    .unwrap()
-                    .parent()
-                    .unwrap()
-                    .join(&target)
-                    .join("llvm/bin/llvm-config");
-                if Command::new(&to_test).output().is_ok() {
-                    return Some(to_test);
-                }
-            }
-            None
-        });
+        PathBuf::from(tracked_env_var_os("LLVM_CONFIG").expect("LLVM_CONFIG was not set"));
 
-    if let Some(llvm_config) = &llvm_config {
-        println!("cargo:rerun-if-changed={}", llvm_config.display());
-    }
-    let llvm_config = llvm_config.unwrap_or_else(|| PathBuf::from("llvm-config"));
+    println!("cargo:rerun-if-changed={}", llvm_config.display());
 
     // Test whether we're cross-compiling LLVM. This is a pretty rare case
     // currently where we're producing an LLVM for a different platform than
