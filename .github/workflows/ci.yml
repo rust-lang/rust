@@ -273,3 +273,15 @@ jobs:
         run: |
           echo "Found AVX features: $CPU_FEATURE"
           RUSTFLAGS="-Dwarnings -Ctarget-feature=$CPU_FEATURE" cargo test --all-targets --no-default-features ${{ matrix.features }}
+
+  miri:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+          rustup component add miri rust-src
+      - name: Test (Miri)
+        run: cargo miri test
