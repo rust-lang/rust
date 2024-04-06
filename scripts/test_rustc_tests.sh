@@ -21,6 +21,11 @@ for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}
   rm $test
 done
 
+# should-fail tests don't work when compiletest is compiled with panic=abort
+for test in $(rg --files-with-matches "//@ should-fail" tests/{codegen-units,ui,incremental}); do
+  rm $test
+done
+
 for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|//@ error-pattern:|//@(\[.*\])? build-fail|//@(\[.*\])? run-fail|-Cllvm-args" tests/ui); do
   rm $test
 done
@@ -116,8 +121,6 @@ rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contain
 
 # genuine bugs
 # ============
-rm tests/incremental/spike-neg1.rs # errors out for some reason
-rm tests/incremental/spike-neg2.rs # same
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 
