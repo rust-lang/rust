@@ -316,7 +316,7 @@ impl<'a> TyLoweringContext<'a> {
                         // place even if we encounter more opaque types while
                         // lowering the bounds
                         let idx = opaque_type_data.borrow_mut().alloc(ImplTrait {
-                            bounds: crate::make_single_type_binders(Vec::new()),
+                            bounds: crate::make_single_type_binders(Vec::default()),
                         });
                         // We don't want to lower the bounds inside the binders
                         // we're currently in, because they don't end up inside
@@ -1007,11 +1007,11 @@ impl<'a> TyLoweringContext<'a> {
         self.substs_from_path_segment(segment, Some(resolved.into()), false, explicit_self_ty)
     }
 
-    pub(crate) fn lower_where_predicate(
-        &self,
-        where_predicate: &WherePredicate,
+    pub(crate) fn lower_where_predicate<'b>(
+        &'b self,
+        where_predicate: &'b WherePredicate,
         ignore_bindings: bool,
-    ) -> impl Iterator<Item = QuantifiedWhereClause> {
+    ) -> impl Iterator<Item = QuantifiedWhereClause> + 'b {
         match where_predicate {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
@@ -1034,18 +1034,16 @@ impl<'a> TyLoweringContext<'a> {
                         .intern(Interner)
                     }
                 };
-                self.lower_type_bound(bound, self_ty, ignore_bindings)
-                    .collect::<Vec<_>>()
-                    .into_iter()
+                Either::Left(self.lower_type_bound(bound, self_ty, ignore_bindings))
             }
-            WherePredicate::Lifetime { bound, target } => {
-                vec![crate::wrap_empty_binders(WhereClause::LifetimeOutlives(LifetimeOutlives {
+            WherePredicate::Lifetime { bound, target } => Either::Right(iter::once(
+                crate::wrap_empty_binders(WhereClause::LifetimeOutlives(LifetimeOutlives {
                     a: self.lower_lifetime(bound),
                     b: self.lower_lifetime(target),
-                }))]
-                .into_iter()
-            }
+                })),
+            )),
         }
+        .into_iter()
     }
 
     pub(crate) fn lower_type_bound(
@@ -1380,8 +1378,8 @@ impl<'a> TyLoweringContext<'a> {
                     crate::wrap_empty_binders(clause)
                 });
                 predicates.extend(sized_clause);
-                predicates.shrink_to_fit();
             }
+            predicates.shrink_to_fit();
             predicates
         });
         ImplTrait { bounds: crate::make_single_type_binders(predicates) }

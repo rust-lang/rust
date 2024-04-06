@@ -603,15 +603,17 @@ pub enum ImplTraitId {
 }
 impl_intern_value_trivial!(ImplTraitId);
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(PartialEq, Eq, Debug, Hash)]
 pub struct ImplTraits {
     pub(crate) impl_traits: Arena<ImplTrait>,
 }
 
 has_interner!(ImplTraits);
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(PartialEq, Eq, Debug, Hash)]
 pub struct ImplTrait {
+    // FIXME: Should be Arc<[QuantifiedWhereClause]>, but the HasInterner impl for Arc is missing a
+    // ?Sized bound
     pub(crate) bounds: Binders<Vec<QuantifiedWhereClause>>,
 }
 
