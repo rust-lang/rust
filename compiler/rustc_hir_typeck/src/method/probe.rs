@@ -1376,8 +1376,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, impl_ty, impl_args);
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
-                    // FIXME: Make this `ocx.eq` once we define opaques more eagerly.
-                    match self.at(cause, self.param_env).eq(
+                    // FIXME: Make this `ocx.sup` once we define opaques more eagerly.
+                    match self.at(cause, self.param_env).sup(
                         DefineOpaqueTypes::No,
                         xform_self_ty,
                         self_ty,
@@ -1437,8 +1437,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
-                    // FIXME: Make this `ocx.eq` once we define opaques more eagerly.
-                    match self.at(cause, self.param_env).eq(
+                    // FIXME: Make this `ocx.sup` once we define opaques more eagerly.
+                    match self.at(cause, self.param_env).sup(
                         DefineOpaqueTypes::No,
                         xform_self_ty,
                         self_ty,
@@ -1489,8 +1489,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
-                    // FIXME: Make this `ocx.eq` once we define opaques more eagerly.
-                    match self.at(cause, self.param_env).eq(
+                    // FIXME: Make this `ocx.sup` once we define opaques more eagerly.
+                    match self.at(cause, self.param_env).sup(
                         DefineOpaqueTypes::No,
                         xform_self_ty,
                         self_ty,
