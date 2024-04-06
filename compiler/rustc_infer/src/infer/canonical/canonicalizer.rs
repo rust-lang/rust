@@ -802,7 +802,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         const_var: ty::Const<'tcx>,
     ) -> ty::Const<'tcx> {
         debug_assert!(
-            !self.infcx.is_some_and(|infcx| const_var != infcx.shallow_resolve(const_var))
+            !self.infcx.is_some_and(|infcx| const_var != infcx.shallow_resolve_const(const_var))
         );
         let var = self.canonical_var(info, const_var.into());
         ty::Const::new_bound(self.tcx, self.binder_index, var, self.fold_ty(const_var.ty()))

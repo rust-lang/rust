@@ -157,10 +157,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let tcx = self.tcx();
 
-        let trait_predicate = self.infcx.shallow_resolve(obligation.predicate);
         let placeholder_trait_predicate =
-            self.infcx.enter_forall_and_leak_universe(trait_predicate).trait_ref;
-        let placeholder_self_ty = placeholder_trait_predicate.self_ty();
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).trait_ref;
+        let placeholder_self_ty = self.infcx.shallow_resolve(placeholder_trait_predicate.self_ty());
         let candidate_predicate = self
             .for_each_item_bound(
                 placeholder_self_ty,
@@ -422,7 +421,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!(?obligation, "confirm_auto_impl_candidate");
 
-        let self_ty = self.infcx.shallow_resolve(obligation.predicate.self_ty());
+        let self_ty = obligation.predicate.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
         let types = self.constituent_types_for_ty(self_ty)?;
         Ok(self.vtable_auto_impl(obligation, obligation.predicate.def_id(), types))
     }
@@ -1378,7 +1377,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let drop_trait = self.tcx().require_lang_item(LangItem::Drop, None);
 
         let tcx = self.tcx();
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
+        let self_ty = obligation.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
 
         let mut nested = vec![];
         let cause = obligation.derived_cause(BuiltinDerivedObligation);

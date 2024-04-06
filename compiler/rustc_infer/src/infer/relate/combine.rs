@@ -155,8 +155,8 @@ impl<'tcx> InferCtxt<'tcx> {
             return Ok(a);
         }
 
-        let a = self.shallow_resolve(a);
-        let b = self.shallow_resolve(b);
+        let a = self.shallow_resolve_const(a);
+        let b = self.shallow_resolve_const(b);
 
         // We should never have to relate the `ty` field on `Const` as it is checked elsewhere that consts have the
         // correct type for the generic param they are an argument for. However there have been a number of cases
