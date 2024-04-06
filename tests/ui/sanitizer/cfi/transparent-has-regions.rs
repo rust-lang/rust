@@ -1,5 +1,5 @@
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi
+//@ compile-flags: -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Zunstable-options -Csanitize=cfi
 //@ no-prefer-dynamic
 //@ only-x86_64-unknown-linux-gnu
 //@ build-pass

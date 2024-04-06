@@ -1,7 +1,7 @@
 //@ revisions: aarch64 android
-//@[aarch64] compile-flags: --target aarch64-unknown-none -Zfixed-x18 -Zsanitizer=shadow-call-stack
+//@[aarch64] compile-flags: --target aarch64-unknown-none -Zfixed-x18 -Zunstable-options -Csanitize=shadow-call-stack
 //@[aarch64] needs-llvm-components: aarch64
-//@[android] compile-flags: --target aarch64-linux-android -Zsanitizer=shadow-call-stack
+//@[android] compile-flags: --target aarch64-linux-android -Zunstable-options -Csanitize=shadow-call-stack
 //@[android] needs-llvm-components: aarch64
 
 #![allow(internal_features)]
