@@ -4,8 +4,6 @@ error: dereferencing `mut` binding
 LL |     let Foo(mut a) = &Foo(0);
    |             ^^^^^ `mut` dereferences the type of this binding
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see 123076
 help: this will change in edition 2024
   --> $DIR/mut_dont_reset_binding_mode_2024_lint.rs:9:13
    |
@@ -18,15 +16,13 @@ LL | #![forbid(dereferencing_mut_binding)]
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: dereferencing `mut` binding
-  --> $DIR/mut_dont_reset_binding_mode_2024_lint.rs:14:13
+  --> $DIR/mut_dont_reset_binding_mode_2024_lint.rs:13:13
    |
 LL |     let Foo(mut a) = &mut Foo(0);
    |             ^^^^^ `mut` dereferences the type of this binding
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see 123076
 help: this will change in edition 2024
-  --> $DIR/mut_dont_reset_binding_mode_2024_lint.rs:14:13
+  --> $DIR/mut_dont_reset_binding_mode_2024_lint.rs:13:13
    |
 LL |     let Foo(mut a) = &mut Foo(0);
    |             ^^^^^

@@ -1657,10 +1657,11 @@ declare_lint! {
     Allow,
     "detects `mut x` bindings that change the type of `x`",
     @feature_gate = sym::mut_dont_reset_binding_mode_2024;
-    @future_incompatible = FutureIncompatibleInfo {
+    // FIXME uncomment below upon stabilization
+    /*@future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
         reference: "123076",
-    };
+    };*/
 }
 
 declare_lint! {
