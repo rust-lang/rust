@@ -13,28 +13,53 @@ scans them linearly to search.
 
 `search.js` calls this Raw, because it turns it into
 a more normal object tree after loading it.
-Naturally, it's also written without newlines or spaces.
+For space savings, it's also written without newlines or spaces.
 
 ```json
 [
     [ "crate_name", {
-        "doc": "Documentation",
+        // name
         "n": ["function_name", "Data"],
+        // type
         "t": "HF",
-        "d": ["This function gets the name of an integer with Data", "The data struct"],
+        // parent module
         "q": [[0, "crate_name"]],
+        // parent type
         "i": [2, 0],
-        "p": [[1, "i32"], [1, "str"], [5, "crate_name::Data"]],
-        "f": "{{gb}{d}}`",
+        // function signature
+        "f": "{{gb}{d}}`", // [[3, 1], [2]]
+        // impl disambiguator
         "b": [],
-        "c": [],
+        // deprecated flag
+        "c": "OjAAAAAAAAA=", // empty bitmap
+        // empty description flag
+        "e": "OjAAAAAAAAA=", // empty bitmap
+        // type dictionary
+        "p": [[1, "i32"], [1, "str"], [5, "crate_name::Data"]],
+        // aliases
         "a": [["get_name", 0]],
+        // description shards
+        "D": "g", // 3
     }]
 ]
 ```
 
 [`src/librustdoc/html/static/js/externs.js`]
 defines an actual schema in a Closure `@typedef`.
+
+| Key | Name                 | Description  |
+| --- | -------------------- | ------------ |
+| `n` | Names                | Item names   |
+| `t` | Item Type            | One-char item type code |
+| `q` | Parent module        | `Map<index, path>` |
+| `i` | Parent type          | list of indexes |
+| `f` | Function signature   | [encoded](#i-f-and-p) |
+| `b` | Impl disambiguator   | `Map<index, string>` |
+| `c` | Deprecation flag     | [roaring bitmap](#roaring-bitmaps) |
+| `e` | Description is empty | [roaring bitmap](#roaring-bitmaps) |
+| `p` | Type dictionary      | `[[item type, path]]` |
+| `a` | Alias                | `Map<string, index>` |
+| `D` | description shards   | [encoded](#how-descriptions-are-stored) |
 
 The above index defines a crate called `crate_name`
 with a free function called `function_name` and a struct called `Data`,
@@ -78,36 +103,45 @@ It makes a lot of compromises:
 
 ### Parallel arrays and indexed maps
 
-Most data in the index
-(other than `doc`, which is a single string for the whole crate,
-`p`, which is a separate structure
-and `a`, which is also a separate structure)
-is a set of parallel arrays defining each searchable item.
+Abstractly, Rustdoc Search data is a table, stored in column-major form.
+Most data in the index represents a set of parallel arrays
+(the "columns") which refer to the same data if they're at the same position.
 
 For example,
 the above search index can be turned into this table:
 
-| n | t | d | q | i | f | b | c |
-|---|---|---|---|---|---|---|---|
-| `function_name` | `H` | This function gets the name of an integer with Data | `crate_name` | 2 | `{{gb}{d}}` | NULL | NULL |
-| `Data` | `F` | The data struct | `crate_name` | 0 | `` ` `` | NULL | NULL |
+|   | n | t | [d] | q | i | f | b | c |
+|---|---|---|-----|---|---|---|---|---|
+| 0 | `crate_name`    | `D` | Documentation | NULL | 0 | NULL | NULL | 0 |
+| 1 | `function_name` | `H` | This function gets the name of an integer with Data | `crate_name` | 2 | `{{gb}{d}}` | NULL | 0 |
+| 2 | `Data` | `F` | The data struct | `crate_name` | 0 | `` ` `` | NULL | 0 |
+
+[d]: #how-descriptions-are-stored
+
+The crate row is implied in most columns, since its type is known (it's a crate),
+it can't have a parent (crates form the root of the module tree),
+its name is specified as the map key,
+and function-specific data like the impl disambiguator can't apply either.
+However, it can still have a description and it can still be deprecated.
+The crate, therefore, has a primary key of `0`.
 
 The above code doesn't use `c`, which holds deprecated indices,
 or `b`, which maps indices to strings.
-If `crate_name::function_name` used both, it would look like this.
+If `crate_name::function_name` used both, it might look like this.
 
 ```json
         "b": [[0, "impl-Foo-for-Bar"]],
-        "c": [0],
+        "c": "OjAAAAEAAAAAAAIAEAAAABUAbgZYCQ==",
 ```
 
-This attaches a disambiguator to index 0 and marks it deprecated.
+This attaches a disambiguator to index 1 and marks it deprecated.
 
 The advantage of this layout is that these APIs often have implicit structure
 that DEFLATE can take advantage of,
 but that rustdoc can't assume.
 Like how names are usually CamelCase or snake_case,
 but descriptions aren't.
+It also makes it easier to use a sparse data for things like boolean flags.
 
 `q` is a Map from *the first applicable* ID to a parent module path.
 This is a weird trick, but it makes more sense in pseudo-code:
@@ -129,6 +163,98 @@ before serializing.
 Doing this allows rustdoc to not only make the search index smaller,
 but reuse the same string representing the parent path across multiple in-memory items.
 
+### Representing sparse columns
+
+#### VLQ Hex
+
+This format is, as far as I know, used nowhere other than rustdoc.
+It follows this grammar:
+
+```ebnf
+VLQHex = { VHItem | VHBackref }
+VHItem = VHNumber | ( '{', {VHItem}, '}' )
+VHNumber = { '@' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' }, ( '`' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k ' | 'l' | 'm' | 'n' | 'o' )
+VHBackref = ( '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | ':' | ';' | '<' | '=' | '>' | '?' )
+```
+
+A VHNumber is a variable-length, self-terminating base16 number
+(terminated because the last hexit is lowercase while all others are uppercase).
+The sign bit is represented using [zig-zag encoding].
+
+This alphabet is chosen because the characters can be turned into hexits by
+masking off the last four bits of the ASCII encoding.
+
+A major feature of this encoding, as with all of the "compression" done in rustdoc,
+is that it can remain in its compressed format *even in memory at runtime*.
+This is why `HBackref` is only used at the top level,
+and why we don't just use [Flate] for everything: the decoder in search.js
+will reuse the entire decoded object whenever a backref is seen,
+saving decode work and memory.
+
+[zig-zag encoding]: https://en.wikipedia.org/wiki/Variable-length_quantity#Zigzag_encoding
+[Flate]: https://en.wikipedia.org/wiki/Deflate
+
+#### Roaring Bitmaps
+
+Flag-style data, such as deprecation and empty descriptions,
+are stored using the [standard Roaring Bitmap serialization format with runs].
+The data is then base64 encoded when writing it.
+
+As a brief overview: a roaring bitmap is a chunked array of bits,
+described in [this paper].
+A chunk can either be a list of integers, a bitfield, or a list of runs.
+In any case, the search engine has to base64 decode it,
+and read the chunk index itself,
+but the payload data stays as-is.
+
+All roaring bitmaps in rustdoc currently store a flag for each item index.
+The crate is item 0, all others start at 1.
+
+[standard Roaring Bitmap serialization format with runs]: https://github.com/RoaringBitmap/RoaringFormatSpec
+[this paper]: https://arxiv.org/pdf/1603.06549.pdf
+
+### How descriptions are stored
+
+The largest amount of data,
+and the main thing Rustdoc Search deals with that isn't
+actually used for searching, is descriptions.
+In a SERP table, this is what appears on the rightmost column.
+
+> | item type | item path             | ***description*** (this part)                       |
+> | --------- | --------------------- | --------------------------------------------------- |
+> | function  | my_crate::my_function | This function gets the name of an integer with Data |
+
+When someone runs a search in rustdoc for the first time, their browser will
+work through a "sandwich workload" of three steps:
+
+1. Download the search-index.js and search.js files (a network bottleneck).
+2. Perform the actual search (a CPU and memory bandwidth bottleneck).
+3. Download the description data (another network bottleneck).
+
+Reducing the amount of data downloaded here will almost always increase latency,
+by delaying the decision of what to download behind other work and/or adding
+data dependencies where something can't be downloaded without first downloading
+something else. In this case, we can't start downloading descriptions until
+after the search is done, because that's what allows it to decide *which*
+descriptions to download (it needs to sort the results then truncate to 200).
+
+To do this, two columns are stored in the search index, building on both
+Roaring Bitmaps and on VLQ Hex.
+
+* `e` is an index of **e**mpty descriptions. It's a [roaring bitmap] of
+  each item (the crate itself is item 0, the rest start at 1).
+* `D` is a shard list, stored in [VLQ hex] as flat list of integers.
+  Each integer gives you the number of descriptions in the shard.
+  As the decoder walks the index, it checks if the description is empty.
+  if it's not, then it's in the "current" shard. When all items are
+  exhausted, it goes on to the next shard.
+
+Inside each shard is a newline-delimited list of descriptions,
+wrapped in a JSONP-style function call.
+
+[roaring bitmap]: #roaring-bitmaps
+[VLQ hex]: #vlq-hex
+
 ### `i`, `f`, and `p`
 
 `i` and `f` both index into `p`, the array of parent items.
@@ -139,32 +265,18 @@ It's different from `q` because `q` represents the parent *module or crate*,
 which everything has,
 while `i`/`q` are used for *type and trait-associated items* like methods.
 
-`f`, the function signatures, use their own encoding.
+`f`, the function signatures, use a [VLQ hex] tree.
+A number is either a one-indexed reference into `p`,
+a negative number representing a generic,
+or zero for null.
 
-```ebnf
-f = { FItem | FBackref }
-FItem = FNumber | ( '{', {FItem}, '}' )
-FNumber = { '@' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' }, ( '`' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k ' | 'l' | 'm' | 'n' | 'o' )
-FBackref = ( '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | ':' | ';' | '<' | '=' | '>' | '?' )
-```
-
-An FNumber is a variable-length, self-terminating base16 number
-(terminated because the last hexit is lowercase while all others are uppercase).
-These are one-indexed references into `p`, because zero is used for nulls,
-and negative numbers represent generics.
-The sign bit is represented using [zig-zag encoding]
 (the internal object representation also uses negative numbers,
 even after decoding,
 to represent generics).
-This alphabet is chosen because the characters can be turned into hexits by
-masking off the last four bits of the ASCII encoding.
 
 For example, `{{gb}{d}}` is equivalent to the json `[[3, 1], [2]]`.
 Because of zigzag encoding, `` ` `` is +0, `a` is -0 (which is not used),
 `b` is +1, and `c` is -1.
-
-[empirically]: https://github.com/rust-lang/rust/pull/83003
-[zig-zag encoding]: https://en.wikipedia.org/wiki/Variable-length_quantity#Zigzag_encoding
 
 ## Searching by name
 
