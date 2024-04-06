@@ -2106,7 +2106,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let re_erased = tcx.lifetimes.re_erased;
             let scrutinee_source_info = self.source_info(scrutinee_span);
             for &(place, temp) in fake_borrows {
-                let borrow = Rvalue::Ref(re_erased, BorrowKind::Fake, place);
+                let borrow =
+                    Rvalue::Ref(re_erased, BorrowKind::Fake(FakeBorrowKind::Shallow), place);
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 

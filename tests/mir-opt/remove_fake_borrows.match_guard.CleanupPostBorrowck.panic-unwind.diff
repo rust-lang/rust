@@ -33,10 +33,10 @@
       }
   
       bb4: {
--         _3 = &fake _1;
--         _4 = &fake (*(*((_1 as Some).0: &&i32)));
--         _5 = &fake (*((_1 as Some).0: &&i32));
--         _6 = &fake ((_1 as Some).0: &&i32);
+-         _3 = &fake shallow _1;
+-         _4 = &fake shallow (*(*((_1 as Some).0: &&i32)));
+-         _5 = &fake shallow (*((_1 as Some).0: &&i32));
+-         _6 = &fake shallow ((_1 as Some).0: &&i32);
 +         nop;
 +         nop;
 +         nop;

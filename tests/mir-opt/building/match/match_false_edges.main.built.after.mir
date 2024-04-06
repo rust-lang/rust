@@ -87,7 +87,7 @@ fn main() -> () {
     bb10: {
         StorageLive(_7);
         _7 = &((_2 as Some).0: i32);
-        _3 = &fake _2;
+        _3 = &fake shallow _2;
         StorageLive(_8);
         _8 = guard() -> [return: bb11, unwind: bb24];
     }
@@ -129,7 +129,7 @@ fn main() -> () {
     bb16: {
         StorageLive(_11);
         _11 = &((_2 as Some).0: i32);
-        _3 = &fake _2;
+        _3 = &fake shallow _2;
         StorageLive(_12);
         StorageLive(_13);
         _13 = (*_11);

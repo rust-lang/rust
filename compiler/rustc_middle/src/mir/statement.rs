@@ -451,7 +451,7 @@ impl<'tcx> Rvalue<'tcx> {
 impl BorrowKind {
     pub fn mutability(&self) -> Mutability {
         match *self {
-            BorrowKind::Shared | BorrowKind::Fake => Mutability::Not,
+            BorrowKind::Shared | BorrowKind::Fake(_) => Mutability::Not,
             BorrowKind::Mut { .. } => Mutability::Mut,
         }
     }
@@ -459,7 +459,7 @@ impl BorrowKind {
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
             BorrowKind::Shared
-            | BorrowKind::Fake
+            | BorrowKind::Fake(_)
             | BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::ClosureCapture } => {
                 false
             }

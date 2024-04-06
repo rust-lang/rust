@@ -17,9 +17,9 @@ use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     self, AggregateKind, BindingForm, BorrowKind, CallSource, ClearCrossCrate, ConstraintCategory,
-    FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, MutBorrowKind, Operand, Place,
-    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
-    VarBindingForm,
+    FakeBorrowKind, FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, MutBorrowKind,
+    Operand, Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
+    TerminatorKind, VarBindingForm,
 };
 use rustc_middle::ty::{
     self, suggest_constraining_type_params, PredicateKind, ToPredicate, Ty, TyCtxt,
@@ -1486,7 +1486,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let first_borrow_desc;
         let mut err = match (gen_borrow_kind, issued_borrow.kind) {
             (
-                BorrowKind::Shared,
+                BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep),
                 BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow },
             ) => {
                 first_borrow_desc = "mutable ";
@@ -1504,7 +1504,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
             (
                 BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow },
-                BorrowKind::Shared,
+                BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep),
             ) => {
                 first_borrow_desc = "immutable ";
                 let mut err = self.cannot_reborrow_already_borrowed(
@@ -1566,7 +1566,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.cannot_uniquely_borrow_by_two_closures(span, &desc_place, issued_span, None)
             }
 
-            (BorrowKind::Mut { .. }, BorrowKind::Fake) => {
+            (BorrowKind::Mut { .. }, BorrowKind::Fake(FakeBorrowKind::Shallow)) => {
                 if let Some(immutable_section_description) =
                     self.classify_immutable_section(issued_borrow.assigned_place)
                 {
@@ -1629,7 +1629,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Shared, BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture }) => {
+            (
+                BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep),
+                BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture },
+            ) => {
                 first_borrow_desc = "first ";
                 self.cannot_reborrow_already_uniquely_borrowed(
                     span,
@@ -1659,8 +1662,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Shared, BorrowKind::Shared | BorrowKind::Fake)
-            | (BorrowKind::Fake, BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake) => {
+            (
+                BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep),
+                BorrowKind::Shared | BorrowKind::Fake(_),
+            )
+            | (
+                BorrowKind::Fake(FakeBorrowKind::Shallow),
+                BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake(_),
+            ) => {
                 unreachable!()
             }
         };
@@ -3572,7 +3581,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let loan_span = loan_spans.args_or_use();
 
         let descr_place = self.describe_any_place(place.as_ref());
-        if loan.kind == BorrowKind::Fake {
+        if let BorrowKind::Fake(_) = loan.kind {
             if let Some(section) = self.classify_immutable_section(loan.assigned_place) {
                 let mut err = self.cannot_mutate_in_immutable_section(
                     span,

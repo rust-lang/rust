@@ -72,8 +72,8 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb12: {
-        _6 = &fake (_3.0: &str);
-        _7 = &fake (_3.1: bool);
+        _6 = &fake shallow (_3.0: &str);
+        _7 = &fake shallow (_3.1: bool);
         StorageLive(_10);
         _10 = const true;
         switchInt(move _10) -> [0: bb14, otherwise: bb13];
