@@ -1,6 +1,8 @@
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
 //@ run-rustfix
 
+#![allow(unexpected_cfgs)]
+
 fn main() {
     #[cfg(key="foo")]
     //~^ ERROR expected unsuffixed literal, found `foo`
