@@ -1,7 +1,7 @@
 // Verifies that functions are instrumented.
 //
 //@ needs-sanitizer-dataflow
-//@ compile-flags: -Copt-level=0 -Zsanitizer=dataflow -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Copt-level=0 -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=dataflow
 
 #![crate_type = "lib"]
 

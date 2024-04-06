@@ -1,7 +1,7 @@
 // Verifies that `-Zsanitizer=kernel-hwaddress` enables lifetime markers.
 
 //@ add-minicore
-//@ compile-flags: -Zsanitizer=kernel-hwaddress -Copt-level=0
+//@ compile-flags: -Copt-level=0 -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=kernel-hwaddress
 //@ compile-flags: --target aarch64-unknown-none
 //@ needs-llvm-components: aarch64
 

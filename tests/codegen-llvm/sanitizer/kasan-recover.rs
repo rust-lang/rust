@@ -3,9 +3,9 @@
 //
 //@ add-minicore
 //@ revisions: KASAN KASAN-RECOVER
-//@ compile-flags: -Copt-level=0
+//@ compile-flags: -Copt-level=0  -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options
 //@ needs-llvm-components: x86
-//@ compile-flags: -Zsanitizer=kernel-address --target x86_64-unknown-none
+//@ compile-flags: -Csanitize=kernel-address --target x86_64-unknown-none
 //@[KASAN-RECOVER] compile-flags: -Zsanitizer-recover=kernel-address
 
 #![feature(no_core, sanitize, lang_items)]

@@ -1,5 +1,6 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
+//@ compile-flags: -Zunstable-options
 // ignore-tidy-linelength
 //@ revisions: aarch64_be_unknown_hermit
 //@ [aarch64_be_unknown_hermit] compile-flags: --target aarch64_be-unknown-hermit

@@ -2,9 +2,8 @@
 // the hardware-assisted address sanitizer.
 //
 //@ needs-sanitizer-hwaddress
-//@ compile-flags: -Cunsafe-allow-abi-mismatch=sanitizer
-//@ compile-flags: -Ctarget-feature=-crt-static
-//@ compile-flags: -Zsanitizer=hwaddress -Copt-level=0
+//@ compile-flags: -Cunsafe-allow-abi-mismatch=sanitize -Ctarget-feature=-crt-static
+//@ compile-flags: -Zunstable-options -Csanitize=hwaddress -Copt-level=0
 
 #![crate_type = "lib"]
 #![feature(sanitize)]

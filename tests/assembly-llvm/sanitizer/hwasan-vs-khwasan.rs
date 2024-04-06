@@ -3,11 +3,10 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
 //@ revisions: hwasan khwasan
-//@[hwasan] compile-flags: --target aarch64-unknown-linux-gnu -Zsanitizer=hwaddress
+//@[hwasan] compile-flags: -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=hwaddress -Copt-level=1 --target aarch64-unknown-linux-gnu
 //@[hwasan] needs-llvm-components: aarch64
-//@[khwasan] compile-flags: --target aarch64-unknown-none -Zsanitizer=kernel-hwaddress
+//@[khwasan] compile-flags: -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=kernel-hwaddress -Copt-level=1 --target aarch64-unknown-none
 //@[khwasan] needs-llvm-components: aarch64
-//@ compile-flags: -Copt-level=1
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]

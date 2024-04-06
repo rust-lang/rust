@@ -42,13 +42,13 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without kernel CFI sanitizer",
         },
         Need {
-            name: "needs-sanitizer-kasan",
-            condition: cache.sanitizer_kasan,
+            name: "needs-sanitizer-kernel-address",
+            condition: cache.sanitizer_kernel_address,
             ignore_reason: "ignored on targets without kernel address sanitizer",
         },
         Need {
-            name: "needs-sanitizer-khwasan",
-            condition: cache.sanitizer_khwasan,
+            name: "needs-sanitizer-kernel-hwaddress",
+            condition: cache.sanitizer_kernel_hwaddress,
             ignore_reason: "ignored on targets without kernel hardware-assisted address sanitizer",
         },
         Need {
@@ -367,8 +367,8 @@ pub(super) struct CachedNeedsConditions {
     sanitizer_cfi: bool,
     sanitizer_dataflow: bool,
     sanitizer_kcfi: bool,
-    sanitizer_kasan: bool,
-    sanitizer_khwasan: bool,
+    sanitizer_kernel_address: bool,
+    sanitizer_kernel_hwaddress: bool,
     sanitizer_leak: bool,
     sanitizer_memory: bool,
     sanitizer_thread: bool,
@@ -392,15 +392,19 @@ pub(super) struct CachedNeedsConditions {
 impl CachedNeedsConditions {
     pub(super) fn load(config: &Config) -> Self {
         let target = &&*config.target;
-        let sanitizers = &config.target_cfg().sanitizers;
+        let sanitizers = [
+            config.target_cfg().supported_sanitizers.clone(),
+            config.target_cfg().stable_sanitizers.clone(),
+        ]
+        .concat();
         Self {
             sanitizer_support: std::env::var_os("RUSTC_SANITIZER_SUPPORT").is_some(),
             sanitizer_address: sanitizers.contains(&Sanitizer::Address),
             sanitizer_cfi: sanitizers.contains(&Sanitizer::Cfi),
             sanitizer_dataflow: sanitizers.contains(&Sanitizer::Dataflow),
             sanitizer_kcfi: sanitizers.contains(&Sanitizer::Kcfi),
-            sanitizer_kasan: sanitizers.contains(&Sanitizer::KernelAddress),
-            sanitizer_khwasan: sanitizers.contains(&Sanitizer::KernelHwaddress),
+            sanitizer_kernel_address: sanitizers.contains(&Sanitizer::KernelAddress),
+            sanitizer_kernel_hwaddress: sanitizers.contains(&Sanitizer::KernelHwaddress),
             sanitizer_leak: sanitizers.contains(&Sanitizer::Leak),
             sanitizer_memory: sanitizers.contains(&Sanitizer::Memory),
             sanitizer_thread: sanitizers.contains(&Sanitizer::Thread),

@@ -1,4 +1,4 @@
-//@ compile-flags: -Z sanitizer=kernel-hwaddress --target x86_64-unknown-none
+//@ compile-flags: -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=kernel-hwaddress --target x86_64-unknown-none
 //@ needs-llvm-components: x86
 //@ ignore-backends: gcc
 

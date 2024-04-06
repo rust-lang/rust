@@ -1,7 +1,5 @@
 //@ revisions: emit_mir instrument cfi
 
-//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
-
 // Make sure we don't try to emit MIR for it.
 //@[emit_mir] compile-flags: --emit=mir
 
@@ -10,7 +8,7 @@
 //@[instrument] only-linux
 
 // Make sure we don't try to CFI encode it.
-//@[cfi] compile-flags: -Zsanitizer=cfi -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Clink-dead-code=true
+//@[cfi] compile-flags: -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=cfi -Clink-dead-code=true
 //@[cfi] needs-sanitizer-cfi
 //@[cfi] no-prefer-dynamic
 // FIXME(#122848) Remove only-linux once OSX CFI binaries work

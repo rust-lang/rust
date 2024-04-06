@@ -1,5 +1,6 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
+//@ compile-flags: -Zunstable-options
 // ignore-tidy-linelength
 //@ revisions: aarch64_apple_darwin
 //@ [aarch64_apple_darwin] compile-flags: --target aarch64-apple-darwin

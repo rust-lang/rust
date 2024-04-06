@@ -2,7 +2,7 @@
 // the address sanitizer.
 //
 //@ needs-sanitizer-address
-//@ compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static -Copt-level=0 -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Copt-level=0 -Ctarget-feature=-crt-static -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=address
 
 #![crate_type = "lib"]
 #![feature(sanitize)]

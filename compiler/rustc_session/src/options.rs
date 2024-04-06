@@ -140,10 +140,12 @@ impl TargetModifier {
     pub fn consistent(&self, sess: &Session, other: Option<&TargetModifier>) -> bool {
         assert!(other.is_none() || self.opt == other.unwrap().opt);
         match self.opt {
-            OptionsTargetModifiers::UnstableOptions(unstable) => match unstable {
-                UnstableOptionsTargetModifiers::Sanitizer => {
+            OptionsTargetModifiers::CodegenOptions(stable) => match stable {
+                CodegenOptionsTargetModifiers::Sanitizer => {
                     return target_modifier_consistency_check::sanitizer(self, other);
                 }
+            },
+            OptionsTargetModifiers::UnstableOptions(unstable) => match unstable {
                 UnstableOptionsTargetModifiers::SanitizerCfiNormalizeIntegers => {
                     return target_modifier_consistency_check::sanitizer_cfi_normalize_integers(
                         sess, self, other,
@@ -151,7 +153,6 @@ impl TargetModifier {
                 }
                 _ => {}
             },
-            _ => {}
         };
         match other {
             Some(other) => self.extend().tech_value == other.extend().tech_value,
@@ -1214,27 +1215,14 @@ pub mod parse {
     }
 
     pub(crate) fn parse_sanitizers(slot: &mut SanitizerSet, v: Option<&str>) -> bool {
-        if let Some(v) = v {
-            for s in v.split(',') {
-                *slot |= match s {
-                    "address" => SanitizerSet::ADDRESS,
-                    "cfi" => SanitizerSet::CFI,
-                    "dataflow" => SanitizerSet::DATAFLOW,
-                    "kcfi" => SanitizerSet::KCFI,
-                    "kernel-address" => SanitizerSet::KERNELADDRESS,
-                    "kernel-hwaddress" => SanitizerSet::KERNELHWADDRESS,
-                    "leak" => SanitizerSet::LEAK,
-                    "memory" => SanitizerSet::MEMORY,
-                    "memtag" => SanitizerSet::MEMTAG,
-                    "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
-                    "thread" => SanitizerSet::THREAD,
-                    "hwaddress" => SanitizerSet::HWADDRESS,
-                    "safestack" => SanitizerSet::SAFESTACK,
-                    "realtime" => SanitizerSet::REALTIME,
-                    _ => return false,
-                }
+        if let Some(s) = v {
+            let sanitizer_set = SanitizerSet::from_comma_list(s);
+            if sanitizer_set.is_ok() {
+                *slot |= sanitizer_set.unwrap();
+                true
+            } else {
+                false
             }
-            true
         } else {
             false
         }
@@ -2151,6 +2139,9 @@ options! {
         "output remarks for these optimization passes (space separated, or \"all\")"),
     rpath: bool = (false, parse_bool, [UNTRACKED],
         "set rpath values in libs/exes (default: no)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]
+    sanitize: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED] { TARGET_MODIFIER: Sanitizer },
+        "use one or multiple sanitizers"),
     save_temps: bool = (false, parse_bool, [UNTRACKED],
         "save all temporary output files during compilation (default: no)"),
     soft_float: () = ((), parse_ignore, [UNTRACKED],
@@ -2585,9 +2576,6 @@ written to standard error output)"),
     retpoline_external_thunk: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: RetpolineExternalThunk },
         "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
         target features (default: no)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]
-    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED] { TARGET_MODIFIER: Sanitizer },
-        "use a sanitizer"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
         "enable canonical jump tables (default: yes)"),
     sanitizer_cfi_generalize_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],
