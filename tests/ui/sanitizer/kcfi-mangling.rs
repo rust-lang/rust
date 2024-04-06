@@ -2,7 +2,7 @@
 
 //@ needs-sanitizer-kcfi
 //@ no-prefer-dynamic
-//@ compile-flags: -C panic=abort -Zsanitizer=kcfi -C symbol-mangling-version=v0
+//@ compile-flags: -C panic=abort -Zunstable-options -Csanitize=kcfi -C symbol-mangling-version=v0
 //@ build-pass
 
 trait Foo {

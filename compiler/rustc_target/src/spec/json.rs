@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use super::{Target, TargetKind, TargetOptions, TargetWarnings};
 use crate::json::{Json, ToJson};
-use crate::spec::AbiMap;
+use crate::spec::{AbiMap, SanitizerSet};
 
 impl Target {
     /// Loads a target descriptor from a JSON object.
@@ -382,32 +382,15 @@ impl Target {
             } );
             ($key_name:ident, SanitizerSet) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(o) = obj.remove(&name) {
-                    if let Some(a) = o.as_array() {
-                        for s in a {
-                            use super::SanitizerSet;
-                            base.$key_name |= match s.as_str() {
-                                Some("address") => SanitizerSet::ADDRESS,
-                                Some("cfi") => SanitizerSet::CFI,
-                                Some("dataflow") => SanitizerSet::DATAFLOW,
-                                Some("kcfi") => SanitizerSet::KCFI,
-                                Some("kernel-address") => SanitizerSet::KERNELADDRESS,
-                                Some("leak") => SanitizerSet::LEAK,
-                                Some("memory") => SanitizerSet::MEMORY,
-                                Some("memtag") => SanitizerSet::MEMTAG,
-                                Some("safestack") => SanitizerSet::SAFESTACK,
-                                Some("shadow-call-stack") => SanitizerSet::SHADOWCALLSTACK,
-                                Some("thread") => SanitizerSet::THREAD,
-                                Some("hwaddress") => SanitizerSet::HWADDRESS,
-                                Some(s) => return Err(format!("unknown sanitizer {}", s)),
-                                _ => return Err(format!("not a string: {:?}", s)),
-                            };
-                        }
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                }
-                Ok::<(), String>(())
+                obj.remove(&name).and_then(|o| match SanitizerSet::from_json(&o) {
+                    Ok(v) => {
+                        base.$key_name = v;
+                        Some(Ok(()))
+                    },
+                    Err(s) => Some(Err(
+                        format!("`{:?}` is not a valid value for `{}`: {}", o, name, s)
+                    )),
+                }).unwrap_or(Ok(()))
             } );
             ($key_name:ident, link_self_contained_components) => ( {
                 // Skeleton of what needs to be parsed:
@@ -669,6 +652,7 @@ impl Target {
         key!(split_debuginfo, SplitDebuginfo)?;
         key!(supported_split_debuginfo, fallible_list)?;
         key!(supported_sanitizers, SanitizerSet)?;
+        key!(stable_sanitizers, SanitizerSet)?;
         key!(generate_arange_section, bool);
         key!(supports_stack_protector, bool);
         key!(small_data_threshold_support, SmallDataThresholdSupport)?;
@@ -862,6 +846,7 @@ impl ToJson for Target {
         target_option_val!(split_debuginfo);
         target_option_val!(supported_split_debuginfo);
         target_option_val!(supported_sanitizers);
+        target_option_val!(stable_sanitizers);
         target_option_val!(c_enum_min_bits);
         target_option_val!(generate_arange_section);
         target_option_val!(supports_stack_protector);
