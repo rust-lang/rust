@@ -56,11 +56,6 @@
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
 
-// To run alloc tests without x.py without ending up with two copies of alloc, Miri needs to be
-// able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
-// rustc itself never sets the feature, so this line has no effect there.
-#![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
-//
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
 #![doc(
@@ -71,7 +66,6 @@
 #![doc(cfg_hide(
     not(test),
     not(any(test, bootstrap)),
-    any(not(feature = "miri-test-libstd"), test, doctest),
     no_global_oom_handling,
     not(no_global_oom_handling),
     not(no_rc),
