@@ -682,7 +682,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.cx().const_usize(val)
                     }
                     mir::NullOp::UbChecks => {
-                        let val = bx.tcx().sess.opts.debug_assertions;
+                        let val = bx.tcx().sess.ub_checks();
                         bx.cx().const_bool(val)
                     }
                 };

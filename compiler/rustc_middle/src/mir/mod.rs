@@ -777,8 +777,8 @@ impl<'tcx> Body<'tcx> {
         // _1 = const _
         // SwitchInt(_1)
         //
-        // And MIR for if intrinsics::debug_assertions() looks like this:
-        // _1 = cfg!(debug_assertions)
+        // And MIR for if intrinsics::ub_checks() looks like this:
+        // _1 = UbChecks()
         // SwitchInt(_1)
         //
         // So we're going to try to recognize this pattern.
@@ -799,9 +799,7 @@ impl<'tcx> Body<'tcx> {
         }
 
         match rvalue {
-            Rvalue::NullaryOp(NullOp::UbChecks, _) => {
-                Some((tcx.sess.opts.debug_assertions as u128, targets))
-            }
+            Rvalue::NullaryOp(NullOp::UbChecks, _) => Some((tcx.sess.ub_checks() as u128, targets)),
             Rvalue::Use(Operand::Constant(constant)) => {
                 let bits = eval_mono_const(constant);
                 Some((bits, targets))

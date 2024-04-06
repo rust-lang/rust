@@ -789,7 +789,7 @@ fn codegen_stmt<'tcx>(
                             layout.offset_of_subfield(fx, fields.iter()).bytes()
                         }
                         NullOp::UbChecks => {
-                            let val = fx.tcx.sess.opts.debug_assertions;
+                            let val = fx.tcx.sess.ub_checks();
                             let val = CValue::by_val(
                                 fx.bcx.ins().iconst(types::I8, i64::try_from(val).unwrap()),
                                 fx.layout_of(fx.tcx.types.bool),
