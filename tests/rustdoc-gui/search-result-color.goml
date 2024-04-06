@@ -1,6 +1,37 @@
 // The goal of this test is to ensure the color of the text is the one expected.
 
 include: "utils.goml"
+
+define-function: (
+    "check-search-color",
+    [theme, count_color, desc_color, path_color, bottom_border_color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+
+        // Waiting for the search results to appear...
+        wait-for: "#search-tabs"
+        assert-css: (
+            "#search-tabs > button > .count",
+            {"color": |count_color|},
+            ALL,
+        )
+        assert-css: (
+            "//*[@class='desc'][text()='Just a normal struct.']",
+            {"color": |desc_color|},
+        )
+        assert-css: (
+            "//*[@class='result-name']//*[text()='test_docs::']",
+            {"color": |path_color|},
+        )
+
+        // Checking the color of the bottom border.
+        assert-css: (
+            ".search-results > a",
+            {"border-bottom-color": |bottom_border_color|}
+        )
+    }
+)
+
 define-function: (
     "check-result-color",
     [result_kind, color, hover_color],
@@ -44,29 +75,13 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=coo"
 show-text: true
 
 // Ayu theme
-call-function: ("switch-theme", {"theme": "ayu"})
-
-// Waiting for the search results to appear...
-wait-for: "#search-tabs"
-assert-css: (
-    "#search-tabs > button > .count",
-    {"color": "#888"},
-    ALL,
-)
-assert-css: (
-    "//*[@class='desc'][text()='Just a normal struct.']",
-    {"color": "#c5c5c5"},
-)
-assert-css: (
-    "//*[@class='result-name']//*[text()='test_docs::']",
-    {"color": "#0096cf"},
-)
-
-// Checking the color of the bottom border.
-assert-css: (
-    ".search-results > a",
-    {"border-bottom-color": "#aaa3"}
-)
+call-function: ("check-search-color", {
+    "theme": "ayu",
+    "count_color": "#888",
+    "desc_color": "#c5c5c5",
+    "path_color": "#0096cf",
+    "bottom_border_color": "#aaa3",
+})
 
 store-value: (entry_color, "#0096cf") // color of the search entry
 store-value: (hover_entry_color, "#fff") // color of the hovered/focused search entry
@@ -152,29 +167,13 @@ assert-css: (
 )
 
 // Dark theme
-call-function: ("switch-theme", {"theme": "dark"})
-
-// Waiting for the search results to appear...
-wait-for: "#search-tabs"
-assert-css: (
-    "#search-tabs > button > .count",
-    {"color": "#888"},
-    ALL,
-)
-assert-css: (
-    "//*[@class='desc'][text()='Just a normal struct.']",
-    {"color": "#ddd"},
-)
-assert-css: (
-    "//*[@class='result-name']//*[text()='test_docs::']",
-    {"color": "#ddd"},
-)
-
-// Checking the color of the bottom border.
-assert-css: (
-    ".search-results > a",
-    {"border-bottom-color": "#aaa3"}
-)
+call-function: ("check-search-color", {
+    "theme": "dark",
+    "count_color": "#888",
+    "desc_color": "#ddd",
+    "path_color": "#ddd",
+    "bottom_border_color": "#aaa3",
+})
 
 store-value: (entry_color, "#ddd") // color of the search entry
 store-value: (hover_entry_color, "#ddd") // color of the hovered/focused search entry
@@ -248,29 +247,13 @@ assert-css: (
 )
 
 // Light theme
-call-function: ("switch-theme", {"theme": "light"})
-
-// Waiting for the search results to appear...
-wait-for: "#search-tabs"
-assert-css: (
-    "#search-tabs > button > .count",
-    {"color": "#888"},
-    ALL,
-)
-assert-css: (
-    "//*[@class='desc'][text()='Just a normal struct.']",
-    {"color": "#000"},
-)
-assert-css: (
-    "//*[@class='result-name']//*[text()='test_docs::']",
-    {"color": "#000"},
-)
-
-// Checking the color of the bottom border.
-assert-css: (
-    ".search-results > a",
-    {"border-bottom-color": "#aaa3"}
-)
+call-function: ("check-search-color", {
+    "theme": "light",
+    "count_color": "#888",
+    "desc_color": "#000",
+    "path_color": "#000",
+    "bottom_border_color": "#aaa3",
+})
 
 store-value: (entry_color, "#000") // color of the search entry
 store-value: (hover_entry_color, "#000") // color of the hovered/focused search entry
