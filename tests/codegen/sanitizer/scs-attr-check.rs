@@ -2,7 +2,7 @@
 // applied when enabling the shadow-call-stack sanitizer.
 //
 //@ needs-sanitizer-shadow-call-stack
-//@ compile-flags: -Zsanitizer=shadow-call-stack
+//@ compile-flags: -Zunstable-options -Csanitizer=shadow-call-stack
 
 #![crate_type = "lib"]
 #![feature(no_sanitize)]

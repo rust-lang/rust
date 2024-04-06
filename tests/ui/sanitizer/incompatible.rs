@@ -1,6 +1,6 @@
-//@ compile-flags: -Z sanitizer=address -Z sanitizer=memory --target x86_64-unknown-linux-gnu
+//@ compile-flags: -Zunstable-options -Csanitizer=address -Csanitizer=memory --target x86_64-unknown-linux-gnu
 //@ needs-llvm-components: x86
-//@ error-pattern: error: `-Zsanitizer=address` is incompatible with `-Zsanitizer=memory`
+//@ error-pattern: error: `-Csanitizer=address` is incompatible with `-Csanitizer=memory`
 
 #![feature(no_core)]
 #![no_core]

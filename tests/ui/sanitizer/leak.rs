@@ -1,7 +1,7 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-leak
 //
-//@ compile-flags: -Z sanitizer=leak -O
+//@ compile-flags: -Zunstable-options -Csanitizer=leak -O
 //
 //@ run-fail
 //@ error-pattern: LeakSanitizer: detected memory leaks
