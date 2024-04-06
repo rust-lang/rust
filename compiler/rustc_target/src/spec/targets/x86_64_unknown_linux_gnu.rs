@@ -12,13 +12,14 @@ pub(crate) fn target() -> Target {
     base.static_position_independent_executables = true;
     base.supported_sanitizers = SanitizerSet::ADDRESS
         | SanitizerSet::CFI
-        | SanitizerSet::KCFI
         | SanitizerSet::DATAFLOW
+        | SanitizerSet::KCFI
         | SanitizerSet::LEAK
         | SanitizerSet::MEMORY
         | SanitizerSet::SAFESTACK
-        | SanitizerSet::THREAD
-        | SanitizerSet::REALTIME;
+        | SanitizerSet::REALTIME
+        | SanitizerSet::THREAD;
+    base.stable_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::LEAK;
     base.supports_xray = true;
 
     Target {
