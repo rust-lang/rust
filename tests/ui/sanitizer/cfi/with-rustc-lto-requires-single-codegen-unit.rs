@@ -7,4 +7,4 @@
 #![no_core]
 #![no_main]
 
-//~? ERROR `-Zsanitizer=cfi` with `-Clto` requires `-Ccodegen-units=1`
+//~? ERROR `-Csanitize=cfi` with `-Clto` requires `-Ccodegen-units=1`

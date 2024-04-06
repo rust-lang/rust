@@ -8,4 +8,4 @@
 #![no_core]
 #![no_main]
 
-//~? ERROR `-Zsanitizer-cfi-normalize-integers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`
+//~? ERROR `-Zsanitizer-cfi-normalize-integers` requires `-Csanitize=cfi` or `-Csanitize=kcfi`

@@ -5,4 +5,4 @@
 #![no_core]
 #![no_main]
 
-//~? ERROR `-Zsanitizer=address` is incompatible with `-Zsanitizer=memory`
+//~? ERROR `-Csanitize=address` is incompatible with `-Csanitize=memory`
