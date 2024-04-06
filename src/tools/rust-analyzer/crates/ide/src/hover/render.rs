@@ -413,6 +413,15 @@ pub(super) fn definition(
         Definition::Adt(adt) => {
             adt.display_limited(db, config.max_adt_fields_or_variants_count).to_string()
         }
+        Definition::SelfType(impl_def) => {
+            let self_ty = &impl_def.self_ty(db);
+            match self_ty.as_adt() {
+                Some(adt) => {
+                    adt.display_limited(db, config.max_adt_fields_or_variants_count).to_string()
+                }
+                None => self_ty.display(db).to_string(),
+            }
+        }
         _ => def.label(db),
     };
     let docs = def.docs(db, famous_defs);

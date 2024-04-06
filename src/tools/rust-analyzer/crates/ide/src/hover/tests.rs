@@ -1624,6 +1624,28 @@ impl Thing {
                 ```
 
                 ```rust
+                struct Thing {
+                    x: u32,
+                }
+                ```
+            "#]],
+    );
+    check_hover_adt_fields_or_variants_limit(
+        None,
+        r#"
+struct Thing { x: u32 }
+impl Thing {
+    fn new() -> Self { Self$0 { x: 0 } }
+}
+"#,
+        expect![[r#"
+                *Self*
+
+                ```rust
+                test
+                ```
+
+                ```rust
                 struct Thing
                 ```
             "#]],
@@ -1643,7 +1665,9 @@ impl Thing {
                 ```
 
                 ```rust
-                struct Thing
+                struct Thing {
+                    x: u32,
+                }
                 ```
             "#]],
     );
@@ -1662,7 +1686,9 @@ impl Thing {
             ```
 
             ```rust
-            enum Thing
+            enum Thing {
+                A,
+            }
             ```
         "#]],
     );
@@ -1681,7 +1707,9 @@ impl Thing {
             ```
 
             ```rust
-            enum Thing
+            enum Thing {
+                A,
+            }
             ```
         "#]],
     );
