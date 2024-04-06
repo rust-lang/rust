@@ -1,0 +1,151 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        MATCH_EXPR
+          MATCH_KW "match"
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          WHITESPACE " "
+          MATCH_ARM_LIST
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            MATCH_ARM
+              ATTR
+                POUND "#"
+                L_BRACK "["
+                META
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "cfg"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    IDENT "feature"
+                    WHITESPACE " "
+                    EQ "="
+                    WHITESPACE " "
+                    STRING "\"some\""
+                    R_PAREN ")"
+                R_BRACK "]"
+              WHITESPACE "\n        "
+              WILDCARD_PAT
+                UNDERSCORE "_"
+              WHITESPACE " "
+              FAT_ARROW "=>"
+              WHITESPACE " "
+              TUPLE_EXPR
+                L_PAREN "("
+                R_PAREN ")"
+              COMMA ","
+            WHITESPACE "\n        "
+            MATCH_ARM
+              ATTR
+                POUND "#"
+                L_BRACK "["
+                META
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "cfg"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    IDENT "feature"
+                    WHITESPACE " "
+                    EQ "="
+                    WHITESPACE " "
+                    STRING "\"other\""
+                    R_PAREN ")"
+                R_BRACK "]"
+              WHITESPACE "\n        "
+              WILDCARD_PAT
+                UNDERSCORE "_"
+              WHITESPACE " "
+              FAT_ARROW "=>"
+              WHITESPACE " "
+              TUPLE_EXPR
+                L_PAREN "("
+                R_PAREN ")"
+              COMMA ","
+            WHITESPACE "\n        "
+            MATCH_ARM
+              ATTR
+                POUND "#"
+                L_BRACK "["
+                META
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "cfg"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    IDENT "feature"
+                    WHITESPACE " "
+                    EQ "="
+                    WHITESPACE " "
+                    STRING "\"many\""
+                    R_PAREN ")"
+                R_BRACK "]"
+              WHITESPACE "\n        "
+              ATTR
+                POUND "#"
+                L_BRACK "["
+                META
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "cfg"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    IDENT "feature"
+                    WHITESPACE " "
+                    EQ "="
+                    WHITESPACE " "
+                    STRING "\"attributes\""
+                    R_PAREN ")"
+                R_BRACK "]"
+              WHITESPACE "\n        "
+              ATTR
+                POUND "#"
+                L_BRACK "["
+                META
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "cfg"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    IDENT "feature"
+                    WHITESPACE " "
+                    EQ "="
+                    WHITESPACE " "
+                    STRING "\"before\""
+                    R_PAREN ")"
+                R_BRACK "]"
+              WHITESPACE "\n        "
+              WILDCARD_PAT
+                UNDERSCORE "_"
+              WHITESPACE " "
+              FAT_ARROW "=>"
+              WHITESPACE " "
+              TUPLE_EXPR
+                L_PAREN "("
+                R_PAREN ")"
+              COMMA ","
+            WHITESPACE "\n    "
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
