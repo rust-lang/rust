@@ -164,6 +164,42 @@ impl<T> OnceCell<T> {
         }
     }
 
+    /// Gets the mutable reference of the contents of the cell,
+    /// initializing it with `f` if the cell was empty.
+    ///
+    /// # Panics
+    ///
+    /// If `f` panics, the panic is propagated to the caller, and the cell
+    /// remains uninitialized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell_get_mut)]
+    ///
+    /// use std::cell::OnceCell;
+    ///
+    /// let mut cell = OnceCell::new();
+    /// let value = cell.get_mut_or_init(|| 92);
+    /// assert_eq!(*value, 92);
+    ///
+    /// *value += 2;
+    /// assert_eq!(*value, 94);
+    ///
+    /// let value = cell.get_mut_or_init(|| unreachable!());
+    /// assert_eq!(*value, 94);
+    /// ```
+    #[inline]
+    #[unstable(feature = "once_cell_get_mut", issue = "121641")]
+    pub fn get_mut_or_init<F>(&mut self, f: F) -> &mut T
+    where
+        F: FnOnce() -> T,
+    {
+        match self.get_mut_or_try_init(|| Ok::<T, !>(f())) {
+            Ok(val) => val,
+        }
+    }
+
     /// Gets the contents of the cell, initializing it with `f` if
     /// the cell was empty. If the cell was empty and `f` failed, an
     /// error is returned.
@@ -200,16 +236,55 @@ impl<T> OnceCell<T> {
         if let Some(val) = self.get() {
             return Ok(val);
         }
-        /// Avoid inlining the initialization closure into the common path that fetches
-        /// the already initialized value
-        #[cold]
-        fn outlined_call<F, T, E>(f: F) -> Result<T, E>
-        where
-            F: FnOnce() -> Result<T, E>,
-        {
-            f()
+        self.try_init(f)
+    }
+
+    /// Gets the mutable reference of the contents of the cell, initializing
+    /// it with `f` if the cell was empty. If the cell was empty and `f` failed,
+    /// an error is returned.
+    ///
+    /// # Panics
+    ///
+    /// If `f` panics, the panic is propagated to the caller, and the cell
+    /// remains uninitialized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell_get_mut)]
+    ///
+    /// use std::cell::OnceCell;
+    ///
+    /// let mut cell: OnceCell<u32> = OnceCell::new();
+    ///
+    /// // Failed initializers do not change the value
+    /// assert!(cell.get_mut_or_try_init(|| "not a number!".parse()).is_err());
+    /// assert!(cell.get().is_none());
+    ///
+    /// let value = cell.get_mut_or_try_init(|| "1234".parse());
+    /// assert_eq!(value, Ok(&mut 1234));
+    /// *value.unwrap() += 2;
+    /// assert_eq!(cell.get(), Some(&1236))
+    /// ```
+    #[unstable(feature = "once_cell_get_mut", issue = "121641")]
+    pub fn get_mut_or_try_init<F, E>(&mut self, f: F) -> Result<&mut T, E>
+    where
+        F: FnOnce() -> Result<T, E>,
+    {
+        if self.get().is_none() {
+            self.try_init(f)?;
         }
-        let val = outlined_call(f)?;
+        Ok(self.get_mut().unwrap())
+    }
+
+    // Avoid inlining the initialization closure into the common path that fetches
+    // the already initialized value
+    #[cold]
+    fn try_init<F, E>(&self, f: F) -> Result<&T, E>
+    where
+        F: FnOnce() -> Result<T, E>,
+    {
+        let val = f()?;
         // Note that *some* forms of reentrant initialization might lead to
         // UB (see `reentrant_init` test). I believe that just removing this
         // `panic`, while keeping `try_insert` would be sound, but it seems
