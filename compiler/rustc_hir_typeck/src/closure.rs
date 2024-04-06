@@ -6,7 +6,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -72,10 +72,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let parent_args =
             GenericArgs::identity_for_item(tcx, tcx.typeck_root_def_id(expr_def_id.to_def_id()));
 
-        let tupled_upvars_ty = self.next_ty_var(TypeVariableOrigin {
-            kind: TypeVariableOriginKind::ClosureSynthetic,
-            span: expr_span,
-        });
+        let tupled_upvars_ty =
+            self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: expr_span });
 
         // FIXME: We could probably actually just unify this further --
         // instead of having a `FnSig` and a `Option<CoroutineTypes>`,
@@ -102,11 +100,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // Create a type variable (for now) to represent the closure kind.
                     // It will be unified during the upvar inference phase (`upvar.rs`)
-                    None => self.next_ty_var(TypeVariableOrigin {
-                        // FIXME(eddyb) distinguish closure kind inference variables from the rest.
-                        kind: TypeVariableOriginKind::ClosureSynthetic,
-                        span: expr_span,
-                    }),
+                    None => {
+                        self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: expr_span })
+                    }
                 };
 
                 let closure_args = ty::ClosureArgs::new(
@@ -126,7 +122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
                     | hir::CoroutineKind::Coroutine(_) => {
                         let yield_ty = self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::ClosureSynthetic,
+                            param_def_id: None,
                             span: expr_span,
                         });
                         self.require_type_is_sized(yield_ty, expr_span, traits::SizedYieldType);
@@ -138,7 +134,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // not a problem.
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
                         let yield_ty = self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::ClosureSynthetic,
+                            param_def_id: None,
                             span: expr_span,
                         });
                         self.require_type_is_sized(yield_ty, expr_span, traits::SizedYieldType);
@@ -166,10 +162,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Resume type defaults to `()` if the coroutine has no argument.
                 let resume_ty = liberated_sig.inputs().get(0).copied().unwrap_or(tcx.types.unit);
 
-                let interior = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::ClosureSynthetic,
-                    span: expr_span,
-                });
+                let interior =
+                    self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: expr_span });
                 self.deferred_coroutine_interiors.borrow_mut().push((
                     expr_def_id,
                     body.id(),
@@ -181,11 +175,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // later during upvar analysis. Regular coroutines always have the kind
                 // ty of `().`
                 let kind_ty = match kind {
-                    hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure) => self
-                        .next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::ClosureSynthetic,
-                            span: expr_span,
-                        }),
+                    hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure) => {
+                        self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: expr_span })
+                    }
                     _ => tcx.types.unit,
                 };
 
@@ -219,30 +211,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
                 // Compute all of the variables that will be used to populate the coroutine.
-                let resume_ty = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::ClosureSynthetic,
-                    span: expr_span,
-                });
-                let interior = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::ClosureSynthetic,
-                    span: expr_span,
-                });
+                let resume_ty =
+                    self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: expr_span });
+                let interior =
+                    self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: expr_span });
 
                 let closure_kind_ty = match expected_kind {
                     Some(kind) => Ty::from_closure_kind(tcx, kind),
 
                     // Create a type variable (for now) to represent the closure kind.
                     // It will be unified during the upvar inference phase (`upvar.rs`)
-                    None => self.next_ty_var(TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::ClosureSynthetic,
-                        span: expr_span,
-                    }),
+                    None => {
+                        self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: expr_span })
+                    }
                 };
 
-                let coroutine_captures_by_ref_ty = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::ClosureSynthetic,
-                    span: expr_span,
-                });
+                let coroutine_captures_by_ref_ty =
+                    self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: expr_span });
                 let closure_args = ty::CoroutineClosureArgs::new(
                     tcx,
                     ty::CoroutineClosureArgsParts {
@@ -274,16 +259,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // Create a type variable (for now) to represent the closure kind.
                     // It will be unified during the upvar inference phase (`upvar.rs`)
-                    None => self.next_ty_var(TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::ClosureSynthetic,
-                        span: expr_span,
-                    }),
+                    None => {
+                        self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: expr_span })
+                    }
                 };
 
-                let coroutine_upvars_ty = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::ClosureSynthetic,
-                    span: expr_span,
-                });
+                let coroutine_upvars_ty =
+                    self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: expr_span });
 
                 // We need to turn the liberated signature that we got from HIR, which
                 // looks something like `|Args...| -> T`, into a signature that is suitable
