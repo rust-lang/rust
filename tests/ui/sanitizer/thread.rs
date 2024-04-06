@@ -13,7 +13,7 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-thread
 //
-//@ compile-flags: -Z sanitizer=thread -O
+//@ compile-flags: -Zunstable-options -Csanitize=thread -O
 //
 //@ run-fail
 //@ error-pattern: WARNING: ThreadSanitizer: data race

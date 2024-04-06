@@ -2,7 +2,7 @@
 //@ needs-sanitizer-address
 //@ ignore-cross-compile
 //
-//@ compile-flags: -Z sanitizer=address -O
+//@ compile-flags: -Zunstable-options -Csanitize=address -O
 //
 //@ run-fail
 //@ regex-error-pattern: AddressSanitizer: (SEGV|attempting free on address which was not malloc)
