@@ -169,6 +169,7 @@ pub mod alphabetic {
         4, 1, 7, 1, 4, 1, 4, 1, 1, 1, 10, 1, 17, 5, 3, 1, 5, 1, 17, 0, 26, 6, 26, 6, 26, 0, 0, 32,
         0, 6, 222, 2, 0, 14, 0, 15, 0, 0, 0, 0, 0, 5, 0, 0,
     ];
+    #[inline]
     pub fn lookup(c: char) -> bool {
         super::skip_search(
             c as u32,
@@ -221,6 +222,7 @@ pub mod case_ignorable {
         0, 55, 4, 50, 8, 1, 14, 1, 22, 5, 1, 15, 0, 7, 1, 17, 2, 7, 1, 2, 1, 5, 5, 62, 33, 1, 160,
         14, 0, 1, 61, 4, 0, 5, 0, 7, 109, 8, 0, 5, 0, 1, 30, 96, 128, 240, 0,
     ];
+    #[inline]
     pub fn lookup(c: char) -> bool {
         super::skip_search(
             c as u32,
@@ -251,6 +253,7 @@ pub mod cased {
         25, 1, 25, 1, 31, 1, 25, 1, 31, 1, 25, 1, 31, 1, 25, 1, 31, 1, 25, 1, 8, 0, 10, 1, 20, 6, 6,
         0, 62, 0, 68, 0, 26, 6, 26, 6, 26, 0,
     ];
+    #[inline]
     pub fn lookup(c: char) -> bool {
         super::skip_search(
             c as u32,
@@ -268,6 +271,7 @@ pub mod cc {
     static OFFSETS: [u8; 5] = [
         0, 32, 95, 33, 0,
     ];
+    #[inline]
     pub fn lookup(c: char) -> bool {
         super::skip_search(
             c as u32,
@@ -315,6 +319,7 @@ pub mod grapheme_extend {
         15, 0, 7, 1, 17, 2, 7, 1, 2, 1, 5, 100, 1, 160, 7, 0, 1, 61, 4, 0, 4, 0, 7, 109, 7, 0, 96,
         128, 240, 0,
     ];
+    #[inline]
     pub fn lookup(c: char) -> bool {
         super::skip_search(
             c as u32,
@@ -419,6 +424,7 @@ pub mod lowercase {
     ];
 
     #[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]
+    #[inline]
     pub const fn lookup(c: char) -> bool {
         super::bitset_search(
             c as u32,
@@ -453,6 +459,7 @@ pub mod n {
         23, 0, 20, 12, 20, 108, 25, 0, 50, 0, 10, 0, 10, 0, 10, 0, 9, 128, 10, 0, 59, 1, 3, 1, 4,
         76, 45, 1, 15, 0, 13, 0, 10, 0,
     ];
+    #[inline]
     pub fn lookup(c: char) -> bool {
         super::skip_search(
             c as u32,
@@ -542,6 +549,7 @@ pub mod uppercase {
     ];
 
     #[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]
+    #[inline]
     pub const fn lookup(c: char) -> bool {
         super::bitset_search(
             c as u32,

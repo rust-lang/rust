@@ -370,6 +370,7 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
     // The pattern is a string so it can be displayed directly.
     struct Pattern<'a>(&'a str);
     impl fmt::Debug for Pattern<'_> {
+        #[inline]
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.write_str(self.0)
         }

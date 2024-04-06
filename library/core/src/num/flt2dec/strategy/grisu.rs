@@ -117,6 +117,7 @@ pub const CACHED_POW10_FIRST_E: i16 = -1087;
 pub const CACHED_POW10_LAST_E: i16 = 1039;
 
 #[doc(hidden)]
+#[inline]
 pub fn cached_power(alpha: i16, gamma: i16) -> (i16, Fp) {
     let offset = CACHED_POW10_FIRST_E as i32;
     let range = (CACHED_POW10.len() as i32) - 1;

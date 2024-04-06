@@ -1379,6 +1379,7 @@ macro_rules! from_str_radix_int_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStr for $t {
             type Err = ParseIntError;
+            #[inline]
             fn from_str(src: &str) -> Result<Self, ParseIntError> {
                 <$t>::from_str_radix(src, 10)
             }
@@ -1399,6 +1400,7 @@ pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) 
 }
 
 #[track_caller]
+#[inline]
 const fn from_str_radix_panic_ct(_radix: u32) -> ! {
     panic!("from_str_radix_int: must lie in the range `[2, 36]`");
 }

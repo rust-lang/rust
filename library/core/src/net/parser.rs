@@ -78,6 +78,7 @@ impl<'a> Parser<'a> {
 
     #[must_use]
     /// Read the next character from the input if it matches the target.
+    #[inline]
     fn read_given_char(&mut self, target: char) -> Option<()> {
         self.read_atomically(|p| {
             p.read_char().and_then(|c| if c == target { Some(()) } else { None })
@@ -166,6 +167,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Read an IPv4 address.
+    #[inline]
     fn read_ipv4_addr(&mut self) -> Option<Ipv4Addr> {
         self.read_atomically(|p| {
             let mut groups = [0; 4];
@@ -183,6 +185,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Read an IPv6 Address.
+    #[inline]
     fn read_ipv6_addr(&mut self) -> Option<Ipv6Addr> {
         /// Read a chunk of an IPv6 address into `groups`. Returns the number
         /// of groups read, along with a bool indicating if an embedded
@@ -255,6 +258,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Read a `:` followed by a port in base 10.
+    #[inline]
     fn read_port(&mut self) -> Option<u16> {
         self.read_atomically(|p| {
             p.read_given_char(':')?;
@@ -263,6 +267,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Read a `%` followed by a scope ID in base 10.
+    #[inline]
     fn read_scope_id(&mut self) -> Option<u32> {
         self.read_atomically(|p| {
             p.read_given_char('%')?;
@@ -271,6 +276,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Read an IPv4 address with a port.
+    #[inline]
     fn read_socket_addr_v4(&mut self) -> Option<SocketAddrV4> {
         self.read_atomically(|p| {
             let ip = p.read_ipv4_addr()?;
@@ -280,6 +286,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Read an IPv6 address with a port.
+    #[inline]
     fn read_socket_addr_v6(&mut self) -> Option<SocketAddrV6> {
         self.read_atomically(|p| {
             p.read_given_char('[')?;
@@ -315,6 +322,7 @@ impl IpAddr {
     /// assert_eq!(IpAddr::parse_ascii(b"::1"), Ok(localhost_v6));
     /// ```
     #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    #[inline]
     pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
         Parser::new(b).parse_with(|p| p.read_ip_addr(), AddrKind::Ip)
     }
@@ -323,6 +331,7 @@ impl IpAddr {
 #[stable(feature = "ip_addr", since = "1.7.0")]
 impl FromStr for IpAddr {
     type Err = AddrParseError;
+    #[inline]
     fn from_str(s: &str) -> Result<IpAddr, AddrParseError> {
         Self::parse_ascii(s.as_bytes())
     }
@@ -354,6 +363,7 @@ impl Ipv4Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for Ipv4Addr {
     type Err = AddrParseError;
+    #[inline]
     fn from_str(s: &str) -> Result<Ipv4Addr, AddrParseError> {
         Self::parse_ascii(s.as_bytes())
     }
@@ -372,6 +382,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::parse_ascii(b"::1"), Ok(localhost));
     /// ```
     #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    #[inline]
     pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
         Parser::new(b).parse_with(|p| p.read_ipv6_addr(), AddrKind::Ipv6)
     }
@@ -380,6 +391,7 @@ impl Ipv6Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for Ipv6Addr {
     type Err = AddrParseError;
+    #[inline]
     fn from_str(s: &str) -> Result<Ipv6Addr, AddrParseError> {
         Self::parse_ascii(s.as_bytes())
     }
@@ -398,6 +410,7 @@ impl SocketAddrV4 {
     /// assert_eq!(SocketAddrV4::parse_ascii(b"127.0.0.1:8080"), Ok(socket));
     /// ```
     #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    #[inline]
     pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
         Parser::new(b).parse_with(|p| p.read_socket_addr_v4(), AddrKind::SocketV4)
     }
@@ -406,6 +419,7 @@ impl SocketAddrV4 {
 #[stable(feature = "socket_addr_from_str", since = "1.5.0")]
 impl FromStr for SocketAddrV4 {
     type Err = AddrParseError;
+    #[inline]
     fn from_str(s: &str) -> Result<SocketAddrV4, AddrParseError> {
         Self::parse_ascii(s.as_bytes())
     }
@@ -424,6 +438,7 @@ impl SocketAddrV6 {
     /// assert_eq!(SocketAddrV6::parse_ascii(b"[2001:db8::1]:8080"), Ok(socket));
     /// ```
     #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    #[inline]
     pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
         Parser::new(b).parse_with(|p| p.read_socket_addr_v6(), AddrKind::SocketV6)
     }
@@ -432,6 +447,7 @@ impl SocketAddrV6 {
 #[stable(feature = "socket_addr_from_str", since = "1.5.0")]
 impl FromStr for SocketAddrV6 {
     type Err = AddrParseError;
+    #[inline]
     fn from_str(s: &str) -> Result<SocketAddrV6, AddrParseError> {
         Self::parse_ascii(s.as_bytes())
     }
@@ -452,6 +468,7 @@ impl SocketAddr {
     /// assert_eq!(SocketAddr::parse_ascii(b"[::1]:8080"), Ok(socket_v6));
     /// ```
     #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    #[inline]
     pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
         Parser::new(b).parse_with(|p| p.read_socket_addr(), AddrKind::Socket)
     }
@@ -460,6 +477,7 @@ impl SocketAddr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for SocketAddr {
     type Err = AddrParseError;
+    #[inline]
     fn from_str(s: &str) -> Result<SocketAddr, AddrParseError> {
         Self::parse_ascii(s.as_bytes())
     }

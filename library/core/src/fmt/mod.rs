@@ -450,6 +450,7 @@ impl<'a> Arguments<'a> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for Arguments<'_> {
+    #[inline]
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
         Display::fmt(self, fmt)
     }
@@ -457,6 +458,7 @@ impl Debug for Arguments<'_> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for Arguments<'_> {
+    #[inline]
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
         write(fmt.buf, *self)
     }
@@ -2275,6 +2277,7 @@ impl<'a> Formatter<'a> {
     /// }
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
+    #[inline]
     pub fn debug_set<'b>(&'b mut self) -> DebugSet<'b, 'a> {
         builders::debug_set_new(self)
     }
@@ -2301,6 +2304,7 @@ impl<'a> Formatter<'a> {
     ///  );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
+    #[inline]
     pub fn debug_map<'b>(&'b mut self) -> DebugMap<'b, 'a> {
         builders::debug_map_new(self)
     }
@@ -2308,10 +2312,12 @@ impl<'a> Formatter<'a> {
 
 #[stable(since = "1.2.0", feature = "formatter_write")]
 impl Write for Formatter<'_> {
+    #[inline]
     fn write_str(&mut self, s: &str) -> Result {
         self.buf.write_str(s)
     }
 
+    #[inline]
     fn write_char(&mut self, c: char) -> Result {
         self.buf.write_char(c)
     }
@@ -2328,6 +2334,7 @@ impl Write for Formatter<'_> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for Error {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         Display::fmt("an error occurred when formatting an argument", f)
     }
@@ -2410,6 +2417,7 @@ impl Debug for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for str {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.pad(self)
     }

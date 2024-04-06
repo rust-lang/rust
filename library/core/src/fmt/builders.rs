@@ -18,6 +18,7 @@ impl Default for PadAdapterState {
 }
 
 impl<'buf, 'state> PadAdapter<'buf, 'state> {
+    #[inline]
     fn wrap<'slot, 'fmt: 'buf + 'slot>(
         fmt: &'fmt mut fmt::Formatter<'_>,
         slot: &'slot mut Option<Self>,
@@ -91,6 +92,7 @@ pub struct DebugStruct<'a, 'b: 'a> {
     has_fields: bool,
 }
 
+#[inline]
 pub(super) fn debug_struct_new<'a, 'b>(
     fmt: &'a mut fmt::Formatter<'b>,
     name: &str,
@@ -129,6 +131,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
+    #[inline]
     pub fn field(&mut self, name: &str, value: &dyn fmt::Debug) -> &mut Self {
         self.field_with(name, |f| value.fmt(f))
     }
@@ -293,6 +296,7 @@ pub struct DebugTuple<'a, 'b: 'a> {
     empty_name: bool,
 }
 
+#[inline]
 pub(super) fn debug_tuple_new<'a, 'b>(
     fmt: &'a mut fmt::Formatter<'b>,
     name: &str,
@@ -471,6 +475,7 @@ pub struct DebugSet<'a, 'b: 'a> {
     inner: DebugInner<'a, 'b>,
 }
 
+#[inline]
 pub(super) fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugSet<'a, 'b> {
     let result = fmt.write_str("{");
     DebugSet { inner: DebugInner { fmt, result, has_fields: false } }
@@ -501,6 +506,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
+    #[inline]
     pub fn entry(&mut self, entry: &dyn fmt::Debug) -> &mut Self {
         self.inner.entry_with(|f| entry.fmt(f));
         self
@@ -644,6 +650,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
+    #[inline]
     pub fn entry(&mut self, entry: &dyn fmt::Debug) -> &mut Self {
         self.inner.entry_with(|f| entry.fmt(f));
         self
@@ -762,6 +769,7 @@ pub struct DebugMap<'a, 'b: 'a> {
     state: PadAdapterState,
 }
 
+#[inline]
 pub(super) fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugMap<'a, 'b> {
     let result = fmt.write_str("{");
     DebugMap { fmt, result, has_fields: false, has_key: false, state: Default::default() }
@@ -827,6 +835,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_map_key_value", since = "1.42.0")]
+    #[inline]
     pub fn key(&mut self, key: &dyn fmt::Debug) -> &mut Self {
         self.key_with(|f| key.fmt(f))
     }
@@ -903,6 +912,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_map_key_value", since = "1.42.0")]
+    #[inline]
     pub fn value(&mut self, value: &dyn fmt::Debug) -> &mut Self {
         self.value_with(|f| value.fmt(f))
     }

@@ -24,12 +24,18 @@ trait DisplayInt:
 macro_rules! impl_int {
     ($($t:ident)*) => (
       $(impl DisplayInt for $t {
+          #[inline]
           fn zero() -> Self { 0 }
+          #[inline]
           fn from_u8(u: u8) -> Self { u as Self }
+          #[inline]
           fn to_u8(&self) -> u8 { *self as u8 }
           #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
+          #[inline]
           fn to_u32(&self) -> u32 { *self as u32 }
+          #[inline]
           fn to_u64(&self) -> u64 { *self as u64 }
+          #[inline]
           fn to_u128(&self) -> u128 { *self as u128 }
       })*
     )
@@ -37,12 +43,18 @@ macro_rules! impl_int {
 macro_rules! impl_uint {
     ($($t:ident)*) => (
       $(impl DisplayInt for $t {
+          #[inline]
           fn zero() -> Self { 0 }
+          #[inline]
           fn from_u8(u: u8) -> Self { u as Self }
+          #[inline]
           fn to_u8(&self) -> u8 { *self as u8 }
           #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
+          #[inline]
           fn to_u32(&self) -> u32 { *self as u32 }
+          #[inline]
           fn to_u64(&self) -> u64 { *self as u64 }
+          #[inline]
           fn to_u128(&self) -> u128 { *self as u128 }
       })*
     )
@@ -433,6 +445,7 @@ macro_rules! impl_Exp {
         $(
             #[stable(feature = "integer_exp_format", since = "1.42.0")]
             impl fmt::LowerExp for $t {
+                #[inline]
                 #[allow(unused_comparisons)]
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     let is_nonnegative = *self >= 0;
@@ -448,6 +461,7 @@ macro_rules! impl_Exp {
         $(
             #[stable(feature = "integer_exp_format", since = "1.42.0")]
             impl fmt::UpperExp for $t {
+                #[inline]
                 #[allow(unused_comparisons)]
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     let is_nonnegative = *self >= 0;
@@ -577,6 +591,7 @@ fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], cu
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for u128 {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt_u128(*self, true, f)
     }

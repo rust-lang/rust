@@ -271,6 +271,7 @@ pub struct CharTryFromError(());
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl fmt::Display for CharTryFromError {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "converted integer out of range for `char`".fmt(f)
     }

@@ -152,6 +152,7 @@ pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
 pub struct EscapeUnicode(escape::EscapeIterInner<10>);
 
 impl EscapeUnicode {
+    #[inline]
     fn new(chr: char) -> Self {
         let mut data = [ascii::Char::Null; 10];
         let range = escape::escape_unicode_into(&mut data, chr);
@@ -219,11 +220,13 @@ impl fmt::Display for EscapeUnicode {
 pub struct EscapeDefault(escape::EscapeIterInner<10>);
 
 impl EscapeDefault {
+    #[inline]
     fn printable(chr: ascii::Char) -> Self {
         let data = [chr];
         Self(escape::EscapeIterInner::from_array(data))
     }
 
+    #[inline]
     fn backslash(chr: ascii::Char) -> Self {
         let data = [ascii::Char::ReverseSolidus, chr];
         Self(escape::EscapeIterInner::from_array(data))
@@ -304,10 +307,12 @@ enum EscapeDebugInner {
 }
 
 impl EscapeDebug {
+    #[inline]
     fn printable(chr: char) -> Self {
         Self(EscapeDebugInner::Char(chr))
     }
 
+    #[inline]
     fn backslash(chr: ascii::Char) -> Self {
         let data = [ascii::Char::ReverseSolidus, chr];
         let iter = escape::EscapeIterInner::from_array(data);
@@ -318,6 +323,7 @@ impl EscapeDebug {
         Self(EscapeDebugInner::Bytes(esc.0))
     }
 
+    #[inline]
     fn clear(&mut self) {
         let bytes = escape::EscapeIterInner::from_array([]);
         self.0 = EscapeDebugInner::Bytes(bytes);
@@ -383,14 +389,18 @@ macro_rules! casemappingiter_impls {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Iterator for $ITER_NAME {
             type Item = char;
+
+            #[inline]
             fn next(&mut self) -> Option<char> {
                 self.0.next()
             }
 
+            #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
                 self.0.size_hint()
             }
 
+            #[inline]
             fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
             where
                 Fold: FnMut(Acc, Self::Item) -> Acc,
@@ -398,18 +408,22 @@ macro_rules! casemappingiter_impls {
                 self.0.fold(init, fold)
             }
 
+            #[inline]
             fn count(self) -> usize {
                 self.0.count()
             }
 
+            #[inline]
             fn last(self) -> Option<Self::Item> {
                 self.0.last()
             }
 
+            #[inline]
             fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
                 self.0.advance_by(n)
             }
 
+            #[inline]
             unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
                 // SAFETY: just forwarding requirements to caller
                 unsafe { self.0.__iterator_get_unchecked(idx) }
@@ -418,6 +432,7 @@ macro_rules! casemappingiter_impls {
 
         #[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
         impl DoubleEndedIterator for $ITER_NAME {
+            #[inline]
             fn next_back(&mut self) -> Option<char> {
                 self.0.next_back()
             }
@@ -429,6 +444,7 @@ macro_rules! casemappingiter_impls {
                 self.0.rfold(init, rfold)
             }
 
+            #[inline]
             fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
                 self.0.advance_back_by(n)
             }
@@ -466,6 +482,7 @@ macro_rules! casemappingiter_impls {
 
         #[stable(feature = "char_struct_display", since = "1.16.0")]
         impl fmt::Display for $ITER_NAME {
+            #[inline]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt::Display::fmt(&self.0, f)
             }
@@ -516,6 +533,7 @@ impl CaseMappingIter {
 impl Iterator for CaseMappingIter {
     type Item = char;
 
+    #[inline]
     fn next(&mut self) -> Option<char> {
         self.0.next()
     }
@@ -531,14 +549,17 @@ impl Iterator for CaseMappingIter {
         self.0.fold(init, fold)
     }
 
+    #[inline]
     fn count(self) -> usize {
         self.0.count()
     }
 
+    #[inline]
     fn last(self) -> Option<Self::Item> {
         self.0.last()
     }
 
+    #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.0.advance_by(n)
     }
@@ -550,6 +571,7 @@ impl Iterator for CaseMappingIter {
 }
 
 impl DoubleEndedIterator for CaseMappingIter {
+    #[inline]
     fn next_back(&mut self) -> Option<char> {
         self.0.next_back()
     }
@@ -561,6 +583,7 @@ impl DoubleEndedIterator for CaseMappingIter {
         self.0.rfold(init, rfold)
     }
 
+    #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.0.advance_back_by(n)
     }
@@ -606,6 +629,7 @@ pub struct TryFromCharError(pub(crate) ());
 
 #[stable(feature = "u8_from_char", since = "1.59.0")]
 impl fmt::Display for TryFromCharError {
+    #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         "unicode code point out of range".fmt(fmt)
     }

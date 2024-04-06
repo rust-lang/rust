@@ -5,6 +5,7 @@
 /// This is used to approximate `k = ceil(log_10 (mant * 2^exp))`;
 /// the true `k` is either `k_0` or `k_0+1`.
 #[doc(hidden)]
+#[inline]
 pub fn estimate_scaling_factor(mant: u64, exp: i16) -> i16 {
     // 2^(nbits-1) < mant <= 2^nbits if mant > 0
     let nbits = 64 - (mant - 1).leading_zeros() as i64;

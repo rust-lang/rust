@@ -129,6 +129,7 @@ impl RawFloat for f32 {
         f32::from_bits((v & 0xFFFFFFFF) as u32)
     }
 
+    #[inline]
     fn pow10_fast_path(exponent: usize) -> Self {
         #[allow(clippy::use_self)]
         const TABLE: [f32; 16] =
@@ -148,6 +149,7 @@ impl RawFloat for f32 {
         (mantissa as u64, exponent, sign)
     }
 
+    #[inline]
     fn classify(self) -> FpCategory {
         self.classify()
     }
@@ -182,6 +184,7 @@ impl RawFloat for f64 {
         f64::from_bits(v)
     }
 
+    #[inline]
     fn pow10_fast_path(exponent: usize) -> Self {
         const TABLE: [f64; 32] = [
             1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15,

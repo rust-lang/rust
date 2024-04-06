@@ -575,6 +575,7 @@ impl [AsciiChar] {
 
 #[unstable(feature = "ascii_char", issue = "110998")]
 impl fmt::Display for AsciiChar {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <str as fmt::Display>::fmt(self.as_str(), f)
     }

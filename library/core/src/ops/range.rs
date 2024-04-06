@@ -44,6 +44,7 @@ pub struct RangeFull;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for RangeFull {
+    #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "..")
     }

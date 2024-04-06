@@ -245,6 +245,7 @@ impl<'a> iter::Iterator for EscapeAscii<'a> {
 
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::DoubleEndedIterator for EscapeAscii<'a> {
+    #[inline]
     fn next_back(&mut self) -> Option<u8> {
         self.inner.next_back()
     }
