@@ -5,6 +5,7 @@ pub(crate) fn target() -> Target {
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.supported_sanitizers = SanitizerSet::ADDRESS;
+    base.stable_sanitizers = SanitizerSet::ADDRESS;
 
     base.add_pre_link_args(LinkerFlavor::Msvc(Lld::No), &[
         // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
