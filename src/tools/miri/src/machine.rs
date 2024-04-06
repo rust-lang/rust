@@ -1066,7 +1066,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             let extern_decl_layout = ecx.tcx.layout_of(ty::ParamEnv::empty().and(def_ty)).unwrap();
             if extern_decl_layout.size != shim_size || extern_decl_layout.align.abi != shim_align {
                 throw_unsup_format!(
-                    "`extern` static `{name}` from crate `{krate}` has been declared \
+                    "extern static `{link_name}` has been declared as `{krate}::{name}` \
                     with a size of {decl_size} bytes and alignment of {decl_align} bytes, \
                     but Miri emulates it via an extern static shim \
                     with a size of {shim_size} bytes and alignment of {shim_align} bytes",
@@ -1080,11 +1080,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             }
             Ok(ptr)
         } else {
-            throw_unsup_format!(
-                "`extern` static `{name}` from crate `{krate}` is not supported by Miri",
-                name = ecx.tcx.def_path_str(def_id),
-                krate = ecx.tcx.crate_name(def_id.krate),
-            )
+            throw_unsup_format!("extern static `{link_name}` is not supported by Miri",)
         }
     }
 
