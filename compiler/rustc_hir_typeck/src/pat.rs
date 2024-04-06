@@ -79,6 +79,7 @@ struct TopInfo<'tcx> {
 #[derive(Copy, Clone)]
 struct PatInfo<'tcx, 'a> {
     binding_mode: BindingAnnotation,
+    max_ref_mutbl: Mutability,
     top_info: TopInfo<'tcx>,
     decl_origin: Option<DeclOrigin<'a>>,
 
@@ -160,8 +161,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         decl_origin: Option<DeclOrigin<'tcx>>,
     ) {
         let info = TopInfo { expected, origin_expr, span };
-        let pat_info =
-            PatInfo { binding_mode: INITIAL_BM, top_info: info, decl_origin, current_depth: 0 };
+        let pat_info = PatInfo {
+            binding_mode: INITIAL_BM,
+            max_ref_mutbl: Mutability::Mut,
+            top_info: info,
+            decl_origin,
+            current_depth: 0,
+        };
         self.check_pat(pat, expected, pat_info);
     }
 
@@ -172,7 +178,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Conversely, inside this module, `check_pat_top` should never be used.
     #[instrument(level = "debug", skip(self, pat_info))]
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx, '_>) {
-        let PatInfo { binding_mode: def_bm, top_info: ti, current_depth, .. } = pat_info;
+        let PatInfo { binding_mode: def_bm, max_ref_mutbl, top_info: ti, current_depth, .. } =
+            pat_info;
 
         let path_res = match &pat.kind {
             PatKind::Path(qpath) => Some(
@@ -181,10 +188,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         };
         let adjust_mode = self.calc_adjust_mode(pat, path_res.map(|(res, ..)| res));
-        let (expected, def_bm, ref_pattern_already_consumed) =
-            self.calc_default_binding_mode(pat, expected, def_bm, adjust_mode);
+        let (expected, def_bm, max_ref_mutbl, ref_pattern_already_consumed) =
+            self.calc_default_binding_mode(pat, expected, def_bm, adjust_mode, max_ref_mutbl);
         let pat_info = PatInfo {
             binding_mode: def_bm,
+            max_ref_mutbl,
             top_info: ti,
             decl_origin: pat_info.decl_origin,
             current_depth: current_depth + 1,
@@ -289,35 +297,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         def_bm: BindingAnnotation,
         adjust_mode: AdjustMode,
-    ) -> (Ty<'tcx>, BindingAnnotation, bool) {
+        max_ref_mutbl: Mutability,
+    ) -> (Ty<'tcx>, BindingAnnotation, Mutability, bool) {
+        if let ByRef::Yes(mutbl) = def_bm.0 {
+            debug_assert!(mutbl <= max_ref_mutbl);
+        }
         match adjust_mode {
-            AdjustMode::Pass => (expected, def_bm, false),
-            AdjustMode::Reset => (expected, INITIAL_BM, false),
-            AdjustMode::ResetAndConsumeRef(mutbl) => {
-                let mutbls_match = def_bm.0 == ByRef::Yes(mutbl);
+            AdjustMode::Pass => (expected, def_bm, max_ref_mutbl, false),
+            AdjustMode::Reset => (expected, INITIAL_BM, Mutability::Mut, false),
+            AdjustMode::ResetAndConsumeRef(ref_pat_mutbl) => {
+                let mutbls_match = def_bm.0 == ByRef::Yes(ref_pat_mutbl);
                 if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
+                    let max_ref_mutbl = cmp::min(max_ref_mutbl, ref_pat_mutbl);
                     if mutbls_match {
-                        (expected, INITIAL_BM, true)
+                        debug!("consuming inherited reference");
+                        (expected, INITIAL_BM, max_ref_mutbl, true)
                     } else {
-                        let (new_ty, new_bm) = if mutbl == Mutability::Mut {
-                            self.peel_off_references(pat, expected, def_bm, Mutability::Not)
+                        let (new_ty, new_bm, max_ref_mutbl) = if ref_pat_mutbl == Mutability::Mut {
+                            self.peel_off_references(
+                                pat,
+                                expected,
+                                def_bm,
+                                Mutability::Not,
+                                max_ref_mutbl,
+                            )
                         } else {
-                            let new_byref = if def_bm.0 == ByRef::Yes(Mutability::Mut) {
-                                ByRef::Yes(Mutability::Not)
-                            } else {
-                                def_bm.0
-                            };
-                            (expected, BindingAnnotation(new_byref, def_bm.1))
+                            (expected, def_bm.cap_ref_mutability(Mutability::Not), Mutability::Not)
                         };
-                        (new_ty, new_bm, false)
+                        (new_ty, new_bm, max_ref_mutbl, false)
                     }
                 } else {
-                    (expected, INITIAL_BM, mutbls_match)
+                    (expected, INITIAL_BM, max_ref_mutbl, mutbls_match)
                 }
             }
             AdjustMode::Peel => {
-                let peeled = self.peel_off_references(pat, expected, def_bm, Mutability::Mut);
-                (peeled.0, peeled.1, false)
+                let peeled =
+                    self.peel_off_references(pat, expected, def_bm, Mutability::Mut, max_ref_mutbl);
+                (peeled.0, peeled.1, peeled.2, false)
             }
         }
     }
@@ -398,8 +414,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
         mut def_bm: BindingAnnotation,
-        max_mutability: Mutability,
-    ) -> (Ty<'tcx>, BindingAnnotation) {
+        max_peelable_mutability: Mutability,
+        mut max_ref_mutability: Mutability,
+    ) -> (Ty<'tcx>, BindingAnnotation, Mutability) {
         let mut expected = self.try_structurally_resolve_type(pat.span, expected);
         // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
         // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
@@ -411,7 +428,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // See the examples in `ui/match-defbm*.rs`.
         let mut pat_adjustments = vec![];
         while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind()
-            && inner_mutability <= max_mutability
+            && inner_mutability <= max_peelable_mutability
         {
             debug!("inspecting {:?}", expected);
 
@@ -430,6 +447,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // This is because a `& &mut` cannot mutate the underlying value.
                 ByRef::Yes(Mutability::Not) => Mutability::Not,
             });
+
+            if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
+                max_ref_mutability = cmp::min(max_ref_mutability, inner_mutability);
+                def_bm = def_bm.cap_ref_mutability(max_ref_mutability);
+            }
         }
 
         if !pat_adjustments.is_empty() {
@@ -440,7 +462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .insert(pat.hir_id, pat_adjustments);
         }
 
-        (expected, def_bm)
+        (expected, def_bm, max_ref_mutability)
     }
 
     fn check_pat_lit(
@@ -1116,15 +1138,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        let PatInfo { binding_mode: def_bm, top_info: ti, decl_origin, current_depth } = pat_info;
         let tcx = self.tcx;
         let on_error = |e| {
             for pat in subpats {
-                self.check_pat(
-                    pat,
-                    Ty::new_error(tcx, e),
-                    PatInfo { binding_mode: def_bm, top_info: ti, decl_origin, current_depth },
-                );
+                self.check_pat(pat, Ty::new_error(tcx, e), pat_info);
             }
         };
         let report_unexpected_res = |res: Res| {
@@ -1169,7 +1186,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let pat_ty = pat_ty.no_bound_vars().expect("expected fn type");
 
         // Type-check the tuple struct pattern against the expected type.
-        let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, ti);
+        let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, pat_info.top_info);
         let had_err = if let Some(err) = diag {
             err.emit();
             true
@@ -1187,11 +1204,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field = &variant.fields[FieldIdx::from_usize(i)];
                 let field_ty = self.field_ty(subpat.span, field, args);
-                self.check_pat(
-                    subpat,
-                    field_ty,
-                    PatInfo { binding_mode: def_bm, top_info: ti, decl_origin, current_depth },
-                );
+                self.check_pat(subpat, field_ty, pat_info);
 
                 self.tcx.check_stability(
                     variant.fields[FieldIdx::from_usize(i)].did,
