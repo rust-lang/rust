@@ -283,12 +283,12 @@ fn encode_region<'tcx>(region: Region<'tcx>, dict: &mut FxHashMap<DictKey<'tcx>,
             s.push('E');
             compress(dict, DictKey::Region(region), &mut s);
         }
-        // FIXME(@lcnr): Why is `ReEarlyParam` reachable here.
-        RegionKind::ReEarlyParam(..) | RegionKind::ReErased => {
+        RegionKind::ReErased => {
             s.push_str("u6region");
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReLateParam(..)
+        RegionKind::ReEarlyParam(..)
+        | RegionKind::ReLateParam(..)
         | RegionKind::ReStatic
         | RegionKind::ReError(_)
         | RegionKind::ReVar(..)
@@ -776,6 +776,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             | ty::Coroutine(..)
             | ty::CoroutineClosure(..)
             | ty::CoroutineWitness(..)
+            | ty::Dynamic(..)
             | ty::Float(..)
             | ty::FnDef(..)
             | ty::Foreign(..)
@@ -922,23 +923,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                 } else {
                     t.super_fold_with(self)
                 }
-            }
-
-            ty::Dynamic(predicates, _region, kind) => {
-                let predicates = self.tcx.mk_poly_existential_predicates_from_iter(
-                    predicates.iter().filter_map(|predicate| match predicate.skip_binder() {
-                        ty::ExistentialPredicate::Trait(trait_ref) => {
-                            let trait_ref = ty::TraitRef::identity(self.tcx, trait_ref.def_id);
-                            Some(ty::Binder::dummy(ty::ExistentialPredicate::Trait(
-                                ty::ExistentialTraitRef::erase_self_ty(self.tcx, trait_ref),
-                            )))
-                        }
-                        ty::ExistentialPredicate::Projection(..) => None,
-                        ty::ExistentialPredicate::AutoTrait(..) => Some(predicate),
-                    }),
-                );
-
-                Ty::new_dynamic(self.tcx, predicates, self.tcx.lifetimes.re_erased, *kind)
             }
 
             ty::Alias(..) => {
