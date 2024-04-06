@@ -1875,7 +1875,7 @@ macro_rules! slice_interners {
                     List::empty()
                 } else {
                     self.interners.$field.intern_ref(v, || {
-                        InternedInSet(List::from_arena(&*self.arena, v))
+                        InternedInSet(List::from_arena(&*self.arena, (), v))
                     }).0
                 }
             })+

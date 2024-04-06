@@ -32,31 +32,24 @@ use rustc_data_structures::sync::DynSync;
 /// - `T` must be `Copy`. This lets `List<T>` be stored in a dropless arena and
 ///   iterators return a `T` rather than a `&T`.
 /// - `T` must not be zero-sized.
+pub type List<T> = RawList<(), T>;
+
+/// A generic type that can be used to prepend a [`List`] with some header.
+///
+/// The header will be ignored for value-based operations like [`PartialEq`],
+/// [`Hash`] and [`Encodable`].
 #[repr(C)]
-pub struct List<T> {
-    skel: ListSkeleton<T>,
+pub struct RawList<H, T> {
+    skel: ListSkeleton<H, T>,
     opaque: OpaqueListContents,
 }
 
-/// This type defines the statically known field offsets and alignment of a [`List`].
-///
-/// The alignment of a `List` cannot be determined, because it has an extern type tail.
-/// We use `ListSkeleton` instead of `List` whenever computing the alignment is required,
-/// for example:
-/// - Implementing the [`Aligned`] trait, which is required for [`CopyTaggedPtr`].
-/// - Projecting from [`ListWithCachedTypeInfo`] to `List`, which requires computing the padding
-///   between the cached type info and the list, which requires computing the list's alignment.
-///
-/// Note that `ListSkeleton` is `Sized`, but **it's size is not correct**, as it is missing the
-/// dynamically sized list tail. Do not create a `ListSkeleton` on the stack.
-///
-/// FIXME: This can be removed once we properly support `!Sized + Aligned + Thin` types.
-///
-/// [`CopyTaggedPtr`]: rustc_data_structures::tagged_ptr::CopyTaggedPtr
+/// A [`RawList`] without the unsized tail. This type is used for layout computation
+/// and constructing empty lists.
 #[repr(C)]
-struct ListSkeleton<T> {
+struct ListSkeleton<H, T> {
+    header: H,
     len: usize,
-
     /// Although this claims to be a zero-length array, in practice `len`
     /// elements are actually present.
     data: [T; 0],
@@ -68,13 +61,7 @@ extern "C" {
     type OpaqueListContents;
 }
 
-impl<T> List<T> {
-    /// Returns a reference to the (unique, static) empty list.
-    #[inline(always)]
-    pub fn empty<'a>() -> &'a List<T> {
-        ListWithCachedTypeInfo::empty()
-    }
-
+impl<H, T> RawList<H, T> {
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.skel.len
@@ -84,9 +71,7 @@ impl<T> List<T> {
     pub fn as_slice(&self) -> &[T] {
         self
     }
-}
 
-impl<T: Copy> List<T> {
     /// Allocates a list from `arena` and copies the contents of `slice` into it.
     ///
     /// WARNING: the contents *must be unique*, such that no list with these
@@ -97,15 +82,26 @@ impl<T: Copy> List<T> {
     /// (because the empty list exists statically, and is available via
     /// `empty()`).
     #[inline]
-    pub(super) fn from_arena<'tcx>(arena: &'tcx Arena<'tcx>, slice: &[T]) -> &'tcx List<T> {
+    pub(super) fn from_arena<'tcx>(
+        arena: &'tcx Arena<'tcx>,
+        header: H,
+        slice: &[T],
+    ) -> &'tcx RawList<H, T>
+    where
+        T: Copy,
+    {
         assert!(!mem::needs_drop::<T>());
         assert!(mem::size_of::<T>() != 0);
         assert!(!slice.is_empty());
 
         let (layout, _offset) =
-            Layout::new::<usize>().extend(Layout::for_value::<[T]>(slice)).unwrap();
-        let mem = arena.dropless.alloc_raw(layout) as *mut List<T>;
+            Layout::new::<ListSkeleton<H, T>>().extend(Layout::for_value::<[T]>(slice)).unwrap();
+
+        let mem = arena.dropless.alloc_raw(layout) as *mut RawList<H, T>;
         unsafe {
+            // Write the header
+            ptr::addr_of_mut!((*mem).skel.header).write(header);
+
             // Write the length
             ptr::addr_of_mut!((*mem).skel.len).write(slice.len());
 
@@ -123,17 +119,44 @@ impl<T: Copy> List<T> {
     //
     // This would be weird, as `self.into_iter` iterates over `T` directly.
     #[inline(always)]
-    pub fn iter(&self) -> <&'_ List<T> as IntoIterator>::IntoIter {
+    pub fn iter(&self) -> <&'_ RawList<H, T> as IntoIterator>::IntoIter
+    where
+        T: Copy,
+    {
         self.into_iter()
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for List<T> {
+macro_rules! impl_list_empty {
+    ($header_ty:ty, $header_init:expr) => {
+        impl<T> RawList<$header_ty, T> {
+            /// Returns a reference to the (per header unique, static) empty list.
+            #[inline(always)]
+            pub fn empty<'a>() -> &'a RawList<$header_ty, T> {
+                #[repr(align(64))]
+                struct MaxAlign;
+
+                static EMPTY: ListSkeleton<$header_ty, MaxAlign> =
+                    ListSkeleton { header: $header_init, len: 0, data: [] };
+
+                assert!(mem::align_of::<T>() <= mem::align_of::<MaxAlign>());
+
+                // SAFETY: `EMPTY` is sufficiently aligned to be an empty list for all
+                // types with `align_of(T) <= align_of(MaxAlign)`, which we checked above.
+                unsafe { &*(std::ptr::addr_of!(EMPTY) as *const RawList<$header_ty, T>) }
+            }
+        }
+    };
+}
+
+impl_list_empty!((), ());
+
+impl<H, T: fmt::Debug> fmt::Debug for RawList<H, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
     }
 }
-impl<'tcx, T: DebugWithInfcx<TyCtxt<'tcx>>> DebugWithInfcx<TyCtxt<'tcx>> for List<T> {
+impl<'tcx, H, T: DebugWithInfcx<TyCtxt<'tcx>>> DebugWithInfcx<TyCtxt<'tcx>> for RawList<H, T> {
     fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
         this: WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
@@ -142,40 +165,40 @@ impl<'tcx, T: DebugWithInfcx<TyCtxt<'tcx>>> DebugWithInfcx<TyCtxt<'tcx>> for Lis
     }
 }
 
-impl<S: Encoder, T: Encodable<S>> Encodable<S> for List<T> {
+impl<H, S: Encoder, T: Encodable<S>> Encodable<S> for RawList<H, T> {
     #[inline]
     fn encode(&self, s: &mut S) {
         (**self).encode(s);
     }
 }
 
-impl<T: PartialEq> PartialEq for List<T> {
+impl<H, T: PartialEq> PartialEq for RawList<H, T> {
     #[inline]
-    fn eq(&self, other: &List<T>) -> bool {
+    fn eq(&self, other: &RawList<H, T>) -> bool {
         // Pointer equality implies list equality (due to the unique contents
         // assumption).
         ptr::eq(self, other)
     }
 }
 
-impl<T: Eq> Eq for List<T> {}
+impl<H, T: Eq> Eq for RawList<H, T> {}
 
-impl<T> Ord for List<T>
+impl<H, T> Ord for RawList<H, T>
 where
     T: Ord,
 {
-    fn cmp(&self, other: &List<T>) -> Ordering {
+    fn cmp(&self, other: &RawList<H, T>) -> Ordering {
         // Pointer equality implies list equality (due to the unique contents
         // assumption), but the contents must be compared otherwise.
         if self == other { Ordering::Equal } else { <[T] as Ord>::cmp(&**self, &**other) }
     }
 }
 
-impl<T> PartialOrd for List<T>
+impl<H, T> PartialOrd for RawList<H, T>
 where
     T: PartialOrd,
 {
-    fn partial_cmp(&self, other: &List<T>) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &RawList<H, T>) -> Option<Ordering> {
         // Pointer equality implies list equality (due to the unique contents
         // assumption), but the contents must be compared otherwise.
         if self == other {
@@ -186,7 +209,7 @@ where
     }
 }
 
-impl<T> Hash for List<T> {
+impl<Hdr, T> Hash for RawList<Hdr, T> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
         // Pointer hashing is sufficient (due to the unique contents
@@ -195,7 +218,7 @@ impl<T> Hash for List<T> {
     }
 }
 
-impl<T> Deref for List<T> {
+impl<H, T> Deref for RawList<H, T> {
     type Target = [T];
     #[inline(always)]
     fn deref(&self) -> &[T] {
@@ -203,7 +226,7 @@ impl<T> Deref for List<T> {
     }
 }
 
-impl<T> AsRef<[T]> for List<T> {
+impl<H, T> AsRef<[T]> for RawList<H, T> {
     #[inline(always)]
     fn as_ref(&self) -> &[T] {
         let data_ptr = ptr::addr_of!(self.skel.data).cast::<T>();
@@ -215,7 +238,7 @@ impl<T> AsRef<[T]> for List<T> {
     }
 }
 
-impl<'a, T: Copy> IntoIterator for &'a List<T> {
+impl<'a, H, T: Copy> IntoIterator for &'a RawList<H, T> {
     type Item = T;
     type IntoIter = iter::Copied<<&'a [T] as IntoIterator>::IntoIter>;
     #[inline(always)]
@@ -224,32 +247,49 @@ impl<'a, T: Copy> IntoIterator for &'a List<T> {
     }
 }
 
-unsafe impl<T: Sync> Sync for List<T> {}
+unsafe impl<H: Sync, T: Sync> Sync for RawList<H, T> {}
 
 // We need this since `List` uses extern type `OpaqueListContents`.
 #[cfg(parallel_compiler)]
-unsafe impl<T: DynSync> DynSync for List<T> {}
+unsafe impl<H: DynSync, T: DynSync> DynSync for RawList<H, T> {}
 
 // Safety:
-// Layouts of `ListSkeleton<T>` and `List<T>` are the same, modulo opaque tail,
-// thus aligns of `ListSkeleton<T>` and `List<T>` must be the same.
-unsafe impl<T> Aligned for List<T> {
-    const ALIGN: ptr::Alignment = align_of::<ListSkeleton<T>>();
+// Layouts of `ListSkeleton<H, T>` and `RawList<H, T>` are the same, modulo opaque tail,
+// thus aligns of `ListSkeleton<H, T>` and `RawList<H, T>` must be the same.
+unsafe impl<H, T> Aligned for RawList<H, T> {
+    const ALIGN: ptr::Alignment = align_of::<ListSkeleton<H, T>>();
 }
 
 /// A [`List`] that additionally stores type information inline to speed up
 /// [`TypeVisitableExt`](super::TypeVisitableExt) operations.
-#[repr(C)]
-pub struct ListWithCachedTypeInfo<T> {
-    skel: ListWithCachedTypeInfoSkeleton<T>,
-    opaque: OpaqueListContents,
+pub type ListWithCachedTypeInfo<T> = RawList<TypeInfo, T>;
+
+impl<T> ListWithCachedTypeInfo<T> {
+    #[inline(always)]
+    pub fn flags(&self) -> TypeFlags {
+        self.skel.header.flags
+    }
+
+    #[inline(always)]
+    pub fn outer_exclusive_binder(&self) -> DebruijnIndex {
+        self.skel.header.outer_exclusive_binder
+    }
 }
+
+impl_list_empty!(TypeInfo, TypeInfo::empty());
 
 /// The additional info that is stored in [`ListWithCachedTypeInfo`].
 #[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TypeInfo {
     flags: TypeFlags,
     outer_exclusive_binder: DebruijnIndex,
+}
+
+impl TypeInfo {
+    const fn empty() -> Self {
+        Self { flags: TypeFlags::empty(), outer_exclusive_binder: super::INNERMOST }
+    }
 }
 
 impl From<FlagComputation> for TypeInfo {
@@ -259,190 +299,4 @@ impl From<FlagComputation> for TypeInfo {
             outer_exclusive_binder: computation.outer_exclusive_binder,
         }
     }
-}
-
-/// This type is similar to [`ListSkeleton`], but for [`ListWithCachedTypeInfo`].
-/// It is used for computing the alignment of a [`ListWithCachedTypeInfo`].
-#[repr(C)]
-struct ListWithCachedTypeInfoSkeleton<T> {
-    info: TypeInfo,
-    // N.B.: There may be padding between these two fields. We cannot use `List` directly
-    // here, because it has an unknown alignment which makes computing the amount of padding
-    // and therefore projecting from `&ListWithCachedTypeInfo` to `&List` impossible.
-    list: ListSkeleton<T>,
-}
-
-impl<T> ListWithCachedTypeInfo<T> {
-    #[inline(always)]
-    pub fn empty<'a>() -> &'a ListWithCachedTypeInfo<T> {
-        #[repr(align(64))]
-        struct MaxAlign;
-
-        #[repr(C)]
-        struct Empty {
-            info: TypeInfo,
-            zero: [u8; 2 * mem::align_of::<MaxAlign>() - mem::size_of::<TypeInfo>()],
-            align: MaxAlign,
-        }
-
-        static EMPTY: Empty = Empty {
-            info: TypeInfo { flags: TypeFlags::empty(), outer_exclusive_binder: super::INNERMOST },
-            zero: [0; 2 * mem::align_of::<MaxAlign>() - mem::size_of::<TypeInfo>()],
-            align: MaxAlign,
-        };
-
-        assert!(mem::align_of::<T>() <= mem::align_of::<MaxAlign>());
-
-        // The layout of the empty `ListWithCachedTypeInfo<T>` must be one of the following,
-        // depending on the alignment of `T`:
-        //
-        // On 64-bit platforms:
-        // F = flags (32 bit), B = outer_exclusive_binder (32 bit), LL = len (64 bit)
-        // align(T) <= 8: FBLL
-        // align(T) = 16: FB..LL..
-        // align(T) = 32: FB......LL......
-        // align(T) = 64: FB..............LL..............
-        //
-        // On 32-bit platforms:
-        // F = flags (32 bit), B = outer_exclusive_binder (32 bit), L = len (32 bit)
-        // align(T) <= 4: FBL
-        // align(T) =  8: FBL.
-        // align(T) = 16: FB..L...
-        // align(T) = 32: FB......L.......
-        // align(T) = 64: FB..............L...............
-        //
-        // We zero out every possible location of `len` so that `EMPTY` is a valid
-        // `ListWithCachedTypeInfo<T>` for all `T` with alignment up to 64 bytes.
-        unsafe { &*(std::ptr::addr_of!(EMPTY) as *const ListWithCachedTypeInfo<T>) }
-    }
-
-    #[inline]
-    pub(super) fn from_arena<'tcx>(
-        arena: &'tcx Arena<'tcx>,
-        info: TypeInfo,
-        slice: &[T],
-    ) -> &'tcx ListWithCachedTypeInfo<T>
-    where
-        T: Copy,
-    {
-        assert!(!mem::needs_drop::<T>());
-        assert!(mem::size_of::<T>() != 0);
-        assert!(!slice.is_empty());
-
-        let (list_layout, _offset) =
-            Layout::new::<usize>().extend(Layout::for_value::<[T]>(slice)).unwrap();
-
-        let (layout, _offset) = Layout::new::<TypeInfo>().extend(list_layout).unwrap();
-
-        let mem = arena.dropless.alloc_raw(layout) as *mut ListWithCachedTypeInfo<T>;
-        unsafe {
-            // Write the cached type info
-            ptr::addr_of_mut!((*mem).skel.info).write(info);
-
-            // Write the length
-            ptr::addr_of_mut!((*mem).skel.list.len).write(slice.len());
-
-            // Write the elements
-            ptr::addr_of_mut!((*mem).skel.list.data)
-                .cast::<T>()
-                .copy_from_nonoverlapping(slice.as_ptr(), slice.len());
-
-            &*mem
-        }
-    }
-
-    #[inline(always)]
-    pub fn as_list(&self) -> &List<T> {
-        self
-    }
-
-    #[inline(always)]
-    pub fn flags(&self) -> TypeFlags {
-        self.skel.info.flags
-    }
-
-    #[inline(always)]
-    pub fn outer_exclusive_binder(&self) -> DebruijnIndex {
-        self.skel.info.outer_exclusive_binder
-    }
-}
-
-impl<T> Deref for ListWithCachedTypeInfo<T> {
-    type Target = List<T>;
-    #[inline(always)]
-    fn deref(&self) -> &List<T> {
-        let list_ptr = ptr::addr_of!(self.skel.list) as *const List<T>;
-        unsafe { &*list_ptr }
-    }
-}
-
-impl<T> AsRef<[T]> for ListWithCachedTypeInfo<T> {
-    #[inline(always)]
-    fn as_ref(&self) -> &[T] {
-        (&**self).as_ref()
-    }
-}
-
-impl<T: fmt::Debug> fmt::Debug for ListWithCachedTypeInfo<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).fmt(f)
-    }
-}
-impl<'tcx, T: DebugWithInfcx<TyCtxt<'tcx>>> DebugWithInfcx<TyCtxt<'tcx>>
-    for ListWithCachedTypeInfo<T>
-{
-    fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        DebugWithInfcx::fmt(this.map(|this| &**this), f)
-    }
-}
-
-impl<S: Encoder, T: Encodable<S>> Encodable<S> for ListWithCachedTypeInfo<T> {
-    #[inline]
-    fn encode(&self, s: &mut S) {
-        (**self).encode(s);
-    }
-}
-
-impl<T: PartialEq> PartialEq for ListWithCachedTypeInfo<T> {
-    #[inline]
-    fn eq(&self, other: &ListWithCachedTypeInfo<T>) -> bool {
-        // Pointer equality implies list equality (due to the unique contents
-        // assumption).
-        ptr::eq(self, other)
-    }
-}
-
-impl<T: Eq> Eq for ListWithCachedTypeInfo<T> {}
-
-impl<T> Hash for ListWithCachedTypeInfo<T> {
-    #[inline]
-    fn hash<H: Hasher>(&self, s: &mut H) {
-        // Pointer hashing is sufficient (due to the unique contents
-        // assumption).
-        ptr::from_ref(self).hash(s)
-    }
-}
-
-impl<'a, T: Copy> IntoIterator for &'a ListWithCachedTypeInfo<T> {
-    type Item = T;
-    type IntoIter = iter::Copied<<&'a [T] as IntoIterator>::IntoIter>;
-    #[inline(always)]
-    fn into_iter(self) -> Self::IntoIter {
-        (**self).into_iter()
-    }
-}
-
-unsafe impl<T: Sync> Sync for ListWithCachedTypeInfo<T> {}
-
-#[cfg(parallel_compiler)]
-unsafe impl<T: DynSync> DynSync for ListWithCachedTypeInfo<T> {}
-
-// Safety:
-// Layouts of `ListWithCachedTypeInfoSkeleton<T>` and `ListWithCachedTypeInfo<T>`
-// are the same, modulo opaque tail, thus their aligns must be the same.
-unsafe impl<T> Aligned for ListWithCachedTypeInfo<T> {
-    const ALIGN: ptr::Alignment = align_of::<ListWithCachedTypeInfoSkeleton<T>>();
 }
