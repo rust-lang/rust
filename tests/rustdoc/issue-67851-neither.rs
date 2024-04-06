@@ -1,6 +1,9 @@
-// @!has issue_67851_neither/struct.Hidden.html
+// https://github.com/rust-lang/rust/issues/67851
+#![crate_name="foo"]
+
+// @!has foo/struct.Hidden.html
 #[doc(hidden)]
 pub struct Hidden;
 
-// @!has issue_67851_neither/struct.Private.html
+// @!has foo/struct.Private.html
 struct Private;

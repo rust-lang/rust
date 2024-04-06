@@ -2,6 +2,7 @@
 //@ aux-build:real_gimli.rs
 
 // Ensure unstably exported traits have their Implementors sections.
+// https://github.com/rust-lang/rust/issues/75588
 
 #![crate_name = "foo"]
 #![feature(extremely_unstable_foo)]
