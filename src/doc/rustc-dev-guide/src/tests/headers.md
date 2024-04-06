@@ -154,6 +154,7 @@ The following header commands will check rustc build settings and target setting
 * `needs-unwind` — ignores if the target does not support unwinding
 * `needs-rust-lld` — ignores if the rust lld support is not enabled
   (`rust.lld = true` in `config.toml`)
+* `needs-threads` — ignores if the target does not have threading support
 
 The following header commands will check LLVM support:
 
