@@ -100,15 +100,32 @@ fn check_entries(tests_path: &Path, bad: &mut bool) {
 }
 
 pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
+    let issues_txt_header = r#"============================================================
+    ⚠️⚠️⚠️NOTHING SHOULD EVER BE ADDED TO THIS LIST⚠️⚠️⚠️
+============================================================
+"#;
+
     let path = &root_path.join("tests");
     check_entries(&path, bad);
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
     // BTreeSet because we would like a stable ordering so --bless works
-    let issues_list =
-        include!("issues.txt").map(|path| path.replace("/", std::path::MAIN_SEPARATOR_STR));
-    let issues: Vec<String> = Vec::from(issues_list.clone());
-    let is_sorted = issues.windows(2).all(|w| w[0] < w[1]);
+    let mut prev_line = "";
+    let mut is_sorted = true;
+    let allowed_issue_names: BTreeSet<_> = include_str!("issues.txt")
+        .strip_prefix(issues_txt_header)
+        .unwrap()
+        .lines()
+        .map(|line| {
+            if prev_line > line {
+                is_sorted = false;
+            }
+
+            prev_line = line;
+            line
+        })
+        .collect();
+
     if !is_sorted && !bless {
         tidy_error!(
             bad,
@@ -116,9 +133,8 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
             please only update it with command `x test tidy --bless`"
         );
     }
-    let allowed_issue_names = BTreeSet::from(issues_list);
 
-    let mut remaining_issue_names: BTreeSet<String> = allowed_issue_names.clone();
+    let mut remaining_issue_names: BTreeSet<&str> = allowed_issue_names.clone();
 
     let (ui, ui_fulldeps) = (path.join("ui"), path.join("ui-fulldeps"));
     let paths = [ui.as_path(), ui_fulldeps.as_path()];
@@ -170,8 +186,14 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
 
                 if let Some(test_name) = ISSUE_NAME_REGEX.captures(testname) {
                     // these paths are always relative to the passed `path` and always UTF8
-                    let stripped_path = file_path.strip_prefix(path).unwrap().to_str().unwrap();
-                    if !remaining_issue_names.remove(stripped_path) {
+                    let stripped_path = file_path
+                        .strip_prefix(path)
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .replace(std::path::MAIN_SEPARATOR_STR, "/");
+
+                    if !remaining_issue_names.remove(stripped_path.as_str()) {
                         tidy_error!(
                             bad,
                             "file `tests/{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
@@ -186,15 +208,7 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
     // if there are any file names remaining, they were moved on the fs.
     // our data must remain up to date, so it must be removed from issues.txt
     // do this automatically on bless, otherwise issue a tidy error
-    if bless && !remaining_issue_names.is_empty() {
-        let issues_txt_header = r#"
-/*
-============================================================
-    ⚠️⚠️⚠️NOTHING SHOULD EVER BE ADDED TO THIS LIST⚠️⚠️⚠️
-============================================================
-*/
-[
-"#;
+    if bless && (!remaining_issue_names.is_empty() || !is_sorted) {
         let tidy_src = root_path.join("src/tools/tidy/src");
         // instead of overwriting the file, recreate it and use an "atomic rename"
         // so we don't bork things on panic or a contributor using Ctrl+C
@@ -202,13 +216,9 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
         let mut blessed_issues_txt = fs::File::create(&blessed_issues_path).unwrap();
         blessed_issues_txt.write(issues_txt_header.as_bytes()).unwrap();
         // If we changed paths to use the OS separator, reassert Unix chauvinism for blessing.
-        for filename in allowed_issue_names
-            .difference(&remaining_issue_names)
-            .map(|s| s.replace(std::path::MAIN_SEPARATOR_STR, "/"))
-        {
-            write!(blessed_issues_txt, "\"{filename}\",\n").unwrap();
+        for filename in allowed_issue_names.difference(&remaining_issue_names) {
+            writeln!(blessed_issues_txt, "{filename}").unwrap();
         }
-        write!(blessed_issues_txt, "]\n").unwrap();
         let old_issues_path = tidy_src.join("issues.txt");
         fs::rename(blessed_issues_path, old_issues_path).unwrap();
     } else {
