@@ -63,7 +63,7 @@ check-aux:
 		library/core \
 		library/alloc \
 		--doc
-	# In `std` we cannot test everything, so we test the most target-dependent modules.
+	# In `std` we cannot test everything.
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" BOOTSTRAP_SKIP_TARGET_SANITY=1 \
 		$(BOOTSTRAP) miri --stage 2 library/std \
 		--no-doc -- \
@@ -72,6 +72,12 @@ check-aux:
 		$(BOOTSTRAP) miri --stage 2 library/std \
 		--doc -- \
 		--skip fs:: --skip net:: --skip process:: --skip sys::pal::
+	# Also test some very target-specific modules on other targets.
+	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" BOOTSTRAP_SKIP_TARGET_SANITY=1 \
+		$(BOOTSTRAP) miri --stage 2 library/std \
+		--target aarch64-apple-darwin,i686-pc-windows-gnu \
+		--no-doc -- \
+		time:: sync:: thread:: env::
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 distcheck:
