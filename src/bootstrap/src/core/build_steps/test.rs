@@ -2689,16 +2689,27 @@ impl Step for Crate {
 
         match mode {
             Mode::Std => {
-                compile::std_cargo(builder, target, compiler.stage, &mut cargo);
-                // `std_cargo` actually does the wrong thing: it passes `--sysroot build/host/stage2`,
-                // but we want to use the force-recompile std we just built in `build/host/stage2-test-sysroot`.
-                // Override it.
-                if builder.download_rustc() && compiler.stage > 0 {
-                    let sysroot = builder
-                        .out
-                        .join(compiler.host.triple)
-                        .join(format!("stage{}-test-sysroot", compiler.stage));
-                    cargo.env("RUSTC_SYSROOT", sysroot);
+                if builder.kind == Kind::Miri {
+                    // We can't use `std_cargo` as that uses `optimized-compiler-builtins` which
+                    // needs host tools for the given target. This is similar to what `compile::Std`
+                    // does when `is_for_mir_opt_tests` is true. There's probably a chance for
+                    // de-duplication here... `std_cargo` should support a mode that avoids needing
+                    // host tools.
+                    cargo
+                        .arg("--manifest-path")
+                        .arg(builder.src.join("library/sysroot/Cargo.toml"));
+                } else {
+                    compile::std_cargo(builder, target, compiler.stage, &mut cargo);
+                    // `std_cargo` actually does the wrong thing: it passes `--sysroot build/host/stage2`,
+                    // but we want to use the force-recompile std we just built in `build/host/stage2-test-sysroot`.
+                    // Override it.
+                    if builder.download_rustc() && compiler.stage > 0 {
+                        let sysroot = builder
+                            .out
+                            .join(compiler.host.triple)
+                            .join(format!("stage{}-test-sysroot", compiler.stage));
+                        cargo.env("RUSTC_SYSROOT", sysroot);
+                    }
                 }
             }
             Mode::Rustc => {
