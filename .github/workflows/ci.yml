@@ -156,7 +156,7 @@ jobs:
         run: src/ci/scripts/verify-stable-version-number.sh
         if: success() && !env.SKIP_JOB
       - name: run the build
-        run: src/ci/scripts/run-build-from-ci.sh
+        run: src/ci/scripts/run-build-from-ci.sh 2>&1
         env:
           AWS_ACCESS_KEY_ID: "${{ env.CACHES_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
@@ -566,7 +566,7 @@ jobs:
         run: src/ci/scripts/verify-stable-version-number.sh
         if: success() && !env.SKIP_JOB
       - name: run the build
-        run: src/ci/scripts/run-build-from-ci.sh
+        run: src/ci/scripts/run-build-from-ci.sh 2>&1
         env:
           AWS_ACCESS_KEY_ID: "${{ env.CACHES_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
@@ -705,7 +705,7 @@ jobs:
         run: src/ci/scripts/verify-stable-version-number.sh
         if: success() && !env.SKIP_JOB
       - name: run the build
-        run: src/ci/scripts/run-build-from-ci.sh
+        run: src/ci/scripts/run-build-from-ci.sh 2>&1
         env:
           AWS_ACCESS_KEY_ID: "${{ env.CACHES_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
