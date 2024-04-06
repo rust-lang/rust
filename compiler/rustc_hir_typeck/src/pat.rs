@@ -10,6 +10,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, BindingAnnotation, ByRef, HirId, Mutability, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
+use rustc_lint as lint;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Adt, Ty, TypeVisitableExt};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
@@ -639,6 +640,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && matches!(def_br, ByRef::Yes(_)) =>
             {
                 // `mut x` resets the binding mode in edition <= 2021.
+                self.tcx.emit_node_span_lint(
+                    lint::builtin::DEREFERENCING_MUT_BINDING,
+                    pat.hir_id,
+                    pat.span,
+                    errors::DereferencingMutBinding { span: pat.span },
+                );
                 BindingAnnotation(ByRef::No, Mutability::Mut)
             }
             BindingAnnotation(ByRef::No, mutbl) => BindingAnnotation(def_br, mutbl),
