@@ -1,4 +1,6 @@
-//@ compile-flags: -C opt-level=1
+//@ revisions: OPT1 OPT2
+//@ [OPT1] compile-flags: -Copt-level=1
+//@ [OPT2] compile-flags: -Copt-level=2
 //@ only-64bit (because we're using [ui]size)
 
 #![crate_type = "lib"]
@@ -17,8 +19,9 @@ pub unsafe fn offset_from_odd_size(a: *const RGB, b: *const RGB) -> isize {
     // CHECK: start
     // CHECK-NEXT: ptrtoint
     // CHECK-NEXT: ptrtoint
-    // CHECK-NEXT: sub i64
-    // CHECK-NEXT: sdiv exact i64 %{{[0-9]+}}, 3
+    // CHECK-NEXT: %[[D:.+]] = sub i64
+    // CHECK-NOT: assume
+    // CHECK-NEXT: sdiv exact i64 %[[D]], 3
     // CHECK-NEXT: ret i64
     ptr_offset_from(a, b)
 }
@@ -29,8 +32,11 @@ pub unsafe fn offset_from_unsigned_odd_size(a: *const RGB, b: *const RGB) -> usi
     // CHECK: start
     // CHECK-NEXT: ptrtoint
     // CHECK-NEXT: ptrtoint
-    // CHECK-NEXT: sub nuw i64
-    // CHECK-NEXT: udiv exact i64 %{{[0-9]+}}, 3
+    // CHECK-NEXT: %[[D:.+]] = sub nuw i64
+    // OPT1-NOT: assume
+    // OPT2-NEXT: %[[POS:.+]] = icmp sgt i64 %[[D]], -1
+    // OPT2-NEXT: tail call void @llvm.assume(i1 %[[POS]])
+    // CHECK-NEXT: udiv exact i64 %[[D]], 3
     // CHECK-NEXT: ret i64
     ptr_offset_from_unsigned(a, b)
 }

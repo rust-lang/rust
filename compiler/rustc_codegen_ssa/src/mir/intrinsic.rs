@@ -1,6 +1,7 @@
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 use super::FunctionCx;
+use crate::common::IntPredicate;
 use crate::errors;
 use crate::errors::InvalidMonomorphization;
 use crate::meth;
@@ -499,6 +500,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // The `_unsigned` version knows the relative ordering of the pointers,
                     // so can use `sub nuw` and `udiv exact` instead of dealing in signed.
                     let d = bx.unchecked_usub(a, b);
+                    if let OptLevel::Default | OptLevel::Aggressive = bx.sess().opts.optimize {
+                        // Despite dealing in `usize`, it's still not allowed for the
+                        // pointers to be more than `isize::MAX` apart.
+                        let inrange = bx.icmp(IntPredicate::IntSGE, d, bx.const_usize(0));
+                        bx.assume(inrange);
+                    }
                     bx.exactudiv(d, pointee_size)
                 }
             }

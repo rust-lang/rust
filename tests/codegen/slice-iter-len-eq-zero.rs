@@ -4,10 +4,21 @@
 type Demo = [u8; 3];
 
 // CHECK-LABEL: @slice_iter_len_eq_zero
+// CHECK-SAME: ptr noundef nonnull %0
+// CHECK-SAME: ptr noundef %1
 #[no_mangle]
 pub fn slice_iter_len_eq_zero(y: std::slice::Iter<'_, Demo>) -> bool {
-    // CHECK-NOT: sub
-    // CHECK: %[[RET:.+]] = icmp eq ptr {{%1|%0}}, {{%1|%0}}
+    // There's no `nonnull` in the signature, so we end up with an assume.
+    // CHECK: %[[NNULL:.+]] = icmp ne ptr %1, null
+    // CHECK: tail call void @llvm.assume(i1 %[[NNULL]])
+
+    // CHECK-DAG: %[[E:.+]] = ptrtoint ptr %1 to i
+    // CHECK-DAG: %[[B:.+]] = ptrtoint ptr %0 to i
+    // CHECK: %[[D:.+]] = sub nuw {{.+}} %[[E]], %[[B]]
+    // CHECK: %[[NNEG:.+]] = icmp sgt {{.+}} %[[D]], -1
+    // CHECK: tail call void @llvm.assume(i1 %[[NNEG]])
+
+    // CHECK: %[[RET:.+]] = icmp eq ptr {{%1, %0|%0, %1}}
     // CHECK: ret i1 %[[RET]]
     y.len() == 0
 }

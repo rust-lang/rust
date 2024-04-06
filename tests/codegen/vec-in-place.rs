@@ -38,6 +38,13 @@ pub struct Baz {
 pub fn vec_iterator_cast_primitive(vec: Vec<i8>) -> Vec<u8> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
+
+    // CHECK: %[[LEN_IN_ISIZE:.+]] = icmp sgt i{{.+}}, -1
+    // CHECK-NEXT: call void @llvm.assume(i1 %[[LEN_IN_ISIZE]])
+
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
+
     vec.into_iter().map(|e| e as u8).collect()
 }
 
@@ -46,6 +53,13 @@ pub fn vec_iterator_cast_primitive(vec: Vec<i8>) -> Vec<u8> {
 pub fn vec_iterator_cast_wrapper(vec: Vec<u8>) -> Vec<Wrapper<u8>> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
+
+    // CHECK: %[[LEN_IN_ISIZE:.+]] = icmp sgt i{{.+}}, -1
+    // CHECK-NEXT: call void @llvm.assume(i1 %[[LEN_IN_ISIZE]])
+
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
+
     vec.into_iter().map(|e| Wrapper(e)).collect()
 }
 
@@ -54,6 +68,13 @@ pub fn vec_iterator_cast_wrapper(vec: Vec<u8>) -> Vec<Wrapper<u8>> {
 pub fn vec_iterator_cast_unwrap(vec: Vec<Wrapper<u8>>) -> Vec<u8> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
+
+    // CHECK: %[[LEN_IN_ISIZE:.+]] = icmp sgt i{{.+}}, -1
+    // CHECK-NEXT: call void @llvm.assume(i1 %[[LEN_IN_ISIZE]])
+
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
+
     vec.into_iter().map(|e| e.0).collect()
 }
 
@@ -90,3 +111,9 @@ pub fn vec_iterator_cast_deaggregate_fold(vec: Vec<Baz>) -> Vec<[u64; 4]> {
     // correct.
     vec.into_iter().map(|e| unsafe { std::mem::transmute(e) }).collect()
 }
+
+// Make sure that the `NOT`s above don't trigger on the `nocallback` attribute further down.
+
+// CHECK-LABEL: @last_definition
+#[no_mangle]
+pub fn last_definition() {}
