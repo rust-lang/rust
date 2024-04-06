@@ -1,4 +1,4 @@
-//@ compile-flags: --target aarch64-unknown-none -Zsanitizer=shadow-call-stack
+//@ compile-flags: --target aarch64-unknown-none -Zunstable-options -Csanitize=shadow-call-stack
 //@ error-pattern: shadow-call-stack sanitizer is not supported for this target
 //@ dont-check-compiler-stderr
 //@ needs-llvm-components: aarch64
