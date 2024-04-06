@@ -212,6 +212,10 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         ins_none!(sym::test);
     }
 
+    if sess.ub_checks() {
+        ins_none!(sym::ub_checks);
+    }
+
     ret
 }
 
@@ -366,6 +370,8 @@ impl CheckCfg {
         ins!(sym::target_thread_local, no_values);
 
         ins!(sym::test, no_values);
+
+        ins!(sym::ub_checks, no_values);
 
         ins!(sym::unix, no_values);
         ins!(sym::windows, no_values);

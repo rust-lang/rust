@@ -993,7 +993,7 @@ pub enum NullOp {
     AlignOf,
     /// Returns the offset of a field.
     OffsetOf(Vec<(VariantIdx, FieldIdx)>),
-    /// cfg!(debug_assertions), but at codegen time
+    /// cfg!(ub_checks), but at codegen time
     UbChecks,
 }
 

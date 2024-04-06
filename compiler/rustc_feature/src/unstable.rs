@@ -381,6 +381,8 @@ declare_features! (
     (unstable, cfg_target_has_atomic_equal_alignment, "1.60.0", Some(93822)),
     /// Allows `cfg(target_thread_local)`.
     (unstable, cfg_target_thread_local, "1.7.0", Some(29594)),
+    /// Allows the use of `#[cfg(ub_checks)` to check if UB checks are enabled.
+    (unstable, cfg_ub_checks, "CURRENT_RUSTC_VERSION", Some(123499)),
     /// Allow conditional compilation depending on rust version
     (unstable, cfg_version, "1.45.0", Some(64796)),
     /// Allows to use the `#[cfi_encoding = ""]` attribute.
