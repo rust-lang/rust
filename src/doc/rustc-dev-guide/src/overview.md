@@ -370,7 +370,7 @@ For more details on bootstrapping, see
 [the bootstrapping section of the guide][rustc-bootstrap].
 
 [_bootstrapping_]: https://en.wikipedia.org/wiki/Bootstrapping_(compilers)
-[rustc-bootstrap]: building/bootstrapping.md
+[rustc-bootstrap]: building/bootstrapping/intro.md
 
 <!--
 # Unresolved Questions

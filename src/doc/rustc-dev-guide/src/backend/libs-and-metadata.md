@@ -164,7 +164,7 @@ compilation.
 [`CStore`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/creader/struct.CStore.html
 [`CrateMetadata`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/decoder/struct.CrateMetadata.html
 [`GlobalCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.GlobalCtxt.html
-[sysroot]: ../building/bootstrapping.md#what-is-a-sysroot
+[sysroot]: ../building/bootstrapping/what-bootstrapping-does.md#what-is-a-sysroot
 
 ## Pipelining
 

@@ -173,7 +173,7 @@ from `src/tools/`, such as [`tidy`] or [`compiletest`].
 [`tidy`]: https://github.com/rust-lang/rust/tree/master/src/tools/tidy
 [`compiletest`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest
 
-[bootstch]: ./building/bootstrapping.md
+[bootstch]: ./building/bootstrapping/intro.md
 
 ## Standard library
 
