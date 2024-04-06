@@ -90,7 +90,7 @@ pub(crate) fn path_to_const(
                 }
                 ParamLoweringMode::Variable => {
                     let args = args();
-                    match args.as_ref().and_then(|args| args.param_idx(p.into())) {
+                    match args.as_ref().and_then(|args| args.type_or_const_param_idx(p.into())) {
                         Some(it) => ConstValue::BoundVar(BoundVar::new(debruijn, it)),
                         None => {
                             never!(

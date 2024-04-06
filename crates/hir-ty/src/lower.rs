@@ -578,7 +578,7 @@ impl<'a> TyLoweringContext<'a> {
                     let idx = match self
                         .generics()
                         .expect("generics in scope")
-                        .param_idx(param_id.into())
+                        .type_or_const_param_idx(param_id.into())
                     {
                         None => {
                             never!("no matching generics");
@@ -1026,7 +1026,7 @@ impl<'a> TyLoweringContext<'a> {
                             }
                             ParamLoweringMode::Variable => {
                                 let idx = generics(self.db.upcast(), def)
-                                    .param_idx(param_id)
+                                    .type_or_const_param_idx(param_id)
                                     .expect("matching generics");
                                 TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, idx))
                             }
@@ -1505,7 +1505,7 @@ fn named_associated_type_shorthand_candidates<R>(
             // Handle `Self::Type` referring to own associated type in trait definitions
             if let GenericDefId::TraitId(trait_id) = param_id.parent() {
                 let trait_generics = generics(db.upcast(), trait_id.into());
-                if trait_generics.params.type_or_consts[param_id.local_id()].is_trait_self() {
+                if trait_generics.params[param_id.local_id()].is_trait_self() {
                     let def_generics = generics(db.upcast(), def);
                     let starting_idx = match def {
                         GenericDefId::TraitId(_) => 0,

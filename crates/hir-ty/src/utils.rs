@@ -308,7 +308,11 @@ impl Generics {
         };
 
         let lt_iter = self.params.iter_lt().map(from_lt_id(self));
-        self.params.iter().map(from_toc_id(self)).chain(lt_iter).chain(self.iter_parent())
+        self.params
+            .iter_type_or_consts()
+            .map(from_toc_id(self))
+            .chain(lt_iter)
+            .chain(self.iter_parent())
     }
 
     /// Iterate over types and const params without parent params.
@@ -340,16 +344,19 @@ impl Generics {
             }
         };
 
-        self.params.iter().map(from_toc_id(self)).chain(self.params.iter_lt().map(from_lt_id(self)))
+        self.params
+            .iter_type_or_consts()
+            .map(from_toc_id(self))
+            .chain(self.params.iter_lt().map(from_lt_id(self)))
     }
 
     /// Iterator over types and const params of parent.
-    #[allow(clippy::needless_lifetimes)]
-    pub(crate) fn iter_parent<'a>(
-        &'a self,
-    ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamDataRef<'a>)> + 'a {
+    pub(crate) fn iter_parent(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamDataRef<'_>)> + '_ {
         self.parent_generics().into_iter().flat_map(|it| {
-            let from_toc_id = move |(local_id, p): (_, &'a TypeOrConstParamData)| {
+            let from_toc_id = move |(local_id, p)| {
+                let p: &_ = p;
                 let id = TypeOrConstParamId { parent: it.def, local_id };
                 match p {
                     TypeOrConstParamData::TypeParamData(p) => (
@@ -363,14 +370,14 @@ impl Generics {
                 }
             };
 
-            let from_lt_id = move |(local_id, p): (_, &'a LifetimeParamData)| {
+            let from_lt_id = move |(local_id, p): (_, _)| {
                 (
                     GenericParamId::LifetimeParamId(LifetimeParamId { parent: it.def, local_id }),
                     GenericParamDataRef::LifetimeParamData(p),
                 )
             };
             let lt_iter = it.params.iter_lt().map(from_lt_id);
-            it.params.iter().map(from_toc_id).chain(lt_iter)
+            it.params.iter_type_or_consts().map(from_toc_id).chain(lt_iter)
         })
     }
 
@@ -387,7 +394,7 @@ impl Generics {
     }
 
     /// Returns number of generic parameter excluding those from parent
-    fn len_params(&self) -> usize {
+    fn len_type_and_const_params(&self) -> usize {
         self.params.type_or_consts.len()
     }
 
@@ -398,7 +405,7 @@ impl Generics {
         let mut impl_trait_params = 0;
         let mut const_params = 0;
         let mut lifetime_params = 0;
-        self.params.iter().for_each(|(_, data)| match data {
+        self.params.iter_type_or_consts().for_each(|(_, data)| match data {
             TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                 TypeParamProvenance::TypeParamList => type_params += 1,
                 TypeParamProvenance::TraitSelf => self_params += 1,
@@ -413,18 +420,23 @@ impl Generics {
         (parent_len, self_params, type_params, const_params, impl_trait_params, lifetime_params)
     }
 
-    pub(crate) fn param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
-        Some(self.find_param(param)?.0)
+    pub(crate) fn type_or_const_param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
+        Some(self.find_type_or_const_param(param)?.0)
     }
 
-    fn find_param(&self, param: TypeOrConstParamId) -> Option<(usize, &TypeOrConstParamData)> {
+    fn find_type_or_const_param(
+        &self,
+        param: TypeOrConstParamId,
+    ) -> Option<(usize, &TypeOrConstParamData)> {
         if param.parent == self.def {
-            let (idx, (_local_id, data)) =
-                self.params.iter().enumerate().find(|(_, (idx, _))| *idx == param.local_id)?;
-            Some((idx, data))
+            let idx = param.local_id.into_raw().into_u32() as usize;
+            if idx >= self.params.type_or_consts.len() {
+                return None;
+            }
+            Some((idx, &self.params.type_or_consts[param.local_id]))
         } else {
             self.parent_generics()
-                .and_then(|g| g.find_param(param))
+                .and_then(|g| g.find_type_or_const_param(param))
                 // Remember that parent parameters come after parameters for self.
                 .map(|(idx, data)| (self.len_self() + idx, data))
         }
@@ -436,13 +448,14 @@ impl Generics {
 
     fn find_lifetime(&self, lifetime: LifetimeParamId) -> Option<(usize, &LifetimeParamData)> {
         if lifetime.parent == self.def {
-            let (idx, (_local_id, data)) = self
-                .params
-                .iter_lt()
-                .enumerate()
-                .find(|(_, (idx, _))| *idx == lifetime.local_id)?;
-
-            Some((self.len_params() + idx, data))
+            let idx = lifetime.local_id.into_raw().into_u32() as usize;
+            if idx >= self.params.lifetimes.len() {
+                return None;
+            }
+            Some((
+                self.len_type_and_const_params() + idx,
+                &self.params.lifetimes[lifetime.local_id],
+            ))
         } else {
             self.parent_generics()
                 .and_then(|g| g.find_lifetime(lifetime))

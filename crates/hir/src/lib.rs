@@ -653,7 +653,7 @@ impl Module {
                     GenericParamId::LifetimeParamId(LifetimeParamId { parent, local_id })
                 });
                 let type_params = generic_params
-                    .iter()
+                    .iter_type_or_consts()
                     .filter(|(_, it)| it.type_param().is_some())
                     .map(|(local_id, _)| {
                         GenericParamId::TypeParamId(TypeParamId::from_unchecked(

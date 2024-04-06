@@ -288,7 +288,7 @@ impl Hash for ConstScalar {
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
-    generics(db.upcast(), id.parent).param_idx(id)
+    generics(db.upcast(), id.parent).type_or_const_param_idx(id)
 }
 
 pub(crate) fn wrap_empty_binders<T>(value: T) -> Binders<T>
