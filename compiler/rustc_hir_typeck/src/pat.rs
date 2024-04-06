@@ -299,7 +299,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if mutbls_match {
                         (expected, INITIAL_BM, true)
                     } else {
-                        (expected, def_bm, false)
+                        let mut new_bm = def_bm;
+                        if new_bm.0 == ByRef::Yes(Mutability::Mut) && mutbl == Mutability::Not {
+                            new_bm.0 = ByRef::Yes(Mutability::Not);
+                        }
+                        (expected, new_bm, false)
                     }
                 } else {
                     (expected, INITIAL_BM, mutbls_match)

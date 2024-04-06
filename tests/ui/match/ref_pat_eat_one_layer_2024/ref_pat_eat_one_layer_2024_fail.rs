@@ -10,4 +10,11 @@ pub fn main() {
     if let Some(&Some(&_)) = &Some(&mut Some(0)) {
         //~^ ERROR: mismatched types
     }
+    if let Some(&Some(x)) = &mut Some(&Some(0)) {
+        let _: &mut u32 = x;
+        //~^ ERROR: mismatched types
+    }
+    if let Some(&Some(&x)) = Some(&Some(&mut 0)) {
+        //~^ ERROR: mismatched types
+    }
 }
