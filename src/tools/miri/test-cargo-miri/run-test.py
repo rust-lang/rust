@@ -31,11 +31,11 @@ def cargo_miri(cmd, quiet = True):
 
 def normalize_stdout(str):
     str = str.replace("src\\", "src/") # normalize paths across platforms
-    str = re.sub("finished in \d+\.\d\ds", "finished in $TIME", str) # the time keeps changing, obviously
+    str = re.sub("finished in \\d+\\.\\d\\ds", "finished in $TIME", str) # the time keeps changing, obviously
     return str
 
 def normalize_stderr(str):
-    str = re.sub("Preparing a sysroot for Miri \(target: [a-z0-9_-]+\)\.\.\. done\n", "", str) # remove leading cargo-miri setup output
+    str = re.sub("Preparing a sysroot for Miri \\(target: [a-z0-9_-]+\\)\\.\\.\\. done\n", "", str) # remove leading cargo-miri setup output
     return str
 
 def check_output(actual, path, name):
