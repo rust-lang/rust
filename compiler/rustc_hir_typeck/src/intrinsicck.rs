@@ -47,12 +47,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let from = normalize(from);
         let to = normalize(to);
         trace!(?from, ?to);
+
         if from.has_non_region_infer() || to.has_non_region_infer() {
-            // Note: this path is currently not reached in any test, so any
-            // example that triggers this would be worth minimizing and
-            // converting into a test.
-            tcx.dcx().span_bug(span, "argument to transmute has inference variables");
+            // An argument may have an infer var in it but *not* trigger an
+            // ambiguity error yet... See `ambiguity-in-closure-arg.rs` test.
+            tcx.dcx().span_delayed_bug(span, "argument to transmute has inference variables");
+            return;
         }
+
         // Transmutes that are only changing lifetimes are always ok.
         if from == to {
             return;
