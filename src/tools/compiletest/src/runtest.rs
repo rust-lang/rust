@@ -1028,11 +1028,30 @@ impl<'test> TestCx<'test> {
     }
 
     fn set_revision_flags(&self, cmd: &mut Command) {
+        // Normalize revisions to be lowercase and replace `-`s with `_`s.
+        // Otherwise the `--cfg` flag is not valid.
+        let normalize_revision = |revision: &str| revision.to_lowercase().replace("-", "_");
+
         if let Some(revision) = self.revision {
-            // Normalize revisions to be lowercase and replace `-`s with `_`s.
-            // Otherwise the `--cfg` flag is not valid.
-            let normalized_revision = revision.to_lowercase().replace("-", "_");
+            let normalized_revision = normalize_revision(revision);
             cmd.args(&["--cfg", &normalized_revision]);
+        }
+
+        if !self.props.no_auto_check_cfg {
+            let mut check_cfg = String::with_capacity(25);
+
+            // Generate `cfg(FALSE, REV1, ..., REVN)` (for all possible revisions)
+            //
+            // For compatibility reason we consider the `FALSE` cfg to be expected
+            // since it is extensively used in the testsuite.
+            check_cfg.push_str("cfg(FALSE");
+            for revision in &self.props.revisions {
+                check_cfg.push_str(",");
+                check_cfg.push_str(&normalize_revision(&revision));
+            }
+            check_cfg.push_str(")");
+
+            cmd.args(&["--check-cfg", &check_cfg]);
         }
     }
 

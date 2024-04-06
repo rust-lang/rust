@@ -1,6 +1,6 @@
 //@ run-pass
 //@ compile-flags: --cfg foo --cfg qux="foo"
-
+//@ compile-flags: --check-cfg=cfg(foo) --check-cfg=cfg(qux,values("foo"))
 
 pub fn main() {
     // check
