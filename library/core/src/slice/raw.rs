@@ -1,7 +1,8 @@
 //! Free functions to create `&[T]` and `&mut [T]`.
 
 use crate::array;
-use crate::mem::{align_of, size_of};
+use crate::intrinsics;
+use crate::mem::{align_of, SizedTypeProperties};
 use crate::ops::Range;
 use crate::ptr;
 use crate::ub_checks;
@@ -98,13 +99,14 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
             "slice::from_raw_parts requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
             (
                 data: *mut () = data as *mut (),
-                size: usize = size_of::<T>(),
                 align: usize = align_of::<T>(),
                 len: usize = len,
+                max_len: usize = T::MAX_SLICE_LEN,
             ) =>
             ub_checks::is_aligned_and_not_null(data, align)
-                && ub_checks::is_valid_allocation_size(size, len)
+                && len <= max_len
         );
+        intrinsics::assume(len <= T::MAX_SLICE_LEN);
         &*ptr::slice_from_raw_parts(data, len)
     }
 }
@@ -152,13 +154,14 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
             "slice::from_raw_parts_mut requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
             (
                 data: *mut () = data as *mut (),
-                size: usize = size_of::<T>(),
                 align: usize = align_of::<T>(),
                 len: usize = len,
+                max_len: usize = T::MAX_SLICE_LEN,
             ) =>
             ub_checks::is_aligned_and_not_null(data, align)
-                && ub_checks::is_valid_allocation_size(size, len)
+                && len <= max_len
         );
+        intrinsics::assume(len <= T::MAX_SLICE_LEN);
         &mut *ptr::slice_from_raw_parts_mut(data, len)
     }
 }

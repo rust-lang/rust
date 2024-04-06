@@ -115,12 +115,6 @@ pub(crate) const fn is_aligned_and_not_null(ptr: *const (), align: usize) -> boo
     !ptr.is_null() && ptr.is_aligned_to(align)
 }
 
-#[inline]
-pub(crate) const fn is_valid_allocation_size(size: usize, len: usize) -> bool {
-    let max_len = if size == 0 { usize::MAX } else { isize::MAX as usize / size };
-    len <= max_len
-}
-
 /// Checks whether the regions of memory starting at `src` and `dst` of size
 /// `count * size` do *not* overlap.
 ///
