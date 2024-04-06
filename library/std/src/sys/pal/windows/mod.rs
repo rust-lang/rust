@@ -5,12 +5,15 @@ use crate::io::ErrorKind;
 use crate::mem::MaybeUninit;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::path::PathBuf;
+use crate::sys::pal::windows::api::wide_str;
 use crate::time::Duration;
 
 pub use self::rand::hashmap_random_keys;
 
 #[macro_use]
 pub mod compat;
+
+mod api;
 
 pub mod alloc;
 pub mod args;
@@ -40,8 +43,6 @@ cfg_if::cfg_if! {
         pub use self::stack_overflow_uwp as stack_overflow;
     }
 }
-
-mod api;
 
 /// Map a Result<T, WinError> to io::Result<T>.
 trait IoResult<T> {
