@@ -4,7 +4,7 @@
 //@ edition:2018
 
 #![deny(rust_2018_idioms)]
-#![allow(dead_code)]
+#![allow(dead_code, unexpected_cfgs)]
 
 // The suggestion span should include the attribute.
 
