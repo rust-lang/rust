@@ -237,6 +237,11 @@ impl<'tcx> PlaceRef<'tcx> {
     }
 
     #[inline]
+    pub fn to_place(&self, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
+        Place { local: self.local, projection: tcx.mk_place_elems(self.projection) }
+    }
+
+    #[inline]
     pub fn last_projection(&self) -> Option<(PlaceRef<'tcx>, PlaceElem<'tcx>)> {
         if let &[ref proj_base @ .., elem] = self.projection {
             Some((PlaceRef { local: self.local, projection: proj_base }, elem))
