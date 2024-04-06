@@ -89,7 +89,7 @@ fn retagx_retagy_retx_writey_rety() {
     // - retag `y` protected
     // - (wait for the other thread to return so that there is no foreign protector when we write)
     // - attempt a write through `y`.
-    // - (UB should have occured by now, but the next step would be to
+    // - (UB should have occurred by now, but the next step would be to
     //    remove `y`'s protector)
     let thread_y = thread::spawn(move || {
         let b = (2, by);

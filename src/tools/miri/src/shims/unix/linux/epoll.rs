@@ -1,17 +1,52 @@
-use std::cell::Cell;
+use std::io;
 
-use rustc_middle::ty::ScalarInt;
+use rustc_data_structures::fx::FxHashMap;
 
+use crate::shims::unix::*;
 use crate::*;
-use epoll::{Epoll, EpollEvent};
-use event::Event;
-use socketpair::SocketPair;
 
-use shims::unix::fs::EvalContextExt as _;
+/// An `Epoll` file descriptor connects file handles and epoll events
+#[derive(Clone, Debug, Default)]
+struct Epoll {
+    /// The file descriptors we are watching, and what we are watching for.
+    file_descriptors: FxHashMap<i32, EpollEvent>,
+}
 
-pub mod epoll;
-pub mod event;
-pub mod socketpair;
+/// Epoll Events associate events with data.
+/// These fields are currently unused by miri.
+/// This matches the `epoll_event` struct defined
+/// by the epoll_ctl man page. For more information
+/// see the man page:
+///
+/// <https://man7.org/linux/man-pages/man2/epoll_ctl.2.html>
+#[derive(Clone, Debug)]
+struct EpollEvent {
+    #[allow(dead_code)]
+    events: u32,
+    /// `Scalar<Provenance>` is used to represent the
+    /// `epoll_data` type union.
+    #[allow(dead_code)]
+    data: Scalar<Provenance>,
+}
+
+impl FileDescriptor for Epoll {
+    fn name(&self) -> &'static str {
+        "epoll"
+    }
+
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+        // FIXME: this is probably wrong -- check if the `dup`ed descriptor truly uses an
+        // independent event set.
+        Ok(Box::new(self.clone()))
+    }
+
+    fn close<'tcx>(
+        self: Box<Self>,
+        _communicate_allowed: bool,
+    ) -> InterpResult<'tcx, io::Result<i32>> {
+        Ok(Ok(0))
+    }
+}
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
@@ -35,7 +70,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("epoll_create1 flags {flags} are not implemented");
         }
 
-        let fd = this.machine.file_handler.insert_fd(Box::new(Epoll::default()));
+        let fd = this.machine.fds.insert_fd(Box::new(Epoll::default()));
         Ok(Scalar::from_i32(fd))
     }
 
@@ -79,7 +114,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let data = this.read_scalar(&data)?;
             let event = EpollEvent { events, data };
 
-            if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
+            if let Some(epfd) = this.machine.fds.get_mut(epfd) {
                 let epfd = epfd
                     .downcast_mut::<Epoll>()
                     .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
@@ -87,10 +122,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 epfd.file_descriptors.insert(fd, event);
                 Ok(Scalar::from_i32(0))
             } else {
-                Ok(Scalar::from_i32(this.handle_not_found()?))
+                Ok(Scalar::from_i32(this.fd_not_found()?))
             }
         } else if op == epoll_ctl_del {
-            if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
+            if let Some(epfd) = this.machine.fds.get_mut(epfd) {
                 let epfd = epfd
                     .downcast_mut::<Epoll>()
                     .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
@@ -98,7 +133,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 epfd.file_descriptors.remove(&fd);
                 Ok(Scalar::from_i32(0))
             } else {
-                Ok(Scalar::from_i32(this.handle_not_found()?))
+                Ok(Scalar::from_i32(this.fd_not_found()?))
             }
         } else {
             let einval = this.eval_libc("EINVAL");
@@ -150,7 +185,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let _maxevents = this.read_scalar(maxevents)?.to_i32()?;
         let _timeout = this.read_scalar(timeout)?.to_i32()?;
 
-        if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
+        if let Some(epfd) = this.machine.fds.get_mut(epfd) {
             let _epfd = epfd
                 .downcast_mut::<Epoll>()
                 .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
@@ -158,96 +193,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // FIXME return number of events ready when scheme for marking events ready exists
             throw_unsup_format!("returning ready events from epoll_wait is not yet implemented");
         } else {
-            Ok(Scalar::from_i32(this.handle_not_found()?))
+            Ok(Scalar::from_i32(this.fd_not_found()?))
         }
-    }
-
-    /// This function creates an `Event` that is used as an event wait/notify mechanism by
-    /// user-space applications, and by the kernel to notify user-space applications of events.
-    /// The `Event` contains an `u64` counter maintained by the kernel. The counter is initialized
-    /// with the value specified in the `initval` argument.
-    ///
-    /// A new file descriptor referring to the `Event` is returned. The `read`, `write`, `poll`,
-    /// `select`, and `close` operations can be performed on the file descriptor. For more
-    /// information on these operations, see the man page linked below.
-    ///
-    /// The `flags` are not currently implemented for eventfd.
-    /// The `flags` may be bitwise ORed to change the behavior of `eventfd`:
-    /// `EFD_CLOEXEC` - Set the close-on-exec (`FD_CLOEXEC`) flag on the new file descriptor.
-    /// `EFD_NONBLOCK` - Set the `O_NONBLOCK` file status flag on the new open file description.
-    /// `EFD_SEMAPHORE` - miri does not support semaphore-like semantics.
-    ///
-    /// <https://linux.die.net/man/2/eventfd>
-    #[expect(clippy::needless_if)]
-    fn eventfd(
-        &mut self,
-        val: &OpTy<'tcx, Provenance>,
-        flags: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
-        let this = self.eval_context_mut();
-
-        let val = this.read_scalar(val)?.to_u32()?;
-        let flags = this.read_scalar(flags)?.to_i32()?;
-
-        let efd_cloexec = this.eval_libc_i32("EFD_CLOEXEC");
-        let efd_nonblock = this.eval_libc_i32("EFD_NONBLOCK");
-        let efd_semaphore = this.eval_libc_i32("EFD_SEMAPHORE");
-
-        if flags & (efd_cloexec | efd_nonblock | efd_semaphore) == 0 {
-            throw_unsup_format!("{flags} is unsupported");
-        }
-        // FIXME handle the cloexec and nonblock flags
-        if flags & efd_cloexec == efd_cloexec {}
-        if flags & efd_nonblock == efd_nonblock {}
-        if flags & efd_semaphore == efd_semaphore {
-            throw_unsup_format!("EFD_SEMAPHORE is unsupported");
-        }
-
-        let fh = &mut this.machine.file_handler;
-        let fd = fh.insert_fd(Box::new(Event { val: Cell::new(val.into()) }));
-        Ok(Scalar::from_i32(fd))
-    }
-
-    /// Currently this function creates new `SocketPair`s without specifying the domain, type, or
-    /// protocol of the new socket and these are stored in the socket values `sv` argument.
-    ///
-    /// This function creates an unnamed pair of connected sockets in the specified domain, of the
-    /// specified type, and using the optionally specified protocol.
-    ///
-    /// The `domain` argument specified a communication domain; this selects the protocol family
-    /// used for communication. The socket `type` specifies the communication semantics.
-    /// The `protocol` specifies a particular protocol to use with the socket. Normally there's
-    /// only a single protocol supported for a particular socket type within a given protocol
-    /// family, in which case `protocol` can be specified as 0. It is possible that many protocols
-    /// exist and in that case, a particular protocol must be specified.
-    ///
-    /// For more information on the arguments see the socket manpage:
-    /// <https://linux.die.net/man/2/socket>
-    ///
-    /// <https://linux.die.net/man/2/socketpair>
-    fn socketpair(
-        &mut self,
-        domain: &OpTy<'tcx, Provenance>,
-        type_: &OpTy<'tcx, Provenance>,
-        protocol: &OpTy<'tcx, Provenance>,
-        sv: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
-        let this = self.eval_context_mut();
-
-        let _domain = this.read_scalar(domain)?.to_i32()?;
-        let _type_ = this.read_scalar(type_)?.to_i32()?;
-        let _protocol = this.read_scalar(protocol)?.to_i32()?;
-        let sv = this.deref_pointer(sv)?;
-
-        let fh = &mut this.machine.file_handler;
-        let sv0 = fh.insert_fd(Box::new(SocketPair));
-        let sv0 = ScalarInt::try_from_int(sv0, sv.layout.size).unwrap();
-        let sv1 = fh.insert_fd(Box::new(SocketPair));
-        let sv1 = ScalarInt::try_from_int(sv1, sv.layout.size).unwrap();
-
-        this.write_scalar(sv0, &sv)?;
-        this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?)?;
-
-        Ok(Scalar::from_i32(0))
     }
 }

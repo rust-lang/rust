@@ -3,15 +3,13 @@ use rustc_target::spec::abi::Abi;
 
 use crate::machine::SIGRTMAX;
 use crate::machine::SIGRTMIN;
+use crate::shims::unix::*;
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
-use shims::unix::fs::EvalContextExt as _;
-use shims::unix::linux::fd::EvalContextExt as _;
+use shims::unix::linux::epoll::EvalContextExt as _;
+use shims::unix::linux::eventfd::EvalContextExt as _;
 use shims::unix::linux::mem::EvalContextExt as _;
 use shims::unix::linux::sync::futex;
-use shims::unix::mem::EvalContextExt as _;
-use shims::unix::sync::EvalContextExt as _;
-use shims::unix::thread::EvalContextExt as _;
 
 pub fn is_dyn_sym(name: &str) -> bool {
     matches!(name, "getrandom")
@@ -31,34 +29,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
 
         match link_name.as_str() {
-            // errno
-            "__errno_location" => {
-                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let errno_place = this.last_error_place()?;
-                this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
-            }
-
             // File related shims (but also see "syscall" below for statx)
             "readdir64" => {
                 let [dirp] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.linux_readdir64(dirp)?;
                 this.write_scalar(result, dest)?;
             }
-            "mmap64" => {
-                let [addr, length, prot, flags, fd, offset] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let offset = this.read_scalar(offset)?.to_i64()?;
-                let ptr = this.mmap(addr, length, prot, flags, fd, offset.into())?;
-                this.write_scalar(ptr, dest)?;
-            }
-
-            // Linux-only
             "sync_file_range" => {
                 let [fd, offset, nbytes, flags] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.sync_file_range(fd, offset, nbytes, flags)?;
                 this.write_scalar(result, dest)?;
             }
+
+            // epoll, eventfd
             "epoll_create1" => {
                 let [flag] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.epoll_create1(flag)?;
@@ -81,29 +65,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.eventfd(val, flag)?;
                 this.write_scalar(result, dest)?;
-            }
-            "mremap" => {
-                let [old_address, old_size, new_size, flags] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let ptr = this.mremap(old_address, old_size, new_size, flags)?;
-                this.write_scalar(ptr, dest)?;
-            }
-            "socketpair" => {
-                let [domain, type_, protocol, sv] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let result = this.socketpair(domain, type_, protocol, sv)?;
-                this.write_scalar(result, dest)?;
-            }
-            "__libc_current_sigrtmin" => {
-                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                this.write_scalar(Scalar::from_i32(SIGRTMIN), dest)?;
-            }
-            "__libc_current_sigrtmax" => {
-                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                this.write_scalar(Scalar::from_i32(SIGRTMAX), dest)?;
             }
 
             // Threading
@@ -205,6 +166,34 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [ptr, len, flags] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 getrandom(this, ptr, len, flags, dest)?;
+            }
+            "mmap64" => {
+                let [addr, length, prot, flags, fd, offset] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let offset = this.read_scalar(offset)?.to_i64()?;
+                let ptr = this.mmap(addr, length, prot, flags, fd, offset.into())?;
+                this.write_scalar(ptr, dest)?;
+            }
+            "mremap" => {
+                let [old_address, old_size, new_size, flags] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr = this.mremap(old_address, old_size, new_size, flags)?;
+                this.write_scalar(ptr, dest)?;
+            }
+            "__errno_location" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let errno_place = this.last_error_place()?;
+                this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
+            }
+            "__libc_current_sigrtmin" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                this.write_scalar(Scalar::from_i32(SIGRTMIN), dest)?;
+            }
+            "__libc_current_sigrtmax" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                this.write_scalar(Scalar::from_i32(SIGRTMAX), dest)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
