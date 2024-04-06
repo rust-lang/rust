@@ -252,7 +252,7 @@ impl Analysis {
             Edition::CURRENT,
             None,
             None,
-            cfg_options.clone(),
+            Arc::new(cfg_options),
             None,
             Env::default(),
             false,

@@ -11,6 +11,7 @@ use hir_expand::{
 };
 use limit::Limit;
 use syntax::{ast, Parse};
+use triomphe::Arc;
 
 use crate::{
     attr::Attrs, db::DefDatabase, lower::LowerCtx, path::Path, AsMacroCall, MacroId, ModuleId,
@@ -19,7 +20,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Expander {
-    cfg_options: CfgOptions,
+    cfg_options: Arc<CfgOptions>,
     span_map: OnceCell<SpanMap>,
     current_file_id: HirFileId,
     pub(crate) module: ModuleId,

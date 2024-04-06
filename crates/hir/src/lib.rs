@@ -260,11 +260,11 @@ impl Crate {
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
 
-    pub fn cfg(&self, db: &dyn HirDatabase) -> CfgOptions {
+    pub fn cfg(&self, db: &dyn HirDatabase) -> Arc<CfgOptions> {
         db.crate_graph()[self.id].cfg_options.clone()
     }
 
-    pub fn potential_cfg(&self, db: &dyn HirDatabase) -> CfgOptions {
+    pub fn potential_cfg(&self, db: &dyn HirDatabase) -> Arc<CfgOptions> {
         let data = &db.crate_graph()[self.id];
         data.potential_cfg_options.clone().unwrap_or_else(|| data.cfg_options.clone())
     }

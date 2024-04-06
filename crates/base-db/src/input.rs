@@ -285,10 +285,9 @@ pub struct CrateData {
     /// For purposes of analysis, crates are anonymous (only names in
     /// `Dependency` matters), this name should only be used for UI.
     pub display_name: Option<CrateDisplayName>,
-    // FIXME: Arc this
-    pub cfg_options: CfgOptions,
+    pub cfg_options: Arc<CfgOptions>,
     /// The cfg options that could be used by the crate
-    pub potential_cfg_options: Option<CfgOptions>,
+    pub potential_cfg_options: Option<Arc<CfgOptions>>,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
     pub origin: CrateOrigin,
@@ -329,8 +328,8 @@ impl CrateGraph {
         edition: Edition,
         display_name: Option<CrateDisplayName>,
         version: Option<String>,
-        cfg_options: CfgOptions,
-        potential_cfg_options: Option<CfgOptions>,
+        cfg_options: Arc<CfgOptions>,
+        potential_cfg_options: Option<Arc<CfgOptions>>,
         env: Env,
         is_proc_macro: bool,
         origin: CrateOrigin,
