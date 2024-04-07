@@ -605,9 +605,8 @@ fn augment_param_env<'tcx>(
     let bounds = tcx.mk_clauses_from_iter(
         param_env.caller_bounds().iter().chain(new_predicates.iter().cloned()),
     );
-    // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
-    // i.e. traits::normalize_param_env_or_error
-    ty::ParamEnv::new(bounds, param_env.reveal())
+
+    ty::ParamEnv::from_elaborated_clauses(bounds, param_env.reveal())
 }
 
 /// We use the following trait as an example throughout this function.
