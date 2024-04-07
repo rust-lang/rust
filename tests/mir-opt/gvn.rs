@@ -6,9 +6,11 @@
 #![feature(rustc_attrs)]
 #![feature(custom_mir)]
 #![feature(core_intrinsics)]
+#![feature(freeze)]
 #![allow(unconditional_panic)]
 
 use std::intrinsics::mir::*;
+use std::marker::Freeze;
 use std::mem::transmute;
 
 struct S<T>(T);
@@ -721,16 +723,16 @@ fn wide_ptr_integer() {
 }
 
 #[custom_mir(dialect = "analysis", phase = "post-cleanup")]
-fn borrowed(x: u32) {
+fn borrowed<T: Copy + Freeze>(x: T) {
     // CHECK-LABEL: fn borrowed(
     // CHECK: bb0: {
     // CHECK-NEXT: _2 = _1;
     // CHECK-NEXT: _3 = &_1;
-    // CHECK-NEXT: _0 = opaque::<&u32>(_3)
+    // CHECK-NEXT: _0 = opaque::<&T>(_3)
     // CHECK: bb1: {
-    // CHECK-NEXT: _0 = opaque::<u32>(_1)
+    // CHECK-NEXT: _0 = opaque::<T>(_1)
     // CHECK: bb2: {
-    // CHECK-NEXT: _0 = opaque::<u32>(_1)
+    // CHECK-NEXT: _0 = opaque::<T>(_1)
     mir!(
         {
             let a = x;

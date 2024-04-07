@@ -1,9 +1,10 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ unit-test: CopyProp
 
-#![feature(custom_mir, core_intrinsics)]
+#![feature(custom_mir, core_intrinsics, freeze)]
 #![allow(unused_assignments)]
 extern crate core;
+use core::marker::Freeze;
 use core::intrinsics::mir::*;
 
 fn opaque(_: impl Sized) -> bool { true }
@@ -42,14 +43,15 @@ fn compare_address() -> bool {
     )
 }
 
+/// Generic type `T` is `Freeze`, so shared borrows are immutable.
 #[custom_mir(dialect = "analysis", phase = "post-cleanup")]
-fn borrowed(x: u32) -> bool {
+fn borrowed<T: Copy + Freeze>(x: T) -> bool {
     // CHECK-LABEL: fn borrowed(
     // CHECK: bb0: {
     // CHECK-NEXT: _3 = &_1;
-    // CHECK-NEXT: _0 = opaque::<&u32>(_3)
+    // CHECK-NEXT: _0 = opaque::<&T>(_3)
     // CHECK: bb1: {
-    // CHECK-NEXT: _0 = opaque::<u32>(_1)
+    // CHECK-NEXT: _0 = opaque::<T>(_1)
     mir!(
         {
             let a = x;
