@@ -313,7 +313,7 @@ config_data! {
         hover_memoryLayout_size: Option<MemoryLayoutHoverRenderKindDef> = Some(MemoryLayoutHoverRenderKindDef::Both),
 
         /// How many fields or variants of an ADT (struct, enum or union) to display when hovering on. Show none if empty.
-        hover_show_adtFieldsOrVariants: Option<usize> = Some(10),
+        hover_show_adtFieldsOrVariants: Option<usize> = Some(5),
         /// How many associated items of a trait to display when hovering a trait.
         hover_show_traitAssocItems: Option<usize> = None,
 

@@ -1154,7 +1154,7 @@
                 },
                 "rust-analyzer.hover.show.adtFieldsOrVariants": {
                     "markdownDescription": "How many fields or variants of an ADT (struct, enum or union) to display when hovering on. Show none if empty.",
-                    "default": 10,
+                    "default": 5,
                     "type": [
                         "null",
                         "integer"

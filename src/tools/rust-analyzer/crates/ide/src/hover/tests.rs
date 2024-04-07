@@ -18,7 +18,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     format: HoverDocFormat::Markdown,
     keywords: true,
     max_trait_assoc_items_count: None,
-    max_adt_fields_or_variants_count: Some(10),
+    max_adt_fields_or_variants_count: Some(5),
 };
 
 fn check_hover_no_result(ra_fixture: &str) {
@@ -1018,7 +1018,7 @@ fn hover_record_struct_limit() {
 #[test]
 fn hover_enum_limit() {
     check_hover_adt_fields_or_variants_limit(
-        Some(10),
+        Some(5),
         r#"enum Foo$0 { A, B }"#,
         expect![[r#"
             *Foo*
@@ -1092,7 +1092,7 @@ fn hover_enum_limit() {
 #[test]
 fn hover_union_limit() {
     check_hover_adt_fields_or_variants_limit(
-        Some(10),
+        Some(5),
         r#"union Foo$0 { a: u32, b: i32 }"#,
         expect![[r#"
             *Foo*
