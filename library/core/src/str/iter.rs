@@ -1174,6 +1174,11 @@ impl<'a> Iterator for Lines<'a> {
     fn last(mut self) -> Option<&'a str> {
         self.next_back()
     }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.remainder().map(super::count::count_lines).unwrap_or_default()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

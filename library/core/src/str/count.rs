@@ -1,5 +1,7 @@
-//! Code for efficiently counting the number of `char`s in a UTF-8 encoded
-//! string.
+//! Code for efficiently counting the number of `char`s or lines in a UTF-8
+//! encoded string
+//!
+//! ## `char` count details
 //!
 //! Broadly, UTF-8 encodes `char`s as a "leading" byte which begins the `char`,
 //! followed by some number (possibly 0) of continuation bytes.
@@ -21,10 +23,19 @@ use core::intrinsics::unlikely;
 
 const USIZE_SIZE: usize = core::mem::size_of::<usize>();
 const UNROLL_INNER: usize = 4;
+const LSB: usize = usize::repeat_u8(0x01);
 
 #[inline]
 pub(super) fn count_chars(s: &str) -> usize {
     count::<CharCount>(s)
+}
+
+#[inline]
+pub(super) fn count_lines(s: &str) -> usize {
+    // `foo\nbar` is 2 lines, and `foo\nbar\n` is also 2 lines, so the line
+    // count is exactly the newline count if the input ends in a newline, and
+    // the newline count + 1 otherwise.
+    count::<NewlineCount>(s) + (!s.ends_with('\n')) as usize
 }
 
 trait CountPred {
@@ -44,6 +55,22 @@ impl CountPred for CharCount {
     #[inline]
     fn test_each_byte_in_word(u: usize) -> usize {
         contains_non_continuation_byte(u)
+    }
+}
+struct NewlineCount;
+impl CountPred for NewlineCount {
+    #[inline]
+    fn count_general_case(s: &[u8]) -> usize {
+        s.iter().filter(|b| **b == b'\n').count()
+    }
+    #[inline]
+    fn test_each_byte_in_word(u: usize) -> usize {
+        const NEWLINES: usize = usize::repeat_u8(b'\n');
+        const NOT_MSB: usize = usize::repeat_u8(0x7f);
+        // bytes of `diff` are nonzero when bytes of `u` don't contain newline
+        let diff = u ^ NEWLINES;
+        let res = !(((diff & NOT_MSB).wrapping_add(NOT_MSB) | diff) >> 7);
+        res & LSB
     }
 }
 
@@ -137,7 +164,6 @@ fn do_count<P: CountPred>(s: &str) -> usize {
 // true)
 #[inline]
 fn contains_non_continuation_byte(w: usize) -> usize {
-    const LSB: usize = usize::repeat_u8(0x01);
     ((!w >> 7) | (w >> 6)) & LSB
 }
 
