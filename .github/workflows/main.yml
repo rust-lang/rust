@@ -268,6 +268,9 @@ jobs:
     if: ${{ github.ref == 'refs/heads/master' }}
     needs: [rustfmt, test, bench, dist]
 
+    permissions:
+      contents: write # for creating the dev tag and release
+
     concurrency:
       group: release-dev
       cancel-in-progress: true
