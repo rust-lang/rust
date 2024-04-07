@@ -3,7 +3,7 @@
 //! 2/ This single assignment dominates all uses;
 //!
 //! As we do not track indirect assignments, a local that has its address taken (either by
-//! AddressOf or by borrowing) is considered non-SSA.  However, it is UB to modify through an
+//! AddressOf or by borrowing) is considered non-SSA. However, it is UB to modify through an
 //! immutable borrow of a `Freeze` local. Those can still be considered to be SSA.
 
 use rustc_data_structures::graph::dominators::Dominators;
