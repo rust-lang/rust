@@ -24,18 +24,43 @@ const UNROLL_INNER: usize = 4;
 
 #[inline]
 pub(super) fn count_chars(s: &str) -> usize {
+    count::<CharCount>(s)
+}
+
+trait CountPred {
+    /// Bytes in `u` which match the pred must be `0x01` in the result, bytes
+    /// which fail the pred must be `0x00`.
+    fn test_each_byte_in_word(u: usize) -> usize;
+    /// Slow path for small inputs.
+    fn count_general_case(s: &[u8]) -> usize;
+}
+
+struct CharCount;
+impl CountPred for CharCount {
+    #[inline]
+    fn count_general_case(s: &[u8]) -> usize {
+        char_count_general_case(s)
+    }
+    #[inline]
+    fn test_each_byte_in_word(u: usize) -> usize {
+        contains_non_continuation_byte(u)
+    }
+}
+
+#[inline]
+fn count<P: CountPred>(s: &str) -> usize {
     if s.len() < USIZE_SIZE * UNROLL_INNER {
         // Avoid entering the optimized implementation for strings where the
         // difference is not likely to matter, or where it might even be slower.
         // That said, a ton of thought was not spent on the particular threshold
         // here, beyond "this value seems to make sense".
-        char_count_general_case(s.as_bytes())
+        P::count_general_case(s.as_bytes())
     } else {
-        do_count_chars(s)
+        do_count::<P>(s)
     }
 }
 
-fn do_count_chars(s: &str) -> usize {
+fn do_count<P: CountPred>(s: &str) -> usize {
     // For correctness, `CHUNK_SIZE` must be:
     //
     // - Less than or equal to 255, otherwise we'll overflow bytes in `counts`.
@@ -62,13 +87,13 @@ fn do_count_chars(s: &str) -> usize {
     // mode).
     //
     // The `unlikely` helps discourage LLVM from inlining the body, which is
-    // nice, as we would rather not mark the `char_count_general_case` function
+    // nice, as we would rather not mark the `P::count_general_case` function
     // as cold.
     if unlikely(body.is_empty() || head.len() > USIZE_SIZE || tail.len() > USIZE_SIZE) {
-        return char_count_general_case(s.as_bytes());
+        return P::count_general_case(s.as_bytes());
     }
 
-    let mut total = char_count_general_case(head) + char_count_general_case(tail);
+    let mut total = P::count_general_case(head) + P::count_general_case(tail);
     // Split `body` into `CHUNK_SIZE` chunks to reduce the frequency with which
     // we call `sum_bytes_in_usize`.
     for chunk in body.chunks(CHUNK_SIZE) {
@@ -81,7 +106,7 @@ fn do_count_chars(s: &str) -> usize {
             for &word in unrolled {
                 // Because `CHUNK_SIZE` is < 256, this addition can't cause the
                 // count in any of the bytes to overflow into a subsequent byte.
-                counts += contains_non_continuation_byte(word);
+                counts += P::test_each_byte_in_word(word);
             }
         }
 
@@ -97,7 +122,7 @@ fn do_count_chars(s: &str) -> usize {
             // Accumulate all the data in the remainder.
             let mut counts = 0;
             for &word in remainder {
-                counts += contains_non_continuation_byte(word);
+                counts += P::test_each_byte_in_word(word);
             }
             total += sum_bytes_in_usize(counts);
             break;
