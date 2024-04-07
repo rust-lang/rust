@@ -7,7 +7,7 @@ task:
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh --default-toolchain none -y --profile=minimal
   target_cache:
-    folder: target
+    folder: build/cg_clif
   prepare_script:
     - . $HOME/.cargo/env
     - ./y.sh prepare
