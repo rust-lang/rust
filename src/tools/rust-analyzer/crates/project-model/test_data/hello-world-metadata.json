@@ -1,0 +1,245 @@
+{
+    "packages": [
+        {
+            "name": "hello-world",
+            "version": "0.1.0",
+            "id": "hello-world 0.1.0 (path+file://$ROOT$hello-world)",
+            "license": null,
+            "license_file": null,
+            "description": null,
+            "source": null,
+            "dependencies": [
+                {
+                    "name": "libc",
+                    "source": "registry+https://github.com/rust-lang/crates.io-index",
+                    "req": "^0.2",
+                    "kind": null,
+                    "rename": null,
+                    "optional": false,
+                    "uses_default_features": true,
+                    "features": [],
+                    "target": null,
+                    "registry": null
+                }
+            ],
+            "targets": [
+                {
+                    "kind": [
+                        "lib"
+                    ],
+                    "crate_types": [
+                        "lib"
+                    ],
+                    "name": "hello-world",
+                    "src_path": "$ROOT$hello-world/src/lib.rs",
+                    "edition": "2018",
+                    "doc": true,
+                    "doctest": true,
+                    "test": true
+                },
+                {
+                    "kind": [
+                        "bin"
+                    ],
+                    "crate_types": [
+                        "bin"
+                    ],
+                    "name": "hello-world",
+                    "src_path": "$ROOT$hello-world/src/main.rs",
+                    "edition": "2018",
+                    "doc": true,
+                    "doctest": false,
+                    "test": true
+                },
+                {
+                    "kind": [
+                        "example"
+                    ],
+                    "crate_types": [
+                        "bin"
+                    ],
+                    "name": "an-example",
+                    "src_path": "$ROOT$hello-world/examples/an-example.rs",
+                    "edition": "2018",
+                    "doc": false,
+                    "doctest": false,
+                    "test": false
+                },
+                {
+                    "kind": [
+                        "test"
+                    ],
+                    "crate_types": [
+                        "bin"
+                    ],
+                    "name": "it",
+                    "src_path": "$ROOT$hello-world/tests/it.rs",
+                    "edition": "2018",
+                    "doc": false,
+                    "doctest": false,
+                    "test": true
+                }
+            ],
+            "features": {},
+            "manifest_path": "$ROOT$hello-world/Cargo.toml",
+            "metadata": null,
+            "publish": null,
+            "authors": [],
+            "categories": [],
+            "keywords": [],
+            "readme": null,
+            "repository": null,
+            "homepage": null,
+            "documentation": null,
+            "edition": "2018",
+            "links": null
+        },
+        {
+            "name": "libc",
+            "version": "0.2.98",
+            "id": "libc 0.2.98 (registry+https://github.com/rust-lang/crates.io-index)",
+            "license": "MIT OR Apache-2.0",
+            "license_file": null,
+            "description": "Raw FFI bindings to platform libraries like libc.\n",
+            "source": "registry+https://github.com/rust-lang/crates.io-index",
+            "dependencies": [
+                {
+                    "name": "rustc-std-workspace-core",
+                    "source": "registry+https://github.com/rust-lang/crates.io-index",
+                    "req": "^1.0.0",
+                    "kind": null,
+                    "rename": null,
+                    "optional": true,
+                    "uses_default_features": true,
+                    "features": [],
+                    "target": null,
+                    "registry": null
+                }
+            ],
+            "targets": [
+                {
+                    "kind": [
+                        "lib"
+                    ],
+                    "crate_types": [
+                        "lib"
+                    ],
+                    "name": "libc",
+                    "src_path": "$ROOT$.cargo/registry/src/github.com-1ecc6299db9ec823/libc-0.2.98/src/lib.rs",
+                    "edition": "2015",
+                    "doc": true,
+                    "doctest": true,
+                    "test": true
+                },
+                {
+                    "kind": [
+                        "test"
+                    ],
+                    "crate_types": [
+                        "bin"
+                    ],
+                    "name": "const_fn",
+                    "src_path": "$ROOT$.cargo/registry/src/github.com-1ecc6299db9ec823/libc-0.2.98/tests/const_fn.rs",
+                    "edition": "2015",
+                    "doc": false,
+                    "doctest": false,
+                    "test": true
+                },
+                {
+                    "kind": [
+                        "custom-build"
+                    ],
+                    "crate_types": [
+                        "bin"
+                    ],
+                    "name": "build-script-build",
+                    "src_path": "$ROOT$.cargo/registry/src/github.com-1ecc6299db9ec823/libc-0.2.98/build.rs",
+                    "edition": "2015",
+                    "doc": false,
+                    "doctest": false,
+                    "test": false
+                }
+            ],
+            "features": {
+                "align": [],
+                "const-extern-fn": [],
+                "default": [
+                    "std"
+                ],
+                "extra_traits": [],
+                "rustc-dep-of-std": [
+                    "align",
+                    "rustc-std-workspace-core"
+                ],
+                "std": [],
+                "use_std": [
+                    "std"
+                ]
+            },
+            "manifest_path": "$ROOT$.cargo/registry/src/github.com-1ecc6299db9ec823/libc-0.2.98/Cargo.toml",
+            "metadata": null,
+            "publish": null,
+            "authors": [
+                "The Rust Project Developers"
+            ],
+            "categories": [
+                "external-ffi-bindings",
+                "no-std",
+                "os"
+            ],
+            "keywords": [
+                "libc",
+                "ffi",
+                "bindings",
+                "operating",
+                "system"
+            ],
+            "readme": "README.md",
+            "repository": "https://github.com/rust-lang/libc",
+            "homepage": "https://github.com/rust-lang/libc",
+            "documentation": "https://docs.rs/libc/",
+            "edition": "2015",
+            "links": null
+        }
+    ],
+    "workspace_members": [
+        "hello-world 0.1.0 (path+file://$ROOT$hello-world)"
+    ],
+    "resolve": {
+        "nodes": [
+            {
+                "id": "hello-world 0.1.0 (path+file://$ROOT$hello-world)",
+                "dependencies": [
+                    "libc 0.2.98 (registry+https://github.com/rust-lang/crates.io-index)"
+                ],
+                "deps": [
+                    {
+                        "name": "libc",
+                        "pkg": "libc 0.2.98 (registry+https://github.com/rust-lang/crates.io-index)",
+                        "dep_kinds": [
+                            {
+                                "kind": null,
+                                "target": null
+                            }
+                        ]
+                    }
+                ],
+                "features": []
+            },
+            {
+                "id": "libc 0.2.98 (registry+https://github.com/rust-lang/crates.io-index)",
+                "dependencies": [],
+                "deps": [],
+                "features": [
+                    "default",
+                    "std"
+                ]
+            }
+        ],
+        "root": "hello-world 0.1.0 (path+file://$ROOT$hello-world)"
+    },
+    "target_directory": "$ROOT$hello-world/target",
+    "version": 1,
+    "workspace_root": "$ROOT$hello-world",
+    "metadata": null
+}

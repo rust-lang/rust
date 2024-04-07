@@ -1,0 +1,64 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "simple_function"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        ENUM
+          ENUM_KW "enum"
+          WHITESPACE " "
+          NAME
+            IDENT "LocalEnum"
+          WHITESPACE " "
+          VARIANT_LIST
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            VARIANT
+              NAME
+                IDENT "One"
+            COMMA ","
+            WHITESPACE "\n        "
+            VARIANT
+              NAME
+                IDENT "Two"
+            COMMA ","
+            WHITESPACE "\n    "
+            R_CURLY "}"
+        SEMICOLON ";"
+        WHITESPACE "\n    "
+        FN
+          FN_KW "fn"
+          WHITESPACE " "
+          NAME
+            IDENT "f"
+          PARAM_LIST
+            L_PAREN "("
+            R_PAREN ")"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+        SEMICOLON ";"
+        WHITESPACE "\n    "
+        STRUCT
+          STRUCT_KW "struct"
+          WHITESPACE " "
+          NAME
+            IDENT "S"
+          WHITESPACE " "
+          RECORD_FIELD_LIST
+            L_CURLY "{"
+            R_CURLY "}"
+        SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
