@@ -28363,8 +28363,7 @@ pub unsafe fn _mm_maskz_set1_epi64(k: __mmask8, a: i64) -> __m128i {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_set4_epi64(d: i64, c: i64, b: i64, a: i64) -> __m512i {
-    let r = i64x8::new(d, c, b, a, d, c, b, a);
-    transmute(r)
+    _mm512_set_epi64(d, c, b, a, d, c, b, a)
 }
 
 /// Set packed 64-bit integers in dst with the repeated 4 element sequence in reverse order.
@@ -28374,8 +28373,7 @@ pub unsafe fn _mm512_set4_epi64(d: i64, c: i64, b: i64, a: i64) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_setr4_epi64(d: i64, c: i64, b: i64, a: i64) -> __m512i {
-    let r = i64x8::new(a, b, c, d, a, b, c, d);
-    transmute(r)
+    _mm512_set_epi64(a, b, c, d, a, b, c, d)
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b for less-than, and store the results in mask vector k.
