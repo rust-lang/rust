@@ -1095,13 +1095,7 @@ impl Options {
 
     #[inline]
     pub fn share_generics(&self) -> bool {
-        match self.unstable_opts.share_generics {
-            Some(setting) => setting,
-            None => match self.optimize {
-                OptLevel::No | OptLevel::Less | OptLevel::Size | OptLevel::SizeMin => true,
-                OptLevel::Default | OptLevel::Aggressive => false,
-            },
-        }
+        true
     }
 
     pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
