@@ -267,7 +267,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
         .generic_activity("codegen prelude")
         .run(|| crate::abi::codegen_fn_prelude(fx, start_block));
 
-    for (bb, bb_data) in fx.mir.basic_blocks.iter_enumerated() {
+    for (bb, bb_data) in traversal::mono_reachable(fx.mir, fx.tcx, fx.instance) {
         let block = fx.get_block(bb);
         fx.bcx.switch_to_block(block);
 
