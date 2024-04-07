@@ -294,8 +294,7 @@ fn elision_suggestions(
                         let span = cx
                             .sess()
                             .source_map()
-                            .span_extend_while(usage.ident.span, |ch| ch.is_ascii_whitespace())
-                            .unwrap_or(usage.ident.span);
+                            .span_extend_while_whitespace(usage.ident.span);
 
                         (span, String::new())
                     },
