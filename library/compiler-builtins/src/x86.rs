@@ -14,8 +14,21 @@ intrinsics! {
         target_env = "gnu",
         not(feature = "no-asm")
     ))]
+    pub unsafe extern "C" fn __chkstk() {
+        core::arch::asm!(
+            "jmp __alloca", // Jump to __alloca since fallthrough may be unreliable"
+            options(noreturn, att_syntax)
+        );
+    }
+
+    #[naked]
+    #[cfg(all(
+        windows,
+        target_env = "gnu",
+        not(feature = "no-asm")
+    ))]
     pub unsafe extern "C" fn _alloca() {
-        // _chkstk and _alloca are the same function
+        // __chkstk and _alloca are the same function
         core::arch::asm!(
             "push   %ecx",
             "cmp    $0x1000,%eax",
