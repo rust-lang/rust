@@ -368,6 +368,11 @@ fn watchos_deployment_target() -> (u32, u32) {
     from_set_deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
 }
 
+pub fn watchos_llvm_target(arch: Arch) -> String {
+    let (major, minor) = watchos_deployment_target();
+    format!("{}-apple-watchos{}.{}.0", arch.target_name(), major, minor)
+}
+
 pub fn watchos_sim_llvm_target(arch: Arch) -> String {
     let (major, minor) = watchos_deployment_target();
     format!("{}-apple-watchos{}.{}.0-simulator", arch.target_name(), major, minor)
