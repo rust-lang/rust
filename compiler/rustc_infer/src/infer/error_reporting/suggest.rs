@@ -15,7 +15,7 @@ use rustc_middle::traits::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{sym, Span};
 
 use crate::errors::{
     ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
@@ -763,8 +763,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let mac_call = rustc_span::source_map::original_sp(last_stmt.span, blk.span);
             self.tcx.sess.source_map().mac_call_stmt_semi_span(mac_call)?
         } else {
-            last_stmt.span.with_lo(last_stmt.span.hi() - BytePos(1))
+            self.tcx
+                .sess
+                .source_map()
+                .span_extend_while(last_expr.span, |c| c.is_whitespace())
+                .ok()?
+                .shrink_to_hi()
+                .with_hi(last_stmt.span.hi())
         };
+
         Some((span, needs_box))
     }
 
