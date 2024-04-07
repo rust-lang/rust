@@ -5,6 +5,7 @@
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
 use crate::ffi::OsStr;
+use crate::io;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
@@ -12,6 +13,8 @@ use crate::process;
 use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+#[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
+pub use sys::process::{ProcThreadAttributeList, ProcThreadAttributeListBuilder};
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {
@@ -288,41 +291,21 @@ pub trait CommandExt: Sealed {
     #[unstable(feature = "windows_process_extensions_async_pipes", issue = "98289")]
     fn async_pipes(&mut self, always_async: bool) -> &mut process::Command;
 
-    /// Set a raw attribute on the command, providing extended configuration options for Windows
-    /// processes.
+    /// Executes the command as a child process with the given [`ProcThreadAttributeList`], returning a handle to it.
     ///
-    /// This method allows you to specify custom attributes for a child process on Windows systems
-    /// using raw attribute values. Raw attributes provide extended configurability for process
-    /// creation, but their usage can be complex and potentially unsafe.
-    ///
-    /// The `attribute` parameter specifies the raw attribute to be set, while the `value`
-    /// parameter holds the value associated with that attribute. Please refer to the
-    /// [`windows-rs` documentation] or the [Win32 API documentation] for detailed information
-    /// about available attributes and their meanings.
-    ///
-    /// [`windows-rs` documentation]: https://microsoft.github.io/windows-docs-rs/doc/windows/
-    /// [Win32 API documentation]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute
+    /// This method enables the customization of attributes for the spawned child process on Windows systems.
+    /// Attributes offer extended configurability for process creation, but their usage can be intricate and potentially unsafe.
     ///
     /// # Note
     ///
-    /// The maximum number of raw attributes is the value of [`u32::MAX`].
-    /// If this limit is exceeded, the call to [`process::Command::spawn`] will return an `Error`
-    /// indicating that the maximum number of attributes has been exceeded.
-    ///
-    /// # Safety
-    ///
-    /// The usage of raw attributes is potentially unsafe and should be done with caution.
-    /// Incorrect attribute values or improper configuration can lead to unexpected behavior or
-    /// errors.
+    /// By default, stdin, stdout, and stderr are inherited from the parent process.
     ///
     /// # Example
     ///
-    /// The following example demonstrates how to create a child process with a specific parent
-    /// process ID using a raw attribute.
-    ///
-    /// ```rust
+    /// ```
     /// #![feature(windows_process_extensions_raw_attribute)]
-    /// use std::os::windows::{process::CommandExt, io::AsRawHandle};
+    /// use std::os::windows::process::CommandExt;
+    /// use std::os::windows::io::AsRawHandle;
     /// use std::process::Command;
     ///
     /// # struct ProcessDropGuard(std::process::Child);
@@ -331,36 +314,27 @@ pub trait CommandExt: Sealed {
     /// #         let _ = self.0.kill();
     /// #     }
     /// # }
-    ///
-    /// let parent = Command::new("cmd").spawn()?;
-    ///
-    /// let mut child_cmd = Command::new("cmd");
-    ///
-    /// const PROC_THREAD_ATTRIBUTE_PARENT_PROCESS: usize = 0x00020000;
-    ///
-    /// unsafe {
-    ///     child_cmd.raw_attribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, parent.as_raw_handle() as isize);
-    /// }
     /// #
+    /// let parent = Command::new("cmd").spawn()?;
+    /// let parent_process_handle = parent.as_raw_handle();
     /// # let parent = ProcessDropGuard(parent);
     ///
-    /// let mut child = child_cmd.spawn()?;
+    /// const PROC_THREAD_ATTRIBUTE_PARENT_PROCESS: usize = 0x00020000;
+    /// let mut attribute_list = ProcThreadAttributeList::build()
+    ///     .attribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &parent_process_handle)
+    ///     .finish()
+    ///     .unwrap();
     ///
+    /// let mut child = Command::new("cmd").spawn_with_attributes(attribute_list)?;
+    /// #
     /// # child.kill()?;
     /// # Ok::<(), std::io::Error>(())
     /// ```
-    ///
-    /// # Safety Note
-    ///
-    /// Remember that improper use of raw attributes can lead to undefined behavior or security
-    /// vulnerabilities. Always consult the documentation and ensure proper attribute values are
-    /// used.
     #[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
-    unsafe fn raw_attribute<T: Copy + Send + Sync + 'static>(
+    fn spawn_with_attributes(
         &mut self,
-        attribute: usize,
-        value: T,
-    ) -> &mut process::Command;
+        attribute_list: &mut ProcThreadAttributeList<'_>,
+    ) -> io::Result<process::Child>;
 }
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
@@ -389,13 +363,13 @@ impl CommandExt for process::Command {
         self
     }
 
-    unsafe fn raw_attribute<T: Copy + Send + Sync + 'static>(
+    fn spawn_with_attributes(
         &mut self,
-        attribute: usize,
-        value: T,
-    ) -> &mut process::Command {
-        self.as_inner_mut().raw_attribute(attribute, value);
-        self
+        attribute_list: &mut ProcThreadAttributeList<'_>,
+    ) -> io::Result<process::Child> {
+        self.as_inner_mut()
+            .spawn_with_attributes(sys::process::Stdio::Inherit, true, Some(attribute_list))
+            .map(process::Child::from_inner)
     }
 }
 

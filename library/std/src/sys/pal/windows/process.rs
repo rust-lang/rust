@@ -10,6 +10,7 @@ use crate::env::consts::{EXE_EXTENSION, EXE_SUFFIX};
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
+use crate::marker;
 use crate::mem;
 use crate::mem::MaybeUninit;
 use crate::num::NonZero;
@@ -166,7 +167,6 @@ pub struct Command {
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
     force_quotes_enabled: bool,
-    proc_thread_attributes: BTreeMap<usize, ProcThreadAttributeValue>,
 }
 
 pub enum Stdio {
@@ -197,7 +197,6 @@ impl Command {
             stdout: None,
             stderr: None,
             force_quotes_enabled: false,
-            proc_thread_attributes: Default::default(),
         }
     }
 
@@ -248,21 +247,19 @@ impl Command {
         self.cwd.as_ref().map(Path::new)
     }
 
-    pub unsafe fn raw_attribute<T: Copy + Send + Sync + 'static>(
-        &mut self,
-        attribute: usize,
-        value: T,
-    ) {
-        self.proc_thread_attributes.insert(
-            attribute,
-            ProcThreadAttributeValue { size: mem::size_of::<T>(), data: Box::new(value) },
-        );
-    }
-
     pub fn spawn(
         &mut self,
         default: Stdio,
         needs_stdin: bool,
+    ) -> io::Result<(Process, StdioPipes)> {
+        self.spawn_with_attributes(default, needs_stdin, None)
+    }
+
+    pub fn spawn_with_attributes(
+        &mut self,
+        default: Stdio,
+        needs_stdin: bool,
+        proc_thread_attribute_list: Option<&mut ProcThreadAttributeList<'_>>,
     ) -> io::Result<(Process, StdioPipes)> {
         let maybe_env = self.env.capture_if_changed();
 
@@ -337,18 +334,15 @@ impl Command {
 
         let si_ptr: *mut c::STARTUPINFOW;
 
-        let mut proc_thread_attribute_list;
         let mut si_ex;
 
-        if !self.proc_thread_attributes.is_empty() {
+        if let Some(proc_thread_attribute_list) = proc_thread_attribute_list {
             si.cb = mem::size_of::<c::STARTUPINFOEXW>() as u32;
             flags |= c::EXTENDED_STARTUPINFO_PRESENT;
 
-            proc_thread_attribute_list =
-                make_proc_thread_attribute_list(&self.proc_thread_attributes)?;
             si_ex = c::STARTUPINFOEXW {
                 StartupInfo: si,
-                lpAttributeList: proc_thread_attribute_list.0.as_mut_ptr() as _,
+                lpAttributeList: proc_thread_attribute_list.as_mut_ptr().cast::<c_void>(),
             };
             si_ptr = core::ptr::addr_of_mut!(si_ex) as _;
         } else {
@@ -879,79 +873,6 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
     }
 }
 
-struct ProcThreadAttributeList(Box<[MaybeUninit<u8>]>);
-
-impl Drop for ProcThreadAttributeList {
-    fn drop(&mut self) {
-        let lp_attribute_list = self.0.as_mut_ptr() as _;
-        unsafe { c::DeleteProcThreadAttributeList(lp_attribute_list) }
-    }
-}
-
-/// Wrapper around the value data to be used as a Process Thread Attribute.
-struct ProcThreadAttributeValue {
-    data: Box<dyn Send + Sync>,
-    size: usize,
-}
-
-fn make_proc_thread_attribute_list(
-    attributes: &BTreeMap<usize, ProcThreadAttributeValue>,
-) -> io::Result<ProcThreadAttributeList> {
-    // To initialize our ProcThreadAttributeList, we need to determine
-    // how many bytes to allocate for it. The Windows API simplifies this process
-    // by allowing us to call `InitializeProcThreadAttributeList` with
-    // a null pointer to retrieve the required size.
-    let mut required_size = 0;
-    let Ok(attribute_count) = attributes.len().try_into() else {
-        return Err(io::const_io_error!(
-            ErrorKind::InvalidInput,
-            "maximum number of ProcThreadAttributes exceeded",
-        ));
-    };
-    unsafe {
-        c::InitializeProcThreadAttributeList(
-            ptr::null_mut(),
-            attribute_count,
-            0,
-            &mut required_size,
-        )
-    };
-
-    let mut proc_thread_attribute_list =
-        ProcThreadAttributeList(vec![MaybeUninit::uninit(); required_size].into_boxed_slice());
-
-    // Once we've allocated the necessary memory, it's safe to invoke
-    // `InitializeProcThreadAttributeList` to properly initialize the list.
-    cvt(unsafe {
-        c::InitializeProcThreadAttributeList(
-            proc_thread_attribute_list.0.as_mut_ptr() as *mut _,
-            attribute_count,
-            0,
-            &mut required_size,
-        )
-    })?;
-
-    // # Add our attributes to the buffer.
-    // It's theoretically possible for the attribute count to exceed a u32 value.
-    // Therefore, we ensure that we don't add more attributes than the buffer was initialized for.
-    for (&attribute, value) in attributes.iter().take(attribute_count as usize) {
-        let value_ptr = core::ptr::addr_of!(*value.data) as _;
-        cvt(unsafe {
-            c::UpdateProcThreadAttribute(
-                proc_thread_attribute_list.0.as_mut_ptr() as _,
-                0,
-                attribute,
-                value_ptr,
-                value.size,
-                ptr::null_mut(),
-                ptr::null_mut(),
-            )
-        })?;
-    }
-
-    Ok(proc_thread_attribute_list)
-}
-
 pub struct CommandArgs<'a> {
     iter: crate::slice::Iter<'a, Arg>,
 }
@@ -981,4 +902,176 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter.clone()).finish()
     }
+}
+
+/// A wrapper around windows [`ProcessThreadAttributeList`](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute#remarks).
+#[derive(Debug)]
+pub struct ProcThreadAttributeList<'a> {
+    attribute_list: Box<[MaybeUninit<u8>]>,
+    _lifetime_marker: marker::PhantomData<&'a ()>,
+}
+
+impl<'a> ProcThreadAttributeList<'a> {
+    /// Creates a new builder for constructing a [`ProcThreadAttributeList`].
+    pub fn build() -> ProcThreadAttributeListBuilder<'a> {
+        ProcThreadAttributeListBuilder::new()
+    }
+
+    /// Returns a mutable pointer to the attribute list.
+    #[doc(hidden)]
+    pub fn as_mut_ptr(&mut self) -> *mut MaybeUninit<u8> {
+        self.attribute_list.as_mut_ptr()
+    }
+}
+
+impl<'a> Drop for ProcThreadAttributeList<'a> {
+    /// Deletes the attribute list.
+    ///
+    /// This method calls [`DeleteProcThreadAttributeList`](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-deleteprocthreadattributelist) to delete the attribute list.
+    fn drop(&mut self) {
+        let lp_attribute_list = self.attribute_list.as_mut_ptr().cast::<c_void>();
+        unsafe { c::DeleteProcThreadAttributeList(lp_attribute_list) }
+    }
+}
+
+/// Builder for constructing a [`ProcThreadAttributeList`].
+#[derive(Clone, Debug)]
+pub struct ProcThreadAttributeListBuilder<'a> {
+    attributes: BTreeMap<usize, ProcThreadAttributeValue>,
+    _lifetime_marker: marker::PhantomData<&'a ()>,
+}
+
+impl<'a> ProcThreadAttributeListBuilder<'a> {
+    fn new() -> Self {
+        ProcThreadAttributeListBuilder {
+            attributes: BTreeMap::new(),
+            _lifetime_marker: marker::PhantomData,
+        }
+    }
+
+    /// Sets an attribute on the attribute list.
+    ///
+    /// The `attribute` parameter specifies the raw attribute to be set, while the `value` parameter
+    /// holds the value associated with that attribute. Please refer to the [Windows documentation](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute#remarks)
+    /// for a list of valid attributes.
+    ///
+    /// # Note
+    ///
+    /// The maximum number of attributes is the value of [`u32::MAX`]. If this limit is exceeded,
+    /// the call to [`Self::finish`] will return an `Error` indicating
+    /// that the maximum number of attributes has been exceeded.
+    ///
+    /// # Safety Note
+    ///
+    /// Remember that improper use of attributes can lead to undefined behavior or security vulnerabilities.
+    /// Always consult the documentation and ensure proper attribute values are used.
+    pub fn attribute<T>(self, attribute: usize, value: &'a T) -> Self {
+        unsafe {
+            self.raw_attribute(
+                attribute,
+                ptr::addr_of!(*value).cast::<c_void>(),
+                mem::size_of::<T>(),
+            )
+        }
+    }
+
+    /// Sets a raw attribute on the attribute list.
+    ///
+    /// This function is useful for setting attributes with pointers or sizes that cannot be derived
+    /// directly from their values.
+    ///
+    /// # Safety
+    ///
+    /// This function is marked as `unsafe` because it deals with raw pointers and sizes.
+    /// It is the responsibility of the caller to ensure the value lives longer than the
+    /// [`ProcThreadAttributeListBuilder`] as well as the validity of the size parameter.
+    ///
+    /// # Incorrect Usage
+    /// ```compile_fail
+    /// let parent = Command::new("cmd").spawn()?;
+    ///
+    /// const PROC_THREAD_ATTRIBUTE_PARENT_PROCESS: usize = 0x00020000;
+    /// let attribute_list = ProcThreadAttributeList::build()
+    ///     // INCORRECT USAGE: the parent handle gets drop immediate rendering the pointer is invalid.
+    ///     .raw_attribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &parent.as_raw_handle() as *const _)
+    ///     .finish();
+    /// ```
+    pub unsafe fn raw_attribute<T>(
+        mut self,
+        attribute: usize,
+        value_ptr: *const T,
+        value_size: usize,
+    ) -> Self {
+        self.attributes.insert(
+            attribute,
+            ProcThreadAttributeValue { ptr: value_ptr.cast::<c_void>(), size: value_size },
+        );
+        self
+    }
+
+    /// Finalizes the construction of the `ProcThreadAttributeList`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the maximum number of attributes is exceeded or if there is an I/O error during initialization.
+    pub fn finish(&self) -> io::Result<ProcThreadAttributeList<'a>> {
+        // To initialize our ProcThreadAttributeList, we need to determine
+        // how many bytes to allocate for it. The Windows API simplifies this process
+        // by allowing us to call `InitializeProcThreadAttributeList` with
+        // a null pointer to retrieve the required size.
+        let mut required_size = 0;
+        let Ok(attribute_count) = self.attributes.len().try_into() else {
+            return Err(io::const_io_error!(
+                ErrorKind::InvalidInput,
+                "maximum number of ProcThreadAttributes exceeded",
+            ));
+        };
+        unsafe {
+            c::InitializeProcThreadAttributeList(
+                ptr::null_mut(),
+                attribute_count,
+                0,
+                &mut required_size,
+            )
+        };
+
+        let mut attribute_list = vec![MaybeUninit::uninit(); required_size].into_boxed_slice();
+
+        // Once we've allocated the necessary memory, it's safe to invoke
+        // `InitializeProcThreadAttributeList` to properly initialize the list.
+        cvt(unsafe {
+            c::InitializeProcThreadAttributeList(
+                attribute_list.as_mut_ptr().cast::<c_void>(),
+                attribute_count,
+                0,
+                &mut required_size,
+            )
+        })?;
+
+        // # Add our attributes to the buffer.
+        // It's theoretically possible for the attribute count to exceed a u32 value.
+        // Therefore, we ensure that we don't add more attributes than the buffer was initialized for.
+        for (&attribute, value) in self.attributes.iter().take(attribute_count as usize) {
+            cvt(unsafe {
+                c::UpdateProcThreadAttribute(
+                    attribute_list.as_mut_ptr().cast::<c_void>(),
+                    0,
+                    attribute,
+                    value.ptr,
+                    value.size,
+                    ptr::null_mut(),
+                    ptr::null_mut(),
+                )
+            })?;
+        }
+
+        Ok(ProcThreadAttributeList { attribute_list, _lifetime_marker: marker::PhantomData })
+    }
+}
+
+/// Wrapper around the value data to be used as a Process Thread Attribute.
+#[derive(Clone, Debug)]
+struct ProcThreadAttributeValue {
+    ptr: *const c_void,
+    size: usize,
 }
