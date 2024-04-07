@@ -366,6 +366,9 @@ jobs:
           - name: x86_64-gnu-tools
             <<: *job-linux-16c
 
+          - name: x86_64-gnu-aux
+            <<: *job-linux-4c
+
   auto:
     <<: *base-ci-job
     name: auto - ${{ matrix.name }}
