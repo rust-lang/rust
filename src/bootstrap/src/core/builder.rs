@@ -1343,10 +1343,9 @@ impl<'a> Builder<'a> {
             Color::Auto => {} // nothing to do
         }
 
-        if cmd != "install" {
+        if target != compiler.host {
+            assert!(cmd != "install", "`x install` can only be called for the host triple.");
             cargo.arg("--target").arg(target.rustc_target_arg());
-        } else {
-            assert_eq!(target, compiler.host);
         }
 
         if self.config.rust_optimize.is_release() {

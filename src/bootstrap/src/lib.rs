@@ -797,7 +797,13 @@ impl Build {
     /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self, compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
-        self.stage_out(compiler, mode).join(&*target.triple).join(self.cargo_dir())
+        let stage_out = self.stage_out(compiler, mode);
+
+        if self.config.build == target {
+            stage_out.join(self.cargo_dir())
+        } else {
+            stage_out.join(&*target.triple).join(self.cargo_dir())
+        }
     }
 
     /// Root output directory of LLVM for `target`
