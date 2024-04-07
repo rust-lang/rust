@@ -398,15 +398,15 @@ rustc_queries! {
     /// ```
     ///
     /// Bounds from the parent (e.g. with nested impl trait) are not included.
-    query item_bounds(key: DefId) -> ty::EarlyBinder<&'tcx ty::List<ty::Clause<'tcx>>> {
+    query item_bounds(key: DefId) -> ty::EarlyBinder<ty::Clauses<'tcx>> {
         desc { |tcx| "elaborating item bounds for `{}`", tcx.def_path_str(key) }
     }
 
-    query item_super_predicates(key: DefId) -> ty::EarlyBinder<&'tcx ty::List<ty::Clause<'tcx>>> {
+    query item_super_predicates(key: DefId) -> ty::EarlyBinder<ty::Clauses<'tcx>> {
         desc { |tcx| "elaborating item assumptions for `{}`", tcx.def_path_str(key) }
     }
 
-    query item_non_self_assumptions(key: DefId) -> ty::EarlyBinder<&'tcx ty::List<ty::Clause<'tcx>>> {
+    query item_non_self_assumptions(key: DefId) -> ty::EarlyBinder<ty::Clauses<'tcx>> {
         desc { |tcx| "elaborating item assumptions for `{}`", tcx.def_path_str(key) }
     }
 
@@ -2156,7 +2156,7 @@ rustc_queries! {
         desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
     }
 
-    query reveal_opaque_types_in_bounds(key: &'tcx ty::List<ty::Clause<'tcx>>) -> &'tcx ty::List<ty::Clause<'tcx>> {
+    query reveal_opaque_types_in_bounds(key: ty::Clauses<'tcx>) -> ty::Clauses<'tcx> {
         desc { "revealing opaque types in `{:?}`", key }
     }
 

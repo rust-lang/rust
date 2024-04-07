@@ -89,7 +89,7 @@ pub use self::context::{
     TyCtxt, TyCtxtFeed,
 };
 pub use self::instance::{Instance, InstanceDef, ReifyReason, ShortInstance, UnusedGenericParams};
-pub use self::list::List;
+pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::parameterized::ParameterizedOverTcx;
 pub use self::predicate::{
     Clause, ClauseKind, CoercePredicate, ExistentialPredicate, ExistentialProjection,
@@ -1034,6 +1034,18 @@ impl PlaceholderLike for PlaceholderConst {
     }
 }
 
+pub type Clauses<'tcx> = &'tcx ListWithCachedTypeInfo<Clause<'tcx>>;
+
+impl<'tcx> rustc_type_ir::visit::Flags for Clauses<'tcx> {
+    fn flags(&self) -> TypeFlags {
+        (**self).flags()
+    }
+
+    fn outer_exclusive_binder(&self) -> DebruijnIndex {
+        (**self).outer_exclusive_binder()
+    }
+}
+
 /// When interacting with the type system we must provide information about the
 /// environment. `ParamEnv` is the type that represents this information. See the
 /// [dev guide chapter][param_env_guide] for more information.
@@ -1053,7 +1065,7 @@ pub struct ParamEnv<'tcx> {
     /// want `Reveal::All`.
     ///
     /// Note: This is packed, use the reveal() method to access it.
-    packed: CopyTaggedPtr<&'tcx List<Clause<'tcx>>, ParamTag, true>,
+    packed: CopyTaggedPtr<Clauses<'tcx>, ParamTag, true>,
 }
 
 #[derive(Copy, Clone)]
@@ -1112,11 +1124,11 @@ impl<'tcx> ParamEnv<'tcx> {
     /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
     #[inline]
     pub fn empty() -> Self {
-        Self::new(List::empty(), Reveal::UserFacing)
+        Self::new(ListWithCachedTypeInfo::empty(), Reveal::UserFacing)
     }
 
     #[inline]
-    pub fn caller_bounds(self) -> &'tcx List<Clause<'tcx>> {
+    pub fn caller_bounds(self) -> Clauses<'tcx> {
         self.packed.pointer()
     }
 
@@ -1134,12 +1146,12 @@ impl<'tcx> ParamEnv<'tcx> {
     /// or invoke `param_env.with_reveal_all()`.
     #[inline]
     pub fn reveal_all() -> Self {
-        Self::new(List::empty(), Reveal::All)
+        Self::new(ListWithCachedTypeInfo::empty(), Reveal::All)
     }
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(caller_bounds: &'tcx List<Clause<'tcx>>, reveal: Reveal) -> Self {
+    pub fn new(caller_bounds: Clauses<'tcx>, reveal: Reveal) -> Self {
         ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, ParamTag { reveal }) }
     }
 
@@ -1168,7 +1180,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Returns this same environment but with no caller bounds.
     #[inline]
     pub fn without_caller_bounds(self) -> Self {
-        Self::new(List::empty(), self.reveal())
+        Self::new(ListWithCachedTypeInfo::empty(), self.reveal())
     }
 
     /// Creates a pair of param-env and value for use in queries.

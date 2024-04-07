@@ -432,7 +432,7 @@ impl<'tcx> Key for (Ty<'tcx>, Ty<'tcx>) {
     }
 }
 
-impl<'tcx> Key for &'tcx ty::List<ty::Clause<'tcx>> {
+impl<'tcx> Key for ty::Clauses<'tcx> {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {

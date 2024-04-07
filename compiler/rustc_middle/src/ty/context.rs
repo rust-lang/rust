@@ -25,10 +25,10 @@ use crate::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
 };
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, GenericParamDefKind,
-    ImplPolarity, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig, Predicate,
-    PredicateKind, PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty,
-    TyKind, TyVid, TypeVisitable, Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, ConstData,
+    GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst, ParamTy,
+    PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicatePolarity, Region,
+    RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, TypeVisitable, Visibility,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
@@ -130,6 +130,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type SubtypePredicate = ty::SubtypePredicate<'tcx>;
     type CoercePredicate = ty::CoercePredicate<'tcx>;
     type ClosureKind = ty::ClosureKind;
+    type Clauses = ty::Clauses<'tcx>;
 
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
@@ -152,7 +153,7 @@ pub struct CtxtInterners<'tcx> {
     region: InternedSet<'tcx, RegionKind<'tcx>>,
     poly_existential_predicates: InternedSet<'tcx, List<PolyExistentialPredicate<'tcx>>>,
     predicate: InternedSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
-    clauses: InternedSet<'tcx, List<Clause<'tcx>>>,
+    clauses: InternedSet<'tcx, ListWithCachedTypeInfo<Clause<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, WithCachedTypeInfo<ConstData<'tcx>>>,
@@ -285,6 +286,24 @@ impl<'tcx> CtxtInterners<'tcx> {
                 })
                 .0,
         ))
+    }
+
+    fn intern_clauses(&self, clauses: &[Clause<'tcx>]) -> Clauses<'tcx> {
+        if clauses.is_empty() {
+            ListWithCachedTypeInfo::empty()
+        } else {
+            self.clauses
+                .intern_ref(clauses, || {
+                    let flags = super::flags::FlagComputation::for_clauses(clauses);
+
+                    InternedInSet(ListWithCachedTypeInfo::from_arena(
+                        &*self.arena,
+                        flags.into(),
+                        clauses,
+                    ))
+                })
+                .0
+        }
     }
 }
 
@@ -1783,6 +1802,29 @@ impl<'tcx, T: Hash> Hash for InternedInSet<'tcx, List<T>> {
     }
 }
 
+impl<'tcx, T> Borrow<[T]> for InternedInSet<'tcx, ListWithCachedTypeInfo<T>> {
+    fn borrow(&self) -> &[T] {
+        &self.0[..]
+    }
+}
+
+impl<'tcx, T: PartialEq> PartialEq for InternedInSet<'tcx, ListWithCachedTypeInfo<T>> {
+    fn eq(&self, other: &InternedInSet<'tcx, ListWithCachedTypeInfo<T>>) -> bool {
+        // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
+        // `x == y`.
+        self.0[..] == other.0[..]
+    }
+}
+
+impl<'tcx, T: Eq> Eq for InternedInSet<'tcx, ListWithCachedTypeInfo<T>> {}
+
+impl<'tcx, T: Hash> Hash for InternedInSet<'tcx, ListWithCachedTypeInfo<T>> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
+        self.0[..].hash(s)
+    }
+}
+
 macro_rules! direct_interners {
     ($($name:ident: $vis:vis $method:ident($ty:ty): $ret_ctor:ident -> $ret_ty:ty,)+) => {
         $(impl<'tcx> Borrow<$ty> for InternedInSet<'tcx, $ty> {
@@ -1841,7 +1883,7 @@ macro_rules! slice_interners {
                     List::empty()
                 } else {
                     self.interners.$field.intern_ref(v, || {
-                        InternedInSet(List::from_arena(&*self.arena, v))
+                        InternedInSet(List::from_arena(&*self.arena, (), v))
                     }).0
                 }
             })+
@@ -1858,7 +1900,6 @@ slice_interners!(
     type_lists: pub mk_type_list(Ty<'tcx>),
     canonical_var_infos: pub mk_canonical_var_infos(CanonicalVarInfo<'tcx>),
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
-    clauses: intern_clauses(Clause<'tcx>),
     projs: pub mk_projs(ProjectionKind),
     place_elems: pub mk_place_elems(PlaceElem<'tcx>),
     bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind),
@@ -2163,11 +2204,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.intern_poly_existential_predicates(eps)
     }
 
-    pub fn mk_clauses(self, clauses: &[Clause<'tcx>]) -> &'tcx List<Clause<'tcx>> {
+    pub fn mk_clauses(self, clauses: &[Clause<'tcx>]) -> Clauses<'tcx> {
         // FIXME consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
         // here.
-        self.intern_clauses(clauses)
+        self.interners.intern_clauses(clauses)
     }
 
     pub fn mk_local_def_ids(self, clauses: &[LocalDefId]) -> &'tcx List<LocalDefId> {
@@ -2231,7 +2272,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_clauses_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: CollectAndApply<Clause<'tcx>, &'tcx List<Clause<'tcx>>>,
+        T: CollectAndApply<Clause<'tcx>, Clauses<'tcx>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_clauses(xs))
     }
