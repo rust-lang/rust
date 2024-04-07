@@ -346,7 +346,7 @@ impl<'a> AstValidator<'a> {
             in_impl: matches!(parent, TraitOrTraitImpl::TraitImpl { .. }),
             const_context_label: parent_constness,
             remove_const_sugg: (
-                self.session.source_map().span_extend_while(span, |c| c == ' ').unwrap_or(span),
+                self.session.source_map().span_extend_while_whitespace(span),
                 match parent_constness {
                     Some(_) => rustc_errors::Applicability::MachineApplicable,
                     None => rustc_errors::Applicability::MaybeIncorrect,

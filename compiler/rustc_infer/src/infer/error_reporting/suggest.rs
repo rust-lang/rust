@@ -766,8 +766,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             self.tcx
                 .sess
                 .source_map()
-                .span_extend_while(last_expr.span, |c| c.is_whitespace())
-                .ok()?
+                .span_extend_while_whitespace(last_expr.span)
                 .shrink_to_hi()
                 .with_hi(last_stmt.span.hi())
         };
@@ -874,10 +873,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         format!(" {ident} ")
                     };
                     let left_span = sm.span_through_char(blk.span, '{').shrink_to_hi();
-                    (
-                        sm.span_extend_while(left_span, |c| c.is_whitespace()).unwrap_or(left_span),
-                        sugg,
-                    )
+                    (sm.span_extend_while_whitespace(left_span), sugg)
                 };
                 Some(SuggestRemoveSemiOrReturnBinding::Add { sp: span, code: sugg, ident: *ident })
             }

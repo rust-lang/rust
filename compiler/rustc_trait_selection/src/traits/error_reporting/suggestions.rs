@@ -1592,8 +1592,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     .tcx
                     .sess
                     .source_map()
-                    .span_extend_while(expr_span, char::is_whitespace)
-                    .unwrap_or(expr_span)
+                    .span_extend_while_whitespace(expr_span)
                     .shrink_to_hi()
                     .to(await_expr.span.shrink_to_hi());
                 err.span_suggestion(
@@ -4851,10 +4850,7 @@ pub fn suggest_desugaring_async_fn_to_impl_future_in_trait<'tcx>(
     let hir::IsAsync::Async(async_span) = sig.header.asyncness else {
         return None;
     };
-    let Ok(async_span) = tcx.sess.source_map().span_extend_while(async_span, |c| c.is_whitespace())
-    else {
-        return None;
-    };
+    let async_span = tcx.sess.source_map().span_extend_while_whitespace(async_span);
 
     let future = tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
     let [hir::GenericBound::Trait(trait_ref, _)] = future.bounds else {
