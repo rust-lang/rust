@@ -714,6 +714,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let last_expr_ty = self.typeck_results.as_ref()?.expr_ty_opt(last_expr)?;
         let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
             _ if last_expr_ty.references_error() => return None,
+            (ty::Never, _) => StatementAsExpression::CorrectType,
             _ if self.same_type_modulo_infer(last_expr_ty, expected_ty) => {
                 StatementAsExpression::CorrectType
             }

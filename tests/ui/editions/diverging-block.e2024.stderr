@@ -1,18 +1,22 @@
 error[E0308]: mismatched types
-  --> $DIR/diverging-block.rs:15:18
+  --> $DIR/diverging-block.rs:18:18
    |
 LL |       let _: u32 = {
    |  __________________^
 LL | |         return;
+   | |               - help: remove this semicolon to return this value
 LL | |     };
    | |_____^ expected `u32`, found `()`
 
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/diverging-block.rs:25:9
+  --> $DIR/diverging-block.rs:28:9
    |
 LL | /     if true {
 LL | |         return;
-   | |         ------- expected because of this
+   | |         -------
+   | |         |     |
+   | |         |     help: consider removing this semicolon
+   | |         expected because of this
 LL | |     } else {
 LL | |         0_u32
    | |         ^^^^^ expected `()`, found `u32`
