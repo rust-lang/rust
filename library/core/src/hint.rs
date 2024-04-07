@@ -146,8 +146,6 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// # Example
 ///
 /// ```
-/// #![feature(hint_assert_unchecked)]
-///
 /// use core::hint;
 ///
 /// /// # Safety
@@ -194,11 +192,11 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// to put an an assertion right next to code that checks the same thing, and dereferencing a
 /// pointer already has the builtin assumption that it is nonnull. However, it illustrates the
 /// kind of changes the optimizer can make even when the behavior is less obviously related.
+#[track_caller]
 #[inline(always)]
 #[doc(alias = "assume")]
-#[track_caller]
-#[unstable(feature = "hint_assert_unchecked", issue = "119131")]
-#[rustc_const_unstable(feature = "const_hint_assert_unchecked", issue = "119131")]
+#[stable(feature = "hint_assert_unchecked", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "hint_assert_unchecked", since = "CURRENT_RUSTC_VERSION")]
 pub const unsafe fn assert_unchecked(cond: bool) {
     // SAFETY: The caller promised `cond` is true.
     unsafe {
