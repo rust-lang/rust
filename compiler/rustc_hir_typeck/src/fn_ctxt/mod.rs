@@ -441,7 +441,16 @@ fn parse_never_type_options_attr(
         if tcx.features().never_type_fallback { FallbackToNiko } else { FallbackToUnit }
     });
 
-    let block = block.unwrap_or_default();
+    let block = block.unwrap_or_else(|| default_diverging_block_behavior(tcx));
 
     (fallback, block)
+}
+
+/// Returns the edition-based default diverging block behavior
+fn default_diverging_block_behavior(tcx: TyCtxt<'_>) -> DivergingBlockBehavior {
+    if tcx.sess.edition().at_least_rust_2024() {
+        return DivergingBlockBehavior::Unit;
+    }
+
+    DivergingBlockBehavior::Never
 }

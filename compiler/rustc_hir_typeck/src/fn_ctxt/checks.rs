@@ -46,19 +46,18 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext}
 use std::iter;
 use std::mem;
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub enum DivergingBlockBehavior {
-    /// This is the current stable behavior:
+    /// This is edition <= 2021 behavior:
     ///
     /// ```rust
     /// {
     ///     return;
     /// } // block has type = !, even though we are supposedly dropping it with `;`
     /// ```
-    #[default]
     Never,
 
-    /// Alternative behavior:
+    /// This is edition >= 2024 behavior:
     ///
     /// ```ignore (very-unstable-new-attribute)
     /// #![rustc_never_type_options(diverging_block_default = "unit")]
