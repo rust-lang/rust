@@ -42,9 +42,10 @@ use crate::{
     primitive, to_assoc_type_id,
     utils::{self, detect_variant_from_bytes, generics, ClosureSubst},
     AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Const, ConstScalar, ConstValue,
-    DomainGoal, FnAbi, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives,
-    MemoryMap, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Scalar,
-    Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyExt, WhereClause,
+    DomainGoal, FnAbi, GenericArg, GenericArgData, ImplTraitId, Interner, Lifetime, LifetimeData,
+    LifetimeOutlives, MemoryMap, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt,
+    QuantifiedWhereClause, Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty,
+    TyExt, WhereClause,
 };
 
 pub trait HirWrite: fmt::Write {
@@ -1367,8 +1368,8 @@ fn hir_fmt_generics(
                                 return true;
                             }
                         }
-                        if parameter.lifetime(Interner).map(|it| it.data(Interner))
-                            == Some(&crate::LifetimeData::Static)
+                        if let Some(crate::LifetimeData::Static | crate::LifetimeData::Error) =
+                            parameter.lifetime(Interner).map(|it| it.data(Interner))
                         {
                             return true;
                         }
@@ -1403,10 +1404,18 @@ fn hir_fmt_generics(
                     write!(f, ", ")?;
                 }
                 first = false;
-                if f.display_target.is_source_code()
-                    && generic_arg.ty(Interner).map(|ty| ty.kind(Interner)) == Some(&TyKind::Error)
-                {
-                    write!(f, "_")?;
+                if f.display_target.is_source_code() {
+                    match generic_arg.data(Interner) {
+                        GenericArgData::Lifetime(l)
+                            if matches!(l.data(Interner), LifetimeData::Error) =>
+                        {
+                            write!(f, "'_")
+                        }
+                        GenericArgData::Ty(t) if matches!(t.kind(Interner), TyKind::Error) => {
+                            write!(f, "_")
+                        }
+                        _ => generic_arg.hir_fmt(f),
+                    }?
                 } else {
                     generic_arg.hir_fmt(f)?;
                 }
@@ -1729,6 +1738,7 @@ impl HirDisplay for LifetimeData {
                 Ok(())
             }
             LifetimeData::Static => write!(f, "'static"),
+            LifetimeData::Error => write!(f, "'{{error}}"),
             LifetimeData::Erased => Ok(()),
             LifetimeData::Phantom(_, _) => Ok(()),
         }

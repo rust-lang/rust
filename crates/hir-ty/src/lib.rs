@@ -612,8 +612,6 @@ has_interner!(ImplTraits);
 
 #[derive(PartialEq, Eq, Debug, Hash)]
 pub struct ImplTrait {
-    // FIXME: Should be Arc<[QuantifiedWhereClause]>, but the HasInterner impl for Arc is missing a
-    // ?Sized bound
     pub(crate) bounds: Binders<Vec<QuantifiedWhereClause>>,
 }
 
@@ -624,7 +622,7 @@ pub fn static_lifetime() -> Lifetime {
 }
 
 pub fn error_lifetime() -> Lifetime {
-    LifetimeData::Static.intern(Interner)
+    LifetimeData::Error.intern(Interner)
 }
 
 pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
