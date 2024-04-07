@@ -26,6 +26,7 @@ pub struct InvalidLabel {
 
 #[derive(Diagnostic)]
 #[diag(ast_passes_visibility_not_permitted, code = E0449)]
+#[help]
 pub struct VisibilityNotPermitted {
     #[primary_span]
     pub span: Span,

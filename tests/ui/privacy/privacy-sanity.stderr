@@ -4,6 +4,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL | pub impl Tr for S {
    | ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -12,6 +13,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub fn f() {}
    |     ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -20,6 +22,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub const C: u8 = 0;
    |     ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -28,6 +31,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub type T = u8;
    |     ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -36,6 +40,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL | pub impl S {
    | ^^^
    |
+   = help: remove the qualifier
    = note: place qualifiers on individual impl items instead
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -44,6 +49,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL | pub extern "C" {
    | ^^^
    |
+   = help: remove the qualifier
    = note: place qualifiers on individual foreign items instead
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -52,6 +58,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub impl Tr for S {
    |     ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -60,6 +67,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |         pub fn f() {}
    |         ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -68,6 +76,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |         pub const C: u8 = 0;
    |         ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -76,6 +85,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |         pub type T = u8;
    |         ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -84,6 +94,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub impl S {
    |     ^^^
    |
+   = help: remove the qualifier
    = note: place qualifiers on individual impl items instead
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -92,6 +103,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub extern "C" {
    |     ^^^
    |
+   = help: remove the qualifier
    = note: place qualifiers on individual foreign items instead
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -100,6 +112,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub impl Tr for S {
    |     ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -108,6 +121,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |         pub fn f() {}
    |         ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -116,6 +130,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |         pub const C: u8 = 0;
    |         ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -124,6 +139,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |         pub type T = u8;
    |         ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -132,6 +148,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub impl S {
    |     ^^^
    |
+   = help: remove the qualifier
    = note: place qualifiers on individual impl items instead
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -140,6 +157,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub extern "C" {
    |     ^^^
    |
+   = help: remove the qualifier
    = note: place qualifiers on individual foreign items instead
 
 error: aborting due to 18 previous errors

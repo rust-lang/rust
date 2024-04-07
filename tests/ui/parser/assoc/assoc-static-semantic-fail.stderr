@@ -140,6 +140,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub(crate) default static TD: u8;
    |     ^^^^^^^^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error: associated constant in `impl` without body
@@ -164,6 +165,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub default static TD: u8;
    |     ^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes

@@ -4,6 +4,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub Duck,
    |     ^^^
    |
+   = help: remove the qualifier
    = note: enum variants and their fields always share the visibility of the enum they are in
 
 error[E0449]: visibility qualifiers are not permitted here
@@ -12,6 +13,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub(crate) Dove
    |     ^^^^^^^^^^
    |
+   = help: remove the qualifier
    = note: enum variants and their fields always share the visibility of the enum they are in
 
 error: aborting due to 2 previous errors

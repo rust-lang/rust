@@ -4,6 +4,7 @@ error[E0449]: visibility qualifiers are not permitted here
 LL |     pub(self) fn fun() {}
    |     ^^^^^^^^^
    |
+   = help: remove the qualifier
    = note: trait items always share the visibility of their trait
 
 error: module has missing stability attribute
