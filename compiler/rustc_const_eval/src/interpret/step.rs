@@ -258,7 +258,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let val = layout.offset_of_subfield(self, fields.iter()).bytes();
                         Scalar::from_target_usize(val, self)
                     }
-                    mir::NullOp::UbChecks => Scalar::from_bool(self.tcx.sess.opts.debug_assertions),
+                    mir::NullOp::UbChecks => Scalar::from_bool(self.tcx.sess.ub_checks()),
                 };
                 self.write_scalar(val, &dest)?;
             }
