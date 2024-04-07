@@ -1,7 +1,7 @@
-- // MIR for `f` before CopyProp
-+ // MIR for `f` after CopyProp
+- // MIR for `compare_address` before CopyProp
++ // MIR for `compare_address` after CopyProp
   
-  fn f() -> bool {
+  fn compare_address() -> bool {
       let mut _0: bool;
       let mut _1: u8;
       let mut _2: &u8;
@@ -13,11 +13,11 @@
           _2 = &_1;
           _3 = _1;
           _4 = &_3;
-          _0 = cmp_ref(_2, _4) -> [return: bb1, unwind unreachable];
+          _0 = cmp_ref(_2, _4) -> [return: bb1, unwind continue];
       }
   
       bb1: {
-          _0 = opaque::<u8>(_3) -> [return: bb2, unwind unreachable];
+          _0 = opaque::<u8>(_3) -> [return: bb2, unwind continue];
       }
   
       bb2: {

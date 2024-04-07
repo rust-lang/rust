@@ -1,4 +1,3 @@
-// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ unit-test: CopyProp
 
@@ -14,7 +13,16 @@ fn cmp_ref(a: &u8, b: &u8) -> bool {
 }
 
 #[custom_mir(dialect = "analysis", phase = "post-cleanup")]
-fn f() -> bool {
+fn compare_address() -> bool {
+    // CHECK-LABEL: fn compare_address(
+    // CHECK: bb0: {
+    // CHECK-NEXT: _1 = const 5_u8;
+    // CHECK-NEXT: _2 = &_1;
+    // CHECK-NEXT: _3 = _1;
+    // CHECK-NEXT: _4 = &_3;
+    // CHECK-NEXT: _0 = cmp_ref(_2, _4)
+    // CHECK: bb1: {
+    // CHECK-NEXT: _0 = opaque::<u8>(_3)
     mir!(
         {
             let a = 5_u8;
@@ -34,8 +42,60 @@ fn f() -> bool {
     )
 }
 
-fn main() {
-    assert!(!f());
+#[custom_mir(dialect = "analysis", phase = "post-cleanup")]
+fn borrowed(x: u32) -> bool {
+    // CHECK-LABEL: fn borrowed(
+    // CHECK: bb0: {
+    // CHECK-NEXT: _2 = _1;
+    // CHECK-NEXT: _3 = &_1;
+    // CHECK-NEXT: _0 = opaque::<&u32>(_3)
+    // CHECK: bb1: {
+    // CHECK-NEXT: _0 = opaque::<u32>(_2)
+    mir!(
+        {
+            let a = x;
+            let r1 = &x;
+            Call(RET = opaque(r1), ReturnTo(next), UnwindContinue())
+        }
+        next = {
+            Call(RET = opaque(a), ReturnTo(ret), UnwindContinue())
+        }
+        ret = {
+            Return()
+        }
+    )
 }
 
-// EMIT_MIR borrowed_local.f.CopyProp.diff
+/// Generic type `T` is not known to be `Freeze`, so shared borrows may be mutable.
+#[custom_mir(dialect = "analysis", phase = "post-cleanup")]
+fn non_freeze<T: Copy>(x: T) -> bool {
+    // CHECK-LABEL: fn non_freeze(
+    // CHECK: bb0: {
+    // CHECK-NEXT: _2 = _1;
+    // CHECK-NEXT: _3 = &_1;
+    // CHECK-NEXT: _0 = opaque::<&T>(_3)
+    // CHECK: bb1: {
+    // CHECK-NEXT: _0 = opaque::<T>(_2)
+    mir!(
+        {
+            let a = x;
+            let r1 = &x;
+            Call(RET = opaque(r1), ReturnTo(next), UnwindContinue())
+        }
+        next = {
+            Call(RET = opaque(a), ReturnTo(ret), UnwindContinue())
+        }
+        ret = {
+            Return()
+        }
+    )
+}
+
+fn main() {
+    assert!(!compare_address());
+    non_freeze(5);
+}
+
+// EMIT_MIR borrowed_local.compare_address.CopyProp.diff
+// EMIT_MIR borrowed_local.borrowed.CopyProp.diff
+// EMIT_MIR borrowed_local.non_freeze.CopyProp.diff
