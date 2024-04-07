@@ -129,6 +129,27 @@ fn validate_path_remap() {
 }
 
 #[test]
+fn validate_cargo_output() {
+    let build = Build::new(configure("test", &["A"], &["A"]));
+
+    let out = build.cargo_out(
+        Compiler { host: TargetSelection::default(), stage: 1 },
+        Mode::Rustc,
+        TargetSelection::default(),
+    );
+
+    assert!(out.ends_with("stage1-rustc/release"));
+
+    let out = build.cargo_out(
+        Compiler { host: TargetSelection::default(), stage: 1 },
+        Mode::Rustc,
+        TargetSelection::from_user("B"),
+    );
+
+    assert!(out.ends_with("stage1-rustc/B/release"));
+}
+
+#[test]
 fn test_exclude() {
     let mut config = configure("test", &["A"], &["A"]);
     config.skip = vec!["src/tools/tidy".into()];
