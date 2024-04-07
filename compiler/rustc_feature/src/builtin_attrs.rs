@@ -1082,7 +1082,7 @@ pub fn is_builtin_attr_name(name: Symbol) -> bool {
 /// This means it can be used cross crate.
 pub fn encode_cross_crate(name: Symbol) -> bool {
     if let Some(attr) = BUILTIN_ATTRIBUTE_MAP.get(&name) {
-        if attr.encode_cross_crate == EncodeCrossCrate::Yes { true } else { false }
+        attr.encode_cross_crate == EncodeCrossCrate::Yes
     } else {
         true
     }

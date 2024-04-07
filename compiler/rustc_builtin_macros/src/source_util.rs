@@ -333,10 +333,8 @@ fn find_path_suggestion(
     .flatten()
     .take(4);
 
-    for new_path in root_absolute.chain(add).chain(remove) {
-        if source_map.file_exists(&base_dir.join(&new_path)) {
-            return Some(new_path);
-        }
-    }
-    None
+    root_absolute
+        .chain(add)
+        .chain(remove)
+        .find(|new_path| source_map.file_exists(&base_dir.join(&new_path)))
 }
