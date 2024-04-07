@@ -118,7 +118,13 @@ error: failed to copy bitcode to object file: No such file or directory (os erro
 
 ### Rustc
 
-> You should prefer using the Cargo method.
+If you want to run `rustc` directly, you can do so with:
+
+```bash
+$ ./y.sh rustc my_crate.rs
+```
+
+You can do the same manually (although we don't recommend it):
 
 ```bash
 $ LIBRARY_PATH="[gcc-path value]" LD_LIBRARY_PATH="[gcc-path value]" rustc +$(cat $CG_GCCJIT_DIR/rust-toolchain | grep 'channel' | cut -d '=' -f 2 | sed 's/"//g' | sed 's/ //g') -Cpanic=abort -Zcodegen-backend=$CG_GCCJIT_DIR/target/release/librustc_codegen_gcc.so --sysroot $CG_GCCJIT_DIR/build_sysroot/sysroot my_crate.rs
