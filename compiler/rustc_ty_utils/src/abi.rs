@@ -787,18 +787,10 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
                 // Let's see if we can add a `noundef`. This is only legal for arrays, definitely
                 // not for unions. This is also legal for `#[repr(transparent)] struct` or
-                // `#[repr(transparent)] enum` containing array.
-                let is_transparent_array =
-                    if arg.layout.is_transparent::<LayoutCx<'tcx, TyCtxt<'tcx>>>()
-                        && let Some((_, layout)) = arg.layout.non_1zst_field(cx)
-                        && layout.ty.is_array()
-                    {
-                        true
-                    } else {
-                        false
-                    };
-
-                if arg.layout.ty.is_array() || is_transparent_array {
+                // `#[repr(transparent)] enum` containing array. Note that `#[repr(transparent)]`
+                // can contain other `#[repr(transparent)]` structs or enums, which can eventually
+                // contain an array!
+                if arg.layout.ty.is_array() || is_transparent_array(cx, arg.layout) {
                     // Fixup arg attribute with `noundef`.
                     let PassMode::Cast { ref mut cast, .. } = &mut arg.mode else {
                         bug!("this cannot fail because of the previous cast_to `Reg`");
@@ -840,6 +832,20 @@ fn fn_abi_adjust_for_abi<'tcx>(
     }
 
     Ok(())
+}
+
+fn is_transparent_array<'tcx>(
+    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    outermost_layout: TyAndLayout<'tcx>,
+) -> bool {
+    let mut adt_layout = outermost_layout;
+    // Recursively walk a layout, seeing through all `#[repr(transparent)]` layers.
+    while adt_layout.is_transparent::<LayoutCx<'tcx, TyCtxt<'tcx>>>()
+        && let Some((_, layout)) = adt_layout.non_1zst_field(cx)
+    {
+        adt_layout = layout;
+    }
+    adt_layout.ty.is_array()
 }
 
 #[tracing::instrument(level = "debug", skip(cx))]
