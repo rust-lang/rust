@@ -566,6 +566,7 @@ pub enum Type {
     Pat {
         #[serde(rename = "type")]
         type_: Box<Type>,
+        #[doc(hidden)]
         __pat_unstable_do_not_use: String,
     },
     /// `impl TraitA + TraitB + ...`
