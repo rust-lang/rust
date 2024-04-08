@@ -25,13 +25,13 @@ fn should_pad_explicitly_aligned_field() {
     #[derive(Clone, Copy)] #[repr(u8)] enum V0u8 { V = 0 }
     #[derive(Clone, Copy)] #[repr(u8)] enum V1u8 { V = 1 }
 
-    #[repr(C)]
+    #[repr(align(1))]
     pub union Uninit {
         a: (),
         b: V1u8,
     }
 
-    #[repr(C, align(2))]
+    #[repr(align(2))]
     pub union align_2 {
         a: V0u8,
     }

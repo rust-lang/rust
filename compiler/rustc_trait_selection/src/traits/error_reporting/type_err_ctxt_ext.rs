@@ -558,7 +558,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 GetSafeTransmuteErrorAndReason::Error {
                                     err_msg,
                                     safe_transmute_explanation,
-                                } => (err_msg, Some(safe_transmute_explanation)),
+                                } => (err_msg, safe_transmute_explanation),
                             }
                         } else {
                             (err_msg, None)
@@ -3068,26 +3068,31 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return GetSafeTransmuteErrorAndReason::Silent;
         };
 
+        let dst = trait_ref.args.type_at(0);
+        let src = trait_ref.args.type_at(1);
+        let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
+
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
             obligation.cause,
             src_and_dst,
             assume,
         ) {
             Answer::No(reason) => {
-                let dst = trait_ref.args.type_at(0);
-                let src = trait_ref.args.type_at(1);
-                let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
                 let safe_transmute_explanation = match reason {
                     rustc_transmute::Reason::SrcIsNotYetSupported => {
-                        format!("analyzing the transmutability of `{src}` is not yet supported.")
+                        format!("analyzing the transmutability of `{src}` is not yet supported")
                     }
 
                     rustc_transmute::Reason::DstIsNotYetSupported => {
-                        format!("analyzing the transmutability of `{dst}` is not yet supported.")
+                        format!("analyzing the transmutability of `{dst}` is not yet supported")
                     }
 
                     rustc_transmute::Reason::DstIsBitIncompatible => {
                         format!("at least one value of `{src}` isn't a bit-valid value of `{dst}`")
+                    }
+
+                    rustc_transmute::Reason::DstUninhabited => {
+                        format!("`{dst}` is uninhabited")
                     }
 
                     rustc_transmute::Reason::DstMayHaveSafetyInvariants => {
@@ -3135,14 +3140,23 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         format!("`{dst}` has an unknown layout")
                     }
                 };
-                GetSafeTransmuteErrorAndReason::Error { err_msg, safe_transmute_explanation }
+                GetSafeTransmuteErrorAndReason::Error {
+                    err_msg,
+                    safe_transmute_explanation: Some(safe_transmute_explanation),
+                }
             }
             // Should never get a Yes at this point! We already ran it before, and did not get a Yes.
             Answer::Yes => span_bug!(
                 span,
                 "Inconsistent rustc_transmute::is_transmutable(...) result, got Yes",
             ),
-            other => span_bug!(span, "Unsupported rustc_transmute::Answer variant: `{other:?}`"),
+            // Reached when a different obligation (namely `Freeze`) causes the
+            // transmutability analysis to fail. In this case, silence the
+            // transmutability error message in favor of that more specific
+            // error.
+            Answer::If(_) => {
+                GetSafeTransmuteErrorAndReason::Error { err_msg, safe_transmute_explanation: None }
+            }
         }
     }
 
