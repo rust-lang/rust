@@ -281,14 +281,14 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
         if place.local == ty::CAPTURE_STRUCT_LOCAL
             && let Some((&mir::ProjectionElem::Field(idx, _), projection)) =
                 place.projection.split_first()
-            && let Some(&(remapped_idx, remapped_ty, needs_deref, additional_projections)) =
+            && let Some(&(remapped_idx, remapped_ty, needs_deref, bridging_projections)) =
                 self.field_remapping.get(&idx)
         {
             // As noted before, if the parent closure captures a field by value, and
             // the child captures a field by ref, then for the by-move body we're
             // generating, we also are taking that field by value. Peel off a deref,
-            // since a layer of reffing has now become redundant.
-            let final_deref = if needs_deref {
+            // since a layer of ref'ing has now become redundant.
+            let final_projections = if needs_deref {
                 let Some((mir::ProjectionElem::Deref, projection)) = projection.split_first()
                 else {
                     bug!(
@@ -302,20 +302,18 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
                 projection
             };
 
-            // The only thing that should be left is a deref, if the parent captured
-            // an upvar by-ref.
-            std::assert_matches::assert_matches!(final_deref, [] | [mir::ProjectionElem::Deref]);
-
-            // For all of the additional projections that come out of precise capturing,
-            // re-apply these projections.
-            let additional_projections =
-                additional_projections.iter().map(|elem| match elem.kind {
-                    ProjectionKind::Deref => mir::ProjectionElem::Deref,
-                    ProjectionKind::Field(idx, VariantIdx::ZERO) => {
-                        mir::ProjectionElem::Field(idx, elem.ty)
-                    }
-                    _ => unreachable!("precise captures only through fields and derefs"),
-                });
+            // These projections are applied in order to "bridge" the local that we are
+            // currently transforming *from* the old upvar that the by-ref coroutine used
+            // to capture *to* the upvar of the parent coroutine-closure. For example, if
+            // the parent captures `&s` but the child captures `&(s.field)`, then we will
+            // apply a field projection.
+            let bridging_projections = bridging_projections.iter().map(|elem| match elem.kind {
+                ProjectionKind::Deref => mir::ProjectionElem::Deref,
+                ProjectionKind::Field(idx, VariantIdx::ZERO) => {
+                    mir::ProjectionElem::Field(idx, elem.ty)
+                }
+                _ => unreachable!("precise captures only through fields and derefs"),
+            });
 
             // We start out with an adjusted field index (and ty), representing the
             // upvar that we get from our parent closure. We apply any of the additional
@@ -326,8 +324,8 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
                 projection: self.tcx.mk_place_elems_from_iter(
                     [mir::ProjectionElem::Field(remapped_idx, remapped_ty)]
                         .into_iter()
-                        .chain(additional_projections)
-                        .chain(final_deref.iter().copied()),
+                        .chain(bridging_projections)
+                        .chain(final_projections.iter().copied()),
                 ),
             };
         }
