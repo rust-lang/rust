@@ -1,4 +1,4 @@
-// Verifies that casting a method to a function pointer works.
+// Verifies that casting to a function pointer works.
 
 //@ revisions: cfi kcfi
 // FIXME(#122848) Remove only-linux once OSX CFI binaries work
@@ -46,6 +46,8 @@ impl Trait1 for Type1 {
     fn foo(&self) {}
 }
 
+fn foo<T>(_: &T) {}
+
 fn main() {
     let type1 = Type1 {};
     let f = <Type1 as Trait1>::foo;
@@ -53,5 +55,7 @@ fn main() {
     // Check again with different optimization barriers
     S2 { f: <S as Foo>::foo }.foo(&S);
     // Check mismatched #[track_caller]
-    S2 { f: <S as Foo>::bar }.foo(&S)
+    S2 { f: <S as Foo>::bar }.foo(&S);
+    // Check non-method functions
+    S2 { f: foo }.foo(&S)
 }
