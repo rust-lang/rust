@@ -381,7 +381,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     where
         T: Copy,
     {
-        self.with(|cell| cell.get())
+        self.with(Cell::get)
     }
 
     /// Takes the contained value, leaving `Default::default()` in its place.
@@ -411,7 +411,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     where
         T: Default,
     {
-        self.with(|cell| cell.take())
+        self.with(Cell::take)
     }
 
     /// Replaces the contained value, returning the old value.
@@ -582,7 +582,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     where
         T: Default,
     {
-        self.with(|cell| cell.take())
+        self.with(RefCell::take)
     }
 
     /// Replaces the contained value, returning the old value.
