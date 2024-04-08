@@ -2249,7 +2249,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         Ty::new_pat(tcx, ty, pat)
                     }
                     hir::PatKind::Err(e) => Ty::new_error(tcx, e),
-                    _ => span_bug!(pat.span, "unsupported pattern for pattern type: {pat:#?}"),
+                    _ => Ty::new_error_with_message(
+                        tcx,
+                        pat.span,
+                        format!("unsupported pattern for pattern type: {pat:#?}"),
+                    ),
                 };
                 self.record_ty(pat.hir_id, ty, pat.span);
                 pat_ty
