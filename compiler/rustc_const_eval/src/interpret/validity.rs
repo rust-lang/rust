@@ -10,7 +10,6 @@ use std::num::NonZero;
 use either::{Left, Right};
 
 use hir::def::DefKind;
-use hir::def_id::DefId;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -450,8 +449,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // `!` is a ZST and we want to validate it.
             if let Ok((alloc_id, _offset, _prov)) = self.ecx.ptr_try_get_alloc_id(place.ptr()) {
                 let mut skip_recursive_check = false;
-                let (alloc_actual_mutbl, is_static) = mutability(self.ecx, alloc_id);
-                if let Some((did, nested)) = is_static {
+                let alloc_actual_mutbl = mutability(self.ecx, alloc_id);
+                if let GlobalAlloc::Static(did) = self.ecx.tcx.global_alloc(alloc_id) {
+                    let DefKind::Static { nested, .. } = self.ecx.tcx.def_kind(did) else { bug!() };
                     // Special handling for pointers to statics (irrespective of their type).
                     assert!(!self.ecx.tcx.is_thread_local_static(did));
                     assert!(self.ecx.tcx.is_static(did));
@@ -682,7 +682,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn in_mutable_memory(&self, op: &OpTy<'tcx, M::Provenance>) -> bool {
         if let Some(mplace) = op.as_mplace_or_imm().left() {
             if let Some(alloc_id) = mplace.ptr().provenance.and_then(|p| p.get_alloc_id()) {
-                return mutability(self.ecx, alloc_id).0.is_mut();
+                return mutability(self.ecx, alloc_id).is_mut();
             }
         }
         false
@@ -695,13 +695,19 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
 fn mutability<'mir, 'tcx: 'mir>(
     ecx: &InterpCx<'mir, 'tcx, impl Machine<'mir, 'tcx>>,
     alloc_id: AllocId,
-) -> (Mutability, Option<(DefId, bool)>) {
+) -> Mutability {
     // Let's see what kind of memory this points to.
     // We're not using `try_global_alloc` since dangling pointers have already been handled.
     match ecx.tcx.global_alloc(alloc_id) {
         GlobalAlloc::Static(did) => {
             let DefKind::Static { mutability, nested } = ecx.tcx.def_kind(did) else { bug!() };
-            let mutability = if nested {
+            if nested {
+                assert!(
+                    ecx.memory.alloc_map.get(alloc_id).is_none(),
+                    "allocations of nested statics are already interned: {alloc_id:?}, {did:?}"
+                );
+                // Nested statics in a `static` are never interior mutable,
+                // so just use the declared mutability.
                 mutability
             } else {
                 let mutability = match mutability {
@@ -721,13 +727,12 @@ fn mutability<'mir, 'tcx: 'mir>(
                     assert_eq!(alloc.mutability, mutability);
                 }
                 mutability
-            };
-            (mutability, Some((did, nested)))
+            }
         }
-        GlobalAlloc::Memory(alloc) => (alloc.inner().mutability, None),
+        GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
         GlobalAlloc::Function(..) | GlobalAlloc::VTable(..) => {
             // These are immutable, we better don't allow mutable pointers here.
-            (Mutability::Not, None)
+            Mutability::Not
         }
     }
 }
