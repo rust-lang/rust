@@ -1014,10 +1014,13 @@ fn report<'tcx>(
                         },
                         _ => (0, false),
                     };
-                    let is_in_tuple = match cx.tcx.parent_hir_node(data.first_expr.hir_id) {
-                        Node::Expr(e) => matches!(e.kind, ExprKind::Tup(_)),
-                        _ => false,
-                    };
+                    let is_in_tuple = matches!(
+                        get_parent_expr(cx, data.first_expr),
+                        Some(Expr {
+                            kind: ExprKind::Tup(..),
+                            ..
+                        })
+                    );
 
                     let sugg = if !snip_is_macro
                         && (calls_field || expr.precedence().order() < precedence)

@@ -164,7 +164,7 @@ LL |         let _ = &mut (&mut { x.u }).x;
    |                      ^^^^^^^^^^^^^^ help: change this to: `{ x.u }`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> tests/ui/needless_borrow.rs:259:23
+  --> tests/ui/needless_borrow.rs:258:23
    |
 LL |     option.unwrap_or((&x.0,));
    |                       ^^^^ help: change this to: `x.0`

@@ -255,6 +255,7 @@ mod issue_10253 {
 fn issue_12268() {
     let option = Some((&1,));
     let x = (&1,);
-    // Lint here.
     option.unwrap_or((&x.0,));
+    //~^ ERROR: this expression creates a reference which is immediately dereferenced by the
+    // compiler
 }
