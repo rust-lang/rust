@@ -97,7 +97,6 @@ mod outlives;
 pub mod structured_errors;
 mod variance;
 
-use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::middle;
@@ -153,11 +152,11 @@ pub fn provide(providers: &mut Providers) {
     hir_wf_check::provide(providers);
 }
 
-pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
+pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
     if tcx.features().rustc_attrs {
-        tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx))?;
+        let _ = tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
     }
 
     tcx.sess.time("coherence_checking", || {
@@ -174,11 +173,11 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     });
 
     if tcx.features().rustc_attrs {
-        tcx.sess.time("variance_testing", || variance::test::test_variance(tcx))?;
+        let _ = tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
     }
 
     if tcx.features().rustc_attrs {
-        collect::test_opaque_hidden_types(tcx)?;
+        let _ = collect::test_opaque_hidden_types(tcx);
     }
 
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
@@ -213,8 +212,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     });
 
     tcx.ensure().check_unused_traits(());
-
-    Ok(())
 }
 
 /// Lower a [`hir::Ty`] to a [`Ty`].
