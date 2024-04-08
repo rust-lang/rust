@@ -95,7 +95,7 @@ jobs:
         run: sudo apt-get install gcc-arm-linux-gnueabihf
 
       - name: Dist
-        run: cargo xtask dist --jemalloc --client-patch-version ${{ github.run_number }}
+        run: cargo xtask dist --client-patch-version ${{ github.run_number }}
 
       - run: npm ci
         working-directory: editors/code
@@ -159,7 +159,7 @@ jobs:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
       - name: Dist
-        run: cargo xtask dist --jemalloc --client-patch-version ${{ github.run_number }}
+        run: cargo xtask dist --client-patch-version ${{ github.run_number }}
 
       - run: npm ci
         working-directory: editors/code
