@@ -31,7 +31,7 @@
 //! `&mut T` to the inner value can never be obtained under normal circumstances, 
 //! and the value itself cannot be directly obtained without replacing it with something else. 
 //! Both of these rules ensure that there is never more than one reference pointing to the inner value.
-//! This type provides the followin methods:
+//! This type provides the following methods:
 //!
 //!  - For types that implement [`Copy`], the [`get`](Cell::get) method retrieves the current
 //!    interior value by duplicating it.
