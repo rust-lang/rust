@@ -1103,7 +1103,7 @@ pub struct BreakInsideCoroutine<'a> {
 pub struct OutsideLoop<'a> {
     #[primary_span]
     #[label]
-    pub span: Span,
+    pub spans: Vec<Span>,
     pub name: &'a str,
     pub is_break: bool,
     #[subdiagnostic]
@@ -1115,7 +1115,7 @@ pub struct OutsideLoopSuggestion {
     #[suggestion_part(code = "'block: ")]
     pub block_span: Span,
     #[suggestion_part(code = " 'block")]
-    pub break_span: Span,
+    pub break_spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
