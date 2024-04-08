@@ -154,7 +154,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             CoverageKind::ExpressionUsed { id } => {
                 func_coverage.mark_expression_id_seen(id);
             }
-            CoverageKind::CondBitmapUpdate { id, value, .. } => {
+            CoverageKind::CondBitmapUpdate { id, value, decision_depth } => {
                 drop(coverage_map);
                 assert_ne!(
                     id.as_u32(),
@@ -162,7 +162,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                     "ConditionId of evaluated conditions should never be zero"
                 );
                 let cond_bitmap = coverage_context
-                    .try_get_mcdc_condition_bitmap(&instance, 0)
+                    .try_get_mcdc_condition_bitmap(&instance, decision_depth)
                     .expect("mcdc cond bitmap should have been allocated for updating");
                 let cond_loc = bx.const_i32(id.as_u32() as i32 - 1);
                 let bool_value = bx.const_bool(value);
@@ -170,10 +170,10 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);
                 bx.mcdc_condbitmap_update(fn_name, hash, cond_loc, cond_bitmap, bool_value);
             }
-            CoverageKind::TestVectorBitmapUpdate { bitmap_idx } => {
+            CoverageKind::TestVectorBitmapUpdate { bitmap_idx, decision_depth } => {
                 drop(coverage_map);
                 let cond_bitmap = coverage_context
-                                    .try_get_mcdc_condition_bitmap(&instance, 0)
+                                    .try_get_mcdc_condition_bitmap(&instance, decision_depth)
                                     .expect("mcdc cond bitmap should have been allocated for merging into the global bitmap");
                 let bitmap_bytes = bx.tcx().coverage_ids_info(instance.def).mcdc_bitmap_bytes;
                 assert!(bitmap_idx < bitmap_bytes, "bitmap index of the decision out of range");

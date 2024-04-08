@@ -453,15 +453,25 @@ pub(super) fn extract_mcdc_mappings(
             Some((span, true_bcb, false_bcb))
         };
 
-    let mcdc_branch_filter_map =
-        |&MCDCBranchSpan { span: raw_span, true_marker, false_marker, condition_info }| {
-            check_branch_bcb(raw_span, true_marker, false_marker).map(
-                |(span, true_bcb, false_bcb)| BcbMapping {
-                    kind: BcbMappingKind::MCDCBranch { true_bcb, false_bcb, condition_info },
-                    span,
+    let mcdc_branch_filter_map = |&MCDCBranchSpan {
+                                      span: raw_span,
+                                      true_marker,
+                                      false_marker,
+                                      condition_info,
+                                      decision_depth,
+                                  }| {
+        check_branch_bcb(raw_span, true_marker, false_marker).map(|(span, true_bcb, false_bcb)| {
+            BcbMapping {
+                kind: BcbMappingKind::MCDCBranch {
+                    true_bcb,
+                    false_bcb,
+                    condition_info,
+                    decision_depth,
                 },
-            )
-        };
+                span,
+            }
+        })
+    };
 
     let mut next_bitmap_idx = 0;
 
@@ -482,6 +492,7 @@ pub(super) fn extract_mcdc_mappings(
                 end_bcbs,
                 bitmap_idx,
                 conditions_num: decision.conditions_num as u16,
+                decision_depth: decision.decision_depth,
             },
             span,
         })

@@ -262,6 +262,7 @@ impl MCDCState {
                 span,
                 conditions_num: 0,
                 end_markers: vec![],
+                decision_depth: 0,
             }),
         };
 
@@ -371,6 +372,7 @@ impl Builder<'_, '_> {
                 condition_info,
                 true_marker,
                 false_marker,
+                decision_depth: 0,
             });
             return;
         }
