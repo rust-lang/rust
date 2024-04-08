@@ -883,6 +883,7 @@ where
             | ty::Float(..)
             | ty::Str
             | ty::FnDef(..)
+            | ty::Pat(..)
             | ty::FnPtr(_)
             | ty::Array(..)
             | ty::Slice(..)

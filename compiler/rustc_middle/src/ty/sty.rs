@@ -1523,6 +1523,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn new_pat(tcx: TyCtxt<'tcx>, base: Ty<'tcx>, pat: ty::Pattern<'tcx>) -> Ty<'tcx> {
+        Ty::new(tcx, Pat(base, pat))
+    }
+
+    #[inline]
     pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
         Ty::new_alias(tcx, ty::Opaque, AliasTy::new(tcx, def_id, args))
     }
@@ -2278,6 +2283,8 @@ impl<'tcx> Ty<'tcx> {
                 Ty::new_projection(tcx, assoc_items[0], tcx.mk_args(&[self.into()]))
             }
 
+            ty::Pat(ty, _) => ty.discriminant_ty(tcx),
+
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -2359,6 +2366,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Param(_) | ty::Alias(..) => Err(tail),
 
             ty::Infer(ty::TyVar(_))
+            | ty::Pat(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(
@@ -2495,6 +2503,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Array(..)
+            | ty::Pat(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
@@ -2548,6 +2557,8 @@ impl<'tcx> Ty<'tcx> {
             ty::Tuple(field_tys) => {
                 field_tys.len() <= 3 && field_tys.iter().all(Self::is_trivially_pure_clone_copy)
             }
+
+            ty::Pat(ty, _) => ty.is_trivially_pure_clone_copy(),
 
             // Sometimes traits aren't implemented for every ABI or arity,
             // because we can't be generic over everything yet.
@@ -2630,6 +2641,7 @@ impl<'tcx> Ty<'tcx> {
             | Foreign(_)
             | Str
             | Array(_, _)
+            | Pat(_, _)
             | Slice(_)
             | RawPtr(_, _)
             | Ref(_, _, _)

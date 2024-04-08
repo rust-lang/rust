@@ -681,6 +681,10 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // Note that we handle the len is implicitly checked while walking `arg`.
             }
 
+            ty::Pat(subty, _) => {
+                self.require_sized(subty, traits::MiscObligation);
+            }
+
             ty::Tuple(tys) => {
                 if let Some((_last, rest)) = tys.split_last() {
                     for &elem in rest {

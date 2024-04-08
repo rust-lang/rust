@@ -1417,7 +1417,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // These types are built-in, so we can fast-track by registering
                 // nested predicates for their constituent type(s)
-                ty::Array(ty, _) | ty::Slice(ty) => {
+                ty::Array(ty, _) | ty::Slice(ty) | ty::Pat(ty, _) => {
                     stack.push(ty);
                 }
                 ty::Tuple(tys) => {
@@ -1469,7 +1469,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // If we have any other type (e.g. an ADT), just register a nested obligation
                 // since it's either not `const Drop` (and we raise an error during selection),
                 // or it's an ADT (and we need to check for a custom impl during selection)
-                _ => {
+                ty::Error(_)
+                | ty::Dynamic(..)
+                | ty::CoroutineClosure(..)
+                | ty::Param(_)
+                | ty::Bound(..)
+                | ty::Adt(..)
+                | ty::Alias(ty::Opaque | ty::Weak, _)
+                | ty::Infer(_)
+                | ty::Placeholder(_) => {
                     let predicate = self_ty.rebind(ty::TraitPredicate {
                         trait_ref: ty::TraitRef::from_lang_item(
                             self.tcx(),

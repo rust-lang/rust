@@ -21,7 +21,7 @@ mod object_safety;
 
 use crate::bounds::Bounds;
 use crate::collect::HirPlaceholderCollector;
-use crate::errors::AmbiguousLifetimeBound;
+use crate::errors::{AmbiguousLifetimeBound, WildPatTy};
 use crate::hir_ty_lowering::errors::{prohibit_assoc_item_binding, GenericsArgsErrExtend};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -39,6 +39,7 @@ use rustc_hir::{GenericArg, GenericArgs};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
+use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::ty::{
     self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, ParamEnv, Ty, TyCtxt,
     TypeVisitableExt,
@@ -2194,6 +2195,64 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // the type of local variables. Both of these cases are
                 // handled specially and will not descend into this routine.
                 self.ty_infer(None, hir_ty.span)
+            }
+            hir::TyKind::Pat(ty, pat) => {
+                let ty = self.lower_ty(ty);
+                let pat_ty = match pat.kind {
+                    hir::PatKind::Wild => {
+                        let err = tcx.dcx().emit_err(WildPatTy { span: pat.span });
+                        Ty::new_error(tcx, err)
+                    }
+                    hir::PatKind::Range(start, end, include_end) => {
+                        let expr_to_const = |expr: &'tcx hir::Expr<'tcx>| -> ty::Const<'tcx> {
+                            let (expr, neg) = match expr.kind {
+                                hir::ExprKind::Unary(hir::UnOp::Neg, negated) => {
+                                    (negated, Some((expr.hir_id, expr.span)))
+                                }
+                                _ => (expr, None),
+                            };
+                            let c = match &expr.kind {
+                                hir::ExprKind::Lit(lit) => {
+                                    let lit_input =
+                                        LitToConstInput { lit: &lit.node, ty, neg: neg.is_some() };
+                                    match tcx.lit_to_const(lit_input) {
+                                        Ok(c) => c,
+                                        Err(LitToConstError::Reported(err)) => {
+                                            ty::Const::new_error(tcx, err, ty)
+                                        }
+                                        Err(LitToConstError::TypeError) => todo!(),
+                                    }
+                                }
+                                _ => {
+                                    let err = tcx
+                                        .dcx()
+                                        .emit_err(crate::errors::NonConstRange { span: expr.span });
+                                    ty::Const::new_error(tcx, err, ty)
+                                }
+                            };
+                            self.record_ty(expr.hir_id, c.ty(), expr.span);
+                            if let Some((id, span)) = neg {
+                                self.record_ty(id, c.ty(), span);
+                            }
+                            c
+                        };
+
+                        let start = start.map(expr_to_const);
+                        let end = end.map(expr_to_const);
+
+                        let include_end = match include_end {
+                            hir::RangeEnd::Included => true,
+                            hir::RangeEnd::Excluded => false,
+                        };
+
+                        let pat = tcx.mk_pat(ty::PatternKind::Range { start, end, include_end });
+                        Ty::new_pat(tcx, ty, pat)
+                    }
+                    hir::PatKind::Err(e) => Ty::new_error(tcx, e),
+                    _ => span_bug!(pat.span, "unsupported pattern for pattern type: {pat:#?}"),
+                };
+                self.record_ty(pat.hir_id, ty, pat.span);
+                pat_ty
             }
             hir::TyKind::Err(guar) => Ty::new_error(tcx, *guar),
         };
