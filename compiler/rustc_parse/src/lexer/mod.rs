@@ -34,8 +34,7 @@ use unescape_error_reporting::{emit_unescape_error, escaped_char};
 rustc_data_structures::static_assert_size!(rustc_lexer::Token, 12);
 
 #[derive(Clone, Debug)]
-pub struct UnmatchedDelim {
-    pub expected_delim: Delimiter,
+pub(crate) struct UnmatchedDelim {
     pub found_delim: Option<Delimiter>,
     pub found_span: Span,
     pub unclosed_span: Option<Span>,
