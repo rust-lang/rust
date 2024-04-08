@@ -13,7 +13,7 @@
   // It NFC-normalizes to ó, U+00F3 LATIN SMALL LETTER O WITH ACUTE.
   trait Foó: Bar {}
   ```
-- Ensure a space is added to a range expression, when the right hand side of the range expression is a binary expression that ends with a trailing period.
+- Ensure a space is added to a range expression, when the right hand side of the range expression is a binary expression that ends with a trailing period [#6059](https://github.com/rust-lang/rustfmt/issues/6059)
   ```rust
   let range = 3. / 2. ..4.;
   ```
