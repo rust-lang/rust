@@ -690,7 +690,7 @@ pub(crate) fn set_current(thread: Thread) {
     // control over where this is called, so just abort if there is a bug.
     CURRENT.with(|current| match current.set(thread) {
         Ok(()) => {}
-        Err(_) => rtabort!("should only be set once"),
+        Err(_) => rtabort!("thread::set_current should only be called once per thread"),
     });
 }
 
