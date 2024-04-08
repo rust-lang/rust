@@ -29,7 +29,7 @@ use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{self, ExpnKind};
+use rustc_span::ExpnKind;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
 use std::borrow::Cow;
@@ -37,14 +37,14 @@ use std::collections::BTreeMap;
 use std::mem;
 use thin_vec::ThinVec;
 
-use crate::core::{self, DocContext};
+use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 use crate::visit_ast::Module as DocModule;
 
 use utils::*;
 
 pub(crate) use self::types::*;
-pub(crate) use self::utils::{get_auto_trait_and_blanket_impls, krate, register_res};
+pub(crate) use self::utils::{krate, register_res, synthesize_auto_trait_and_blanket_impls};
 
 pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let mut items: Vec<Item> = vec![];
