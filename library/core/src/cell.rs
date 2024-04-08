@@ -28,10 +28,10 @@
 //! ## `Cell<T>`
 //!
 //! [`Cell<T>`] implements interior mutability by moving values in and out of the cell. That is, an
-//! `&mut T` to the inner value can never be obtained, and the value itself cannot be directly
-//! obtained without replacing it with something else. Both of these rules ensure that there is
-//! never more than one reference pointing to the inner value. This type provides the following
-//! methods:
+//! `&mut T` to the inner value can never be obtained under normal circumstances, 
+//! and the value itself cannot be directly obtained without replacing it with something else. 
+//! Both of these rules ensure that there is never more than one reference pointing to the inner value.
+//! This type provides the followin methods:
 //!
 //!  - For types that implement [`Copy`], the [`get`](Cell::get) method retrieves the current
 //!    interior value by duplicating it.
