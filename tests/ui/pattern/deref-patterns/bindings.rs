@@ -37,6 +37,17 @@ fn ref_mut(val: u32) -> u32 {
     *x
 }
 
+#[rustfmt::skip]
+fn or_and_guard(tuple: (u32, u32)) -> u32 {
+    let mut sum = 0;
+    let b = Box::new(tuple);
+    match b {
+        deref!((x, _) | (_, x)) if { sum += x; false } => {},
+        _ => {},
+    }
+    sum
+}
+
 fn main() {
     assert_eq!(simple_vec(vec![1]), 1);
     assert_eq!(simple_vec(vec![1, 2]), 202);
@@ -48,5 +59,6 @@ fn main() {
     assert_eq!(nested_vec(vec![vec![1, 2, 3]]), 6);
     assert_eq!(nested_vec(vec![vec![], vec![1, 2, 3]]), 1);
 
-    assert_eq!(ref_mut(42), 42)
+    assert_eq!(ref_mut(42), 42);
+    assert_eq!(or_and_guard((10, 32)), 42);
 }
