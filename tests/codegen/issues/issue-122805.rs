@@ -20,6 +20,7 @@
 // CHECK-NEXT: store <8 x i16>
 // CHECK-NEXT: ret void
 #[no_mangle]
+#[cfg(target_endian = "little")]
 pub fn convert(value: [u16; 8]) -> [u8; 16] {
     let addr16 = [
         value[0].to_be(),
