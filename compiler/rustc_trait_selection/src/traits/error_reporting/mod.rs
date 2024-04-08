@@ -40,7 +40,7 @@ pub struct ImplCandidate<'tcx> {
 
 enum GetSafeTransmuteErrorAndReason {
     Silent,
-    Error { err_msg: String, safe_transmute_explanation: String },
+    Error { err_msg: String, safe_transmute_explanation: Option<String> },
 }
 
 struct UnsatisfiedConst(pub bool);

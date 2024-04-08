@@ -150,7 +150,10 @@ impl LlvmType for CastTarget {
         // Simplify to a single unit or an array if there's no prefix.
         // This produces the same layout, but using a simpler type.
         if self.prefix.iter().all(|x| x.is_none()) {
-            if rest_count == 1 {
+            // We can't do this if is_consecutive is set and the unit would get
+            // split on the target. Currently, this is only relevant for i128
+            // registers.
+            if rest_count == 1 && (!self.rest.is_consecutive || self.rest.unit != Reg::i128()) {
                 return rest_ll_unit;
             }
 

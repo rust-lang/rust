@@ -1,7 +1,7 @@
-//! A struct must have a well-defined layout to participate in a transmutation.
+//@ check-pass
 
 #![crate_type = "lib"]
-#![feature(transmutability)]
+#![feature(transmutability, transparent_unions)]
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
@@ -20,17 +20,17 @@ mod assert {
     {}
 }
 
-fn should_reject_repr_rust()
+fn should_accept_repr_rust()
 {
     union repr_rust {
         a: u8
     }
 
-    assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
-    assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
+    assert::is_maybe_transmutable::<repr_rust, ()>();
+    assert::is_maybe_transmutable::<u128, repr_rust>();
 }
 
-fn should_accept_repr_C()
+fn should_accept_repr_c()
 {
     #[repr(C)]
     union repr_c {
@@ -40,4 +40,16 @@ fn should_accept_repr_C()
     struct repr_rust;
     assert::is_maybe_transmutable::<repr_c, ()>();
     assert::is_maybe_transmutable::<u128, repr_c>();
+}
+
+
+fn should_accept_transparent()
+{
+    #[repr(transparent)]
+    union repr_transparent {
+        a: u8
+    }
+
+    assert::is_maybe_transmutable::<repr_transparent, ()>();
+    assert::is_maybe_transmutable::<u128, repr_transparent>();
 }
