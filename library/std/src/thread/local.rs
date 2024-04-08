@@ -53,25 +53,25 @@ use crate::fmt;
 /// # Examples
 ///
 /// ```
-/// use std::cell::RefCell;
+/// use std::cell::Cell;
 /// use std::thread;
 ///
-/// thread_local!(static FOO: RefCell<u32> = RefCell::new(1));
+/// thread_local!(static FOO: Cell<u32> = Cell::new(1));
 ///
-/// FOO.with_borrow(|v| assert_eq!(*v, 1));
-/// FOO.with_borrow_mut(|v| *v = 2);
+/// assert_eq!(FOO.get(), 1);
+/// FOO.set(2);
 ///
 /// // each thread starts out with the initial value of 1
 /// let t = thread::spawn(move|| {
-///     FOO.with_borrow(|v| assert_eq!(*v, 1));
-///     FOO.with_borrow_mut(|v| *v = 3);
+///     assert_eq!(FOO.get(), 1);
+///     FOO.set(3);
 /// });
 ///
 /// // wait for the thread to complete and bail out on panic
 /// t.join().unwrap();
 ///
 /// // we retain our original value of 2 despite the child thread
-/// FOO.with_borrow(|v| assert_eq!(*v, 2));
+/// assert_eq!(FOO.get(), 2);
 /// ```
 ///
 /// # Platform-specific behavior
@@ -141,15 +141,16 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// Publicity and attributes for each static are allowed. Example:
 ///
 /// ```
-/// use std::cell::RefCell;
-/// thread_local! {
-///     pub static FOO: RefCell<u32> = RefCell::new(1);
+/// use std::cell::{Cell, RefCell};
 ///
-///     static BAR: RefCell<f32> = RefCell::new(1.0);
+/// thread_local! {
+///     pub static FOO: Cell<u32> = Cell::new(1);
+///
+///     static BAR: RefCell<Vec<f32>> = RefCell::new(vec![1.0, 2.0]);
 /// }
 ///
-/// FOO.with_borrow(|v| assert_eq!(*v, 1));
-/// BAR.with_borrow(|v| assert_eq!(*v, 1.0));
+/// assert_eq!(FOO.get(), 1);
+/// BAR.with_borrow(|v| assert_eq!(v[1], 2.0));
 /// ```
 ///
 /// Note that only shared references (`&T`) to the inner data may be obtained, so a
@@ -164,12 +165,13 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// track any additional state.
 ///
 /// ```
-/// use std::cell::Cell;
+/// use std::cell::RefCell;
+///
 /// thread_local! {
-///     pub static FOO: Cell<u32> = const { Cell::new(1) };
+///     pub static FOO: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
 /// }
 ///
-/// assert_eq!(FOO.get(), 1);
+/// FOO.with_borrow(|v| assert_eq!(v.len(), 0));
 /// ```
 ///
 /// See [`LocalKey` documentation][`std::thread::LocalKey`] for more
