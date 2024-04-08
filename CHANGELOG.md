@@ -5,7 +5,6 @@
 ### Fixed
 
 - Fix an idempotency issue when rewriting where clauses in which rustfmt would continuously add a trailing comma `,` to the end of trailing line comments [#5941](https://github.com/rust-lang/rustfmt/issues/5941).
-- When using `version=Two`, the `trace!` macro from the [log crate] is now formatted similarly to `debug!`, `info!`, `warn!`, and `error!` [#5987](https://github.com/rust-lang/rustfmt/issues/5987).
 - Prevent enum variant attributes from wrapping one character early when using `version=Two` [#5801](https://github.com/rust-lang/rustfmt/issues/5801)
 - Properly wrap macro matchers at the `max_width` when using `version=Two` and `format_macro_matchers=true` [#3805](https://github.com/rust-lang/rustfmt/issues/3805)
 - Prevent panic when formatting trait declaration with non [Unicode Normalization Form] C (NFC) identifiers [#6069](https://github.com/rust-lang/rustfmt/issues/6069)
@@ -41,6 +40,7 @@
 
 - `hide_parse_errors` has been soft deprecated and it's been renamed to `show_parse_errors` [#5961](https://github.com/rust-lang/rustfmt/pull/5961).
 - The diff output produced by `rustfmt --check` is more compatable with editors that support navigating directly to line numbers [#5971](https://github.com/rust-lang/rustfmt/pull/5971)
+- When using `version=Two`, the `trace!` macro from the [log crate] is now formatted similarly to `debug!`, `info!`, `warn!`, and `error!` [#5987](https://github.com/rust-lang/rustfmt/issues/5987).
 
 
 ### Added
