@@ -1062,7 +1062,9 @@ impl<T, A: Allocator> Arc<T, A> {
     ///
     /// // Create a long list and clone it
     /// let mut x = LinkedList::new();
-    /// for i in 0..100000 {
+    /// let size = 100000;
+    /// # let size = if cfg!(miri) { 100 } else { size };
+    /// for i in 0..size {
     ///     x.push(i); // Adds i to the front of x
     /// }
     /// let y = x.clone();
