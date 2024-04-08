@@ -45,8 +45,8 @@ pub(super) fn mangle<'tcx>(
         ty::InstanceDef::ThreadLocalShim(_) => Some("tls"),
         ty::InstanceDef::VTableShim(_) => Some("vtable"),
         ty::InstanceDef::ReifyShim(_, None) => Some("reify"),
-        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr)) => Some("reify-fnptr"),
-        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::Vtable)) => Some("reify-vtable"),
+        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr)) => Some("reify_fnptr"),
+        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::Vtable)) => Some("reify_vtable"),
 
         ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
         | ty::InstanceDef::CoroutineKindShim { .. } => Some("fn_once"),
