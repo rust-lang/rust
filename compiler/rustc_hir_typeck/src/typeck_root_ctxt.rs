@@ -27,7 +27,7 @@ use std::ops::Deref;
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inference context, will process obligations together,
 /// can access each other's local types (scoping permitted), etc.
-pub struct TypeckRootCtxt<'tcx> {
+pub(crate) struct TypeckRootCtxt<'tcx> {
     pub(super) infcx: InferCtxt<'tcx>,
 
     pub(super) typeck_results: RefCell<ty::TypeckResults<'tcx>>,

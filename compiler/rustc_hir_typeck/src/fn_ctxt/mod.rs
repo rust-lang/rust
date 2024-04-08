@@ -38,7 +38,7 @@ use std::ops::Deref;
 ///
 /// [`ItemCtxt`]: rustc_hir_analysis::collect::ItemCtxt
 /// [`InferCtxt`]: infer::InferCtxt
-pub struct FnCtxt<'a, 'tcx> {
+pub(crate) struct FnCtxt<'a, 'tcx> {
     pub(super) body_id: LocalDefId,
 
     /// The parameter environment used for proving trait obligations
