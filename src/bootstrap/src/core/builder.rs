@@ -645,27 +645,6 @@ pub enum Kind {
 }
 
 impl Kind {
-    pub fn parse(string: &str) -> Option<Kind> {
-        // these strings, including the one-letter aliases, must match the x.py help text
-        Some(match string {
-            "build" | "b" => Kind::Build,
-            "check" | "c" => Kind::Check,
-            "clippy" => Kind::Clippy,
-            "fix" => Kind::Fix,
-            "fmt" => Kind::Format,
-            "test" | "t" => Kind::Test,
-            "bench" => Kind::Bench,
-            "doc" | "d" => Kind::Doc,
-            "clean" => Kind::Clean,
-            "dist" => Kind::Dist,
-            "install" => Kind::Install,
-            "run" | "r" => Kind::Run,
-            "setup" => Kind::Setup,
-            "suggest" => Kind::Suggest,
-            _ => return None,
-        })
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             Kind::Build => "build",
