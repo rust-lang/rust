@@ -281,10 +281,9 @@ impl<T: 'static> LocalKey<T> {
     where
         F: FnOnce(&T) -> R,
     {
-        unsafe {
-            let thread_local = (self.inner)(None).ok_or(AccessError)?;
-            Ok(f(thread_local))
-        }
+        // SAFETY: `inner` is safe to call within the lifetime of the thread
+        let thread_local = unsafe { (self.inner)(None).ok_or(AccessError)? };
+        Ok(f(thread_local))
     }
 
     /// Acquires a reference to the value in this TLS key, initializing it with
@@ -303,14 +302,17 @@ impl<T: 'static> LocalKey<T> {
     where
         F: FnOnce(Option<T>, &T) -> R,
     {
-        unsafe {
-            let mut init = Some(init);
-            let reference = (self.inner)(Some(&mut init)).expect(
+        let mut init = Some(init);
+
+        // SAFETY: `inner` is safe to call within the lifetime of the thread
+        let reference = unsafe {
+            (self.inner)(Some(&mut init)).expect(
                 "cannot access a Thread Local Storage value \
                  during or after destruction",
-            );
-            f(init, reference)
-        }
+            )
+        };
+
+        f(init, reference)
     }
 }
 
