@@ -30,7 +30,7 @@ fn never_match() -> u32 {
     let ptr: *const Void = std::ptr::null();
     unsafe {
         match *ptr { ! };
+        //~^ ERROR unreachable arm
     }
     println!();
-    //~^ ERROR unreachable statement
 }

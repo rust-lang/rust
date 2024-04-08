@@ -1,0 +1,24 @@
+error: unreachable call
+  --> $DIR/type-dependent-ctor.rs:12:9
+   |
+LL |         Self::A(x)
+   |         ^^^^^^^ - this expression has type `Void`, which is uninhabited
+   |         |
+   |         unreachable call
+   |
+note: the lint level is defined here
+  --> $DIR/type-dependent-ctor.rs:2:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unreachable call
+  --> $DIR/type-dependent-ctor.rs:17:9
+   |
+LL |         Self::A(produce())
+   |         ^^^^^^^ --------- this expression has type `Void`, which is uninhabited
+   |         |
+   |         unreachable call
+
+error: aborting due to 2 previous errors
+

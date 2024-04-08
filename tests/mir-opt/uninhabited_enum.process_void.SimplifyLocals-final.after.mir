@@ -3,11 +3,12 @@
 fn process_void(_1: *const Void) -> () {
     debug input => _1;
     let mut _0: ();
+    let _2: &Void;
     scope 1 {
-        debug _input => _1;
+        debug _input => _2;
     }
 
     bb0: {
-        return;
+        unreachable;
     }
 }

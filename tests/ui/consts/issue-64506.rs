@@ -6,7 +6,14 @@ pub struct ChildStdin {
 }
 
 #[derive(Copy, Clone)]
-enum AnonPipe {}
+struct AnonPipe(private::Void);
+
+mod private {
+    #[derive(Copy, Clone)]
+    pub struct Void(PrivateVoid);
+    #[derive(Copy, Clone)]
+    enum PrivateVoid {}
+}
 
 const FOO: () = {
     union Foo {

@@ -3,50 +3,51 @@
   
   fn h() -> () {
       let mut _0: ();
-      let _1: (!, !);
-+     let mut _2: fn() -> ! {sleep};
+      let mut _1: !;
+      let _2: (!, !);
++     let mut _3: fn() -> ! {sleep};
 +     scope 1 (inlined call_twice::<!, fn() -> ! {sleep}>) {
-+         debug f => _2;
-+         let mut _3: &fn() -> ! {sleep};
-+         let _4: !;
-+         let mut _5: &fn() -> ! {sleep};
-+         let mut _7: !;
++         debug f => _3;
++         let mut _4: &fn() -> ! {sleep};
++         let _5: !;
++         let mut _6: &fn() -> ! {sleep};
++         let mut _8: !;
 +         scope 2 {
-+             debug a => _4;
-+             let _6: !;
++             debug a => _5;
++             let _7: !;
 +             scope 3 {
-+                 debug b => _6;
++                 debug b => _7;
 +             }
 +         }
 +     }
   
       bb0: {
-          StorageLive(_1);
--         _1 = call_twice::<!, fn() -> ! {sleep}>(sleep) -> unwind continue;
-+         StorageLive(_2);
-+         _2 = sleep;
-+         StorageLive(_6);
-+         StorageLive(_4);
+          StorageLive(_2);
+-         _2 = call_twice::<!, fn() -> ! {sleep}>(sleep) -> unwind continue;
 +         StorageLive(_3);
-+         _3 = &_2;
-+         _4 = <fn() -> ! {sleep} as Fn<()>>::call(move _3, const ()) -> [return: bb1, unwind: bb5];
++         _3 = sleep;
++         StorageLive(_7);
++         StorageLive(_5);
++         StorageLive(_4);
++         _4 = &_3;
++         _5 = <fn() -> ! {sleep} as Fn<()>>::call(move _4, const ()) -> [return: bb1, unwind: bb5];
 +     }
 + 
 +     bb1: {
-+         StorageDead(_3);
-+         StorageLive(_5);
-+         _5 = &_2;
-+         _6 = <fn() -> ! {sleep} as Fn<()>>::call(move _5, const ()) -> [return: bb2, unwind: bb4];
++         StorageDead(_4);
++         StorageLive(_6);
++         _6 = &_3;
++         _7 = <fn() -> ! {sleep} as Fn<()>>::call(move _6, const ()) -> [return: bb2, unwind: bb4];
 +     }
 + 
 +     bb2: {
++         StorageDead(_6);
++         StorageLive(_8);
++         _8 = move _5;
++         _2 = (move _8, _7);
++         StorageDead(_8);
 +         StorageDead(_5);
-+         StorageLive(_7);
-+         _7 = move _4;
-+         _1 = (move _7, _6);
-+         StorageDead(_7);
-+         StorageDead(_4);
-+         drop(_2) -> [return: bb3, unwind continue];
++         drop(_3) -> [return: bb3, unwind continue];
 +     }
 + 
 +     bb3: {
@@ -54,11 +55,11 @@
 +     }
 + 
 +     bb4 (cleanup): {
-+         drop(_4) -> [return: bb5, unwind terminate(cleanup)];
++         drop(_5) -> [return: bb5, unwind terminate(cleanup)];
 +     }
 + 
 +     bb5 (cleanup): {
-+         drop(_2) -> [return: bb6, unwind terminate(cleanup)];
++         drop(_3) -> [return: bb6, unwind terminate(cleanup)];
 +     }
 + 
 +     bb6 (cleanup): {

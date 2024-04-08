@@ -7,22 +7,13 @@ LL | fn wild_void(_: Void) -> u32 {}
    |    implicitly returns `()` as its body has no tail or `return` expression
 
 error[E0308]: mismatched types
-  --> $DIR/diverges-not.rs:17:5
-   |
-LL | /     unsafe {
-LL | |
-LL | |         let _ = *ptr;
-LL | |     }
-   | |_____^ expected `u32`, found `()`
-
-error[E0308]: mismatched types
-  --> $DIR/diverges-not.rs:27:18
+  --> $DIR/diverges-not.rs:26:18
    |
 LL |             _ => {}
    |                  ^^ expected `u32`, found `()`
 
 error[E0308]: mismatched types
-  --> $DIR/diverges-not.rs:32:30
+  --> $DIR/diverges-not.rs:31:30
    |
 LL | fn binding_void(_x: Void) -> u32 {}
    |    ------------              ^^^ expected `u32`, found `()`
@@ -30,26 +21,30 @@ LL | fn binding_void(_x: Void) -> u32 {}
    |    implicitly returns `()` as its body has no tail or `return` expression
 
 error[E0308]: mismatched types
-  --> $DIR/diverges-not.rs:37:5
-   |
-LL | /     unsafe {
-LL | |
-LL | |         let _x = *ptr;
-LL | |     }
-   | |_____^ expected `u32`, found `()`
-
-error[E0308]: mismatched types
-  --> $DIR/diverges-not.rs:47:19
+  --> $DIR/diverges-not.rs:46:19
    |
 LL |             _x => {}
    |                   ^^ expected `u32`, found `()`
 
 error[E0308]: mismatched types
-  --> $DIR/diverges-not.rs:54:37
+  --> $DIR/diverges-not.rs:53:37
    |
 LL |     if let true = true && let ! = x {}
    |                                     ^^ expected `u32`, found `()`
 
-error: aborting due to 7 previous errors
+error[E0507]: cannot move out of `*ptr` which is behind a raw pointer
+  --> $DIR/diverges-not.rs:37:18
+   |
+LL |         let _x = *ptr;
+   |                  ^^^^ move occurs because `*ptr` has type `Void`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -         let _x = *ptr;
+LL +         let _x = ptr;
+   |
 
-For more information about this error, try `rustc --explain E0308`.
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0308, E0507.
+For more information about an error, try `rustc --explain E0308`.

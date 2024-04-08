@@ -1,0 +1,20 @@
+warning: unreachable statement
+  --> $DIR/issue-93161.rs:41:5
+   |
+LL |     let bad = never();
+   |               ------- this expression has type `Never`, which is uninhabited
+LL |     result *= async { x + x }.await;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
+   |
+   = note: `#[warn(unreachable_code)]` on by default
+
+warning: unreachable call
+  --> $DIR/issue-93161.rs:42:5
+   |
+LL |     drop(bad);
+   |     ^^^^ --- this expression has type `Never`, which is uninhabited
+   |     |
+   |     unreachable call
+
+warning: 2 warnings emitted
+

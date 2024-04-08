@@ -1,8 +1,8 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-64506.rs:16:22
+  --> $DIR/issue-64506.rs:23:22
    |
 LL |     let x = unsafe { Foo { b: () }.a };
-   |                      ^^^^^^^^^^^^^^^ constructing invalid value at .inner: encountered a value of uninhabited type `AnonPipe`
+   |                      ^^^^^^^^^^^^^^^ constructing invalid value at .inner.0.0: encountered a value of uninhabited type `PrivateVoid`
 
 error: aborting due to 1 previous error
 
