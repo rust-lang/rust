@@ -192,7 +192,7 @@ where
 
                 arg.cast_to(CastTarget {
                     prefix: data.prefix,
-                    rest: Uniform { unit: Reg::i64(), total: rest_size },
+                    rest: Uniform::new(Reg::i64(), rest_size),
                     attrs: ArgAttributes {
                         regular: data.arg_attribute,
                         arg_ext: ArgExtension::None,
@@ -205,7 +205,7 @@ where
         }
     }
 
-    arg.cast_to(Uniform { unit: Reg::i64(), total });
+    arg.cast_to(Uniform::new(Reg::i64(), total));
 }
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)

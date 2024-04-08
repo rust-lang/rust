@@ -21,7 +21,7 @@ where
             RegKind::Vector => size.bits() == 64 || size.bits() == 128,
         };
 
-        valid_unit.then_some(Uniform { unit, total: size })
+        valid_unit.then_some(Uniform::consecutive(unit, size))
     })
 }
 
@@ -49,7 +49,7 @@ where
     let size = ret.layout.size;
     let bits = size.bits();
     if bits <= 32 {
-        ret.cast_to(Uniform { unit: Reg::i32(), total: size });
+        ret.cast_to(Uniform::new(Reg::i32(), size));
         return;
     }
     ret.make_indirect();
@@ -78,7 +78,7 @@ where
 
     let align = arg.layout.align.abi.bytes();
     let total = arg.layout.size;
-    arg.cast_to(Uniform { unit: if align <= 4 { Reg::i32() } else { Reg::i64() }, total });
+    arg.cast_to(Uniform::consecutive(if align <= 4 { Reg::i32() } else { Reg::i64() }, total));
 }
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
