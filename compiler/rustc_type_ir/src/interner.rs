@@ -11,6 +11,7 @@ use crate::{
 
 pub trait Interner: Sized + Copy {
     type DefId: Copy + Debug + Hash + Eq;
+    type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
     type AdtDef: Copy + Debug + Hash + Eq;
 
     type GenericArgs: Copy
