@@ -42,8 +42,9 @@ mod typeck_root_ctxt;
 mod upvar;
 mod writeback;
 
-pub use fn_ctxt::FnCtxt;
-pub use typeck_root_ctxt::TypeckRootCtxt;
+pub use coercion::can_coerce;
+use fn_ctxt::FnCtxt;
+use typeck_root_ctxt::TypeckRootCtxt;
 
 use crate::check::check_fn;
 use crate::coercion::DynamicCoerceMany;
