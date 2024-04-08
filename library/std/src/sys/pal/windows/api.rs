@@ -68,6 +68,8 @@ pub const fn utf16_len(s: &str) -> usize {
             n => n as usize,
         };
         i += utf8_len;
+        // Note that UTF-16 surrogates (U+D800 to U+DFFF) are not encodable as UTF-8,
+        // so (unlike with WTF-8) we don't have to worry about how they'll get re-encoded.
         len += if utf8_len < 4 { 1 } else { 2 };
     }
     len
