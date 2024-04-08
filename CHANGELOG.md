@@ -51,6 +51,7 @@
 ### Misc
 
 - Updating `dirs 4.0.0 -> 5.0.1` and `cargo_metadata 0.15.4 -> 0.18.0` [#6033] (https://github.com/rust-lang/rustfmt/issues/6033)
+  - For reference, here's the [dirs v5 changelog](https://github.com/dirs-dev/dirs-rs/blob/main/README.md#5)
 - Addressed clap deprecations output when running `cargo check --features clap/deprecated` [#6101](https://github.com/rust-lang/rustfmt/pull/6101)
 - Bumped bytecount `0.6.4` -> `0.6.8` to fix compilation issues with the `generic-simd` feature. See [bytecount#92] and [bytecount#93]
 
