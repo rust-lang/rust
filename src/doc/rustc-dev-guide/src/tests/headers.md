@@ -168,14 +168,16 @@ The following header commands will check LLVM support:
   Note: The test will fail on CI if the component does not exist.
 * `needs-matching-clang` — ignores if the version of clang does not match the
   LLVM version of rustc.
-  These tests are always ignored unless a special environment variable is set
-  (which is only done in one CI job).
+  These tests are always ignored unless a special environment variable,
+  `RUSTBUILD_FORCE_CLANG_BASED_TESTS`, is set
+  (which is only done in one CI job [`x86_64-gnu-debug`]).
 
 See also [Debuginfo tests](compiletest.md#debuginfo-tests) for headers for
 ignoring debuggers.
 
 [remote testing]: running.md#running-tests-on-a-remote-machine
 [compare modes]: ui.md#compare-modes
+[`x86_64-gnu-debug`]: https://github.com/rust-lang/rust/blob/ab3dba92db355b8d97db915a2dca161a117e959c/src/ci/docker/host-x86_64/x86_64-gnu-debug/Dockerfile#L32
 
 ### Environment variable headers
 
