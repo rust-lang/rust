@@ -46,7 +46,7 @@ source "$ci_dir/shared.sh"
 CACHE_DOMAIN="${CACHE_DOMAIN:-ci-caches.rust-lang.org}"
 
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
-    if [ "$CI" != "" ]; then
+    if isCI; then
       hash_key=/tmp/.docker-hash-key.txt
       rm -f "${hash_key}"
       echo $image >> $hash_key
@@ -102,7 +102,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     CACHE_IMAGE_TAG=${REGISTRY}/${REGISTRY_USERNAME}/rust-ci-cache:${cksum}
 
     # On non-CI jobs, we don't do any caching.
-    if [[ "$CI" == "" ]];
+    if ! isCI;
     then
         retry docker build --rm -t rust-ci -f "$dockerfile" "$context"
     # On PR CI jobs, we don't have permissions to write to the registry cache,
@@ -289,7 +289,7 @@ else
   command=(/checkout/src/ci/run.sh)
 fi
 
-if [ "$CI" != "" ]; then
+if isCI; then
   # Get some needed information for $BASE_COMMIT
   #
   # This command gets the last merge commit which we'll use as base to list
