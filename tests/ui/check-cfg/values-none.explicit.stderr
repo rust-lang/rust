@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition value: `too`
-  --> $DIR/values-none.rs:10:7
+  --> $DIR/values-none.rs:11:7
    |
 LL | #[cfg(foo = "too")]
    |       ^^^--------
@@ -12,7 +12,7 @@ LL | #[cfg(foo = "too")]
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition value: `bar`
-  --> $DIR/values-none.rs:15:7
+  --> $DIR/values-none.rs:16:7
    |
 LL | #[cfg(foo = "bar")]
    |       ^^^--------

@@ -3,6 +3,7 @@
 // we correctly lint on the `cfg!` macro and `cfg_attr` attribute.
 //
 //@ check-pass
+//@ no-auto-check-cfg
 //@ compile-flags: --cfg feature="bar" --cfg unknown_name
 //@ compile-flags: --check-cfg=cfg(feature,values("foo"))
 

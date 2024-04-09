@@ -208,6 +208,8 @@ pub struct TestProps {
     pub llvm_cov_flags: Vec<String>,
     /// Extra flags to pass to LLVM's `filecheck` tool, in tests that use it.
     pub filecheck_flags: Vec<String>,
+    /// Don't automatically insert any `--check-cfg` args
+    pub no_auto_check_cfg: bool,
 }
 
 mod directives {
@@ -249,6 +251,7 @@ mod directives {
     pub const COMPARE_OUTPUT_LINES_BY_SUBSET: &'static str = "compare-output-lines-by-subset";
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
+    pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
@@ -304,6 +307,7 @@ impl TestProps {
             remap_src_base: false,
             llvm_cov_flags: vec![],
             filecheck_flags: vec![],
+            no_auto_check_cfg: false,
         }
     }
 
@@ -567,6 +571,8 @@ impl TestProps {
                     if let Some(flags) = config.parse_name_value_directive(ln, FILECHECK_FLAGS) {
                         self.filecheck_flags.extend(split_flags(&flags));
                     }
+
+                    config.set_name_directive(ln, NO_AUTO_CHECK_CFG, &mut self.no_auto_check_cfg);
                 },
             );
 
@@ -860,6 +866,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-unwind",
     "needs-wasmtime",
     "needs-xray",
+    "no-auto-check-cfg",
     "no-prefer-dynamic",
     "normalize-stderr-32bit",
     "normalize-stderr-64bit",
