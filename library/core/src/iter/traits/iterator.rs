@@ -52,7 +52,11 @@ pub trait Iterator {
     /// Returns [`None`] when iteration is finished. Individual iterator
     /// implementations may choose to resume iteration, and so calling `next()`
     /// again may or may not eventually start returning [`Some(Item)`] again at some
-    /// point.
+    /// point. (Calling `next()` on an iterator after it has returned `None`
+    /// is in general a perfectly valid use of the interface;
+    /// implementations should *not* panic, block forever, or otherwise misbehave
+    /// when this happens, though they *may* choose not to guarantee their exact
+    /// behavior.)
     ///
     /// [`Some(Item)`]: Some
     ///
