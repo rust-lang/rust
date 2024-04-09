@@ -339,7 +339,9 @@ docker \
   rust-ci \
   "${command[@]}"
 
-cat $objdir/${SUMMARY_FILE} >> "${GITHUB_STEP_SUMMARY}"
+if isCI; then
+    cat $objdir/${SUMMARY_FILE} >> "${GITHUB_STEP_SUMMARY}"
+fi
 
 if [ -f /.dockerenv ]; then
   rm -rf $objdir
