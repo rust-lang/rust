@@ -2,23 +2,25 @@
 include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 
-// Otherwise, we can't check text color
-show-text: true
-
 // We check that without this setting, there is no line number displayed.
 assert-false: "pre.example-line-numbers"
+
+// We set the setting to show the line numbers on code examples.
+set-local-storage: {"rustdoc-line-numbers": "true"}
+reload:
+// We wait for the line numbers to be added into the DOM by the JS...
+wait-for: "pre.example-line-numbers"
+
+// Otherwise, we can't check text color
+show-text: true
 
 // Let's now check some CSS properties...
 define-function: (
     "check-colors",
     [theme, color],
     block {
-        // We now set the setting to show the line numbers on code examples.
-        set-local-storage: {"rustdoc-line-numbers": "true"}
         // Page will be reloaded in "switch-theme".
         call-function: ("switch-theme", {"theme": |theme|})
-        // We wait for the line numbers to be added into the DOM by the JS...
-        wait-for: "pre.example-line-numbers"
         // If the test didn't fail, it means that it was found!
         assert-css: (
             "pre.example-line-numbers",

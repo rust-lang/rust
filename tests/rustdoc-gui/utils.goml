@@ -4,8 +4,15 @@ define-function: (
     [theme],
     block {
         // Set the theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        // We reload the page so the local storage settings are being used.
-        reload:
+        // Open the settings menu.
+        click: "#settings-menu"
+        // Wait for the popover to appear...
+        wait-for: "#settings"
+        // Change the setting.
+        click: "#theme-"+ |theme|
+        // Close the popover.
+        click: "#settings-menu"
+        // Ensure that the local storage was correctly updated.
+        assert-local-storage: {"rustdoc-theme": |theme|}
     },
 )

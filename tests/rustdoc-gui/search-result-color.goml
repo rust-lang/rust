@@ -210,24 +210,21 @@ call-function: ("check-search-color", {
 
 // Check the alias.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-// If the text isn't displayed, the browser doesn't compute color style correctly...
-show-text: true
+
+write-into: (".search-input", "thisisanalias")
+// To be SURE that the search will be run.
+press-key: 'Enter'
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
 
 define-function: (
     "check-alias",
     [theme, alias, grey],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
-        write-into: (".search-input", "thisisanalias")
-        // To be SURE that the search will be run.
-        press-key: 'Enter'
-        // Waiting for the search results to appear...
-        wait-for: "#search-tabs"
         // Checking that the colors for the alias element are the ones expected.
         assert-css: (".result-name .path .alias", {"color": |alias|})
         assert-css: (".result-name .path .alias > .grey", {"color": |grey|})
-        // Leave the search results to prevent reloading with an already filled search input.
-        press-key: "Escape"
     },
 )
 
