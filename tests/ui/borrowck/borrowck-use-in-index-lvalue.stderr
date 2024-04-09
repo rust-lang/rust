@@ -8,8 +8,8 @@ LL |     w[5] = 0;
    |
 help: consider assigning a value
    |
-LL |     let w: &mut [isize] = todo!();
-   |                         +++++++++
+LL |     let w: &mut [isize] = value;
+   |                         +++++++
 
 error[E0381]: used binding `w` isn't initialized
   --> $DIR/borrowck-use-in-index-lvalue.rs:6:5
@@ -21,8 +21,8 @@ LL |     w[5] = 0;
    |
 help: consider assigning a value
    |
-LL |     let mut w: &mut [isize] = todo!();
-   |                             +++++++++
+LL |     let mut w: &mut [isize] = value;
+   |                             +++++++
 
 error: aborting due to 2 previous errors
 

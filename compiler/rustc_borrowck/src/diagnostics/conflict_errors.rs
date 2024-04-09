@@ -672,23 +672,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
 
         let assign_value = match ty.kind() {
+            ty::Never | ty::Error(_) => return,
             ty::Bool => "false",
             ty::Float(_) => "0.0",
             ty::Int(_) | ty::Uint(_) => "0",
-            ty::Never | ty::Error(_) => "",
             ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => "vec![]",
             ty::Adt(_, _) if implements_default(ty, self.param_env) => "Default::default()",
-            _ => "todo!()",
+            _ => "value",
         };
 
-        if !assign_value.is_empty() {
-            err.span_suggestion_verbose(
-                sugg_span.shrink_to_hi(),
-                "consider assigning a value",
-                format!(" = {assign_value}"),
-                Applicability::MaybeIncorrect,
-            );
-        }
+        err.span_suggestion_verbose(
+            sugg_span.shrink_to_hi(),
+            "consider assigning a value",
+            format!(" = {assign_value}"),
+            Applicability::MaybeIncorrect,
+        );
     }
 
     fn suggest_borrow_fn_like(

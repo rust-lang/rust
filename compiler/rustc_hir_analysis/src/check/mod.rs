@@ -91,10 +91,11 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{self, def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::{def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -466,13 +467,24 @@ fn fn_sig_suggestion<'tcx>(
     )
 }
 
-pub fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
+pub fn ty_kind_suggestion<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<&'static str> {
+    let implements_default = |ty| {
+        let Some(default_trait) = tcx.get_diagnostic_item(sym::Default) else {
+            return false;
+        };
+        let infcx = tcx.infer_ctxt().build();
+        infcx
+            .type_implements_trait(default_trait, [ty], ty::ParamEnv::reveal_all())
+            .must_apply_modulo_regions()
+    };
     Some(match ty.kind() {
         ty::Bool => "true",
         ty::Char => "'a'",
         ty::Int(_) | ty::Uint(_) => "42",
         ty::Float(_) => "3.14159",
         ty::Error(_) | ty::Never => return None,
+        ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => "vec![]",
+        ty::Adt(_, _) if implements_default(ty) => "Default::default()",
         _ => "value",
     })
 }
@@ -511,7 +523,7 @@ fn suggestion_signature<'tcx>(
         }
         ty::AssocKind::Const => {
             let ty = tcx.type_of(assoc.def_id).instantiate_identity();
-            let val = ty_kind_suggestion(ty).unwrap_or("todo!()");
+            let val = ty_kind_suggestion(ty, tcx).unwrap_or("todo!()");
             format!("const {}: {} = {};", assoc.name, ty, val)
         }
     }

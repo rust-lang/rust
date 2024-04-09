@@ -694,10 +694,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                             let error = Some(Sorts(ExpectedFound { expected: ty, found: e_ty }));
                             self.annotate_loop_expected_due_to_inference(err, expr, error);
-                            if let Some(val) = ty_kind_suggestion(ty) {
+                            if let Some(val) = ty_kind_suggestion(ty, tcx) {
                                 err.span_suggestion_verbose(
                                     expr.span.shrink_to_hi(),
-                                    "give it a value of the expected type",
+                                    "give the `break` a value of the expected type",
                                     format!(" {val}"),
                                     Applicability::HasPlaceholders,
                                 );
