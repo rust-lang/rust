@@ -3670,6 +3670,7 @@ dependencies = [
  "rustc_metadata",
  "rustc_middle",
  "rustc_query_system",
+ "rustc_sanitizers",
  "rustc_session",
  "rustc_span",
  "rustc_symbol_mangling",
@@ -4559,6 +4560,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_sanitizers"
+version = "0.0.0"
+dependencies = [
+ "bitflags 2.5.0",
+ "rustc_data_structures",
+ "rustc_hir",
+ "rustc_middle",
+ "rustc_span",
+ "rustc_target",
+ "rustc_trait_selection",
+ "tracing",
+ "twox-hash",
+]
+
+[[package]]
 name = "rustc_serialize"
 version = "0.0.0"
 dependencies = [
@@ -4633,7 +4649,6 @@ dependencies = [
 name = "rustc_symbol_mangling"
 version = "0.0.0"
 dependencies = [
- "bitflags 2.5.0",
  "punycode",
  "rustc-demangle",
  "rustc_data_structures",
@@ -4643,9 +4658,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "rustc_trait_selection",
  "tracing",
- "twox-hash",
 ]
 
 [[package]]

@@ -20,12 +20,9 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
-use rustc_symbol_mangling::typeid::{
-    kcfi_typeid_for_fnabi, kcfi_typeid_for_instance, typeid_for_fnabi, typeid_for_instance,
-    TypeIdOptions,
-};
 use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
@@ -1632,18 +1629,18 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 return;
             }
 
-            let mut options = TypeIdOptions::empty();
+            let mut options = cfi::TypeIdOptions::empty();
             if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
-                options.insert(TypeIdOptions::GENERALIZE_POINTERS);
+                options.insert(cfi::TypeIdOptions::GENERALIZE_POINTERS);
             }
             if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
-                options.insert(TypeIdOptions::NORMALIZE_INTEGERS);
+                options.insert(cfi::TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
             let typeid = if let Some(instance) = instance {
-                typeid_for_instance(self.tcx, instance, options)
+                cfi::typeid_for_instance(self.tcx, instance, options)
             } else {
-                typeid_for_fnabi(self.tcx, fn_abi, options)
+                cfi::typeid_for_fnabi(self.tcx, fn_abi, options)
             };
             let typeid_metadata = self.cx.typeid_metadata(typeid).unwrap();
 
@@ -1680,18 +1677,18 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 return None;
             }
 
-            let mut options = TypeIdOptions::empty();
+            let mut options = kcfi::TypeIdOptions::empty();
             if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
-                options.insert(TypeIdOptions::GENERALIZE_POINTERS);
+                options.insert(kcfi::TypeIdOptions::GENERALIZE_POINTERS);
             }
             if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
-                options.insert(TypeIdOptions::NORMALIZE_INTEGERS);
+                options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
             let kcfi_typeid = if let Some(instance) = instance {
-                kcfi_typeid_for_instance(self.tcx, instance, options)
+                kcfi::typeid_for_instance(self.tcx, instance, options)
             } else {
-                kcfi_typeid_for_fnabi(self.tcx, fn_abi, options)
+                kcfi::typeid_for_fnabi(self.tcx, fn_abi, options)
             };
 
             Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
