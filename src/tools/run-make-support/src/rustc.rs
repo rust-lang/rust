@@ -86,6 +86,18 @@ impl Rustc {
         self
     }
 
+    /// This flag defers LTO optimizations to the linker.
+    pub fn linker_plugin_lto(&mut self, option: &str) -> &mut Self {
+        self.cmd.arg(format!("-Clinker-plugin-lto={option}"));
+        self
+    }
+
+    /// Specify what happens when the code panics.
+    pub fn panic(&mut self, option: &str) -> &mut Self {
+        self.cmd.arg(format!("-Cpanic={option}"));
+        self
+    }
+
     /// Specify number of codegen units
     pub fn codegen_units(&mut self, units: usize) -> &mut Self {
         self.cmd.arg(format!("-Ccodegen-units={units}"));
