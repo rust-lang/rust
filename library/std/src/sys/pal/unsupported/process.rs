@@ -40,6 +40,7 @@ pub enum Stdio {
     MakePipe,
     ParentStdout,
     ParentStderr,
+    #[allow(dead_code)] // This variant exists only for the Debug impl
     InheritFile(File),
 }
 
