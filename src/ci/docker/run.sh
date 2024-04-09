@@ -33,15 +33,19 @@ ci_dir="`dirname $script_dir`"
 src_dir="`dirname $ci_dir`"
 root_dir="`dirname $src_dir`"
 
-objdir=$root_dir/obj
+source "$ci_dir/shared.sh"
+
+if isCI; then
+    objdir=$root_dir/obj
+else
+    objdir=$root_dir/obj/$image
+fi
 dist=$objdir/build/dist
 
 
 if [ -d "$root_dir/.git" ]; then
     IS_GIT_SOURCE=1
 fi
-
-source "$ci_dir/shared.sh"
 
 CACHE_DOMAIN="${CACHE_DOMAIN:-ci-caches.rust-lang.org}"
 
