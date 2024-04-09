@@ -1,0 +1,41 @@
+error[E0119]: conflicting implementations of trait `TryFrom<Ty>` for type `u8`
+  --> $DIR/conflicting-impls.rs:12:1
+   |
+LL | impl TryFrom<Ty> for u8 {
+   | ----------------------- first implementation here
+...
+LL | impl TryFrom<Ty> for u8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u8`
+
+error[E0282]: type annotations needed
+  --> $DIR/conflicting-impls.rs:7:5
+   |
+LL |     fn try_from(_: Ty) -> Result<Self, Self::Error> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+note: the requirement `_ <: _` appears on the `impl`'s method `try_from` but not on the corresponding trait's method
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+   = note: in this trait
+  ::: $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+   = note: this trait's method doesn't have the requirement `_ <: _`
+
+error[E0282]: type annotations needed
+  --> $DIR/conflicting-impls.rs:14:5
+   |
+LL |     fn try_from(_: Ty) -> Result<Self, Self::Error> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+note: the requirement `_ <: _` appears on the `impl`'s method `try_from` but not on the corresponding trait's method
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+   = note: in this trait
+  ::: $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+   = note: this trait's method doesn't have the requirement `_ <: _`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0119, E0282.
+For more information about an error, try `rustc --explain E0119`.
