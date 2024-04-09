@@ -61,6 +61,10 @@ mod disabled {
         }}
     }
 
+    pub fn spawn(func: impl FnOnce() + 'static) {
+        func()
+    }
+
     pub fn join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
     where
         A: FnOnce() -> RA,
@@ -136,6 +140,17 @@ mod enabled {
                 });
             }
         };
+    }
+
+    pub fn spawn(func: impl FnOnce() + DynSend + 'static) {
+        if mode::is_dyn_thread_safe() {
+            let func = FromDyn::from(func);
+            rayon::spawn(|| {
+                (func.into_inner())();
+            });
+        } else {
+            func()
+        }
     }
 
     // This function only works when `mode::is_dyn_thread_safe()`.
