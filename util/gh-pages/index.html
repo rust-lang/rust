@@ -357,6 +357,24 @@ Otherwise, have a great day =^.^=
             opacity: 30%;
         }
 
+        .expansion-group {
+            margin-top: 15px;
+            padding: 0px 8px;
+            display: flex;
+            flex-wrap: nowrap;
+        }
+
+        @media (min-width: 992px) {
+            .expansion-group {
+                margin-top: 0;
+                padding: 0px 15px;
+            }
+        }
+
+        .expansion-control {
+            width: 50%;
+        }
+
         :not(pre) > code {
             color: var(--inline-code-color);
             background-color: var(--inline-code-bg);
@@ -533,7 +551,7 @@ Otherwise, have a great day =^.^=
                             </span>
                         </div>
                     </div>
-                    <div class="btn-group">
+                    <div class="col-12 col-md-2 btn-group expansion-group">
                         <button title="Collapse All" class="btn btn-default expansion-control" type="button" ng-click="toggleExpansion(data, false); $event.stopPropagation()">
                             <span class="glyphicon glyphicon-collapse-up"></span>
                         </button>
