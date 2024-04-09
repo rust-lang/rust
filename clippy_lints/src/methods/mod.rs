@@ -3938,7 +3938,6 @@ declare_clippy_lint! {
     /// This lint cannot detect if the split is intentionally restricted to a single type of newline (`"\n"` or
     /// `"\r\n"`), for example during the parsing of a specific file format in which precisely one newline type is
     /// valid.
-    /// ```
     #[clippy::version = "1.77.0"]
     pub STR_SPLIT_AT_NEWLINE,
     pedantic,
