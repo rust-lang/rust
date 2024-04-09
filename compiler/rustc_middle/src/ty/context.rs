@@ -1165,11 +1165,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 .local_def_path_hash_to_def_id(hash, err_msg)
                 .to_def_id()
         } else {
-            // If this is a DefPathHash from an upstream crate, let the CrateStore map
-            // it to a DefId.
-            let cstore = &*self.cstore_untracked();
-            let cnum = cstore.stable_crate_id_to_crate_num(stable_crate_id);
-            cstore.def_path_hash_to_def_id(cnum, hash)
+            self.def_path_hash_to_def_id_extern(hash, stable_crate_id)
         }
     }
 
