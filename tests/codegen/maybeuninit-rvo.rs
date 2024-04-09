@@ -24,7 +24,7 @@ extern "C-unwind" {
 }
 
 pub fn new_from_uninit_unwind() -> Foo {
-    // CHECK-LABEL: new_from_uninit
+    // CHECK-LABEL: new_from_uninit_unwind
     // CHECK-NOT: call void @llvm.memcpy.
     let mut x = std::mem::MaybeUninit::uninit();
     unsafe {
