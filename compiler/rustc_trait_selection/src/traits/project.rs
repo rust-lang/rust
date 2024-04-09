@@ -1601,7 +1601,10 @@ fn confirm_closure_candidate<'cx, 'tcx>(
                 // If we know the kind and upvars, use that directly.
                 // Otherwise, defer to `AsyncFnKindHelper::Upvars` to delay
                 // the projection, like the `AsyncFn*` traits do.
-                let output_ty = if let Some(_) = kind_ty.to_opt_closure_kind() {
+                let output_ty = if let Some(_) = kind_ty.to_opt_closure_kind()
+                    // Fall back to projection if upvars aren't constrained
+                    && !args.tupled_upvars_ty().is_ty_var()
+                {
                     sig.to_coroutine_given_kind_and_upvars(
                         tcx,
                         args.parent_args(),
@@ -1731,7 +1734,10 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
 
             let term = match item_name {
                 sym::CallOnceFuture | sym::CallRefFuture => {
-                    if let Some(closure_kind) = kind_ty.to_opt_closure_kind() {
+                    if let Some(closure_kind) = kind_ty.to_opt_closure_kind()
+                        // Fall back to projection if upvars aren't constrained
+                        && !args.tupled_upvars_ty().is_ty_var()
+                    {
                         if !closure_kind.extends(goal_kind) {
                             bug!("we should not be confirming if the closure kind is not met");
                         }
