@@ -1,4 +1,5 @@
 use std::env;
+use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Command, Output};
 
@@ -58,15 +59,9 @@ impl Rustdoc {
         self
     }
 
-    /// Fallback argument provider. Consider adding meaningfully named methods instead of using
-    /// this method.
-    pub fn arg(&mut self, arg: &str) -> &mut Self {
+    /// Generic command argument provider. Use `.arg("-Zname")` over `.arg("-Z").arg("arg")`.
+    pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
         self.cmd.arg(arg);
-        self
-    }
-
-    pub fn arg_path<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
-        self.cmd.arg(path.as_ref());
         self
     }
 

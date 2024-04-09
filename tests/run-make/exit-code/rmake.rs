@@ -25,7 +25,8 @@ fn main() {
 
     rustdoc()
         .arg("success.rs")
-        .arg("-o").arg_path(tmp_dir().join("exit-code"))
+        .arg("-o")
+        .arg(tmp_dir().join("exit-code"))
         .run();
 
     rustdoc()
