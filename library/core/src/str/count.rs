@@ -32,10 +32,15 @@ pub(super) fn count_chars(s: &str) -> usize {
 
 #[inline]
 pub(super) fn count_lines(s: &str) -> usize {
-    // `foo\nbar` is 2 lines, and `foo\nbar\n` is also 2 lines, so the line
-    // count is exactly the newline count if the input ends in a newline, and
-    // the newline count + 1 otherwise.
-    count::<NewlineCount>(s) + (!s.ends_with('\n')) as usize
+    let newline_count = count::<NewlineCount>(s);
+    // The logic for going from newline count to line count is a bit weird,
+    // consider that `"foo\nbar"` is 2 lines, `"foo\nbar\n"` is also 2 lines,
+    // `"\n"` is one line, and `""` is zero lines.
+    let ends_with_newline = s.as_bytes().last() == Some(&b'\n');
+    let is_single_newline = ends_with_newline && s.len() == 1;
+    let is_special = is_single_newline || s.is_empty();
+    let adjust_len_by_one = !ends_with_newline && !is_special;
+    newline_count + adjust_len_by_one as usize
 }
 
 trait CountPred {

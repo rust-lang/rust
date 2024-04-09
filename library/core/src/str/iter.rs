@@ -1177,7 +1177,7 @@ impl<'a> Iterator for Lines<'a> {
 
     #[inline]
     fn count(self) -> usize {
-        self.remainder().map(super::count::count_lines).unwrap_or_default()
+        self.remainder().map_or(0, super::count::count_lines)
     }
 }
 

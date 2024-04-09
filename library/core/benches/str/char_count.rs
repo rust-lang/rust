@@ -1,6 +1,7 @@
 use super::corpora::*;
 use test::{black_box, Bencher};
 
+// FIXME: this is partially duplicated in line_count.rs
 macro_rules! define_benches {
     ($( fn $name: ident($arg: ident: &str) $body: block )+) => {
         define_benches!(mod en_tiny, en::TINY, $($name $arg $body)+);

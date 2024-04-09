@@ -4,6 +4,7 @@ use test::{black_box, Bencher};
 mod char_count;
 mod corpora;
 mod iter;
+mod line_count;
 
 #[bench]
 fn str_validate_emoji(b: &mut Bencher) {
