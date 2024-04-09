@@ -148,27 +148,10 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
                 let Some(&(parent_field_idx, parent_capture)) = parent_captures.peek() else {
                     bug!("we ran out of parent captures!")
                 };
-
-                let PlaceBase::Upvar(parent_base) = parent_capture.place.base else {
-                    bug!("expected capture to be an upvar");
-                };
-                let PlaceBase::Upvar(child_base) = child_capture.place.base else {
-                    bug!("expected capture to be an upvar");
-                };
-
-                assert!(
-                    child_capture.place.projections.len() >= parent_capture.place.projections.len()
-                );
                 // A parent matches a child they share the same prefix of projections.
                 // The child may have more, if it is capturing sub-fields out of
                 // something that is captured by-move in the parent closure.
-                if parent_base.var_path.hir_id != child_base.var_path.hir_id
-                    || !std::iter::zip(
-                        &child_capture.place.projections,
-                        &parent_capture.place.projections,
-                    )
-                    .all(|(child, parent)| child.kind == parent.kind)
-                {
+                if !child_prefix_matches_parent_projections(parent_capture, child_capture) {
                     // Make sure the field was used at least once.
                     assert!(
                         field_used_at_least_once,
@@ -256,6 +239,23 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
         });
         body.coroutine.as_mut().unwrap().by_move_body = Some(by_move_body);
     }
+}
+
+fn child_prefix_matches_parent_projections(
+    parent_capture: &ty::CapturedPlace<'_>,
+    child_capture: &ty::CapturedPlace<'_>,
+) -> bool {
+    let PlaceBase::Upvar(parent_base) = parent_capture.place.base else {
+        bug!("expected capture to be an upvar");
+    };
+    let PlaceBase::Upvar(child_base) = child_capture.place.base else {
+        bug!("expected capture to be an upvar");
+    };
+
+    assert!(child_capture.place.projections.len() >= parent_capture.place.projections.len());
+    parent_base.var_path.hir_id == child_base.var_path.hir_id
+        && std::iter::zip(&child_capture.place.projections, &parent_capture.place.projections)
+            .all(|(child, parent)| child.kind == parent.kind)
 }
 
 struct MakeByMoveBody<'tcx> {
