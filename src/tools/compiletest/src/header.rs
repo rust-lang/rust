@@ -266,7 +266,7 @@ impl TestProps {
             aux_crates: vec![],
             revisions: vec![],
             rustc_env: vec![("RUSTC_ICE".to_string(), "0".to_string())],
-            unset_rustc_env: vec![],
+            unset_rustc_env: vec![("RUSTC_LOG_COLOR".to_string())],
             exec_env: vec![],
             unset_exec_env: vec![],
             build_aux_docs: false,
