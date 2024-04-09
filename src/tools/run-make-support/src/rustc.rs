@@ -203,7 +203,7 @@ impl Rustc {
 
         let output = self.cmd.output().unwrap();
         if output.status.code().unwrap() != code {
-            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+            handle_failed_output(&self.cmd, output, caller_line_number);
         }
         output
     }

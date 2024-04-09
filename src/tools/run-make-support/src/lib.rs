@@ -82,7 +82,7 @@ pub fn cygpath_windows<P: AsRef<Path>>(path: P) -> String {
     cygpath.arg(path.as_ref());
     let output = cygpath.output().unwrap();
     if !output.status.success() {
-        handle_failed_output(&format!("{:#?}", cygpath), output, caller_line_number);
+        handle_failed_output(&cygpath, output, caller_line_number);
     }
     let s = String::from_utf8(output.stdout).unwrap();
     // cygpath -w can attach a newline
@@ -98,18 +98,18 @@ pub fn uname() -> String {
     let mut uname = Command::new("uname");
     let output = uname.output().unwrap();
     if !output.status.success() {
-        handle_failed_output(&format!("{:#?}", uname), output, caller_line_number);
+        handle_failed_output(&uname, output, caller_line_number);
     }
     String::from_utf8(output.stdout).unwrap()
 }
 
-fn handle_failed_output(cmd: &str, output: Output, caller_line_number: u32) -> ! {
+fn handle_failed_output(cmd: &Command, output: Output, caller_line_number: u32) -> ! {
     if output.status.success() {
-        eprintln!("command incorrectly succeeded at line {caller_line_number}");
+        eprintln!("command unexpectedly succeeded at line {caller_line_number}");
     } else {
         eprintln!("command failed at line {caller_line_number}");
     }
-    eprintln!("{cmd}");
+    eprintln!("{cmd:?}");
     eprintln!("output status: `{}`", output.status);
     eprintln!("=== STDOUT ===\n{}\n\n", String::from_utf8(output.stdout).unwrap());
     eprintln!("=== STDERR ===\n{}\n\n", String::from_utf8(output.stderr).unwrap());
