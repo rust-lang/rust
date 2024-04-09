@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name: `my_value`
-  --> $DIR/cfg-value-for-cfg-name-multiple.rs:7:7
+  --> $DIR/cfg-value-for-cfg-name-multiple.rs:8:7
    |
 LL | #[cfg(my_value)]
    |       ^^^^^^^^
