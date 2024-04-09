@@ -54,7 +54,8 @@
           debug a => _4;
           let _5: *const usize;
           scope 2 {
-              debug b => _5;
+-             debug b => _5;
++             debug (*(b: *const usize)) => _4;
               let _6: usize;
               scope 3 {
                   debug c => _6;
@@ -159,10 +160,12 @@
           debug a => _58;
           let _59: *const usize;
           scope 30 {
-              debug b => _59;
+-             debug b => _59;
++             debug (*(b: *const usize)) => _58;
               let _60: *const usize;
               scope 31 {
-                  debug c => _60;
+-                 debug c => _60;
++                 debug (*(c: *const usize)) => _58;
                   let _61: usize;
                   scope 32 {
                       debug e => _61;
@@ -174,10 +177,12 @@
           debug a => _65;
           let _66: *const usize;
           scope 34 {
-              debug b => _66;
+-             debug b => _66;
++             debug (*(b: *const usize)) => _65;
               let _67: &*const usize;
               scope 35 {
-                  debug d => _67;
+-                 debug d => _67;
++                 debug (*(*(d: &*const usize))) => _65;
                   let _68: usize;
                   scope 36 {
                       debug c => _68;
@@ -189,10 +194,12 @@
           debug a => _71;
           let mut _72: *const usize;
           scope 38 {
-              debug b => _72;
+-             debug b => _72;
++             debug (*(b: *const usize)) => _71;
               let _73: &mut *const usize;
               scope 39 {
-                  debug d => _73;
+-                 debug d => _73;
++                 debug (*(*(d: &mut *const usize))) => _71;
                   let _74: usize;
                   scope 40 {
                       debug c => _74;
@@ -205,8 +212,8 @@
 -         StorageLive(_3);
           StorageLive(_4);
           _4 = const 5_usize;
-          StorageLive(_5);
-          _5 = &raw const _4;
+-         StorageLive(_5);
+-         _5 = &raw const _4;
           StorageLive(_6);
 -         _6 = (*_5);
 +         _6 = _4;
@@ -221,7 +228,7 @@
           StorageDead(_7);
 -         _3 = const ();
           StorageDead(_6);
-          StorageDead(_5);
+-         StorageDead(_5);
           StorageDead(_4);
 -         StorageDead(_3);
 -         StorageLive(_9);
@@ -398,11 +405,10 @@
 -         StorageLive(_57);
           StorageLive(_58);
           _58 = const 13_usize;
-          StorageLive(_59);
-          _59 = &raw const _58;
-          StorageLive(_60);
+-         StorageLive(_59);
+-         _59 = &raw const _58;
+-         StorageLive(_60);
 -         _60 = &raw const (*_59);
-+         _60 = &raw const _58;
           StorageLive(_61);
 -         _61 = (*_60);
 +         _61 = _58;
@@ -417,19 +423,20 @@
           StorageDead(_62);
 -         _57 = const ();
           StorageDead(_61);
-          StorageDead(_60);
-          StorageDead(_59);
+-         StorageDead(_60);
+-         StorageDead(_59);
           StorageDead(_58);
 -         StorageDead(_57);
 -         StorageLive(_64);
           StorageLive(_65);
           _65 = const 5_usize;
-          StorageLive(_66);
-          _66 = &raw const _65;
-          StorageLive(_67);
-          _67 = &_66;
+-         StorageLive(_66);
+-         _66 = &raw const _65;
+-         StorageLive(_67);
+-         _67 = &_66;
           StorageLive(_68);
-          _68 = (*_66);
+-         _68 = (*_66);
++         _68 = _65;
           StorageLive(_69);
           StorageLive(_70);
           _70 = ();
@@ -441,18 +448,19 @@
           StorageDead(_69);
 -         _64 = const ();
           StorageDead(_68);
-          StorageDead(_67);
-          StorageDead(_66);
+-         StorageDead(_67);
+-         StorageDead(_66);
           StorageDead(_65);
 -         StorageDead(_64);
           StorageLive(_71);
           _71 = const 5_usize;
-          StorageLive(_72);
-          _72 = &raw const _71;
-          StorageLive(_73);
-          _73 = &mut _72;
+-         StorageLive(_72);
+-         _72 = &raw const _71;
+-         StorageLive(_73);
+-         _73 = &mut _72;
           StorageLive(_74);
-          _74 = (*_72);
+-         _74 = (*_72);
++         _74 = _71;
           StorageLive(_75);
           StorageLive(_76);
           _76 = ();
@@ -464,8 +472,8 @@
           StorageDead(_75);
           _0 = const ();
           StorageDead(_74);
-          StorageDead(_73);
-          StorageDead(_72);
+-         StorageDead(_73);
+-         StorageDead(_72);
           StorageDead(_71);
           return;
       }

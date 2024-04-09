@@ -89,13 +89,20 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     debug!(?replacer.allowed_replacements);
     debug!(?replacer.storage_to_remove);
 
-    replacer.visit_body_preserves_cfg(body);
+    replacer.local_decls = Some(&body.local_decls);
+    for debuginfo in body.var_debug_info.iter_mut() {
+        replacer.visit_var_debug_info(debuginfo);
+    }
+    for (bb, bbdata) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
+        replacer.visit_basic_block_data(bb, bbdata);
+    }
 
     if replacer.any_replacement {
         crate::simplify::remove_unused_definitions(body);
+        true
+    } else {
+        false
     }
-
-    replacer.any_replacement
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -113,7 +120,7 @@ fn compute_replacement<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     ssa: &SsaLocals,
-) -> Replacer<'tcx> {
+) -> Replacer<'tcx, 'tcx> {
     let always_live_locals = always_storage_live_locals(body);
 
     // Compute which locals have a single `StorageLive` statement ever.
@@ -268,7 +275,9 @@ fn compute_replacement<'tcx>(
         targets,
         storage_to_remove,
         allowed_replacements,
+        fully_replacable_locals,
         any_replacement: false,
+        local_decls: None,
     };
 
     struct ReplacementFinder<'a, 'tcx, F> {
@@ -342,15 +351,17 @@ fn fully_replacable_locals(ssa: &SsaLocals) -> BitSet<Local> {
 }
 
 /// Utility to help performing subtitution of `*pattern` by `target`.
-struct Replacer<'tcx> {
+struct Replacer<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     targets: IndexVec<Local, Value<'tcx>>,
     storage_to_remove: BitSet<Local>,
     allowed_replacements: FxHashSet<(Local, Location)>,
     any_replacement: bool,
+    fully_replacable_locals: BitSet<Local>,
+    local_decls: Option<&'a LocalDecls<'tcx>>,
 }
 
-impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
+impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -366,6 +377,19 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
         {
             if let Some((&PlaceElem::Deref, rest)) = target.projection.split_last() {
                 *place = Place::from(target.local).project_deeper(rest, self.tcx);
+                self.any_replacement = true;
+            } else if self.fully_replacable_locals.contains(place.local) {
+                debuginfo
+                    .composite
+                    .get_or_insert_with(|| {
+                        Box::new(VarDebugInfoFragment {
+                            ty: self.local_decls.unwrap()[place.local].ty,
+                            projection: Vec::new(),
+                        })
+                    })
+                    .projection
+                    .push(PlaceElem::Deref);
+                *place = target;
                 self.any_replacement = true;
             } else {
                 break;

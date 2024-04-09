@@ -858,8 +858,13 @@ macro_rules! make_mir_visitor {
                 if let Some(box VarDebugInfoFragment { ref $($mutability)? ty, ref $($mutability)? projection }) = composite {
                     self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     for elem in projection {
-                        let ProjectionElem::Field(_, ty) = elem else { bug!() };
-                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                        match elem {
+                            ProjectionElem::Deref => {}
+                            ProjectionElem::Field(_, ty) => {
+                                self.visit_ty($(& $mutability)? *ty, TyContext::Location(location))
+                            }
+                            _ => bug!("unexpected projection in debuginfo: {elem:?}"),
+                        }
                     }
                 }
                 match value {

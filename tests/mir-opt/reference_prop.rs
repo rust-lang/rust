@@ -15,7 +15,7 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
     {
         // CHECK: bb0: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &[[a]];
+        // CHECK-NOT: {{.*}} = &{{.*}};
         // CHECK: [[c:_.*]] = [[a]];
 
         let a = 5_usize;
@@ -136,10 +136,8 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
     {
         // CHECK: bb8: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &[[a]];
-        // CHECK: [[d:_.*]] = &[[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = (*[[b]]);
+        // CHECK-NOT: {{.*}} = &{{.*}};
+        // CHECK: [[c:_.*]] = [[a]];
 
         let a = 5_usize;
         let b = &a;
@@ -152,10 +150,8 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
     {
         // CHECK: bb9: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &[[a]];
-        // CHECK: [[d:_.*]] = &mut [[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = (*[[b]]);
+        // CHECK-NOT: {{.*}} = &{{.*}};
+        // CHECK: [[c:_.*]] = [[a]];
 
         let a = 5_usize;
         let mut b = &a;
@@ -172,7 +168,7 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
     {
         // CHECK: bb0: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &mut [[a]];
+        // CHECK-NOT: {{.*}} = &{{.*}};
         // CHECK: [[c:_.*]] = [[a]];
 
         let mut a = 5_usize;
@@ -293,10 +289,8 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
     {
         // CHECK: bb8: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &mut [[a]];
-        // CHECK: [[d:_.*]] = &[[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = (*[[b]]);
+        // CHECK-NOT: {{.*}} = &{{.*}};
+        // CHECK: [[c:_.*]] = [[a]];
 
         let mut a = 5_usize;
         let b = &mut a;
@@ -309,10 +303,8 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
     {
         // CHECK: bb9: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &mut [[a]];
-        // CHECK: [[d:_.*]] = &mut [[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = (*[[b]]);
+        // CHECK-NOT: {{.*}} = &{{.*}};
+        // CHECK: [[c:_.*]] = [[a]];
 
         let mut a = 5_usize;
         let mut b = &mut a;
@@ -329,7 +321,7 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
     unsafe {
         // CHECK: bb0: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &raw const [[a]];
+        // CHECK-NOT: {{.*}} = &{{.*}};
         // CHECK: [[c:_.*]] = [[a]];
 
         let a = 5_usize;
@@ -450,8 +442,7 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
     unsafe {
         // CHECK: bb8: {
         // CHECK: [[a:_.*]] = const 13_usize;
-        // CHECK: [[b:_.*]] = &raw const [[a]];
-        // CHECK: [[d:_.*]] = &raw const [[a]];
+        // CHECK-NOT: {{.*}} = &{{.*}};
         // CHECK: [[c:_.*]] = [[a]];
 
         let a = 13_usize;
@@ -465,10 +456,8 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
     unsafe {
         // CHECK: bb9: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &raw const [[a]];
-        // CHECK: [[d:_.*]] = &[[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = (*[[b]]);
+        // CHECK-NOT: {{.*}} = &{{.*}};
+        // CHECK: [[c:_.*]] = [[a]];
 
         let a = 5_usize;
         let b = &raw const a;
@@ -481,10 +470,8 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
     unsafe {
         // CHECK: bb10: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &raw const [[a]];
-        // CHECK: [[d:_.*]] = &mut [[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = (*[[b]]);
+        // CHECK-NOT: {{.*}} = &{{.*}};
+        // CHECK: [[c:_.*]] = [[a]];
 
         let a = 5_usize;
         let mut b = &raw const a;
@@ -501,7 +488,7 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
     unsafe {
         // CHECK: bb0: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &raw mut [[a]];
+        // CHECK-NOT: {{.*}} = &{{.*}};
         // CHECK: [[c:_.*]] = [[a]];
 
         let mut a = 5_usize;
@@ -622,10 +609,8 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
     unsafe {
         // CHECK: bb8: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &raw mut [[a]];
-        // CHECK: [[d:_.*]] = &[[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = (*[[b]]);
+        // CHECK-NOT: {{.*}} = &{{.*}};
+        // CHECK: [[c:_.*]] = [[a]];
 
         let mut a = 5_usize;
         let b = &raw mut a;
@@ -638,10 +623,8 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
     unsafe {
         // CHECK: bb9: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &raw mut [[a]];
-        // CHECK: [[d:_.*]] = &mut [[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = (*[[b]]);
+        // CHECK-NOT: {{.*}} = &{{.*}};
+        // CHECK: [[c:_.*]] = [[a]];
 
         let mut a = 5_usize;
         let mut b = &raw mut a;
@@ -819,15 +802,14 @@ fn unique_with_copies() {
 
 fn debuginfo() {
     // CHECK-LABEL: fn debuginfo(
-    // FIXME: This features waits for DWARF implicit pointers in LLVM.
-    // CHECK: debug ref_mut_u8 => _{{.*}};
-    // CHECK: debug field => _{{.*}};
-    // CHECK: debug reborrow => _{{.*}};
-    // CHECK: debug variant_field => _{{.*}};
-    // CHECK: debug constant_index => _{{.*}};
+    // CHECK: debug (*(ref_mut_u8: &mut u8)) => _{{.*}};
+    // CHECK: debug (*(field: &u8)) => ((*_{{.*}}).0: u8);
+    // CHECK: debug (*(reborrow: &mut u8)) => _{{.*}};
+    // CHECK: debug (*(variant_field: &i32)) => (((*_{{.*}}) as Some).0: i32);
+    // CHECK: debug (*(constant_index: &i32)) => (*_{{.*}})[1 of 3];
     // CHECK: debug subslice => _{{.*}};
     // CHECK: debug constant_index_from_end => _{{.*}};
-    // CHECK: debug multiple_borrow => _{{.*}};
+    // CHECK: debug (*(*(*(multiple_borrow: &&&mut u8)))) => (_{{.*}}.0: u8);
 
     struct T(u8);
 
@@ -852,8 +834,10 @@ fn debuginfo() {
 
 fn many_debuginfo() {
     // CHECK-LABEL: fn many_debuginfo(
-    // FIXME: This features waits for DWARF implicit pointers in LLVM.
-    // CHECK: debug many_borrow => _{{.*}};
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug (*
+    // CHECK-SAME: many_borrow
+    // CHECK-SAME: => [[a]];
 
     let a = 0;
 
@@ -894,3 +878,4 @@ fn main() {
 // EMIT_MIR reference_prop.mut_raw_then_mut_shr.ReferencePropagation.diff
 // EMIT_MIR reference_prop.unique_with_copies.ReferencePropagation.diff
 // EMIT_MIR reference_prop.debuginfo.ReferencePropagation.diff
+// EMIT_MIR reference_prop.many_debuginfo.ReferencePropagation.diff

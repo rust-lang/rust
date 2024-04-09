@@ -13,15 +13,16 @@
           debug x => _1;
           let _2: &mut i32;
           scope 2 {
-              debug xref => _2;
+-             debug xref => _2;
++             debug (*(xref: &mut i32)) => _1;
               let _3: *mut i32;
               scope 3 {
 -                 debug xraw => _3;
-+                 debug xraw => _2;
++                 debug (*(xraw: &mut i32)) => _1;
                   let _6: &i32;
                   scope 4 {
 -                     debug xshr => _6;
-+                     debug xshr => _2;
++                     debug (*(xshr: &mut i32)) => _1;
                       let _7: i32;
                       scope 5 {
                           debug a => _7;
@@ -35,7 +36,7 @@
           StorageLive(_1);
           _1 = const 2_i32;
 -         StorageLive(_2);
-          _2 = &mut _1;
+-         _2 = &mut _1;
 -         StorageLive(_3);
 -         StorageLive(_4);
 -         StorageLive(_5);
