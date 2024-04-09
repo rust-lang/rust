@@ -196,8 +196,60 @@ pub trait CommandExt: Sealed {
 
     /// Append literal text to the command line without any quoting or escaping.
     ///
-    /// This is useful for passing arguments to `cmd.exe /c`, which doesn't follow
-    /// `CommandLineToArgvW` escaping rules.
+    /// This is useful for passing arguments to applications which doesn't follow
+    /// the standard C run-time escaping rules, such as `cmd.exe /c`.
+    ///
+    /// # Bat files
+    ///
+    /// Note the `cmd /c` command line has slightly different escaping rules then bat files
+    /// themselves. If possible, it may be better to write complex arguments to a temporary
+    /// .bat file, with appropriate escaping, and simply run that using:
+    ///
+    /// ```no_run
+    /// # use std::process::Command;
+    /// # let temp_bat_file = "";
+    /// # #[allow(unused)]
+    /// let output = Command::new("cmd").args(["/c", &format!("\"{temp_bat_file}\"")]).output();
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// Run a bat script using both trusted and untrusted arguments.
+    ///
+    /// ```no_run
+    /// #[cfg(windows)]
+    /// // `my_script_path` is a path to known bat file.
+    /// // `user_name` is an untrusted name given by the user.
+    /// fn run_script(
+    ///     my_script_path: &str,
+    ///     user_name: &str,
+    /// ) -> Result<std::process::Output, std::io::Error> {
+    ///     use std::io::{Error, ErrorKind};
+    ///     use std::os::windows::process::CommandExt;
+    ///     use std::process::Command;
+    ///
+    ///     // Create the command line, making sure to quote the script path.
+    ///     // This assumes the fixed arguments have been tested to work with the script we're using.
+    ///     let mut cmd_args = format!(r#""{my_script_path}" "--features=[a,b,c]""#);
+    ///
+    ///     // Make sure the user name is safe. In particular we need to be
+    ///     // cautious of ascii symbols that cmd may interpret specially.
+    ///     // Here we only allow alphanumeric characters.
+    ///     if !user_name.chars().all(|c| c.is_alphanumeric()) {
+    ///         return Err(Error::new(ErrorKind::InvalidInput, "invalid user name"));
+    ///     }
+    ///     // now we've checked the user name, let's add that too.
+    ///     cmd_args.push(' ');
+    ///     cmd_args.push_str(&format!("--user {user_name}"));
+    ///
+    ///     // call cmd.exe and return the output
+    ///     Command::new("cmd.exe")
+    ///         .arg("/c")
+    ///         // surround the entire command in an extra pair of quotes, as required by cmd.exe.
+    ///         .raw_arg(&format!("\"{cmd_args}\""))
+    ///         .output()
+    /// }
+    /// ````
     #[stable(feature = "windows_process_extensions_raw_arg", since = "1.62.0")]
     fn raw_arg<S: AsRef<OsStr>>(&mut self, text_to_append_as_is: S) -> &mut process::Command;
 
