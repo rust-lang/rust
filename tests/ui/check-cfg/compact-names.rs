@@ -1,6 +1,7 @@
 // This test check that we correctly emit an warning for compact cfg
 //
 //@ check-pass
+//@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg()
 
 #![feature(cfg_target_compact)]

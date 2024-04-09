@@ -1,4 +1,5 @@
 //@ check-pass
+//@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg(my_cfg,values("foo")) --check-cfg=cfg(my_cfg,values("bar"))
 //@ compile-flags: --check-cfg=cfg(my_cfg,values())
 
