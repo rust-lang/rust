@@ -1974,6 +1974,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     for (obligation_arg, impl_arg) in
                         std::iter::zip(obligation_trait_ref.args, impl_trait_ref.args)
                     {
+                        if (obligation_arg, impl_arg).references_error() {
+                            return false;
+                        }
                         if let Err(terr) =
                             ocx.eq(&ObligationCause::dummy(), param_env, impl_arg, obligation_arg)
                         {
