@@ -103,6 +103,7 @@ Otherwise, have a great day =^.^=
         @media (min-width: 405px) {
             #upper-filters {
                 display: flex;
+                flex-wrap: wrap;
             }
         }
 
@@ -404,7 +405,7 @@ Otherwise, have a great day =^.^=
 
             <div class="panel panel-default" ng-show="data">
                 <div class="panel-body row">
-                    <div id="upper-filters" class="col-12 col-md-4">
+                    <div id="upper-filters" class="col-12 col-md-6">
                         <div class="btn-group" filter-dropdown>
                             <button type="button" class="btn btn-default dropdown-toggle">
                                 Lint levels <span class="badge">{{selectedValuesCount(levels)}}</span> <span class="caret"></span>
@@ -523,7 +524,7 @@ Otherwise, have a great day =^.^=
                             </ul>
                         </div>
                     </div>
-                    <div class="col-12 col-md-7 search-control">
+                    <div class="col-12 col-md-6 search-control">
                         <div class="input-group">
                             <label class="input-group-addon" id="filter-label" for="search-input">Filter:</label>
                             <input type="text" class="form-control filter-input" placeholder="Keywords or search string" id="search-input"
@@ -539,7 +540,7 @@ Otherwise, have a great day =^.^=
                 </div>
             </div>
             <!-- The order of the filters should be from most likely to remove a lint to least likely to improve performance. -->
-            <article class="panel panel-default" id="{{lint.id}}" ng-repeat="lint in data | filter:bySearch | filter:byGroups | filter:byLevels | filter:byVersion">
+            <article class="panel panel-default" id="{{lint.id}}" ng-repeat="lint in data | filter:bySearch | filter:byGroups | filter:byLevels | filter:byVersion | filter:byApplicabilities">
                 <header class="panel-heading" ng-click="open[lint.id] = !open[lint.id]">
                     <h2 class="panel-title">
                         <div class="panel-title-name">
