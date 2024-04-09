@@ -1,6 +1,7 @@
 // Check for unexpected configuration value in the code.
 //
 //@ check-pass
+//@ no-auto-check-cfg
 //@ compile-flags: --cfg=feature="rand"
 //@ compile-flags: --check-cfg=cfg(feature,values("serde","full"))
 

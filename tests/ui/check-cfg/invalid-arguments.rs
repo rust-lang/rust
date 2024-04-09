@@ -1,6 +1,7 @@
 // Check that invalid --check-cfg are rejected
 //
 //@ check-fail
+//@ no-auto-check-cfg
 //@ revisions: anything_else
 //@ revisions: string_for_name_1 string_for_name_2 multiple_any multiple_values
 //@ revisions: multiple_values_any not_empty_any not_empty_values_any
