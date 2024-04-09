@@ -1,18 +1,15 @@
 [package]
-name = "rustc_symbol_mangling"
+name = "rustc_sanitizers"
 version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-# tidy-alphabetical-start
-punycode = "0.4.0"
-rustc-demangle = "0.1.21"
+bitflags = "2.5.0"
+tracing = "0.1"
+twox-hash = "1.6.3"
 rustc_data_structures = { path = "../rustc_data_structures" }
-rustc_errors = { path = "../rustc_errors" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_middle = { path = "../rustc_middle" }
-rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
-tracing = "0.1"
-# tidy-alphabetical-end
+rustc_trait_selection = { path = "../rustc_trait_selection" }

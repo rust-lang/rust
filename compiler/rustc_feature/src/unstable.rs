@@ -216,7 +216,7 @@ declare_features! (
     /// Set the maximum pattern complexity allowed (not limited by default).
     (internal, pattern_complexity, "1.78.0", None),
     /// Allows using pattern types.
-    (internal, pattern_types, "CURRENT_RUSTC_VERSION", Some(54882)),
+    (internal, pattern_types, "CURRENT_RUSTC_VERSION", Some(123646)),
     /// Allows using `#[prelude_import]` on glob `use` items.
     (internal, prelude_import, "1.2.0", None),
     /// Used to identify crates that contain the profiler runtime.

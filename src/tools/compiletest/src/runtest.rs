@@ -2354,6 +2354,11 @@ impl<'test> TestCx<'test> {
             "ignore-directory-in-diagnostics-source-blocks={}",
             home::cargo_home().expect("failed to find cargo home").to_str().unwrap()
         ));
+        // Similarly, vendored sources shouldn't be shown when running from a dist tarball.
+        rustc.arg("-Z").arg(format!(
+            "ignore-directory-in-diagnostics-source-blocks={}",
+            self.config.find_rust_src_root().unwrap().join("vendor").display(),
+        ));
 
         // Optionally prevent default --sysroot if specified in test compile-flags.
         if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot"))
