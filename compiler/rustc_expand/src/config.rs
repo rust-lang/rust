@@ -387,7 +387,11 @@ impl<'a> StripUnconfigured<'a> {
             );
 
             if attr.is_doc_comment() {
-                err.help("`///` is for documentation comments. For a plain comment, use `//`.");
+                err.help(if attr.style == AttrStyle::Outer {
+                    "`///` is used for outer documentation comments; for a plain comment, use `//`"
+                } else {
+                    "`//!` is used for inner documentation comments; for a plain comment, use `//` by removing the `!` or inserting a space in between them: `// !`"
+                });
             }
 
             err.emit();
