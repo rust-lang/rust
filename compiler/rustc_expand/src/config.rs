@@ -373,7 +373,6 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
         if self.features.is_some_and(|features| !features.stmt_expr_attributes)
@@ -383,14 +382,14 @@ impl<'a> StripUnconfigured<'a> {
                 &self.sess,
                 sym::stmt_expr_attributes,
                 attr.span,
-                "attributes on expressions are experimental",
+                crate::fluent_generated::expand_attributes_on_expressions_experimental,
             );
 
             if attr.is_doc_comment() {
                 err.help(if attr.style == AttrStyle::Outer {
-                    "`///` is used for outer documentation comments; for a plain comment, use `//`"
+                    crate::fluent_generated::expand_help_outer_doc
                 } else {
-                    "`//!` is used for inner documentation comments; for a plain comment, use `//` by removing the `!` or inserting a space in between them: `// !`"
+                    crate::fluent_generated::expand_help_inner_doc
                 });
             }
 
