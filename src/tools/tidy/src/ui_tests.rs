@@ -49,6 +49,9 @@ const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
     "tests/ui/shell-argfiles/shell-argfiles-badquotes.args", // passing args via a file
     "tests/ui/shell-argfiles/shell-argfiles-via-argfile-shell.args", // passing args via a file
     "tests/ui/shell-argfiles/shell-argfiles-via-argfile.args", // passing args via a file
+    "tests/ui/std/windows-bat-args1.bat", // tests escaping arguments through batch files
+    "tests/ui/std/windows-bat-args2.bat", // tests escaping arguments through batch files
+    "tests/ui/std/windows-bat-args3.bat", // tests escaping arguments through batch files
 ];
 
 fn check_entries(tests_path: &Path, bad: &mut bool) {
