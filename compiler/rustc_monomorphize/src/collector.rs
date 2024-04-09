@@ -214,6 +214,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
+use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Location, MentionedItem};
 use rustc_middle::query::TyCtxtAt;
@@ -1414,15 +1415,16 @@ fn collect_items_of_instance<'tcx>(
     };
 
     if mode == CollectionMode::UsedItems {
-        // Visit everything. Here we rely on the visitor also visiting `required_consts`, so that we
-        // evaluate them and abort compilation if any of them errors.
-        collector.visit_body(body);
-    } else {
-        // We only need to evaluate all constants, but can ignore the rest of the MIR.
-        for const_op in &body.required_consts {
-            if let Some(val) = collector.eval_constant(const_op) {
-                collect_const_value(tcx, val, mentioned_items);
-            }
+        for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
+            collector.visit_basic_block_data(bb, data)
+        }
+    }
+
+    // Always visit all `required_consts`, so that we evaluate them and abort compilation if any of
+    // them errors.
+    for const_op in &body.required_consts {
+        if let Some(val) = collector.eval_constant(const_op) {
+            collect_const_value(tcx, val, mentioned_items);
         }
     }
 
