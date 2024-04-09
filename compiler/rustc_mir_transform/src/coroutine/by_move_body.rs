@@ -145,9 +145,8 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             .enumerate()
         {
             loop {
-                let Some(&(parent_field_idx, parent_capture)) = parent_captures.peek() else {
-                    bug!("we ran out of parent captures!")
-                };
+                let &(parent_field_idx, parent_capture) =
+                    parent_captures.peek().expect("we ran out of parent captures!");
                 // A parent matches a child they share the same prefix of projections.
                 // The child may have more, if it is capturing sub-fields out of
                 // something that is captured by-move in the parent closure.
