@@ -35,7 +35,6 @@ use libc::c_uint;
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
-use std::ffi::CString;
 use std::str;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
@@ -332,15 +331,14 @@ pub unsafe fn create_module<'ll>(
     // correctly setting target-abi for the LTO object
     // FIXME: https://github.com/llvm/llvm-project/issues/50591
     // If llvm_abiname is empty, emit nothing.
-    if matches!(sess.target.arch.as_ref(), "riscv32" | "riscv64")
-        && !sess.target.options.llvm_abiname.is_empty()
-    {
-        let llvm_abiname = CString::new(sess.target.options.llvm_abiname.as_ref()).unwrap();
+    let llvm_abiname = &sess.target.options.llvm_abiname;
+    if matches!(sess.target.arch.as_ref(), "riscv32" | "riscv64") && !llvm_abiname.is_empty() {
         llvm::LLVMRustAddModuleFlagString(
             llmod,
             llvm::LLVMModFlagBehavior::Error,
-            c"target-abi".as_ptr() as *const _,
-            llvm_abiname.as_ptr() as *const _,
+            c"target-abi".as_ptr(),
+            llvm_abiname.as_ptr().cast(),
+            llvm_abiname.len(),
         );
     }
 

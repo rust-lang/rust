@@ -829,9 +829,10 @@ extern "C" void LLVMRustAddModuleFlagString(
     LLVMModuleRef M,
     Module::ModFlagBehavior MergeBehavior,
     const char *Name,
-    const char *Value) {
-  llvm::LLVMContext &Ctx = unwrap(M)->getContext();
-  unwrap(M)->addModuleFlag(MergeBehavior, Name, llvm::MDString::get(Ctx, Value));
+    const char *Value,
+    size_t ValueLen) {
+  unwrap(M)->addModuleFlag(MergeBehavior, Name,
+    MDString::get(unwrap(M)->getContext(), StringRef(Value, ValueLen)));
 }
 
 extern "C" bool LLVMRustHasModuleFlag(LLVMModuleRef M, const char *Name,

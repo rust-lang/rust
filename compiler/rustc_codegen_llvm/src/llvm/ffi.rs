@@ -1813,6 +1813,7 @@ extern "C" {
         merge_behavior: LLVMModFlagBehavior,
         name: *const c_char,
         value: *const c_char,
+        value_len: size_t,
     );
 
     pub fn LLVMRustHasModuleFlag(M: &Module, name: *const c_char, len: size_t) -> bool;
