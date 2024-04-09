@@ -292,7 +292,9 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
             let kind_ty = args.kind_ty();
             let sig = args.coroutine_closure_sig().skip_binder();
 
-            let coroutine_ty = if let Some(closure_kind) = kind_ty.to_opt_closure_kind() {
+            let coroutine_ty = if let Some(closure_kind) = kind_ty.to_opt_closure_kind()
+                && !args.tupled_upvars_ty().is_ty_var()
+            {
                 if !closure_kind.extends(goal_kind) {
                     return Err(NoSolution);
                 }
@@ -401,7 +403,9 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
             let kind_ty = args.kind_ty();
             let sig = args.coroutine_closure_sig().skip_binder();
             let mut nested = vec![];
-            let coroutine_ty = if let Some(closure_kind) = kind_ty.to_opt_closure_kind() {
+            let coroutine_ty = if let Some(closure_kind) = kind_ty.to_opt_closure_kind()
+                && !args.tupled_upvars_ty().is_ty_var()
+            {
                 if !closure_kind.extends(goal_kind) {
                     return Err(NoSolution);
                 }
