@@ -18,6 +18,7 @@ struct ReturnType {
 pub enum ArgPrep {
     Register {
         #[serde(rename = "register")]
+        #[allow(dead_code)]
         reg: String,
     },
     Immediate {
