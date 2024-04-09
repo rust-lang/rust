@@ -7,15 +7,6 @@ LL |     Box::new((async || x)())
    |     |        `x` is borrowed here
    |     returns a value referencing data owned by the current function
 
-error[E0515]: cannot return value referencing temporary value
-  --> $DIR/async-borrowck-escaping-closure-error.rs:6:5
-   |
-LL |     Box::new((async || x)())
-   |     ^^^^^^^^^------------^^^
-   |     |        |
-   |     |        temporary value created here
-   |     returns a value referencing data owned by the current function
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0515`.
