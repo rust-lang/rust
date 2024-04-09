@@ -517,8 +517,6 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(cstr_count_bytes)]
-    ///
     /// use std::ffi::CStr;
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"foo\0").unwrap();
@@ -530,7 +528,7 @@ impl CStr {
     #[inline]
     #[must_use]
     #[doc(alias("len", "strlen"))]
-    #[unstable(feature = "cstr_count_bytes", issue = "114441")]
+    #[stable(feature = "cstr_count_bytes", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_cstr_from_ptr", issue = "113219")]
     pub const fn count_bytes(&self) -> usize {
         self.inner.len() - 1
