@@ -69,8 +69,10 @@ macro_rules! assert_unsafe_precondition {
                 }
             }
 
+            if cfg!(debug_assertions) {
             if ::core::ub_checks::$kind() {
                 precondition_check($($arg,)*);
+            }
             }
         }
     };
