@@ -47,7 +47,7 @@ fn foo_late<'a, T>(_: &'a u32, _: T) {}
 fn accepts_hr_func<F: for<'a> Fn(&'a u32, u32)>(_: F) {}
 
 fn main() {
-    // doesnt work, the substituted bound is `for<'a> FnDef<'?0>: Fn(&'a u32, u32)`
+    // doesn't work, the substituted bound is `for<'a> FnDef<'?0>: Fn(&'a u32, u32)`
     // `foo_early` only implements `for<'a> FnDef<'a>: Fn(&'a u32, u32)`- the lifetime
     // of the borrow in the function argument must be the same as the lifetime
     // on the `FnDef`.
@@ -116,11 +116,11 @@ fn foo3<'a, T: 'a>(_: &'a T) {}
 fn foo4<'a, 'b: 'a>(_: Inv<&'a ()>, _: Inv<&'b ()>) {}
 //      ^^  ^^         ^^^ note:
 //      ^^  ^^         `Inv` stands for `Invariant` and is used to
-//      ^^  ^^          make the the type parameter invariant. This
+//      ^^  ^^          make the type parameter invariant. This
 //      ^^  ^^          is necessary for demonstration purposes as
 //      ^^  ^^          `for<'a, 'b> fn(&'a (), &'b ())` and
 //      ^^  ^^          `for<'a> fn(&'a u32, &'a u32)` are subtypes-
-//      ^^  ^^          of eachother which makes the bound trivially
+//      ^^  ^^          of each other which makes the bound trivially
 //      ^^  ^^          satisfiable when making the fnptr. `Inv`
 //      ^^  ^^          disables this subtyping.
 //      ^^  ^^

@@ -91,7 +91,7 @@ fn accepts_fn_2(_: impl Fn(&'static ()) -> &'static ()) {}
 fn main() {
     let f = late::<'static>;
     
-    accepts_fn(f); //~ error: `f` doesnt implement `for<'a> Fn(&'a ()) -> &'a ()`
+    accepts_fn(f); //~ error: `f` doesn't implement `for<'a> Fn(&'a ()) -> &'a ()`
     accepts_fn_2(f) // works
     
     accepts_fn(late) // works

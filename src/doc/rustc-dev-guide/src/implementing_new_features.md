@@ -123,7 +123,7 @@ a new unstable feature:
 
 1. Add the feature name to `rustc_span/src/symbol.rs` in the `Symbols {...}` block.
 
-   Note that this block must be in alphbetical order.
+   Note that this block must be in alphabetical order.
 
 1. Add a feature gate declaration to `rustc_feature/src/unstable.rs` in the unstable
    `declare_features` block.

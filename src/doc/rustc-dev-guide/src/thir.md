@@ -144,12 +144,12 @@ Thir {
             span: oneplustwo.rs:2:13: 2:18 (#0),
             kind: Binary {
                 op: Add,
-                // references to scopes surronding literals above
+                // references to scopes surrounding literals above
                 lhs: e1,
                 rhs: e3,
             },
         },
-        // expression 5, scope surronding expression 4
+        // expression 5, scope surrounding expression 4
         Expr {
             ty: i32,
             temp_lifetime: Some(
