@@ -686,18 +686,15 @@ pub fn create_global_ctxt<'tcx>(
     })
 }
 
-/// Runs the type-checking, region checking and other miscellaneous analysis
-/// passes on the crate.
-fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
+/// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
+/// This function never fails.
+fn run_required_analyses(tcx: TyCtxt<'_>) {
     if tcx.sess.opts.unstable_opts.hir_stats {
         rustc_passes::hir_stats::print_hir_stats(tcx);
     }
-
     #[cfg(debug_assertions)]
     rustc_passes::hir_id_validator::check_crate(tcx);
-
     let sess = tcx.sess;
-
     sess.time("misc_checking_1", || {
         parallel!(
             {
@@ -733,10 +730,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             }
         );
     });
-
-    // passes are timed inside typeck
-    rustc_hir_analysis::check_crate(tcx)?;
-
+    rustc_hir_analysis::check_crate(tcx);
     sess.time("MIR_borrow_checking", || {
         tcx.hir().par_body_owners(|def_id| {
             // Run unsafety check because it's responsible for stealing and
@@ -745,7 +739,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             tcx.ensure().mir_borrowck(def_id)
         });
     });
-
     sess.time("MIR_effect_checking", || {
         for def_id in tcx.hir().body_owners() {
             tcx.ensure().has_ffi_unwind_calls(def_id);
@@ -761,16 +754,22 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             }
         }
     });
-
     tcx.hir().par_body_owners(|def_id| {
         if tcx.is_coroutine(def_id.to_def_id()) {
             tcx.ensure().mir_coroutine_witnesses(def_id);
             tcx.ensure().check_coroutine_obligations(def_id);
         }
     });
-
     sess.time("layout_testing", || layout_test::test_layout(tcx));
     sess.time("abi_testing", || abi_test::test_abi(tcx));
+}
+
+/// Runs the type-checking, region checking and other miscellaneous analysis
+/// passes on the crate.
+fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
+    run_required_analyses(tcx);
+
+    let sess = tcx.sess;
 
     // Avoid overwhelming user with errors if borrow checking failed.
     // I'm not sure how helpful this is, to be honest, but it avoids a
