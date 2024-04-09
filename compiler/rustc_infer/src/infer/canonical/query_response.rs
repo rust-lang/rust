@@ -248,13 +248,50 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
-        let InferOk { value: result_args, mut obligations } = self
-            .query_response_instantiation_guess(
-                cause,
-                param_env,
-                original_values,
-                query_response,
-            )?;
+        let result_args =
+            self.query_response_instantiation_guess(cause, original_values, query_response);
+
+        let mut obligations = vec![];
+
+        // Carry all newly resolved opaque types to the caller's scope
+        for &(opaque_type_key, hidden_ty) in &query_response.value.opaque_types {
+            let opaque_type_key = instantiate_value(self.tcx, &result_args, opaque_type_key);
+            let hidden_ty = instantiate_value(self.tcx, &result_args, hidden_ty);
+            debug!(?opaque_type_key, ?hidden_ty, "constrain opaque type");
+            // We can't use equate here, because the hidden type may have been an inference
+            // variable that got constrained to the opaque type itself. In that case we want to ensure
+            // any lifetime differences get recorded in `ouput_query_region_constraints` instead of
+            // being registered in the `InferCtxt`.
+            match hidden_ty.kind() {
+                ty::Alias(ty::Opaque, alias_ty)
+                    if alias_ty.def_id == opaque_type_key.def_id.into() =>
+                {
+                    assert_eq!(alias_ty.args.len(), opaque_type_key.args.len());
+                    for (key_arg, hidden_arg) in
+                        opaque_type_key.args.iter().zip(alias_ty.args.iter())
+                    {
+                        self.equate_generic_arg(
+                            key_arg,
+                            hidden_arg,
+                            output_query_region_constraints,
+                            ConstraintCategory::OpaqueType,
+                            &mut obligations,
+                            cause,
+                            param_env,
+                        )?;
+                    }
+                }
+                _ => {
+                    self.insert_hidden_type(
+                        opaque_type_key,
+                        cause,
+                        param_env,
+                        hidden_ty,
+                        &mut obligations,
+                    )?;
+                }
+            }
+        }
 
         // Compute `QueryOutlivesConstraint` values that unify each of
         // the original values `v_o` that was canonicalized into a
@@ -381,25 +418,47 @@ impl<'tcx> InferCtxt<'tcx> {
             original_values, query_response,
         );
 
-        let mut value = self.query_response_instantiation_guess(
-            cause,
-            param_env,
-            original_values,
-            query_response,
-        )?;
+        let result_args =
+            self.query_response_instantiation_guess(cause, original_values, query_response);
 
-        value.obligations.extend(
+        let mut obligations = vec![];
+
+        // Carry all newly resolved opaque types to the caller's scope
+        for &(opaque_type_key, hidden_ty) in &query_response.value.opaque_types {
+            let opaque_type_key = instantiate_value(self.tcx, &result_args, opaque_type_key);
+            let hidden_ty = instantiate_value(self.tcx, &result_args, hidden_ty);
+            debug!(?opaque_type_key, ?hidden_ty, "constrain opaque type");
+            // We use equate here instead of, for example, just registering the
+            // opaque type's hidden value directly, because the hidden type may have been an inference
+            // variable that got constrained to the opaque type itself. In that case we want to equate
+            // the generic args of the opaque with the generic params of its hidden type version.
+            obligations.extend(
+                self.at(cause, param_env)
+                    .eq(
+                        DefineOpaqueTypes::Yes,
+                        Ty::new_opaque(
+                            self.tcx,
+                            opaque_type_key.def_id.to_def_id(),
+                            opaque_type_key.args,
+                        ),
+                        hidden_ty,
+                    )?
+                    .obligations,
+            );
+        }
+
+        obligations.extend(
             self.unify_query_response_instantiation_guess(
                 cause,
                 param_env,
                 original_values,
-                &value.value,
+                &result_args,
                 query_response,
             )?
             .into_obligations(),
         );
 
-        Ok(value)
+        Ok(InferOk { value: result_args, obligations })
     }
 
     /// Given the original values and the (canonicalized) result from
@@ -411,14 +470,13 @@ impl<'tcx> InferCtxt<'tcx> {
     /// will instantiate fresh inference variables for each canonical
     /// variable instead. Therefore, the result of this method must be
     /// properly unified
-    #[instrument(level = "debug", skip(self, param_env))]
+    #[instrument(level = "debug", skip(self))]
     fn query_response_instantiation_guess<R>(
         &self,
         cause: &ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
         original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
-    ) -> InferResult<'tcx, CanonicalVarValues<'tcx>>
+    ) -> CanonicalVarValues<'tcx>
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -491,7 +549,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // Create result arguments: if we found a value for a
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
-        let result_args = CanonicalVarValues {
+        CanonicalVarValues {
             var_values: self.tcx.mk_args_from_iter(
                 query_response.variables.iter().enumerate().map(|(index, info)| {
                     if info.universe() != ty::UniverseIndex::ROOT {
@@ -516,31 +574,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     }
                 }),
             ),
-        };
-
-        let mut obligations = vec![];
-
-        // Carry all newly resolved opaque types to the caller's scope
-        for &(a, b) in &query_response.value.opaque_types {
-            let a = instantiate_value(self.tcx, &result_args, a);
-            let b = instantiate_value(self.tcx, &result_args, b);
-            debug!(?a, ?b, "constrain opaque type");
-            // We use equate here instead of, for example, just registering the
-            // opaque type's hidden value directly, because the hidden type may have been an inference
-            // variable that got constrained to the opaque type itself. In that case we want to equate
-            // the generic args of the opaque with the generic params of its hidden type version.
-            obligations.extend(
-                self.at(cause, param_env)
-                    .eq(
-                        DefineOpaqueTypes::Yes,
-                        Ty::new_opaque(self.tcx, a.def_id.to_def_id(), a.args),
-                        b,
-                    )?
-                    .obligations,
-            );
         }
-
-        Ok(InferOk { value: result_args, obligations })
     }
 
     /// Given a "guess" at the values for the canonical variables in
