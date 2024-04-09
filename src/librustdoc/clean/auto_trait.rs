@@ -168,7 +168,7 @@ fn clean_param_env<'tcx>(
 
     // FIXME(#111101): Incorporate the explicit predicates of the item here...
     let item_predicates: FxIndexSet<_> =
-        tcx.predicates_of(item_def_id).predicates.iter().map(|(pred, _)| pred).collect();
+        tcx.param_env(item_def_id).caller_bounds().iter().collect();
     let where_predicates = param_env
         .caller_bounds()
         .iter()
