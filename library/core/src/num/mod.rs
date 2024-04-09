@@ -7,6 +7,7 @@ use crate::hint;
 use crate::intrinsics;
 use crate::mem;
 use crate::str::FromStr;
+use crate::ub_checks::assert_unsafe_precondition;
 
 // Used because the `?` operator is not allowed in a const context.
 macro_rules! try_opt {
