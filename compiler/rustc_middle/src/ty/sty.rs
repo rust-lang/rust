@@ -2231,7 +2231,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn tuple_fields(self) -> &'tcx List<Ty<'tcx>> {
         match self.kind() {
             Tuple(args) => args,
-            _ => bug!("tuple_fields called on non-tuple"),
+            _ => bug!("tuple_fields called on non-tuple: {self:?}"),
         }
     }
 
