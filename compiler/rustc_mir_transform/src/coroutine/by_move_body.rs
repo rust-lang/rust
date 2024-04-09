@@ -144,67 +144,67 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             .skip(num_args)
             .enumerate()
         {
+            let (mut parent_field_idx, mut parent_capture);
             loop {
-                let &(parent_field_idx, parent_capture) =
-                    parent_captures.peek().expect("we ran out of parent captures!");
+                (parent_field_idx, parent_capture) =
+                    *parent_captures.peek().expect("we ran out of parent captures!");
                 // A parent matches a child they share the same prefix of projections.
                 // The child may have more, if it is capturing sub-fields out of
                 // something that is captured by-move in the parent closure.
-                if !child_prefix_matches_parent_projections(parent_capture, child_capture) {
-                    // Make sure the field was used at least once.
-                    assert!(
-                        field_used_at_least_once,
-                        "we captured {parent_capture:#?} but it was not used in the child coroutine?"
-                    );
-                    field_used_at_least_once = false;
-                    // Skip this field.
-                    let _ = parent_captures.next().unwrap();
-                    continue;
+                if child_prefix_matches_parent_projections(parent_capture, child_capture) {
+                    break;
                 }
-
-                // Store this set of additional projections (fields and derefs).
-                // We need to re-apply them later.
-                let child_precise_captures =
-                    &child_capture.place.projections[parent_capture.place.projections.len()..];
-
-                // If the parent captures by-move, and the child captures by-ref, then we
-                // need to peel an additional `deref` off of the body of the child.
-                let needs_deref = child_capture.is_by_ref() && !parent_capture.is_by_ref();
-                if needs_deref {
-                    assert_ne!(
-                        coroutine_kind,
-                        ty::ClosureKind::FnOnce,
-                        "`FnOnce` coroutine-closures return coroutines that capture from \
-                        their body; it will always result in a borrowck error!"
-                    );
-                }
-
-                // Finally, store the type of the parent's captured place. We need
-                // this when building the field projection in the MIR body later on.
-                let mut parent_capture_ty = parent_capture.place.ty();
-                parent_capture_ty = match parent_capture.info.capture_kind {
-                    ty::UpvarCapture::ByValue => parent_capture_ty,
-                    ty::UpvarCapture::ByRef(kind) => Ty::new_ref(
-                        tcx,
-                        tcx.lifetimes.re_erased,
-                        parent_capture_ty,
-                        kind.to_mutbl_lossy(),
-                    ),
-                };
-
-                field_remapping.insert(
-                    FieldIdx::from_usize(child_field_idx + num_args),
-                    (
-                        FieldIdx::from_usize(parent_field_idx + num_args),
-                        parent_capture_ty,
-                        needs_deref,
-                        child_precise_captures,
-                    ),
+                // Make sure the field was used at least once.
+                assert!(
+                    field_used_at_least_once,
+                    "we captured {parent_capture:#?} but it was not used in the child coroutine?"
                 );
-
-                field_used_at_least_once = true;
-                break;
+                field_used_at_least_once = false;
+                // Skip this field.
+                let _ = parent_captures.next().unwrap();
             }
+
+            // Store this set of additional projections (fields and derefs).
+            // We need to re-apply them later.
+            let child_precise_captures =
+                &child_capture.place.projections[parent_capture.place.projections.len()..];
+
+            // If the parent captures by-move, and the child captures by-ref, then we
+            // need to peel an additional `deref` off of the body of the child.
+            let needs_deref = child_capture.is_by_ref() && !parent_capture.is_by_ref();
+            if needs_deref {
+                assert_ne!(
+                    coroutine_kind,
+                    ty::ClosureKind::FnOnce,
+                    "`FnOnce` coroutine-closures return coroutines that capture from \
+                        their body; it will always result in a borrowck error!"
+                );
+            }
+
+            // Finally, store the type of the parent's captured place. We need
+            // this when building the field projection in the MIR body later on.
+            let mut parent_capture_ty = parent_capture.place.ty();
+            parent_capture_ty = match parent_capture.info.capture_kind {
+                ty::UpvarCapture::ByValue => parent_capture_ty,
+                ty::UpvarCapture::ByRef(kind) => Ty::new_ref(
+                    tcx,
+                    tcx.lifetimes.re_erased,
+                    parent_capture_ty,
+                    kind.to_mutbl_lossy(),
+                ),
+            };
+
+            field_remapping.insert(
+                FieldIdx::from_usize(child_field_idx + num_args),
+                (
+                    FieldIdx::from_usize(parent_field_idx + num_args),
+                    parent_capture_ty,
+                    needs_deref,
+                    child_precise_captures,
+                ),
+            );
+
+            field_used_at_least_once = true;
         }
 
         // Pop the last parent capture
