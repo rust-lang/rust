@@ -465,14 +465,20 @@ impl File {
         OpenOptions::new()
     }
 
-    /// Attempts to sync all OS-internal metadata to disk.
+    /// Attempts to sync all OS-internal file content and metadata to disk.
     ///
     /// This function will attempt to ensure that all in-memory data reaches the
     /// filesystem before returning.
     ///
     /// This can be used to handle errors that would otherwise only be caught
-    /// when the `File` is closed.  Dropping a file will ignore errors in
-    /// synchronizing this in-memory data.
+    /// when the `File` is closed, as dropping a `File` will ignore all errors.
+    /// Note, however, that `sync_all` is generally more expensive than closing
+    /// a file by dropping it, because the latter is not required to block until
+    /// the data has been written to the filesystem.
+    ///
+    /// If synchronizing the metadata is not required, use [`sync_data`] instead.
+    ///
+    /// [`sync_data`]: File::sync_data
     ///
     /// # Examples
     ///
@@ -489,6 +495,7 @@ impl File {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "fsync")]
     pub fn sync_all(&self) -> io::Result<()> {
         self.inner.fsync()
     }
@@ -520,6 +527,7 @@ impl File {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "fdatasync")]
     pub fn sync_data(&self) -> io::Result<()> {
         self.inner.datasync()
     }
