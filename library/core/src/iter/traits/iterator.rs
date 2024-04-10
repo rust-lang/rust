@@ -58,7 +58,7 @@ pub trait Iterator {
     /// again may eventually start returning [`Some(Item)`] again at some
     /// point. Alternately, implementations may choose to continue returning [`None`]
     /// forever, in which case they should implement [`FusedIterator`] as well.
-    /// 
+    ///
     /// Implementations should document their behavior, or their lack of a guarantee
     /// about their behavior, after `None` is returned. If they must panic,
     /// block forever, or otherwise cause problems, then this should be prominently
