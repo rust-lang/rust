@@ -1142,7 +1142,7 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_binary(&mut self, op: hir::BinOp, lhs: &hir::Expr<'_>, rhs: &hir::Expr<'_>) {
-        let assoc_op = bin_op_to_assoc_op(op.node);
+        let assoc_op = AssocOp::from_ast_binop(op.node);
         let prec = assoc_op.precedence() as i8;
         let fixity = assoc_op.fixity();
 
@@ -2325,33 +2325,6 @@ fn stmt_ends_with_semi(stmt: &hir::StmtKind<'_>) -> bool {
         hir::StmtKind::Item(_) => false,
         hir::StmtKind::Expr(e) => expr_requires_semi_to_be_stmt(e),
         hir::StmtKind::Semi(..) => false,
-    }
-}
-
-fn bin_op_to_assoc_op(op: hir::BinOpKind) -> AssocOp {
-    use crate::hir::BinOpKind::*;
-    match op {
-        Add => AssocOp::Add,
-        Sub => AssocOp::Subtract,
-        Mul => AssocOp::Multiply,
-        Div => AssocOp::Divide,
-        Rem => AssocOp::Modulus,
-
-        And => AssocOp::LAnd,
-        Or => AssocOp::LOr,
-
-        BitXor => AssocOp::BitXor,
-        BitAnd => AssocOp::BitAnd,
-        BitOr => AssocOp::BitOr,
-        Shl => AssocOp::ShiftLeft,
-        Shr => AssocOp::ShiftRight,
-
-        Eq => AssocOp::Equal,
-        Lt => AssocOp::Less,
-        Le => AssocOp::LessEqual,
-        Ne => AssocOp::NotEqual,
-        Ge => AssocOp::GreaterEqual,
-        Gt => AssocOp::Greater,
     }
 }
 
