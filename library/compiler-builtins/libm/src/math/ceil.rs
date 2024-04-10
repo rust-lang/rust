@@ -20,7 +20,7 @@ pub fn ceil(x: f64) -> f64 {
     {
         //use an alternative implementation on x86, because the
         //main implementation fails with the x87 FPU used by
-        //debian i386, probablly due to excess precision issues.
+        //debian i386, probably due to excess precision issues.
         //basic implementation taken from https://github.com/rust-lang/libm/issues/219
         use super::fabs;
         if fabs(x).to_bits() < 4503599627370496.0_f64.to_bits() {
