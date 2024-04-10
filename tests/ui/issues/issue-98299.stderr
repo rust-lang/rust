@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for `SmallCString<N>`
+error[E0282]: type annotations needed for `SmallCString<_>`
   --> $DIR/issue-98299.rs:4:36
    |
 LL |     SmallCString::try_from(p).map(|cstr| cstr);
