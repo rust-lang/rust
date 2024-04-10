@@ -175,10 +175,7 @@ impl Socket {
         let mut pollfd = libc::pollfd { fd: self.as_raw_fd(), events: libc::POLLOUT, revents: 0 };
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-            return Err(io::const_io_error!(
-                io::ErrorKind::InvalidInput,
-                "cannot set a 0 duration timeout",
-            ));
+            return Err(io::Error::ZERO_TIMEOUT);
         }
 
         let start = Instant::now();
@@ -360,10 +357,7 @@ impl Socket {
         let timeout = match dur {
             Some(dur) => {
                 if dur.as_secs() == 0 && dur.subsec_nanos() == 0 {
-                    return Err(io::const_io_error!(
-                        io::ErrorKind::InvalidInput,
-                        "cannot set a 0 duration timeout",
-                    ));
+                    return Err(io::Error::ZERO_TIMEOUT);
                 }
 
                 let secs = if dur.as_secs() > libc::time_t::MAX as u64 {

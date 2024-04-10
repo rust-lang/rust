@@ -75,6 +75,25 @@ impl fmt::Debug for Error {
     }
 }
 
+/// Common errors constants for use in std
+impl Error {
+    pub(crate) const INVALID_UTF8: Self =
+        const_io_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8");
+
+    pub(crate) const READ_EXACT_EOF: Self =
+        const_io_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer");
+
+    #[allow(dead_code)]
+    pub(crate) const UNSUPPORTED_PLATFORM: Self =
+        const_io_error!(ErrorKind::Unsupported, "operation not supported on this platform");
+
+    pub(crate) const WRITE_ALL_EOF: Self =
+        const_io_error!(ErrorKind::WriteZero, "failed to write whole buffer");
+
+    pub(crate) const ZERO_TIMEOUT: Self =
+        const_io_error!(ErrorKind::InvalidInput, "cannot set a 0 duration timeout");
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<alloc::ffi::NulError> for Error {
     /// Converts a [`alloc::ffi::NulError`] into a [`Error`].
