@@ -214,7 +214,16 @@
 //! [slice]: prim@slice
 
 #![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
-#![cfg_attr(feature = "restricted-std", unstable(feature = "restricted_std", issue = "none"))]
+#![cfg_attr(
+    feature = "restricted-std",
+    unstable(
+        feature = "restricted_std",
+        issue = "none",
+        reason = "You have attempted to use a standard library built for a platform that it doesn't \
+            know how to support. Consider building it for a known environment, disabling it with \
+            `#![no_std]` or overriding this warning by enabling this feature".
+    )
+)]
 #![cfg_attr(not(bootstrap), rustc_preserve_ub_checks)]
 #![doc(
     html_playground_url = "https://play.rust-lang.org/",
