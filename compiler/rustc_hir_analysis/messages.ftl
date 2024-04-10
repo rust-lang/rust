@@ -355,6 +355,9 @@ hir_analysis_pattern_type_wild_pat = "wildcard patterns are not permitted for pa
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
 
+hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
+    .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`
+
 hir_analysis_requires_note = the `{$trait_name}` impl for `{$ty}` requires that `{$error_predicate}`
 
 hir_analysis_return_type_notation_equality_bound =
