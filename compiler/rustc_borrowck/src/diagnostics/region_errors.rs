@@ -20,7 +20,6 @@ use rustc_infer::infer::{
 };
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
-use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::TypeVisitor;
 use rustc_middle::ty::{self, RegionVid, Ty};
@@ -29,8 +28,7 @@ use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::Obligation;
+use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 
 use crate::borrowck_errors;
 use crate::session_diagnostics::{
@@ -1140,16 +1138,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             return;
         };
 
-        // Get the arguments for the found method, only specifying that `Self` is the receiver type.
-        let args = GenericArgs::for_item(tcx, method, |param, _| {
-            if param.index == 0 {
-                possible_rcvr_ty.into()
-            } else {
-                self.infcx.var_for_def(expr.span, param)
-            }
-        });
-
-        let preds = tcx.predicates_of(method).instantiate(tcx, args);
         // Get the type for the parameter corresponding to the argument the closure with the
         // lifetime error we had.
         let Some(input) = tcx
@@ -1163,75 +1151,30 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             return;
         };
 
-        let cause = ObligationCause::misc(expr.span, self.mir_def_id());
+        trace!(?input);
 
-        enum CanSuggest {
-            Yes,
-            No,
-            Maybe,
-        }
+        let ty::Param(closure_param) = input.kind() else { return };
 
-        // Ok, the following is a HACK. We go over every predicate in the `fn` looking for the ones
-        // referencing the argument at hand, which is a closure with some bounds. In those, we
-        // re-verify that the closure we synthesized still matches the closure bound on the argument
-        // (this is likely unneeded) but *more importantly*, we look at the
-        // `<ClosureTy as FnOnce>::Output = ClosureRetTy` to confirm that the closure type we
-        // synthesized above *will* be accepted by the `where` bound corresponding to this
-        // argument. Put a different way, given `counts.iter().max_by_key(|(_, v)| v)`, we check
-        // that a new `ClosureTy` of `|(_, v)| { **v }` will be accepted by this method signature:
-        // ```
-        // fn max_by_key<B: Ord, F>(self, f: F) -> Option<Self::Item>
-        // where
-        //     Self: Sized,
-        //     F: FnMut(&Self::Item) -> B,
-        // ```
-        // Sadly, we can't use `ObligationCtxt` to do this, we need to modify things in place.
-        let mut can_suggest = CanSuggest::Maybe;
-        for pred in preds.predicates {
-            match tcx.liberate_late_bound_regions(self.mir_def_id().into(), pred.kind()) {
-                ty::ClauseKind::Trait(pred)
-                    if self.infcx.can_eq(self.param_env, pred.self_ty(), *input)
-                        && [
-                            tcx.lang_items().fn_trait(),
-                            tcx.lang_items().fn_mut_trait(),
-                            tcx.lang_items().fn_once_trait(),
-                        ]
-                        .contains(&Some(pred.def_id())) =>
-                {
-                    // This predicate is an `Fn*` trait and corresponds to the argument with the
-                    // closure that failed the lifetime check. We verify that the arguments will
-                    // continue to match (which didn't change, so they should, and this be a no-op).
-                    let pred = pred.with_self_ty(tcx, closure_ty);
-                    let o = Obligation::new(tcx, cause.clone(), self.param_env, pred);
-                    if !self.infcx.predicate_may_hold(&o) {
-                        // The closure we have doesn't have the right arguments for the trait bound
-                        can_suggest = CanSuggest::No;
-                    } else if let CanSuggest::Maybe = can_suggest {
-                        // The closure has the right arguments
-                        can_suggest = CanSuggest::Yes;
-                    }
-                }
-                ty::ClauseKind::Projection(proj)
-                    if self.infcx.can_eq(self.param_env, proj.projection_ty.self_ty(), *input)
-                        && tcx.lang_items().fn_once_output() == Some(proj.projection_ty.def_id) =>
-                {
-                    // Verify that `<[closure@...] as FnOnce>::Output` matches the expected
-                    // `Output` from the trait bound on the function called with the `[closure@...]`
-                    // as argument.
-                    let proj = proj.with_self_ty(tcx, closure_ty);
-                    let o = Obligation::new(tcx, cause.clone(), self.param_env, proj);
-                    if !self.infcx.predicate_may_hold(&o) {
-                        // Return type doesn't match.
-                        can_suggest = CanSuggest::No;
-                    } else if let CanSuggest::Maybe = can_suggest {
-                        // Return type matches, we can suggest dereferencing the closure's value.
-                        can_suggest = CanSuggest::Yes;
-                    }
-                }
-                _ => {}
+        // Get the arguments for the found method, only specifying that `Self` is the receiver type.
+        let args = GenericArgs::for_item(tcx, method, |param, _| {
+            if param.index == 0 {
+                possible_rcvr_ty.into()
+            } else if param.index == closure_param.index {
+                closure_ty.into()
+            } else {
+                self.infcx.var_for_def(expr.span, param)
             }
-        }
-        if let CanSuggest::Yes = can_suggest {
+        });
+
+        let preds = tcx.predicates_of(method).instantiate(tcx, args);
+
+        let ocx = ObligationCtxt::new(&self.infcx);
+        ocx.register_obligations(preds.iter().map(|(pred, span)| {
+            trace!(?pred);
+            Obligation::misc(tcx, span, self.mir_def_id(), self.param_env, pred)
+        }));
+
+        if ocx.select_all_or_error().is_empty() {
             diag.span_suggestion_verbose(
                 value.span.shrink_to_lo(),
                 "dereference the return value",
