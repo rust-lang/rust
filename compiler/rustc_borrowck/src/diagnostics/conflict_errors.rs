@@ -655,8 +655,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn ty_kind_suggestion(&self, ty: Ty<'tcx>) -> Option<String> {
         // Keep in sync with `rustc_hir_analysis/src/check/mod.rs:ty_kind_suggestion`.
         // FIXME: deduplicate the above.
+        let tcx = self.infcx.tcx;
         let implements_default = |ty| {
-            let Some(default_trait) = self.infcx.tcx.get_diagnostic_item(sym::Default) else {
+            let Some(default_trait) = tcx.get_diagnostic_item(sym::Default) else {
                 return false;
             };
             self.infcx
@@ -671,8 +672,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             ty::Int(_) | ty::Uint(_) => "42".into(),
             ty::Float(_) => "3.14159".into(),
             ty::Slice(_) => "[]".to_string(),
-            ty::Adt(def, _) if Some(def.did()) == self.infcx.tcx.get_diagnostic_item(sym::Vec) => {
+            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => {
                 "vec![]".to_string()
+            }
+            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::String) => {
+                "String::new()".to_string()
+            }
+            ty::Adt(def, args) if def.is_box() => {
+                format!("Box::new({})", self.ty_kind_suggestion(args[0].expect_ty())?)
+            }
+            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Option) => {
+                "None".to_string()
+            }
+            ty::Adt(def, args) if Some(def.did()) == tcx.get_diagnostic_item(sym::Result) => {
+                format!("Ok({})", self.ty_kind_suggestion(args[0].expect_ty())?)
             }
             ty::Adt(_, _) if implements_default(ty) => "Default::default()".to_string(),
             ty::Ref(_, ty, mutability) => {
@@ -688,7 +701,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             ty::Array(ty, len) => format!(
                 "[{}; {}]",
                 self.ty_kind_suggestion(*ty)?,
-                len.eval_target_usize(self.infcx.tcx, ty::ParamEnv::reveal_all()),
+                len.eval_target_usize(tcx, ty::ParamEnv::reveal_all()),
             ),
             ty::Tuple(tys) => format!(
                 "({})",
