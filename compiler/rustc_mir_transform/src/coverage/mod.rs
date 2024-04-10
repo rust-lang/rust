@@ -102,12 +102,23 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     inject_mcdc_statements(mir_body, &basic_coverage_blocks, &coverage_spans);
 
+    let mcdc_max_decision_depth = coverage_spans
+        .mappings
+        .iter()
+        .filter_map(|bcb_mapping| match bcb_mapping.kind {
+            BcbMappingKind::MCDCDecision { decision_depth, .. } => Some(decision_depth),
+            _ => None,
+        })
+        .max()
+        .unwrap_or(0);
+
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,
         num_counters: coverage_counters.num_counters(),
         mcdc_bitmap_bytes: coverage_spans.test_vector_bitmap_bytes(),
         expressions: coverage_counters.into_expressions(),
         mappings,
+        mcdc_max_decision_depth,
     }));
 }
 

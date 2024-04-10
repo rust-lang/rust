@@ -206,7 +206,8 @@ fn ensure_mcdc_parameters<'ll, 'tcx>(
     let fn_name = bx.get_pgo_func_name_var(instance);
     let hash = bx.const_u64(function_coverage_info.function_source_hash);
     let bitmap_bytes = bx.const_u32(function_coverage_info.mcdc_bitmap_bytes);
-    let cond_bitmap = bx.mcdc_parameters(fn_name, hash, bitmap_bytes, 1_u32);
+    let max_decision_depth = function_coverage_info.mcdc_max_decision_depth;
+    let cond_bitmap = bx.mcdc_parameters(fn_name, hash, bitmap_bytes, max_decision_depth as u32);
     bx.coverage_context()
         .expect("already checked above")
         .mcdc_condition_bitmap_map
