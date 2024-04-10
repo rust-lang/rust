@@ -1,4 +1,6 @@
-use gccjit::{RValue, Struct, Type};
+use std::convert::TryInto;
+
+use gccjit::{CType, RValue, Struct, Type};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, TypeMembershipMethods};
 use rustc_middle::ty::layout::TyAndLayout;
@@ -120,10 +122,28 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.isize_type
     }
 
+    #[cfg(feature = "master")]
     fn type_f16(&self) -> Type<'gcc> {
-        unimplemented!("f16_f128")
+        if self.context.get_target_info().supports_target_dependent_type(CType::Float16) {
+            return self.context.new_c_type(CType::Float16);
+        }
+        unimplemented!("f16")
     }
 
+    #[cfg(not(feature = "master"))]
+    fn type_f16(&self) -> Type<'gcc> {
+        unimplemented!("f16")
+    }
+
+    #[cfg(feature = "master")]
+    fn type_f32(&self) -> Type<'gcc> {
+        if self.context.get_target_info().supports_target_dependent_type(CType::Float32) {
+            return self.context.new_c_type(CType::Float32);
+        }
+        self.float_type
+    }
+
+    #[cfg(not(feature = "master"))]
     fn type_f32(&self) -> Type<'gcc> {
         self.float_type
     }
@@ -132,8 +152,17 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.double_type
     }
 
+    #[cfg(feature = "master")]
     fn type_f128(&self) -> Type<'gcc> {
-        unimplemented!("f16_f128")
+        if self.context.get_target_info().supports_target_dependent_type(CType::Float128) {
+            return self.context.new_c_type(CType::Float128);
+        }
+        unimplemented!("f128")
+    }
+
+    #[cfg(not(feature = "master"))]
+    fn type_f128(&self) -> Type<'gcc> {
+        unimplemented!("f128")
     }
 
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {
@@ -161,6 +190,31 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         typ
     }
 
+    #[cfg(feature = "master")]
+    fn type_kind(&self, typ: Type<'gcc>) -> TypeKind {
+        if self.is_int_type_or_bool(typ) {
+            TypeKind::Integer
+        } else if typ.is_compatible_with(self.float_type) {
+            TypeKind::Float
+        } else if typ.is_compatible_with(self.double_type) {
+            TypeKind::Double
+        } else if typ.is_vector() {
+            TypeKind::Vector
+        } else if typ.is_floating_point() {
+            match typ.get_size() {
+                2 => TypeKind::Half,
+                4 => TypeKind::Float,
+                8 => TypeKind::Double,
+                16 => TypeKind::FP128,
+                _ => TypeKind::Void,
+            }
+        } else {
+            // TODO(antoyo): support other types.
+            TypeKind::Void
+        }
+    }
+
+    #[cfg(not(feature = "master"))]
     fn type_kind(&self, typ: Type<'gcc>) -> TypeKind {
         if self.is_int_type_or_bool(typ) {
             TypeKind::Integer
@@ -210,6 +264,16 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         unimplemented!();
     }
 
+    #[cfg(feature = "master")]
+    fn float_width(&self, typ: Type<'gcc>) -> usize {
+        if typ.is_floating_point() {
+            (typ.get_size() * u8::BITS).try_into().unwrap()
+        } else {
+            panic!("Cannot get width of float type {:?}", typ);
+        }
+    }
+
+    #[cfg(not(feature = "master"))]
     fn float_width(&self, typ: Type<'gcc>) -> usize {
         let f32 = self.context.new_type::<f32>();
         let f64 = self.context.new_type::<f64>();
