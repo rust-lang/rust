@@ -1,8 +1,7 @@
-#![warn(unused_lifetimes)]
+#![warn(unused_lifetimes, redundant_lifetimes)]
 
 pub trait X {
-    type Y<'a: 'static>;
-    //~^ WARNING unnecessary lifetime parameter
+    type Y<'a: 'static>; //~ WARN unnecessary lifetime parameter `'a`
 }
 
 impl X for () {

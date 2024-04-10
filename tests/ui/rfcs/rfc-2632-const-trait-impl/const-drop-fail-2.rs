@@ -1,7 +1,7 @@
 //@ known-bug: #110395
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
-#![cfg_attr(precise, feature(const_precise_live_drops))]
+// #![cfg_attr(precise, feature(const_precise_live_drops))]
 
 use std::marker::{Destruct, PhantomData};
 

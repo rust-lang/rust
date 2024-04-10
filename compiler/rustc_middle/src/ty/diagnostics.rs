@@ -5,13 +5,13 @@ use std::fmt::Write;
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Opaque, PolyTraitPredicate,
-    Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitor,
+    self, AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Opaque,
+    PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diag, DiagArgValue, IntoDiagArg};
+use rustc_errors::{into_diag_arg_using_display, Applicability, Diag, DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -19,10 +19,9 @@ use rustc_hir::{PredicateOrigin, WherePredicate};
 use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
-impl<'tcx> IntoDiagArg for Ty<'tcx> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        self.to_string().into_diag_arg()
-    }
+into_diag_arg_using_display! {
+    Ty<'_>,
+    ty::Region<'_>,
 }
 
 impl<'tcx> Ty<'tcx> {

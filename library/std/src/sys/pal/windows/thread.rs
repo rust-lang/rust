@@ -59,10 +59,14 @@ impl Thread {
     pub fn set_name(name: &CStr) {
         if let Ok(utf8) = name.to_str() {
             if let Ok(utf16) = to_u16s(utf8) {
-                unsafe {
-                    c::SetThreadDescription(c::GetCurrentThread(), utf16.as_ptr());
-                };
+                Self::set_name_wide(&utf16)
             };
+        };
+    }
+
+    pub fn set_name_wide(name: &[u16]) {
+        unsafe {
+            c::SetThreadDescription(c::GetCurrentThread(), name.as_ptr());
         };
     }
 

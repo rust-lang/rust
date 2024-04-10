@@ -757,7 +757,7 @@ pub struct GlobalCtxt<'tcx> {
 impl<'tcx> GlobalCtxt<'tcx> {
     /// Installs `self` in a `TyCtxt` and `ImplicitCtxt` for the duration of
     /// `f`.
-    pub fn enter<'a: 'tcx, F, R>(&'a self, f: F) -> R
+    pub fn enter<F, R>(&'tcx self, f: F) -> R
     where
         F: FnOnce(TyCtxt<'tcx>) -> R,
     {

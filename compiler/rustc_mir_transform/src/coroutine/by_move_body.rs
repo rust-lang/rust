@@ -154,6 +154,14 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             }) {
                 let (child_field_idx, child_capture) = child_captures.next().unwrap();
 
+                // This analysis only makes sense if the parent capture is a
+                // prefix of the child capture.
+                assert!(
+                    child_capture.place.projections.len() >= parent_capture.place.projections.len(),
+                    "parent capture ({parent_capture:#?}) expected to be prefix of \
+                    child capture ({child_capture:#?})"
+                );
+
                 // Store this set of additional projections (fields and derefs).
                 // We need to re-apply them later.
                 let child_precise_captures =
@@ -244,7 +252,6 @@ fn child_prefix_matches_parent_projections(
         bug!("expected capture to be an upvar");
     };
 
-    assert!(child_capture.place.projections.len() >= parent_capture.place.projections.len());
     parent_base.var_path.hir_id == child_base.var_path.hir_id
         && std::iter::zip(&child_capture.place.projections, &parent_capture.place.projections)
             .all(|(child, parent)| child.kind == parent.kind)

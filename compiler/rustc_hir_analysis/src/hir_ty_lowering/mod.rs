@@ -2223,6 +2223,24 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                         Err(LitToConstError::TypeError) => todo!(),
                                     }
                                 }
+
+                                hir::ExprKind::Path(hir::QPath::Resolved(
+                                    _,
+                                    &hir::Path {
+                                        res: Res::Def(DefKind::ConstParam, def_id), ..
+                                    },
+                                )) => {
+                                    let ty = tcx
+                                        .type_of(def_id)
+                                        .no_bound_vars()
+                                        .expect("const parameter types cannot be generic");
+                                    let item_def_id = tcx.parent(def_id);
+                                    let generics = tcx.generics_of(item_def_id);
+                                    let index = generics.param_def_id_to_index[&def_id];
+                                    let name = tcx.item_name(def_id);
+                                    ty::Const::new_param(tcx, ty::ParamConst::new(index, name), ty)
+                                }
+
                                 _ => {
                                     let err = tcx
                                         .dcx()
