@@ -1,5 +1,8 @@
-//! macOS-specific raw type definitions
-
+#![cfg_attr(target_os = "ios", doc = "iOS-specific raw type definitions")]
+#![cfg_attr(target_os = "macos", doc = "macOS-specific raw type definitions")]
+#![cfg_attr(target_os = "tvos", doc = "tvOS-specific raw type definitions")]
+#![cfg_attr(target_os = "visionos", doc = "visionOS-specific raw type definitions")]
+#![cfg_attr(target_os = "watchos", doc = "watchOS-specific raw type definitions")]
 #![stable(feature = "raw_ext", since = "1.1.0")]
 #![deprecated(
     since = "1.8.0",
