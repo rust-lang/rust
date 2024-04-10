@@ -577,6 +577,7 @@ pub(crate) fn make_test(
     dont_insert_main: bool,
     opts: &GlobalTestOptions,
     edition: Edition,
+    // If `test_id` is `None`, it means we're generating code for a code example "run" link.
     test_id: Option<&str>,
 ) -> (String, usize, bool) {
     let (crate_attrs, everything_else, crates) = partition_source(s, edition);
@@ -698,7 +699,7 @@ pub(crate) fn make_test(
             (found_main, found_extern_crate, found_macro)
         })
     });
-    let Ok((already_has_main, already_has_extern_crate, found_macro)) = result else {
+    let Ok((mut already_has_main, already_has_extern_crate, found_macro)) = result else {
         // If the parser panicked due to a fatal error, pass the test code through unchanged.
         // The error will be reported during compilation.
         return (s.to_owned(), 0, false);
@@ -708,34 +709,34 @@ pub(crate) fn make_test(
     // see it. In that case, run the old text-based scan to see if they at least have a main
     // function written inside a macro invocation. See
     // https://github.com/rust-lang/rust/issues/56898
-    let already_has_main = if found_macro && !already_has_main {
-        s.lines()
+    if found_macro && !already_has_main {
+        already_has_main = s
+            .lines()
             .map(|line| {
                 let comment = line.find("//");
                 if let Some(comment_begins) = comment { &line[0..comment_begins] } else { line }
             })
-            .any(|code| code.contains("fn main"))
-    } else {
-        already_has_main
-    };
+            .any(|code| code.contains("fn main"));
+    }
 
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
-    if !already_has_extern_crate && !opts.no_crate_inject && crate_name != Some("std") {
-        if let Some(crate_name) = crate_name {
-            // Don't inject `extern crate` if the crate is never used.
-            // NOTE: this is terribly inaccurate because it doesn't actually
-            // parse the source, but only has false positives, not false
-            // negatives.
-            if s.contains(crate_name) {
-                // rustdoc implicitly inserts an `extern crate` item for the own crate
-                // which may be unused, so we need to allow the lint.
-                prog.push_str("#[allow(unused_extern_crates)]\n");
+    if !already_has_extern_crate &&
+        !opts.no_crate_inject &&
+        let Some(crate_name) = crate_name &&
+        crate_name != "std" &&
+        // Don't inject `extern crate` if the crate is never used.
+        // NOTE: this is terribly inaccurate because it doesn't actually
+        // parse the source, but only has false positives, not false
+        // negatives.
+        s.contains(crate_name)
+    {
+        // rustdoc implicitly inserts an `extern crate` item for the own crate
+        // which may be unused, so we need to allow the lint.
+        prog.push_str("#[allow(unused_extern_crates)]\n");
 
-                prog.push_str(&format!("extern crate r#{crate_name};\n"));
-                line_offset += 1;
-            }
-        }
+        prog.push_str(&format!("extern crate r#{crate_name};\n"));
+        line_offset += 1;
     }
 
     // FIXME: This code cannot yet handle no_std test cases yet
