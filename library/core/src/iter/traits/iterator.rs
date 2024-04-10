@@ -48,17 +48,24 @@ pub trait Iterator {
     type Item;
 
     /// Advances the iterator and returns the next value.
+    /// Returns [`None`] when iteration is finished.
     ///
-    /// Returns [`None`] when iteration is finished. Individual iterator
-    /// implementations may choose to resume iteration, and so calling `next()`
-    /// again may or may not eventually start returning [`Some(Item)`] again at some
-    /// point. (Calling `next()` on an iterator after it has returned `None`
-    /// is in general a perfectly valid use of the interface;
-    /// implementations must *not* panic, block forever, or otherwise misbehave
-    /// when this happens, though they *may* choose not to guarantee their exact
-    /// behavior.)
+    /// # Behavior after [`None`] is returned
+    ///
+    /// Calling `next()` on an iterator after it has returned `None`
+    /// is in general a perfectly valid use of the interface.
+    /// Implementations may choose to resume iteration, and so calling `next()`
+    /// again may eventually start returning [`Some(Item)`] again at some
+    /// point. Alternately, implementations may choose to continue returning [`None`]
+    /// forever, in which case they should implement [`FusedIterator`] as well.
+    /// 
+    /// Implementations should document their behavior, or their lack of a guarantee
+    /// about their behavior, after `None` is returned. If they must panic,
+    /// block forever, or otherwise cause problems, then this should be prominently
+    /// indicated in their docs (no different from any other potentially-misbehaving API).
     ///
     /// [`Some(Item)`]: Some
+    /// [`FusedIterator`]: crate::iter::FusedIterator
     ///
     /// # Examples
     ///
