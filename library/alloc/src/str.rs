@@ -10,6 +10,7 @@
 use core::borrow::{Borrow, BorrowMut};
 use core::iter::FusedIterator;
 use core::mem;
+use core::mem::MaybeUninit;
 use core::ptr;
 use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use core::unicode::conversions;
@@ -366,14 +367,9 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_lowercase(&self) -> String {
-        let out = convert_while_ascii(self.as_bytes(), u8::to_ascii_lowercase);
+        let (mut s, rest) = convert_while_ascii(self, u8::to_ascii_lowercase);
 
-        // Safety: we know this is a valid char boundary since
-        // out.len() is only progressed if ascii bytes are found
-        let rest = unsafe { self.get_unchecked(out.len()..) };
-
-        // Safety: We have written only valid ASCII to our vec
-        let mut s = unsafe { String::from_utf8_unchecked(out) };
+        let prefix_len = s.len();
 
         for (i, c) in rest.char_indices() {
             if c == 'Σ' {
@@ -382,8 +378,7 @@ impl str {
                 // in `SpecialCasing.txt`,
                 // so hard-code it rather than have a generic "condition" mechanism.
                 // See https://github.com/rust-lang/rust/issues/26035
-                let out_len = self.len() - rest.len();
-                let sigma_lowercase = map_uppercase_sigma(&self, i + out_len);
+                let sigma_lowercase = map_uppercase_sigma(self, prefix_len + i);
                 s.push(sigma_lowercase);
             } else {
                 match conversions::to_lower(c) {
@@ -459,14 +454,7 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
-        let out = convert_while_ascii(self.as_bytes(), u8::to_ascii_uppercase);
-
-        // Safety: we know this is a valid char boundary since
-        // out.len() is only progressed if ascii bytes are found
-        let rest = unsafe { self.get_unchecked(out.len()..) };
-
-        // Safety: We have written only valid ASCII to our vec
-        let mut s = unsafe { String::from_utf8_unchecked(out) };
+        let (mut s, rest) = convert_while_ascii(self, u8::to_ascii_uppercase);
 
         for c in rest.chars() {
             match conversions::to_upper(c) {
@@ -615,50 +603,80 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }
 }
 
-/// Converts the bytes while the bytes are still ascii.
+/// Converts leading ascii bytes in `s` by calling the `convert` function.
+///
 /// For better average performance, this happens in chunks of `2*size_of::<usize>()`.
-/// Returns a vec with the converted bytes.
+///
+/// Returns a tuple of the converted prefix and the remainder starting from
+/// the first non-ascii character.
 #[inline]
 #[cfg(not(test))]
 #[cfg(not(no_global_oom_handling))]
-fn convert_while_ascii(b: &[u8], convert: fn(&u8) -> u8) -> Vec<u8> {
-    let mut out = Vec::with_capacity(b.len());
-
+fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
+    // process the input in chunks to enable auto-vectorization
     const USIZE_SIZE: usize = mem::size_of::<usize>();
     const MAGIC_UNROLL: usize = 2;
     const N: usize = USIZE_SIZE * MAGIC_UNROLL;
-    const NONASCII_MASK: usize = usize::from_ne_bytes([0x80; USIZE_SIZE]);
 
-    let mut i = 0;
-    unsafe {
-        while i + N <= b.len() {
-            // Safety: we have checks the sizes `b` and `out` to know that our
-            let in_chunk = b.get_unchecked(i..i + N);
-            let out_chunk = out.spare_capacity_mut().get_unchecked_mut(i..i + N);
+    let mut slice = s.as_bytes();
+    let mut out = Vec::with_capacity(slice.len());
+    let mut out_slice = &mut out.spare_capacity_mut()[..slice.len()];
 
-            let mut bits = 0;
-            for j in 0..MAGIC_UNROLL {
-                // read the bytes 1 usize at a time (unaligned since we haven't checked the alignment)
-                // safety: in_chunk is valid bytes in the range
-                bits |= in_chunk.as_ptr().cast::<usize>().add(j).read_unaligned();
-            }
-            // if our chunks aren't ascii, then return only the prior bytes as init
-            if bits & NONASCII_MASK != 0 {
-                break;
-            }
+    let mut ascii_prefix_len = 0_usize;
+    let mut is_ascii = [false; N];
 
-            // perform the case conversions on N bytes (gets heavily autovec'd)
-            for j in 0..N {
-                // safety: in_chunk and out_chunk is valid bytes in the range
-                let out = out_chunk.get_unchecked_mut(j);
-                out.write(convert(in_chunk.get_unchecked(j)));
-            }
+    while slice.len() >= N {
+        // Safety: checked in loop condition
+        let chunk = unsafe { slice.get_unchecked(..N) };
+        // Safety: out_slice has same length as input slice and gets sliced with the same offsets
+        let out_chunk = unsafe { out_slice.get_unchecked_mut(..N) };
 
-            // mark these bytes as initialised
-            i += N;
+        for j in 0..N {
+            is_ascii[j] = chunk[j] <= 127;
         }
-        out.set_len(i);
+
+        // auto-vectorization for this check is a bit fragile,
+        // sum and comparing against the chunk size gives the best result,
+        // specifically a pmovmsk instruction on x86.
+        if is_ascii.iter().map(|x| *x as u8).sum::<u8>() as usize != N {
+            break;
+        }
+
+        for j in 0..N {
+            out_chunk[j] = MaybeUninit::new(convert(&chunk[j]));
+        }
+
+        ascii_prefix_len += N;
+        slice = unsafe { slice.get_unchecked(N..) };
+        out_slice = unsafe { out_slice.get_unchecked_mut(N..) };
     }
 
-    out
+    // handle the remainder as individual bytes
+    while slice.len() > 0 {
+        let byte = slice[0];
+        if byte > 127 {
+            break;
+        }
+        // Safety: out_slice has same length as input slice and gets sliced with the same offsets
+        unsafe {
+            *out_slice.get_unchecked_mut(0) = MaybeUninit::new(convert(&byte));
+        }
+        ascii_prefix_len += 1;
+        slice = unsafe { slice.get_unchecked(1..) };
+        out_slice = unsafe { out_slice.get_unchecked_mut(1..) };
+    }
+
+    unsafe {
+        // SAFETY: ascii_prefix_len bytes have been initialized above
+        out.set_len(ascii_prefix_len);
+
+        // SAFETY: We have written only valid ascii to the output vec
+        let ascii_string = String::from_utf8_unchecked(out);
+
+        // SAFETY: we know this is a valid char boundary
+        // since we only skipped over leading ascii bytes
+        let rest = core::str::from_utf8_unchecked(slice);
+
+        (ascii_string, rest)
+    }
 }
