@@ -53,7 +53,7 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        EMBED_LTO_BITCODE=1 ./y.sh build --release --release-sysroot
+        EMBED_LTO_BITCODE=1 ./y.sh build --sysroot --release --release-sysroot
         cargo test
         ./y.sh clean all
 

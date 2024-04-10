@@ -58,7 +58,7 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        ./y.sh build --release --release-sysroot
+        ./y.sh build --sysroot --release --release-sysroot
 
     - name: Set env (part 2)
       run: |
