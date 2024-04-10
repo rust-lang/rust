@@ -148,19 +148,19 @@ pub mod solaris;
 pub mod solid;
 #[cfg(target_os = "tvos")]
 #[path = "apple/mod.rs"]
-pub(crate) mod tvos;
+pub mod tvos;
 #[cfg(target_os = "uefi")]
 pub mod uefi;
 #[cfg(target_os = "visionos")]
 #[path = "apple/mod.rs"]
-pub(crate) mod visionos;
+pub mod visionos;
 #[cfg(target_os = "vita")]
 pub mod vita;
 #[cfg(target_os = "vxworks")]
 pub mod vxworks;
 #[cfg(target_os = "watchos")]
 #[path = "apple/mod.rs"]
-pub(crate) mod watchos;
+pub mod watchos;
 #[cfg(target_os = "xous")]
 pub mod xous;
 
