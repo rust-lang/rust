@@ -11,18 +11,6 @@ use crate::os::linux::process::PidFd;
 #[cfg(target_os = "linux")]
 use crate::os::unix::io::AsRawFd;
 
-#[cfg(any(
-    target_os = "macos",
-    target_os = "watchos",
-    target_os = "visionos",
-    target_os = "tvos",
-    target_os = "freebsd",
-    all(target_os = "linux", target_env = "gnu"),
-    all(target_os = "linux", target_env = "musl"),
-    target_os = "nto",
-))]
-use crate::sys::weak::weak;
-
 #[cfg(target_os = "vxworks")]
 use libc::RTP_ID as pid_t;
 
@@ -466,6 +454,7 @@ impl Command {
         envp: Option<&CStringArray>,
     ) -> io::Result<Option<Process>> {
         use crate::mem::MaybeUninit;
+        use crate::sys::weak::weak;
         use crate::sys::{self, cvt_nz, unix_sigpipe_attr_specified};
 
         if self.get_gid().is_some()
