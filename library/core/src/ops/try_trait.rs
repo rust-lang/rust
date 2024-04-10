@@ -310,7 +310,7 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
     /// This should be implemented consistently with the `branch` method such
     /// that applying the `?` operator will get back an equivalent residual:
     /// `FromResidual::from_residual(r).branch() --> ControlFlow::Break(r)`.
-    /// (It must not be an *identical* residual when interconversion is involved.)
+    /// (It need not be an *identical* residual when interconversion is involved.)
     ///
     /// # Examples
     ///
