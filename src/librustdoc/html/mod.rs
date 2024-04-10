@@ -1,3 +1,4 @@
+mod ambiguity;
 pub(crate) mod escape;
 pub(crate) mod format;
 pub(crate) mod highlight;

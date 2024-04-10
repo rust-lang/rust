@@ -10,6 +10,7 @@
 #![feature(iter_intersperse)]
 #![feature(lazy_cell)]
 #![feature(let_chains)]
+#![feature(map_entry_replace)]
 #![feature(never_type)]
 #![feature(round_char_boundary)]
 #![feature(test)]

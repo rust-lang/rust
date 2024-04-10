@@ -82,6 +82,8 @@ use crate::scrape_examples::{CallData, CallLocation};
 use crate::try_none;
 use crate::DOC_RUST_LANG_ORG_CHANNEL;
 
+use super::ambiguity::AmbiguityTable;
+
 pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
         if !v.ends_with('/') && !v.is_empty() { write!(f, "{v}/") } else { f.write_str(v) }
@@ -853,6 +855,7 @@ fn assoc_const(
     indent: usize,
     cx: &Context<'_>,
 ) {
+    let at = AmbiguityTable::empty();
     let tcx = cx.tcx();
     write!(
         w,
@@ -861,8 +864,8 @@ fn assoc_const(
         vis = visibility_print_with_space(it, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
-        generics = generics.print(cx),
-        ty = ty.print(cx),
+        generics = generics.print(cx, &at),
+        ty = ty.print(cx, &at),
     );
     if let Some(default) = default {
         w.write_str(" = ");
@@ -874,7 +877,7 @@ fn assoc_const(
         //        Find a way to print constants here without all that jazz.
         write!(w, "{}", Escape(&default.value(tcx).unwrap_or_else(|| default.expr(tcx))));
     }
-    write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline));
+    write!(w, "{}", print_where_clause(generics, cx, &at, indent, Ending::NoNewline));
 }
 
 fn assoc_type(
@@ -887,6 +890,7 @@ fn assoc_type(
     indent: usize,
     cx: &Context<'_>,
 ) {
+    let at = AmbiguityTable::empty();
     write!(
         w,
         "{indent}{vis}type <a{href} class=\"associatedtype\">{name}</a>{generics}",
@@ -894,16 +898,16 @@ fn assoc_type(
         vis = visibility_print_with_space(it, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
-        generics = generics.print(cx),
+        generics = generics.print(cx, &at),
     );
     if !bounds.is_empty() {
-        write!(w, ": {}", print_generic_bounds(bounds, cx))
+        write!(w, ": {}", print_generic_bounds(bounds, cx, &at))
     }
     // Render the default before the where-clause which aligns with the new recommended style. See #89122.
     if let Some(default) = default {
-        write!(w, " = {}", default.print(cx))
+        write!(w, " = {}", default.print(cx, &at))
     }
-    write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline));
+    write!(w, "{}", print_where_clause(generics, cx, &at, indent, Ending::NoNewline));
 }
 
 fn assoc_method(
@@ -921,6 +925,7 @@ fn assoc_method(
     let name = meth.name.as_ref().unwrap();
     let vis = visibility_print_with_space(meth, cx).to_string();
     let defaultness = print_default_space(meth.is_default());
+    let at = AmbiguityTable::build_fn_decl(d);
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
@@ -935,7 +940,7 @@ fn assoc_method(
     let href = assoc_href_attr(meth, link, cx);
 
     // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
-    let generics_len = format!("{:#}", g.print(cx)).len();
+    let generics_len = format!("{:#}", g.print(cx, &at)).len();
     let mut header_len = "fn ".len()
         + vis.len()
         + defaultness.len()
@@ -971,10 +976,10 @@ fn assoc_method(
         abi = abi,
         href = href,
         name = name,
-        generics = g.print(cx),
-        decl = d.full_print(header_len, indent, cx),
+        generics = g.print(cx, &at),
+        decl = d.full_print(header_len, indent, cx, &at),
         notable_traits = notable_traits.unwrap_or_default(),
-        where_clause = print_where_clause(g, cx, indent, end_newline),
+        where_clause = print_where_clause(g, cx, &at, indent, end_newline),
     );
 }
 
@@ -1263,6 +1268,7 @@ fn render_assoc_items_inner(
     what: AssocItemRender<'_>,
     derefs: &mut DefIdSet,
 ) {
+    let at = AmbiguityTable::empty();
     info!("Documenting associated items of {:?}", containing_item.name);
     let shared = Rc::clone(&cx.shared);
     let cache = &shared.cache;
@@ -1276,15 +1282,17 @@ fn render_assoc_items_inner(
                 (RenderMode::Normal, "implementations-list".to_owned(), "")
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
-                let id =
-                    cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
+                let id = cx.derive_id(small_url_encode(format!(
+                    "deref-methods-{:#}",
+                    type_.print(cx, &at)
+                )));
                 let derived_id = cx.derive_id(&id);
                 write_impl_section_heading(
                     &mut tmp_buf,
                     &format!(
                         "<span>Methods from {trait_}&lt;Target = {type_}&gt;</span>",
-                        trait_ = trait_.print(cx),
-                        type_ = type_.print(cx),
+                        trait_ = trait_.print(cx, &at),
+                        type_ = type_.print(cx, &at),
                     ),
                     &id,
                 );
@@ -1455,12 +1463,12 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
             }
         }
     }
-
     if has_notable_trait {
+        let at = AmbiguityTable::empty();
         cx.types_with_notable_traits.insert(ty.clone());
         Some(format!(
             " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
-            ty = Escape(&format!("{:#}", ty.print(cx))),
+            ty = Escape(&format!("{:#}", ty.print(cx, &at))),
         ))
     } else {
         None
@@ -1473,7 +1481,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
     let did = ty.def_id(cx.cache()).expect("notable_traits_button already checked this");
 
     let impls = cx.cache().impls.get(&did).expect("notable_traits_button already checked this");
-
+    let at = AmbiguityTable::empty();
     for i in impls {
         let impl_ = i.inner_impl();
         if !ty.is_doc_subtype_of(&impl_.for_, cx.cache()) {
@@ -1490,11 +1498,11 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                         &mut out,
                         "<h3>Notable traits for <code>{}</code></h3>\
                      <pre><code>",
-                        impl_.for_.print(cx)
+                        impl_.for_.print(cx, &at)
                     );
                 }
 
-                write!(&mut out, "<div class=\"where\">{}</div>", impl_.print(false, cx));
+                write!(&mut out, "<div class=\"where\">{}</div>", impl_.print(false, cx, &at));
                 for it in &impl_.items {
                     if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
                         out.push_str("<div class=\"where\">    ");
@@ -1520,7 +1528,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
         out.write_str("</code></pre>");
     }
 
-    (format!("{:#}", ty.print(cx)), out.into_inner())
+    (format!("{:#}", ty.print(cx, &at)), out.into_inner())
 }
 
 pub(crate) fn notable_traits_json<'a>(
@@ -1991,9 +1999,9 @@ pub(crate) fn render_impl_summary(
         "<a href=\"#{id}\" class=\"anchor\">§</a>\
          <h3 class=\"code-header\">"
     );
-
+    let at = AmbiguityTable::empty();
     if let Some(use_absolute) = use_absolute {
-        write!(w, "{}", inner_impl.print(use_absolute, cx));
+        write!(w, "{}", inner_impl.print(use_absolute, cx, &at));
         if show_def_docs {
             for it in &inner_impl.items {
                 if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
@@ -2013,7 +2021,7 @@ pub(crate) fn render_impl_summary(
             }
         }
     } else {
-        write!(w, "{}", inner_impl.print(false, cx));
+        write!(w, "{}", inner_impl.print(false, cx, &at));
     }
     w.write_str("</h3>");
 
@@ -2119,9 +2127,10 @@ fn get_id_for_impl<'tcx>(tcx: TyCtxt<'tcx>, impl_id: ItemId) -> String {
 fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
     match *item.kind {
         clean::ItemKind::ImplItem(ref i) if i.trait_.is_some() => {
+            let at = AmbiguityTable::empty();
             // Alternative format produces no URLs,
             // so this parameter does nothing.
-            Some((format!("{:#}", i.for_.print(cx)), get_id_for_impl(cx.tcx(), item.item_id)))
+            Some((format!("{:#}", i.for_.print(cx, &at)), get_id_for_impl(cx.tcx(), item.item_id)))
         }
         _ => None,
     }
