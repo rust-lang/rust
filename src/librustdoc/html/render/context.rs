@@ -231,7 +231,7 @@ impl<'tcx> Context<'tcx> {
                 rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
             };
             let mut page_buffer = Buffer::html();
-            print_item(self, it, &mut page_buffer, &page);
+            print_item(self, it, &mut page_buffer);
             layout::render(
                 &clone_shared.layout,
                 &page,
