@@ -204,8 +204,8 @@ LL |         break;
            found unit type `()`
 help: give the `break` a value of the expected type
    |
-LL |         break Default::default();
-   |               ++++++++++++++++++
+LL |         break None;
+   |               ++++
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:77:26
