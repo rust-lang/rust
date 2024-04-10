@@ -133,10 +133,14 @@ fn layout_of_uncached<'tcx>(
                 ty::PatternKind::Range { start, end, include_end } => {
                     if let Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) = &mut layout.abi {
                         if let Some(start) = start {
-                            scalar.valid_range_mut().start = start.eval_bits(tcx, param_env);
+                            scalar.valid_range_mut().start = start
+                                .try_eval_bits(tcx, param_env)
+                                .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                         }
                         if let Some(end) = end {
-                            let mut end = end.eval_bits(tcx, param_env);
+                            let mut end = end
+                                .try_eval_bits(tcx, param_env)
+                                .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                             if !include_end {
                                 end = end.wrapping_sub(1);
                             }
