@@ -1,6 +1,6 @@
 use std::env;
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::Command;
 
 use crate::{bin_name, cygpath_windows, handle_failed_output, is_msvc, is_windows, tmp_dir, uname};
 
@@ -18,6 +18,8 @@ pub fn cc() -> Cc {
 pub struct Cc {
     cmd: Command,
 }
+
+crate::impl_common_helpers!(Cc);
 
 impl Cc {
     /// Construct a new platform-specific C compiler invocation.
@@ -40,22 +42,6 @@ impl Cc {
     /// Specify path of the input file.
     pub fn input<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg(path.as_ref());
-        self
-    }
-
-    /// Add a *platform-and-compiler-specific* argument. Please consult the docs for the various
-    /// possible C compilers on the various platforms to check which arguments are legal for
-    /// which compiler.
-    pub fn arg(&mut self, flag: &str) -> &mut Self {
-        self.cmd.arg(flag);
-        self
-    }
-
-    /// Add multiple *platform-and-compiler-specific* arguments. Please consult the docs for the
-    /// various possible C compilers on the various platforms to check which arguments are legal
-    /// for which compiler.
-    pub fn args(&mut self, args: &[&str]) -> &mut Self {
-        self.cmd.args(args);
         self
     }
 
@@ -83,25 +69,6 @@ impl Cc {
             self.cmd.arg(tmp_dir().join(name));
         }
 
-        self
-    }
-
-    /// Run the constructed C invocation command and assert that it is successfully run.
-    #[track_caller]
-    pub fn run(&mut self) -> Output {
-        let caller_location = std::panic::Location::caller();
-        let caller_line_number = caller_location.line();
-
-        let output = self.cmd.output().unwrap();
-        if !output.status.success() {
-            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
-        }
-        output
-    }
-
-    /// Inspect what the underlying [`Command`] is up to the current construction.
-    pub fn inspect(&mut self, f: impl FnOnce(&Command)) -> &mut Self {
-        f(&self.cmd);
         self
     }
 }
