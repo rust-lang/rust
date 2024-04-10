@@ -23,7 +23,7 @@ use std::collections::VecDeque;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for borrow operations (`&`) that used as a generic argument to a
+    /// Checks for borrow operations (`&`) that are used as a generic argument to a
     /// function when the borrowed value could be used.
     ///
     /// ### Why is this bad?
