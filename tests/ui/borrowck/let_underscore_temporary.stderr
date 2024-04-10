@@ -1,117 +1,69 @@
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/let_underscore_temporary.rs:10:14
+error[E0597]: `a` does not live long enough
+  --> $DIR/let_underscore_temporary.rs:11:9
    |
-LL |       let _ = if let Some(s) = &mut num {
-   |  _____________-
-LL | |         *s += 1;
-LL | |         s
-LL | |     } else {
-LL | |         &mut 0
-   | |              ^ creates a temporary value which is freed while still in use
-LL | |
-LL | |     };
-   | |     -
-   | |     |
-   | |_____temporary value is freed at the end of this statement
-   |       borrow later used here
-   |
-   = note: consider using a `let` binding to create a longer lived value
+LL |         let a = 0;
+   |             - binding `a` declared here
+LL |         &a
+   |         ^^ borrowed value does not live long enough
+LL |
+LL |     };
+   |     - `a` dropped here while still borrowed
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/let_underscore_temporary.rs:24:14
+error[E0597]: `a` does not live long enough
+  --> $DIR/let_underscore_temporary.rs:26:9
    |
-LL |       let _ = if let Some(ref mut s) = num {
-   |  _____________-
-LL | |         *s += 1;
-LL | |         s
-LL | |     } else {
-LL | |         &mut 0
-   | |              ^ creates a temporary value which is freed while still in use
-LL | |
-LL | |     };
-   | |     -
-   | |     |
-   | |_____temporary value is freed at the end of this statement
-   |       borrow later used here
-   |
-   = note: consider using a `let` binding to create a longer lived value
+LL |         let a = 0;
+   |             - binding `a` declared here
+LL |         &a
+   |         ^^ borrowed value does not live long enough
+LL |
+LL |     };
+   |     - `a` dropped here while still borrowed
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/let_underscore_temporary.rs:36:14
+error[E0597]: `a` does not live long enough
+  --> $DIR/let_underscore_temporary.rs:39:9
    |
-LL |       let _: _ = if let Some(s) = &mut num {
-   |  ________________-
-LL | |         *s += 1;
-LL | |         s
-LL | |     } else {
-LL | |         &mut 0
-   | |              ^ creates a temporary value which is freed while still in use
-LL | |
-LL | |     };
-   | |     -
-   | |     |
-   | |_____temporary value is freed at the end of this statement
-   |       borrow later used here
-   |
-   = note: consider using a `let` binding to create a longer lived value
+LL |         let a = 0;
+   |             - binding `a` declared here
+LL |         &a
+   |         ^^ borrowed value does not live long enough
+LL |
+LL |     };
+   |     - `a` dropped here while still borrowed
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/let_underscore_temporary.rs:50:14
+error[E0597]: `a` does not live long enough
+  --> $DIR/let_underscore_temporary.rs:54:9
    |
-LL |       let _: _ = if let Some(ref mut s) = num {
-   |  ________________-
-LL | |         *s += 1;
-LL | |         s
-LL | |     } else {
-LL | |         &mut 0
-   | |              ^ creates a temporary value which is freed while still in use
-LL | |
-LL | |     };
-   | |     -
-   | |     |
-   | |_____temporary value is freed at the end of this statement
-   |       borrow later used here
-   |
-   = note: consider using a `let` binding to create a longer lived value
+LL |         let a = 0;
+   |             - binding `a` declared here
+LL |         &a
+   |         ^^ borrowed value does not live long enough
+LL |
+LL |     };
+   |     - `a` dropped here while still borrowed
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/let_underscore_temporary.rs:66:14
+error[E0597]: `a` does not live long enough
+  --> $DIR/let_underscore_temporary.rs:71:9
    |
-LL |       match if let Some(s) = &mut num {
-   |  ___________-
-LL | |         *s += 1;
-LL | |         s
-LL | |     } else {
-LL | |         &mut 0
-   | |              ^ creates a temporary value which is freed while still in use
-LL | |
-LL | |     } {
-   | |     -
-   | |     |
-   | |_____temporary value is freed at the end of this statement
-   |       borrow later used here
-   |
-   = note: consider using a `let` binding to create a longer lived value
+LL |         let a = 0;
+   |             - binding `a` declared here
+LL |         &a
+   |         ^^ borrowed value does not live long enough
+LL |
+LL |     } {
+   |     - `a` dropped here while still borrowed
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/let_underscore_temporary.rs:86:14
+error[E0597]: `a` does not live long enough
+  --> $DIR/let_underscore_temporary.rs:92:9
    |
-LL |       match if let Some(ref mut s) = num {
-   |  ___________-
-LL | |         *s += 1;
-LL | |         s
-LL | |     } else {
-LL | |         &mut 0
-   | |              ^ creates a temporary value which is freed while still in use
-LL | |
-LL | |     } {
-   | |     -
-   | |     |
-   | |_____temporary value is freed at the end of this statement
-   |       borrow later used here
-   |
-   = note: consider using a `let` binding to create a longer lived value
+LL |         let a = 0;
+   |             - binding `a` declared here
+LL |         &a
+   |         ^^ borrowed value does not live long enough
+LL |
+LL |     } {
+   |     - `a` dropped here while still borrowed
 
 error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0716`.
+For more information about this error, try `rustc --explain E0597`.
