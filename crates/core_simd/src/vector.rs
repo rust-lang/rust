@@ -945,6 +945,7 @@ where
 {
 }
 
+/// Lexicographic order. For the SIMD elementwise minimum and maximum, use simd_min and simd_max instead.
 impl<T, const N: usize> Ord for Simd<T, N>
 where
     LaneCount<N>: SupportedLaneCount,
