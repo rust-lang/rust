@@ -109,7 +109,7 @@ macro_rules! add_impl {
     )*)
 }
 
-add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
 
 /// The subtraction operator `-`.
 ///
@@ -218,7 +218,7 @@ macro_rules! sub_impl {
     )*)
 }
 
-sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
 
 /// The multiplication operator `*`.
 ///
@@ -348,7 +348,7 @@ macro_rules! mul_impl {
     )*)
 }
 
-mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
 
 /// The division operator `/`.
 ///
@@ -506,7 +506,7 @@ macro_rules! div_impl_float {
     )*)
 }
 
-div_impl_float! { f32 f64 }
+div_impl_float! { f16 f32 f64 f128 }
 
 /// The remainder operator `%`.
 ///
@@ -623,7 +623,7 @@ macro_rules! rem_impl_float {
     )*)
 }
 
-rem_impl_float! { f32 f64 }
+rem_impl_float! { f16 f32 f64 f128 }
 
 /// The unary negation operator `-`.
 ///
@@ -698,7 +698,7 @@ macro_rules! neg_impl {
     )*)
 }
 
-neg_impl! { isize i8 i16 i32 i64 i128 f32 f64 }
+neg_impl! { isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
 
 /// The addition assignment operator `+=`.
 ///
@@ -765,7 +765,7 @@ macro_rules! add_assign_impl {
     )+)
 }
 
-add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
 
 /// The subtraction assignment operator `-=`.
 ///
@@ -832,7 +832,7 @@ macro_rules! sub_assign_impl {
     )+)
 }
 
-sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
 
 /// The multiplication assignment operator `*=`.
 ///
@@ -890,7 +890,7 @@ macro_rules! mul_assign_impl {
     )+)
 }
 
-mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
 
 /// The division assignment operator `/=`.
 ///
@@ -947,7 +947,7 @@ macro_rules! div_assign_impl {
     )+)
 }
 
-div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
 
 /// The remainder assignment operator `%=`.
 ///
@@ -1008,4 +1008,4 @@ macro_rules! rem_assign_impl {
     )+)
 }
 
-rem_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+rem_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
