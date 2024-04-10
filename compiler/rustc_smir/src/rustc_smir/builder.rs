@@ -4,6 +4,7 @@
 //! monomorphic body using internal representation.
 //! After that, we convert the internal representation into a stable one.
 use crate::rustc_smir::{Stable, Tables};
+use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::ty::{self, TyCtxt};
@@ -29,10 +30,12 @@ impl<'tcx> BodyBuilder<'tcx> {
     /// All constants are also evaluated.
     pub fn build(mut self, tables: &mut Tables<'tcx>) -> stable_mir::mir::Body {
         let body = tables.tcx.instance_mir(self.instance.def).clone();
-        let mono_body = if self.tcx.def_kind(self.instance.def_id()).is_fn_like()
-            || !self.instance.args.is_empty()
+        let mono_body = if !self.instance.args.is_empty()
+            // Without the `generic_const_exprs` feature gate, anon consts in signatures do not
+            // get generic parameters. Which is wrong, but also not a problem without
+            // generic_const_exprs
+            || self.tcx.def_kind(self.instance.def_id()) != DefKind::AnonConst
         {
-            // This call will currently will ICE in some shims which are already monomorphic.
             let mut mono_body = self.instance.instantiate_mir_and_normalize_erasing_regions(
                 tables.tcx,
                 ty::ParamEnv::reveal_all(),
