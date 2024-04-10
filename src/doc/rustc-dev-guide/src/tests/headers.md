@@ -5,7 +5,7 @@
 Header commands are special comments that tell compiletest how to build and
 interpret a test.
 They must appear before the Rust source in the test.
-They may also appear in legacy Makefiles for
+They may also appear in `rmake.rs` or legacy Makefiles for
 [run-make tests](compiletest.md#run-make-tests).
 
 They are normally put after the short comment that explains the point of this test.
@@ -26,6 +26,10 @@ fn main() {
 
 Header commands can be standalone (like `//@ run-pass`) or take a value (like
 `//@ compile-flags: -C overflow-checks=off`).
+
+Header commands are written with one header per line: you cannot write multiple
+headers on the same line. For example, if you write `//@ only-x86 only-windows`
+then `only-windows` is interpreted as a comment, not a separate directive.
 
 ## Header commands
 
