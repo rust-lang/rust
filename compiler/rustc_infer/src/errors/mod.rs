@@ -18,6 +18,8 @@ use crate::infer::error_reporting::{
     ObligationCauseAsDiagArg,
 };
 
+use std::path::PathBuf;
+
 pub mod note_and_explain;
 
 #[derive(Diagnostic)]
@@ -47,6 +49,9 @@ pub struct AnnotationRequired<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    #[note(infer_full_type_written)]
+    pub was_written: Option<()>,
+    pub path: PathBuf,
 }
 
 // Copy of `AnnotationRequired` for E0283
@@ -65,6 +70,9 @@ pub struct AmbiguousImpl<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    #[note(infer_full_type_written)]
+    pub was_written: Option<()>,
+    pub path: PathBuf,
 }
 
 // Copy of `AnnotationRequired` for E0284
@@ -83,6 +91,9 @@ pub struct AmbiguousReturn<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    #[note(infer_full_type_written)]
+    pub was_written: Option<()>,
+    pub path: PathBuf,
 }
 
 // Used when a better one isn't available
