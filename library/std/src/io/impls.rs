@@ -50,6 +50,10 @@ impl<R: Read + ?Sized> Read for &mut R {
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         (**self).read_exact(buf)
     }
+    #[inline]
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf_exact(cursor)
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write + ?Sized> Write for &mut W {
@@ -153,6 +157,10 @@ impl<R: Read + ?Sized> Read for Box<R> {
     #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         (**self).read_exact(buf)
+    }
+    #[inline]
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf_exact(cursor)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -296,6 +304,22 @@ impl Read for &[u8] {
         } else {
             buf.copy_from_slice(a);
         }
+
+        *self = b;
+        Ok(())
+    }
+
+    #[inline]
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        if cursor.capacity() > self.len() {
+            return Err(io::const_io_error!(
+                ErrorKind::UnexpectedEof,
+                "failed to fill whole buffer"
+            ));
+        }
+        let (a, b) = self.split_at(cursor.capacity());
+
+        cursor.append(a);
 
         *self = b;
         Ok(())

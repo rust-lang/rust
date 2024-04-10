@@ -582,6 +582,29 @@ where
     Ok(())
 }
 
+pub(crate) fn default_read_buf_exact<R: Read + ?Sized>(
+    this: &mut R,
+    mut cursor: BorrowedCursor<'_>,
+) -> Result<()> {
+    while cursor.capacity() > 0 {
+        let prev_written = cursor.written();
+        match this.read_buf(cursor.reborrow()) {
+            Ok(()) => {}
+            Err(e) if e.is_interrupted() => continue,
+            Err(e) => return Err(e),
+        }
+
+        if cursor.written() == prev_written {
+            return Err(error::const_io_error!(
+                ErrorKind::UnexpectedEof,
+                "failed to fill whole buffer"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 /// The `Read` trait allows for reading bytes from a source.
 ///
 /// Implementors of the `Read` trait are called 'readers'.
@@ -978,24 +1001,8 @@ pub trait Read {
     ///
     /// If this function returns an error, all bytes read will be appended to `cursor`.
     #[unstable(feature = "read_buf", issue = "78485")]
-    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> Result<()> {
-        while cursor.capacity() > 0 {
-            let prev_written = cursor.written();
-            match self.read_buf(cursor.reborrow()) {
-                Ok(()) => {}
-                Err(e) if e.is_interrupted() => continue,
-                Err(e) => return Err(e),
-            }
-
-            if cursor.written() == prev_written {
-                return Err(error::const_io_error!(
-                    ErrorKind::UnexpectedEof,
-                    "failed to fill whole buffer"
-                ));
-            }
-        }
-
-        Ok(())
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> Result<()> {
+        default_read_buf_exact(self, cursor)
     }
 
     /// Creates a "by reference" adaptor for this instance of `Read`.

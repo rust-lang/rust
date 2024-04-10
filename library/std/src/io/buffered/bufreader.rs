@@ -322,6 +322,14 @@ impl<R: ?Sized + Read> Read for BufReader<R> {
         crate::io::default_read_exact(self, buf)
     }
 
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        if self.buf.consume_with(cursor.capacity(), |claimed| cursor.append(claimed)) {
+            return Ok(());
+        }
+
+        crate::io::default_read_buf_exact(self, cursor)
+    }
+
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
         if self.buf.pos() == self.buf.filled() && total_len >= self.capacity() {
