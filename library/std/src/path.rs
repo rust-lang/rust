@@ -2278,10 +2278,9 @@ impl Path {
     /// Produces an iterator over `Path` and its ancestors.
     ///
     /// The iterator will yield the `Path` that is returned if the [`parent`] method is used zero
-    /// or more times. That means, the iterator will yield `&self`, `&self.parent().unwrap()`,
-    /// `&self.parent().unwrap().parent().unwrap()` and so on. If the [`parent`] method returns
-    /// [`None`], the iterator will do likewise. The iterator will always yield at least one value,
-    /// namely `&self`.
+    /// or more times. If the [`parent`] method returns [`None`], the iterator will do likewise.
+    /// The iterator will always yield at least one value, namely `Some(&self)`. Next it will yield
+    /// `&self.parent()`, `&self.parent().and_then(Path::parent)` and so on.
     ///
     /// # Examples
     ///
