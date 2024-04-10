@@ -616,6 +616,7 @@ fn read_link(fd: &WasiFd, file: &Path) -> io::Result<PathBuf> {
     loop {
         let len = fd.readlink(file, &mut destination)?;
         if len < destination.len() {
+            let len = CStr::from_ptr(destination.as_ptr() as *const libc::c_char).to_bytes().len();
             destination.truncate(len);
             destination.shrink_to_fit();
             return Ok(PathBuf::from(OsString::from_vec(destination)));
