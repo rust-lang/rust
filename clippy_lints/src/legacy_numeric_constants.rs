@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// `std::<float>::EPSILON`, etc.
     ///
     /// ### Why is this bad?
-    /// All of these have been superceded by the associated constants on their respective types,
+    /// All of these have been superseded by the associated constants on their respective types,
     /// such as `i128::MAX`. These legacy items may be deprecated in a future version of rust.
     ///
     /// ### Example
