@@ -819,6 +819,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-dynamic-linking",
     "needs-git-hash",
     "needs-llvm-components",
+    "needs-matching-clang",
     "needs-profiler-support",
     "needs-relocation-model-pic",
     "needs-run-enabled",

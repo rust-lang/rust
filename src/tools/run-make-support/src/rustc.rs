@@ -86,6 +86,18 @@ impl Rustc {
         self
     }
 
+    /// This flag defers LTO optimizations to the linker.
+    pub fn linker_plugin_lto(&mut self, option: &str) -> &mut Self {
+        self.cmd.arg(format!("-Clinker-plugin-lto={option}"));
+        self
+    }
+
+    /// Specify what happens when the code panics.
+    pub fn panic(&mut self, option: &str) -> &mut Self {
+        self.cmd.arg(format!("-Cpanic={option}"));
+        self
+    }
+
     /// Specify number of codegen units
     pub fn codegen_units(&mut self, units: usize) -> &mut Self {
         self.cmd.arg(format!("-Ccodegen-units={units}"));
@@ -178,6 +190,18 @@ impl Rustc {
 
         let output = self.cmd.output().unwrap();
         if output.status.success() {
+            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+        }
+        output
+    }
+
+    #[track_caller]
+    pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
+        let caller_location = std::panic::Location::caller();
+        let caller_line_number = caller_location.line();
+
+        let output = self.cmd.output().unwrap();
+        if output.status.code().unwrap() != code {
             handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
         }
         output

@@ -2023,8 +2023,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .sess
                 .source_map()
-                .span_extend_while(range_start.span, |c| c.is_whitespace())
-                .unwrap_or(range_start.span)
+                .span_extend_while_whitespace(range_start.span)
                 .shrink_to_hi()
                 .to(range_end.span);
 

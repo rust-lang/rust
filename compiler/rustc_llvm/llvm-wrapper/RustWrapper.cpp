@@ -817,12 +817,22 @@ extern "C" uint32_t LLVMRustVersionMinor() { return LLVM_VERSION_MINOR; }
 
 extern "C" uint32_t LLVMRustVersionMajor() { return LLVM_VERSION_MAJOR; }
 
-extern "C" void LLVMRustAddModuleFlag(
+extern "C" void LLVMRustAddModuleFlagU32(
     LLVMModuleRef M,
     Module::ModFlagBehavior MergeBehavior,
     const char *Name,
     uint32_t Value) {
   unwrap(M)->addModuleFlag(MergeBehavior, Name, Value);
+}
+
+extern "C" void LLVMRustAddModuleFlagString(
+    LLVMModuleRef M,
+    Module::ModFlagBehavior MergeBehavior,
+    const char *Name,
+    const char *Value,
+    size_t ValueLen) {
+  unwrap(M)->addModuleFlag(MergeBehavior, Name,
+    MDString::get(unwrap(M)->getContext(), StringRef(Value, ValueLen)));
 }
 
 extern "C" bool LLVMRustHasModuleFlag(LLVMModuleRef M, const char *Name,
