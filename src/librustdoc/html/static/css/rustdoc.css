@@ -1603,6 +1603,16 @@ a.tooltip:hover::after {
 	border-color: var(--settings-button-border-focus);
 }
 
+#settings-menu > a {
+	line-height: 0;
+	font-size: 0;
+}
+#settings-menu > a:before {
+	content: url('wheel-63255fc4502dca9a.svg');
+	width: 22px;
+	height: 22px;
+}
+
 #sidebar-button > a:before {
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" \
 		fill="none" stroke="black">\
@@ -1622,11 +1632,17 @@ a.tooltip:hover::after {
 	padding-left: 2px;
 	border: 0;
 	width: 33px;
+	line-height: 0;
+	font-size: 0;
 }
-#copy-path > img {
+
+#copy-path:before {
 	filter: var(--copy-path-img-filter);
+	content: url('clipboard-24048e6d87f63d07.svg');
+	width: 19px;
+	height: 18px;
 }
-#copy-path:hover > img {
+#copy-path:hover:before {
 	filter: var(--copy-path-img-hover-filter);
 }
 

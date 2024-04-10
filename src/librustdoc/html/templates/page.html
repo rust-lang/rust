@@ -6,13 +6,10 @@
     <meta name="generator" content="rustdoc"> {# #}
     <meta name="description" content="{{page.description}}"> {# #}
     <title>{{page.title}}</title> {# #}
-    <script> if (window.location.protocol !== "file:") document.write(` {# Hack to skip preloading fonts locally - see #98769 #}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_serif_4_regular}}"> {# #}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.fira_sans_regular}}"> {# #}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.fira_sans_medium}}"> {# #}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_code_pro_regular}}"> {# #}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_code_pro_semibold}}"> {# #}
-    `)</script> {# #}
+    <script>if(window.location.protocol!=="file:") {# Hack to skip preloading fonts locally - see #98769 #}
+    for(f of "{{files.source_serif_4_regular}},{{files.fira_sans_regular}},{{files.fira_sans_medium}},{{files.source_code_pro_regular}},{{files.source_code_pro_semibold}}".split(",")) {# #}
+     document.write(`<link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}${f}">`) {# #}
+    </script> {# #}
     <link rel="stylesheet" {#+ #}
           href="{{static_root_path|safe}}{{files.normalize_css}}"> {# #}
     <link rel="stylesheet" {#+ #}
@@ -61,8 +58,6 @@
     {% if !layout.favicon.is_empty() %}
         <link rel="icon" href="{{layout.favicon}}"> {# #}
     {% else %}
-        <link rel="alternate icon" type="image/png" {#+ #}
-            href="{{static_root_path|safe}}{{files.rust_favicon_png_16}}"> {# #}
         <link rel="alternate icon" type="image/png" {#+ #}
             href="{{static_root_path|safe}}{{files.rust_favicon_png_32}}"> {# #}
         <link rel="icon" type="image/svg+xml" {#+ #}
@@ -114,13 +109,13 @@
         <div class="version">{{+ display_krate_version_extra}}</div> {# #}
         {% endif %}
         {% else %}
-        <div class="src-sidebar-title">
+        <div class="src-sidebar-title"> {# #}
             <h2>Files</h2> {# #}
         </div> {# #}
         {% endif %}
         {{ sidebar|safe }}
     </nav> {# #}
-    <div class="sidebar-resizer"></div>
+    <div class="sidebar-resizer"></div> {# #}
     <main> {# #}
         {% if page.css_class != "src" %}<div class="width-limiter">{% endif %}
             <nav class="sub"> {# #}
@@ -142,8 +137,7 @@
                     </div> {# #}
                     <div id="settings-menu" tabindex="-1"> {# #}
                         <a href="{{page.root_path|safe}}settings.html" title="settings"> {# #}
-                            <img width="22" height="22" alt="Change settings" {#+ #}
-                            src="{{static_root_path|safe}}{{files.wheel_svg}}"> {# #}
+                            Settings {# #}
                         </a> {# #}
                     </div> {# #}
                 </form> {# #}
