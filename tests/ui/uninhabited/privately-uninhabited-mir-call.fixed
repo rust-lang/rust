@@ -23,7 +23,7 @@ pub mod widget {
 }
 
 fn main() {
-    let y: &mut u32;
+    let y: &mut u32 = &mut 42;
     widget::Widget::new();
     // Error. Widget type is not known to be uninhabited here,
     // so the following code is considered reachable.
