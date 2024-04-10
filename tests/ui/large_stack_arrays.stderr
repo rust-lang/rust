@@ -56,5 +56,40 @@ LL |         [0u8; usize::MAX],
    |
    = help: consider allocating on the heap with `vec![0u8; usize::MAX].into_boxed_slice()`
 
-error: aborting due to 7 previous errors
+error: allocating a local array larger than 512000 bytes
+  --> tests/ui/large_stack_arrays.rs:81:25
+   |
+LL |     let y = vec![dummy![[x, x, x, x, x]]];
+   |                         ^^^^^^^^^^^^^^^
+   |
+   = help: consider allocating on the heap with `vec![x, x, x, x, x].into_boxed_slice()`
+
+error: allocating a local array larger than 512000 bytes
+  --> tests/ui/large_stack_arrays.rs:84:13
+   |
+LL |     let y = [x, x, dummy!(x), x, x];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider allocating on the heap with `vec![x, x, dummy!(x), x, x].into_boxed_slice()`
+
+error: allocating a local array larger than 512000 bytes
+  --> tests/ui/large_stack_arrays.rs:67:13
+   |
+LL |             [$a, $b, $a, $b]
+   |             ^^^^^^^^^^^^^^^^
+...
+LL |     let y = dummy![x => x];
+   |             -------------- in this macro invocation
+   |
+   = note: this error originates in the macro `dummy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: allocating a local array larger than 512000 bytes
+  --> tests/ui/large_stack_arrays.rs:89:20
+   |
+LL |     let y = dummy![[x, x, x, x, x]];
+   |                    ^^^^^^^^^^^^^^^
+   |
+   = help: consider allocating on the heap with `vec![x, x, x, x, x].into_boxed_slice()`
+
+error: aborting due to 11 previous errors
 

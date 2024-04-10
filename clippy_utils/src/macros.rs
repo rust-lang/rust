@@ -119,8 +119,18 @@ pub fn macro_backtrace(span: Span) -> impl Iterator<Item = MacroCall> {
 
 /// If the macro backtrace of `span` has a macro call at the root expansion
 /// (i.e. not a nested macro call), returns `Some` with the `MacroCall`
+///
+/// If you only want to check whether the root macro has a specific name,
+/// consider using [`matching_root_macro_call`] instead.
 pub fn root_macro_call(span: Span) -> Option<MacroCall> {
     macro_backtrace(span).last()
+}
+
+/// A combination of [`root_macro_call`] and
+/// [`is_diagnostic_item`](rustc_middle::ty::TyCtxt::is_diagnostic_item) that returns a `MacroCall`
+/// at the root expansion if only it matches the given name.
+pub fn matching_root_macro_call(cx: &LateContext<'_>, span: Span, name: Symbol) -> Option<MacroCall> {
+    root_macro_call(span).filter(|mc| cx.tcx.is_diagnostic_item(name, mc.def_id))
 }
 
 /// Like [`root_macro_call`], but only returns `Some` if `node` is the "first node"

@@ -55,3 +55,37 @@ fn main() {
         [(); 20_000_000],
     );
 }
+
+#[allow(clippy::useless_vec)]
+fn issue_12586() {
+    macro_rules! dummy {
+        ($n:expr) => {
+            $n
+        };
+        // Weird rule to test help messages.
+        ($a:expr => $b:expr) => {
+            [$a, $b, $a, $b]
+            //~^ ERROR: allocating a local array larger than 512000 bytes
+        };
+        ($id:ident; $n:literal) => {
+            dummy!(::std::vec![$id;$n])
+        };
+        ($($id:expr),+ $(,)?) => {
+            ::std::vec![$($id),*]
+        }
+    }
+
+    let x = [0u32; 50_000];
+    let y = vec![x, x, x, x, x];
+    let y = vec![dummy![x, x, x, x, x]];
+    let y = vec![dummy![[x, x, x, x, x]]];
+    //~^ ERROR: allocating a local array larger than 512000 bytes
+    let y = dummy![x, x, x, x, x];
+    let y = [x, x, dummy!(x), x, x];
+    //~^ ERROR: allocating a local array larger than 512000 bytes
+    let y = dummy![x => x];
+    let y = dummy![x;5];
+    let y = dummy!(vec![dummy![x, x, x, x, x]]);
+    let y = dummy![[x, x, x, x, x]];
+    //~^ ERROR: allocating a local array larger than 512000 bytes
+}
