@@ -4,7 +4,7 @@
 // and also that values that are dropped along all paths to a yield do not get
 // included in the coroutine type.
 
-#![feature(coroutines, negative_impls)]
+#![feature(coroutines, negative_impls, stmt_expr_attributes)]
 #![allow(unused_assignments, dead_code)]
 
 struct Ptr;
@@ -19,7 +19,7 @@ fn assert_send<T: Send>(_: T) {}
 
 // This test case is reduced from tests/ui/drop/dynamic-drop-async.rs
 fn one_armed_if(arg: bool) {
-    let _ = || {
+    let _ = #[coroutine] || {
         let arr = [Ptr];
         if arg {
             drop(arr);
@@ -29,7 +29,7 @@ fn one_armed_if(arg: bool) {
 }
 
 fn two_armed_if(arg: bool) {
-    assert_send(|| {
+    assert_send(#[coroutine] || {
         let arr = [Ptr];
         if arg {
             drop(arr);
@@ -41,7 +41,7 @@ fn two_armed_if(arg: bool) {
 }
 
 fn if_let(arg: Option<i32>) {
-    let _ = || {
+    let _ = #[coroutine] || {
         let arr = [Ptr];
         if let Some(_) = arg {
             drop(arr);
@@ -51,7 +51,7 @@ fn if_let(arg: Option<i32>) {
 }
 
 fn init_in_if(arg: bool) {
-    assert_send(|| {
+    assert_send(#[coroutine] || {
         let mut x = NonSend;
         drop(x);
         if arg {
@@ -63,7 +63,7 @@ fn init_in_if(arg: bool) {
 }
 
 fn init_in_match_arm(arg: Option<i32>) {
-    assert_send(|| {
+    assert_send(#[coroutine] || {
         let mut x = NonSend;
         drop(x);
         match arg {
@@ -74,7 +74,7 @@ fn init_in_match_arm(arg: Option<i32>) {
 }
 
 fn reinit() {
-    let _ = || {
+    let _ = #[coroutine] || {
         let mut arr = [Ptr];
         drop(arr);
         arr = [Ptr];
@@ -83,7 +83,7 @@ fn reinit() {
 }
 
 fn loop_uninit() {
-    let _ = || {
+    let _ = #[coroutine] || {
         let mut arr = [Ptr];
         let mut count = 0;
         drop(arr);
@@ -96,7 +96,7 @@ fn loop_uninit() {
 }
 
 fn nested_loop() {
-    let _ = || {
+    let _ = #[coroutine] || {
         let mut arr = [Ptr];
         let mut count = 0;
         drop(arr);
@@ -111,7 +111,7 @@ fn nested_loop() {
 }
 
 fn loop_continue(b: bool) {
-    let _ = || {
+    let _ = #[coroutine] || {
         let mut arr = [Ptr];
         let mut count = 0;
         drop(arr);

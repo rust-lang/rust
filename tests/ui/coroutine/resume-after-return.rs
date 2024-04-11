@@ -1,17 +1,17 @@
 //@ run-pass
 //@ needs-unwind
 
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
-#![feature(coroutines, coroutine_trait)]
-
-use std::ops::{CoroutineState, Coroutine};
-use std::pin::Pin;
+use std::ops::{Coroutine, CoroutineState};
 use std::panic;
+use std::pin::Pin;
 
 fn main() {
-    let mut foo = || {
+    let mut foo = #[coroutine]
+    || {
         if true {
-            return
+            return;
         }
         yield;
     };

@@ -1809,7 +1809,7 @@ impl<Ptr, U> DispatchFromDyn<Pin<U>> for Pin<Ptr> where Ptr: DispatchFromDyn<U> 
 /// fn coroutine_fn() -> impl Coroutine<Yield = usize, Return = ()> /* not Unpin */ {
 ///  // Allow coroutine to be self-referential (not `Unpin`)
 ///  // vvvvvv        so that locals can cross yield points.
-///     static || {
+///     #[cfg_attr(not(bootstrap), coroutine)] static || {
 ///         let foo = String::from("foo");
 ///         let foo_ref = &foo; // ------+
 ///         yield 0;                  // | <- crosses yield point!

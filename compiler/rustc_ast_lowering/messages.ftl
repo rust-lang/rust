@@ -163,3 +163,6 @@ ast_lowering_underscore_expr_lhs_assign =
     .label = `_` not allowed here
 
 ast_lowering_use_angle_brackets = use angle brackets instead
+ast_lowering_yield_in_closure =
+    `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
+    .suggestion = use `#[coroutine]` to make this closure a coroutine

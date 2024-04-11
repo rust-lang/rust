@@ -8,6 +8,7 @@ use std::pin::Pin;
 
 type RandCoroutine<'a> = impl Coroutine<Return = (), Yield = u64> + 'a;
 fn rand_coroutine<'a>(rng: &'a ()) -> RandCoroutine<'a> {
+    #[coroutine]
     move || {
         let _rng = rng;
         loop {
@@ -19,6 +20,7 @@ fn rand_coroutine<'a>(rng: &'a ()) -> RandCoroutine<'a> {
 pub type RandCoroutineWithIndirection<'c> = impl Coroutine<Return = (), Yield = u64> + 'c;
 pub fn rand_coroutine_with_indirection<'a>(rng: &'a ()) -> RandCoroutineWithIndirection<'a> {
     fn helper<'b>(rng: &'b ()) -> impl 'b + Coroutine<Return = (), Yield = u64> {
+        #[coroutine]
         move || {
             let _rng = rng;
             loop {

@@ -29,10 +29,10 @@ LL |     require_send(send_gen);
    = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
    = note: required for `Arc<RefCell<i32>>` to implement `Send`
 note: required because it's used within this coroutine
-  --> $DIR/coroutine-print-verbose-1.rs:42:5
+  --> $DIR/coroutine-print-verbose-1.rs:42:18
    |
-LL |     || {
-   |     ^^
+LL |     #[coroutine] || {
+   |                  ^^
 note: required because it appears within the type `Opaque(DefId(0:35 ~ coroutine_print_verbose_1[75fb]::make_gen2::{opaque#0}), [Arc<RefCell<i32>>])`
   --> $DIR/coroutine-print-verbose-1.rs:41:30
    |
@@ -44,10 +44,10 @@ note: required because it appears within the type `Opaque(DefId(0:36 ~ coroutine
 LL | fn make_non_send_coroutine2() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required because it's used within this coroutine
-  --> $DIR/coroutine-print-verbose-1.rs:52:20
+  --> $DIR/coroutine-print-verbose-1.rs:52:33
    |
-LL |     let send_gen = || {
-   |                    ^^
+LL |     let send_gen = #[coroutine] || {
+   |                                 ^^
 note: required by a bound in `require_send`
   --> $DIR/coroutine-print-verbose-1.rs:26:25
    |
