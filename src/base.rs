@@ -267,7 +267,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
         .generic_activity("codegen prelude")
         .run(|| crate::abi::codegen_fn_prelude(fx, start_block));
 
-    for (bb, bb_data) in fx.mir.basic_blocks.iter_enumerated() {
+    for (bb, bb_data) in traversal::mono_reachable(fx.mir, fx.tcx, fx.instance) {
         let block = fx.get_block(bb);
         fx.bcx.switch_to_block(block);
 
@@ -789,7 +789,7 @@ fn codegen_stmt<'tcx>(
                             layout.offset_of_subfield(fx, fields.iter()).bytes()
                         }
                         NullOp::UbChecks => {
-                            let val = fx.tcx.sess.opts.debug_assertions;
+                            let val = fx.tcx.sess.ub_checks();
                             let val = CValue::by_val(
                                 fx.bcx.ins().iconst(types::I8, i64::try_from(val).unwrap()),
                                 fx.layout_of(fx.tcx.types.bool),
