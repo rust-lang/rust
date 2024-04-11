@@ -1500,6 +1500,7 @@ pub fn init_logger(early_dcx: &EarlyDiagCtxt, cfg: rustc_log::LoggerConfig) {
 /// Install our usual `ctrlc` handler, which sets [`rustc_const_eval::CTRL_C_RECEIVED`].
 /// Making this handler optional lets tools can install a different handler, if they wish.
 pub fn install_ctrlc_handler() {
+    #[cfg(not(target_family = "wasm"))]
     ctrlc::set_handler(move || {
         // Indicate that we have been signaled to stop. If we were already signaled, exit
         // immediately. In our interpreter loop we try to consult this value often, but if for
