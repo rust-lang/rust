@@ -1829,39 +1829,36 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         // Verify that this is a tail expression of a function, otherwise the
         // label pointing out the cause for the type coercion will be wrong
         // as prior return coercions would not be relevant (#57664).
-        let fn_decl = if let (Some(expr), Some(blk_id)) = (expression, blk_id) {
+        if let Some(expr) = expression
+            && let Some(blk_id) = blk_id
+        {
             fcx.suggest_missing_semicolon(&mut err, expr, expected, false);
             let pointing_at_return_type =
                 fcx.suggest_mismatched_types_on_tail(&mut err, expr, expected, found, blk_id);
-            if let (Some(cond_expr), true, false) = (
-                fcx.tcx.hir().get_if_cause(expr.hir_id),
-                expected.is_unit(),
-                pointing_at_return_type,
-            )
+            if let Some(cond_expr) = fcx.tcx.hir().get_if_cause(expr.hir_id)
+                && expected.is_unit()
+                && !pointing_at_return_type
                 // If the block is from an external macro or try (`?`) desugaring, then
                 // do not suggest adding a semicolon, because there's nowhere to put it.
                 // See issues #81943 and #87051.
                 && matches!(
                     cond_expr.span.desugaring_kind(),
                     None | Some(DesugaringKind::WhileLoop)
-                ) && !in_external_macro(fcx.tcx.sess, cond_expr.span)
-                    && !matches!(
-                        cond_expr.kind,
-                        hir::ExprKind::Match(.., hir::MatchSource::TryDesugar(_))
-                    )
+                )
+                && !in_external_macro(fcx.tcx.sess, cond_expr.span)
+                && !matches!(
+                    cond_expr.kind,
+                    hir::ExprKind::Match(.., hir::MatchSource::TryDesugar(_))
+                )
             {
                 err.span_label(cond_expr.span, "expected this to be `()`");
                 if expr.can_have_side_effects() {
                     fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
                 }
             }
-            fcx.get_node_fn_decl(parent)
-                .map(|(fn_id, fn_decl, _, is_main)| (fn_id, fn_decl, is_main))
-        } else {
-            fcx.get_fn_decl(parent_id)
         };
 
-        if let Some((fn_id, fn_decl, can_suggest)) = fn_decl {
+        if let Some((fn_id, fn_decl, can_suggest)) = fcx.get_fn_decl(parent_id) {
             if blk_id.is_none() {
                 fcx.suggest_missing_return_type(
                     &mut err,
