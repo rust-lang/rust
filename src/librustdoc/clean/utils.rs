@@ -580,7 +580,14 @@ pub(crate) fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Opti
 /// This function exists because it runs on `hir::Attributes` whereas the other is a
 /// `clean::Attributes` method.
 pub(crate) fn has_doc_flag(tcx: TyCtxt<'_>, did: DefId, flag: Symbol) -> bool {
-    tcx.get_attrs(did, sym::doc)
+    attrs_have_doc_flag(tcx.get_attrs(did, sym::doc), flag)
+}
+
+pub(crate) fn attrs_have_doc_flag<'a>(
+    mut attrs: impl Iterator<Item = &'a ast::Attribute>,
+    flag: Symbol,
+) -> bool {
+    attrs
         .any(|attr| attr.meta_item_list().is_some_and(|l| rustc_attr::list_contains_name(&l, flag)))
 }
 
