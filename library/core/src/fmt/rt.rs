@@ -209,8 +209,15 @@ extern "C" {
 // first argument. The read_volatile here ensures that we can safely ready out a
 // usize from the passed reference and that this address does not point at a
 // non-usize taking function.
-static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = |ptr, _| {
-    // SAFETY: ptr is a reference
-    let _v: usize = unsafe { crate::ptr::read_volatile(ptr) };
-    loop {}
+static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = {
+    // Make sure this function is only monomorphized once, and not considered cross-crate
+    // inlineable.
+    #[inline(never)]
+    fn usize_marker(ptr: &usize, _: &mut Formatter<'_>) -> Result {
+        // SAFETY: ptr is a reference
+        let _v: usize = unsafe { crate::ptr::read_volatile(ptr) };
+        loop {}
+    }
+
+    usize_marker
 };
