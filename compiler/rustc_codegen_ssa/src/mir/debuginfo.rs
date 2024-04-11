@@ -420,7 +420,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.set_var_name(alloca.val.llval, &(var.name.to_string() + ".dbg.spill"));
 
             // Write the pointer to the variable
-            bx.store(place.val.llval, alloca.val.llval, alloca.val.align);
+            bx.store_to_place(place.val.llval, alloca.val);
 
             // Point the debug info to `*alloca` for the current variable
             bx.dbg_var_addr(

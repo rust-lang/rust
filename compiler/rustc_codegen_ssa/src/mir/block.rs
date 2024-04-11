@@ -456,7 +456,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 let op = self.codegen_consume(bx, mir::Place::return_place().as_ref());
                 if let Ref(place_val) = op.val {
-                    bx.load(bx.backend_type(op.layout), place_val.llval, place_val.align)
+                    bx.load_from_place(bx.backend_type(op.layout), place_val)
                 } else {
                     op.immediate_or_packed_pair(bx)
                 }

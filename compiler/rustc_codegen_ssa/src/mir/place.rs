@@ -343,10 +343,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 let ptr = self.project_field(bx, tag_field);
                 let to =
                     self.layout.ty.discriminant_for_variant(bx.tcx(), variant_index).unwrap().val;
-                bx.store(
+                bx.store_to_place(
                     bx.cx().const_uint_big(bx.cx().backend_type(ptr.layout), to),
-                    ptr.val.llval,
-                    ptr.val.align,
+                    ptr.val,
                 );
             }
             Variants::Multiple {

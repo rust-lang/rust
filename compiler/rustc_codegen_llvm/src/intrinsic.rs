@@ -264,7 +264,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     llvm::LLVMSetAlignment(load, align);
                 }
                 if !result.layout.is_zst() {
-                    self.store(load, result.val.llval, result.val.align);
+                    self.store_to_place(load, result.val);
                 }
                 return Ok(());
             }
