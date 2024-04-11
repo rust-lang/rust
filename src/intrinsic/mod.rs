@@ -354,7 +354,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 let block = self.llbb();
                 let extended_asm = block.add_extended_asm(None, "");
-                extended_asm.add_input_operand(None, "r", result.llval);
+                extended_asm.add_input_operand(None, "r", result.val.llval);
                 extended_asm.add_clobber("memory");
                 extended_asm.set_volatile_flag(true);
 
@@ -388,8 +388,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         if !fn_abi.ret.is_ignore() {
             if let PassMode::Cast { cast: ty, .. } = &fn_abi.ret.mode {
                 let ptr_llty = self.type_ptr_to(ty.gcc_type(self));
-                let ptr = self.pointercast(result.llval, ptr_llty);
-                self.store(llval, ptr, result.align);
+                let ptr = self.pointercast(result.val.llval, ptr_llty);
+                self.store(llval, ptr, result.val.align);
             } else {
                 OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
                     .val
@@ -511,7 +511,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
                 let cast_ptr_llty = bx.type_ptr_to(cast.gcc_type(bx));
-                let cast_dst = bx.pointercast(dst.llval, cast_ptr_llty);
+                let cast_dst = bx.pointercast(dst.val.llval, cast_ptr_llty);
                 bx.store(val, cast_dst, self.layout.align.abi);
             } else {
                 // The actual return type is a struct, but the ABI
@@ -539,7 +539,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
 
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
-                    dst.llval,
+                    dst.val.llval,
                     self.layout.align.abi,
                     llscratch,
                     scratch_align,
