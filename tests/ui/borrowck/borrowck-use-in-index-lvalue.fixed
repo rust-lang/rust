@@ -1,10 +1,10 @@
 //@ run-rustfix
 #[allow(unused_mut)]
 fn test() {
-    let w: &mut [isize];
+    let w: &mut [isize] = &mut [];
     w[5] = 0; //~ ERROR [E0381]
 
-    let mut w: &mut [isize];
+    let mut w: &mut [isize] = &mut [];
     w[5] = 0; //~ ERROR [E0381]
 }
 

@@ -5,6 +5,6 @@
 #![allow(unused_variables)]
 
 fn main() {
-    let x: &i32;
+    let x: &i32 = &42;
     let y = x as *const i32; //~ ERROR [E0381]
 }

@@ -56,8 +56,8 @@ LL |         let _used = value;
    |
 help: consider assigning a value
    |
-LL |         let value: NonCopy = todo!();
-   |                            +++++++++
+LL |         let value: NonCopy = value;
+   |                            +++++++
 
 error[E0381]: used binding `value` isn't initialized
   --> $DIR/issue-72649-uninit-in-loop.rs:69:21
@@ -70,8 +70,8 @@ LL |         let _used = value;
    |
 help: consider assigning a value
    |
-LL |     let mut value: NonCopy = todo!();
-   |                            +++++++++
+LL |     let mut value: NonCopy = value;
+   |                            +++++++
 
 error: aborting due to 6 previous errors
 
