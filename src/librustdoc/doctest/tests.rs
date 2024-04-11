@@ -5,13 +5,15 @@ use rustc_span::edition::DEFAULT_EDITION;
 fn make_test_basic() {
     //basic use: wraps with `fn main`, adds `#![allow(unused)]`
     let opts = GlobalTestOptions::default();
-    let input = "assert_eq!(2+2, 4);";
+    let input = "assert_eq!(2+2, 4);".to_string();
     let expected = "#![allow(unused)]
 fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION, None);
+    let krate = None;
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -20,13 +22,15 @@ fn make_test_crate_name_no_use() {
     // If you give a crate name but *don't* use it within the test, it won't bother inserting
     // the `extern crate` statement.
     let opts = GlobalTestOptions::default();
-    let input = "assert_eq!(2+2, 4);";
+    let input = "assert_eq!(2+2, 4);".to_string();
     let expected = "#![allow(unused)]
 fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION, None);
+    let krate = Some("asdf");
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -36,7 +40,8 @@ fn make_test_crate_name() {
     // statement before `fn main`.
     let opts = GlobalTestOptions::default();
     let input = "use asdf::qwop;
-assert_eq!(2+2, 4);";
+assert_eq!(2+2, 4);"
+        .to_string();
     let expected = "#![allow(unused)]
 #[allow(unused_extern_crates)]
 extern crate r#asdf;
@@ -45,7 +50,9 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION, None);
+    let krate = Some("asdf");
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 3));
 }
 
@@ -56,14 +63,17 @@ fn make_test_no_crate_inject() {
     let opts =
         GlobalTestOptions { no_crate_inject: true, attrs: vec![], insert_indent_space: false };
     let input = "use asdf::qwop;
-assert_eq!(2+2, 4);";
+assert_eq!(2+2, 4);"
+        .to_string();
     let expected = "#![allow(unused)]
 fn main() {
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION, None);
+    let krate = Some("asdf");
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -74,14 +84,17 @@ fn make_test_ignore_std() {
     // compiler!
     let opts = GlobalTestOptions::default();
     let input = "use std::*;
-assert_eq!(2+2, 4);";
+assert_eq!(2+2, 4);"
+        .to_string();
     let expected = "#![allow(unused)]
 fn main() {
 use std::*;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len, _) = make_test(input, Some("std"), false, &opts, DEFAULT_EDITION, None);
+    let krate = Some("std");
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -92,7 +105,8 @@ fn make_test_manual_extern_crate() {
     let opts = GlobalTestOptions::default();
     let input = "extern crate asdf;
 use asdf::qwop;
-assert_eq!(2+2, 4);";
+assert_eq!(2+2, 4);"
+        .to_string();
     let expected = "#![allow(unused)]
 extern crate asdf;
 fn main() {
@@ -100,7 +114,9 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION, None);
+    let krate = Some("asdf");
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -109,7 +125,8 @@ fn make_test_manual_extern_crate_with_macro_use() {
     let opts = GlobalTestOptions::default();
     let input = "#[macro_use] extern crate asdf;
 use asdf::qwop;
-assert_eq!(2+2, 4);";
+assert_eq!(2+2, 4);"
+        .to_string();
     let expected = "#![allow(unused)]
 #[macro_use] extern crate asdf;
 fn main() {
@@ -117,7 +134,9 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION, None);
+    let krate = Some("asdf");
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -128,7 +147,8 @@ fn make_test_opts_attrs() {
     let mut opts = GlobalTestOptions::default();
     opts.attrs.push("feature(sick_rad)".to_string());
     let input = "use asdf::qwop;
-assert_eq!(2+2, 4);";
+assert_eq!(2+2, 4);"
+        .to_string();
     let expected = "#![feature(sick_rad)]
 #[allow(unused_extern_crates)]
 extern crate r#asdf;
@@ -137,7 +157,9 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION, None);
+    let krate = Some("asdf");
+    let (output, len) = make_test(input.clone(), krate, DEFAULT_EDITION)
+        .generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 3));
 
     // Adding more will also bump the returned line offset.
@@ -151,7 +173,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION, None);
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 4));
 }
 
@@ -161,14 +184,17 @@ fn make_test_crate_attrs() {
     // them outside the generated main function.
     let opts = GlobalTestOptions::default();
     let input = "#![feature(sick_rad)]
-assert_eq!(2+2, 4);";
+assert_eq!(2+2, 4);"
+        .to_string();
     let expected = "#![allow(unused)]
 #![feature(sick_rad)]
 fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION, None);
+    let krate = None;
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -178,13 +204,16 @@ fn make_test_with_main() {
     let opts = GlobalTestOptions::default();
     let input = "fn main() {
     assert_eq!(2+2, 4);
-}";
+}"
+    .to_string();
     let expected = "#![allow(unused)]
 fn main() {
     assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION, None);
+    let krate = None;
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 1));
 }
 
@@ -193,14 +222,17 @@ fn make_test_fake_main() {
     // ... but putting it in a comment will still provide a wrapper.
     let opts = GlobalTestOptions::default();
     let input = "//Ceci n'est pas une `fn main`
-assert_eq!(2+2, 4);";
+assert_eq!(2+2, 4);"
+        .to_string();
     let expected = "#![allow(unused)]
 //Ceci n'est pas une `fn main`
 fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION, None);
+    let krate = None;
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -209,12 +241,15 @@ fn make_test_dont_insert_main() {
     // Even with that, if you set `dont_insert_main`, it won't create the `fn main` wrapper.
     let opts = GlobalTestOptions::default();
     let input = "//Ceci n'est pas une `fn main`
-assert_eq!(2+2, 4);";
+assert_eq!(2+2, 4);"
+        .to_string();
     let expected = "#![allow(unused)]
 //Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);"
         .to_string();
-    let (output, len, _) = make_test(input, None, true, &opts, DEFAULT_EDITION, None);
+    let krate = None;
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, true, &opts, None);
     assert_eq!((output, len), (expected, 1));
 }
 
@@ -223,7 +258,8 @@ fn make_test_issues_21299_33731() {
     let opts = GlobalTestOptions::default();
 
     let input = "// fn main
-assert_eq!(2+2, 4);";
+assert_eq!(2+2, 4);"
+        .to_string();
 
     let expected = "#![allow(unused)]
 // fn main
@@ -232,11 +268,14 @@ assert_eq!(2+2, 4);
 }"
     .to_string();
 
-    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION, None);
+    let krate = None;
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 
     let input = "extern crate hella_qwop;
-assert_eq!(asdf::foo, 4);";
+assert_eq!(asdf::foo, 4);"
+        .to_string();
 
     let expected = "#![allow(unused)]
 extern crate hella_qwop;
@@ -247,7 +286,9 @@ assert_eq!(asdf::foo, 4);
 }"
     .to_string();
 
-    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION, None);
+    let krate = Some("asdf");
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 3));
 }
 
@@ -257,7 +298,8 @@ fn make_test_main_in_macro() {
     let input = "#[macro_use] extern crate my_crate;
 test_wrapper! {
     fn main() {}
-}";
+}"
+    .to_string();
     let expected = "#![allow(unused)]
 #[macro_use] extern crate my_crate;
 test_wrapper! {
@@ -265,7 +307,9 @@ test_wrapper! {
 }"
     .to_string();
 
-    let (output, len, _) = make_test(input, Some("my_crate"), false, &opts, DEFAULT_EDITION, None);
+    let krate = Some("my_crate");
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 1));
 }
 
@@ -276,7 +320,8 @@ fn make_test_returns_result() {
     let input = "use std::io;
 let mut input = String::new();
 io::stdin().read_line(&mut input)?;
-Ok::<(), io:Error>(())";
+Ok::<(), io:Error>(())"
+        .to_string();
     let expected = "#![allow(unused)]
 fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {
 use std::io;
@@ -285,7 +330,9 @@ io::stdin().read_line(&mut input)?;
 Ok::<(), io:Error>(())
 } _inner().unwrap() }"
         .to_string();
-    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION, None);
+    let krate = None;
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -293,14 +340,19 @@ Ok::<(), io:Error>(())
 fn make_test_named_wrapper() {
     // creates an inner function with a specific name
     let opts = GlobalTestOptions::default();
-    let input = "assert_eq!(2+2, 4);";
+    let input = "assert_eq!(2+2, 4);".to_string();
     let expected = "#![allow(unused)]
 fn main() { #[allow(non_snake_case)] fn _doctest_main__some_unique_name() {
 assert_eq!(2+2, 4);
 } _doctest_main__some_unique_name() }"
         .to_string();
-    let (output, len, _) =
-        make_test(input, None, false, &opts, DEFAULT_EDITION, Some("_some_unique_name"));
+    let krate = None;
+    let (output, len) = make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(
+        krate,
+        false,
+        &opts,
+        Some("_some_unique_name"),
+    );
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -312,7 +364,8 @@ fn make_test_insert_extra_space() {
     let input = "use std::*;
 assert_eq!(2+2, 4);
 eprintln!(\"hello anan\");
-";
+"
+    .to_string();
     let expected = "#![allow(unused)]
 fn main() {
     use std::*;
@@ -320,7 +373,9 @@ fn main() {
     eprintln!(\"hello anan\");
 }"
     .to_string();
-    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION, None);
+    let krate = None;
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -333,7 +388,8 @@ fn make_test_insert_extra_space_fn_main() {
 fn main() {
     assert_eq!(2+2, 4);
     eprintln!(\"hello anan\");
-}";
+}"
+    .to_string();
     let expected = "#![allow(unused)]
 use std::*;
 fn main() {
@@ -341,6 +397,8 @@ fn main() {
     eprintln!(\"hello anan\");
 }"
     .to_string();
-    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION, None);
+    let krate = None;
+    let (output, len) =
+        make_test(input, krate, DEFAULT_EDITION).generate_unique_doctest(krate, false, &opts, None);
     assert_eq!((output, len), (expected, 1));
 }

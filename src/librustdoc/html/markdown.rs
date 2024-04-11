@@ -306,7 +306,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 
             let mut opts: GlobalTestOptions = Default::default();
             opts.insert_indent_space = true;
-            let (test, _, _) = doctest::make_test(&test, krate, false, &opts, edition, None);
+            let (test, _) = doctest::make_test(test, krate, edition)
+                .generate_unique_doctest(krate, false, &opts, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             let test_escaped = small_url_encode(test);
