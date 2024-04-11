@@ -942,7 +942,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn get_node_fn_decl(
         &self,
         node: Node<'tcx>,
-    ) -> Option<(hir::HirId, &'tcx hir::FnDecl<'tcx>, Ident, bool)> {
+    ) -> Option<(LocalDefId, &'tcx hir::FnDecl<'tcx>, Ident, bool)> {
         match node {
             Node::Item(&hir::Item {
                 ident,
@@ -953,25 +953,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // This is less than ideal, it will not suggest a return type span on any
                 // method called `main`, regardless of whether it is actually the entry point,
                 // but it will still present it as the reason for the expected type.
-                Some((
-                    hir::HirId::make_owner(owner_id.def_id),
-                    &sig.decl,
-                    ident,
-                    ident.name != sym::main,
-                ))
+                Some((owner_id.def_id, &sig.decl, ident, ident.name != sym::main))
             }
             Node::TraitItem(&hir::TraitItem {
                 ident,
                 kind: hir::TraitItemKind::Fn(ref sig, ..),
                 owner_id,
                 ..
-            }) => Some((hir::HirId::make_owner(owner_id.def_id), &sig.decl, ident, true)),
+            }) => Some((owner_id.def_id, &sig.decl, ident, true)),
             Node::ImplItem(&hir::ImplItem {
                 ident,
                 kind: hir::ImplItemKind::Fn(ref sig, ..),
                 owner_id,
                 ..
-            }) => Some((hir::HirId::make_owner(owner_id.def_id), &sig.decl, ident, false)),
+            }) => Some((owner_id.def_id, &sig.decl, ident, false)),
             Node::Expr(&hir::Expr {
                 hir_id,
                 kind:
@@ -1001,12 +996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }) => (ident, sig, owner_id),
                     _ => return None,
                 };
-                Some((
-                    hir::HirId::make_owner(owner_id.def_id),
-                    &sig.decl,
-                    ident,
-                    ident.name != sym::main,
-                ))
+                Some((owner_id.def_id, &sig.decl, ident, ident.name != sym::main))
             }
             _ => None,
         }
@@ -1017,7 +1007,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn get_fn_decl(
         &self,
         blk_id: hir::HirId,
-    ) -> Option<(hir::HirId, &'tcx hir::FnDecl<'tcx>, bool)> {
+    ) -> Option<(LocalDefId, &'tcx hir::FnDecl<'tcx>, bool)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
         self.tcx.hir().get_return_block(blk_id).and_then(|blk_id| {
