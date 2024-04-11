@@ -68,12 +68,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         base::coerce_unsized_into(bx, scratch, dest);
                         scratch.storage_dead(bx);
                     }
-                    OperandValue::Ref(llref, None, align) => {
-                        let source = PlaceRef::new_sized_aligned(llref, operand.layout, align);
+                    OperandValue::Ref(val) => {
+                        if val.llextra.is_some() {
+                            bug!("unsized coercion on an unsized rvalue");
+                        }
+                        let source = PlaceRef { val, layout: operand.layout };
                         base::coerce_unsized_into(bx, source, dest);
-                    }
-                    OperandValue::Ref(_, Some(_), _) => {
-                        bug!("unsized coercion on an unsized rvalue");
                     }
                     OperandValue::ZeroSized => {
                         bug!("unsized coercion on a ZST rvalue");
@@ -220,10 +220,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let cast_kind = self.value_kind(cast);
 
         match operand.val {
-            OperandValue::Ref(ptr, meta, align) => {
-                debug_assert_eq!(meta, None);
+            OperandValue::Ref(source_place_val) => {
+                debug_assert_eq!(source_place_val.llextra, None);
                 debug_assert!(matches!(operand_kind, OperandValueKind::Ref));
-                let fake_place = PlaceRef::new_sized_aligned(ptr, cast, align);
+                let fake_place = PlaceRef { val: source_place_val, layout: cast };
                 Some(bx.load_operand(fake_place).val)
             }
             OperandValue::ZeroSized => {
@@ -490,7 +490,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     mir::CastKind::DynStar => {
                         let (lldata, llextra) = match operand.val {
-                            OperandValue::Ref(_, _, _) => todo!(),
+                            OperandValue::Ref(..) => todo!(),
                             OperandValue::Immediate(v) => (v, None),
                             OperandValue::Pair(v, l) => (v, Some(l)),
                             OperandValue::ZeroSized => bug!("ZST -- which is not PointerLike -- in DynStar"),

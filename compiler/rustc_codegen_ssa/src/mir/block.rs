@@ -455,8 +455,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 let op = self.codegen_consume(bx, mir::Place::return_place().as_ref());
-                if let Ref(llval, _, align) = op.val {
-                    bx.load(bx.backend_type(op.layout), llval, align)
+                if let Ref(place_val) = op.val {
+                    bx.load(bx.backend_type(op.layout), place_val.llval, place_val.align)
                 } else {
                     op.immediate_or_packed_pair(bx)
                 }
@@ -466,10 +466,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let op = match self.locals[mir::RETURN_PLACE] {
                     LocalRef::Operand(op) => op,
                     LocalRef::PendingOperand => bug!("use of return before def"),
-                    LocalRef::Place(cg_place) => OperandRef {
-                        val: Ref(cg_place.val.llval, None, cg_place.val.align),
-                        layout: cg_place.layout,
-                    },
+                    LocalRef::Place(cg_place) => {
+                        OperandRef { val: Ref(cg_place.val), layout: cg_place.layout }
+                    }
                     LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
                 };
                 let llslot = match op.val {
@@ -478,9 +477,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         op.val.store(bx, scratch);
                         scratch.val.llval
                     }
-                    Ref(llval, _, align) => {
-                        assert_eq!(align, op.layout.align.abi, "return place is unaligned!");
-                        llval
+                    Ref(place_val) => {
+                        assert_eq!(
+                            place_val.align, op.layout.align.abi,
+                            "return place is unaligned!"
+                        );
+                        place_val.llval
                     }
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
                 };
@@ -1032,7 +1034,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         llargs.push(data_ptr);
                         continue 'make_args;
                     }
-                    Ref(data_ptr, Some(meta), _) => {
+                    Ref(PlaceValue { llval: data_ptr, llextra: Some(meta), .. }) => {
                         // by-value dynamic dispatch
                         llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
                             bx,
@@ -1079,12 +1081,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // The callee needs to own the argument memory if we pass it
             // by-ref, so make a local copy of non-immediate constants.
             match (&arg.node, op.val) {
-                (&mir::Operand::Copy(_), Ref(_, None, _))
-                | (&mir::Operand::Constant(_), Ref(_, None, _)) => {
+                (&mir::Operand::Copy(_), Ref(PlaceValue { llextra: None, .. }))
+                | (&mir::Operand::Constant(_), Ref(PlaceValue { llextra: None, .. })) => {
                     let tmp = PlaceRef::alloca(bx, op.layout);
                     bx.lifetime_start(tmp.val.llval, tmp.layout.size);
                     op.val.store(bx, tmp);
-                    op.val = Ref(tmp.val.llval, None, tmp.val.align);
+                    op.val = Ref(tmp.val);
                     copied_constant_arguments.push(tmp);
                 }
                 _ => {}
@@ -1428,7 +1430,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => bug!("codegen_argument: {:?} invalid for pair argument", op),
             },
             PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => match op.val {
-                Ref(a, Some(b), _) => {
+                Ref(PlaceValue { llval: a, llextra: Some(b), .. }) => {
                     llargs.push(a);
                     llargs.push(b);
                     return;
@@ -1459,28 +1461,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 _ => (op.immediate_or_packed_pair(bx), arg.layout.align.abi, false),
             },
-            Ref(llval, llextra, align) => match arg.mode {
+            Ref(op_place_val) => match arg.mode {
                 PassMode::Indirect { attrs, .. } => {
                     let required_align = match attrs.pointee_align {
                         Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
                         None => arg.layout.align.abi,
                     };
-                    if align < required_align {
+                    if op_place_val.align < required_align {
                         // For `foo(packed.large_field)`, and types with <4 byte alignment on x86,
                         // alignment requirements may be higher than the type's alignment, so copy
                         // to a higher-aligned alloca.
                         let scratch = PlaceRef::alloca_aligned(bx, arg.layout, required_align);
-                        let op_place = PlaceRef {
-                            val: PlaceValue { llval, llextra, align },
-                            layout: op.layout,
-                        };
+                        let op_place = PlaceRef { val: op_place_val, layout: op.layout };
                         bx.typed_place_copy(scratch, op_place);
                         (scratch.val.llval, scratch.val.align, true)
                     } else {
-                        (llval, align, true)
+                        (op_place_val.llval, op_place_val.align, true)
                     }
                 }
-                _ => (llval, align, true),
+                _ => (op_place_val.llval, op_place_val.align, true),
             },
             ZeroSized => match arg.mode {
                 PassMode::Indirect { on_stack, .. } => {
@@ -1560,15 +1559,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let tuple = self.codegen_operand(bx, operand);
 
         // Handle both by-ref and immediate tuples.
-        if let Ref(llval, None, align) = tuple.val {
-            let tuple_ptr = PlaceRef::new_sized_aligned(llval, tuple.layout, align);
+        if let Ref(place_val) = tuple.val {
+            if place_val.llextra.is_some() {
+                bug!("closure arguments must be sized");
+            }
+            let tuple_ptr = PlaceRef { val: place_val, layout: tuple.layout };
             for i in 0..tuple.layout.fields.count() {
                 let field_ptr = tuple_ptr.project_field(bx, i);
                 let field = bx.load_operand(field_ptr);
                 self.codegen_argument(bx, field, llargs, &args[i]);
             }
-        } else if let Ref(_, Some(_), _) = tuple.val {
-            bug!("closure arguments must be sized")
         } else {
             // If the tuple is immediate, the elements are as well.
             for i in 0..tuple.layout.fields.count() {

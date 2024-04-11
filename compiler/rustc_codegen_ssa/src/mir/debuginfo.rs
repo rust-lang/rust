@@ -14,7 +14,7 @@ use rustc_span::{BytePos, Span};
 use rustc_target::abi::{Abi, FieldIdx, FieldsShape, Size, VariantIdx};
 
 use super::operand::{OperandRef, OperandValue};
-use super::place::PlaceRef;
+use super::place::{PlaceRef, PlaceValue};
 use super::{FunctionCx, LocalRef};
 
 use std::ops::Range;
@@ -334,7 +334,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.set_var_name(place.val.llval, name);
                 }
                 LocalRef::Operand(operand) => match operand.val {
-                    OperandValue::Ref(x, ..) | OperandValue::Immediate(x) => {
+                    OperandValue::Ref(PlaceValue { llval: x, .. }) | OperandValue::Immediate(x) => {
                         bx.set_var_name(x, name);
                     }
                     OperandValue::Pair(a, b) => {

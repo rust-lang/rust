@@ -579,8 +579,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
         }
 
-        let val = if let Some(llextra) = place.val.llextra {
-            OperandValue::Ref(place.val.llval, Some(llextra), place.val.align)
+        let val = if let Some(_) = place.val.llextra {
+            // FIXME: Merge with the `else` below?
+            OperandValue::Ref(place.val)
         } else if place.layout.is_llvm_immediate() {
             let mut const_llval = None;
             let llty = place.layout.llvm_type(self);
@@ -623,7 +624,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 load(1, b, place.layout, place.val.align.restrict_for_offset(b_offset), b_offset),
             )
         } else {
-            OperandValue::Ref(place.val.llval, None, place.val.align)
+            OperandValue::Ref(place.val)
         };
 
         OperandRef { val, layout: place.layout }

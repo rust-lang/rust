@@ -11,7 +11,7 @@ use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
-use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::{
     ArgAbiMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods,
 };
@@ -502,7 +502,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             return;
         }
         if self.is_sized_indirect() {
-            OperandValue::Ref(val, None, self.layout.align.abi).store(bx, dst)
+            OperandValue::Ref(PlaceValue::new_sized(val, self.layout.align.abi)).store(bx, dst)
         } else if self.is_unsized_indirect() {
             bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
         } else if let PassMode::Cast { ref cast, .. } = self.mode {
@@ -571,7 +571,12 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
             PassMode::Indirect { meta_attrs: Some(_), .. } => {
-                OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
+                let place_val = PlaceValue {
+                    llval: next(),
+                    llextra: Some(next()),
+                    align: self.layout.align.abi,
+                };
+                OperandValue::Ref(place_val).store(bx, dst);
             }
             PassMode::Direct(_)
             | PassMode::Indirect { meta_attrs: None, .. }
