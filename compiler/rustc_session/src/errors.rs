@@ -27,6 +27,16 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for FeatureGateError {
 }
 
 #[derive(Subdiagnostic)]
+pub struct FeatureGateSubdiagnostic {
+    #[subdiagnostic]
+    pub(crate) issue: Option<FeatureDiagnosticForIssue>,
+    #[subdiagnostic]
+    pub(crate) enable_feature: Option<EnableFeatureSubdiagnostic>,
+    #[subdiagnostic]
+    pub(crate) upgrade_compiler: Option<SuggestUpgradeCompiler>,
+}
+
+#[derive(Subdiagnostic)]
 #[note(session_feature_diagnostic_for_issue)]
 pub(crate) struct FeatureDiagnosticForIssue {
     pub(crate) n: NonZero<u32>,
@@ -51,27 +61,21 @@ impl SuggestUpgradeCompiler {
 }
 
 #[derive(Subdiagnostic)]
-#[help(session_feature_diagnostic_help)]
-pub(crate) struct FeatureDiagnosticHelp {
-    pub(crate) feature: Symbol,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(
-    session_feature_diagnostic_suggestion,
-    applicability = "maybe-incorrect",
-    code = "#![feature({feature})]\n"
-)]
-pub struct FeatureDiagnosticSuggestion {
-    pub feature: Symbol,
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Subdiagnostic)]
-#[help(session_cli_feature_diagnostic_help)]
-pub(crate) struct CliFeatureDiagnosticHelp {
-    pub(crate) feature: Symbol,
+pub(crate) enum EnableFeatureSubdiagnostic {
+    #[help(session_feature_diagnostic_help)]
+    AddAttrHelp { feature: Symbol },
+    #[suggestion(
+        session_feature_diagnostic_suggestion,
+        applicability = "maybe-incorrect",
+        code = "#![feature({feature})]\n"
+    )]
+    AddAttrSuggestion {
+        feature: Symbol,
+        #[primary_span]
+        span: Span,
+    },
+    #[help(session_cli_feature_diagnostic_help)]
+    AddCliHelp { feature: Symbol },
 }
 
 #[derive(Diagnostic)]

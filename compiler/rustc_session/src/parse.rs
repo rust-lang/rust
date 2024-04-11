@@ -20,8 +20,8 @@ use rustc_span::{Span, Symbol};
 
 use crate::config::{Cfg, CheckCfg};
 use crate::errors::{
-    CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp,
-    FeatureDiagnosticSuggestion, FeatureGateError, SuggestUpgradeCompiler,
+    EnableFeatureSubdiagnostic, FeatureDiagnosticForIssue, FeatureGateError,
+    FeatureGateSubdiagnostic, SuggestUpgradeCompiler,
 };
 use crate::lint::builtin::UNSTABLE_SYNTAX_PRE_EXPANSION;
 use crate::lint::{BufferedEarlyLint, BuiltinLintDiag, Lint, LintId};
@@ -177,26 +177,32 @@ pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
     feature_from_cli: bool,
     inject_span: Option<Span>,
 ) {
-    if let Some(n) = find_feature_issue(feature, issue) {
-        err.subdiagnostic(FeatureDiagnosticForIssue { n });
-    }
+    let issue = find_feature_issue(feature, issue).map(|n| FeatureDiagnosticForIssue { n });
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
-    if sess.psess.unstable_features.is_nightly_build() {
-        if feature_from_cli {
-            err.subdiagnostic(CliFeatureDiagnosticHelp { feature });
+    let (enable_feature, upgrade_compiler) = if sess.psess.unstable_features.is_nightly_build() {
+        let enable_feature = if feature_from_cli {
+            EnableFeatureSubdiagnostic::AddCliHelp { feature }
         } else if let Some(span) = inject_span {
-            err.subdiagnostic(FeatureDiagnosticSuggestion { feature, span });
+            EnableFeatureSubdiagnostic::AddAttrSuggestion { feature, span }
         } else {
-            err.subdiagnostic(FeatureDiagnosticHelp { feature });
-        }
+            EnableFeatureSubdiagnostic::AddAttrHelp { feature }
+        };
 
-        if sess.opts.unstable_opts.ui_testing {
-            err.subdiagnostic(SuggestUpgradeCompiler::ui_testing());
+        let upgrade_compiler = if sess.opts.unstable_opts.ui_testing {
+            Some(SuggestUpgradeCompiler::ui_testing())
         } else if let Some(suggestion) = SuggestUpgradeCompiler::new() {
-            err.subdiagnostic(suggestion);
-        }
-    }
+            Some(suggestion)
+        } else {
+            None
+        };
+
+        (Some(enable_feature), upgrade_compiler)
+    } else {
+        (None, None)
+    };
+
+    err.subdiagnostic(FeatureGateSubdiagnostic { issue, upgrade_compiler, enable_feature });
 }
 
 /// Info about a parsing session.
