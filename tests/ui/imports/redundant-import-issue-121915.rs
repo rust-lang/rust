@@ -1,3 +1,4 @@
+//@ ignore-test
 //@ compile-flags: --extern aux_issue_121915 --edition 2018
 //@ aux-build: aux-issue-121915.rs
 

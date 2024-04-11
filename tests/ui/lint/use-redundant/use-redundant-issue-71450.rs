@@ -1,3 +1,4 @@
+//@ ignore-test
 //@ check-pass
 
 #![warn(unused_imports)]

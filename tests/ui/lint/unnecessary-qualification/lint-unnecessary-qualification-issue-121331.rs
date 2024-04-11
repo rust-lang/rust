@@ -1,3 +1,4 @@
+//@ ignore-test
 //@ run-rustfix
 //@ edition:2021
 #![deny(unused_qualifications)]

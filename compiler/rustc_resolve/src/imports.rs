@@ -1306,6 +1306,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         None
     }
 
+    #[allow(dead_code)]
     pub(crate) fn check_for_redundant_imports(&mut self, import: Import<'a>) -> bool {
         // This function is only called for single imports.
         let ImportKind::Single {

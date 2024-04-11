@@ -30,7 +30,7 @@ use crate::Resolver;
 use crate::{LexicalScopeBinding, NameBindingKind};
 use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{pluralize, MultiSpan};
 use rustc_hir::def::{DefKind, Res};
@@ -494,35 +494,36 @@ impl Resolver<'_, '_> {
             );
         }
 
+        // FIXME(#121708): Block redundant_import report and wait for lang team's decision.
         let unused_imports = visitor.unused_imports;
-        let mut check_redundant_imports = FxIndexSet::default();
-        for module in self.arenas.local_modules().iter() {
-            for (_key, resolution) in self.resolutions(*module).borrow().iter() {
-                let resolution = resolution.borrow();
+        // let mut check_redundant_imports = FxIndexSet::default();
+        // for module in self.arenas.local_modules().iter() {
+        //     for (_key, resolution) in self.resolutions(*module).borrow().iter() {
+        //         let resolution = resolution.borrow();
 
-                if let Some(binding) = resolution.binding
-                    && let NameBindingKind::Import { import, .. } = binding.kind
-                    && let ImportKind::Single { id, .. } = import.kind
-                {
-                    if let Some(unused_import) = unused_imports.get(&import.root_id)
-                        && unused_import.unused.contains(&id)
-                    {
-                        continue;
-                    }
+        //         if let Some(binding) = resolution.binding
+        //             && let NameBindingKind::Import { import, .. } = binding.kind
+        //             && let ImportKind::Single { id, .. } = import.kind
+        //         {
+        //             if let Some(unused_import) = unused_imports.get(&import.root_id)
+        //                 && unused_import.unused.contains(&id)
+        //             {
+        //                 continue;
+        //             }
 
-                    check_redundant_imports.insert(import);
-                }
-            }
-        }
+        //             check_redundant_imports.insert(import);
+        //         }
+        //     }
+        // }
 
-        let mut redundant_imports = UnordSet::default();
-        for import in check_redundant_imports {
-            if self.check_for_redundant_imports(import)
-                && let Some(id) = import.id()
-            {
-                redundant_imports.insert(id);
-            }
-        }
+        // let mut redundant_imports = UnordSet::default();
+        // for import in check_redundant_imports {
+        //     if self.check_for_redundant_imports(import)
+        //         && let Some(id) = import.id()
+        //     {
+        //         redundant_imports.insert(id);
+        //     }
+        // }
 
         // The lint fixes for unused_import and unnecessary_qualification may conflict.
         // Deleting both unused imports and unnecessary segments of an item may result
@@ -530,8 +531,9 @@ impl Resolver<'_, '_> {
         for unn_qua in &self.potentially_unnecessary_qualifications {
             if let LexicalScopeBinding::Item(name_binding) = unn_qua.binding
                 && let NameBindingKind::Import { import, .. } = name_binding.kind
-                && (is_unused_import(import, &unused_imports)
-                    || is_redundant_import(import, &redundant_imports))
+                && is_unused_import(import, &unused_imports)
+                // && (is_unused_import(import, &unused_imports)
+                //     || is_redundant_import(import, &redundant_imports))
             {
                 continue;
             }
@@ -545,17 +547,17 @@ impl Resolver<'_, '_> {
             );
         }
 
-        fn is_redundant_import(
-            import: Import<'_>,
-            redundant_imports: &UnordSet<ast::NodeId>,
-        ) -> bool {
-            if let Some(id) = import.id()
-                && redundant_imports.contains(&id)
-            {
-                return true;
-            }
-            false
-        }
+        // fn is_redundant_import(
+        //     import: Import<'_>,
+        //     redundant_imports: &UnordSet<ast::NodeId>,
+        // ) -> bool {
+        //     if let Some(id) = import.id()
+        //         && redundant_imports.contains(&id)
+        //     {
+        //         return true;
+        //     }
+        //     false
+        // }
 
         fn is_unused_import(
             import: Import<'_>,

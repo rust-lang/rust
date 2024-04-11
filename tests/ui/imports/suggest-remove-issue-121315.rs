@@ -1,3 +1,4 @@
+//@ ignore-test
 //@ compile-flags: --edition 2021
 #![deny(unused_imports)]
 #![allow(dead_code)]

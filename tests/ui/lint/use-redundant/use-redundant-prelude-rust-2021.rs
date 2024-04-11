@@ -1,3 +1,4 @@
+//@ ignore-test
 //@ check-pass
 //@ edition:2021
 #![warn(unused_imports)]

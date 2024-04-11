@@ -1,3 +1,4 @@
+//@ ignore-test
 #![deny(unused_imports)]
 
 struct S;
