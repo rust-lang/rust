@@ -776,6 +776,10 @@ impl RiscvInterruptKind {
 /// Metadata describing how the arguments to a native function
 /// should be passed in order to respect the native ABI.
 ///
+/// Signature contained within this function does not have to match the one present in MIR.
+/// Certain attributtes, like `#[track_caller]` can introduce addtional arguments, which are present in [`FnAbi`], but not in[`rustc_middle::ty::FnSig`.
+/// This difference is not relevant in most cases, but should still be kept in mind.
+///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
 #[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic)]
@@ -795,7 +799,7 @@ pub struct FnAbi<'a, Ty> {
     pub fixed_count: u32,
 
     pub conv: Conv,
-
+    /// This variable desribes if unwind can cross this function, or if it is invalid to unwind troguh it.
     pub can_unwind: bool,
 }
 
