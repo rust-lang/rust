@@ -1861,39 +1861,26 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
         };
 
+        // If this is due to an explicit `return`, suggest adding a return type.
         if let Some((fn_id, fn_decl, can_suggest)) = fcx.get_fn_decl(parent_id)
             && !due_to_block
         {
             fcx.suggest_missing_return_type(&mut err, fn_decl, expected, found, can_suggest, fn_id);
         }
 
-        let mut parent_id = fcx.tcx.hir().get_parent_item(block_or_return_id).def_id;
-        let mut parent_item = fcx.tcx.hir_node_by_def_id(parent_id);
-        // When suggesting return, we need to account for closures and async blocks, not just items.
-        // FIXME: fix get_fn_decl to be async block aware, use get_fn_decl results above
-        for (_, node) in fcx.tcx.hir().parent_iter(block_or_return_id) {
-            match node {
-                hir::Node::Expr(&hir::Expr {
-                    kind: hir::ExprKind::Closure(hir::Closure { def_id, .. }),
-                    ..
-                }) => {
-                    parent_item = node;
-                    parent_id = *def_id;
-                    break;
-                }
-                hir::Node::Item(_) | hir::Node::TraitItem(_) | hir::Node::ImplItem(_) => break,
-                _ => {}
-            }
-        }
-
-        if let Some(expr) = expression
-            && let Some(fn_decl) = parent_item.fn_decl()
-            && due_to_block
+        // If this is due to a block, then maybe we forgot a `return`/`break`.
+        if due_to_block
+            && let Some(expr) = expression
+            && let Some((parent_fn_decl, parent_id)) = fcx
+                .tcx
+                .hir()
+                .parent_iter(block_or_return_id)
+                .find_map(|(_, node)| Some((node.fn_decl()?, node.associated_body()?.0)))
         {
             fcx.suggest_missing_break_or_return_expr(
                 &mut err,
                 expr,
-                fn_decl,
+                parent_fn_decl,
                 expected,
                 found,
                 block_or_return_id,

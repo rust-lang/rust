@@ -549,7 +549,11 @@ impl<'hir> Map<'hir> {
                     Node::Block(Block { expr: None, .. }) => return None,
                     // The current node is not the tail expression of its parent.
                     Node::Block(Block { expr: Some(e), .. }) if hir_id != e.hir_id => return None,
-                    Node::Block(Block { expr: Some(e), ..}) if matches!(e.kind, ExprKind::If(_, _, None)) => return None,
+                    Node::Block(Block { expr: Some(e), .. })
+                        if matches!(e.kind, ExprKind::If(_, _, None)) =>
+                    {
+                        return None;
+                    }
                     _ => {}
                 }
             }
