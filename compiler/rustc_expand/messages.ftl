@@ -27,6 +27,12 @@ expand_collapse_debuginfo_illegal =
 expand_count_repetition_misplaced =
     `count` can not be placed inside the inner-most repetition
 
+expand_custom_attribute_cannot_be_applied =
+    custom attributes cannot be applied to {$kind ->
+        [statement] statements
+        *[expression] expressions
+    }
+
 expand_custom_attribute_panicked =
     custom attribute panicked
     .help = message: {$message}

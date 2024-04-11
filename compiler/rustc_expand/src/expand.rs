@@ -25,7 +25,7 @@ use rustc_parse::parser::{
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::lint::BuiltinLintDiag;
-use rustc_session::parse::feature_err;
+use rustc_session::parse::get_feature_diagnostics;
 use rustc_session::{Limit, Session};
 use rustc_span::hygiene::SyntaxContext;
 use rustc_span::symbol::{sym, Ident};
@@ -35,11 +35,11 @@ use smallvec::SmallVec;
 use crate::base::*;
 use crate::config::StripUnconfigured;
 use crate::errors::{
-    EmptyDelegationMac, GlobDelegationOutsideImpls, GlobDelegationTraitlessQpath, IncompleteParse,
-    RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
-    WrongFragmentKind,
+    CustomAttributesForbidden, EmptyDelegationMac, GlobDelegationOutsideImpls,
+    GlobDelegationTraitlessQpath, IncompleteParse, NonInlineModuleInProcMacroUnstable,
+    RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, StatementOrExpression,
+    UnsupportedKeyValue, WrongFragmentKind,
 };
-use crate::fluent_generated;
 use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
 use crate::placeholders::{placeholder, PlaceholderExpander};
@@ -841,7 +841,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         })
     }
 
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
         let kind = match item {
             Annotatable::Item(_)
@@ -854,9 +853,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 if stmt.is_item() {
                     return;
                 }
-                "statements"
+                StatementOrExpression::Statement
             }
-            Annotatable::Expr(_) => "expressions",
+            Annotatable::Expr(_) => StatementOrExpression::Expression,
             Annotatable::Arm(..)
             | Annotatable::ExprField(..)
             | Annotatable::PatField(..)
@@ -868,13 +867,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         if self.cx.ecfg.features.proc_macro_hygiene {
             return;
         }
-        feature_err(
-            &self.cx.sess,
-            sym::proc_macro_hygiene,
+        self.cx.dcx().emit_err(CustomAttributesForbidden {
             span,
-            format!("custom attributes cannot be applied to {kind}"),
-        )
-        .emit();
+            subdiag: get_feature_diagnostics(&self.cx.sess, sym::proc_macro_hygiene),
+            kind,
+        });
     }
 
     fn gate_proc_macro_input(&self, annotatable: &Annotatable) {
@@ -888,13 +885,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     ItemKind::Mod(_, mod_kind)
                         if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
                     {
-                        feature_err(
-                            self.sess,
-                            sym::proc_macro_hygiene,
-                            item.span,
-                            fluent_generated::expand_non_inline_modules_in_proc_macro_input_are_unstable,
-                        )
-                        .emit();
+                        self.sess.dcx().emit_err(NonInlineModuleInProcMacroUnstable {
+                            span: item.span,
+                            subdiag: get_feature_diagnostics(self.sess, sym::proc_macro_hygiene),
+                        });
                     }
                     _ => {}
                 }
