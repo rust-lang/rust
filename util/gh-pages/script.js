@@ -285,7 +285,6 @@
             }, true);
 
             $scope.$watch('applicabilities', function (newVal, oldVal) {
-                console.log("Test");
                 if (newVal !== oldVal) {
                     updateURLParameter(newVal, 'applicabilities', APPLICABILITIES_FILTER_DEFAULT)
                 }
