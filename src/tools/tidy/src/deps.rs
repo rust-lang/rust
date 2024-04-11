@@ -1,6 +1,6 @@
 //! Checks the licenses of third-party dependencies.
 
-use cargo_metadata::{DepKindInfo, Metadata, Package, PackageId};
+use cargo_metadata::{Metadata, Package, PackageId};
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -191,6 +191,7 @@ const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
 /// rustc. Please check with the compiler team before adding an entry.
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
+    "addr2line",
     "adler",
     "ahash",
     "aho-corasick",
@@ -468,6 +469,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "mach",
     "memchr",
     "object",
+    "once_cell",
     "proc-macro2",
     "quote",
     "regalloc2",
@@ -668,27 +670,7 @@ fn check_permitted_dependencies(
     let mut deps = HashSet::new();
     for to_check in restricted_dependency_crates {
         let to_check = pkg_from_name(metadata, to_check);
-        use cargo_platform::Cfg;
-        use std::str::FromStr;
-        // We don't expect the compiler to ever run on wasm32, so strip
-        // out those dependencies to avoid polluting the permitted list.
-        deps_of_filtered(metadata, &to_check.id, &mut deps, &|dep_kinds| {
-            dep_kinds.iter().any(|dep_kind| {
-                dep_kind
-                    .target
-                    .as_ref()
-                    .map(|target| {
-                        !target.matches(
-                            "wasm32-unknown-unknown",
-                            &[
-                                Cfg::from_str("target_arch=\"wasm32\"").unwrap(),
-                                Cfg::from_str("target_os=\"unknown\"").unwrap(),
-                            ],
-                        )
-                    })
-                    .unwrap_or(true)
-            })
-        });
+        deps_of(metadata, &to_check.id, &mut deps);
     }
 
     // Check that the PERMITTED_DEPENDENCIES does not have unused entries.
@@ -740,18 +722,13 @@ fn compute_runtime_crates<'a>(metadata: &'a Metadata) -> HashSet<&'a PackageId> 
     let mut result = HashSet::new();
     for name in RUNTIME_CRATES {
         let id = &pkg_from_name(metadata, name).id;
-        deps_of_filtered(metadata, id, &mut result, &|_| true);
+        deps_of(metadata, id, &mut result);
     }
     result
 }
 
 /// Recursively find all dependencies.
-fn deps_of_filtered<'a>(
-    metadata: &'a Metadata,
-    pkg_id: &'a PackageId,
-    result: &mut HashSet<&'a PackageId>,
-    filter: &dyn Fn(&[DepKindInfo]) -> bool,
-) {
+fn deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId, result: &mut HashSet<&'a PackageId>) {
     if !result.insert(pkg_id) {
         return;
     }
@@ -764,9 +741,6 @@ fn deps_of_filtered<'a>(
         .find(|n| &n.id == pkg_id)
         .unwrap_or_else(|| panic!("could not find `{pkg_id}` in resolve"));
     for dep in &node.deps {
-        if !filter(&dep.dep_kinds) {
-            continue;
-        }
-        deps_of_filtered(metadata, &dep.pkg, result, filter);
+        deps_of(metadata, &dep.pkg, result);
     }
 }
