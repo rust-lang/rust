@@ -17,11 +17,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Setup Rust
-        run: |
-          rustup update nightly --no-self-update
-          rustup default nightly
-          rustup component add rustfmt
       - name: Run rustfmt
         run: cargo fmt --all -- --check
 
@@ -51,11 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup Rust
-        run: |
-          rustup update nightly --no-self-update
-          rustup default nightly
-          rustup target add ${{ matrix.target }}
-          rustup component add clippy
+        run: rustup target add ${{ matrix.target }}
       - name: Run Clippy
         run: cargo clippy --all-targets --target ${{ matrix.target }}
 
@@ -100,10 +91,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup Rust
-        run: |
-          rustup update nightly --no-self-update
-          rustup default nightly
-          rustup target add ${{ matrix.target }}
+        run: rustup target add ${{ matrix.target }}
 
       - name: Configure RUSTFLAGS
         shell: bash
@@ -156,10 +144,6 @@ jobs:
           - { name: simd128, RUSTFLAGS: "-C target-feature=+simd128" }
     steps:
       - uses: actions/checkout@v2
-      - name: Setup Rust
-        run: |
-          rustup update nightly --no-self-update
-          rustup default nightly
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Test (debug)
@@ -203,11 +187,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup Rust
-        run: |
-          rustup update nightly --no-self-update
-          rustup default nightly
-          rustup target add ${{ matrix.target }}
-          rustup component add rust-src
+        run: rustup target add ${{ matrix.target }}
 
       - name: Install Cross
         # Equivalent to `cargo install cross`, but downloading a prebuilt
@@ -259,10 +239,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Setup Rust
-        run: |
-          rustup update nightly --no-self-update
-          rustup default nightly
       - name: Detect AVX512
         run: echo "CPU_FEATURE=$(lscpu | grep -o avx512[a-z]* | sed s/avx/+avx/ | tr '\n' ',' )" >> $GITHUB_ENV
       - name: Check build
@@ -278,10 +254,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Setup Rust
-        run: |
-          rustup update nightly --no-self-update
-          rustup default nightly
-          rustup component add miri rust-src
       - name: Test (Miri)
         run: cargo miri test
