@@ -1591,14 +1591,13 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         err.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id, ..) => {
-                        let parent_id = fcx.tcx.parent_hir_id(blk_id);
                         err = self.report_return_mismatched_types(
                             cause,
                             expected,
                             found,
                             coercion_error,
                             fcx,
-                            parent_id,
+                            blk_id,
                             expression,
                             Some(blk_id),
                         );
