@@ -511,7 +511,7 @@ impl<'hir> Map<'hir> {
         self.body_const_context(self.enclosing_body_owner(hir_id)).is_some()
     }
 
-    /// Retrieves the `HirId` for `id`'s enclosing method, unless there's a
+    /// Retrieves the `HirId` for `id`'s enclosing method's body, unless there's a
     /// `while` or `loop` before reaching it, as block tail returns are not
     /// available in them.
     ///
