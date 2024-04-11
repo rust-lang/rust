@@ -52,10 +52,6 @@ impl<T> WaitVariable<T> {
         WaitVariable { queue: WaitQueue::new(), lock: var }
     }
 
-    pub fn queue_empty(&self) -> bool {
-        self.queue.is_empty()
-    }
-
     pub fn lock_var(&self) -> &T {
         &self.lock
     }
@@ -98,19 +94,6 @@ impl Default for WaitQueue {
     }
 }
 
-impl<'a, T> WaitGuard<'a, T> {
-    /// Returns which TCSes will be notified when this guard drops.
-    pub fn notified_tcs(&self) -> NotifiedTcs {
-        self.notified_tcs
-    }
-
-    /// Drop this `WaitGuard`, after dropping another `guard`.
-    pub fn drop_after<U>(self, guard: U) {
-        drop(guard);
-        drop(self);
-    }
-}
-
 impl<'a, T> Deref for WaitGuard<'a, T> {
     type Target = SpinMutexGuard<'a, WaitVariable<T>>;
 
@@ -139,10 +122,6 @@ impl<'a, T> Drop for WaitGuard<'a, T> {
 impl WaitQueue {
     pub const fn new() -> Self {
         WaitQueue { inner: UnsafeList::new() }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
     }
 
     /// Adds the calling thread to the `WaitVariable`'s wait queue, then wait
