@@ -1073,13 +1073,15 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 |lint| {
                     lint.arg("name", lint_id.lint.name_lower());
                     lint.note(fluent::lint_note);
-                    rustc_session::parse::add_feature_diagnostics_for_issue(
-                        lint,
-                        &self.sess,
-                        feature,
-                        GateIssue::Language,
-                        lint_from_cli,
-                        None,
+                    lint.subdiagnostic(
+                        self.sess.dcx(),
+                        rustc_session::parse::get_feature_diagnostics_for_issue(
+                            &self.sess,
+                            feature,
+                            GateIssue::Language,
+                            lint_from_cli,
+                            None,
+                        ),
                     );
                 },
             );

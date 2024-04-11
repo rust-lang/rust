@@ -250,10 +250,9 @@ pub struct BuiltinUngatedAsyncFnTrackCaller<'a> {
 impl<'a> LintDiagnostic<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.span_label(self.label, fluent::lint_label);
-        rustc_session::parse::add_feature_diagnostics(
-            diag,
-            self.session,
-            sym::async_fn_track_caller,
+        diag.subdiagnostic(
+            self.session.dcx(),
+            rustc_session::parse::get_feature_diagnostics(self.session, sym::async_fn_track_caller),
         );
     }
 

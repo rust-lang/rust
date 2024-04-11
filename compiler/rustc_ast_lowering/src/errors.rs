@@ -2,6 +2,7 @@ use rustc_errors::{
     codes::*, Diag, DiagArgFromDisplay, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_session::errors::FeatureGateSubdiagnostic;
 use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -386,12 +387,16 @@ pub enum BadReturnTypeNotation {
         #[primary_span]
         #[suggestion(code = "()", applicability = "maybe-incorrect")]
         span: Span,
+        #[subdiagnostic]
+        subdiag: Option<FeatureGateSubdiagnostic>,
     },
     #[diag(ast_lowering_bad_return_type_notation_output)]
     Output {
         #[primary_span]
         #[suggestion(code = "", applicability = "maybe-incorrect")]
         span: Span,
+        #[subdiagnostic]
+        subdiag: Option<FeatureGateSubdiagnostic>,
     },
 }
 

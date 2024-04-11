@@ -15,8 +15,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
 use rustc_errors::emitter::{stderr_destination, HumanEmitter, SilentEmitter};
 use rustc_errors::{
-    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagMessage, EmissionGuarantee, MultiSpan,
-    StashKey,
+    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagMessage, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -111,9 +110,9 @@ pub fn feature_err_issue(
         }
     }
 
-    let mut err = sess.psess.dcx.create_err(FeatureGateError { span, explain: explain.into() });
-    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false, None);
-    err
+    let subdiag = get_feature_diagnostics_for_issue(sess, feature, issue, false, None);
+
+    sess.psess.dcx.create_err(FeatureGateError { span, explain: explain.into(), subdiag })
 }
 
 /// Construct a future incompatibility diagnostic for a feature gate.
@@ -141,7 +140,10 @@ pub fn feature_warn_issue(
     explain: &'static str,
 ) {
     let mut err = sess.psess.dcx.struct_span_warn(span, explain);
-    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false, None);
+    err.subdiagnostic(
+        sess.dcx(),
+        get_feature_diagnostics_for_issue(sess, feature, issue, false, None),
+    );
 
     // Decorate this as a future-incompatibility lint as in rustc_middle::lint::lint_level
     let lint = UNSTABLE_SYNTAX_PRE_EXPANSION;
@@ -154,29 +156,23 @@ pub fn feature_warn_issue(
     err.stash(span, StashKey::EarlySyntaxWarning);
 }
 
-/// Adds the diagnostics for a feature to an existing error.
-pub fn add_feature_diagnostics<G: EmissionGuarantee>(
-    err: &mut Diag<'_, G>,
-    sess: &Session,
-    feature: Symbol,
-) {
-    add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language, false, None);
+/// Returns the subdiagnostics for a feature gate error.
+pub fn get_feature_diagnostics(sess: &Session, feature: Symbol) -> FeatureGateSubdiagnostic {
+    get_feature_diagnostics_for_issue(sess, feature, GateIssue::Language, false, None)
 }
 
-/// Adds the diagnostics for a feature to an existing error.
+/// Returns the subdiagnostics for a feature gate error.
 ///
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer
-/// `add_feature_diagnostics`.
-#[allow(rustc::diagnostic_outside_of_impl)] // FIXME
-pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
-    err: &mut Diag<'_, G>,
+/// [`get_feature_diagnostics`].
+pub fn get_feature_diagnostics_for_issue(
     sess: &Session,
     feature: Symbol,
     issue: GateIssue,
     feature_from_cli: bool,
     inject_span: Option<Span>,
-) {
+) -> FeatureGateSubdiagnostic {
     let issue = find_feature_issue(feature, issue).map(|n| FeatureDiagnosticForIssue { n });
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
@@ -200,9 +196,7 @@ pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
         (None, None)
     };
 
-    let subdiagnostic = FeatureGateSubdiagnostic { issue, upgrade_compiler, enable_feature };
-
-    err.subdiagnostic(sess.dcx(), subdiagnostic);
+    FeatureGateSubdiagnostic { issue, upgrade_compiler, enable_feature }
 }
 
 /// Info about a parsing session.
