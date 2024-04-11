@@ -49,7 +49,7 @@ pub trait SimdConstPtr: Copy + Sealed {
     /// non-zero-sized memory accesses with a no-provenance pointer are UB. No-provenance pointers
     /// are little more than a usize address in disguise.
     ///
-    /// This is different from [`Self::from_exposed_addr`], which creates a pointer that picks up a
+    /// This is different from [`Self::with_exposed_provenance`], which creates a pointer that picks up a
     /// previously exposed provenance.
     ///
     /// Equivalent to calling [`core::ptr::without_provenance`] on each element.
