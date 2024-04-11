@@ -1599,22 +1599,20 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             fcx,
                             blk_id,
                             expression,
-                            Some(blk_id),
                         );
                         if !fcx.tcx.features().unsized_locals {
                             unsized_return = self.is_return_ty_definitely_unsized(fcx);
                         }
                     }
-                    ObligationCauseCode::ReturnValue(id) => {
+                    ObligationCauseCode::ReturnValue(return_expr_id) => {
                         err = self.report_return_mismatched_types(
                             cause,
                             expected,
                             found,
                             coercion_error,
                             fcx,
-                            id,
+                            return_expr_id,
                             expression,
-                            None,
                         );
                         if !fcx.tcx.features().unsized_locals {
                             unsized_return = self.is_return_ty_definitely_unsized(fcx);
@@ -1808,13 +1806,14 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         found: Ty<'tcx>,
         ty_err: TypeError<'tcx>,
         fcx: &FnCtxt<'a, 'tcx>,
-        id: hir::HirId,
+        block_or_return_id: hir::HirId,
         expression: Option<&'tcx hir::Expr<'tcx>>,
-        blk_id: Option<hir::HirId>,
     ) -> Diag<'a> {
         let mut err = fcx.err_ctxt().report_mismatched_types(cause, expected, found, ty_err);
 
-        let parent_id = fcx.tcx.parent_hir_id(id);
+        let due_to_block = matches!(fcx.tcx.hir_node(block_or_return_id), hir::Node::Block(..));
+
+        let parent_id = fcx.tcx.parent_hir_id(block_or_return_id);
         let parent = fcx.tcx.hir_node(parent_id);
         if let Some(expr) = expression
             && let hir::Node::Expr(hir::Expr {
@@ -1829,11 +1828,16 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         // label pointing out the cause for the type coercion will be wrong
         // as prior return coercions would not be relevant (#57664).
         if let Some(expr) = expression
-            && let Some(blk_id) = blk_id
+            && due_to_block
         {
             fcx.suggest_missing_semicolon(&mut err, expr, expected, false);
-            let pointing_at_return_type =
-                fcx.suggest_mismatched_types_on_tail(&mut err, expr, expected, found, blk_id);
+            let pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
+                &mut err,
+                expr,
+                expected,
+                found,
+                block_or_return_id,
+            );
             if let Some(cond_expr) = fcx.tcx.hir().get_if_cause(expr.hir_id)
                 && expected.is_unit()
                 && !pointing_at_return_type
@@ -1857,23 +1861,17 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
         };
 
-        if let Some((fn_id, fn_decl, can_suggest)) = fcx.get_fn_decl(parent_id) {
-            if blk_id.is_none() {
-                fcx.suggest_missing_return_type(
-                    &mut err,
-                    fn_decl,
-                    expected,
-                    found,
-                    can_suggest,
-                    fn_id,
-                );
-            }
+        if let Some((fn_id, fn_decl, can_suggest)) = fcx.get_fn_decl(parent_id)
+            && !due_to_block
+        {
+            fcx.suggest_missing_return_type(&mut err, fn_decl, expected, found, can_suggest, fn_id);
         }
 
-        let mut parent_id = fcx.tcx.hir().get_parent_item(id).def_id;
+        let mut parent_id = fcx.tcx.hir().get_parent_item(block_or_return_id).def_id;
         let mut parent_item = fcx.tcx.hir_node_by_def_id(parent_id);
         // When suggesting return, we need to account for closures and async blocks, not just items.
-        for (_, node) in fcx.tcx.hir().parent_iter(id) {
+        // FIXME: fix get_fn_decl to be async block aware, use get_fn_decl results above
+        for (_, node) in fcx.tcx.hir().parent_iter(block_or_return_id) {
             match node {
                 hir::Node::Expr(&hir::Expr {
                     kind: hir::ExprKind::Closure(hir::Closure { def_id, .. }),
@@ -1888,9 +1886,18 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
         }
 
-        if let (Some(expr), Some(_), Some(fn_decl)) = (expression, blk_id, parent_item.fn_decl()) {
+        if let Some(expr) = expression
+            && let Some(fn_decl) = parent_item.fn_decl()
+            && due_to_block
+        {
             fcx.suggest_missing_break_or_return_expr(
-                &mut err, expr, fn_decl, expected, found, id, parent_id,
+                &mut err,
+                expr,
+                fn_decl,
+                expected,
+                found,
+                block_or_return_id,
+                parent_id,
             );
         }
 
