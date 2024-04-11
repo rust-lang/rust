@@ -51,6 +51,14 @@ impl Mutability {
         }
     }
 
+    /// Returns `"const"` or `"mut"` depending on the mutability.
+    pub fn ptr_str(self) -> &'static str {
+        match self {
+            Mutability::Not => "const",
+            Mutability::Mut => "mut",
+        }
+    }
+
     /// Returns `""` (empty string) or `"mutably "` depending on the mutability.
     pub fn mutably_str(self) -> &'static str {
         match self {
