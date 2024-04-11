@@ -2004,16 +2004,17 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
         }
 
-        let parent_id = fcx.tcx.hir().get_parent_item(id);
-        let mut parent_item = fcx.tcx.hir_node_by_def_id(parent_id.def_id);
+        let mut parent_id = fcx.tcx.hir().get_parent_item(id).def_id;
+        let mut parent_item = fcx.tcx.hir_node_by_def_id(parent_id);
         // When suggesting return, we need to account for closures and async blocks, not just items.
         for (_, node) in fcx.tcx.hir().parent_iter(id) {
             match node {
                 hir::Node::Expr(&hir::Expr {
-                    kind: hir::ExprKind::Closure(hir::Closure { .. }),
+                    kind: hir::ExprKind::Closure(hir::Closure { def_id, .. }),
                     ..
                 }) => {
                     parent_item = node;
+                    parent_id = *def_id;
                     break;
                 }
                 hir::Node::Item(_) | hir::Node::TraitItem(_) | hir::Node::ImplItem(_) => break,
@@ -2023,13 +2024,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
         if let (Some(expr), Some(_), Some(fn_decl)) = (expression, blk_id, parent_item.fn_decl()) {
             fcx.suggest_missing_break_or_return_expr(
-                &mut err,
-                expr,
-                fn_decl,
-                expected,
-                found,
-                id,
-                parent_id.into(),
+                &mut err, expr, fn_decl, expected, found, id, parent_id,
             );
         }
 
