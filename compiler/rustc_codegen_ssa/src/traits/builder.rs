@@ -290,14 +290,14 @@ pub trait BuilderMethods<'a, 'tcx>:
         src: PlaceRef<'tcx, Self::Value>,
         flags: MemFlags,
     ) {
-        debug_assert!(src.llextra.is_none(), "cannot directly copy from unsized values");
-        debug_assert!(dst.llextra.is_none(), "cannot directly copy into unsized values");
+        debug_assert!(src.val.llextra.is_none(), "cannot directly copy from unsized values");
+        debug_assert!(dst.val.llextra.is_none(), "cannot directly copy into unsized values");
         debug_assert_eq!(dst.layout.size, src.layout.size);
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memcpy.
             let ty = self.backend_type(dst.layout);
-            let val = self.load(ty, src.llval, src.align);
-            self.store_with_flags(val, dst.llval, dst.align, flags);
+            let val = self.load(ty, src.val.llval, src.val.align);
+            self.store_with_flags(val, dst.val.llval, dst.val.align, flags);
         } else if self.sess().opts.optimize == OptLevel::No && self.is_backend_immediate(dst.layout)
         {
             // If we're not optimizing, the aliasing information from `memcpy`
@@ -306,7 +306,7 @@ pub trait BuilderMethods<'a, 'tcx>:
             temp.val.store_with_flags(self, dst, flags);
         } else if !dst.layout.is_zst() {
             let bytes = self.const_usize(dst.layout.size.bytes());
-            self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags);
+            self.memcpy(dst.val.llval, dst.val.align, src.val.llval, src.val.align, bytes, flags);
         }
     }
 

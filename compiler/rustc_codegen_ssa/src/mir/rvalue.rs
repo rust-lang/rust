@@ -95,20 +95,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
 
                 if let OperandValue::Immediate(v) = cg_elem.val {
-                    let start = dest.llval;
+                    let start = dest.val.llval;
                     let size = bx.const_usize(dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
                     if bx.cx().const_to_opt_u128(v, false) == Some(0) {
                         let fill = bx.cx().const_u8(0);
-                        bx.memset(start, fill, size, dest.align, MemFlags::empty());
+                        bx.memset(start, fill, size, dest.val.align, MemFlags::empty());
                         return;
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = bx.from_immediate(v);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
-                        bx.memset(start, v, size, dest.align, MemFlags::empty());
+                        bx.memset(start, v, size, dest.val.align, MemFlags::empty());
                         return;
                     }
                 }
@@ -182,7 +182,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             OperandValue::Immediate(..) | OperandValue::Pair(..) => {
                 // When we have immediate(s), the alignment of the source is irrelevant,
                 // so we can store them using the destination's alignment.
-                src.val.store(bx, PlaceRef::new_sized_aligned(dst.llval, src.layout, dst.align));
+                src.val.store(
+                    bx,
+                    PlaceRef::new_sized_aligned(dst.val.llval, src.layout, dst.val.align),
+                );
             }
         }
     }
@@ -375,7 +378,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         debug!(
             "codegen_rvalue_unsized(indirect_dest.llval={:?}, rvalue={:?})",
-            indirect_dest.llval, rvalue
+            indirect_dest.val.llval, rvalue
         );
 
         match *rvalue {
@@ -765,9 +768,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Note: places are indirect, so storing the `llval` into the
         // destination effectively creates a reference.
         let val = if !bx.cx().type_has_metadata(ty) {
-            OperandValue::Immediate(cg_place.llval)
+            OperandValue::Immediate(cg_place.val.llval)
         } else {
-            OperandValue::Pair(cg_place.llval, cg_place.llextra.unwrap())
+            OperandValue::Pair(cg_place.val.llval, cg_place.val.llextra.unwrap())
         };
         OperandRef { val, layout: self.cx.layout_of(mk_ptr_ty(self.cx.tcx(), ty)) }
     }

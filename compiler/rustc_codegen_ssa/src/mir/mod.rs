@@ -336,7 +336,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             if fx.fn_abi.c_variadic && arg_index == fx.fn_abi.args.len() {
                 let va_list = PlaceRef::alloca(bx, bx.layout_of(arg_ty));
-                bx.va_start(va_list.llval);
+                bx.va_start(va_list.val.llval);
 
                 return LocalRef::Place(va_list);
             }

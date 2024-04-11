@@ -1,4 +1,4 @@
-use super::place::PlaceRef;
+use super::place::{PlaceRef, PlaceValue};
 use super::{FunctionCx, LocalRef};
 
 use crate::size_of_val;
@@ -221,7 +221,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             OperandValue::ZeroSized => bug!("Deref of ZST operand {:?}", self),
         };
         let layout = cx.layout_of(projected_ty);
-        PlaceRef { llval: llptr, llextra, layout, align: layout.align.abi }
+        let val = PlaceValue { llval: llptr, llextra, align: layout.align.abi };
+        PlaceRef { val, layout }
     }
 
     /// If this operand is a `Pair`, we return an aggregate with the two values.
@@ -409,10 +410,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
                 // value is through `undef`/`poison`, and the store itself is useless.
             }
-            OperandValue::Ref(llval, llextra @ None, source_align) => {
+            OperandValue::Ref(llval, None, source_align) => {
                 assert!(dest.layout.is_sized(), "cannot directly store unsized values");
-                let source_place =
-                    PlaceRef { llval, llextra, align: source_align, layout: dest.layout };
+                let source_place = PlaceRef {
+                    val: PlaceValue::new_sized(llval, source_align),
+                    layout: dest.layout,
+                };
                 bx.typed_place_copy_with_flags(dest, source_place, flags);
             }
             OperandValue::Ref(_, Some(_), _) => {
@@ -420,7 +423,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             }
             OperandValue::Immediate(s) => {
                 let val = bx.from_immediate(s);
-                bx.store_with_flags(val, dest.llval, dest.align, flags);
+                bx.store_with_flags(val, dest.val.llval, dest.val.align, flags);
             }
             OperandValue::Pair(a, b) => {
                 let Abi::ScalarPair(a_scalar, b_scalar) = dest.layout.abi else {
@@ -429,12 +432,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 let b_offset = a_scalar.size(bx).align_to(b_scalar.align(bx).abi);
 
                 let val = bx.from_immediate(a);
-                let align = dest.align;
-                bx.store_with_flags(val, dest.llval, align, flags);
+                let align = dest.val.align;
+                bx.store_with_flags(val, dest.val.llval, align, flags);
 
-                let llptr = bx.inbounds_ptradd(dest.llval, bx.const_usize(b_offset.bytes()));
+                let llptr = bx.inbounds_ptradd(dest.val.llval, bx.const_usize(b_offset.bytes()));
                 let val = bx.from_immediate(b);
-                let align = dest.align.restrict_for_offset(b_offset);
+                let align = dest.val.align.restrict_for_offset(b_offset);
                 bx.store_with_flags(val, llptr, align, flags);
             }
         }

@@ -387,9 +387,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let success = bx.from_immediate(success);
 
                             let dest = result.project_field(bx, 0);
-                            bx.store(val, dest.llval, dest.align);
+                            bx.store(val, dest.val.llval, dest.val.align);
                             let dest = result.project_field(bx, 1);
-                            bx.store(success, dest.llval, dest.align);
+                            bx.store(success, dest.val.llval, dest.val.align);
                         } else {
                             invalid_monomorphization(ty);
                         }
@@ -511,7 +511,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if !fn_abi.ret.is_ignore() {
             if let PassMode::Cast { .. } = &fn_abi.ret.mode {
-                bx.store(llval, result.llval, result.align);
+                bx.store(llval, result.val.llval, result.val.align);
             } else {
                 OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
                     .val
