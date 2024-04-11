@@ -1,0 +1,14 @@
+error: the item `u8` is imported redundantly
+  --> $DIR/redundant-import-lang-prelude.rs:13:5
+   |
+LL | use std::primitive::u8;
+   |     ^^^^^^^^^^^^^^^^^^ the item `u8` is already defined by the extern prelude
+   |
+note: the lint level is defined here
+  --> $DIR/redundant-import-lang-prelude.rs:10:9
+   |
+LL | #![deny(redundant_imports)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
