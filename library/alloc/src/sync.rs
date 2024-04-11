@@ -28,7 +28,7 @@ use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 use core::sync::atomic;
-use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
+use core::sync::atomic::Ordering::{AcqRel, Acquire, Relaxed, Release};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
@@ -1080,7 +1080,7 @@ impl<T, A: Allocator> Arc<T, A> {
         let mut this = mem::ManuallyDrop::new(this);
 
         // Following the implementation of `drop` and `drop_slow`
-        if sticky_decrement(&this.inner().strong, Release) != 1 {
+        if !sticky_decrement(&this.inner().strong, Release) {
             return None;
         }
 
@@ -2072,7 +2072,7 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Arc<T, A> {
         // another must already provide any required synchronization.
         //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        let old_size = try_sticky_increment(&self.inner().strong, SeqCst).unwrap();
+        let old_size = try_sticky_increment(&self.inner().strong, Relaxed).unwrap();
 
         // However we need to guard against massive refcounts in case someone is `mem::forget`ing
         // Arcs. If we don't do this the count can overflow and users will use-after free. This
@@ -2424,7 +2424,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
         // Because `fetch_sub` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
         // same logic applies to the below `fetch_sub` to the `weak` count.
-        if sticky_decrement(&self.inner().strong, Release) != 1 {
+        if !sticky_decrement(&self.inner().strong, Release) {
             return;
         }
 
@@ -2825,27 +2825,11 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     where
         A: Clone,
     {
-        /*
-        #[inline]
-        fn checked_increment(n: usize) -> Option<usize> {
-            // Any write of 0 we can observe leaves the field in permanently zero state.
-            if n == 0 {
-                return None;
-            }
-            // See comments in `Arc::clone` for why we do this (for `mem::forget`).
-            assert!(n <= MAX_REFCOUNT, "{}", INTERNAL_OVERFLOW_ERROR);
-            Some(n + 1)
-        }
-        */
-        // We use a CAS loop to increment the strong count instead of a
-        // fetch_add as this function should never take the reference count
-        // from zero to one.
-        //
-        // Relaxed is fine for the failure case because we don't have any expectations about the new state.
-        // Acquire is necessary for the success case to synchronise with `Arc::new_cyclic`, when the inner
-        // value can be initialized after `Weak` references have already been created. In that case, we
-        // expect to observe the fully initialized value.
-        if try_sticky_increment(&self.inner()?.strong, SeqCst).is_ok() {
+        // `try_sticky_increment` will never take the reference count from zero to one.
+        // Acquire is necessary to synchronise with `Arc::new_cyclic`, when the inner value can be
+        // initialized after `Weak` references have already been created. In that case, we expect
+        // to observe the fully initialized value.
+        if try_sticky_increment(&self.inner()?.strong, Acquire).is_ok() {
             // SAFETY: pointer is not null, verified in checked_increment
             unsafe { Some(Arc::from_inner_in(self.ptr, self.alloc.clone())) }
         } else {
@@ -3655,28 +3639,39 @@ impl<T: core::error::Error + ?Sized> core::error::Error for Arc<T> {
 
 /// Methods for implementing a "sticky counter", which allow for wait-free "increment-if-not-zero"
 /// operations, as described in section 4.3 of this paper [1].
-/// The "help bit" and associated logic is omitted.
 ///
-/// We assume that overflow to the zero bit will never occur, nor will any decrements past zero.
+/// We assume that decrements past zero will never occur.
 ///
 /// [1]: (https://dl.acm.org/doi/10.1145/3519939.3523730)
 
 /// The most significant bit of the counter indicates whether its value is zero.
 const ZERO_BIT: usize = 1 << (usize::BITS - 1);
 
+/// The second MSB indicates whether the zero bit was set by a load operation.
+const HELP_BIT: usize = 1 << (usize::BITS - 2);
+
+/// A sentinel which serves as a heuristic for when to begin undoing failed increments.
+const BOUNDARY_BIT: usize = 1 << (usize::BITS - 3);
+
 fn is_zero(val: usize) -> bool {
     (val & ZERO_BIT) != 0
 }
 
-/// Attempts a fetch_add with value 1 and returns a `Result` indicating whether it succeeded.
+/// Attempts to increment the counter, returning a bool indicating whether it succeeded.
 fn try_sticky_increment(
     tgt: &atomic::AtomicUsize,
     order: atomic::Ordering,
 ) -> Result<usize, usize> {
     let before = tgt.fetch_add(1, order);
     if is_zero(before) {
-        // The user might attempt a lot of upgrades; we should undo them to prevent overflow.
-        tgt.fetch_sub(1, Relaxed);
+        // Edge case - we want to undo failed increments to prevent overflow, in case the user
+        // repeatedly attempts to increment a counter which has already reached zero. However,
+        // this is not sound if the help bit is set, due to the swap operation in sticky_decrement.
+        // We can simply wait until we start getting close to the high bits, limiting the number of
+        // concurrent increments to 2^(usize::BITS - 3), which should be more than enough.
+        if (before & !(ZERO_BIT | HELP_BIT)) >= BOUNDARY_BIT {
+            tgt.fetch_sub(1, Relaxed);
+        }
         Err(0)
     } else if before == 0 {
         // The stored value is zero, but the zero bit is not set, so a decrement is occurring.
@@ -3687,20 +3682,22 @@ fn try_sticky_increment(
     }
 }
 
-/// Performs a fetch_sub with value 1.
-fn sticky_decrement(tgt: &atomic::AtomicUsize, order: atomic::Ordering) -> usize {
+// Returns a bool indicating whether the counter was brought to zero by this decrement operation.
+fn sticky_decrement(tgt: &atomic::AtomicUsize, order: atomic::Ordering) -> bool {
     let before = tgt.fetch_sub(1, order);
-    if before == 1 {
-        match tgt.compare_exchange(0, ZERO_BIT, SeqCst, SeqCst) {
-            Ok(_) => 1,
-            Err(val) => {
-                // Someone else set the zero bit or an increment occurred first.
-                // In the latter case, we simply act as if we never hit zero.
-                if is_zero(val) { 0 } else { val + 1 }
-            }
+    if before > 1 {
+        return false;
+    }
+    match tgt.compare_exchange(0, ZERO_BIT, AcqRel, Acquire) {
+        Ok(_) => true,
+        Err(val) => {
+            // If an increment occurred first (zero bit not set), we act as if we never hit zero.
+            is_zero(val)
+                // If the help bit is set, try to grab it using a swap.
+                // The winning decrement will take credit for bringing the counter to zero.
+                && (val & HELP_BIT) != 0
+                && ((tgt.swap(ZERO_BIT, AcqRel) & HELP_BIT) != 0)
         }
-    } else {
-        before
     }
 }
 
@@ -3709,7 +3706,7 @@ fn sticky_load(tgt: &atomic::AtomicUsize, order: atomic::Ordering) -> usize {
     let mut val = tgt.load(order);
     if val == 0 {
         // We are racing with a decrement, so we try to help set the zero bit.
-        val = tgt.compare_exchange(0, ZERO_BIT, SeqCst, SeqCst).unwrap_or_else(|x| x)
+        val = tgt.compare_exchange(0, ZERO_BIT | HELP_BIT, AcqRel, Acquire).unwrap_or_else(|x| x)
     }
     if is_zero(val) { 0 } else { val }
 }
