@@ -193,10 +193,10 @@ lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as i
     .other_use = other identifier used here
 
 lint_crate_name_in_cfg_attr_deprecated =
-    `crate_name` within an `#![cfg_attr] attribute is deprecated`
+    `crate_name` within an `#![cfg_attr]` attribute is deprecated
 
 lint_crate_type_in_cfg_attr_deprecated =
-    `crate_type` within an `#![cfg_attr] attribute is deprecated`
+    `crate_type` within an `#![cfg_attr]` attribute is deprecated
 
 lint_cstring_ptr = getting the inner pointer of a temporary `CString`
     .as_ptr_label = this pointer will be invalid
