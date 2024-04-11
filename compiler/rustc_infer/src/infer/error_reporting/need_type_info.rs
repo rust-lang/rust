@@ -18,13 +18,15 @@ use rustc_middle::infer::unify_key::{
 };
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
-use rustc_middle::ty::{self, InferConst};
-use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
-use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeckResults};
+use rustc_middle::ty::{
+    self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
+};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::iter;
+use std::path::PathBuf;
 
 pub enum TypeAnnotationNeeded {
     /// ```compile_fail,E0282
@@ -153,6 +155,29 @@ impl UnderspecifiedArgKind {
     }
 }
 
+struct ClosureEraser<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match ty.kind() {
+            ty::Closure(_, args) => {
+                let closure_sig = args.as_closure().sig();
+                Ty::new_fn_ptr(
+                    self.tcx,
+                    self.tcx.signature_unclosure(closure_sig, hir::Unsafety::Normal),
+                )
+            }
+            _ => ty.super_fold_with(self),
+        }
+    }
+}
+
 fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinter<'a, 'tcx> {
     let mut printer = FmtPrinter::new(infcx.tcx, ns);
     let ty_getter = move |ty_vid| {
@@ -209,6 +234,10 @@ fn ty_to_string<'tcx>(
 ) -> String {
     let mut printer = fmt_printer(infcx, Namespace::TypeNS);
     let ty = infcx.resolve_vars_if_possible(ty);
+    // We use `fn` ptr syntax for closures, but this only works when the closure
+    // does not capture anything.
+    let ty = ty.fold_with(&mut ClosureEraser { tcx: infcx.tcx });
+
     match (ty.kind(), called_method_def_id) {
         // We don't want the regular output for `fn`s because it includes its path in
         // invalid pseudo-syntax, we want the `fn`-pointer output instead.
@@ -223,11 +252,6 @@ fn ty_to_string<'tcx>(
             "Vec<_>".to_string()
         }
         _ if ty.is_ty_or_numeric_infer() => "/* Type */".to_string(),
-        // FIXME: The same thing for closures, but this only works when the closure
-        // does not capture anything.
-        //
-        // We do have to hide the `extern "rust-call"` ABI in that case though,
-        // which is too much of a bother for now.
         _ => {
             ty.print(&mut printer).unwrap();
             printer.into_buffer()
@@ -387,6 +411,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
+                was_written: None,
+                path: Default::default(),
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
@@ -396,6 +422,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
+                was_written: None,
+                path: Default::default(),
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
@@ -405,6 +433,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
+                was_written: None,
+                path: Default::default(),
             }),
         }
     }
@@ -442,7 +472,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
-        let (source_kind, name) = kind.ty_localized_msg(self);
+        let (source_kind, name, path) = kind.ty_localized_msg(self);
         let failure_span = if should_label_span && !failure_span.overlaps(span) {
             Some(failure_span)
         } else {
@@ -518,7 +548,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
                                 GenericArgKind::Type(_) => self
                                     .next_ty_var(TypeVariableOrigin {
-                                        span: rustc_span::DUMMY_SP,
+                                        span: DUMMY_SP,
                                         kind: TypeVariableOriginKind::MiscVariable,
                                     })
                                     .into(),
@@ -526,7 +556,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     .next_const_var(
                                         arg.ty(),
                                         ConstVariableOrigin {
-                                            span: rustc_span::DUMMY_SP,
+                                            span: DUMMY_SP,
                                             kind: ConstVariableOriginKind::MiscVariable,
                                         },
                                     )
@@ -547,7 +577,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {
                 let placeholder = Some(self.next_ty_var(TypeVariableOrigin {
-                    span: rustc_span::DUMMY_SP,
+                    span: DUMMY_SP,
                     kind: TypeVariableOriginKind::MiscVariable,
                 }));
                 if let Some(args) = args.make_suggestable(self.infcx.tcx, true, placeholder) {
@@ -584,7 +614,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
                 let placeholder = Some(self.next_ty_var(TypeVariableOrigin {
-                    span: rustc_span::DUMMY_SP,
+                    span: DUMMY_SP,
                     kind: TypeVariableOriginKind::MiscVariable,
                 }));
                 if let Some(ty) = ty.make_suggestable(self.infcx.tcx, true, placeholder) {
@@ -606,6 +636,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
+                was_written: path.as_ref().map(|_| ()),
+                path: path.unwrap_or_default(),
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
@@ -615,6 +647,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
+                was_written: path.as_ref().map(|_| ()),
+                path: path.unwrap_or_default(),
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
@@ -624,6 +658,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
+                was_written: path.as_ref().map(|_| ()),
+                path: path.unwrap_or_default(),
             }),
         }
     }
@@ -688,22 +724,23 @@ impl<'tcx> InferSource<'tcx> {
 }
 
 impl<'tcx> InferSourceKind<'tcx> {
-    fn ty_localized_msg(&self, infcx: &InferCtxt<'tcx>) -> (&'static str, String) {
+    fn ty_localized_msg(&self, infcx: &InferCtxt<'tcx>) -> (&'static str, String, Option<PathBuf>) {
+        let mut path = None;
         match *self {
             InferSourceKind::LetBinding { ty, .. }
             | InferSourceKind::ClosureArg { ty, .. }
             | InferSourceKind::ClosureReturn { ty, .. } => {
                 if ty.is_closure() {
-                    ("closure", closure_as_fn_str(infcx, ty))
+                    ("closure", closure_as_fn_str(infcx, ty), path)
                 } else if !ty.is_ty_or_numeric_infer() {
-                    ("normal", ty_to_string(infcx, ty, None))
+                    ("normal", infcx.tcx.short_ty_string(ty, &mut path), path)
                 } else {
-                    ("other", String::new())
+                    ("other", String::new(), path)
                 }
             }
             // FIXME: We should be able to add some additional info here.
             InferSourceKind::GenericArg { .. }
-            | InferSourceKind::FullyQualifiedMethodCall { .. } => ("other", String::new()),
+            | InferSourceKind::FullyQualifiedMethodCall { .. } => ("other", String::new(), path),
         }
     }
 }

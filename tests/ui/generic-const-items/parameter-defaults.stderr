@@ -4,7 +4,7 @@ error: defaults for type parameters are only allowed in `struct`, `enum`, `type`
 LL | const NONE<T = ()>: Option<T> = None::<T>;
    |            ^^^^^^
 
-error[E0282]: type annotations needed for `Option<T>`
+error[E0282]: type annotations needed for `Option<_>`
   --> $DIR/parameter-defaults.rs:13:9
    |
 LL |     let _ = NONE;

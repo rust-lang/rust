@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for `Result<(), E>`
+error[E0282]: type annotations needed for `Result<(), _>`
   --> $DIR/cannot-infer-closure-circular.rs:7:14
    |
 LL |     let x = |r| {

@@ -20,6 +20,7 @@ use rustc_hir::{
     CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node,
     Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
+use rustc_hir_analysis::collect::suggest_impl_trait;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{self};
 use rustc_middle::lint::in_external_macro;
@@ -814,17 +815,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         errors::AddReturnTypeSuggestion::Add { span, found: found.to_string() },
                     );
                     return true;
-                } else if let ty::Closure(_, args) = found.kind()
-                    // FIXME(compiler-errors): Get better at printing binders...
-                    && let closure = args.as_closure()
-                    && closure.sig().is_suggestable(self.tcx, false)
-                {
+                } else if let Some(sugg) = suggest_impl_trait(self, self.param_env, found) {
                     err.subdiagnostic(
                         self.dcx(),
-                        errors::AddReturnTypeSuggestion::Add {
-                            span,
-                            found: closure.print_as_impl_trait().to_string(),
-                        },
+                        errors::AddReturnTypeSuggestion::Add { span, found: sugg },
                     );
                     return true;
                 } else {

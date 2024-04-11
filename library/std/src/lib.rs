@@ -214,7 +214,16 @@
 //! [slice]: prim@slice
 
 #![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
-#![cfg_attr(feature = "restricted-std", unstable(feature = "restricted_std", issue = "none"))]
+#![cfg_attr(
+    feature = "restricted-std",
+    unstable(
+        feature = "restricted_std",
+        issue = "none",
+        reason = "You have attempted to use a standard library built for a platform that it doesn't \
+            know how to support. Consider building it for a known environment, disabling it with \
+            `#![no_std]` or overriding this warning by enabling this feature".
+    )
+)]
 #![cfg_attr(not(bootstrap), rustc_preserve_ub_checks)]
 #![doc(
     html_playground_url = "https://play.rust-lang.org/",
@@ -283,6 +292,8 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
+#![feature(f128)]
+#![feature(f16)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(lang_items)]
@@ -558,6 +569,10 @@ pub use core::u8;
 #[allow(deprecated, deprecated_in_future)]
 pub use core::usize;
 
+#[unstable(feature = "f128", issue = "116909")]
+pub mod f128;
+#[unstable(feature = "f16", issue = "116909")]
+pub mod f16;
 pub mod f32;
 pub mod f64;
 

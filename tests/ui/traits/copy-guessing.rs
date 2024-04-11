@@ -18,7 +18,7 @@ fn assert_impls_fn<R,T: Fn()->R>(_: &T){}
 
 fn main() {
     let n = None;
-    //~^ ERROR type annotations needed for `Option<T>`
+    //~^ ERROR type annotations needed for `Option<_>`
     let e = S(&n);
     let f = || {
         // S being copy is critical for this to work
