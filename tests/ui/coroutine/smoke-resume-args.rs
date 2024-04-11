@@ -3,7 +3,7 @@
 //@ revisions: default nomiropt
 //@[nomiropt]compile-flags: -Z mir-opt-level=0
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::fmt::Debug;
 use std::ops::{
@@ -50,7 +50,7 @@ fn expect_drops<T>(expected_drops: usize, f: impl FnOnce() -> T) -> T {
 
 fn main() {
     drain(
-        &mut |mut b| {
+        &mut #[coroutine] |mut b| {
             while b != 0 {
                 b = yield (b + 1);
             }
@@ -59,21 +59,24 @@ fn main() {
         vec![(1, Yielded(2)), (-45, Yielded(-44)), (500, Yielded(501)), (0, Complete(-1))],
     );
 
-    expect_drops(2, || drain(&mut |a| yield a, vec![(DropMe, Yielded(DropMe))]));
+    expect_drops(2, || drain(&mut #[coroutine] |a| yield a, vec![(DropMe, Yielded(DropMe))]));
 
     expect_drops(6, || {
         drain(
-            &mut |a| yield yield a,
+            &mut #[coroutine] |a| yield yield a,
             vec![(DropMe, Yielded(DropMe)), (DropMe, Yielded(DropMe)), (DropMe, Complete(DropMe))],
         )
     });
 
     #[allow(unreachable_code)]
-    expect_drops(2, || drain(&mut |a| yield return a, vec![(DropMe, Complete(DropMe))]));
+    expect_drops(2, || drain(
+        &mut #[coroutine] |a| yield return a,
+        vec![(DropMe, Complete(DropMe))]
+    ));
 
     expect_drops(2, || {
         drain(
-            &mut |a: DropMe| {
+            &mut #[coroutine] |a: DropMe| {
                 if false { yield () } else { a }
             },
             vec![(DropMe, Complete(DropMe))],
@@ -83,7 +86,7 @@ fn main() {
     expect_drops(4, || {
         drain(
             #[allow(unused_assignments, unused_variables)]
-            &mut |mut a: DropMe| {
+            &mut #[coroutine] |mut a: DropMe| {
                 a = yield;
                 a = yield;
                 a = yield;

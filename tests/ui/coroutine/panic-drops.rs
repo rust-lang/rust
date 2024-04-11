@@ -1,8 +1,7 @@
 //@ run-pass
 //@ needs-unwind
 
-
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::Coroutine;
 use std::panic;
@@ -25,7 +24,8 @@ fn bool_true() -> bool {
 
 fn main() {
     let b = B;
-    let mut foo = || {
+    let mut foo = #[coroutine]
+    || {
         if bool_true() {
             panic!();
         }
@@ -34,13 +34,12 @@ fn main() {
     };
 
     assert_eq!(A.load(Ordering::SeqCst), 0);
-    let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        Pin::new(&mut foo).resume(())
-    }));
+    let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Pin::new(&mut foo).resume(())));
     assert!(res.is_err());
     assert_eq!(A.load(Ordering::SeqCst), 1);
 
-    let mut foo = || {
+    let mut foo = #[coroutine]
+    || {
         if bool_true() {
             panic!();
         }
@@ -49,9 +48,7 @@ fn main() {
     };
 
     assert_eq!(A.load(Ordering::SeqCst), 1);
-    let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        Pin::new(&mut foo).resume(())
-    }));
+    let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Pin::new(&mut foo).resume(())));
     assert!(res.is_err());
     assert_eq!(A.load(Ordering::SeqCst), 1);
 }

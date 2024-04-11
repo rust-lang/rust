@@ -1,3 +1,14 @@
+error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
+  --> $DIR/yield-outside-coroutine-issue-78653.rs:4:5
+   |
+LL |     yield || for i in 0 { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `#[coroutine]` to make this closure a coroutine
+   |
+LL | #[coroutine] fn main() {
+   | ++++++++++++
+
 error[E0627]: yield expression outside of coroutine literal
   --> $DIR/yield-outside-coroutine-issue-78653.rs:4:5
    |
@@ -14,7 +25,7 @@ LL |     yield || for i in 0 { }
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required for `{integer}` to implement `IntoIterator`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0277, E0627.
 For more information about an error, try `rustc --explain E0277`.

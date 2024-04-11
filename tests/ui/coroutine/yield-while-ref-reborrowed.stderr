@@ -1,8 +1,8 @@
 error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
-  --> $DIR/yield-while-ref-reborrowed.rs:36:20
+  --> $DIR/yield-while-ref-reborrowed.rs:39:20
    |
-LL |     let mut b = || {
-   |                 -- coroutine construction occurs here
+LL |     || {
+   |     -- coroutine construction occurs here
 LL |         let a = &mut *x;
    |                      -- first borrow occurs due to use of `x` in coroutine
 ...

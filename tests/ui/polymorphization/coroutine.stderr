@@ -8,18 +8,20 @@ LL | #![feature(generic_const_exprs, coroutines, coroutine_trait, rustc_attrs)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: item has unused generic parameters
-  --> $DIR/coroutine.rs:35:5
+  --> $DIR/coroutine.rs:36:5
    |
 LL | pub fn unused_type<T>() -> impl Coroutine<(), Yield = u32, Return = u32> + Unpin {
    |                    - generic parameter `T` is unused
+LL |     #[coroutine]
 LL |     || {
    |     ^^
 
 error: item has unused generic parameters
-  --> $DIR/coroutine.rs:60:5
+  --> $DIR/coroutine.rs:64:5
    |
 LL | pub fn unused_const<const T: u32>() -> impl Coroutine<(), Yield = u32, Return = u32> + Unpin {
    |                     ------------ generic parameter `T` is unused
+LL |     #[coroutine]
 LL |     || {
    |     ^^
 

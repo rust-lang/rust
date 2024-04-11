@@ -1,5 +1,5 @@
 // skip-filecheck
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
@@ -8,7 +8,8 @@
 
 // EMIT_MIR coroutine_drop_cleanup.main-{closure#0}.coroutine_drop.0.mir
 fn main() {
-    let gen = || {
+    let gen = #[coroutine]
+    || {
         let _s = String::new();
         yield;
     };

@@ -8,6 +8,7 @@ use super::errors::{
 };
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
+use crate::errors::YieldInClosure;
 use crate::{FnDeclKind, ImplTraitPosition};
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
@@ -977,6 +978,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 None
             };
             let body_id = this.lower_fn_body(decl, |this| {
+                this.coroutine_kind = coroutine_kind;
                 let e = this.lower_expr_mut(body);
                 coroutine_kind = this.coroutine_kind;
                 e
@@ -1575,7 +1577,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                     .emit();
                 }
+                let suggestion = self.current_item.map(|s| s.shrink_to_lo());
+                self.dcx().emit_err(YieldInClosure { span, suggestion });
                 self.coroutine_kind = Some(hir::CoroutineKind::Coroutine(Movability::Movable));
+
                 false
             }
         };

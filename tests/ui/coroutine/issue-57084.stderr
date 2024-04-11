@@ -1,7 +1,8 @@
 warning: unused coroutine that must be used
-  --> $DIR/issue-57084.rs:22:5
+  --> $DIR/issue-57084.rs:22:18
    |
-LL | /     || {
+LL |       #[coroutine] || {
+   |  __________________^
 LL | |         let _to_pin = with(move || println!("{:p}", data));
 LL | |         loop {
 LL | |             yield

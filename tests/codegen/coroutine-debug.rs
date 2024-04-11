@@ -11,7 +11,7 @@
 use std::ops::Coroutine;
 
 fn coroutine_test() -> impl Coroutine<Yield = i32, Return = ()> {
-    || {
+    #[coroutine] || {
         yield 0;
         let s = String::from("foo");
         yield 1;

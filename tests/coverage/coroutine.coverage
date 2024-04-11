@@ -1,4 +1,4 @@
-   LL|       |#![feature(coroutines, coroutine_trait)]
+   LL|       |#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
    LL|       |
    LL|       |use std::ops::{Coroutine, CoroutineState};
    LL|       |use std::pin::Pin;
@@ -18,7 +18,7 @@
    LL|       |
    LL|      1|fn main() {
    LL|      1|    let is_true = std::env::args().len() == 1;
-   LL|      1|    let mut coroutine = || {
+   LL|      1|    let mut coroutine = #[coroutine] || {
    LL|      1|        yield get_u32(is_true);
    LL|      1|        return "foo";
    LL|      1|    };

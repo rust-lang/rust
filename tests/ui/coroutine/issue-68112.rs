@@ -1,4 +1,4 @@
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::{
     cell::RefCell,
@@ -30,7 +30,7 @@ fn make_non_send_coroutine() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
 }
 
 fn test1() {
-    let send_gen = || {
+    let send_gen = #[coroutine] || {
         let _non_send_gen = make_non_send_coroutine();
         //~^ NOTE not `Send`
         yield;
@@ -46,7 +46,7 @@ fn test1() {
 pub fn make_gen2<T>(t: T) -> impl Coroutine<Return = T> {
 //~^ NOTE appears within the type
 //~| NOTE expansion of desugaring
-    || { //~ NOTE used within this coroutine
+    #[coroutine] || { //~ NOTE used within this coroutine
         yield;
         t
     }
@@ -57,7 +57,7 @@ fn make_non_send_coroutine2() -> impl Coroutine<Return = Arc<RefCell<i32>>> { //
 }
 
 fn test2() {
-    let send_gen = || { //~ NOTE used within this coroutine
+    let send_gen = #[coroutine] || { //~ NOTE used within this coroutine
         let _non_send_gen = make_non_send_coroutine2();
         yield;
     };

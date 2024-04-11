@@ -5,7 +5,7 @@
 
 fn main() {
     unsafe {
-        static move || { //~ WARN unused coroutine that must be used
+        #[coroutine] static move || { //~ WARN unused coroutine that must be used
             // Tests that the coroutine transformation finds out that `a` is not live
             // during the yield expression. Type checking will also compute liveness
             // and it should also find out that `a` is not live.
