@@ -77,9 +77,10 @@ pub use rustc_type_ir::ConstKind::{
 pub use rustc_type_ir::*;
 
 pub use self::closure::{
-    is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
-    CapturedPlace, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
-    RootVariableMinCaptureList, UpvarCapture, UpvarId, UpvarPath, CAPTURE_STRUCT_LOCAL,
+    analyze_coroutine_closure_captures, is_ancestor_or_same_capture, place_to_string_for_capture,
+    BorrowKind, CaptureInfo, CapturedPlace, ClosureTypeInfo, MinCaptureInformationMap,
+    MinCaptureList, RootVariableMinCaptureList, UpvarCapture, UpvarId, UpvarPath,
+    CAPTURE_STRUCT_LOCAL,
 };
 pub use self::consts::{
     Const, ConstData, ConstInt, ConstKind, Expr, ScalarInt, UnevaluatedConst, ValTree,

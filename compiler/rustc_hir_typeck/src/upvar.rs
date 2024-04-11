@@ -367,37 +367,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::INNERMOST,
                 ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::BrEnv },
             );
+
+            let num_args = args
+                .as_coroutine_closure()
+                .coroutine_closure_sig()
+                .skip_binder()
+                .tupled_inputs_ty
+                .tuple_fields()
+                .len();
+            let typeck_results = self.typeck_results.borrow();
+
             let tupled_upvars_ty_for_borrow = Ty::new_tup_from_iter(
                 self.tcx,
-                self.typeck_results
-                    .borrow()
-                    .closure_min_captures_flattened(
-                        self.tcx.coroutine_for_closure(closure_def_id).expect_local(),
-                    )
-                    // Skip the captures that are just moving the closure's args
-                    // into the coroutine. These are always by move, and we append
-                    // those later in the `CoroutineClosureSignature` helper functions.
-                    .skip(
-                        args.as_coroutine_closure()
-                            .coroutine_closure_sig()
-                            .skip_binder()
-                            .tupled_inputs_ty
-                            .tuple_fields()
-                            .len(),
-                    )
-                    .map(|captured_place| {
-                        let upvar_ty = captured_place.place.ty();
-                        let capture = captured_place.info.capture_kind;
+                ty::analyze_coroutine_closure_captures(
+                    typeck_results.closure_min_captures_flattened(closure_def_id),
+                    typeck_results
+                        .closure_min_captures_flattened(
+                            self.tcx.coroutine_for_closure(closure_def_id).expect_local(),
+                        )
+                        // Skip the captures that are just moving the closure's args
+                        // into the coroutine. These are always by move, and we append
+                        // those later in the `CoroutineClosureSignature` helper functions.
+                        .skip(num_args),
+                    |(_, parent_capture), (_, child_capture)| {
+                        // This is subtle. See documentation on function.
+                        let needs_ref = should_reborrow_from_env_of_parent_coroutine_closure(
+                            parent_capture,
+                            child_capture,
+                        );
+
+                        let upvar_ty = child_capture.place.ty();
+                        let capture = child_capture.info.capture_kind;
                         // Not all upvars are captured by ref, so use
                         // `apply_capture_kind_on_capture_ty` to ensure that we
                         // compute the right captured type.
-                        apply_capture_kind_on_capture_ty(
+                        return apply_capture_kind_on_capture_ty(
                             self.tcx,
                             upvar_ty,
                             capture,
-                            Some(closure_env_region),
-                        )
-                    }),
+                            if needs_ref { Some(closure_env_region) } else { child_capture.region },
+                        );
+                    },
+                ),
             );
             let coroutine_captures_by_ref_ty = Ty::new_fn_ptr(
                 self.tcx,
@@ -1759,6 +1770,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         is_mutbl
     }
+}
+
+/// Determines whether a child capture that is derived from a parent capture
+/// should be borrowed with the lifetime of the parent coroutine-closure's env.
+///
+/// There are two cases when this needs to happen:
+///
+/// (1.) Are we borrowing data owned by the parent closure? We can determine if
+/// that is the case by checking if the parent capture is by move, EXCEPT if we
+/// apply a deref projection, which means we're reborrowing a reference that we
+/// captured by move.
+///
+/// ```rust
+/// #![feature(async_closure)]
+/// let x = &1i32; // Let's call this lifetime `'1`.
+/// let c = async move || {
+///     println!("{:?}", *x);
+///     // Even though the inner coroutine borrows by ref, we're only capturing `*x`,
+///     // not `x`, so the inner closure is allowed to reborrow the data for `'1`.
+/// };
+/// ```
+///
+/// (2.) If a coroutine is mutably borrowing from a parent capture, then that
+/// mutable borrow cannot live for longer than either the parent *or* the borrow
+/// that we have on the original upvar. Therefore we always need to borrow the
+/// child capture with the lifetime of the parent coroutine-closure's env.
+///
+/// ```rust
+/// #![feature(async_closure)]
+/// let mut x = 1i32;
+/// let c = async || {
+///     x = 1;
+///     // The parent borrows `x` for some `&'1 mut i32`.
+///     // However, when we call `c()`, we implicitly autoref for the signature of
+///     // `AsyncFnMut::async_call_mut`. Let's call that lifetime `'call`. Since
+///     // the maximum that `&'call mut &'1 mut i32` can be reborrowed is `&'call mut i32`,
+///     // the inner coroutine should capture w/ the lifetime of the coroutine-closure.
+/// };
+/// ```
+///
+/// If either of these cases apply, then we should capture the borrow with the
+/// lifetime of the parent coroutine-closure's env. Luckily, if this function is
+/// not correct, then the program is not unsound, since we still borrowck and validate
+/// the choices made from this function -- the only side-effect is that the user
+/// may receive unnecessary borrowck errors.
+fn should_reborrow_from_env_of_parent_coroutine_closure<'tcx>(
+    parent_capture: &ty::CapturedPlace<'tcx>,
+    child_capture: &ty::CapturedPlace<'tcx>,
+) -> bool {
+    // (1.)
+    (!parent_capture.is_by_ref()
+        && !matches!(
+            child_capture.place.projections.get(parent_capture.place.projections.len()),
+            Some(Projection { kind: ProjectionKind::Deref, .. })
+        ))
+        // (2.)
+        || matches!(child_capture.info.capture_kind, UpvarCapture::ByRef(ty::BorrowKind::MutBorrow))
 }
 
 /// Truncate the capture so that the place being borrowed is in accordance with RFC 1240,
