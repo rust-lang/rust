@@ -1909,7 +1909,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let returned = matches!(
             self.tcx.parent_hir_node(expr.hir_id),
             hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Ret(_), .. })
-        ) || map.get_return_block(expr.hir_id).is_some();
+        ) || map.get_fn_id_for_return_block(expr.hir_id).is_some();
         if returned
             && let ty::Adt(e, args_e) = expected.kind()
             && let ty::Adt(f, args_f) = found.kind()
