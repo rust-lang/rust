@@ -1,5 +1,5 @@
 //@ run-pass
-//@ revisions YES NO
+//@ revisions: YES NO
 //@ [YES] compile-flags: -Cdebug-assertions=yes
 //@ [NO] compile-flags: -Cdebug-assertions=no
 
