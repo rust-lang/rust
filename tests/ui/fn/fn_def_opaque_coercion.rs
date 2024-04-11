@@ -1,5 +1,7 @@
 //! Test that coercing between function items of the same function,
-//! but with different args works.
+//! but with different generic args works.
+
+//@check-pass
 
 #![feature(type_alias_impl_trait)]
 
@@ -44,7 +46,7 @@ type J = impl Sized;
 fn j(a: J) {
     let x = match true {
         true => foo::<J>,
-        false => foo::<()>, //~ ERROR: incompatible types
+        false => foo::<()>,
     };
     x(a);
     x(());
@@ -59,7 +61,7 @@ fn k() -> impl Sized {
             let f = foo;
             bind(k(), f)
         }
-        false => foo::<()>, //~ ERROR: incompatible types
+        false => foo::<()>,
     };
     todo!()
 }
