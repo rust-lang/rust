@@ -310,20 +310,10 @@ fn default_body_is_unstable(
         None => none_note = true,
     };
 
-    let mut err = tcx.dcx().create_err(errors::MissingTraitItemUnstable {
-        span: impl_span,
-        some_note,
-        none_note,
-        missing_item_name,
-        feature,
-        reason: reason_str,
-    });
-
     let inject_span = item_did
         .as_local()
         .and_then(|id| tcx.crate_level_attribute_injection_span(tcx.local_def_id_to_hir_id(id)));
-    rustc_session::parse::add_feature_diagnostics_for_issue(
-        &mut err,
+    let subdiag = rustc_session::parse::get_feature_diagnostics_for_issue(
         &tcx.sess,
         feature,
         rustc_feature::GateIssue::Library(issue),
@@ -331,7 +321,17 @@ fn default_body_is_unstable(
         inject_span,
     );
 
-    err.emit();
+    tcx.dcx()
+        .create_err(errors::MissingTraitItemUnstable {
+            span: impl_span,
+            some_note,
+            none_note,
+            missing_item_name,
+            feature,
+            reason: reason_str,
+            subdiag,
+        })
+        .emit();
 }
 
 /// Re-sugar `ty::GenericPredicates` in a way suitable to be used in structured suggestions.

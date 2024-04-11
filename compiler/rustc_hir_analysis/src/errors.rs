@@ -6,6 +6,7 @@ use rustc_errors::{
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
+use rustc_session::errors::FeatureGateSubdiagnostic;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
@@ -987,6 +988,8 @@ pub(crate) struct MissingTraitItemUnstable {
     pub some_note: bool,
     #[note(hir_analysis_none_note)]
     pub none_note: bool,
+    #[subdiagnostic]
+    pub subdiag: FeatureGateSubdiagnostic,
     pub missing_item_name: Symbol,
     pub feature: Symbol,
     pub reason: String,

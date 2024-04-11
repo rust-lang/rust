@@ -14,15 +14,19 @@ use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 use crate::config::CrateType;
 use crate::parse::ParseSess;
 
+// FIXME: factor into separate structs to avoid dynamic DiagMessage field
 pub(crate) struct FeatureGateError {
     pub(crate) span: MultiSpan,
     pub(crate) explain: DiagMessage,
+    pub(crate) subdiag: FeatureGateSubdiagnostic,
 }
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for FeatureGateError {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        Diag::new(dcx, level, self.explain).with_span(self.span).with_code(E0658)
+        let mut diag = Diag::new(dcx, level, self.explain).with_span(self.span).with_code(E0658);
+        diag.subdiagnostic(self.subdiag);
+        diag
     }
 }
 
