@@ -286,7 +286,7 @@ impl FlycheckActor {
                     tracing::debug!(?command, "will restart flycheck");
                     match CommandHandle::spawn(command) {
                         Ok(command_handle) => {
-                            tracing::debug!(command = formatted_command, "did  restart flycheck");
+                            tracing::debug!(command = formatted_command, "did restart flycheck");
                             self.command_handle = Some(command_handle);
                             self.report_progress(Progress::DidStart);
                         }
@@ -306,10 +306,11 @@ impl FlycheckActor {
                     let formatted_handle = format!("{:?}", command_handle);
 
                     let res = command_handle.join();
-                    if res.is_err() {
+                    if let Err(error) = &res {
                         tracing::error!(
-                            "Flycheck failed to run the following command: {}",
-                            formatted_handle
+                            "Flycheck failed to run the following command: {}, error={}",
+                            formatted_handle,
+                            error
                         );
                     }
                     self.report_progress(Progress::DidFinish(res));
