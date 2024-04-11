@@ -126,6 +126,7 @@ use std::num::NonZero;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_ast::LitKind;
+use rustc_attr::InlineAttr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
@@ -555,16 +556,24 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn reserve_and_set_fn_alloc(self, instance: Instance<'tcx>) -> AllocId {
         // Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
         // by the linker (we set the "unnamed_addr" attribute for LLVM) and functions can be
-        // duplicated across crates.
-        // We thus generate a new `AllocId` for every mention of a function. This means that
-        // `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
-        // However, formatting code relies on function identity (see #58320), so we only do
-        // this for generic functions. Lifetime parameters are ignored.
+        // duplicated across crates. We thus generate a new `AllocId` for every mention of a
+        // function. This means that `main as fn() == main as fn()` is false, while `let x = main as
+        // fn(); x == x` is true. However, as a quality-of-life feature it can be useful to identify
+        // certain functions uniquely, e.g. for backtraces. So we identify whether codegen will
+        // actually emit duplicate functions. It does that when they have non-lifetime generics, or
+        // when they can be inlined. All other functions are given a unique address.
+        // This is not a stable guarantee! The `inline` attribute is a hint and cannot be relied
+        // upon for anything. But if we don't do this, backtraces look terrible and we risk breaking
+        // the `USIZE_MARKER` hack in the formatting machinery.
         let is_generic = instance
             .args
             .into_iter()
             .any(|kind| !matches!(kind.unpack(), GenericArgKind::Lifetime(_)));
-        if is_generic {
+        let can_be_inlined = match self.codegen_fn_attrs(instance.def_id()).inline {
+            InlineAttr::Never => false,
+            _ => true,
+        };
+        if is_generic || can_be_inlined {
             // Get a fresh ID.
             let mut alloc_map = self.alloc_map.lock();
             let id = alloc_map.reserve();
