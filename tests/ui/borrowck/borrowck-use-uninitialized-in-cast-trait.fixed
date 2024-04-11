@@ -7,6 +7,6 @@ trait Foo { fn dummy(&self) { } }
 impl Foo for i32 { }
 
 fn main() {
-    let x: &i32;
+    let x: &i32 = &42;
     let y = x as *const dyn Foo; //~ ERROR [E0381]
 }
