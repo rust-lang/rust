@@ -946,7 +946,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 self.fail(location, "input pointer must be thin");
                             }
                         } else {
-                            self.fail(location, "first operand to raw pointer aggregate must be a raw pointer");
+                            self.fail(
+                                location,
+                                "first operand to raw pointer aggregate must be a raw pointer",
+                            );
                         }
 
                         // FIXME: Check metadata more generally
