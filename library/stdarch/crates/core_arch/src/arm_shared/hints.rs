@@ -101,8 +101,6 @@ pub unsafe fn __yield() {
 /// those that do, it is unspecified whether this intrinsic generates it or
 /// another instruction. It is not guaranteed that inserting this instruction
 /// will increase execution time.
-// Inline ASM is not support on ARM64EC yet.
-#[cfg(not(target_arch = "arm64ec"))]
 #[inline(always)]
 #[unstable(feature = "stdarch_arm_hints", issue = "117218")]
 pub unsafe fn __nop() {
