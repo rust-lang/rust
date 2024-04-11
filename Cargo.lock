@@ -4263,7 +4263,6 @@ dependencies = [
  "either",
  "field-offset",
  "gsgdt",
- "measureme",
  "polonius-engine",
  "rustc-rayon",
  "rustc-rayon-core",
