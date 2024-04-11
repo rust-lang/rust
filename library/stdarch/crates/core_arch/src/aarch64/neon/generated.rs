@@ -15,7 +15,7 @@ use stdarch_test::assert_instr;
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(eor3))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn veor3q_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -31,7 +31,7 @@ pub unsafe fn veor3q_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(eor3))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn veor3q_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -47,7 +47,7 @@ pub unsafe fn veor3q_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t 
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(eor3))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn veor3q_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -63,7 +63,7 @@ pub unsafe fn veor3q_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t 
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(eor3))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn veor3q_s64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -79,7 +79,7 @@ pub unsafe fn veor3q_s64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t 
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(eor3))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn veor3q_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -95,7 +95,7 @@ pub unsafe fn veor3q_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(eor3))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn veor3q_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -111,7 +111,7 @@ pub unsafe fn veor3q_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(eor3))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn veor3q_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -127,7 +127,7 @@ pub unsafe fn veor3q_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(eor3))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn veor3q_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9977,7 +9977,7 @@ pub unsafe fn vsubl_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(bcax))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vbcaxq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9993,7 +9993,7 @@ pub unsafe fn vbcaxq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(bcax))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vbcaxq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10009,7 +10009,7 @@ pub unsafe fn vbcaxq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t 
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(bcax))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vbcaxq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10025,7 +10025,7 @@ pub unsafe fn vbcaxq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t 
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(bcax))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vbcaxq_s64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10041,7 +10041,7 @@ pub unsafe fn vbcaxq_s64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t 
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(bcax))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vbcaxq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10057,7 +10057,7 @@ pub unsafe fn vbcaxq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(bcax))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vbcaxq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10073,7 +10073,7 @@ pub unsafe fn vbcaxq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(bcax))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vbcaxq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10089,7 +10089,7 @@ pub unsafe fn vbcaxq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(bcax))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vbcaxq_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15261,7 +15261,7 @@ pub unsafe fn vsm4eq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(rax1))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vrax1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15277,7 +15277,7 @@ pub unsafe fn vrax1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(sha512h))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vsha512hq_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15293,7 +15293,7 @@ pub unsafe fn vsha512hq_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(sha512h2))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vsha512h2q_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15309,7 +15309,7 @@ pub unsafe fn vsha512h2q_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uin
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(sha512su0))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vsha512su0q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15325,7 +15325,7 @@ pub unsafe fn vsha512su0q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[inline]
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(sha512su1))]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vsha512su1q_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {

@@ -3506,7 +3506,7 @@ pub unsafe fn vsm3tt2bq_u32<const IMM2: i32>(
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(xar, IMM6 = 0))]
 #[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
+#[stable(feature = "stdarch_neon_sha3", since = "1.79.0")]
 pub unsafe fn vxarq_u64<const IMM6: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(IMM6, 6);
     #[allow(improper_ctypes)]
