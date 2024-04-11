@@ -356,7 +356,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             }
             match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
                 -1 => Err(io::Error::last_os_error()),
-                0 => Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform")),
+                0 => Err(io::Error::UNKNOWN_THREAD_COUNT),
                 cpus => {
                     let count = cpus as usize;
                     // Cover the unusual situation where we were able to get the quota but not the affinity mask
@@ -439,7 +439,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 if res == -1 {
                     return Err(io::Error::last_os_error());
                 } else if cpus == 0 {
-                    return Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"));
+                    return Err(io::Error::UNKNOWN_THREAD_COUNT);
                 }
             }
 
@@ -452,13 +452,13 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 } else {
                     let cpus = (*_syspage_ptr).num_cpu;
                     NonZero::new(cpus as usize)
-                        .ok_or(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"))
+                        .ok_or(io::Error::UNKNOWN_THREAD_COUNT)
                 }
             }
         } else if #[cfg(any(target_os = "solaris", target_os = "illumos"))] {
             let mut cpus = 0u32;
             if unsafe { libc::pset_info(libc::PS_MYID, core::ptr::null_mut(), &mut cpus, core::ptr::null_mut()) } != 0 {
-                return Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"));
+                return Err(io::Error::UNKNOWN_THREAD_COUNT);
             }
             Ok(unsafe { NonZero::new_unchecked(cpus as usize) })
         } else if #[cfg(target_os = "haiku")] {
@@ -469,7 +469,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 let res = libc::get_system_info(&mut sinfo);
 
                 if res != libc::B_OK {
-                    return Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"));
+                    return Err(io::Error::UNKNOWN_THREAD_COUNT);
                 }
 
                 Ok(NonZero::new_unchecked(sinfo.cpu_count as usize))

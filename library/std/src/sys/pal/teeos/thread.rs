@@ -141,10 +141,7 @@ impl Drop for Thread {
 // Note: Both `sched_getaffinity` and `sysconf` are available but not functional on
 // teeos, so this function always returns an Error!
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    Err(io::Error::new(
-        io::ErrorKind::NotFound,
-        "The number of hardware threads is not known for the target platform",
-    ))
+    Err(io::Error::UNKNOWN_THREAD_COUNT)
 }
 
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
