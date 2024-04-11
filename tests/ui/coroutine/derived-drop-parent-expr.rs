@@ -10,7 +10,7 @@ pub struct Client { pub nickname: String }
 
 fn main() {
     let g = move || match drop(Client { ..Client::default() }) {
-        _status => yield,
-    };
+            _status => yield,
+        };
     assert_send(g);
 }
