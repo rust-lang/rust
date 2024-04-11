@@ -43,10 +43,12 @@
 pub mod bridge;
 
 mod diagnostic;
+mod escape;
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
+use crate::escape::{escape_bytes, EscapeOptions};
 use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
@@ -1356,40 +1358,61 @@ impl Literal {
     /// String literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn string(string: &str) -> Literal {
-        let quoted = format!("{:?}", string);
-        assert!(quoted.starts_with('"') && quoted.ends_with('"'));
-        let symbol = &quoted[1..quoted.len() - 1];
-        Literal::new(bridge::LitKind::Str, symbol, None)
+        let escape = EscapeOptions {
+            escape_single_quote: false,
+            escape_double_quote: true,
+            escape_nonascii: false,
+        };
+        let repr = escape_bytes(string.as_bytes(), escape);
+        Literal::new(bridge::LitKind::Str, &repr, None)
     }
 
     /// Character literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn character(ch: char) -> Literal {
-        let quoted = format!("{:?}", ch);
-        assert!(quoted.starts_with('\'') && quoted.ends_with('\''));
-        let symbol = &quoted[1..quoted.len() - 1];
-        Literal::new(bridge::LitKind::Char, symbol, None)
+        let escape = EscapeOptions {
+            escape_single_quote: true,
+            escape_double_quote: false,
+            escape_nonascii: false,
+        };
+        let repr = escape_bytes(ch.encode_utf8(&mut [0u8; 4]).as_bytes(), escape);
+        Literal::new(bridge::LitKind::Char, &repr, None)
     }
 
     /// Byte character literal.
     #[stable(feature = "proc_macro_byte_character", since = "1.79.0")]
     pub fn byte_character(byte: u8) -> Literal {
-        let string = [byte].escape_ascii().to_string();
-        Literal::new(bridge::LitKind::Byte, &string, None)
+        let escape = EscapeOptions {
+            escape_single_quote: true,
+            escape_double_quote: false,
+            escape_nonascii: true,
+        };
+        let repr = escape_bytes(&[byte], escape);
+        Literal::new(bridge::LitKind::Byte, &repr, None)
     }
 
     /// Byte string literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn byte_string(bytes: &[u8]) -> Literal {
-        let string = bytes.escape_ascii().to_string();
-        Literal::new(bridge::LitKind::ByteStr, &string, None)
+        let escape = EscapeOptions {
+            escape_single_quote: false,
+            escape_double_quote: true,
+            escape_nonascii: true,
+        };
+        let repr = escape_bytes(bytes, escape);
+        Literal::new(bridge::LitKind::ByteStr, &repr, None)
     }
 
     /// C string literal.
     #[stable(feature = "proc_macro_c_str_literals", since = "1.79.0")]
     pub fn c_string(string: &CStr) -> Literal {
-        let string = string.to_bytes().escape_ascii().to_string();
-        Literal::new(bridge::LitKind::CStr, &string, None)
+        let escape = EscapeOptions {
+            escape_single_quote: false,
+            escape_double_quote: true,
+            escape_nonascii: false,
+        };
+        let repr = escape_bytes(string.to_bytes(), escape);
+        Literal::new(bridge::LitKind::CStr, &repr, None)
     }
 
     /// Returns the span encompassing this literal.
