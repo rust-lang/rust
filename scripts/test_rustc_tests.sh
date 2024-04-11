@@ -84,7 +84,6 @@ rm -r tests/run-make/fmt-write-bloat/ # tests an optimization
 # ======================
 rm tests/incremental/thinlto/cgu_invalidated_when_import_{added,removed}.rs # requires LLVM
 rm -r tests/run-make/cross-lang-lto # same
-rm -r tests/run-make/issue-7349 # same
 rm -r tests/run-make/sepcomp-inlining # same
 rm -r tests/run-make/sepcomp-separate # same
 rm -r tests/run-make/sepcomp-cci-copies # same
