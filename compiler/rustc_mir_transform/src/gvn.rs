@@ -885,6 +885,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 AggregateKind::Adt(did, ..) => tcx.def_kind(did) != DefKind::Enum,
                 // Coroutines are never ZST, as they at least contain the implicit states.
                 AggregateKind::Coroutine(..) => false,
+                AggregateKind::RawPtr(..) => bug!("MIR for RawPtr aggregate must have 2 fields"),
             };
 
             if is_zst {
@@ -910,6 +911,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             // Do not track unions.
             AggregateKind::Adt(_, _, _, _, Some(_)) => return None,
+            // FIXME: Do the extra work to GVN `from_raw_parts`
+            AggregateKind::RawPtr(..) => return None,
         };
 
         let fields: Option<Vec<_>> = fields
