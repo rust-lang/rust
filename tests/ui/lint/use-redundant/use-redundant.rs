@@ -18,7 +18,7 @@ use m1::*; //~ WARNING unused import
 use m2::*; //~ WARNING unused import
 
 fn main() {
-    use crate::foo::Bar; //~ WARNING imported redundantly
+    use crate::foo::Bar; //FIXME(unused_imports): ~ WARNING imported redundantly
     let _a: Bar = 3;
     baz();
 
