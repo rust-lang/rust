@@ -1368,6 +1368,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
             redundant_spans.sort();
             redundant_spans.dedup();
+            /* FIXME(unused_imports): Add this back as a new lint
             self.lint_buffer.buffer_lint_with_diagnostic(
                 UNUSED_IMPORTS,
                 id,
@@ -1375,6 +1376,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 format!("the item `{source}` is imported redundantly"),
                 BuiltinLintDiag::RedundantImport(redundant_spans, source),
             );
+            */
             return true;
         }
 
