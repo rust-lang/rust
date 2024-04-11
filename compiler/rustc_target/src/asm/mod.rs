@@ -9,11 +9,11 @@ use std::str::FromStr;
 pub struct ModifierInfo {
     pub modifier: char,
     pub result: &'static str,
-    pub size: u64,
+    pub size: u16,
 }
 
-impl From<(char, &'static str, u64)> for ModifierInfo {
-    fn from((modifier, result, size): (char, &'static str, u64)) -> Self {
+impl From<(char, &'static str, u16)> for ModifierInfo {
+    fn from((modifier, result, size): (char, &'static str, u16)) -> Self {
         Self { modifier, result, size }
     }
 }
