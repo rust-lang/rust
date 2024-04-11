@@ -170,7 +170,9 @@ fn configure_and_expand(
         let mut old_path = OsString::new();
         if cfg!(windows) {
             old_path = env::var_os("PATH").unwrap_or(old_path);
-            let mut new_path = sess.host_filesearch(PathKind::All).search_path_dirs();
+            let mut new_path = Vec::from_iter(
+                sess.host_filesearch(PathKind::All).search_path_dirs().map(|p| p.to_owned()),
+            );
             for path in env::split_paths(&old_path) {
                 if !new_path.contains(&path) {
                     new_path.push(path);
