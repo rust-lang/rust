@@ -178,8 +178,8 @@ enum ImplTraitContext {
 
 /// Used for tracking import use types which will be used for redundant import checking.
 /// ### Used::Scope Example
-///  ```rust,ignore (redundant_imports)
-/// #![deny(unused_imports)]
+///  ```rust,compile_fail
+/// #![deny(redundant_imports)]
 /// use std::mem::drop;
 /// fn main() {
 ///     let s = Box::new(32);
