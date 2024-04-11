@@ -999,8 +999,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             }
         }
 
-        let val = if let Some(llextra) = place.val.llextra {
-            OperandValue::Ref(place.val.llval, Some(llextra), place.val.align)
+        let val = if let Some(_) = place.val.llextra {
+            // FIXME: Merge with the `else` below?
+            OperandValue::Ref(place.val)
         } else if place.layout.is_gcc_immediate() {
             let load = self.load(place.layout.gcc_type(self), place.val.llval, place.val.align);
             if let abi::Abi::Scalar(ref scalar) = place.layout.abi {
@@ -1031,7 +1032,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 load(1, b, place.val.align.restrict_for_offset(b_offset)),
             )
         } else {
-            OperandValue::Ref(place.val.llval, None, place.val.align)
+            OperandValue::Ref(place.val)
         };
 
         OperandRef { val, layout: place.layout }
