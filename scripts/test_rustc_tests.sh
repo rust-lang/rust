@@ -10,14 +10,13 @@ pushd rust
 
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
-# FIXME remove this workaround once ICE tests no longer emit an outdated nightly message
-for test in $(rg -i --files-with-matches "//@(\[.*\])? failure-status: 101" tests/ui); do
-  echo "rm $test"
+rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
+for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}); do
   rm $test
 done
 
-rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
-for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}); do
+# should-fail tests don't work when compiletest is compiled with panic=abort
+for test in $(rg --files-with-matches "//@ should-fail" tests/{codegen-units,ui,incremental}); do
   rm $test
 done
 
@@ -79,7 +78,6 @@ rm -r tests/run-make/fmt-write-bloat/ # tests an optimization
 # ======================
 rm tests/incremental/thinlto/cgu_invalidated_when_import_{added,removed}.rs # requires LLVM
 rm -r tests/run-make/cross-lang-lto # same
-rm -r tests/run-make/issue-7349 # same
 rm -r tests/run-make/sepcomp-inlining # same
 rm -r tests/run-make/sepcomp-separate # same
 rm -r tests/run-make/sepcomp-cci-copies # same
@@ -116,8 +114,6 @@ rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contain
 
 # genuine bugs
 # ============
-rm tests/incremental/spike-neg1.rs # errors out for some reason
-rm tests/incremental/spike-neg2.rs # same
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 
