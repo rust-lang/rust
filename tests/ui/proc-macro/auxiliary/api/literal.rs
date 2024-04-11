@@ -19,17 +19,42 @@ fn test_display_literal() {
         "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0",
     );
 
-    assert_eq!(Literal::string("a \t ❤ ' \" \u{1}").to_string(), "\"a \\t ❤ ' \\\" \\u{1}\"",);
-    assert_eq!(Literal::c_string(c"\'\"\x7f\u{7fff}").to_string(), r#"c"\'\"\x7f\xe7\xbf\xbf""#);
-    assert_eq!(Literal::character('a').to_string(), "'a'");
-    assert_eq!(Literal::character('\t').to_string(), "'\\t'");
-    assert_eq!(Literal::character('❤').to_string(), "'❤'");
-    assert_eq!(Literal::character('\'').to_string(), "'\\''");
-    assert_eq!(Literal::character('"').to_string(), "'\"'");
-    assert_eq!(Literal::character('\u{1}').to_string(), "'\\u{1}'");
+    assert_eq!(Literal::string("aA").to_string(), r#"  "aA"  "#.trim());
+    assert_eq!(Literal::string("\t").to_string(), r#"  "\t"  "#.trim());
+    assert_eq!(Literal::string("❤").to_string(), r#"  "❤"  "#.trim());
+    assert_eq!(Literal::string("'").to_string(), r#"  "'"  "#.trim());
+    assert_eq!(Literal::string("\"").to_string(), r#"  "\""  "#.trim());
+    assert_eq!(Literal::string("\0").to_string(), r#"  "\0"  "#.trim());
+    assert_eq!(Literal::string("\u{1}").to_string(), r#"  "\u{1}"  "#.trim());
 
-    assert_eq!(Literal::byte_character(b'a').to_string(), "b'a'");
-    assert_eq!(Literal::byte_character(0).to_string(), "b'\\x00'");
+    assert_eq!(Literal::byte_string(b"aA").to_string(), r#"  b"aA"  "#.trim());
+    assert_eq!(Literal::byte_string(b"\t").to_string(), r#"  b"\t"  "#.trim());
+    assert_eq!(Literal::byte_string(b"'").to_string(), r#"  b"\'"  "#.trim());
+    assert_eq!(Literal::byte_string(b"\"").to_string(), r#"  b"\""  "#.trim());
+    assert_eq!(Literal::byte_string(b"\0").to_string(), r#"  b"\x00"  "#.trim());
+    assert_eq!(Literal::byte_string(b"\x01").to_string(), r#"  b"\x01"  "#.trim());
+
+    assert_eq!(Literal::c_string(c"aA").to_string(), r#"  c"aA"  "#.trim());
+    assert_eq!(Literal::c_string(c"\t").to_string(), r#"  c"\t"  "#.trim());
+    assert_eq!(Literal::c_string(c"❤").to_string(), r#"  c"\xe2\x9d\xa4"  "#.trim());
+    assert_eq!(Literal::c_string(c"\'").to_string(), r#"  c"\'"  "#.trim());
+    assert_eq!(Literal::c_string(c"\"").to_string(), r#"  c"\""  "#.trim());
+    assert_eq!(Literal::c_string(c"\x7f\xff\xfe\u{333}").to_string(), r#"  c"\x7f\xff\xfe\xcc\xb3"  "#.trim());
+
+    assert_eq!(Literal::character('a').to_string(), r#"  'a'  "#.trim());
+    assert_eq!(Literal::character('\t').to_string(), r#"  '\t'  "#.trim());
+    assert_eq!(Literal::character('❤').to_string(), r#"  '❤'  "#.trim());
+    assert_eq!(Literal::character('\'').to_string(), r#"  '\''  "#.trim());
+    assert_eq!(Literal::character('"').to_string(), r#"  '"'  "#.trim());
+    assert_eq!(Literal::character('\0').to_string(), r#"  '\0'  "#.trim());
+    assert_eq!(Literal::character('\u{1}').to_string(), r#"  '\u{1}'  "#.trim());
+
+    assert_eq!(Literal::byte_character(b'a').to_string(), r#"  b'a'  "#.trim());
+    assert_eq!(Literal::byte_character(b'\t').to_string(), r#"  b'\t'  "#.trim());
+    assert_eq!(Literal::byte_character(b'\'').to_string(), r#"  b'\''  "#.trim());
+    assert_eq!(Literal::byte_character(b'"').to_string(), r#"  b'\"'  "#.trim());
+    assert_eq!(Literal::byte_character(0).to_string(), r#"  b'\x00'  "#.trim());
+    assert_eq!(Literal::byte_character(1).to_string(), r#"  b'\x01'  "#.trim());
 }
 
 fn test_parse_literal() {
