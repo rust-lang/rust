@@ -115,3 +115,17 @@ fn handle_failed_output(cmd: &str, output: Output, caller_line_number: u32) -> !
     eprintln!("=== STDERR ===\n{}\n\n", String::from_utf8(output.stderr).unwrap());
     std::process::exit(1)
 }
+
+/// Set the runtime library path as needed for running the host rustc/rustdoc/etc.
+pub fn set_host_rpath(cmd: &mut Command) {
+    let ld_lib_path_envvar = env::var("LD_LIB_PATH_ENVVAR").unwrap();
+    cmd.env(&ld_lib_path_envvar, {
+        let mut paths = vec![];
+        paths.push(PathBuf::from(env::var("TMPDIR").unwrap()));
+        paths.push(PathBuf::from(env::var("HOST_RPATH_DIR").unwrap()));
+        for p in env::split_paths(&env::var(&ld_lib_path_envvar).unwrap()) {
+            paths.push(p.to_path_buf());
+        }
+        env::join_paths(paths.iter()).unwrap()
+    });
+}

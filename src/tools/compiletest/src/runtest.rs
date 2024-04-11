@@ -3785,6 +3785,11 @@ impl<'test> TestCx<'test> {
         debug!(?support_lib_deps);
         debug!(?support_lib_deps_deps);
 
+        let mut host_dylib_env_paths = String::new();
+        host_dylib_env_paths.push_str(&cwd.join(&self.config.compile_lib_path).to_string_lossy());
+        host_dylib_env_paths.push(':');
+        host_dylib_env_paths.push_str(&env::var(dylib_env_var()).unwrap());
+
         let mut cmd = Command::new(&self.config.rustc_path);
         cmd.arg("-o")
             .arg(&recipe_bin)
@@ -3801,6 +3806,7 @@ impl<'test> TestCx<'test> {
             .env("RUSTC", cwd.join(&self.config.rustc_path))
             .env("TMPDIR", &tmpdir)
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
+            .env(dylib_env_var(), &host_dylib_env_paths)
             .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
             .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
             .env("LLVM_COMPONENTS", &self.config.llvm_components)

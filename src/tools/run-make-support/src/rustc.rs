@@ -3,7 +3,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::{Command, Output};
 
-use crate::{handle_failed_output, tmp_dir};
+use crate::{handle_failed_output, set_host_rpath, tmp_dir};
 
 /// Construct a new `rustc` invocation.
 pub fn rustc() -> Rustc {
@@ -24,6 +24,7 @@ pub struct Rustc {
 fn setup_common() -> Command {
     let rustc = env::var("RUSTC").unwrap();
     let mut cmd = Command::new(rustc);
+    set_host_rpath(&mut cmd);
     cmd.arg("--out-dir").arg(tmp_dir()).arg("-L").arg(tmp_dir());
     cmd
 }
