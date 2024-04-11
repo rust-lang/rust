@@ -56,7 +56,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::{Map, Visitor};
 use rustc_hir::{HirIdMap, Node};
 use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
@@ -436,6 +436,28 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
     diag.emit()
 }
 
+pub fn lookup_method_for_diagnostic<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (def_id, hir_id): (LocalDefId, hir::HirId),
+) -> Option<DefId> {
+    let root_ctxt = TypeckRootCtxt::new(tcx, def_id);
+    let param_env = tcx.param_env(def_id);
+    let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, def_id);
+    let hir::Node::Expr(expr) = tcx.hir().hir_node(hir_id) else {
+        return None;
+    };
+    let hir::ExprKind::MethodCall(segment, rcvr, _, _) = expr.kind else {
+        return None;
+    };
+    let tables = tcx.typeck(def_id);
+    // The found `Self` type of the method call.
+    let possible_rcvr_ty = tables.node_type_opt(rcvr.hir_id)?;
+    fn_ctxt
+        .lookup_method_for_diagnostic(possible_rcvr_ty, segment, expr.span, expr, rcvr)
+        .ok()
+        .map(|method| method.def_id)
+}
+
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
     *providers = Providers {
@@ -443,6 +465,7 @@ pub fn provide(providers: &mut Providers) {
         diagnostic_only_typeck,
         has_typeck_results,
         used_trait_imports,
+        lookup_method_for_diagnostic: lookup_method_for_diagnostic,
         ..*providers
     };
 }

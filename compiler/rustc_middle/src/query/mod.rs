@@ -983,6 +983,9 @@ rustc_queries! {
     query diagnostic_only_typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
         desc { |tcx| "type-checking `{}`", tcx.def_path_str(key) }
     }
+    query lookup_method_for_diagnostic((def_id, hir_id): (LocalDefId, hir::HirId)) -> Option<DefId> {
+        desc { |tcx| "lookup_method_for_diagnostics `{}`", tcx.def_path_str(def_id) }
+    }
 
     query used_trait_imports(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
         desc { |tcx| "finding used_trait_imports `{}`", tcx.def_path_str(key) }
