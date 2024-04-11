@@ -5580,7 +5580,6 @@ dependencies = [
 name = "tidy"
 version = "0.1.0"
 dependencies = [
- "cargo-platform",
  "cargo_metadata 0.15.4",
  "ignore",
  "lazy_static",
