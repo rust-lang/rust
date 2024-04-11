@@ -10,12 +10,6 @@ pushd rust
 
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
-# FIXME remove this workaround once ICE tests no longer emit an outdated nightly message
-for test in $(rg -i --files-with-matches "//@(\[.*\])? failure-status: 101" tests/ui); do
-  echo "rm $test"
-  rm $test
-done
-
 rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
 for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}); do
   rm $test
