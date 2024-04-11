@@ -1,6 +1,7 @@
 use rustc_ast::ast;
-use rustc_errors::codes::*;
+use rustc_errors::{codes::*, IntoDiagArg};
 use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_session::errors::FeatureGateSubdiagnostic;
 use rustc_session::Limit;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
 use rustc_span::{Span, Symbol};
@@ -439,4 +440,39 @@ pub struct ExpectedParenOrBrace<'a> {
 pub(crate) struct EmptyDelegationList {
     #[primary_span]
     pub span: Span,
+}
+
+pub enum StatementOrExpression {
+    Statement,
+    Expression,
+}
+
+impl IntoDiagArg for StatementOrExpression {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+        let s = match self {
+            StatementOrExpression::Statement => "statement",
+            StatementOrExpression::Expression => "expression",
+        };
+
+        rustc_errors::DiagArgValue::Str(s.into())
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_custom_attribute_cannot_be_applied, code = E0658)]
+pub struct CustomAttributesForbidden {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub subdiag: FeatureGateSubdiagnostic,
+    pub kind: StatementOrExpression,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_non_inline_module_in_proc_macro_unstable, code = E0658)]
+pub struct NonInlineModuleInProcMacroUnstable {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub subdiag: FeatureGateSubdiagnostic,
 }

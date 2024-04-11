@@ -27,6 +27,12 @@ expand_collapse_debuginfo_illegal =
 expand_count_repetition_misplaced =
     `count` can not be placed inside the inner-most repetition
 
+expand_custom_attribute_cannot_be_applied =
+    custom attributes cannot be applied to {$kind ->
+        [statement] statements
+        *[expression] expressions
+    }
+
 expand_custom_attribute_panicked =
     custom attribute panicked
     .help = message: {$message}
@@ -117,6 +123,9 @@ expand_module_multiple_candidates =
 
 expand_must_repeat_once =
     this must repeat at least once
+
+expand_non_inline_module_in_proc_macro_unstable =
+    non-inline modules in proc macro input are unstable
 
 expand_not_a_meta_item =
     not a meta item
