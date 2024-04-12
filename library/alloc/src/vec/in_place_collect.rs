@@ -259,7 +259,8 @@ where
             inner.cap,
             inner.buf.cast::<T>(),
             inner.end as *const T,
-            inner.cap * mem::size_of::<I::Src>() / mem::size_of::<T>(),
+            // SAFETY: the multiplication can not overflow, since `inner.cap * size_of::<I::SRC>()` is the size of the allocation.
+            inner.cap.unchecked_mul(mem::size_of::<I::Src>()) / mem::size_of::<T>(),
         )
     };
 
@@ -373,8 +374,10 @@ where
         // - unlike most internal iteration methods, it only takes a &mut self
         // - it lets us thread the write pointer through its innards and get it back in the end
         let sink = InPlaceDrop { inner: dst_buf, dst: dst_buf };
-        let sink =
-            self.try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(end)).unwrap();
+        let sink = match self.try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(end)) {
+            Ok(sink) => sink,
+            Err(never) => match never {},
+        };
         // iteration succeeded, don't drop head
         unsafe { ManuallyDrop::new(sink).dst.sub_ptr(dst_buf) }
     }
