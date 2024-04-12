@@ -1716,24 +1716,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `mut iter => { ... }`
         let iter_arm = self.arm(iter_pat, loop_expr);
 
-        let into_iter_expr = match loop_kind {
+        let match_expr = match loop_kind {
             ForLoopKind::For => {
                 // `::std::iter::IntoIterator::into_iter(<head>)`
-                self.expr_call_lang_item_fn(
+                let into_iter_expr = self.expr_call_lang_item_fn(
                     head_span,
                     hir::LangItem::IntoIterIntoIter,
                     arena_vec![self; head],
-                )
-            }
-            // ` unsafe { Pin::new_unchecked(&mut into_async_iter(<head>)) }`
-            ForLoopKind::ForAwait => {
-                // `::core::async_iter::IntoAsyncIterator::into_async_iter(<head>)`
-                let iter = self.expr_call_lang_item_fn(
-                    head_span,
-                    hir::LangItem::IntoAsyncIterIntoIter,
-                    arena_vec![self; head],
                 );
-                let iter = self.expr_mut_addr_of(head_span, iter);
+
+                self.arena.alloc(self.expr_match(
+                    for_span,
+                    into_iter_expr,
+                    arena_vec![self; iter_arm],
+                    hir::MatchSource::ForLoopDesugar,
+                ))
+            }
+            // `match into_async_iter(<head>) { ref mut iter => match unsafe { Pin::new_unchecked(iter) } { ... } }`
+            ForLoopKind::ForAwait => {
+                let iter_ident = iter;
+                let (async_iter_pat, async_iter_pat_id) =
+                    self.pat_ident_binding_mode(head_span, iter_ident, hir::BindingMode::REF_MUT);
+                let iter = self.expr_ident_mut(head_span, iter_ident, async_iter_pat_id);
                 // `Pin::new_unchecked(...)`
                 let iter = self.arena.alloc(self.expr_call_lang_item_fn_mut(
                     head_span,
@@ -1742,16 +1746,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ));
                 // `unsafe { ... }`
                 let iter = self.arena.alloc(self.expr_unsafe(iter));
-                iter
+                let inner_match_expr = self.arena.alloc(self.expr_match(
+                    for_span,
+                    iter,
+                    arena_vec![self; iter_arm],
+                    hir::MatchSource::ForLoopDesugar,
+                ));
+
+                // `::core::async_iter::IntoAsyncIterator::into_async_iter(<head>)`
+                let iter = self.expr_call_lang_item_fn(
+                    head_span,
+                    hir::LangItem::IntoAsyncIterIntoIter,
+                    arena_vec![self; head],
+                );
+                let iter_arm = self.arm(async_iter_pat, inner_match_expr);
+                self.arena.alloc(self.expr_match(
+                    for_span,
+                    iter,
+                    arena_vec![self; iter_arm],
+                    hir::MatchSource::ForLoopDesugar,
+                ))
             }
         };
-
-        let match_expr = self.arena.alloc(self.expr_match(
-            for_span,
-            into_iter_expr,
-            arena_vec![self; iter_arm],
-            hir::MatchSource::ForLoopDesugar,
-        ));
 
         // This is effectively `{ let _result = ...; _result }`.
         // The construct was introduced in #21984 and is necessary to make sure that
