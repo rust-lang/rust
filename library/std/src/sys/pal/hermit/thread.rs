@@ -2,7 +2,7 @@
 
 use super::abi;
 use super::thread_local_dtor::run_dtors;
-use crate::ffi::{CStr, CString};
+use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
 use crate::num::NonZero;
@@ -69,10 +69,6 @@ impl Thread {
     #[inline]
     pub fn set_name(_name: &CStr) {
         // nope
-    }
-
-    pub fn get_name() -> Option<CString> {
-        None
     }
 
     #[inline]
