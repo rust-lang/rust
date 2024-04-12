@@ -771,7 +771,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
     }
 }
 
-#[derive(Debug, Copy, Clone, HashStable)]
+#[derive(Debug, Copy, Clone, HashStable, TypeFoldable, TypeVisitable)]
 pub enum UpvarArgs<'tcx> {
     Closure(GenericArgsRef<'tcx>),
     Coroutine(GenericArgsRef<'tcx>),
