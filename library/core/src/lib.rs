@@ -111,6 +111,7 @@
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![feature(array_ptr_get)]
+#![feature(asm_experimental_arch)]
 #![feature(char_indices_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]
