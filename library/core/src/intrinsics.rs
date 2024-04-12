@@ -2786,6 +2786,7 @@ pub unsafe fn vtable_align(_ptr: *const ()) -> usize {
 /// change the possible layouts of pointers.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[cfg(not(bootstrap))]
