@@ -171,7 +171,7 @@ fn configure_and_expand(
         if cfg!(windows) {
             old_path = env::var_os("PATH").unwrap_or(old_path);
             let mut new_path = Vec::from_iter(
-                sess.host_filesearch(PathKind::All).search_path_dirs().map(|p| p.to_owned()),
+                sess.host_filesearch(PathKind::All).search_paths().map(|p| p.dir.clone()),
             );
             for path in env::split_paths(&old_path) {
                 if !new_path.contains(&path) {

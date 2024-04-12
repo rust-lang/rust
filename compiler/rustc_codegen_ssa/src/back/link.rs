@@ -42,7 +42,6 @@ use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
 use itertools::Itertools;
-use std::cell::OnceCell;
 use std::collections::BTreeSet;
 use std::ffi::{OsStr, OsString};
 use std::fs::{read, File, OpenOptions};
@@ -51,20 +50,6 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
-
-#[derive(Default)]
-pub struct SearchPaths(OnceCell<Vec<PathBuf>>);
-
-impl SearchPaths {
-    pub(super) fn get(&self, sess: &Session) -> impl Iterator<Item = &Path> {
-        let native_search_paths = || {
-            Vec::from_iter(
-                sess.target_filesearch(PathKind::Native).search_path_dirs().map(|p| p.to_owned()),
-            )
-        };
-        self.0.get_or_init(native_search_paths).iter().map(|p| &**p)
-    }
-}
 
 pub fn ensure_removed(dcx: &DiagCtxt, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -381,24 +366,21 @@ fn link_rlib<'a>(
     // feature then we'll need to figure out how to record what objects were
     // loaded from the libraries found here and then encode that into the
     // metadata of the rlib we're generating somehow.
-    let search_paths = SearchPaths::default();
     for lib in codegen_results.crate_info.used_libraries.iter() {
         let NativeLibKind::Static { bundle: None | Some(true), .. } = lib.kind else {
             continue;
         };
-        let search_paths = search_paths.get(sess);
         if flavor == RlibFlavor::Normal
             && let Some(filename) = lib.filename
         {
-            let path = find_native_static_library(filename.as_str(), true, search_paths, sess);
+            let path = find_native_static_library(filename.as_str(), true, sess);
             let src = read(path)
                 .map_err(|e| sess.dcx().emit_fatal(errors::ReadFileError { message: e }))?;
             let (data, _) = create_wrapper_file(sess, ".bundled_lib".to_string(), &src);
             let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
             packed_bundled_libs.push(wrapper_file);
         } else {
-            let path =
-                find_native_static_library(lib.name.as_str(), lib.verbatim, search_paths, sess);
+            let path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
             ab.add_archive(&path, Box::new(|_| false)).unwrap_or_else(|error| {
                 sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: path, error })
             });
@@ -2497,7 +2479,6 @@ fn add_native_libs_from_crate(
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
     tmpdir: &Path,
-    search_paths: &SearchPaths,
     bundled_libs: &FxIndexSet<Symbol>,
     cnum: CrateNum,
     link_static: bool,
@@ -2560,7 +2541,7 @@ fn add_native_libs_from_crate(
                             cmd.link_staticlib_by_path(&path, whole_archive);
                         }
                     } else {
-                        cmd.link_staticlib_by_name(name, verbatim, whole_archive, search_paths);
+                        cmd.link_staticlib_by_name(name, verbatim, whole_archive);
                     }
                 }
             }
@@ -2574,7 +2555,7 @@ fn add_native_libs_from_crate(
                 // link kind is unspecified.
                 if !link_output_kind.can_link_dylib() && !sess.target.crt_static_allows_dylibs {
                     if link_static {
-                        cmd.link_staticlib_by_name(name, verbatim, false, search_paths);
+                        cmd.link_staticlib_by_name(name, verbatim, false);
                     }
                 } else {
                     if link_dynamic {
@@ -2621,7 +2602,6 @@ fn add_local_native_libraries(
         }
     }
 
-    let search_paths = SearchPaths::default();
     // All static and dynamic native library dependencies are linked to the local crate.
     let link_static = true;
     let link_dynamic = true;
@@ -2631,7 +2611,6 @@ fn add_local_native_libraries(
         archive_builder_builder,
         codegen_results,
         tmpdir,
-        &search_paths,
         &Default::default(),
         LOCAL_CRATE,
         link_static,
@@ -2663,7 +2642,6 @@ fn add_upstream_rust_crates<'a>(
         .find(|(ty, _)| *ty == crate_type)
         .expect("failed to find crate type in dependency format list");
 
-    let search_paths = SearchPaths::default();
     for &cnum in &codegen_results.crate_info.used_crates {
         // We may not pass all crates through to the linker. Some crates may appear statically in
         // an existing dylib, meaning we'll pick up all the symbols from the dylib.
@@ -2720,7 +2698,6 @@ fn add_upstream_rust_crates<'a>(
             archive_builder_builder,
             codegen_results,
             tmpdir,
-            &search_paths,
             &bundled_libs,
             cnum,
             link_static,
@@ -2738,7 +2715,6 @@ fn add_upstream_native_libraries(
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
 ) {
-    let search_paths = SearchPaths::default();
     for &cnum in &codegen_results.crate_info.used_crates {
         // Static libraries are not linked here, they are linked in `add_upstream_rust_crates`.
         // FIXME: Merge this function to `add_upstream_rust_crates` so that all native libraries
@@ -2760,7 +2736,6 @@ fn add_upstream_native_libraries(
             archive_builder_builder,
             codegen_results,
             tmpdir,
-            &search_paths,
             &Default::default(),
             cnum,
             link_static,
