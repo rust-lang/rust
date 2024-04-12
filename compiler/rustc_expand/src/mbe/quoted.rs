@@ -92,6 +92,12 @@ pub(super) fn parse(
                                                 token::NonterminalKind::Ident
                                             },
                                         );
+                                    if kind == token::NonterminalKind::Expr2021
+                                        && !features.expr_fragment_specifier_2024
+                                    {
+                                        sess.dcx()
+                                            .emit_err(errors::Expr2021IsExperimental { span });
+                                    }
                                     result.push(TokenTree::MetaVarDecl(span, ident, Some(kind)));
                                     continue;
                                 }

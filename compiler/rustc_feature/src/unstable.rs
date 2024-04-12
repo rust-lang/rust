@@ -458,6 +458,8 @@ declare_features! (
     (unstable, exhaustive_patterns, "1.13.0", Some(51085)),
     /// Allows explicit tail calls via `become` expression.
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
+    /// Uses 2024 rules for matching `expr` fragments in macros. Also enables `expr_2021` fragment.
+    (incomplete, expr_fragment_specifier_2024, "CURRENT_RUSTC_VERSION", Some(123742)),
     /// Allows using `efiapi`, `sysv64` and `win64` as calling convention
     /// for functions with varargs.
     (unstable, extended_varargs_abi_support, "1.65.0", Some(100189)),

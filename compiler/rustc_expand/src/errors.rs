@@ -433,3 +433,10 @@ pub struct ExpectedParenOrBrace<'a> {
     pub span: Span,
     pub token: Cow<'a, str>,
 }
+
+#[derive(Diagnostic)]
+#[diag(expand_expr_2021_is_experimental)]
+pub struct Expr2021IsExperimental {
+    #[primary_span]
+    pub span: Span,
+}
