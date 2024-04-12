@@ -448,6 +448,28 @@ impl LinkerFlavor {
             | LinkerFlavor::Ptx => false,
         }
     }
+
+    /// For flavors with an `Lld` component, ensure it's enabled. Otherwise, returns the given
+    /// flavor unmodified.
+    pub fn with_lld_enabled(self) -> LinkerFlavor {
+        match self {
+            LinkerFlavor::Gnu(cc, Lld::No) => LinkerFlavor::Gnu(cc, Lld::Yes),
+            LinkerFlavor::Darwin(cc, Lld::No) => LinkerFlavor::Darwin(cc, Lld::Yes),
+            LinkerFlavor::Msvc(Lld::No) => LinkerFlavor::Msvc(Lld::Yes),
+            _ => self,
+        }
+    }
+
+    /// For flavors with an `Lld` component, ensure it's disabled. Otherwise, returns the given
+    /// flavor unmodified.
+    pub fn with_lld_disabled(self) -> LinkerFlavor {
+        match self {
+            LinkerFlavor::Gnu(cc, Lld::Yes) => LinkerFlavor::Gnu(cc, Lld::No),
+            LinkerFlavor::Darwin(cc, Lld::Yes) => LinkerFlavor::Darwin(cc, Lld::No),
+            LinkerFlavor::Msvc(Lld::Yes) => LinkerFlavor::Msvc(Lld::No),
+            _ => self,
+        }
+    }
 }
 
 macro_rules! linker_flavor_cli_impls {

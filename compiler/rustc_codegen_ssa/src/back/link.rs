@@ -11,6 +11,7 @@ use rustc_metadata::fs::{copy_to_stdout, emit_wrapper_file, METADATA_FILENAME};
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
+use rustc_session::config::LinkerFeaturesCli;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, OutFileName, Strip};
 use rustc_session::config::{OutputFilenames, OutputType, PrintKind, SplitDwarfKind};
 use rustc_session::cstore::DllImport;
@@ -22,10 +23,10 @@ use rustc_session::utils::NativeLibKind;
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
-use rustc_target::spec::LinkSelfContainedComponents;
 use rustc_target::spec::LinkSelfContainedDefault;
 use rustc_target::spec::LinkerFlavorCli;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld, PanicStrategy};
+use rustc_target::spec::{LinkSelfContainedComponents, LinkerFeatures};
 use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo};
 
 use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
@@ -1333,7 +1334,9 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
         sess: &Session,
         linker: Option<PathBuf>,
         flavor: Option<LinkerFlavor>,
+        features: LinkerFeaturesCli,
     ) -> Option<(PathBuf, LinkerFlavor)> {
+        let flavor = flavor.map(|flavor| adjust_flavor_to_features(flavor, features));
         match (linker, flavor) {
             (Some(linker), Some(flavor)) => Some((linker, flavor)),
             // only the linker flavor is known; use the default linker for the selected flavor
@@ -1381,11 +1384,32 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     sess.dcx().emit_fatal(errors::LinkerFileStem);
                 });
                 let flavor = sess.target.linker_flavor.with_linker_hints(stem);
+                let flavor = adjust_flavor_to_features(flavor, features);
                 Some((linker, flavor))
             }
             (None, None) => None,
         }
     }
+
+    // While linker flavors and linker features are isomorphic (and thus targets don't need to
+    // define features separately), we use the flavor as the root piece of data and have the
+    // linker-features CLI flag influence *that*, so that downstream code does not have to check for
+    // both yet.
+    fn adjust_flavor_to_features(
+        flavor: LinkerFlavor,
+        features: LinkerFeaturesCli,
+    ) -> LinkerFlavor {
+        // Note: a linker feature cannot be both enabled and disabled on the CLI.
+        if features.enabled.contains(LinkerFeatures::LLD) {
+            flavor.with_lld_enabled()
+        } else if features.disabled.contains(LinkerFeatures::LLD) {
+            flavor.with_lld_disabled()
+        } else {
+            flavor
+        }
+    }
+
+    let features = sess.opts.unstable_opts.linker_features;
 
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies
@@ -1400,7 +1424,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
             .linker_flavor
             .map(|flavor| sess.target.linker_flavor.with_cli_hints(flavor)),
     };
-    if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor) {
+    if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor, features) {
         return ret;
     }
 
@@ -1408,6 +1432,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
         sess,
         sess.target.linker.as_deref().map(PathBuf::from),
         Some(sess.target.linker_flavor),
+        features,
     ) {
         return ret;
     }
