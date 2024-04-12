@@ -48,6 +48,7 @@ pub(super) fn infer_predicates(
                         // requirements for adt_def.
                         let field_ty = tcx.type_of(field_def.did).instantiate_identity();
                         let field_span = tcx.def_span(field_def.did);
+                        let is_self_referential = is_self_referential(field_ty, adt_def);
                         insert_required_predicates_to_be_wf(
                             tcx,
                             field_ty,
@@ -55,6 +56,7 @@ pub(super) fn infer_predicates(
                             &global_inferred_outlives,
                             &mut item_required_predicates,
                             &mut explicit_map,
+                            is_self_referential,
                         );
                     }
                 }
@@ -67,6 +69,7 @@ pub(super) fn infer_predicates(
                         &global_inferred_outlives,
                         &mut item_required_predicates,
                         &mut explicit_map,
+                        IsSelfReferential::No,
                     );
                 }
 
@@ -104,6 +107,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
     global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<RequiredPredicates<'tcx>>>,
     required_predicates: &mut RequiredPredicates<'tcx>,
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
+    is_self_referential: IsSelfReferential,
 ) {
     for arg in ty.walk() {
         let leaf_ty = match arg.unpack() {
@@ -133,6 +137,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                     args,
                     global_inferred_outlives,
                     required_predicates,
+                    is_self_referential,
                 );
                 check_explicit_predicates(
                     tcx,
@@ -154,6 +159,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                     alias.args,
                     global_inferred_outlives,
                     required_predicates,
+                    is_self_referential,
                 );
                 check_explicit_predicates(
                     tcx,
@@ -324,6 +330,7 @@ fn check_inferred_predicates<'tcx>(
     args: ty::GenericArgsRef<'tcx>,
     global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<RequiredPredicates<'tcx>>>,
     required_predicates: &mut RequiredPredicates<'tcx>,
+    is_self_referential: IsSelfReferential,
 ) {
     // Load the current set of inferred and explicit predicates from `global_inferred_outlives`
     // and filter the ones that are `TypeOutlives`.
@@ -335,8 +342,13 @@ fn check_inferred_predicates<'tcx>(
     for (&predicate, &span) in predicates.as_ref().skip_binder() {
         // `predicate` is `U: 'b` in the example above.
         // So apply the instantiation to get `T: 'a`.
-        let ty::OutlivesPredicate(arg, region) =
-            predicates.rebind(predicate).instantiate(tcx, args);
+        let ty::OutlivesPredicate(arg, region) = if is_self_referential.into() {
+            // However, for self referential ADTs, we don't instantiate
+            // to avoid issues like #118163
+            predicate
+        } else {
+            predicates.rebind(predicate).instantiate(tcx, args)
+        };
         insert_outlives_predicate(tcx, arg, region, span, required_predicates);
     }
 }

@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
-use rustc_middle::ty::{self, Region, Ty, TyCtxt};
+use rustc_middle::ty::{self, Adt, AdtDef, Ref, Region, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::Span;
 use smallvec::smallvec;
@@ -181,4 +181,42 @@ fn is_free_region(region: Region<'_>) -> bool {
             bug!("unexpected region in outlives inference: {:?}", region);
         }
     }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum IsSelfReferential {
+    Yes,
+    No,
+}
+
+impl From<bool> for IsSelfReferential {
+    fn from(value: bool) -> Self {
+        match value {
+            true => IsSelfReferential::Yes,
+            false => IsSelfReferential::No,
+        }
+    }
+}
+
+impl From<IsSelfReferential> for bool {
+    fn from(value: IsSelfReferential) -> Self {
+        match value {
+            IsSelfReferential::Yes => true,
+            IsSelfReferential::No => false,
+        }
+    }
+}
+
+// Check if an ADT's field is a reference to the ADT itself.
+// Example: `struct Recurse<'a, T>(T, &'a Recurse<'a, T>)`
+// will return true
+pub(crate) fn is_self_referential(field_ty: Ty<'_>, adt_def: AdtDef<'_>) -> IsSelfReferential {
+    if let Ref(_, ref_ty, _) = field_ty.kind()
+        && let Adt(field_ty_adt, _) = ref_ty.kind()
+    {
+        field_ty_adt.did() == adt_def.did()
+    } else {
+        false
+    }
+    .into()
 }
