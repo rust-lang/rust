@@ -1287,12 +1287,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::TraitRef::new(self.tcx, into_def_id, [expr_ty, expected_ty]),
             ))
         {
-            let mut span = expr.span;
-            while expr.span.eq_ctxt(span)
-                && let Some(parent_callsite) = span.parent_callsite()
-            {
-                span = parent_callsite;
-            }
+            let span = expr.span.find_oldest_ancestor_in_same_ctxt();
 
             let mut sugg = if expr.precedence().order() >= PREC_POSTFIX {
                 vec![(span.shrink_to_hi(), ".into()".to_owned())]
@@ -1897,12 +1892,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => sugg.to_string(),
         };
 
-        err.span_suggestion_verbose(
-            expr.span.shrink_to_hi(),
-            msg,
-            sugg,
-            Applicability::HasPlaceholders,
-        );
+        let span = expr.span.find_oldest_ancestor_in_same_ctxt();
+        err.span_suggestion_verbose(span.shrink_to_hi(), msg, sugg, Applicability::HasPlaceholders);
         return true;
     }
 
