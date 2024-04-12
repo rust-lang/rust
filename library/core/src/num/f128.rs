@@ -19,8 +19,90 @@ pub mod consts {}
 
 #[cfg(not(test))]
 impl f128 {
-    // FIXME(f16_f128): almost everything in this `impl` is missing examples and a const
+    // FIXME(f16_f128): almost all methods in this `impl` are missing examples and a const
     // implementation. Add these once we can run code on all platforms and have f16/f128 in CTFE.
+
+    /// The radix or base of the internal representation of `f128`.
+    #[unstable(feature = "f128", issue = "116909")]
+    pub const RADIX: u32 = 2;
+
+    /// Number of significant digits in base 2.
+    #[unstable(feature = "f128", issue = "116909")]
+    pub const MANTISSA_DIGITS: u32 = 113;
+
+    /// Approximate number of significant digits in base 10.
+    ///
+    /// This is the maximum <i>x</i> such that any decimal number with <i>x</i>
+    /// significant digits can be converted to `f128` and back without loss.
+    ///
+    /// Equal to floor(log<sub>10</sub>&nbsp;2<sup>[`MANTISSA_DIGITS`]&nbsp;&minus;&nbsp;1</sup>).
+    ///
+    /// [`MANTISSA_DIGITS`]: f128::MANTISSA_DIGITS
+    #[unstable(feature = "f128", issue = "116909")]
+    pub const DIGITS: u32 = 33;
+
+    /// [Machine epsilon] value for `f128`.
+    ///
+    /// This is the difference between `1.0` and the next larger representable number.
+    ///
+    /// Equal to 2<sup>1&nbsp;&minus;&nbsp;[`MANTISSA_DIGITS`]</sup>.
+    ///
+    /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
+    /// [`MANTISSA_DIGITS`]: f128::MANTISSA_DIGITS
+    #[unstable(feature = "f128", issue = "116909")]
+    pub const EPSILON: f128 = 1.92592994438723585305597794258492731e-34_f128;
+
+    /// Smallest finite `f128` value.
+    ///
+    /// Equal to &minus;[`MAX`].
+    ///
+    /// [`MAX`]: f128::MAX
+    #[unstable(feature = "f128", issue = "116909")]
+    pub const MIN: f128 = -1.18973149535723176508575932662800701e+4932_f128;
+    /// Smallest positive normal `f128` value.
+    ///
+    /// Equal to 2<sup>[`MIN_EXP`]&nbsp;&minus;&nbsp;1</sup>.
+    ///
+    /// [`MIN_EXP`]: f128::MIN_EXP
+    #[unstable(feature = "f128", issue = "116909")]
+    pub const MIN_POSITIVE: f128 = 3.36210314311209350626267781732175260e-4932_f128;
+    /// Largest finite `f128` value.
+    ///
+    /// Equal to
+    /// (1&nbsp;&minus;&nbsp;2<sup>&minus;[`MANTISSA_DIGITS`]</sup>)&nbsp;2<sup>[`MAX_EXP`]</sup>.
+    ///
+    /// [`MANTISSA_DIGITS`]: f128::MANTISSA_DIGITS
+    /// [`MAX_EXP`]: f128::MAX_EXP
+    #[unstable(feature = "f128", issue = "116909")]
+    pub const MAX: f128 = 1.18973149535723176508575932662800701e+4932_f128;
+
+    /// One greater than the minimum possible normal power of 2 exponent.
+    ///
+    /// If <i>x</i>&nbsp;=&nbsp;`MIN_EXP`, then normal numbers
+    /// ≥&nbsp;0.5&nbsp;×&nbsp;2<sup><i>x</i></sup>.
+    #[unstable(feature = "f128", issue = "116909")]
+    pub const MIN_EXP: i32 = -16_381;
+    /// Maximum possible power of 2 exponent.
+    ///
+    /// If <i>x</i>&nbsp;=&nbsp;`MAX_EXP`, then normal numbers
+    /// &lt;&nbsp;1&nbsp;×&nbsp;2<sup><i>x</i></sup>.
+    #[unstable(feature = "f128", issue = "116909")]
+    pub const MAX_EXP: i32 = 16_384;
+
+    /// Minimum <i>x</i> for which 10<sup><i>x</i></sup> is normal.
+    ///
+    /// Equal to ceil(log<sub>10</sub>&nbsp;[`MIN_POSITIVE`]).
+    ///
+    /// [`MIN_POSITIVE`]: f128::MIN_POSITIVE
+    #[unstable(feature = "f128", issue = "116909")]
+    pub const MIN_10_EXP: i32 = -4_931;
+    /// Maximum <i>x</i> for which 10<sup><i>x</i></sup> is normal.
+    ///
+    /// Equal to floor(log<sub>10</sub>&nbsp;[`MAX`]).
+    ///
+    /// [`MAX`]: f128::MAX
+    #[unstable(feature = "f128", issue = "116909")]
+    pub const MAX_10_EXP: i32 = 4_932;
 
     /// Returns `true` if this value is NaN.
     #[inline]
