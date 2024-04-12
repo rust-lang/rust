@@ -382,11 +382,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (err, output_def_id)
                     }
                 };
-                if self.check_for_missing_semi(expr, &mut err)
-                    && let hir::Node::Expr(expr) = self.tcx.parent_hir_node(expr.hir_id)
-                    && let hir::ExprKind::Assign(..) = expr.kind
+
+                // Try to suggest a semicolon if it's `A \n *B` where `B` is a place expr
+                let maybe_missing_semi = self.check_for_missing_semi(expr, &mut err);
+
+                // We defer to the later error produced by `check_lhs_assignable`.
+                // We only downgrade this if it's the LHS, though.
+                if maybe_missing_semi
+                    && let hir::Node::Expr(parent) = self.tcx.parent_hir_node(expr.hir_id)
+                    && let hir::ExprKind::Assign(lhs, _, _) = parent.kind
+                    && lhs.hir_id == expr.hir_id
                 {
-                    // We defer to the later error produced by `check_lhs_assignable`.
                     err.downgrade_to_delayed_bug();
                 }
 
