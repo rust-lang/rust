@@ -603,17 +603,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(self.read_immediate(op)?.to_scalar())
     }
 
-    pub fn read_mem_place_meta(
-        &self,
-        op: &impl Readable<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
-        Ok(if op.layout().is_zst() {
-            MemPlaceMeta::None
-        } else {
-            MemPlaceMeta::Meta(self.read_scalar(op)?)
-        })
-    }
-
     // Pointer-sized reads are fairly common and need target layout access, so we wrap them in
     // convenience functions.
 
