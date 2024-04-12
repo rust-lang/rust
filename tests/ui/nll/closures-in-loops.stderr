@@ -4,10 +4,16 @@ error[E0382]: use of moved value: `x`
 LL | fn repreated_move(x: String) {
    |                   - move occurs because `x` has type `String`, which does not implement the `Copy` trait
 LL |     for i in 0..10 {
+   |     -------------- inside of this loop
 LL |         || x;
    |         ^^ - use occurs due to use in closure
    |         |
    |         value moved into closure here, in previous iteration of loop
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         || x.clone();
+   |             ++++++++
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/closures-in-loops.rs:13:16

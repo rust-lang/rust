@@ -203,13 +203,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 if !seen_spans.contains(&move_span) {
                     if !closure {
-                        self.suggest_ref_or_clone(
-                            mpi,
-                            move_span,
-                            &mut err,
-                            &mut in_pattern,
-                            move_spans,
-                        );
+                        self.suggest_ref_or_clone(mpi, &mut err, &mut in_pattern, move_spans);
                     }
 
                     let msg_opt = CapturedMessageOpt {
@@ -351,18 +345,28 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn suggest_ref_or_clone(
         &self,
         mpi: MovePathIndex,
-        move_span: Span,
         err: &mut Diag<'tcx>,
         in_pattern: &mut bool,
         move_spans: UseSpans<'_>,
     ) {
+        let move_span = match move_spans {
+            UseSpans::ClosureUse { capture_kind_span, .. } => capture_kind_span,
+            _ => move_spans.args_or_use(),
+        };
         struct ExpressionFinder<'hir> {
             expr_span: Span,
             expr: Option<&'hir hir::Expr<'hir>>,
             pat: Option<&'hir hir::Pat<'hir>>,
             parent_pat: Option<&'hir hir::Pat<'hir>>,
+            hir: rustc_middle::hir::map::Map<'hir>,
         }
         impl<'hir> Visitor<'hir> for ExpressionFinder<'hir> {
+            type NestedFilter = OnlyBodies;
+
+            fn nested_visit_map(&mut self) -> Self::Map {
+                self.hir
+            }
+
             fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
                 if e.span == self.expr_span {
                     self.expr = Some(e);
@@ -397,8 +401,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let expr = hir.body(body_id).value;
             let place = &self.move_data.move_paths[mpi].place;
             let span = place.as_local().map(|local| self.body.local_decls[local].source_info.span);
-            let mut finder =
-                ExpressionFinder { expr_span: move_span, expr: None, pat: None, parent_pat: None };
+            let mut finder = ExpressionFinder {
+                expr_span: move_span,
+                expr: None,
+                pat: None,
+                parent_pat: None,
+                hir,
+            };
             finder.visit_expr(expr);
             if let Some(span) = span
                 && let Some(expr) = finder.expr
@@ -479,12 +488,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if let UseSpans::ClosureUse {
                     closure_kind:
                         ClosureKind::Coroutine(CoroutineKind::Desugared(_, CoroutineSource::Block)),
-                    args_span: _,
-                    capture_kind_span: _,
-                    path_span,
+                    ..
                 } = move_spans
                 {
-                    self.suggest_cloning(err, ty, expr, path_span);
+                    self.suggest_cloning(err, ty, expr, None);
                 } else if self.suggest_hoisting_call_outside_loop(err, expr) {
                     // The place where the the type moves would be misleading to suggest clone.
                     // #121466
@@ -1233,6 +1240,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
+    fn in_move_closure(&self, expr: &hir::Expr<'_>) -> bool {
+        for (_, node) in self.infcx.tcx.hir().parent_iter(expr.hir_id) {
+            if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) = node
+                && let hir::CaptureBy::Value { .. } = closure.capture_clause
+            {
+                // `move || x.clone()` will not work. FIXME: suggest `let y = x.clone(); move || y`
+                return true;
+            }
+        }
+        false
+    }
+
     fn suggest_cloning_inner(
         &self,
         err: &mut Diag<'_>,
@@ -1243,6 +1262,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if let Some(_) = self.clone_on_reference(expr) {
             // Avoid redundant clone suggestion already suggested in `explain_captures`.
             // See `tests/ui/moves/needs-clone-through-deref.rs`
+            return false;
+        }
+        if self.in_move_closure(expr) {
             return false;
         }
         // Try to find predicates on *generic params* that would allow copying `ty`

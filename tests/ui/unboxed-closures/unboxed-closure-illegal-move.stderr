@@ -37,11 +37,6 @@ LL |         let f = to_fn(move || drop(x));
    |                       -------      ^ move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
    |                       |
    |                       captured by this `Fn` closure
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |         let f = to_fn(move || drop(x.clone()));
-   |                                     ++++++++
 
 error[E0507]: cannot move out of `x`, a captured variable in an `FnMut` closure
   --> $DIR/unboxed-closure-illegal-move.rs:32:40
@@ -52,11 +47,6 @@ LL |         let f = to_fn_mut(move || drop(x));
    |                           -------      ^ move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
    |                           |
    |                           captured by this `FnMut` closure
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |         let f = to_fn_mut(move || drop(x.clone()));
-   |                                         ++++++++
 
 error: aborting due to 4 previous errors
 
