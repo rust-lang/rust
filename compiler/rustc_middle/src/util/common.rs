@@ -21,21 +21,6 @@ pub fn to_readable_str(mut val: usize) -> String {
     groups.join("_")
 }
 
-pub struct Indenter {
-    _cannot_construct_outside_of_this_module: (),
-}
-
-impl Drop for Indenter {
-    fn drop(&mut self) {
-        debug!("<<");
-    }
-}
-
-pub fn indenter() -> Indenter {
-    debug!(">>");
-    Indenter { _cannot_construct_outside_of_this_module: () }
-}
-
 // const wrapper for `if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }`
 pub const fn c_name(name: &'static str) -> &'static str {
     // FIXME Simplify the implementation once more `str` methods get const-stable.
