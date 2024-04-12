@@ -2009,7 +2009,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     .push((id.owner_id.def_id.local_def_index, simplified_self_ty));
 
                 let trait_def = tcx.trait_def(trait_ref.def_id);
-                if let Some(mut an) = trait_def.ancestors(tcx, def_id).ok() {
+                if let Ok(mut an) = trait_def.ancestors(tcx, def_id) {
                     if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
                         self.tables.impl_parent.set_some(def_id.index, parent.into());
                     }
