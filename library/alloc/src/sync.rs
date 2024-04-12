@@ -2529,10 +2529,8 @@ impl<A: Allocator> Arc<dyn Any + Send + Sync, A> {
         T: Any + Send + Sync,
     {
         if (*self).is::<T>() {
-            unsafe {
-                let (ptr, alloc) = Arc::into_inner_with_allocator(self);
-                Ok(Arc::from_inner_in(ptr.cast(), alloc))
-            }
+            let (ptr, alloc) = Arc::into_inner_with_allocator(self);
+            unsafe { Ok(Arc::from_inner_in(ptr.cast(), alloc)) }
         } else {
             Err(self)
         }
@@ -2570,10 +2568,8 @@ impl<A: Allocator> Arc<dyn Any + Send + Sync, A> {
     where
         T: Any + Send + Sync,
     {
-        unsafe {
-            let (ptr, alloc) = Arc::into_inner_with_allocator(self);
-            Arc::from_inner_in(ptr.cast(), alloc)
-        }
+        let (ptr, alloc) = Arc::into_inner_with_allocator(self);
+        unsafe { Arc::from_inner_in(ptr.cast(), alloc) }
     }
 }
 

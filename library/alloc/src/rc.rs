@@ -366,6 +366,12 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     }
 
     #[inline]
+    fn into_inner_with_allocator(this: Self) -> (NonNull<RcBox<T>>, A) {
+        let this = mem::ManuallyDrop::new(this);
+        (this.ptr, unsafe { ptr::read(&this.alloc) })
+    }
+
+    #[inline]
     unsafe fn from_inner_in(ptr: NonNull<RcBox<T>>, alloc: A) -> Self {
         Self { ptr, phantom: PhantomData, alloc }
     }
@@ -1136,8 +1142,8 @@ impl<T, A: Allocator> Rc<mem::MaybeUninit<T>, A> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Rc<T, A> {
-        let (ptr, alloc) = Self::into_raw_with_allocator(self);
-        unsafe { Rc::from_raw_in(ptr.cast(), alloc) }
+        let (ptr, alloc) = Self::into_inner_with_allocator(self);
+        unsafe { Rc::from_inner_in(ptr.cast(), alloc) }
     }
 }
 
@@ -1177,8 +1183,8 @@ impl<T, A: Allocator> Rc<[mem::MaybeUninit<T>], A> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Rc<[T], A> {
-        let (ptr, alloc) = Self::into_raw_with_allocator(self);
-        unsafe { Rc::from_raw_in(ptr as *const [T], alloc) }
+        let (ptr, alloc) = Self::into_inner_with_allocator(self);
+        unsafe { Rc::from_ptr_in(ptr.as_ptr() as _, alloc) }
     }
 }
 
@@ -1892,11 +1898,8 @@ impl<A: Allocator> Rc<dyn Any, A> {
     #[stable(feature = "rc_downcast", since = "1.29.0")]
     pub fn downcast<T: Any>(self) -> Result<Rc<T, A>, Self> {
         if (*self).is::<T>() {
-            let this = mem::ManuallyDrop::new(self);
-            let ptr = this.ptr.cast::<RcBox<T>>();
-            // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
-            let alloc = unsafe { ptr::read(&this.alloc) };
-            unsafe { Ok(Rc::from_inner_in(ptr, alloc)) }
+            let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+            unsafe { Ok(Rc::from_inner_in(ptr.cast(), alloc)) }
         } else {
             Err(self)
         }
@@ -1931,11 +1934,8 @@ impl<A: Allocator> Rc<dyn Any, A> {
     #[inline]
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Rc<T, A> {
-        let this = mem::ManuallyDrop::new(self);
-        let ptr = this.ptr.cast::<RcBox<T>>();
-        // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
-        let alloc = unsafe { ptr::read(&this.alloc) };
-        unsafe { Rc::from_inner_in(ptr, alloc) }
+        let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+        unsafe { Rc::from_inner_in(ptr.cast(), alloc) }
     }
 }
 
@@ -2688,8 +2688,8 @@ impl<T, A: Allocator, const N: usize> TryFrom<Rc<[T], A>> for Rc<[T; N], A> {
 
     fn try_from(boxed_slice: Rc<[T], A>) -> Result<Self, Self::Error> {
         if boxed_slice.len() == N {
-            let (ptr, alloc) = Rc::into_raw_with_allocator(boxed_slice);
-            Ok(unsafe { Rc::from_raw_in(ptr as *mut [T; N], alloc) })
+            let (ptr, alloc) = Rc::into_inner_with_allocator(boxed_slice);
+            Ok(unsafe { Rc::from_inner_in(ptr.cast(), alloc) })
         } else {
             Err(boxed_slice)
         }
