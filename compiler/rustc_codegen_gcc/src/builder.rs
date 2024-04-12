@@ -902,7 +902,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let ty = self.cx.type_array(self.cx.type_i8(), size.bytes()).get_aligned(align.bytes());
         // TODO(antoyo): It might be better to return a LValue, but fixing the rustc API is non-trivial.
         self.stack_var_count.set(self.stack_var_count.get() + 1);
-        self.current_func().new_local(None, ty, &format!("stack_var_{}", self.stack_var_count.get())).get_address(None)
+        self.current_func()
+            .new_local(
+                self.location,
+                ty,
+                &format!("stack_var_{}", self.stack_var_count.get()),
+            )
+            .get_address(self.location)
     }
 
     fn dynamic_alloca(&mut self, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
