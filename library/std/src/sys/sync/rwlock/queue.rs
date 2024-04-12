@@ -202,7 +202,7 @@ impl Node {
     fn prepare(&mut self) {
         // Fall back to creating an unnamed `Thread` handle to allow locking in
         // TLS destructors.
-        self.thread.get_or_init(|| thread::try_current().unwrap_or_else(|| Thread::new(None)));
+        self.thread.get_or_init(|| thread::try_current().unwrap_or_else(Thread::new_unnamed));
         self.completed = AtomicBool::new(false);
     }
 
