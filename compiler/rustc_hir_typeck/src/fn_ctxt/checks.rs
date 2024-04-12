@@ -301,18 +301,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 formal_input_ty,
                 coerced_ty,
             );
-            let subtyping_error = match supertype_error {
-                Ok(InferOk { obligations, value: () }) => {
-                    self.register_predicates(obligations);
-                    None
-                }
-                Err(err) => Some(err),
-            };
 
             // If neither check failed, the types are compatible
-            match subtyping_error {
-                None => Compatibility::Compatible,
-                Some(_) => Compatibility::Incompatible(subtyping_error),
+            match supertype_error {
+                Ok(InferOk { obligations, value: () }) => {
+                    self.register_predicates(obligations);
+                    Compatibility::Compatible
+                }
+                Err(err) => Compatibility::Incompatible(Some(err)),
             }
         };
 
