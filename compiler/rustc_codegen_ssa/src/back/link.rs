@@ -2987,7 +2987,13 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
 
     match flavor {
         LinkerFlavor::Darwin(Cc::Yes, _) => {
-            cmd.args(&["-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
+            // Use `-isysroot` instead of `--sysroot`, as only the former
+            // makes Clang treat it as a platform SDK.
+            //
+            // This is admittedly a bit strange, as on most targets
+            // `-isysroot` only applies to include header files, but on Apple
+            // targets this also applies to libraries and frameworks.
+            cmd.args(&["-isysroot", &sdk_root]);
         }
         LinkerFlavor::Darwin(Cc::No, _) => {
             cmd.args(&["-syslibroot", &sdk_root]);
