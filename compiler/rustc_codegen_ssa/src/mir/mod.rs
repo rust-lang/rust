@@ -2,6 +2,7 @@ use crate::base;
 use crate::traits::*;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::UnwindTerminateReason;
@@ -288,6 +289,12 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let mut llarg_idx = fx.fn_abi.ret.is_indirect() as usize;
 
     let mut num_untupled = None;
+
+    let codegen_fn_attrs = bx.tcx().codegen_fn_attrs(fx.instance.def_id());
+    let naked = codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED);
+    if naked {
+        return vec![];
+    }
 
     let args = mir
         .args_iter()
