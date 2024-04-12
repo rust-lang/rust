@@ -56,8 +56,13 @@ use std::{env, fmt, fs, io, mem, str};
 pub struct SearchPaths(OnceCell<Vec<PathBuf>>);
 
 impl SearchPaths {
-    pub(super) fn get(&self, sess: &Session) -> &[PathBuf] {
-        self.0.get_or_init(|| archive_search_paths(sess))
+    pub(super) fn get(&self, sess: &Session) -> impl Iterator<Item = &Path> {
+        let native_search_paths = || {
+            Vec::from_iter(
+                sess.target_filesearch(PathKind::Native).search_path_dirs().map(|p| p.to_owned()),
+            )
+        };
+        self.0.get_or_init(native_search_paths).iter().map(|p| &**p)
     }
 }
 
@@ -310,8 +315,6 @@ fn link_rlib<'a>(
     flavor: RlibFlavor,
     tmpdir: &MaybeTempDir,
 ) -> Result<Box<dyn ArchiveBuilder + 'a>, ErrorGuaranteed> {
-    let lib_search_paths = archive_search_paths(sess);
-
     let mut ab = archive_builder_builder.new_archive_builder(sess);
 
     let trailing_metadata = match flavor {
@@ -378,26 +381,24 @@ fn link_rlib<'a>(
     // feature then we'll need to figure out how to record what objects were
     // loaded from the libraries found here and then encode that into the
     // metadata of the rlib we're generating somehow.
+    let search_paths = SearchPaths::default();
     for lib in codegen_results.crate_info.used_libraries.iter() {
         let NativeLibKind::Static { bundle: None | Some(true), .. } = lib.kind else {
             continue;
         };
+        let search_paths = search_paths.get(sess);
         if flavor == RlibFlavor::Normal
             && let Some(filename) = lib.filename
         {
-            let path = find_native_static_library(filename.as_str(), true, &lib_search_paths, sess);
+            let path = find_native_static_library(filename.as_str(), true, search_paths, sess);
             let src = read(path)
                 .map_err(|e| sess.dcx().emit_fatal(errors::ReadFileError { message: e }))?;
             let (data, _) = create_wrapper_file(sess, ".bundled_lib".to_string(), &src);
             let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
             packed_bundled_libs.push(wrapper_file);
         } else {
-            let path = find_native_static_library(
-                lib.name.as_str(),
-                lib.verbatim,
-                &lib_search_paths,
-                sess,
-            );
+            let path =
+                find_native_static_library(lib.name.as_str(), lib.verbatim, search_paths, sess);
             ab.add_archive(&path, Box::new(|_| false)).unwrap_or_else(|error| {
                 sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: path, error })
             });
@@ -1443,10 +1444,6 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> (bool, bool) {
         (SplitDebuginfo::Unpacked, SplitDwarfKind::Single) => (true, false),
         (SplitDebuginfo::Unpacked, SplitDwarfKind::Split) => (false, true),
     }
-}
-
-fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
-    sess.target_filesearch(PathKind::Native).search_path_dirs()
 }
 
 #[derive(PartialEq)]

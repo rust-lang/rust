@@ -17,12 +17,12 @@ use rustc_target::spec::abi::Abi;
 
 use crate::errors;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-pub fn find_native_static_library(
+pub fn find_native_static_library<'a>(
     name: &str,
     verbatim: bool,
-    search_paths: &[PathBuf],
+    search_paths: impl Iterator<Item = &'a Path>,
     sess: &Session,
 ) -> PathBuf {
     let formats = if verbatim {
@@ -60,7 +60,7 @@ fn find_bundled_library(
         && (sess.opts.unstable_opts.packed_bundled_libs || has_cfg || whole_archive == Some(true))
     {
         let verbatim = verbatim.unwrap_or(false);
-        let search_paths = &sess.target_filesearch(PathKind::Native).search_path_dirs();
+        let search_paths = sess.target_filesearch(PathKind::Native).search_path_dirs();
         return find_native_static_library(name.as_str(), verbatim, search_paths, sess)
             .file_name()
             .and_then(|s| s.to_str())
