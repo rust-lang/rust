@@ -860,10 +860,10 @@ pub trait Binary {
 /// Basic usage with `i32`:
 ///
 /// ```
-/// let x = 42; // 42 is '2a' in hex
+/// let y = 42; // 42 is '2a' in hex
 ///
-/// assert_eq!(format!("{x:x}"), "2a");
-/// assert_eq!(format!("{x:#x}"), "0x2a");
+/// assert_eq!(format!("{y:x}"), "2a");
+/// assert_eq!(format!("{y:#x}"), "0x2a");
 ///
 /// assert_eq!(format!("{:x}", -16), "fffffff0");
 /// ```
@@ -915,10 +915,10 @@ pub trait LowerHex {
 /// Basic usage with `i32`:
 ///
 /// ```
-/// let x = 42; // 42 is '2A' in hex
+/// let y = 42; // 42 is '2A' in hex
 ///
-/// assert_eq!(format!("{x:X}"), "2A");
-/// assert_eq!(format!("{x:#X}"), "0x2A");
+/// assert_eq!(format!("{y:X}"), "2A");
+/// assert_eq!(format!("{y:#X}"), "0x2A");
 ///
 /// assert_eq!(format!("{:X}", -16), "FFFFFFF0");
 /// ```
