@@ -40,14 +40,25 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
     }
 }
 
+fn rvalue_is_nop(rvalue: &Rvalue<'_>) -> bool {
+    match rvalue {
+        // Treat `&*pointer` and `addr_of!(*reference)` as free when inlining
+        Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+            **place.projection == [PlaceElem::Deref]
+        }
+        _ => false,
+    }
+}
+
 impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
         // Don't count StorageLive/StorageDead in the inlining cost.
-        match statement.kind {
+        match &statement.kind {
             StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Deinit(_)
             | StatementKind::Nop => {}
+            StatementKind::Assign(place_and_rvalue) if rvalue_is_nop(&place_and_rvalue.1) => {}
             _ => self.cost += INSTR_COST,
         }
     }
