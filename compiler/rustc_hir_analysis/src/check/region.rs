@@ -6,7 +6,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
-use rustc_ast::visit::visit_opt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -168,7 +167,14 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                 hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => visitor.visit_stmt(statement),
             }
         }
-        visit_opt!(visitor, visit_expr, &blk.expr);
+        if let Some(tail_expr) = blk.expr {
+            if visitor.tcx.features().shorter_tail_lifetimes
+                && blk.span.edition().at_least_rust_2024()
+            {
+                visitor.terminating_scopes.insert(tail_expr.hir_id.local_id);
+            }
+            visitor.visit_expr(tail_expr);
+        }
     }
 
     visitor.cx = prev_cx;
