@@ -8,8 +8,6 @@ use crate::query::{
 };
 use crate::ty::TyCtxt;
 use field_offset::FieldOffset;
-use measureme::StringId;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_data_structures::sync::WorkerLocal;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -21,16 +19,6 @@ use rustc_query_system::query::*;
 use rustc_query_system::HandleCycleError;
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use std::ops::Deref;
-
-pub struct QueryKeyStringCache {
-    pub def_id_cache: FxHashMap<DefId, StringId>,
-}
-
-impl QueryKeyStringCache {
-    pub fn new() -> QueryKeyStringCache {
-        QueryKeyStringCache { def_id_cache: Default::default() }
-    }
-}
 
 pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub name: &'static str,
