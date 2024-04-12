@@ -6,7 +6,6 @@ autobins = false
 
 [dependencies]
 cargo_metadata = "0.15"
-cargo-platform = "0.1.2"
 regex = "1"
 miropt-test-tools = { path = "../miropt-test-tools" }
 lazy_static = "1"

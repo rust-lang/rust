@@ -1198,7 +1198,7 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// Unwraps this `Pin<Ptr>`, returning the underlying pointer.
     ///
     /// Doing this operation safely requires that the data pointed at by this pinning pointer
-    /// implemts [`Unpin`] so that we can ignore the pinning invariants when unwrapping it.
+    /// implements [`Unpin`] so that we can ignore the pinning invariants when unwrapping it.
     ///
     /// # Examples
     ///
