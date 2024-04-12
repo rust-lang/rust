@@ -709,7 +709,7 @@ mod cgroups {
 // is created in an application with big thread-local storage requirements.
 // See #6233 for rationale and details.
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
-fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
+unsafe fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     // We use dlsym to avoid an ELF version dependency on GLIBC_PRIVATE. (#23628)
     // We shouldn't really be using such an internal symbol, but there's currently
     // no other way to account for the TLS size.
@@ -723,11 +723,11 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
 
 // No point in looking up __pthread_get_minstack() on non-glibc platforms.
 #[cfg(all(not(all(target_os = "linux", target_env = "gnu")), not(target_os = "netbsd")))]
-fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
+unsafe fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     libc::PTHREAD_STACK_MIN
 }
 
 #[cfg(target_os = "netbsd")]
-fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
+unsafe fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     2048 // just a guess
 }
