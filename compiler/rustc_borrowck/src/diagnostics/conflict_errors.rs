@@ -1139,7 +1139,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if let Some(other_expr) = other_expr
                     && let Some(parent_let) =
                         self.infcx.tcx.hir().parent_iter(expr.hir_id).find_map(|n| {
-                            if let (hir_id, hir::Node::Local(_) | hir::Node::Stmt(_)) = n {
+                            if let (hir_id, hir::Node::LetStmt(_) | hir::Node::Stmt(_)) = n {
                                 Some(hir_id)
                             } else {
                                 None
@@ -1147,7 +1147,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         })
                     && let Some(other_parent_let) =
                         self.infcx.tcx.hir().parent_iter(other_expr.hir_id).find_map(|n| {
-                            if let (hir_id, hir::Node::Local(_) | hir::Node::Stmt(_)) = n {
+                            if let (hir_id, hir::Node::LetStmt(_) | hir::Node::Stmt(_)) = n {
                                 Some(hir_id)
                             } else {
                                 None
