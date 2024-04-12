@@ -1006,7 +1006,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         can_suggest_clone
     }
 
-    fn suggest_cloning_on_spread_operator(
+    /// We have `S { foo: val, ..base }`, and we suggest instead writing
+    /// `S { foo: val, bar: base.bar.clone(), .. }` when valid.
+    fn suggest_cloning_on_functional_record_update(
         &self,
         err: &mut Diag<'_>,
         ty: Ty<'tcx>,
@@ -1046,7 +1048,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         for field in &variant.fields {
             // In practice unless there are more than one field with the same type, we'll be
             // suggesting a single field at a type, because we don't aggregate multiple borrow
-            // checker errors involving the spread operator into a single one.
+            // checker errors involving the functional record update sytnax into a single one.
             let field_ty = field.ty(self.infcx.tcx, args);
             let ident = field.ident(self.infcx.tcx);
             if field_ty == ty && fields.iter().all(|field| field.ident.name != ident.name) {
@@ -1088,7 +1090,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             String::new()
         };
         let msg = format!(
-            "{prefix}clone the value from the field instead of using the spread operator syntax",
+            "{prefix}clone the value from the field instead of using the functional record update \
+             syntax",
         );
         err.span_suggestion_verbose(span, msg, sugg, Applicability::MachineApplicable);
     }
@@ -1105,7 +1108,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // `Location` that covers both the `S { ... }` literal, all of its fields and the
             // `base`. If the move happens because of `S { foo: val, bar: base.bar }` the `expr`
             //  will already be correct. Instead, we see if we can suggest writing.
-            self.suggest_cloning_on_spread_operator(err, ty, expr);
+            self.suggest_cloning_on_functional_record_update(err, ty, expr);
             return;
         }
 
@@ -1225,6 +1228,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .must_apply_modulo_regions()
     }
 
+    /// Given an expression, check if it is a method call `foo.clone()`, where `foo` and
+    /// `foo.clone()` both have the same type, returning the span for `.clone()` if so.
     pub(crate) fn clone_on_reference(&self, expr: &hir::Expr<'_>) -> Option<Span> {
         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
         if let hir::ExprKind::MethodCall(segment, rcvr, args, span) = expr.kind
@@ -1276,6 +1281,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             };
         let mut sugg = Vec::with_capacity(2);
         let mut inner_expr = expr;
+        // Remove uses of `&` and `*` when suggesting `.clone()`.
         while let hir::ExprKind::AddrOf(.., inner) | hir::ExprKind::Unary(hir::UnOp::Deref, inner) =
             &inner_expr.kind
         {
@@ -1841,13 +1847,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         ty: Ty<'tcx>,
-        def_id: DefId,
+        trait_def_id: DefId,
         span: Span,
     ) {
-        self.suggest_adding_bounds(err, ty, def_id, span);
+        self.suggest_adding_bounds(err, ty, trait_def_id, span);
         if let ty::Adt(..) = ty.kind() {
-            // The type doesn't implement DefId.
-            let trait_ref = ty::Binder::dummy(ty::TraitRef::new(self.infcx.tcx, def_id, [ty]));
+            // The type doesn't implement the trait.
+            let trait_ref =
+                ty::Binder::dummy(ty::TraitRef::new(self.infcx.tcx, trait_def_id, [ty]));
             let obligation = Obligation::new(
                 self.infcx.tcx,
                 ObligationCause::dummy(),

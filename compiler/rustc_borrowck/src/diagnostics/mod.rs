@@ -1049,6 +1049,27 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             is_loop_message,
                         },
                     );
+                    // Check if the move occurs on a value because of a call on a closure that comes
+                    // from a type parameter `F: FnOnce()`. If so, we provide a targeted `note`:
+                    // ```
+                    // error[E0382]: use of moved value: `blk`
+                    //   --> $DIR/once-cant-call-twice-on-heap.rs:8:5
+                    //    |
+                    // LL | fn foo<F:FnOnce()>(blk: F) {
+                    //    |                    --- move occurs because `blk` has type `F`, which does not implement the `Copy` trait
+                    // LL | blk();
+                    //    | ----- `blk` moved due to this call
+                    // LL | blk();
+                    //    | ^^^ value used here after move
+                    //    |
+                    // note: `FnOnce` closures can only be called once
+                    //   --> $DIR/once-cant-call-twice-on-heap.rs:6:10
+                    //    |
+                    // LL | fn foo<F:FnOnce()>(blk: F) {
+                    //    |        ^^^^^^^^ `F` is made to be an `FnOnce` closure here
+                    // LL | blk();
+                    //    | ----- this value implements `FnOnce`, which causes it to be moved when called
+                    // ```
                     if let ty::Param(param_ty) = self_ty.kind()
                         && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
                         && let param = generics.type_param(param_ty, self.infcx.tcx)
