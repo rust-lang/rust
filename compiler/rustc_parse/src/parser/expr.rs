@@ -56,7 +56,7 @@ enum DestructuredFloat {
     /// 1.2 | 1.2e3
     MiddleDot(Symbol, Span, Span, Symbol, Span),
     /// Invalid
-    Error,
+    Error(ErrorGuaranteed),
 }
 
 impl<'a> Parser<'a> {
@@ -1013,7 +1013,7 @@ impl<'a> Parser<'a> {
                             self.mk_expr_tuple_field_access(lo, ident1_span, base, sym1, None);
                         self.mk_expr_tuple_field_access(lo, ident2_span, base1, sym2, suffix)
                     }
-                    DestructuredFloat::Error => base,
+                    DestructuredFloat::Error(_) => base,
                 })
             }
             _ => {
@@ -1023,7 +1023,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn error_unexpected_after_dot(&self) {
+    fn error_unexpected_after_dot(&self) -> ErrorGuaranteed {
         let actual = pprust::token_to_string(&self.token);
         let span = self.token.span;
         let sm = self.psess.source_map();
@@ -1033,7 +1033,7 @@ impl<'a> Parser<'a> {
             }
             _ => (span, actual),
         };
-        self.dcx().emit_err(errors::UnexpectedTokenAfterDot { span, actual });
+        self.dcx().emit_err(errors::UnexpectedTokenAfterDot { span, actual })
     }
 
     // We need an identifier or integer, but the next token is a float.
@@ -1121,8 +1121,8 @@ impl<'a> Parser<'a> {
             // 1.2e+3 | 1.2e-3
             [IdentLike(_), Punct('.'), IdentLike(_), Punct('+' | '-'), IdentLike(_)] => {
                 // See the FIXME about `TokenCursor` above.
-                self.error_unexpected_after_dot();
-                DestructuredFloat::Error
+                let guar = self.error_unexpected_after_dot();
+                DestructuredFloat::Error(guar)
             }
             _ => panic!("unexpected components in a float token: {components:?}"),
         }
@@ -1188,7 +1188,7 @@ impl<'a> Parser<'a> {
                                 fields.insert(start_idx, Ident::new(symbol2, span2));
                                 fields.insert(start_idx, Ident::new(symbol1, span1));
                             }
-                            DestructuredFloat::Error => {
+                            DestructuredFloat::Error(_) => {
                                 trailing_dot = None;
                                 fields.insert(start_idx, Ident::new(symbol, self.prev_token.span));
                             }
