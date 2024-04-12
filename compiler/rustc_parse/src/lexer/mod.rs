@@ -697,7 +697,6 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
         let expn_data = prefix_span.ctxt().outer_expn_data();
 
         if expn_data.edition >= Edition::Edition2021 {
-            let mut silence = false;
             // In Rust 2021, this is a hard error.
             let sugg = if prefix == "rb" {
                 Some(errors::UnknownPrefixSugg::UseBr(prefix_span))
@@ -705,25 +704,20 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 if self.cursor.first() == '\''
                     && let Some(start) = self.last_lifetime
                     && self.cursor.third() != '\''
+                    && let end = self.mk_sp(self.pos, self.pos + BytePos(1))
+                    && !self.psess.source_map().is_multiline(start.until(end))
                 {
-                    // An "unclosed `char`" error will be emitted already, silence redundant error.
-                    silence = true;
-                    Some(errors::UnknownPrefixSugg::MeantStr {
-                        start,
-                        end: self.mk_sp(self.pos, self.pos + BytePos(1)),
-                    })
+                    // FIXME: An "unclosed `char`" error will be emitted already in some cases,
+                    // but it's hard to silence this error while not also silencing important cases
+                    // too. We should use the error stashing machinery instead.
+                    Some(errors::UnknownPrefixSugg::MeantStr { start, end })
                 } else {
                     Some(errors::UnknownPrefixSugg::Whitespace(prefix_span.shrink_to_hi()))
                 }
             } else {
                 None
             };
-            let err = errors::UnknownPrefix { span: prefix_span, prefix, sugg };
-            if silence {
-                self.dcx().create_err(err).delay_as_bug();
-            } else {
-                self.dcx().emit_err(err);
-            }
+            self.dcx().emit_err(errors::UnknownPrefix { span: prefix_span, prefix, sugg });
         } else {
             // Before Rust 2021, only emit a lint for migration.
             self.psess.buffer_lint_with_diagnostic(
