@@ -280,7 +280,7 @@ class TestEnvironment:
         # Look up the product bundle transfer manifest.
         self.log_info("Looking up the product bundle transfer manifest...")
         product_name = "minimal." + self.triple_to_arch(self.target)
-        fuchsia_version = "14.20230811.2.1"
+        fuchsia_version = "20.20240412.3.1"
 
         # FIXME: We should be able to replace this with the machine parsable
         # `ffx --machine json product lookup ...` once F15 is released.
