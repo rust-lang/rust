@@ -21,6 +21,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use rustc_target::spec::{Target, TargetTriple};
 
+use std::borrow::Cow;
 use std::env;
 use std::fs::File;
 use std::io::{self, Write};
@@ -32,6 +33,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use tempfile::{Builder as TempFileBuilder, TempDir};
+
+use test::TestDescAndFn;
 
 use crate::clean::{types::AttributesExt, Attributes};
 use crate::config::Options as RustdocOptions;
@@ -216,7 +219,7 @@ pub(crate) fn run(
             })
         })?;
 
-    run_tests(test_args, nocapture, tests);
+    tests.run_tests(test_args, nocapture);
 
     // Collect and warn about unused externs, but only if we've gotten
     // reports for each doctest
@@ -257,19 +260,6 @@ pub(crate) fn run(
     }
 
     Ok(())
-}
-
-pub(crate) fn run_tests(
-    mut test_args: Vec<String>,
-    nocapture: bool,
-    mut tests: Vec<test::TestDescAndFn>,
-) {
-    test_args.insert(0, "rustdoctest".to_string());
-    if nocapture {
-        test_args.push("--nocapture".to_string());
-    }
-    tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
-    test::test_main(&test_args, tests, None);
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
@@ -341,7 +331,7 @@ impl DirState {
 // We could unify this struct the one in rustc but they have different
 // ownership semantics, so doing so would create wasteful allocations.
 #[derive(serde::Serialize, serde::Deserialize)]
-struct UnusedExterns {
+pub(crate) struct UnusedExterns {
     /// Lint level of the unused_crate_dependencies lint
     lint_level: String,
     /// List of unused externs by their names.
@@ -371,25 +361,16 @@ fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Com
 }
 
 fn run_test(
+    doctest: DocTest,
     test: String,
-    crate_name: &str,
+    line_offset: usize,
     line: usize,
     rustdoc_options: IndividualTestOptions,
     mut lang_string: LangString,
-    no_run: bool,
-    opts: &GlobalTestOptions,
     edition: Edition,
     path: PathBuf,
     report_unused_externs: impl Fn(UnusedExterns),
 ) -> Result<(), TestFailure> {
-    let doctest = make_test(test, Some(crate_name), edition);
-    let (test, line_offset) = doctest.generate_unique_doctest(
-        Some(crate_name),
-        lang_string.test_harness,
-        opts,
-        Some(&rustdoc_options.test_id),
-    );
-
     // Make sure we emit well-formed executable names for our target.
     let rust_out = add_exe_suffix("rust_out".to_owned(), &rustdoc_options.target);
     let output_file = rustdoc_options.outdir.path().join(rust_out);
@@ -420,7 +401,10 @@ fn run_test(
         compiler.arg("-Z").arg("unstable-options");
     }
 
-    if no_run && !lang_string.compile_fail && rustdoc_options.should_persist_doctests {
+    if rustdoc_options.no_run
+        && !lang_string.compile_fail
+        && rustdoc_options.should_persist_doctests
+    {
         compiler.arg("--emit=metadata");
     }
     compiler.arg("--target").arg(match rustdoc_options.target {
@@ -515,7 +499,7 @@ fn run_test(
         }
     }
 
-    if no_run {
+    if rustdoc_options.no_run {
         return Ok(());
     }
 
@@ -582,12 +566,14 @@ pub(crate) struct DocTest {
     crate_attrs: String,
     crates: String,
     everything_else: String,
+    ignore: bool,
+    crate_name: Option<String>,
+    name: String,
 }
 
 impl DocTest {
     pub(crate) fn generate_unique_doctest(
         &self,
-        crate_name: Option<&str>,
         dont_insert_main: bool,
         opts: &GlobalTestOptions,
         // If `test_id` is `None`, it means we're generating code for a code example "run" link.
@@ -622,7 +608,7 @@ impl DocTest {
         // compiler.
         if !self.already_has_extern_crate &&
             !opts.no_crate_inject &&
-            let Some(crate_name) = crate_name &&
+            let Some(ref crate_name) = self.crate_name &&
             crate_name != "std" &&
             // Don't inject `extern crate` if the crate is never used.
             // NOTE: this is terribly inaccurate because it doesn't actually
@@ -691,13 +677,123 @@ impl DocTest {
         debug!("final doctest:\n{prog}");
         (prog, line_offset)
     }
+
+    fn generate_test_desc_and_fn(
+        mut self,
+        config: LangString,
+        target_str: &str,
+        line: usize,
+        rustdoc_test_options: IndividualTestOptions,
+        opts: &GlobalTestOptions,
+        edition: Edition,
+        path: PathBuf,
+        unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
+    ) -> TestDescAndFn {
+        let (code, line_offset) = self.generate_unique_doctest(
+            config.test_harness,
+            opts,
+            Some(&rustdoc_test_options.test_id),
+        );
+        TestDescAndFn {
+            desc: test::TestDesc {
+                name: test::DynTestName(std::mem::replace(&mut self.name, String::new())),
+                ignore: ignore_to_bool(&config.ignore, target_str),
+                ignore_message: None,
+                source_file: "",
+                start_line: 0,
+                start_col: 0,
+                end_line: 0,
+                end_col: 0,
+                // compiler failures are test failures
+                should_panic: test::ShouldPanic::No,
+                compile_fail: config.compile_fail,
+                no_run: rustdoc_test_options.no_run,
+                test_type: test::TestType::DocTest,
+            },
+            testfn: test::DynTestFn(Box::new(move || {
+                let report_unused_externs = |uext| {
+                    unused_externs.lock().unwrap().push(uext);
+                };
+                let res = run_test(
+                    self,
+                    code,
+                    line_offset,
+                    line,
+                    rustdoc_test_options,
+                    config,
+                    edition,
+                    path,
+                    report_unused_externs,
+                );
+
+                if let Err(err) = res {
+                    match err {
+                        TestFailure::CompileError => {
+                            eprint!("Couldn't compile the test.");
+                        }
+                        TestFailure::UnexpectedCompilePass => {
+                            eprint!("Test compiled successfully, but it's marked `compile_fail`.");
+                        }
+                        TestFailure::UnexpectedRunPass => {
+                            eprint!("Test executable succeeded, but it's marked `should_panic`.");
+                        }
+                        TestFailure::MissingErrorCodes(codes) => {
+                            eprint!("Some expected error codes were not found: {codes:?}");
+                        }
+                        TestFailure::ExecutionError(err) => {
+                            eprint!("Couldn't run the test: {err}");
+                            if err.kind() == io::ErrorKind::PermissionDenied {
+                                eprint!(" - maybe your tempdir is mounted with noexec?");
+                            }
+                        }
+                        TestFailure::ExecutionFailure(out) => {
+                            eprintln!("Test executable failed ({reason}).", reason = out.status);
+
+                            // FIXME(#12309): An unfortunate side-effect of capturing the test
+                            // executable's output is that the relative ordering between the test's
+                            // stdout and stderr is lost. However, this is better than the
+                            // alternative: if the test executable inherited the parent's I/O
+                            // handles the output wouldn't be captured at all, even on success.
+                            //
+                            // The ordering could be preserved if the test process' stderr was
+                            // redirected to stdout, but that functionality does not exist in the
+                            // standard library, so it may not be portable enough.
+                            let stdout = str::from_utf8(&out.stdout).unwrap_or_default();
+                            let stderr = str::from_utf8(&out.stderr).unwrap_or_default();
+
+                            if !stdout.is_empty() || !stderr.is_empty() {
+                                eprintln!();
+
+                                if !stdout.is_empty() {
+                                    eprintln!("stdout:\n{stdout}");
+                                }
+
+                                if !stderr.is_empty() {
+                                    eprintln!("stderr:\n{stderr}");
+                                }
+                            }
+                        }
+                    }
+
+                    panic::resume_unwind(Box::new(()));
+                }
+                Ok(())
+            })),
+        }
+    }
 }
 
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
 /// lines before the test code begins as well as if the output stream supports colors or not.
-pub(crate) fn make_test(s: String, crate_name: Option<&str>, edition: Edition) -> DocTest {
+pub(crate) fn make_test(
+    s: String,
+    crate_name: Option<Cow<'_, str>>,
+    edition: Edition,
+    name: String,
+) -> DocTest {
     let (crate_attrs, everything_else, crates) = partition_source(&s, edition);
     let mut supports_color = false;
+    let crate_name = crate_name.map(|c| c.into_owned());
 
     // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
@@ -752,7 +848,7 @@ pub(crate) fn make_test(s: String, crate_name: Option<&str>, edition: Edition) -
                         }
 
                         if let ast::ItemKind::ExternCrate(original) = item.kind {
-                            if !found_extern_crate && let Some(crate_name) = crate_name {
+                            if !found_extern_crate && let Some(ref crate_name) = crate_name {
                                 match original {
                                     Some(name) => found_extern_crate = name.as_str() == crate_name,
                                     None => found_extern_crate = item.ident.as_str() == crate_name,
@@ -803,6 +899,9 @@ pub(crate) fn make_test(s: String, crate_name: Option<&str>, edition: Edition) -
             crates,
             everything_else,
             already_has_extern_crate: false,
+            ignore: false,
+            crate_name,
+            name,
         };
     };
 
@@ -831,6 +930,9 @@ pub(crate) fn make_test(s: String, crate_name: Option<&str>, edition: Edition) -
         crates,
         everything_else,
         already_has_extern_crate,
+        ignore: false,
+        crate_name,
+        name,
     }
 }
 
@@ -987,6 +1089,7 @@ pub(crate) struct IndividualTestOptions {
     target: TargetTriple,
     test_id: String,
     maybe_sysroot: Option<PathBuf>,
+    no_run: bool,
 }
 
 impl IndividualTestOptions {
@@ -1020,7 +1123,16 @@ impl IndividualTestOptions {
             target: options.target.clone(),
             test_id,
             maybe_sysroot: options.maybe_sysroot.clone(),
+            no_run: options.no_run,
         }
+    }
+}
+
+fn ignore_to_bool(ignore: &Ignore, target_str: &str) -> bool {
+    match ignore {
+        Ignore::All => true,
+        Ignore::None => false,
+        Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
     }
 }
 
@@ -1032,8 +1144,65 @@ pub(crate) trait Tester {
     fn register_header(&mut self, _name: &str, _level: u32) {}
 }
 
+#[derive(Default)]
+pub(crate) struct DocTestKinds {
+    /// Tests that cannot be run together with the rest (`compile_fail` and `test_harness`).
+    standalone: Vec<TestDescAndFn>,
+    others: FxHashMap<Edition, Vec<DocTest>>,
+}
+
+impl DocTestKinds {
+    pub(crate) fn add_test(
+        &mut self,
+        doctest: DocTest,
+        config: LangString,
+        target_str: &str,
+        line: usize,
+        rustdoc_test_options: IndividualTestOptions,
+        opts: &GlobalTestOptions,
+        edition: Edition,
+        path: PathBuf,
+        unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
+    ) {
+        if config.compile_fail || config.test_harness {
+            self.standalone.push(doctest.generate_test_desc_and_fn(
+                config,
+                target_str,
+                line,
+                rustdoc_test_options,
+                opts,
+                edition,
+                path,
+                unused_externs,
+            ));
+        } else {
+            self.others.entry(edition).or_default().push(doctest);
+        }
+    }
+
+    pub(crate) fn run_tests(self, mut test_args: Vec<String>, nocapture: bool) {
+        test_args.insert(0, "rustdoctest".to_string());
+        if nocapture {
+            test_args.push("--nocapture".to_string());
+        }
+        let Self { mut standalone, others } = self;
+        standalone.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
+        test::test_main(&test_args, standalone, None);
+
+        // FIXME: generate code for others
+        // for (edition, doctests) in others {
+        // let mut id = 0;
+        // let mut output = String::new();
+
+        // for doctest in doctests {
+        // }
+        // }
+        drop(others);
+    }
+}
+
 pub(crate) struct Collector {
-    pub(crate) tests: Vec<test::TestDescAndFn>,
+    pub(crate) tests: DocTestKinds,
 
     // The name of the test displayed to the user, separated by `::`.
     //
@@ -1083,7 +1252,7 @@ impl Collector {
         arg_file: PathBuf,
     ) -> Collector {
         Collector {
-            tests: Vec::new(),
+            tests: Default::default(),
             names: Vec::new(),
             rustdoc_options,
             use_headers,
@@ -1136,12 +1305,11 @@ impl Tester for Collector {
     fn add_test(&mut self, test: String, config: LangString, line: usize) {
         let filename = self.get_filename();
         let name = self.generate_name(line, &filename);
-        let crate_name = self.crate_name.clone();
+        let crate_name = Cow::Borrowed(self.crate_name.as_str());
         let opts = self.opts.clone();
         let edition = config.edition.unwrap_or(self.rustdoc_options.edition);
         let target_str = self.rustdoc_options.target.to_string();
-        let unused_externs = self.unused_extern_reports.clone();
-        let no_run = config.no_run || self.rustdoc_options.no_run;
+        // let no_run = config.no_run || self.rustdoc_options.no_run;
         if !config.compile_fail {
             self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
         }
@@ -1180,97 +1348,19 @@ impl Tester for Collector {
             IndividualTestOptions::new(&self.rustdoc_options, &self.arg_file, test_id);
 
         debug!("creating test {name}: {test}");
-        self.tests.push(test::TestDescAndFn {
-            desc: test::TestDesc {
-                name: test::DynTestName(name),
-                ignore: match config.ignore {
-                    Ignore::All => true,
-                    Ignore::None => false,
-                    Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
-                },
-                ignore_message: None,
-                source_file: "",
-                start_line: 0,
-                start_col: 0,
-                end_line: 0,
-                end_col: 0,
-                // compiler failures are test failures
-                should_panic: test::ShouldPanic::No,
-                compile_fail: config.compile_fail,
-                no_run,
-                test_type: test::TestType::DocTest,
-            },
-            testfn: test::DynTestFn(Box::new(move || {
-                let report_unused_externs = |uext| {
-                    unused_externs.lock().unwrap().push(uext);
-                };
-                let res = run_test(
-                    test,
-                    &crate_name,
-                    line,
-                    rustdoc_test_options,
-                    config,
-                    no_run,
-                    &opts,
-                    edition,
-                    path,
-                    report_unused_externs,
-                );
-
-                if let Err(err) = res {
-                    match err {
-                        TestFailure::CompileError => {
-                            eprint!("Couldn't compile the test.");
-                        }
-                        TestFailure::UnexpectedCompilePass => {
-                            eprint!("Test compiled successfully, but it's marked `compile_fail`.");
-                        }
-                        TestFailure::UnexpectedRunPass => {
-                            eprint!("Test executable succeeded, but it's marked `should_panic`.");
-                        }
-                        TestFailure::MissingErrorCodes(codes) => {
-                            eprint!("Some expected error codes were not found: {codes:?}");
-                        }
-                        TestFailure::ExecutionError(err) => {
-                            eprint!("Couldn't run the test: {err}");
-                            if err.kind() == io::ErrorKind::PermissionDenied {
-                                eprint!(" - maybe your tempdir is mounted with noexec?");
-                            }
-                        }
-                        TestFailure::ExecutionFailure(out) => {
-                            eprintln!("Test executable failed ({reason}).", reason = out.status);
-
-                            // FIXME(#12309): An unfortunate side-effect of capturing the test
-                            // executable's output is that the relative ordering between the test's
-                            // stdout and stderr is lost. However, this is better than the
-                            // alternative: if the test executable inherited the parent's I/O
-                            // handles the output wouldn't be captured at all, even on success.
-                            //
-                            // The ordering could be preserved if the test process' stderr was
-                            // redirected to stdout, but that functionality does not exist in the
-                            // standard library, so it may not be portable enough.
-                            let stdout = str::from_utf8(&out.stdout).unwrap_or_default();
-                            let stderr = str::from_utf8(&out.stderr).unwrap_or_default();
-
-                            if !stdout.is_empty() || !stderr.is_empty() {
-                                eprintln!();
-
-                                if !stdout.is_empty() {
-                                    eprintln!("stdout:\n{stdout}");
-                                }
-
-                                if !stderr.is_empty() {
-                                    eprintln!("stderr:\n{stderr}");
-                                }
-                            }
-                        }
-                    }
-
-                    panic::resume_unwind(Box::new(()));
-                }
-                Ok(())
-            })),
-        });
+        let mut doctest = make_test(test, Some(crate_name), edition, name);
+        doctest.ignore = ignore_to_bool(&config.ignore, &target_str);
+        self.tests.add_test(
+            doctest,
+            config,
+            &target_str,
+            line,
+            rustdoc_test_options,
+            &opts,
+            edition,
+            path,
+            self.unused_extern_reports.clone(),
+        );
     }
 
     fn get_line(&self) -> usize {

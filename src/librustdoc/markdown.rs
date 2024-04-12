@@ -183,6 +183,6 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
         false,
     );
 
-    crate::doctest::run_tests(options.test_args, options.nocapture, collector.tests);
+    collector.tests.run_tests(options.test_args, options.nocapture);
     Ok(())
 }

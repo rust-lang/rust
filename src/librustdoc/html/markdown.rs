@@ -292,7 +292,6 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         let edition = edition.unwrap_or(self.edition);
 
         let playground_button = self.playground.as_ref().and_then(|playground| {
-            let krate = &playground.crate_name;
             let url = &playground.url;
             if url.is_empty() {
                 return None;
@@ -302,12 +301,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 .map(|l| map_line(l).for_code())
                 .intersperse("\n".into())
                 .collect::<String>();
-            let krate = krate.as_ref().map(|s| s.as_str());
+            let krate = playground.crate_name.as_ref().map(|s| Cow::Borrowed(s.as_str()));
 
             let mut opts: GlobalTestOptions = Default::default();
             opts.insert_indent_space = true;
-            let (test, _) = doctest::make_test(test, krate, edition)
-                .generate_unique_doctest(krate, false, &opts, None);
+            let (test, _) = doctest::make_test(test, krate, edition, String::new())
+                .generate_unique_doctest(false, &opts, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             let test_escaped = small_url_encode(test);
