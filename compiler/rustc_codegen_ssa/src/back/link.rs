@@ -3000,6 +3000,16 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         }
         _ => unreachable!(),
     }
+
+    if llvm_target.contains("macabi") {
+        // Mac Catalyst uses the macOS SDK, but to link to iOS-specific
+        // frameworks, we must have the support library stubs in the library
+        // search path.
+
+        // The flags are called `-L` and `-F` both in Clang, ld64 and ldd.
+        cmd.arg(format!("-L{sdk_root}/System/iOSSupport/usr/lib"));
+        cmd.arg(format!("-F{sdk_root}/System/iOSSupport/System/Library/Frameworks"));
+    }
 }
 
 fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootError<'_>> {
