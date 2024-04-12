@@ -221,7 +221,7 @@
         issue = "none",
         reason = "You have attempted to use a standard library built for a platform that it doesn't \
             know how to support. Consider building it for a known environment, disabling it with \
-            `#![no_std]` or overriding this warning by enabling this feature".
+            `#![no_std]` or overriding this warning by enabling this feature."
     )
 )]
 #![cfg_attr(not(bootstrap), rustc_preserve_ub_checks)]
