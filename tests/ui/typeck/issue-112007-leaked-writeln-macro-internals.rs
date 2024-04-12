@@ -1,8 +1,16 @@
-//@ run-rustfix
-#![allow(dead_code)]
+// Check that we don't leak stdlib implementation details through suggestions.
+// Also check that the suggestion provided tries as hard as it can to see through local macros.
+//
+// FIXME(jieyouxu): this test is NOT run-rustfix because this test contains conflicting
+// MaybeIncorrect suggestions:
+//
+// 1. `return ... ;`
+// 2. `?`
+//
+// when the suggestions are applied to the same file, it becomes uncompilable.
 
 // https://github.com/rust-lang/rust/issues/112007
-fn bug_report<W: std::fmt::Write>(w: &mut W) -> std::fmt::Result {
+pub fn bug_report<W: std::fmt::Write>(w: &mut W) -> std::fmt::Result {
     if true {
         writeln!(w, "`;?` here ->")?;
     } else {
@@ -25,7 +33,7 @@ macro_rules! bar {
     }
 }
 
-fn foo<W: std::fmt::Write>(w: &mut W) -> std::fmt::Result {
+pub fn foo<W: std::fmt::Write>(w: &mut W) -> std::fmt::Result {
     if true {
         writeln!(w, "`;?` here ->")?;
     } else {
@@ -34,4 +42,4 @@ fn foo<W: std::fmt::Write>(w: &mut W) -> std::fmt::Result {
     Ok(())
 }
 
-fn main() {}
+pub fn main() {}

@@ -43,7 +43,8 @@ use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, Pro
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{
-    self, ClosureSizeProfileData, Ty, TyCtxt, TypeckResults, UpvarArgs, UpvarCapture,
+    self, ClosureSizeProfileData, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults, UpvarArgs,
+    UpvarCapture,
 };
 use rustc_session::lint;
 use rustc_span::sym;
@@ -191,6 +192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         };
+        let args = self.resolve_vars_if_possible(args);
         let closure_def_id = closure_def_id.expect_local();
 
         assert_eq!(self.tcx.hir().body_owner_def_id(body.id()), closure_def_id);
@@ -361,7 +363,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // For coroutine-closures, we additionally must compute the
         // `coroutine_captures_by_ref_ty` type, which is used to generate the by-ref
         // version of the coroutine-closure's output coroutine.
-        if let UpvarArgs::CoroutineClosure(args) = args {
+        if let UpvarArgs::CoroutineClosure(args) = args
+            && !args.references_error()
+        {
             let closure_env_region: ty::Region<'_> = ty::Region::new_bound(
                 self.tcx,
                 ty::INNERMOST,
