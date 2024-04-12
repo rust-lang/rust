@@ -17,7 +17,6 @@ struct ReturnType {
 #[serde(untagged, deny_unknown_fields)]
 pub enum ArgPrep {
     Register {
-        #[allow(dead_code)]
         #[serde(rename = "register")]
         #[allow(dead_code)]
         reg: String,
