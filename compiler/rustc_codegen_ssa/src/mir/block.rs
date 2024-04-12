@@ -1,6 +1,6 @@
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Immediate, Pair, Ref, ZeroSized};
-use super::place::PlaceRef;
+use super::place::{PlaceRef, PlaceValue};
 use super::{CachedLlbb, FunctionCx, LocalRef};
 
 use crate::base;
@@ -242,7 +242,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 bx.switch_to_block(fx.llbb(target));
                 fx.set_debug_loc(bx, self.terminator.source_info);
                 for tmp in copied_constant_arguments {
-                    bx.lifetime_end(tmp.llval, tmp.layout.size);
+                    bx.lifetime_end(tmp.val.llval, tmp.layout.size);
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, invokeret);
             }
@@ -256,7 +256,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
             if let Some((ret_dest, target)) = destination {
                 for tmp in copied_constant_arguments {
-                    bx.lifetime_end(tmp.llval, tmp.layout.size);
+                    bx.lifetime_end(tmp.val.llval, tmp.layout.size);
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, llret);
                 self.funclet_br(fx, bx, target, mergeable_succ)
@@ -431,7 +431,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let va_list_arg_idx = self.fn_abi.args.len();
             match self.locals[mir::Local::from_usize(1 + va_list_arg_idx)] {
                 LocalRef::Place(va_list) => {
-                    bx.va_end(va_list.llval);
+                    bx.va_end(va_list.val.llval);
                 }
                 _ => bug!("C-variadic function must have a `VaList` place"),
             }
@@ -455,8 +455,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 let op = self.codegen_consume(bx, mir::Place::return_place().as_ref());
-                if let Ref(llval, _, align) = op.val {
-                    bx.load(bx.backend_type(op.layout), llval, align)
+                if let Ref(place_val) = op.val {
+                    bx.load_from_place(bx.backend_type(op.layout), place_val)
                 } else {
                     op.immediate_or_packed_pair(bx)
                 }
@@ -466,21 +466,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let op = match self.locals[mir::RETURN_PLACE] {
                     LocalRef::Operand(op) => op,
                     LocalRef::PendingOperand => bug!("use of return before def"),
-                    LocalRef::Place(cg_place) => OperandRef {
-                        val: Ref(cg_place.llval, None, cg_place.align),
-                        layout: cg_place.layout,
-                    },
+                    LocalRef::Place(cg_place) => {
+                        OperandRef { val: Ref(cg_place.val), layout: cg_place.layout }
+                    }
                     LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
                 };
                 let llslot = match op.val {
                     Immediate(_) | Pair(..) => {
                         let scratch = PlaceRef::alloca(bx, self.fn_abi.ret.layout);
                         op.val.store(bx, scratch);
-                        scratch.llval
+                        scratch.val.llval
                     }
-                    Ref(llval, _, align) => {
-                        assert_eq!(align, op.layout.align.abi, "return place is unaligned!");
-                        llval
+                    Ref(place_val) => {
+                        assert_eq!(
+                            place_val.align, op.layout.align.abi,
+                            "return place is unaligned!"
+                        );
+                        place_val.llval
                     }
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
                 };
@@ -512,11 +514,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let place = self.codegen_place(bx, location.as_ref());
         let (args1, args2);
-        let mut args = if let Some(llextra) = place.llextra {
-            args2 = [place.llval, llextra];
+        let mut args = if let Some(llextra) = place.val.llextra {
+            args2 = [place.val.llval, llextra];
             &args2[..]
         } else {
-            args1 = [place.llval];
+            args1 = [place.val.llval];
             &args1[..]
         };
         let (drop_fn, fn_abi, drop_instance) =
@@ -918,7 +920,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let dest = match ret_dest {
                     _ if fn_abi.ret.is_indirect() => llargs[0],
                     ReturnDest::Nothing => bx.const_undef(bx.type_ptr()),
-                    ReturnDest::IndirectOperand(dst, _) | ReturnDest::Store(dst) => dst.llval,
+                    ReturnDest::IndirectOperand(dst, _) | ReturnDest::Store(dst) => dst.val.llval,
                     ReturnDest::DirectOperand(_) => {
                         bug!("Cannot use direct operand with an intrinsic call")
                     }
@@ -951,7 +953,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 match Self::codegen_intrinsic_call(bx, instance, fn_abi, &args, dest, span) {
                     Ok(()) => {
                         if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
-                            self.store_return(bx, ret_dest, &fn_abi.ret, dst.llval);
+                            self.store_return(bx, ret_dest, &fn_abi.ret, dst.val.llval);
                         }
 
                         return if let Some(target) = target {
@@ -1032,7 +1034,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         llargs.push(data_ptr);
                         continue 'make_args;
                     }
-                    Ref(data_ptr, Some(meta), _) => {
+                    Ref(PlaceValue { llval: data_ptr, llextra: Some(meta), .. }) => {
                         // by-value dynamic dispatch
                         llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
                             bx,
@@ -1058,16 +1060,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             span_bug!(span, "can't codegen a virtual call on {:#?}", op);
                         }
                         let place = op.deref(bx.cx());
-                        let data_ptr = place.project_field(bx, 0);
-                        let meta_ptr = place.project_field(bx, 1);
-                        let meta = bx.load_operand(meta_ptr);
+                        let data_place = place.project_field(bx, 0);
+                        let meta_place = place.project_field(bx, 1);
+                        let meta = bx.load_operand(meta_place);
                         llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
                             bx,
                             meta.immediate(),
                             op.layout.ty,
                             fn_abi,
                         ));
-                        llargs.push(data_ptr.llval);
+                        llargs.push(data_place.val.llval);
                         continue;
                     }
                     _ => {
@@ -1079,12 +1081,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // The callee needs to own the argument memory if we pass it
             // by-ref, so make a local copy of non-immediate constants.
             match (&arg.node, op.val) {
-                (&mir::Operand::Copy(_), Ref(_, None, _))
-                | (&mir::Operand::Constant(_), Ref(_, None, _)) => {
+                (&mir::Operand::Copy(_), Ref(PlaceValue { llextra: None, .. }))
+                | (&mir::Operand::Constant(_), Ref(PlaceValue { llextra: None, .. })) => {
                     let tmp = PlaceRef::alloca(bx, op.layout);
-                    bx.lifetime_start(tmp.llval, tmp.layout.size);
+                    bx.lifetime_start(tmp.val.llval, tmp.layout.size);
                     op.val.store(bx, tmp);
-                    op.val = Ref(tmp.llval, None, tmp.align);
+                    op.val = Ref(tmp.val);
                     copied_constant_arguments.push(tmp);
                 }
                 _ => {}
@@ -1428,7 +1430,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => bug!("codegen_argument: {:?} invalid for pair argument", op),
             },
             PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => match op.val {
-                Ref(a, Some(b), _) => {
+                Ref(PlaceValue { llval: a, llextra: Some(b), .. }) => {
                     llargs.push(a);
                     llargs.push(b);
                     return;
@@ -1450,34 +1452,34 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     };
                     let scratch = PlaceRef::alloca_aligned(bx, arg.layout, required_align);
                     op.val.store(bx, scratch);
-                    (scratch.llval, scratch.align, true)
+                    (scratch.val.llval, scratch.val.align, true)
                 }
                 PassMode::Cast { .. } => {
                     let scratch = PlaceRef::alloca(bx, arg.layout);
                     op.val.store(bx, scratch);
-                    (scratch.llval, scratch.align, true)
+                    (scratch.val.llval, scratch.val.align, true)
                 }
                 _ => (op.immediate_or_packed_pair(bx), arg.layout.align.abi, false),
             },
-            Ref(llval, llextra, align) => match arg.mode {
+            Ref(op_place_val) => match arg.mode {
                 PassMode::Indirect { attrs, .. } => {
                     let required_align = match attrs.pointee_align {
                         Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
                         None => arg.layout.align.abi,
                     };
-                    if align < required_align {
+                    if op_place_val.align < required_align {
                         // For `foo(packed.large_field)`, and types with <4 byte alignment on x86,
                         // alignment requirements may be higher than the type's alignment, so copy
                         // to a higher-aligned alloca.
                         let scratch = PlaceRef::alloca_aligned(bx, arg.layout, required_align);
-                        let op_place = PlaceRef { llval, llextra, layout: op.layout, align };
+                        let op_place = PlaceRef { val: op_place_val, layout: op.layout };
                         bx.typed_place_copy(scratch, op_place);
-                        (scratch.llval, scratch.align, true)
+                        (scratch.val.llval, scratch.val.align, true)
                     } else {
-                        (llval, align, true)
+                        (op_place_val.llval, op_place_val.align, true)
                     }
                 }
-                _ => (llval, align, true),
+                _ => (op_place_val.llval, op_place_val.align, true),
             },
             ZeroSized => match arg.mode {
                 PassMode::Indirect { on_stack, .. } => {
@@ -1490,7 +1492,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // a pointer for `repr(C)` structs even when empty, so get
                     // one from an `alloca` (which can be left uninitialized).
                     let scratch = PlaceRef::alloca(bx, arg.layout);
-                    (scratch.llval, scratch.align, true)
+                    (scratch.val.llval, scratch.val.align, true)
                 }
                 _ => bug!("ZST {op:?} wasn't ignored, but was passed with abi {arg:?}"),
             },
@@ -1557,15 +1559,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let tuple = self.codegen_operand(bx, operand);
 
         // Handle both by-ref and immediate tuples.
-        if let Ref(llval, None, align) = tuple.val {
-            let tuple_ptr = PlaceRef::new_sized_aligned(llval, tuple.layout, align);
+        if let Ref(place_val) = tuple.val {
+            if place_val.llextra.is_some() {
+                bug!("closure arguments must be sized");
+            }
+            let tuple_ptr = PlaceRef { val: place_val, layout: tuple.layout };
             for i in 0..tuple.layout.fields.count() {
                 let field_ptr = tuple_ptr.project_field(bx, i);
                 let field = bx.load_operand(field_ptr);
                 self.codegen_argument(bx, field, llargs, &args[i]);
             }
-        } else if let Ref(_, Some(_), _) = tuple.val {
-            bug!("closure arguments must be sized")
         } else {
             // If the tuple is immediate, the elements are as well.
             for i in 0..tuple.layout.fields.count() {
@@ -1782,7 +1785,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // but the calling convention has an indirect return.
                         let tmp = PlaceRef::alloca(bx, fn_ret.layout);
                         tmp.storage_live(bx);
-                        llargs.push(tmp.llval);
+                        llargs.push(tmp.val.llval);
                         ReturnDest::IndirectOperand(tmp, index)
                     } else if intrinsic.is_some() {
                         // Currently, intrinsics always need a location to store
@@ -1803,7 +1806,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.codegen_place(bx, mir::PlaceRef { local: dest.local, projection: dest.projection })
         };
         if fn_ret.is_indirect() {
-            if dest.align < dest.layout.align.abi {
+            if dest.val.align < dest.layout.align.abi {
                 // Currently, MIR code generation does not create calls
                 // that store directly to fields of packed structs (in
                 // fact, the calls it creates write only to temps).
@@ -1812,7 +1815,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // to create a temporary.
                 span_bug!(self.mir.span, "can't directly store to unaligned value");
             }
-            llargs.push(dest.llval);
+            llargs.push(dest.val.llval);
             ReturnDest::Nothing
         } else {
             ReturnDest::Store(dest)

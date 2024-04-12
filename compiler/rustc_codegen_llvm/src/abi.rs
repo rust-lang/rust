@@ -7,7 +7,7 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
-use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_middle::bug;
@@ -207,7 +207,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             // Sized indirect arguments
             PassMode::Indirect { attrs, meta_attrs: None, on_stack: _ } => {
                 let align = attrs.pointee_align.unwrap_or(self.layout.align.abi);
-                OperandValue::Ref(val, None, align).store(bx, dst);
+                OperandValue::Ref(PlaceValue::new_sized(val, align)).store(bx, dst);
             }
             // Unsized indirect qrguments
             PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
@@ -233,7 +233,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 bx.store(val, llscratch, scratch_align);
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
-                    dst.llval,
+                    dst.val.llval,
                     self.layout.align.abi,
                     llscratch,
                     scratch_align,
@@ -265,7 +265,12 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
             PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
-                OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
+                let place_val = PlaceValue {
+                    llval: next(),
+                    llextra: Some(next()),
+                    align: self.layout.align.abi,
+                };
+                OperandValue::Ref(place_val).store(bx, dst);
             }
             PassMode::Direct(_)
             | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ }

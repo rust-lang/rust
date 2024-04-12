@@ -535,7 +535,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 panic!("unsized locals must not be `extern` types");
             }
         }
-        assert_eq!(place.llextra.is_some(), place.layout.is_unsized());
+        assert_eq!(place.val.llextra.is_some(), place.layout.is_unsized());
 
         if place.layout.is_zst() {
             return OperandRef::zero_sized(place.layout);
@@ -579,13 +579,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
         }
 
-        let val = if let Some(llextra) = place.llextra {
-            OperandValue::Ref(place.llval, Some(llextra), place.align)
+        let val = if let Some(_) = place.val.llextra {
+            // FIXME: Merge with the `else` below?
+            OperandValue::Ref(place.val)
         } else if place.layout.is_llvm_immediate() {
             let mut const_llval = None;
             let llty = place.layout.llvm_type(self);
             unsafe {
-                if let Some(global) = llvm::LLVMIsAGlobalVariable(place.llval) {
+                if let Some(global) = llvm::LLVMIsAGlobalVariable(place.val.llval) {
                     if llvm::LLVMIsGlobalConstant(global) == llvm::True {
                         if let Some(init) = llvm::LLVMGetInitializer(global) {
                             if self.val_ty(init) == llty {
@@ -596,7 +597,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
             let llval = const_llval.unwrap_or_else(|| {
-                let load = self.load(llty, place.llval, place.align);
+                let load = self.load(llty, place.val.llval, place.val.align);
                 if let abi::Abi::Scalar(scalar) = place.layout.abi {
                     scalar_load_metadata(self, load, scalar, place.layout, Size::ZERO);
                 }
@@ -608,9 +609,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
             let mut load = |i, scalar: abi::Scalar, layout, align, offset| {
                 let llptr = if i == 0 {
-                    place.llval
+                    place.val.llval
                 } else {
-                    self.inbounds_ptradd(place.llval, self.const_usize(b_offset.bytes()))
+                    self.inbounds_ptradd(place.val.llval, self.const_usize(b_offset.bytes()))
                 };
                 let llty = place.layout.scalar_pair_element_llvm_type(self, i, false);
                 let load = self.load(llty, llptr, align);
@@ -619,11 +620,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             };
 
             OperandValue::Pair(
-                load(0, a, place.layout, place.align, Size::ZERO),
-                load(1, b, place.layout, place.align.restrict_for_offset(b_offset), b_offset),
+                load(0, a, place.layout, place.val.align, Size::ZERO),
+                load(1, b, place.layout, place.val.align.restrict_for_offset(b_offset), b_offset),
             )
         } else {
-            OperandValue::Ref(place.llval, None, place.align)
+            OperandValue::Ref(place.val)
         };
 
         OperandRef { val, layout: place.layout }

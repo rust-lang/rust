@@ -12,7 +12,7 @@ use crate::common::{
     AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
 };
 use crate::mir::operand::{OperandRef, OperandValue};
-use crate::mir::place::PlaceRef;
+use crate::mir::place::{PlaceRef, PlaceValue};
 use crate::MemFlags;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -156,6 +156,10 @@ pub trait BuilderMethods<'a, 'tcx>:
         order: AtomicOrdering,
         size: Size,
     ) -> Self::Value;
+    fn load_from_place(&mut self, ty: Self::Type, place: PlaceValue<Self::Value>) -> Self::Value {
+        debug_assert_eq!(place.llextra, None);
+        self.load(ty, place.llval, place.align)
+    }
     fn load_operand(&mut self, place: PlaceRef<'tcx, Self::Value>)
     -> OperandRef<'tcx, Self::Value>;
 
@@ -171,6 +175,10 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn nonnull_metadata(&mut self, load: Self::Value);
 
     fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;
+    fn store_to_place(&mut self, val: Self::Value, place: PlaceValue<Self::Value>) -> Self::Value {
+        debug_assert_eq!(place.llextra, None);
+        self.store(val, place.llval, place.align)
+    }
     fn store_with_flags(
         &mut self,
         val: Self::Value,
@@ -290,14 +298,14 @@ pub trait BuilderMethods<'a, 'tcx>:
         src: PlaceRef<'tcx, Self::Value>,
         flags: MemFlags,
     ) {
-        debug_assert!(src.llextra.is_none(), "cannot directly copy from unsized values");
-        debug_assert!(dst.llextra.is_none(), "cannot directly copy into unsized values");
+        debug_assert!(src.val.llextra.is_none(), "cannot directly copy from unsized values");
+        debug_assert!(dst.val.llextra.is_none(), "cannot directly copy into unsized values");
         debug_assert_eq!(dst.layout.size, src.layout.size);
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memcpy.
             let ty = self.backend_type(dst.layout);
-            let val = self.load(ty, src.llval, src.align);
-            self.store_with_flags(val, dst.llval, dst.align, flags);
+            let val = self.load_from_place(ty, src.val);
+            self.store_with_flags(val, dst.val.llval, dst.val.align, flags);
         } else if self.sess().opts.optimize == OptLevel::No && self.is_backend_immediate(dst.layout)
         {
             // If we're not optimizing, the aliasing information from `memcpy`
@@ -306,7 +314,7 @@ pub trait BuilderMethods<'a, 'tcx>:
             temp.val.store_with_flags(self, dst, flags);
         } else if !dst.layout.is_zst() {
             let bytes = self.const_usize(dst.layout.size.bytes());
-            self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags);
+            self.memcpy(dst.val.llval, dst.val.align, src.val.llval, src.val.align, bytes, flags);
         }
     }
 

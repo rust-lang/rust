@@ -1,4 +1,4 @@
-use super::place::PlaceRef;
+use super::place::{PlaceRef, PlaceValue};
 use super::{FunctionCx, LocalRef};
 
 use crate::size_of_val;
@@ -23,11 +23,14 @@ pub enum OperandValue<V> {
     /// The second value, if any, is the extra data (vtable or length)
     /// which indicates that it refers to an unsized rvalue.
     ///
-    /// An `OperandValue` has this variant for types which are neither
-    /// `Immediate` nor `Pair`s. The backend value in this variant must be a
-    /// pointer to the *non*-immediate backend type. That pointee type is the
+    /// An `OperandValue` *must* be this variant for any type for which
+    /// [`LayoutTypeMethods::is_backend_ref`] returns `true`.
+    /// (That basically amounts to "isn't one of the other variants".)
+    ///
+    /// This holds a [`PlaceValue`] (like a [`PlaceRef`] does) with a pointer
+    /// to the location holding the value. The type behind that pointer is the
     /// one returned by [`LayoutTypeMethods::backend_type`].
-    Ref(V, Option<V>, Align),
+    Ref(PlaceValue<V>),
     /// A single LLVM immediate value.
     ///
     /// An `OperandValue` *must* be this variant for any type for which
@@ -221,7 +224,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             OperandValue::ZeroSized => bug!("Deref of ZST operand {:?}", self),
         };
         let layout = cx.layout_of(projected_ty);
-        PlaceRef { llval: llptr, llextra, layout, align: layout.align.abi }
+        let val = PlaceValue { llval: llptr, llextra, align: layout.align.abi };
+        PlaceRef { val, layout }
     }
 
     /// If this operand is a `Pair`, we return an aggregate with the two values.
@@ -361,7 +365,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             OperandValue::Pair(bx.const_poison(ibty0), bx.const_poison(ibty1))
         } else {
             let ptr = bx.cx().type_ptr();
-            OperandValue::Ref(bx.const_poison(ptr), None, layout.align.abi)
+            OperandValue::Ref(PlaceValue::new_sized(bx.const_poison(ptr), layout.align.abi))
         }
     }
 
@@ -409,18 +413,17 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
                 // value is through `undef`/`poison`, and the store itself is useless.
             }
-            OperandValue::Ref(llval, llextra @ None, source_align) => {
+            OperandValue::Ref(val) => {
                 assert!(dest.layout.is_sized(), "cannot directly store unsized values");
-                let source_place =
-                    PlaceRef { llval, llextra, align: source_align, layout: dest.layout };
+                if val.llextra.is_some() {
+                    bug!("cannot directly store unsized values");
+                }
+                let source_place = PlaceRef { val, layout: dest.layout };
                 bx.typed_place_copy_with_flags(dest, source_place, flags);
-            }
-            OperandValue::Ref(_, Some(_), _) => {
-                bug!("cannot directly store unsized values");
             }
             OperandValue::Immediate(s) => {
                 let val = bx.from_immediate(s);
-                bx.store_with_flags(val, dest.llval, dest.align, flags);
+                bx.store_with_flags(val, dest.val.llval, dest.val.align, flags);
             }
             OperandValue::Pair(a, b) => {
                 let Abi::ScalarPair(a_scalar, b_scalar) = dest.layout.abi else {
@@ -429,12 +432,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 let b_offset = a_scalar.size(bx).align_to(b_scalar.align(bx).abi);
 
                 let val = bx.from_immediate(a);
-                let align = dest.align;
-                bx.store_with_flags(val, dest.llval, align, flags);
+                let align = dest.val.align;
+                bx.store_with_flags(val, dest.val.llval, align, flags);
 
-                let llptr = bx.inbounds_ptradd(dest.llval, bx.const_usize(b_offset.bytes()));
+                let llptr = bx.inbounds_ptradd(dest.val.llval, bx.const_usize(b_offset.bytes()));
                 let val = bx.from_immediate(b);
-                let align = dest.align.restrict_for_offset(b_offset);
+                let align = dest.val.align.restrict_for_offset(b_offset);
                 bx.store_with_flags(val, llptr, align, flags);
             }
         }
@@ -454,7 +457,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             .unwrap_or_else(|| bug!("indirect_dest has non-pointer type: {:?}", indirect_dest))
             .ty;
 
-        let OperandValue::Ref(llptr, Some(llextra), _) = self else {
+        let OperandValue::Ref(PlaceValue { llval: llptr, llextra: Some(llextra), .. }) = self
+        else {
             bug!("store_unsized called with a sized value (or with an extern type)")
         };
 
