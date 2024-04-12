@@ -491,10 +491,6 @@ LL |     mac2!(0, 1);
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might want to use `if let` to ignore the variants that aren't matched
-   |
-LL |             if let $e1..$e2; { todo!() }
-   |             ++               +++++++++++
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/recover-range-pats.rs:138:17
@@ -509,10 +505,6 @@ LL |     mac2!(0, 1);
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might want to use `if let` to ignore the variants that aren't matched
-   |
-LL |             if let $e1...$e2; { todo!() }
-   |             ++                +++++++++++
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/recover-range-pats.rs:142:17
@@ -527,10 +519,6 @@ LL |     mac2!(0, 1);
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might want to use `if let` to ignore the variants that aren't matched
-   |
-LL |             if let $e1..=$e2; { todo!() }
-   |             ++                +++++++++++
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/recover-range-pats.rs:151:17
@@ -545,10 +533,6 @@ LL |     mac!(0);
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might want to use `if let` to ignore the variant that isn't matched
-   |
-LL |             if let ..$e; { todo!() }
-   |             ++           +++++++++++
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/recover-range-pats.rs:153:17
@@ -563,10 +547,6 @@ LL |     mac!(0);
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might want to use `if let` to ignore the variant that isn't matched
-   |
-LL |             if let ...$e; { todo!() }
-   |             ++            +++++++++++
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/recover-range-pats.rs:156:17
@@ -581,10 +561,6 @@ LL |     mac!(0);
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might want to use `if let` to ignore the variant that isn't matched
-   |
-LL |             if let ..=$e; { todo!() }
-   |             ++            +++++++++++
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/recover-range-pats.rs:158:17
@@ -599,10 +575,6 @@ LL |     mac!(0);
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might want to use `if let` to ignore the variant that isn't matched
-   |
-LL |             if let $e..; { todo!() }
-   |             ++           +++++++++++
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/recover-range-pats.rs:160:17
@@ -617,10 +589,6 @@ LL |     mac!(0);
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might want to use `if let` to ignore the variant that isn't matched
-   |
-LL |             if let $e...; { todo!() }
-   |             ++            +++++++++++
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/recover-range-pats.rs:162:17
@@ -635,10 +603,6 @@ LL |     mac!(0);
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might want to use `if let` to ignore the variant that isn't matched
-   |
-LL |             if let $e..=; { todo!() }
-   |             ++            +++++++++++
 
 error: aborting due to 69 previous errors
 
