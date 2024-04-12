@@ -266,7 +266,11 @@ impl<'a> AstValidator<'a> {
             return;
         }
 
-        self.dcx().emit_err(errors::VisibilityNotPermitted { span: vis.span, note });
+        self.dcx().emit_err(errors::VisibilityNotPermitted {
+            span: vis.span,
+            note,
+            remove_qualifier_sugg: vis.span,
+        });
     }
 
     fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>, bool)) {
