@@ -3,7 +3,7 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Command, Output};
 
-use crate::handle_failed_output;
+use crate::{handle_failed_output, set_host_rpath};
 
 /// Construct a plain `rustdoc` invocation with no flags set.
 pub fn bare_rustdoc() -> Rustdoc {
@@ -22,7 +22,9 @@ pub struct Rustdoc {
 
 fn setup_common() -> Command {
     let rustdoc = env::var("RUSTDOC").unwrap();
-    Command::new(rustdoc)
+    let mut cmd = Command::new(rustdoc);
+    set_host_rpath(&mut cmd);
+    cmd
 }
 
 impl Rustdoc {

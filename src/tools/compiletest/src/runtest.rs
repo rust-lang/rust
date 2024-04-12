@@ -3785,6 +3785,14 @@ impl<'test> TestCx<'test> {
         debug!(?support_lib_deps);
         debug!(?support_lib_deps_deps);
 
+        let orig_dylib_env_paths =
+            Vec::from_iter(env::split_paths(&env::var(dylib_env_var()).unwrap()));
+
+        let mut host_dylib_env_paths = Vec::new();
+        host_dylib_env_paths.push(cwd.join(&self.config.compile_lib_path));
+        host_dylib_env_paths.extend(orig_dylib_env_paths.iter().cloned());
+        let host_dylib_env_paths = env::join_paths(host_dylib_env_paths).unwrap();
+
         let mut cmd = Command::new(&self.config.rustc_path);
         cmd.arg("-o")
             .arg(&recipe_bin)
@@ -3801,6 +3809,7 @@ impl<'test> TestCx<'test> {
             .env("RUSTC", cwd.join(&self.config.rustc_path))
             .env("TMPDIR", &tmpdir)
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
+            .env(dylib_env_var(), &host_dylib_env_paths)
             .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
             .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
             .env("LLVM_COMPONENTS", &self.config.llvm_components)
@@ -3828,19 +3837,15 @@ impl<'test> TestCx<'test> {
         // Finally, we need to run the recipe binary to build and run the actual tests.
         debug!(?recipe_bin);
 
-        let mut dylib_env_paths = String::new();
-        dylib_env_paths.push_str(&env::var(dylib_env_var()).unwrap());
-        dylib_env_paths.push(':');
-        dylib_env_paths.push_str(&support_lib_path.parent().unwrap().to_string_lossy());
-        dylib_env_paths.push(':');
-        dylib_env_paths.push_str(
-            &stage_std_path.join("rustlib").join(&self.config.host).join("lib").to_string_lossy(),
-        );
+        let mut dylib_env_paths = orig_dylib_env_paths.clone();
+        dylib_env_paths.push(support_lib_path.parent().unwrap().to_path_buf());
+        dylib_env_paths.push(stage_std_path.join("rustlib").join(&self.config.host).join("lib"));
+        let dylib_env_paths = env::join_paths(dylib_env_paths).unwrap();
 
-        let mut target_rpath_env_path = String::new();
-        target_rpath_env_path.push_str(&tmpdir.to_string_lossy());
-        target_rpath_env_path.push(':');
-        target_rpath_env_path.push_str(&dylib_env_paths);
+        let mut target_rpath_env_path = Vec::new();
+        target_rpath_env_path.push(&tmpdir);
+        target_rpath_env_path.extend(&orig_dylib_env_paths);
+        let target_rpath_env_path = env::join_paths(target_rpath_env_path).unwrap();
 
         let mut cmd = Command::new(&recipe_bin);
         cmd.current_dir(&self.testpaths.file)

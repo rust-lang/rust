@@ -960,7 +960,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         sm.span_to_diagnostic_string(span)
                     }
                 };
-                let mut spans: MultiSpan = spans.clone().into();
+                let mut spans: MultiSpan = spans.into();
                 // Point at all the `continue`s and explicit `break`s in the relevant loops.
                 for (desc, elements) in [
                     ("`break` exits", &finder.found_breaks),

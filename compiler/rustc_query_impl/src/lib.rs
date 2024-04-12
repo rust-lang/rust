@@ -13,6 +13,7 @@
 extern crate rustc_middle;
 
 use crate::plumbing::{__rust_begin_short_backtrace, encode_all_query_results, try_mark_green};
+use crate::profiling_support::QueryKeyStringCache;
 use field_offset::offset_of;
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
@@ -21,9 +22,7 @@ use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::dep_graph::{self, DepKind, DepKindStruct};
 use rustc_middle::query::erase::{erase, restore, Erase};
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
-use rustc_middle::query::plumbing::{
-    DynamicQuery, QueryKeyStringCache, QuerySystem, QuerySystemFns,
-};
+use rustc_middle::query::plumbing::{DynamicQuery, QuerySystem, QuerySystemFns};
 use rustc_middle::query::AsLocalKey;
 use rustc_middle::query::{
     queries, DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,

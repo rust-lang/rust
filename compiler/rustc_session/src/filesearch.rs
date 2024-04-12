@@ -47,8 +47,8 @@ impl<'a> FileSearch<'a> {
     }
 
     /// Returns just the directories within the search paths.
-    pub fn search_path_dirs(&self) -> Vec<PathBuf> {
-        self.search_paths().map(|sp| sp.dir.to_path_buf()).collect()
+    pub fn search_path_dirs(&self) -> impl Iterator<Item = &'a Path> {
+        self.search_paths().map(|sp| &*sp.dir)
     }
 }
 
