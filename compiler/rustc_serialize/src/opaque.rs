@@ -178,6 +178,9 @@ impl FileEncoder {
 
     pub fn finish(&mut self) -> FileEncodeResult {
         self.flush();
+        if self.res.is_ok() {
+            self.res = self.file.sync_all();
+        }
         #[cfg(debug_assertions)]
         {
             self.finished = true;
