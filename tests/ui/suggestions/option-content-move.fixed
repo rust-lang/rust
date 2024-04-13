@@ -7,7 +7,7 @@ impl LipogramCorpora {
     pub fn validate_all(&mut self) -> Result<(), char> {
         for selection in &self.selections {
             if selection.1.is_some() {
-                if <Option<String> as Clone>::clone(&selection.1).unwrap().contains(selection.0) {
+                if <Option<String> as Clone>::clone(&selection.1.clone()).unwrap().contains(selection.0) {
                 //~^ ERROR cannot move out of `selection.1`
                     return Err(selection.0);
                 }
@@ -25,7 +25,7 @@ impl LipogramCorpora2 {
     pub fn validate_all(&mut self) -> Result<(), char> {
         for selection in &self.selections {
             if selection.1.is_ok() {
-                if <Result<String, String> as Clone>::clone(&selection.1).unwrap().contains(selection.0) {
+                if <Result<String, String> as Clone>::clone(&selection.1.clone()).unwrap().contains(selection.0) {
                 //~^ ERROR cannot move out of `selection.1`
                     return Err(selection.0);
                 }

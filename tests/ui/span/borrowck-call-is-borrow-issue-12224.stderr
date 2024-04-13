@@ -43,6 +43,11 @@ LL |     f(Box::new(|a| {
 LL |
 LL |         foo(f);
    |             ^ move occurs because `f` has type `{closure@$DIR/borrowck-call-is-borrow-issue-12224.rs:52:17: 52:58}`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         foo(f.clone());
+   |              ++++++++
 
 error[E0505]: cannot move out of `f` because it is borrowed
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:55:16
@@ -57,6 +62,11 @@ LL |     f(Box::new(|a| {
 LL |
 LL |         foo(f);
    |             - move occurs due to use in closure
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     f.clone()(Box::new(|a| {
+   |      ++++++++
 
 error: aborting due to 5 previous errors
 

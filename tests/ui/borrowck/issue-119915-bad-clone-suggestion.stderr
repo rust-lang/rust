@@ -11,6 +11,11 @@ note: `Example::<E, FakeParam>::change` takes ownership of the receiver `self`, 
    |
 LL |     unsafe fn change<NewFakeParam>(self) -> Example<E, NewFakeParam> {
    |                                    ^^^^
+note: if `Example<E, NoLifetime>` implemented `Clone`, you could clone the value
+  --> $DIR/issue-119915-bad-clone-suggestion.rs:3:1
+   |
+LL | struct Example<E, FakeParam>(PhantomData<(fn(E), fn(FakeParam))>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
