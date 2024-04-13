@@ -2483,9 +2483,20 @@ impl Config {
                 llvm::is_ci_llvm_available(self, asserts)
             }
         };
+
         match download_ci_llvm {
-            None => self.channel == "dev" && if_unchanged(),
-            Some(StringOrBool::Bool(b)) => b,
+            None => {
+                (self.channel == "dev" || self.download_rustc_commit.is_some()) && if_unchanged()
+            }
+            Some(StringOrBool::Bool(b)) => {
+                if !b && self.download_rustc_commit.is_some() {
+                    panic!(
+                        "`llvm.download-ci-llvm` cannot be set to `false` if `rust.download-rustc` is set to `true` or `if-unchanged`."
+                    );
+                }
+
+                b
+            }
             // FIXME: "if-available" is deprecated. Remove this block later (around mid 2024)
             // to not break builds between the recent-to-old checkouts.
             Some(StringOrBool::String(s)) if s == "if-available" => {

@@ -505,7 +505,6 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 }
 
 pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let _indenter = indenter();
     match tcx.def_kind(def_id) {
         DefKind::Static { .. } => {
             tcx.ensure().typeck(def_id);
