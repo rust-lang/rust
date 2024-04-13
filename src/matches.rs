@@ -103,9 +103,12 @@ pub(crate) fn rewrite_match(
     let inner_attrs_str = if inner_attrs.is_empty() {
         String::new()
     } else {
-        inner_attrs
+        shape.indent.block_indent(context.config);
+        let result = inner_attrs
             .rewrite(context, shape)
-            .map(|s| format!("{}{}\n", nested_indent_str, s))?
+            .map(|s| format!("{}{}\n", nested_indent_str, s))?;
+        shape.indent.block_unindent(context.config);
+        result
     };
 
     let open_brace_pos = if inner_attrs.is_empty() {
