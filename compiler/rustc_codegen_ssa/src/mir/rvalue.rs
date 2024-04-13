@@ -738,7 +738,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     _ => bug!("RawPtr operands {data:?} {meta:?}"),
                 }
             }
-            mir::Rvalue::Repeat(..) | mir::Rvalue::Aggregate(..) => {
+            mir::Rvalue::Repeat(..) => bug!("{rvalue:?} in codegen_rvalue_operand"),
+            mir::Rvalue::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
@@ -1052,7 +1053,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 true,
             // This always produces a `ty::RawPtr`, so will be Immediate or Pair
             mir::Rvalue::Aggregate(box AggregateKind::RawPtr(..), ..) => true,
-            mir::Rvalue::Repeat(..) |
+            // Arrays are always aggregates, so it's not worth checking anything here.
+            // (If it's really `[(); N]` or `[T; 0]` and we use the place path, fine.)
+            mir::Rvalue::Repeat(..) => false,
             mir::Rvalue::Aggregate(..) => {
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
                 let ty = self.monomorphize(ty);
