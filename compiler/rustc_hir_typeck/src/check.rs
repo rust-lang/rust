@@ -83,7 +83,8 @@ pub(super) fn check_fn<'a, 'tcx>(
         }
 
         // Check that argument is Sized.
-        if !params_can_be_unsized || matches!(param_ty.kind(), ty::Foreign(..)) {
+        let tail = fcx.tcx.struct_tail_with_normalize(param_ty, |ty| ty, || {});
+        if !params_can_be_unsized || matches!(tail.kind(), ty::Foreign(..)) {
             fcx.require_type_is_sized(
                 param_ty,
                 param.pat.span,
