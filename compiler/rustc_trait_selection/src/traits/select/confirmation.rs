@@ -1079,8 +1079,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             })
             .map_err(|terr| {
                 SignatureMismatch(Box::new(SignatureMismatchData {
-                    expected_trait_ref: ty::Binder::dummy(obligation_trait_ref),
-                    found_trait_ref: ty::Binder::dummy(found_trait_ref),
+                    expected_trait_ref: obligation_trait_ref,
+                    found_trait_ref,
                     terr,
                 }))
             })

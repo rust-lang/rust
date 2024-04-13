@@ -1879,19 +1879,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         span: Span,
         found_span: Option<Span>,
-        found: ty::PolyTraitRef<'tcx>,
-        expected: ty::PolyTraitRef<'tcx>,
+        found: ty::TraitRef<'tcx>,
+        expected: ty::TraitRef<'tcx>,
         cause: &ObligationCauseCode<'tcx>,
         found_node: Option<Node<'_>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Diag<'tcx> {
         pub(crate) fn build_fn_sig_ty<'tcx>(
             infcx: &InferCtxt<'tcx>,
-            trait_ref: ty::PolyTraitRef<'tcx>,
+            trait_ref: ty::TraitRef<'tcx>,
         ) -> Ty<'tcx> {
-            let inputs = trait_ref.skip_binder().args.type_at(1);
+            let inputs = trait_ref.args.type_at(1);
             let sig = match inputs.kind() {
-                ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id()) => {
+                ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id) => {
                     infcx.tcx.mk_fn_sig(
                         *inputs,
                         infcx.next_ty_var(TypeVariableOrigin {
@@ -1915,10 +1915,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ),
             };
 
-            Ty::new_fn_ptr(infcx.tcx, trait_ref.rebind(sig))
+            Ty::new_fn_ptr(infcx.tcx, ty::Binder::dummy(sig))
         }
 
-        let argument_kind = match expected.skip_binder().self_ty().kind() {
+        let argument_kind = match expected.self_ty().kind() {
             ty::Closure(..) => "closure",
             ty::Coroutine(..) => "coroutine",
             _ => "function",
