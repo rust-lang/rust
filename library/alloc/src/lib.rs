@@ -151,7 +151,6 @@
 #![feature(slice_from_ptr_range)]
 #![feature(slice_index_methods)]
 #![feature(slice_ptr_get)]
-#![feature(slice_ptr_len)]
 #![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(str_internals)]

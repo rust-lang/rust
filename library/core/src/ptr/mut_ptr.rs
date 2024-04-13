@@ -1909,15 +1909,15 @@ impl<T> *mut [T] {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(slice_ptr_len)]
     /// use std::ptr;
     ///
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
     /// assert_eq!(slice.len(), 3);
     /// ```
     #[inline(always)]
-    #[unstable(feature = "slice_ptr_len", issue = "71146")]
-    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    #[stable(feature = "slice_ptr_len", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     pub const fn len(self) -> usize {
         metadata(self)
     }
@@ -1927,15 +1927,14 @@ impl<T> *mut [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_ptr_len)]
     /// use std::ptr;
     ///
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
     /// assert!(!slice.is_empty());
     /// ```
     #[inline(always)]
-    #[unstable(feature = "slice_ptr_len", issue = "71146")]
-    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    #[stable(feature = "slice_ptr_len", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "CURRENT_RUSTC_VERSION")]
     pub const fn is_empty(self) -> bool {
         self.len() == 0
     }
