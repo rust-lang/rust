@@ -2702,6 +2702,30 @@ impl Path {
         new_path
     }
 
+    /// Creates an owned [`PathBuf`] like `self` but with an extra extension.
+    ///
+    /// See [`PathBuf::add_extension`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let path = Path::new("foo.rs");
+    /// assert_eq!(path.with_extra_extension("txt"), PathBuf::from("foo.rs.txt"));
+    ///
+    /// let path = Path::new("foo.tar.gz");
+    /// assert_eq!(path.with_extra_extension(""), PathBuf::from("foo.tar.gz"));
+    /// assert_eq!(path.with_extra_extension("xz"), PathBuf::from("foo.tar.gz.xz"));
+    /// assert_eq!(path.with_extra_extension("").with_extra_extension("txt"), PathBuf::from("foo.tar.gz.txt"));
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn with_extra_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
+        let mut new_path = self.to_path_buf();
+        new_path.add_extension(extension);
+        new_path
+    }
+
     /// Produces an iterator over the [`Component`]s of the path.
     ///
     /// When parsing the path, there is a small amount of normalization:
