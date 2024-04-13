@@ -593,8 +593,7 @@ You can therefore use `#[cfg(foo)]` etc within the test to tweak
 each of these results.
 
 You can also customize headers and expected error messages to a particular
-revision. To do this, add `[foo]` (or `bar`, `baz`, etc) after the `//`
-comment, like so:
+revision. To do this, add `[revision-name]` after the `//` comment, like so:
 
 ```rust,ignore
 // A flag to pass in only for cfg `foo`:
@@ -605,6 +604,9 @@ fn test_foo() {
     let x: usize = 32_u32; //[foo]~ ERROR mismatched types
 }
 ```
+
+Multiple revisions can be specified in a comma-separated list, such as
+`//[foo,bar,baz]~^`.
 
 In test suites that use the LLVM [FileCheck] tool, the current revision name is
 also registered as an additional prefix for FileCheck directives:
