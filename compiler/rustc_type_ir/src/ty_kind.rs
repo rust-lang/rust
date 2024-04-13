@@ -181,9 +181,9 @@ pub enum TyKind<I: Interner> {
     /// Looking at the following example, the witness for this coroutine
     /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
     ///
-    /// ```ignore UNSOLVED (ask @compiler-errors, should this error? can we just swap the yields?)
+    /// ```
     /// #![feature(coroutines)]
-    /// |a| {
+    /// static |a| {
     ///     let x = &vec![3];
     ///     yield a;
     ///     yield x[0];
