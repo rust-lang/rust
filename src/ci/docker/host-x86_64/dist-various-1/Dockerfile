@@ -99,6 +99,7 @@ ENV TARGETS=$TARGETS,thumbv8m.base-none-eabi
 ENV TARGETS=$TARGETS,thumbv8m.main-none-eabi
 ENV TARGETS=$TARGETS,thumbv8m.main-none-eabihf
 ENV TARGETS=$TARGETS,riscv32i-unknown-none-elf
+ENV TARGETS=$TARGETS,riscv32im-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imc-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imac-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imafc-unknown-none-elf
@@ -130,6 +131,8 @@ ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft
     CFLAGS_aarch64_unknown_none=-mstrict-align -march=armv8-a+fp+simd \
     CC_riscv32i_unknown_none_elf=riscv32-unknown-elf-gcc \
     CFLAGS_riscv32i_unknown_none_elf=-march=rv32i -mabi=ilp32 \
+    CC_riscv32im_unknown_none_elf=riscv32-unknown-elf-gcc \
+    CFLAGS_riscv32im_unknown_none_elf=-march=rv32im -mabi=ilp32 \
     CC_riscv32imc_unknown_none_elf=riscv32-unknown-elf-gcc \
     CFLAGS_riscv32imc_unknown_none_elf=-march=rv32imc -mabi=ilp32 \
     CC_riscv32imac_unknown_none_elf=riscv32-unknown-elf-gcc \
