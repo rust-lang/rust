@@ -1,5 +1,5 @@
 pub fn main() {
-let a = Some(12)
+let a = Some(12);
 match a {
 #![attr1]
 #![attr2]

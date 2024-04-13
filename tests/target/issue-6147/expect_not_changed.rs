@@ -1,10 +1,10 @@
 pub fn main() {
-    let a = Some(12)
+    let a = Some(12);
     match a {
         #![attr1]
         #![attr2]
         #![attr3]
-            _ => None,
+        _ => None,
     }
 
     {
@@ -12,7 +12,7 @@ pub fn main() {
             #![attr1]
             #![attr2]
             #![attr3]
-                _ => None,
+            _ => None,
         }
     }
 }
