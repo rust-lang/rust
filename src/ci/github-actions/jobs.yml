@@ -62,3 +62,6 @@ pr:
     env:
       RUST_BACKTRACE: 1
     <<: *job-linux-8c
+
+  - name: x86_64-gnu-integration
+    <<: *job-linux-8c
