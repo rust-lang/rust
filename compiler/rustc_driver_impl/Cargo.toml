@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-ctrlc = "3.4.4"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }
 rustc_ast_passes = { path = "../rustc_ast_passes" }
@@ -65,6 +64,11 @@ version = "0.52.0"
 features = [
     "Win32_System_Diagnostics_Debug",
 ]
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+# tidy-alphabetical-start
+ctrlc = "3.4.4"
+# tidy-alphabetical-end
 
 [features]
 # tidy-alphabetical-start

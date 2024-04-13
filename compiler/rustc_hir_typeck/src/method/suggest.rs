@@ -529,16 +529,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
         }
-        if let ty::RawPtr(_, _) = &rcvr_ty.kind() {
-            err.note(
-                "try using `<*const T>::as_ref()` to get a reference to the \
-                 type behind the pointer: https://doc.rust-lang.org/std/\
-                 primitive.pointer.html#method.as_ref",
+
+        // on pointers, check if the method would exist on a reference
+        if let SelfSource::MethodCall(rcvr_expr) = source
+            && let ty::RawPtr(ty, ptr_mutbl) = *rcvr_ty.kind()
+            && let Ok(pick) = self.lookup_probe_for_diagnostic(
+                item_name,
+                Ty::new_ref(tcx, ty::Region::new_error_misc(tcx), ty, ptr_mutbl),
+                self.tcx.hir().expect_expr(self.tcx.parent_hir_id(rcvr_expr.hir_id)),
+                ProbeScope::TraitsInScope,
+                None,
+            )
+            && let ty::Ref(_, _, sugg_mutbl) = *pick.self_ty.kind()
+            && (sugg_mutbl.is_not() || ptr_mutbl.is_mut())
+        {
+            let (method, method_anchor) = match sugg_mutbl {
+                Mutability::Not => {
+                    let method_anchor = match ptr_mutbl {
+                        Mutability::Not => "as_ref",
+                        Mutability::Mut => "as_ref-1",
+                    };
+                    ("as_ref", method_anchor)
+                }
+                Mutability::Mut => ("as_mut", "as_mut"),
+            };
+            err.span_note(
+                tcx.def_span(pick.item.def_id),
+                format!("the method `{item_name}` exists on the type `{ty}`", ty = pick.self_ty),
             );
-            err.note(
-                "using `<*const T>::as_ref()` on a pointer which is unaligned or points \
-                 to invalid or uninitialized memory is undefined behavior",
-            );
+            let mut_str = ptr_mutbl.ptr_str();
+            err.note(format!(
+                "you might want to use the unsafe method `<*{mut_str} T>::{method}` to get \
+                an optional reference to the value behind the pointer"
+            ));
+            err.note(format!(
+                "read the documentation for `<*{mut_str} T>::{method}` and ensure you satisfy its \
+                safety preconditions before calling it to avoid undefined behavior: \
+                https://doc.rust-lang.org/std/primitive.pointer.html#method.{method_anchor}"
+            ));
         }
 
         let mut ty_span = match rcvr_ty.kind() {

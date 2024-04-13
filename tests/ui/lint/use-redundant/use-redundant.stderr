@@ -16,14 +16,5 @@ warning: unused import: `m2::*`
 LL | use m2::*;
    |     ^^^^^
 
-warning: the item `Bar` is imported redundantly
-  --> $DIR/use-redundant.rs:21:9
-   |
-LL | use crate::foo::Bar;
-   |     --------------- the item `Bar` is already imported here
-...
-LL |     use crate::foo::Bar;
-   |         ^^^^^^^^^^^^^^^
-
-warning: 3 warnings emitted
+warning: 2 warnings emitted
 

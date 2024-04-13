@@ -1,9 +1,9 @@
 #![feature(stmt_expr_attributes)]
 
 fn foo() -> String {
-    #[cfg(feature = "validation")]
+    #[cfg(FALSE)]
     [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>() //~ ERROR expected `;`, found `#`
-    #[cfg(not(feature = "validation"))]
+    #[cfg(not(FALSE))]
     String::new()
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#![forbid(unsafe_code)]/* This line is ignored by bash
+#![rustfmt::skip]/* This line is ignored by bash
 # This block is ignored by rustc
 pushd $(dirname "$0")/../
 RUSTC="$(pwd)/dist/rustc-clif"
@@ -26,11 +26,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let profile = std::fs::read_to_string(profile_name)
         .map_err(|err| format!("Failed to read profile {}", err))?;
-    let mut output = std::fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(output_name)?;
+    let mut output =
+        std::fs::OpenOptions::new().create(true).write(true).truncate(true).open(output_name)?;
 
     for line in profile.lines() {
         let mut stack = &line[..line.rfind(" ").unwrap()];

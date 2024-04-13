@@ -8,8 +8,8 @@ LL |     &x
    |
 help: consider assigning a value
    |
-LL |     let x = 0;
-   |           +++
+LL |     let x = 42;
+   |           ++++
 
 error: could not evaluate constant pattern
   --> $DIR/issue-78655.rs:7:9

@@ -35,7 +35,7 @@ where
             16 => Reg::i128(),
             _ => unreachable!("Align is given as power of 2 no larger than 16 bytes"),
         };
-        arg.cast_to(Uniform { unit, total: Size::from_bytes(2 * align_bytes) });
+        arg.cast_to(Uniform::new(unit, Size::from_bytes(2 * align_bytes)));
     } else {
         // FIXME: find a better way to do this. See https://github.com/rust-lang/rust/issues/117271.
         arg.make_direct_deprecated();

@@ -3,6 +3,6 @@
 
 //@ pretty-expanded FIXME #23616
 
-#![cfg_attr(not_used, no_core)]
+#![cfg_attr(FALSE, no_core)]
 
 fn main() { }

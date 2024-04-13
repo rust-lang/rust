@@ -86,13 +86,12 @@ note: lifetime declared here
 LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
    |                                            ^^
 
-error[E0283]: type annotations needed: cannot satisfy `for<'a> &'a (): Qux<'b>`
+error[E0277]: the trait bound `for<'a> &'a (): Qux<'b>` is not satisfied
   --> $DIR/nested-rpit-hrtb.rs:46:79
    |
 LL | fn one_hrtb_mention_fn_trait_param_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Qux<'b>> {}
-   |                                                                               ^^^^^^^^^^^^
+   |                                                                               ^^^^^^^^^^^^ the trait `for<'a> Qux<'b>` is not implemented for `&'a ()`
    |
-   = note: cannot satisfy `for<'a> &'a (): Qux<'b>`
    = help: the trait `Qux<'_>` is implemented for `()`
    = help: for that trait implementation, expected `()`, found `&'a ()`
 
@@ -125,5 +124,5 @@ LL | fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Si
 
 error: aborting due to 11 previous errors
 
-Some errors have detailed explanations: E0261, E0277, E0283, E0657.
+Some errors have detailed explanations: E0261, E0277, E0657.
 For more information about an error, try `rustc --explain E0261`.

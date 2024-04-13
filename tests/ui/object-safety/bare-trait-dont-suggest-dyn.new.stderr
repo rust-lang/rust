@@ -1,5 +1,5 @@
 error[E0038]: the trait `Ord` cannot be made into an object
-  --> $DIR/bare-trait-dont-suggest-dyn.rs:8:33
+  --> $DIR/bare-trait-dont-suggest-dyn.rs:6:33
    |
 LL | fn ord_prefer_dot(s: String) -> Ord {
    |                                 ^^^ `Ord` cannot be made into an object

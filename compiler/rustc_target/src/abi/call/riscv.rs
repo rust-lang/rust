@@ -201,7 +201,7 @@ where
         if total.bits() <= xlen {
             arg.cast_to(xlen_reg);
         } else {
-            arg.cast_to(Uniform { unit: xlen_reg, total: Size::from_bits(xlen * 2) });
+            arg.cast_to(Uniform::new(xlen_reg, Size::from_bits(xlen * 2)));
         }
         return false;
     }
@@ -284,10 +284,10 @@ fn classify_arg<'a, Ty, C>(
     if total.bits() > xlen {
         let align_regs = align > xlen;
         if is_riscv_aggregate(arg) {
-            arg.cast_to(Uniform {
-                unit: if align_regs { double_xlen_reg } else { xlen_reg },
-                total: Size::from_bits(xlen * 2),
-            });
+            arg.cast_to(Uniform::new(
+                if align_regs { double_xlen_reg } else { xlen_reg },
+                Size::from_bits(xlen * 2),
+            ));
         }
         if align_regs && is_vararg {
             *avail_gprs -= *avail_gprs % 2;

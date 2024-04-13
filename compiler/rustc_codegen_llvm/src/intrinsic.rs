@@ -264,7 +264,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     llvm::LLVMSetAlignment(load, align);
                 }
                 if !result.layout.is_zst() {
-                    self.store(load, result.llval, result.align);
+                    self.store_to_place(load, result.val);
                 }
                 return Ok(());
             }
@@ -428,7 +428,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
             sym::black_box => {
                 args[0].val.store(self, result);
-                let result_val_span = [result.llval];
+                let result_val_span = [result.val.llval];
                 // We need to "use" the argument in some way LLVM can't introspect, and on
                 // targets that support it we can typically leverage inline assembly to do
                 // this. LLVM's interpretation of inline assembly is that it's, well, a black
@@ -482,7 +482,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
         if !fn_abi.ret.is_ignore() {
             if let PassMode::Cast { .. } = &fn_abi.ret.mode {
-                self.store(llval, result.llval, result.align);
+                self.store(llval, result.val.llval, result.val.align);
             } else {
                 OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
                     .val
@@ -1065,7 +1065,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let place = PlaceRef::alloca(bx, args[0].layout);
                 args[0].val.store(bx, place);
                 let int_ty = bx.type_ix(expected_bytes * 8);
-                bx.load(int_ty, place.llval, Align::ONE)
+                bx.load(int_ty, place.val.llval, Align::ONE)
             }
             _ => return_error!(InvalidMonomorphization::InvalidBitmask {
                 span,

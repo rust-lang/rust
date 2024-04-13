@@ -1,7 +1,7 @@
 //@ compile-flags: --edition 2021
 
 pub fn demo() -> Option<i32> {
-    #[cfg(nope)]
+    #[cfg(FALSE)]
     {
         do yeet //~ ERROR `do yeet` expression is experimental
     }
@@ -9,7 +9,7 @@ pub fn demo() -> Option<i32> {
     Some(1)
 }
 
-#[cfg(nope)]
+#[cfg(FALSE)]
 pub fn alternative() -> Result<(), String> {
     do yeet "hello"; //~ ERROR `do yeet` expression is experimental
 }

@@ -1,9 +1,9 @@
 //@ run-pass
 
-#[cfg(foo)]
+#[cfg(FALSE)]
 macro_rules! foo { () => (1) }
 
-#[cfg(not(foo))]
+#[cfg(not(FALSE))]
 macro_rules! foo { () => (2) }
 
 pub fn main() {

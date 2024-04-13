@@ -1801,12 +1801,21 @@ extern "C" {
     ///
     /// In order for Rust-C LTO to work, module flags must be compatible with Clang. What
     /// "compatible" means depends on the merge behaviors involved.
-    pub fn LLVMRustAddModuleFlag(
+    pub fn LLVMRustAddModuleFlagU32(
         M: &Module,
         merge_behavior: LLVMModFlagBehavior,
         name: *const c_char,
         value: u32,
     );
+
+    pub fn LLVMRustAddModuleFlagString(
+        M: &Module,
+        merge_behavior: LLVMModFlagBehavior,
+        name: *const c_char,
+        value: *const c_char,
+        value_len: size_t,
+    );
+
     pub fn LLVMRustHasModuleFlag(M: &Module, name: *const c_char, len: size_t) -> bool;
 
     pub fn LLVMRustDIBuilderCreate(M: &Module) -> &mut DIBuilder<'_>;

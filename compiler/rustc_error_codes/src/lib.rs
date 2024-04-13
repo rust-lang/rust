@@ -441,7 +441,7 @@ E0695: 0695,
 E0696: 0696,
 E0697: 0697,
 E0698: 0698,
-E0699: 0699,
+E0699: 0699, // REMOVED: merged into generic inference var error
 E0700: 0700,
 E0701: 0701,
 E0703: 0703,

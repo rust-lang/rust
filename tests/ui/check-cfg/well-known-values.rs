@@ -14,6 +14,7 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_target_thread_local)]
+#![feature(cfg_ub_checks)]
 
 // This part makes sure that none of the well known names are
 // unexpected.
@@ -70,6 +71,8 @@
     target_vendor = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     test = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
+    ub_checks = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     unix = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value

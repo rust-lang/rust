@@ -1379,6 +1379,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(fluent::lint_improper_ctypes_char_help),
             },
 
+            ty::Pat(..) => FfiUnsafe {
+                ty,
+                reason: fluent::lint_improper_ctypes_pat_reason,
+                help: Some(fluent::lint_improper_ctypes_pat_help),
+            },
+
             ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => {
                 FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_128bit, help: None }
             }

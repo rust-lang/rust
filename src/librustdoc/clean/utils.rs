@@ -1,5 +1,5 @@
 use crate::clean::auto_trait::synthesize_auto_trait_impls;
-use crate::clean::blanket_impl::BlanketImplFinder;
+use crate::clean::blanket_impl::synthesize_blanket_impls;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
     clean_doc_module, clean_middle_const, clean_middle_region, clean_middle_ty, inline, Crate,
@@ -477,8 +477,7 @@ pub(crate) fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
     }
 }
 
-// FIXME(fmease): Update the `get_*` terminology to the `synthesize_` one.
-pub(crate) fn get_auto_trait_and_blanket_impls(
+pub(crate) fn synthesize_auto_trait_and_blanket_impls(
     cx: &mut DocContext<'_>,
     item_def_id: DefId,
 ) -> impl Iterator<Item = Item> {
@@ -490,8 +489,8 @@ pub(crate) fn get_auto_trait_and_blanket_impls(
     let blanket_impls = cx
         .sess()
         .prof
-        .generic_activity("get_blanket_impls")
-        .run(|| BlanketImplFinder { cx }.get_blanket_impls(item_def_id));
+        .generic_activity("synthesize_blanket_impls")
+        .run(|| synthesize_blanket_impls(cx, item_def_id));
     auto_impls.into_iter().chain(blanket_impls)
 }
 
@@ -581,7 +580,14 @@ pub(crate) fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Opti
 /// This function exists because it runs on `hir::Attributes` whereas the other is a
 /// `clean::Attributes` method.
 pub(crate) fn has_doc_flag(tcx: TyCtxt<'_>, did: DefId, flag: Symbol) -> bool {
-    tcx.get_attrs(did, sym::doc)
+    attrs_have_doc_flag(tcx.get_attrs(did, sym::doc), flag)
+}
+
+pub(crate) fn attrs_have_doc_flag<'a>(
+    mut attrs: impl Iterator<Item = &'a ast::Attribute>,
+    flag: Symbol,
+) -> bool {
+    attrs
         .any(|attr| attr.meta_item_list().is_some_and(|l| rustc_attr::list_contains_name(&l, flag)))
 }
 

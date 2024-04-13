@@ -1,4 +1,5 @@
 // This test checks that comments in item declarations are highlighted.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/private/enum.Enum.html"
 show-text: true
 
@@ -7,8 +8,7 @@ define-function: (
     [theme, url, comment_color],
     block {
         go-to: |url|
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (".item-decl .comment", {"color": |comment_color|}, ALL)
     }
 )

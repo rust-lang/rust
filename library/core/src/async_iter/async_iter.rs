@@ -116,6 +116,7 @@ where
 impl<T> Poll<Option<T>> {
     /// A helper function for internal desugaring -- produces `Ready(Some(t))`,
     /// which corresponds to the async iterator yielding a value.
+    #[doc(hidden)]
     #[unstable(feature = "async_gen_internals", issue = "none")]
     #[lang = "AsyncGenReady"]
     pub fn async_gen_ready(t: T) -> Self {
@@ -124,6 +125,7 @@ impl<T> Poll<Option<T>> {
 
     /// A helper constant for internal desugaring -- produces `Pending`,
     /// which corresponds to the async iterator pending on an `.await`.
+    #[doc(hidden)]
     #[unstable(feature = "async_gen_internals", issue = "none")]
     #[lang = "AsyncGenPending"]
     // FIXME(gen_blocks): This probably could be deduplicated.
@@ -131,6 +133,7 @@ impl<T> Poll<Option<T>> {
 
     /// A helper constant for internal desugaring -- produces `Ready(None)`,
     /// which corresponds to the async iterator finishing its iteration.
+    #[doc(hidden)]
     #[unstable(feature = "async_gen_internals", issue = "none")]
     #[lang = "AsyncGenFinished"]
     pub const FINISHED: Self = Poll::Ready(None);

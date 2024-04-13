@@ -689,6 +689,8 @@ fn resolve_local<'tcx>(
     ///        | [ ..., E&, ... ]
     ///        | ( ..., E&, ... )
     ///        | {...; E&}
+    ///        | if _ { ...; E& } else { ...; E& }
+    ///        | match _ { ..., _ => E&, ... }
     ///        | box E&
     ///        | E& as ...
     ///        | ( E& )
@@ -725,6 +727,17 @@ fn resolve_local<'tcx>(
             hir::ExprKind::Block(block, _) => {
                 if let Some(subexpr) = block.expr {
                     record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+                }
+            }
+            hir::ExprKind::If(_, then_block, else_block) => {
+                record_rvalue_scope_if_borrow_expr(visitor, then_block, blk_id);
+                if let Some(else_block) = else_block {
+                    record_rvalue_scope_if_borrow_expr(visitor, else_block, blk_id);
+                }
+            }
+            hir::ExprKind::Match(_, arms, _) => {
+                for arm in arms {
+                    record_rvalue_scope_if_borrow_expr(visitor, arm.body, blk_id);
                 }
             }
             hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) => {

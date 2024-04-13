@@ -35,6 +35,7 @@ impl<R> Transitions<R>
 where
     R: Ref,
 {
+    #[allow(dead_code)]
     fn insert(&mut self, transition: Transition<R>, state: State) {
         match transition {
             Transition::Byte(b) => {
@@ -82,6 +83,7 @@ impl<R> Dfa<R>
 where
     R: Ref,
 {
+    #[allow(dead_code)]
     pub(crate) fn unit() -> Self {
         let transitions: Map<State, Transitions<R>> = Map::default();
         let start = State::new();

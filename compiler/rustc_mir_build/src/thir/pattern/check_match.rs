@@ -674,6 +674,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         if let Some(span) = sp
             && self.tcx.sess.source_map().is_span_accessible(span)
             && interpreted_as_const.is_none()
+            && scrut.is_some()
         {
             let mut bindings = vec![];
             pat.each_binding(|name, _, _, _| bindings.push(name));

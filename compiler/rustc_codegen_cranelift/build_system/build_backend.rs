@@ -1,9 +1,10 @@
+use std::env;
 use std::path::PathBuf;
 
 use crate::path::{Dirs, RelPath};
 use crate::rustc_info::get_file_name;
 use crate::shared_utils::{rustflags_from_env, rustflags_to_cmd_env};
-use crate::utils::{is_ci, is_ci_opt, maybe_incremental, CargoProject, Compiler, LogGroup};
+use crate::utils::{CargoProject, Compiler, LogGroup};
 
 pub(crate) static CG_CLIF: CargoProject = CargoProject::new(&RelPath::SOURCE, "cg_clif");
 
@@ -16,20 +17,15 @@ pub(crate) fn build_backend(
     let _group = LogGroup::guard("Build backend");
 
     let mut cmd = CG_CLIF.build(&bootstrap_host_compiler, dirs);
-    maybe_incremental(&mut cmd);
 
     let mut rustflags = rustflags_from_env("RUSTFLAGS");
 
     rustflags.push("-Zallow-features=rustc_private".to_owned());
 
-    if is_ci() {
-        // Deny warnings on CI
-        rustflags.push("-Dwarnings".to_owned());
-
-        if !is_ci_opt() {
-            cmd.env("CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS", "true");
-            cmd.env("CARGO_PROFILE_RELEASE_OVERFLOW_CHECKS", "true");
-        }
+    if env::var("CG_CLIF_EXPENSIVE_CHECKS").is_ok() {
+        // Enabling debug assertions implicitly enables the clif ir verifier
+        cmd.env("CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS", "true");
+        cmd.env("CARGO_PROFILE_RELEASE_OVERFLOW_CHECKS", "true");
     }
 
     if use_unstable_features {

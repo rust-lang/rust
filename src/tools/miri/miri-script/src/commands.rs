@@ -297,7 +297,7 @@ impl Command {
         };
         // Prepare the branch. Pushing works much better if we use as base exactly
         // the commit that we pulled from last time, so we use the `rust-version`
-        // file as a good approximation of that.
+        // file to find out which commit that would be.
         println!("Preparing {github_user}/rust (base: {base})...");
         if cmd!(sh, "git fetch https://github.com/{github_user}/rust {branch}")
             .ignore_stderr()

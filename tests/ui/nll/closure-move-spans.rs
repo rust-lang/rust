@@ -1,4 +1,6 @@
 // check that moves due to a closure capture give a special note
+//@ run-rustfix
+#![allow(unused_variables, unused_must_use, dead_code)]
 
 fn move_after_move(x: String) {
     || x;

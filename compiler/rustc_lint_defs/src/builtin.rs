@@ -79,6 +79,7 @@ declare_lint_pass! {
         PROC_MACRO_BACK_COMPAT,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+        REDUNDANT_LIFETIMES,
         REFINING_IMPL_TRAIT_INTERNAL,
         REFINING_IMPL_TRAIT_REACHABLE,
         RENAMED_AND_REMOVED_LINTS,
@@ -1705,6 +1706,33 @@ declare_lint! {
     pub UNUSED_LIFETIMES,
     Allow,
     "detects lifetime parameters that are never used"
+}
+
+declare_lint! {
+    /// The `redundant_lifetimes` lint detects lifetime parameters that are
+    /// redundant because they are equal to another named lifetime.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #[deny(redundant_lifetimes)]
+    ///
+    /// // `'a = 'static`, so all usages of `'a` can be replaced with `'static`
+    /// pub fn bar<'a: 'static>() {}
+    ///
+    /// // `'a = 'b`, so all usages of `'b` can be replaced with `'a`
+    /// pub fn bar<'a: 'b, 'b: 'a>() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Unused lifetime parameters may signal a mistake or unfinished code.
+    /// Consider removing the parameter.
+    pub REDUNDANT_LIFETIMES,
+    Allow,
+    "detects lifetime parameters that are redundant because they are equal to some other named lifetime"
 }
 
 declare_lint! {
@@ -4311,7 +4339,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// # #![feature(type_privacy_lints)]
     /// # #![allow(unused)]
     /// #![deny(unnameable_types)]
     /// mod m {
@@ -4328,10 +4355,14 @@ declare_lint! {
     ///
     /// It is often expected that if you can obtain an object of type `T`, then
     /// you can name the type `T` as well, this lint attempts to enforce this rule.
+    /// The recommended action is to either reexport the type properly to make it nameable,
+    /// or document that users are not supposed to be able to name it for one reason or another.
+    ///
+    /// Besides types, this lint applies to traits because traits can also leak through signatures,
+    /// and you may obtain objects of their `dyn Trait` or `impl Trait` types.
     pub UNNAMEABLE_TYPES,
     Allow,
     "effective visibility of a type is larger than the area in which it can be named",
-    @feature_gate = sym::type_privacy_lints;
 }
 
 declare_lint! {

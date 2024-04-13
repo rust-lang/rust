@@ -356,6 +356,11 @@ pub trait Visitor<'v>: Sized {
     fn visit_ty(&mut self, t: &'v Ty<'v>) -> Self::Result {
         walk_ty(self, t)
     }
+    fn visit_pattern_type_pattern(&mut self, _p: &'v Pat<'v>) {
+        // Do nothing. Only a few visitors need to know the details of the pattern type,
+        // and they opt into it. All other visitors will just choke on our fake patterns
+        // because they aren't in a body.
+    }
     fn visit_generic_param(&mut self, p: &'v GenericParam<'v>) -> Self::Result {
         walk_generic_param(self, p)
     }
@@ -881,6 +886,10 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Resul
         TyKind::Infer | TyKind::InferDelegation(..) | TyKind::Err(_) => {}
         TyKind::AnonAdt(item_id) => {
             try_visit!(visitor.visit_nested_item(item_id));
+        }
+        TyKind::Pat(ty, pat) => {
+            try_visit!(visitor.visit_ty(ty));
+            try_visit!(visitor.visit_pattern_type_pattern(pat));
         }
     }
     V::Result::output()

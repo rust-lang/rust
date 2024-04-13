@@ -1074,10 +1074,14 @@ impl UnusedParens {
                 // Otherwise proceed with linting.
                 _ => {}
             }
-            let spans = inner
-                .span
-                .find_ancestor_inside(value.span)
-                .map(|inner| (value.span.with_hi(inner.lo()), value.span.with_lo(inner.hi())));
+            let spans = if !value.span.from_expansion() {
+                inner
+                    .span
+                    .find_ancestor_inside(value.span)
+                    .map(|inner| (value.span.with_hi(inner.lo()), value.span.with_lo(inner.hi())))
+            } else {
+                None
+            };
             self.emit_unused_delims(cx, value.span, spans, "pattern", keep_space, false);
         }
     }
@@ -1233,11 +1237,13 @@ impl EarlyLintPass for UnusedParens {
                         if self.with_self_ty_parens && b.generic_params.len() > 0 => {}
                     ast::TyKind::ImplTrait(_, bounds) if bounds.len() > 1 => {}
                     _ => {
-                        let spans = r
-                            .span
-                            .find_ancestor_inside(ty.span)
-                            .map(|r| (ty.span.with_hi(r.lo()), ty.span.with_lo(r.hi())));
-
+                        let spans = if !ty.span.from_expansion() {
+                            r.span
+                                .find_ancestor_inside(ty.span)
+                                .map(|r| (ty.span.with_hi(r.lo()), ty.span.with_lo(r.hi())))
+                        } else {
+                            None
+                        };
                         self.emit_unused_delims(cx, ty.span, spans, "type", (false, false), false);
                     }
                 }

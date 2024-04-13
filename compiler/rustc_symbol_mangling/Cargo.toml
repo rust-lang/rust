@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-bitflags = "2.4.1"
 punycode = "0.4.0"
 rustc-demangle = "0.1.21"
 rustc_data_structures = { path = "../rustc_data_structures" }
@@ -15,7 +14,5 @@ rustc_middle = { path = "../rustc_middle" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
-rustc_trait_selection = { path = "../rustc_trait_selection" }
 tracing = "0.1"
-twox-hash = "1.6.3"
 # tidy-alphabetical-end

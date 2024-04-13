@@ -1,4 +1,4 @@
-use super::utils::check_cast;
+use rustc_hir_typeck::cast::check_cast;
 use super::TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(
 ) -> bool {
     use CastKind::{AddrPtrCast, ArrayPtrCast, FnPtrAddrCast, FnPtrPtrCast, PtrAddrCast, PtrPtrCast};
     let mut app = Applicability::MachineApplicable;
-    let mut sugg = match check_cast(cx, e, from_ty, to_ty) {
+    let mut sugg = match check_cast(cx.tcx, cx.param_env, e, from_ty, to_ty) {
         Some(FnPtrAddrCast | PtrAddrCast) if const_context => return false,
         Some(PtrPtrCast | AddrPtrCast | ArrayPtrCast | FnPtrPtrCast | FnPtrAddrCast) => {
             Sugg::hir_with_context(cx, arg, e.span.ctxt(), "..", &mut app)

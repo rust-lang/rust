@@ -6,8 +6,7 @@ use std::process::Command;
 use crate::path::{Dirs, RelPath};
 use crate::rustc_info::get_file_name;
 use crate::utils::{
-    maybe_incremental, remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler,
-    LogGroup,
+    remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler, LogGroup,
 };
 use crate::{config, CodegenBackend, SysrootKind};
 
@@ -270,7 +269,6 @@ fn build_clif_sysroot_for_triple(
     }
     compiler.rustflags.extend(rustflags);
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
-    maybe_incremental(&mut build_cmd);
     if channel == "release" {
         build_cmd.arg("--release");
     }

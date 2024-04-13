@@ -130,7 +130,7 @@ pub enum ProbeStep<'tcx> {
 pub enum ProbeKind<'tcx> {
     /// The root inference context while proving a goal.
     Root { result: QueryResult<'tcx> },
-    /// Trying to normalize an alias by at least one stpe in `NormalizesTo`.
+    /// Trying to normalize an alias by at least one step in `NormalizesTo`.
     TryNormalizeNonRigid { result: QueryResult<'tcx> },
     /// Probe entered when normalizing the self ty during candidate assembly
     NormalizedSelfTyAssembly,

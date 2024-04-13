@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for `Result<Child, F>`
+error[E0282]: type annotations needed for `Result<Child, _>`
   --> $DIR/or_else-multiple-type-params.rs:7:18
    |
 LL |         .or_else(|err| {

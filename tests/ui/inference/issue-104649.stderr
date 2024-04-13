@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for `A<std::result::Result<std::result::Result<(), E>, Error>>`
+error[E0282]: type annotations needed for `A<std::result::Result<std::result::Result<(), _>, Error>>`
   --> $DIR/issue-104649.rs:24:9
    |
 LL |     let a = A(Result::Ok(Result::Ok(())));

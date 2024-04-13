@@ -333,6 +333,11 @@ LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false 
    |                                                                  ^ move occurs because `b` has type `&mut U`, which does not implement the `Copy` trait
    |
    = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+note: if `U` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:17:5
+   |
+LL |     struct U;
+   |     ^^^^^^^^
 
 error[E0507]: cannot move out of `b` in pattern guard
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:103:66
@@ -341,6 +346,11 @@ LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false 
    |                                                                  ^ move occurs because `b` has type `&mut U`, which does not implement the `Copy` trait
    |
    = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+note: if `U` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:17:5
+   |
+LL |     struct U;
+   |     ^^^^^^^^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0507]: cannot move out of `a` in pattern guard

@@ -132,7 +132,7 @@ pub fn foo27(_: &dyn Trait5<Type5, 32>, _: &dyn Trait5<Type5, 32>, _: &dyn Trait
 // CHECK: define{{.*}}5foo27{{.*}}!type ![[TYPE27:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 
 // CHECK: ![[TYPE13]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u6regionEEE"}
-// CHECK: ![[TYPE16]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait2Iu5paramEu6regionEEE"}
+// CHECK: ![[TYPE16]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait2Iu3i32Eu6regionEEE"}
 // CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEEE"}
 // CHECK: ![[TYPE2]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES2_E"}
 // CHECK: ![[TYPE3]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES2_S2_E"}
@@ -148,14 +148,14 @@ pub fn foo27(_: &dyn Trait5<Type5, 32>, _: &dyn Trait5<Type5, 32>, _: &dyn Trait
 // CHECK: ![[TYPE12]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker{{(4Send|4Sync)}}u6regionEES4_S4_E"}
 // CHECK: ![[TYPE14]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u6regionEES2_E"}
 // CHECK: ![[TYPE15]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u6regionEES2_S2_E"}
-// CHECK: ![[TYPE17]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait2Iu5paramEu6regionEES3_E"}
-// CHECK: ![[TYPE18]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait2Iu5paramEu6regionEES3_S3_E"}
-// CHECK: ![[TYPE19]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait3Iu5paramEu6regionEEE"}
-// CHECK: ![[TYPE20]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait3Iu5paramEu6regionEES3_E"}
-// CHECK: ![[TYPE21]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait3Iu5paramEu6regionEES3_S3_E"}
-// CHECK: ![[TYPE22]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait4Iu6regionu5paramEu6regionEEE"}
-// CHECK: ![[TYPE23]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait4Iu6regionu5paramEu6regionEES4_E"}
-// CHECK: ![[TYPE24]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait4Iu6regionu5paramEu6regionEES4_S4_E"}
-// CHECK: ![[TYPE25]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait5Iu5paramLu5usizeEEu6regionEEE"}
-// CHECK: ![[TYPE26]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait5Iu5paramLu5usizeEEu6regionEES5_E"}
-// CHECK: ![[TYPE27]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait5Iu5paramLu5usizeEEu6regionEES5_S5_E"}
+// CHECK: ![[TYPE17]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait2Iu3i32Eu6regionEES3_E"}
+// CHECK: ![[TYPE18]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait2Iu3i32Eu6regionEES3_S3_E"}
+// CHECK: ![[TYPE19]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait3Iu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type3Eu6regionEEE"}
+// CHECK: ![[TYPE20]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait3Iu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type3Eu6regionEES3_E"}
+// CHECK: ![[TYPE21]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait3Iu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type3Eu6regionEES3_S3_E"}
+// CHECK: ![[TYPE22]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait4Iu6regionu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type4Eu{{[0-9]+}}NtNtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait46OutputIS_S0_Eu3refIu3i32ES_EEE"}
+// CHECK: ![[TYPE23]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait4Iu6regionu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type4Eu{{[0-9]+}}NtNtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait46OutputIS_S0_Eu3refIu3i32ES_EES6_E"}
+// CHECK: ![[TYPE24]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait4Iu6regionu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type4Eu{{[0-9]+}}NtNtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait46OutputIS_S0_Eu3refIu3i32ES_EES6_S6_E"}
+// CHECK: ![[TYPE25]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait5Iu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type5Lu5usize32EEu6regionEEE"}
+// CHECK: ![[TYPE26]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait5Iu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type5Lu5usize32EEu6regionEES5_E"}
+// CHECK: ![[TYPE27]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait5Iu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}5Type5Lu5usize32EEu6regionEES5_S5_E"}

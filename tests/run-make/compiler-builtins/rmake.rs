@@ -22,6 +22,7 @@ use run_make_support::object::read::Object;
 use run_make_support::object::ObjectSection;
 use run_make_support::object::ObjectSymbol;
 use run_make_support::object::RelocationTarget;
+use run_make_support::set_host_rpath;
 use run_make_support::tmp_dir;
 use std::collections::HashSet;
 
@@ -48,8 +49,8 @@ fn main() {
     let path = std::env::var("PATH").unwrap();
     let rustc = std::env::var("RUSTC").unwrap();
     let bootstrap_cargo = std::env::var("BOOTSTRAP_CARGO").unwrap();
-    let status = std::process::Command::new(bootstrap_cargo)
-        .args([
+    let mut cmd = std::process::Command::new(bootstrap_cargo);
+    cmd.args([
             "build",
             "--manifest-path",
             manifest_path.to_str().unwrap(),
@@ -62,10 +63,10 @@ fn main() {
         .env("RUSTC", rustc)
         .env("RUSTFLAGS", "-Copt-level=0 -Cdebug-assertions=yes")
         .env("CARGO_TARGET_DIR", &target_dir)
-        .env("RUSTC_BOOTSTRAP", "1")
-        .status()
-        .unwrap();
+        .env("RUSTC_BOOTSTRAP", "1");
+    set_host_rpath(&mut cmd);
 
+    let status = cmd.status().unwrap();
     assert!(status.success());
 
     let rlibs_path = target_dir.join(target).join("debug").join("deps");

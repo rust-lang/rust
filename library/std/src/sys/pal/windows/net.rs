@@ -154,10 +154,7 @@ impl Socket {
         match result {
             Err(ref error) if error.kind() == io::ErrorKind::WouldBlock => {
                 if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-                    return Err(io::const_io_error!(
-                        io::ErrorKind::InvalidInput,
-                        "cannot set a 0 duration timeout",
-                    ));
+                    return Err(io::Error::ZERO_TIMEOUT);
                 }
 
                 let mut timeout = c::timeval {
@@ -364,10 +361,7 @@ impl Socket {
             Some(dur) => {
                 let timeout = sys::dur2timeout(dur);
                 if timeout == 0 {
-                    return Err(io::const_io_error!(
-                        io::ErrorKind::InvalidInput,
-                        "cannot set a 0 duration timeout",
-                    ));
+                    return Err(io::Error::ZERO_TIMEOUT);
                 }
                 timeout
             }

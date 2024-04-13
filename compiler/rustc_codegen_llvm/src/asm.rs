@@ -220,7 +220,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         constraints.append(&mut clobbers);
         if !options.contains(InlineAsmOptions::PRESERVES_FLAGS) {
             match asm_arch {
-                InlineAsmArch::AArch64 | InlineAsmArch::Arm => {
+                InlineAsmArch::AArch64 | InlineAsmArch::Arm64EC | InlineAsmArch::Arm => {
                     constraints.push("~{cc}".to_string());
                 }
                 InlineAsmArch::X86 | InlineAsmArch::X86_64 => {

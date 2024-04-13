@@ -1,10 +1,5 @@
-use rustc_hir as hir;
-use rustc_hir::Expr;
-use rustc_hir_typeck::{cast, FnCtxt, TypeckRootCtxt};
 use rustc_lint::LateContext;
-use rustc_middle::ty::cast::CastKind;
 use rustc_middle::ty::Ty;
-use rustc_span::DUMMY_SP;
 
 // check if the component types of the transmuted collection and the result have different ABI,
 // size or alignment
@@ -18,37 +13,5 @@ pub(super) fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx
     } else {
         // no idea about layout, so don't lint
         false
-    }
-}
-
-/// If a cast from `from_ty` to `to_ty` is valid, returns an Ok containing the kind of
-/// the cast. In certain cases, including some invalid casts from array references
-/// to pointers, this may cause additional errors to be emitted and/or ICE error
-/// messages. This function will panic if that occurs.
-pub(super) fn check_cast<'tcx>(
-    cx: &LateContext<'tcx>,
-    e: &'tcx Expr<'_>,
-    from_ty: Ty<'tcx>,
-    to_ty: Ty<'tcx>,
-) -> Option<CastKind> {
-    let hir_id = e.hir_id;
-    let local_def_id = hir_id.owner.def_id;
-
-    let root_ctxt = TypeckRootCtxt::new(cx.tcx, local_def_id);
-    let fn_ctxt = FnCtxt::new(&root_ctxt, cx.param_env, local_def_id);
-
-    if let Ok(check) = cast::CastCheck::new(
-        &fn_ctxt,
-        e,
-        from_ty,
-        to_ty,
-        // We won't show any error to the user, so we don't care what the span is here.
-        DUMMY_SP,
-        DUMMY_SP,
-        hir::Constness::NotConst,
-    ) {
-        check.do_check(&fn_ctxt).ok()
-    } else {
-        None
     }
 }

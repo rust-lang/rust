@@ -1,14 +1,12 @@
 // We check the background color on the jump to definition links in the src code page.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/src/link_to_definition/lib.rs.html"
 
 define-function: (
     "check-background-color",
     [theme, background_color],
     block {
-        // Set the theme.
-        set-local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false" }
-        // We reload the page so the local storage settings are being used.
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (
             "body.src .example-wrap pre.rust a",
             {"background-color": |background_color|},

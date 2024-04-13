@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for `Vec<T>`
+error[E0282]: type annotations needed for `Vec<_>`
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:24:9
    |
 LL |     let mut x = Vec::new();

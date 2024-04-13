@@ -1513,7 +1513,9 @@ impl HumanEmitter {
                 for line_idx in 0..annotated_file.lines.len() {
                     let file = annotated_file.file.clone();
                     let line = &annotated_file.lines[line_idx];
-                    if let Some(source_string) = file.get_line(line.line_index - 1) {
+                    if let Some(source_string) =
+                        line.line_index.checked_sub(1).and_then(|l| file.get_line(l))
+                    {
                         let leading_whitespace = source_string
                             .chars()
                             .take_while(|c| c.is_whitespace())
@@ -1553,7 +1555,10 @@ impl HumanEmitter {
                 for line in &annotated_file.lines {
                     max_line_len = max(
                         max_line_len,
-                        annotated_file.file.get_line(line.line_index - 1).map_or(0, |s| s.len()),
+                        line.line_index
+                            .checked_sub(1)
+                            .and_then(|l| annotated_file.file.get_line(l))
+                            .map_or(0, |s| s.len()),
                     );
                     for ann in &line.annotations {
                         span_right_margin = max(span_right_margin, ann.start_col.display);

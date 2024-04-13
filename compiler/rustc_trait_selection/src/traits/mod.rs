@@ -119,7 +119,9 @@ pub fn predicates_for_generics<'tcx>(
 
 /// Determines whether the type `ty` is known to meet `bound` and
 /// returns true if so. Returns false if `ty` either does not meet
-/// `bound` or is not known to meet bound.
+/// `bound` or is not known to meet bound (note that this is
+/// conservative towards *no impl*, which is the opposite of the
+/// `evaluate` methods).
 pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -127,8 +129,50 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     def_id: DefId,
 ) -> bool {
     let trait_ref = ty::TraitRef::new(infcx.tcx, def_id, [ty]);
-    let obligation = Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, trait_ref);
-    infcx.predicate_must_hold_modulo_regions(&obligation)
+    pred_known_to_hold_modulo_regions(infcx, param_env, trait_ref)
+}
+
+/// FIXME(@lcnr): this function doesn't seem right and shouldn't exist?
+///
+/// Ping me on zulip if you want to use this method and need help with finding
+/// an appropriate replacement.
+#[instrument(level = "debug", skip(infcx, param_env, pred), ret)]
+fn pred_known_to_hold_modulo_regions<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    pred: impl ToPredicate<'tcx>,
+) -> bool {
+    let obligation = Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, pred);
+
+    let result = infcx.evaluate_obligation_no_overflow(&obligation);
+    debug!(?result);
+
+    if result.must_apply_modulo_regions() {
+        true
+    } else if result.may_apply() {
+        // Sometimes obligations are ambiguous because the recursive evaluator
+        // is not smart enough, so we fall back to fulfillment when we're not certain
+        // that an obligation holds or not. Even still, we must make sure that
+        // the we do no inference in the process of checking this obligation.
+        let goal = infcx.resolve_vars_if_possible((obligation.predicate, obligation.param_env));
+        infcx.probe(|_| {
+            let ocx = ObligationCtxt::new(infcx);
+            ocx.register_obligation(obligation);
+
+            let errors = ocx.select_all_or_error();
+            match errors.as_slice() {
+                // Only known to hold if we did no inference.
+                [] => infcx.shallow_resolve(goal) == goal,
+
+                errors => {
+                    debug!(?errors);
+                    false
+                }
+            }
+        })
+    } else {
+        false
+    }
 }
 
 #[instrument(level = "debug", skip(tcx, elaborated_env))]

@@ -245,7 +245,7 @@ pub fn reachable<'a, 'tcx>(
 /// Returns a `BitSet` containing all basic blocks reachable from the `START_BLOCK`.
 pub fn reachable_as_bitset(body: &Body<'_>) -> BitSet<BasicBlock> {
     let mut iter = preorder(body);
-    iter.by_ref().for_each(drop);
+    while let Some(_) = iter.next() {}
     iter.visited
 }
 
@@ -278,4 +278,98 @@ pub fn reverse_postorder<'a, 'tcx>(
 ) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator + DoubleEndedIterator
 {
     body.basic_blocks.reverse_postorder().iter().map(|&bb| (bb, &body.basic_blocks[bb]))
+}
+
+/// Traversal of a [`Body`] that tries to avoid unreachable blocks in a monomorphized [`Instance`].
+///
+/// This is allowed to have false positives; blocks may be visited even if they are not actually
+/// reachable.
+///
+/// Such a traversal is mostly useful because it lets us skip lowering the `false` side
+/// of `if <T as Trait>::CONST`, as well as [`NullOp::UbChecks`].
+///
+/// [`NullOp::UbChecks`]: rustc_middle::mir::NullOp::UbChecks
+pub fn mono_reachable<'a, 'tcx>(
+    body: &'a Body<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> MonoReachable<'a, 'tcx> {
+    MonoReachable::new(body, tcx, instance)
+}
+
+/// [`MonoReachable`] internally accumulates a [`BitSet`] of visited blocks. This is just a
+/// convenience function to run that traversal then extract its set of reached blocks.
+pub fn mono_reachable_as_bitset<'a, 'tcx>(
+    body: &'a Body<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> BitSet<BasicBlock> {
+    let mut iter = mono_reachable(body, tcx, instance);
+    while let Some(_) = iter.next() {}
+    iter.visited
+}
+
+pub struct MonoReachable<'a, 'tcx> {
+    body: &'a Body<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    visited: BitSet<BasicBlock>,
+    // Other traversers track their worklist in a Vec. But we don't care about order, so we can
+    // store ours in a BitSet and thus save allocations because BitSet has a small size
+    // optimization.
+    worklist: BitSet<BasicBlock>,
+}
+
+impl<'a, 'tcx> MonoReachable<'a, 'tcx> {
+    pub fn new(
+        body: &'a Body<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+    ) -> MonoReachable<'a, 'tcx> {
+        let mut worklist = BitSet::new_empty(body.basic_blocks.len());
+        worklist.insert(START_BLOCK);
+        MonoReachable {
+            body,
+            tcx,
+            instance,
+            visited: BitSet::new_empty(body.basic_blocks.len()),
+            worklist,
+        }
+    }
+
+    fn add_work(&mut self, blocks: impl IntoIterator<Item = BasicBlock>) {
+        for block in blocks.into_iter() {
+            if !self.visited.contains(block) {
+                self.worklist.insert(block);
+            }
+        }
+    }
+}
+
+impl<'a, 'tcx> Iterator for MonoReachable<'a, 'tcx> {
+    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
+
+    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
+        while let Some(idx) = self.worklist.iter().next() {
+            self.worklist.remove(idx);
+            if !self.visited.insert(idx) {
+                continue;
+            }
+
+            let data = &self.body[idx];
+
+            if let Some((bits, targets)) =
+                Body::try_const_mono_switchint(self.tcx, self.instance, data)
+            {
+                let target = targets.target_for_value(bits);
+                self.add_work([target]);
+            } else {
+                self.add_work(data.terminator().successors());
+            }
+
+            return Some((idx, data));
+        }
+
+        None
+    }
 }

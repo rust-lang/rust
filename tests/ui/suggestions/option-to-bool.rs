@@ -1,5 +1,3 @@
-#![cfg_attr(let_chains, feature(let_chains))]
-
 fn foo(x: Option<i32>) {
     if true && x {}
     //~^ ERROR mismatched types

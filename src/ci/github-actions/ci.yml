@@ -249,7 +249,8 @@ x--expand-yaml-anchors--remove:
         <<: *step
 
       - name: run the build
-        run: src/ci/scripts/run-build-from-ci.sh
+        # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
+        run: src/ci/scripts/run-build-from-ci.sh 2>&1
         env:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}

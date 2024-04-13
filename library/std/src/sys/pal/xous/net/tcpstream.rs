@@ -140,10 +140,7 @@ impl TcpStream {
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         if let Some(to) = timeout {
             if to.is_zero() {
-                return Err(io::const_io_error!(
-                    io::ErrorKind::InvalidInput,
-                    &"Zero is an invalid timeout",
-                ));
+                return Err(io::Error::ZERO_TIMEOUT);
             }
         }
         self.read_timeout.store(
@@ -156,10 +153,7 @@ impl TcpStream {
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         if let Some(to) = timeout {
             if to.is_zero() {
-                return Err(io::const_io_error!(
-                    io::ErrorKind::InvalidInput,
-                    &"Zero is an invalid timeout",
-                ));
+                return Err(io::Error::ZERO_TIMEOUT);
             }
         }
         self.write_timeout.store(

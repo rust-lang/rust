@@ -177,7 +177,7 @@ enum ImplTraitContext {
 
 /// Used for tracking import use types which will be used for redundant import checking.
 /// ### Used::Scope Example
-///  ```rust,compile_fail
+///  ```rust,ignore (redundant_imports)
 /// #![deny(unused_imports)]
 /// use std::mem::drop;
 /// fn main() {

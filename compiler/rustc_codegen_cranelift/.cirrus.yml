@@ -7,10 +7,14 @@ task:
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh --default-toolchain none -y --profile=minimal
   target_cache:
-    folder: target
+    folder: build/cg_clif
   prepare_script:
     - . $HOME/.cargo/env
     - ./y.sh prepare
   test_script:
     - . $HOME/.cargo/env
-    - ./y.sh test
+    # Disabling incr comp reduces cache size and incr comp doesn't save as much
+    # on CI anyway.
+    - export CARGO_BUILD_INCREMENTAL=false
+    # Skip rand as it fails on FreeBSD due to rust-random/rand#1355
+    - ./y.sh test --skip-test test.rust-random/rand

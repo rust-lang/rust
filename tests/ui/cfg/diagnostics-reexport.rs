@@ -14,7 +14,7 @@ pub use a::x;
 //~| NOTE no `x` in `a`
 
 mod a {
-    #[cfg(no)]
+    #[cfg(FALSE)]
     pub fn x() {}
     //~^ NOTE found an item that was configured out
 }
@@ -25,10 +25,10 @@ pub use b::{x, y};
 //~| NOTE no `y` in `b`
 
 mod b {
-    #[cfg(no)]
+    #[cfg(FALSE)]
     pub fn x() {}
     //~^ NOTE found an item that was configured out
-    #[cfg(no)]
+    #[cfg(FALSE)]
     pub fn y() {}
     //~^ NOTE found an item that was configured out
 }

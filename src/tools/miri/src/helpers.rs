@@ -105,24 +105,41 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
         (path, None)
     };
 
-    // First find the crate.
-    let krate =
-        tcx.crates(()).iter().find(|&&krate| tcx.crate_name(krate).as_str() == crate_name)?;
-    let mut cur_item = DefId { krate: *krate, index: CRATE_DEF_INDEX };
-    // Then go over the modules.
-    for &segment in modules {
-        cur_item = find_children(tcx, cur_item, segment)
-            .find(|item| tcx.def_kind(item) == DefKind::Mod)?;
+    // There may be more than one crate with this name. We try them all.
+    // (This is particularly relevant when running `std` tests as then there are two `std` crates:
+    // the one in the sysroot and the one locally built by `cargo test`.)
+    // FIXME: can we prefer the one from the sysroot?
+    'crates: for krate in
+        tcx.crates(()).iter().filter(|&&krate| tcx.crate_name(krate).as_str() == crate_name)
+    {
+        let mut cur_item = DefId { krate: *krate, index: CRATE_DEF_INDEX };
+        // Go over the modules.
+        for &segment in modules {
+            let Some(next_item) = find_children(tcx, cur_item, segment)
+                .find(|item| tcx.def_kind(item) == DefKind::Mod)
+            else {
+                continue 'crates;
+            };
+            cur_item = next_item;
+        }
+        // Finally, look up the desired item in this module, if any.
+        match item {
+            Some((item_name, namespace)) => {
+                let Some(item) = find_children(tcx, cur_item, item_name)
+                    .find(|item| tcx.def_kind(item).ns() == Some(namespace))
+                else {
+                    continue 'crates;
+                };
+                return Some(item);
+            }
+            None => {
+                // Just return the module.
+                return Some(cur_item);
+            }
+        }
     }
-    // Finally, look up the desired item in this module, if any.
-    match item {
-        Some((item_name, namespace)) =>
-            Some(
-                find_children(tcx, cur_item, item_name)
-                    .find(|item| tcx.def_kind(item).ns() == Some(namespace))?,
-            ),
-        None => Some(cur_item),
-    }
+    // Item not found in any of the crates with the right name.
+    None
 }
 
 /// Convert a softfloat type to its corresponding hostfloat type.
@@ -968,10 +985,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn frame_in_std(&self) -> bool {
         let this = self.eval_context_ref();
-        let Some(start_fn) = this.tcx.lang_items().start_fn() else {
-            // no_std situations
-            return false;
-        };
         let frame = this.frame();
         // Make an attempt to get at the instance of the function this is inlined from.
         let instance: Option<_> = try {
@@ -982,13 +995,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         };
         // Fall back to the instance of the function itself.
         let instance = instance.unwrap_or(frame.instance);
-        // Now check if this is in the same crate as start_fn.
-        // As a special exception we also allow unit tests from
-        // <https://github.com/rust-lang/miri-test-libstd/tree/master/std_miri_test> to call these
-        // shims.
+        // Now check the crate it is in. We could try to be clever here and e.g. check if this is
+        // the same crate as `start_fn`, but that would not work for running std tests in Miri, so
+        // we'd need some more hacks anyway. So we just check the name of the crate. If someone
+        // calls their crate `std` then we'll just let them keep the pieces.
         let frame_crate = this.tcx.def_path(instance.def_id()).krate;
-        frame_crate == this.tcx.def_path(start_fn).krate
-            || this.tcx.crate_name(frame_crate).as_str() == "std_miri_test"
+        let crate_name = this.tcx.crate_name(frame_crate);
+        let crate_name = crate_name.as_str();
+        // On miri-test-libstd, the name of the crate is different.
+        crate_name == "std" || crate_name == "std_miri_test"
     }
 
     /// Handler that should be called when unsupported functionality is encountered.

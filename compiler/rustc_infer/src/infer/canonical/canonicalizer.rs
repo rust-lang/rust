@@ -42,7 +42,7 @@ impl<'tcx> InferCtxt<'tcx> {
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
         let (param_env, value) = value.into_parts();
-        let param_env = self.tcx.canonical_param_env_cache.get_or_insert(
+        let mut param_env = self.tcx.canonical_param_env_cache.get_or_insert(
             self.tcx,
             param_env,
             query_state,
@@ -58,6 +58,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 )
             },
         );
+
+        param_env.defining_opaque_types = self.defining_opaque_types;
 
         Canonicalizer::canonicalize_with_base(
             param_env,
@@ -440,6 +442,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             | ty::Tuple(..)
             | ty::Alias(..)
             | ty::Foreign(..)
+            | ty::Pat(..)
             | ty::Param(..) => {
                 if t.flags().intersects(self.needs_canonical_flags) {
                     t.super_fold_with(self)
@@ -540,6 +543,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             max_universe: ty::UniverseIndex::ROOT,
             variables: List::empty(),
             value: (),
+            defining_opaque_types: infcx.map(|i| i.defining_opaque_types).unwrap_or_default(),
         };
         Canonicalizer::canonicalize_with_base(
             base,
@@ -609,7 +613,15 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             .max()
             .unwrap_or(ty::UniverseIndex::ROOT);
 
-        Canonical { max_universe, variables: canonical_variables, value: (base.value, out_value) }
+        assert!(
+            !infcx.is_some_and(|infcx| infcx.defining_opaque_types != base.defining_opaque_types)
+        );
+        Canonical {
+            max_universe,
+            variables: canonical_variables,
+            value: (base.value, out_value),
+            defining_opaque_types: base.defining_opaque_types,
+        }
     }
 
     /// Creates a canonical variable replacing `kind` from the input,

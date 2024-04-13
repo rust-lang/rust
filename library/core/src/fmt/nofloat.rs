@@ -11,5 +11,7 @@ macro_rules! floating {
     };
 }
 
+floating! { f16 }
 floating! { f32 }
 floating! { f64 }
+floating! { f128 }

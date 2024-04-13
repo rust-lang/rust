@@ -7,49 +7,49 @@
 
 fn main() {
     let a = 413;
-    #[cfg(unset)]
+    #[cfg(FALSE)]
     let a = ();
     assert_eq!(a, 413);
 
     let mut b = 612;
-    #[cfg(unset)]
+    #[cfg(FALSE)]
     {
         b = 1111;
     }
     assert_eq!(b, 612);
 
-    #[cfg(unset)]
+    #[cfg(FALSE)]
     undefined_fn();
 
-    #[cfg(unset)]
+    #[cfg(FALSE)]
     undefined_macro!();
-    #[cfg(unset)]
+    #[cfg(FALSE)]
     undefined_macro![];
-    #[cfg(unset)]
+    #[cfg(FALSE)]
     undefined_macro!{};
 
     // pretty printer bug...
-    // #[cfg(unset)]
+    // #[cfg(FALSE)]
     // undefined_macro!{}
 
-    let () = (#[cfg(unset)] 341,); // Should this also work on parens?
-    let t = (1, #[cfg(unset)] 3, 4);
+    let () = (#[cfg(FALSE)] 341,); // Should this also work on parens?
+    let t = (1, #[cfg(FALSE)] 3, 4);
     assert_eq!(t, (1, 4));
 
     let f = |_: u32, _: u32| ();
-    f(2, 1, #[cfg(unset)] 6);
+    f(2, 1, #[cfg(FALSE)] 6);
 
-    let _: u32 = a.clone(#[cfg(unset)] undefined);
+    let _: u32 = a.clone(#[cfg(FALSE)] undefined);
 
-    let _: [(); 0] = [#[cfg(unset)] 126];
-    let t = [#[cfg(unset)] 1, 2, 6];
+    let _: [(); 0] = [#[cfg(FALSE)] 126];
+    let t = [#[cfg(FALSE)] 1, 2, 6];
     assert_eq!(t, [2, 6]);
 
     {
         let r;
-        #[cfg(unset)]
+        #[cfg(FALSE)]
         (r = 5);
-        #[cfg(not(unset))]
+        #[cfg(not(FALSE))]
         (r = 10);
         assert_eq!(r, 10);
     }
@@ -69,13 +69,13 @@ fn main() {
         }
     }
 
-    let n = if_cfg!(unset? {
+    let n = if_cfg!(FALSE? {
         413
     } else {
         612
     });
 
-    assert_eq!((#[cfg(unset)] 1, #[cfg(not(unset))] 2), (2,));
+    assert_eq!((#[cfg(FALSE)] 1, #[cfg(not(FALSE))] 2), (2,));
     assert_eq!(n, 612);
 
     // check that lints work

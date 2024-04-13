@@ -1134,7 +1134,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         for (what, span) in types_and_spans {
             err.span_label(span, format!("not allowed on {what}"));
         }
-        generics_args_err_extend(self.tcx(), segments.clone(), &mut err, err_extend);
+        generics_args_err_extend(self.tcx(), segments, &mut err, err_extend);
         let reported = err.emit();
         self.set_tainted_by_errors(reported);
         reported

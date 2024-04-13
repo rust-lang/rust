@@ -31,11 +31,10 @@ use crate::html::format::{
     display_fn, join_with_double_colon, print_abi_with_space, print_constness_with_space,
     print_where_clause, visibility_print_with_space, Buffer, Ending, PrintWithSpace,
 };
-use crate::html::layout::Page;
+use crate::html::highlight;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
-use crate::html::{highlight, static_files};
 
 use askama::Template;
 use itertools::Itertools;
@@ -157,8 +156,6 @@ struct PathComponent {
 #[derive(Template)]
 #[template(path = "print_item.html")]
 struct ItemVars<'a> {
-    static_root_path: &'a str,
-    clipboard_svg: &'static static_files::StaticFile,
     typ: &'a str,
     name: &'a str,
     item_type: &'a str,
@@ -178,12 +175,7 @@ fn print_where_clause_and_check<'a, 'tcx: 'a>(
     len_before != buffer.len()
 }
 
-pub(super) fn print_item(
-    cx: &mut Context<'_>,
-    item: &clean::Item,
-    buf: &mut Buffer,
-    page: &Page<'_>,
-) {
+pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buffer) {
     debug_assert!(!item.is_stripped());
     let typ = match *item.kind {
         clean::ModuleItem(_) => {
@@ -252,8 +244,6 @@ pub(super) fn print_item(
     };
 
     let item_vars = ItemVars {
-        static_root_path: &page.get_static_root_path(),
-        clipboard_svg: &static_files::STATIC_FILES.clipboard_svg,
         typ,
         name: item.name.as_ref().unwrap().as_str(),
         item_type: &item.type_().to_string(),
@@ -1237,22 +1227,18 @@ fn item_opaque_ty(
 }
 
 fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::TypeAlias) {
-    fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) {
-        wrap_item(w, |w| {
-            write!(
-                w,
-                "{attrs}{vis}type {name}{generics}{where_clause} = {type_};",
-                attrs = render_attributes_in_pre(it, "", cx),
-                vis = visibility_print_with_space(it, cx),
-                name = it.name.unwrap(),
-                generics = t.generics.print(cx),
-                where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
-                type_ = t.type_.print(cx),
-            );
-        });
-    }
-
-    write_content(w, cx, it, t);
+    wrap_item(w, |w| {
+        write!(
+            w,
+            "{attrs}{vis}type {name}{generics}{where_clause} = {type_};",
+            attrs = render_attributes_in_pre(it, "", cx),
+            vis = visibility_print_with_space(it, cx),
+            name = it.name.unwrap(),
+            generics = t.generics.print(cx),
+            where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
+            type_ = t.type_.print(cx),
+        );
+    });
 
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 

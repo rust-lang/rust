@@ -1,4 +1,5 @@
 // The goal of this test is to check the color of the "no result" links.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=sdkfskjfsdks"
 show-text: true
 
@@ -6,9 +7,7 @@ define-function: (
     "check-no-result",
     [theme, link, link_hover],
     block {
-        // Changing theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         wait-for: "#results"
         assert: ".search-failed.active"
         assert-css: ("#results a", {"color": |link|}, ALL)

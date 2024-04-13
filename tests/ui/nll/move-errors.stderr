@@ -4,6 +4,11 @@ error[E0507]: cannot move out of `*a` which is behind a shared reference
 LL |     let b = *a;
    |             ^^ move occurs because `*a` has type `A`, which does not implement the `Copy` trait
    |
+note: if `A` implemented `Clone`, you could clone the value
+  --> $DIR/move-errors.rs:1:1
+   |
+LL | struct A(String);
+   | ^^^^^^^^
 help: consider removing the dereference here
    |
 LL -     let b = *a;
@@ -19,6 +24,11 @@ LL |     let b = a[0];
    |             cannot move out of here
    |             move occurs because `a[_]` has type `A`, which does not implement the `Copy` trait
    |
+note: if `A` implemented `Clone`, you could clone the value
+  --> $DIR/move-errors.rs:1:1
+   |
+LL | struct A(String);
+   | ^^^^^^^^
 help: consider borrowing here
    |
 LL |     let b = &a[0];
@@ -30,6 +40,11 @@ error[E0507]: cannot move out of `**r` which is behind a shared reference
 LL |     let s = **r;
    |             ^^^ move occurs because `**r` has type `A`, which does not implement the `Copy` trait
    |
+note: if `A` implemented `Clone`, you could clone the value
+  --> $DIR/move-errors.rs:1:1
+   |
+LL | struct A(String);
+   | ^^^^^^^^
 help: consider removing the dereference here
    |
 LL -     let s = **r;
@@ -42,6 +57,11 @@ error[E0507]: cannot move out of an `Rc`
 LL |     let s = *r;
    |             ^^ move occurs because value has type `A`, which does not implement the `Copy` trait
    |
+note: if `A` implemented `Clone`, you could clone the value
+  --> $DIR/move-errors.rs:1:1
+   |
+LL | struct A(String);
+   | ^^^^^^^^
 help: consider removing the dereference here
    |
 LL -     let s = *r;
@@ -57,6 +77,11 @@ LL |     let a = [A("".to_string())][0];
    |             cannot move out of here
    |             move occurs because value has type `A`, which does not implement the `Copy` trait
    |
+note: if `A` implemented `Clone`, you could clone the value
+  --> $DIR/move-errors.rs:1:1
+   |
+LL | struct A(String);
+   | ^^^^^^^^
 help: consider borrowing here
    |
 LL |     let a = &[A("".to_string())][0];
@@ -96,6 +121,12 @@ error[E0507]: cannot move out of `*a` which is behind a shared reference
    |
 LL |     b = *a;
    |         ^^ move occurs because `*a` has type `A`, which does not implement the `Copy` trait
+   |
+note: if `A` implemented `Clone`, you could clone the value
+  --> $DIR/move-errors.rs:1:1
+   |
+LL | struct A(String);
+   | ^^^^^^^^
 
 error[E0508]: cannot move out of type `[B; 1]`, a non-copy array
   --> $DIR/move-errors.rs:74:11

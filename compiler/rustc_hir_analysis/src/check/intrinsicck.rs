@@ -143,7 +143,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 };
                 assert!(
                     ty.is_manually_drop(),
-                    "expected first field of `MaybeUnit` to be `ManuallyDrop`"
+                    "expected first field of `MaybeUninit` to be `ManuallyDrop`"
                 );
                 let fields = &ty.non_enum_variant().fields;
                 let ty = fields[FieldIdx::ZERO].ty(self.tcx, args);

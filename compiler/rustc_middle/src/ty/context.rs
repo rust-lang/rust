@@ -25,10 +25,11 @@ use crate::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
 };
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, GenericParamDefKind,
-    ImplPolarity, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig, Predicate,
-    PredicateKind, PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty,
-    TyKind, TyVid, TypeVisitable, Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, ConstData,
+    GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst, ParamTy, Pattern,
+    PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicatePolarity,
+    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, TypeVisitable,
+    Visibility,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
@@ -84,6 +85,7 @@ use std::ops::{Bound, Deref};
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
     type DefId = DefId;
+    type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
     type AdtDef = ty::AdtDef<'tcx>;
     type GenericArgs = ty::GenericArgsRef<'tcx>;
     type GenericArg = ty::GenericArg<'tcx>;
@@ -95,6 +97,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type CanonicalVars = CanonicalVarInfos<'tcx>;
 
     type Ty = Ty<'tcx>;
+    type Pat = Pattern<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;
     type AliasTy = ty::AliasTy<'tcx>;
     type ParamTy = ParamTy;
@@ -130,6 +133,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type SubtypePredicate = ty::SubtypePredicate<'tcx>;
     type CoercePredicate = ty::CoercePredicate<'tcx>;
     type ClosureKind = ty::ClosureKind;
+    type Clauses = ty::Clauses<'tcx>;
 
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
@@ -152,10 +156,11 @@ pub struct CtxtInterners<'tcx> {
     region: InternedSet<'tcx, RegionKind<'tcx>>,
     poly_existential_predicates: InternedSet<'tcx, List<PolyExistentialPredicate<'tcx>>>,
     predicate: InternedSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
-    clauses: InternedSet<'tcx, List<Clause<'tcx>>>,
+    clauses: InternedSet<'tcx, ListWithCachedTypeInfo<Clause<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, WithCachedTypeInfo<ConstData<'tcx>>>,
+    pat: InternedSet<'tcx, PatternKind<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, LayoutS<FieldIdx, VariantIdx>>,
@@ -164,6 +169,7 @@ pub struct CtxtInterners<'tcx> {
     predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<'tcx>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
     local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
+    captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
     offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
 }
 
@@ -183,6 +189,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             projs: Default::default(),
             place_elems: Default::default(),
             const_: Default::default(),
+            pat: Default::default(),
             const_allocation: Default::default(),
             bound_variable_kinds: Default::default(),
             layout: Default::default(),
@@ -191,6 +198,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             predefined_opaques_in_body: Default::default(),
             fields: Default::default(),
             local_def_ids: Default::default(),
+            captures: Default::default(),
             offset_of: Default::default(),
         }
     }
@@ -285,6 +293,24 @@ impl<'tcx> CtxtInterners<'tcx> {
                 })
                 .0,
         ))
+    }
+
+    fn intern_clauses(&self, clauses: &[Clause<'tcx>]) -> Clauses<'tcx> {
+        if clauses.is_empty() {
+            ListWithCachedTypeInfo::empty()
+        } else {
+            self.clauses
+                .intern_ref(clauses, || {
+                    let flags = super::flags::FlagComputation::for_clauses(clauses);
+
+                    InternedInSet(ListWithCachedTypeInfo::from_arena(
+                        &*self.arena,
+                        flags.into(),
+                        clauses,
+                    ))
+                })
+                .0
+        }
     }
 }
 
@@ -731,7 +757,7 @@ pub struct GlobalCtxt<'tcx> {
 impl<'tcx> GlobalCtxt<'tcx> {
     /// Installs `self` in a `TyCtxt` and `ImplicitCtxt` for the duration of
     /// `f`.
-    pub fn enter<'a: 'tcx, F, R>(&'a self, f: F) -> R
+    pub fn enter<F, R>(&'tcx self, f: F) -> R
     where
         F: FnOnce(TyCtxt<'tcx>) -> R,
     {
@@ -1139,11 +1165,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 .local_def_path_hash_to_def_id(hash, err_msg)
                 .to_def_id()
         } else {
-            // If this is a DefPathHash from an upstream crate, let the CrateStore map
-            // it to a DefId.
-            let cstore = &*self.cstore_untracked();
-            let cnum = cstore.stable_crate_id_to_crate_num(stable_crate_id);
-            cstore.def_path_hash_to_def_id(cnum, hash)
+            self.def_path_hash_to_def_id_extern(hash, stable_crate_id)
         }
     }
 
@@ -1559,6 +1581,7 @@ macro_rules! nop_list_lift {
 nop_lift! {type_; Ty<'a> => Ty<'tcx>}
 nop_lift! {region; Region<'a> => Region<'tcx>}
 nop_lift! {const_; Const<'a> => Const<'tcx>}
+nop_lift! {pat; Pattern<'a> => Pattern<'tcx>}
 nop_lift! {const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx>}
 nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
 nop_lift! {predicate; Clause<'a> => Clause<'tcx>}
@@ -1696,6 +1719,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     Param,
                     Infer,
                     Alias,
+                    Pat,
                     Foreign
                 )?;
 
@@ -1783,6 +1807,29 @@ impl<'tcx, T: Hash> Hash for InternedInSet<'tcx, List<T>> {
     }
 }
 
+impl<'tcx, T> Borrow<[T]> for InternedInSet<'tcx, ListWithCachedTypeInfo<T>> {
+    fn borrow(&self) -> &[T] {
+        &self.0[..]
+    }
+}
+
+impl<'tcx, T: PartialEq> PartialEq for InternedInSet<'tcx, ListWithCachedTypeInfo<T>> {
+    fn eq(&self, other: &InternedInSet<'tcx, ListWithCachedTypeInfo<T>>) -> bool {
+        // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
+        // `x == y`.
+        self.0[..] == other.0[..]
+    }
+}
+
+impl<'tcx, T: Eq> Eq for InternedInSet<'tcx, ListWithCachedTypeInfo<T>> {}
+
+impl<'tcx, T: Hash> Hash for InternedInSet<'tcx, ListWithCachedTypeInfo<T>> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
+        self.0[..].hash(s)
+    }
+}
+
 macro_rules! direct_interners {
     ($($name:ident: $vis:vis $method:ident($ty:ty): $ret_ctor:ident -> $ret_ty:ty,)+) => {
         $(impl<'tcx> Borrow<$ty> for InternedInSet<'tcx, $ty> {
@@ -1824,6 +1871,7 @@ macro_rules! direct_interners {
 // crate only, and have a corresponding `mk_` function.
 direct_interners! {
     region: pub(crate) intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
+    pat: pub mk_pat(PatternKind<'tcx>): Pattern -> Pattern<'tcx>,
     const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: pub mk_layout(LayoutS<FieldIdx, VariantIdx>): Layout -> Layout<'tcx>,
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
@@ -1841,7 +1889,7 @@ macro_rules! slice_interners {
                     List::empty()
                 } else {
                     self.interners.$field.intern_ref(v, || {
-                        InternedInSet(List::from_arena(&*self.arena, v))
+                        InternedInSet(List::from_arena(&*self.arena, (), v))
                     }).0
                 }
             })+
@@ -1858,12 +1906,12 @@ slice_interners!(
     type_lists: pub mk_type_list(Ty<'tcx>),
     canonical_var_infos: pub mk_canonical_var_infos(CanonicalVarInfo<'tcx>),
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
-    clauses: intern_clauses(Clause<'tcx>),
     projs: pub mk_projs(ProjectionKind),
     place_elems: pub mk_place_elems(PlaceElem<'tcx>),
     bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind),
     fields: pub mk_fields(FieldIdx),
     local_def_ids: intern_local_def_ids(LocalDefId),
+    captures: intern_captures(&'tcx ty::CapturedPlace<'tcx>),
     offset_of: pub mk_offset_of((VariantIdx, FieldIdx)),
 );
 
@@ -2163,11 +2211,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.intern_poly_existential_predicates(eps)
     }
 
-    pub fn mk_clauses(self, clauses: &[Clause<'tcx>]) -> &'tcx List<Clause<'tcx>> {
+    pub fn mk_clauses(self, clauses: &[Clause<'tcx>]) -> Clauses<'tcx> {
         // FIXME consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
         // here.
-        self.intern_clauses(clauses)
+        self.interners.intern_clauses(clauses)
     }
 
     pub fn mk_local_def_ids(self, clauses: &[LocalDefId]) -> &'tcx List<LocalDefId> {
@@ -2183,6 +2231,17 @@ impl<'tcx> TyCtxt<'tcx> {
         T: CollectAndApply<LocalDefId, &'tcx List<LocalDefId>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_local_def_ids(xs))
+    }
+
+    pub fn mk_captures_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<
+                &'tcx ty::CapturedPlace<'tcx>,
+                &'tcx List<&'tcx ty::CapturedPlace<'tcx>>,
+            >,
+    {
+        T::collect_and_apply(iter, |xs| self.intern_captures(xs))
     }
 
     pub fn mk_const_list_from_iter<I, T>(self, iter: I) -> T::Output
@@ -2231,7 +2290,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_clauses_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: CollectAndApply<Clause<'tcx>, &'tcx List<Clause<'tcx>>>,
+        T: CollectAndApply<Clause<'tcx>, Clauses<'tcx>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_clauses(xs))
     }

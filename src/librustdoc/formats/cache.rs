@@ -203,10 +203,10 @@ impl Cache {
 impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if item.item_id.is_local() {
-            let is_stripped = matches!(*item.kind, clean::ItemKind::StrippedItem(..));
             debug!(
-                "folding {} (stripped: {is_stripped:?}) \"{:?}\", id {:?}",
+                "folding {} (stripped: {:?}) \"{:?}\", id {:?}",
                 item.type_(),
+                item.is_stripped(),
                 item.name,
                 item.item_id
             );
@@ -246,13 +246,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // trait.
         if let clean::TraitItem(ref t) = *item.kind {
             self.cache.traits.entry(item.item_id.expect_def_id()).or_insert_with(|| (**t).clone());
-        }
-
-        // Collect all the implementors of traits.
-        if let clean::ImplItem(ref i) = *item.kind
+        } else if let clean::ImplItem(ref i) = *item.kind
             && let Some(trait_) = &i.trait_
             && !i.kind.is_blanket()
         {
+            // Collect all the implementors of traits.
             self.cache
                 .implementors
                 .entry(trait_.def_id())

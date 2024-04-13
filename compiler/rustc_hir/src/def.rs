@@ -113,6 +113,9 @@ pub enum DefKind {
     InlineConst,
     /// Opaque type, aka `impl Trait`.
     OpaqueTy,
+    /// A field in a struct, enum or union. e.g.
+    /// - `bar` in `struct Foo { bar: u8 }`
+    /// - `Foo::Bar::0` in `enum Foo { Bar(u8) }`
     Field,
     /// Lifetime parameter: the `'a` in `struct Foo<'a> { ... }`
     LifetimeParam,

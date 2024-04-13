@@ -266,7 +266,7 @@ impl TestProps {
             aux_crates: vec![],
             revisions: vec![],
             rustc_env: vec![("RUSTC_ICE".to_string(), "0".to_string())],
-            unset_rustc_env: vec![],
+            unset_rustc_env: vec![("RUSTC_LOG_COLOR".to_string())],
             exec_env: vec![],
             unset_exec_env: vec![],
             build_aux_docs: false,
@@ -790,15 +790,18 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-thumb",
     "ignore-thumbv8m.base-none-eabi",
     "ignore-thumbv8m.main-none-eabi",
+    "ignore-tvos",
     "ignore-unix",
     "ignore-unknown",
     "ignore-uwp",
+    "ignore-visionos",
     "ignore-vxworks",
     "ignore-wasi",
     "ignore-wasm",
     "ignore-wasm32",
     "ignore-wasm32-bare",
     "ignore-wasm64",
+    "ignore-watchos",
     "ignore-windows",
     "ignore-windows-gnu",
     "ignore-x32",
@@ -819,6 +822,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-dynamic-linking",
     "needs-git-hash",
     "needs-llvm-components",
+    "needs-matching-clang",
     "needs-profiler-support",
     "needs-relocation-model-pic",
     "needs-run-enabled",
@@ -855,6 +859,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-cdb",
     "only-gnu",
     "only-i686-pc-windows-msvc",
+    "only-ios",
     "only-linux",
     "only-loongarch64",
     "only-loongarch64-unknown-linux-gnu",
@@ -870,10 +875,13 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-sparc64",
     "only-stable",
     "only-thumb",
+    "only-tvos",
     "only-unix",
+    "only-visionos",
     "only-wasm32",
     "only-wasm32-bare",
     "only-wasm32-wasip1",
+    "only-watchos",
     "only-windows",
     "only-x86",
     "only-x86_64",
@@ -934,16 +942,25 @@ struct HeaderLine<'ln> {
 pub(crate) struct CheckDirectiveResult<'ln> {
     is_known_directive: bool,
     directive_name: &'ln str,
+    trailing_directive: Option<&'ln str>,
 }
 
-// Returns `(is_known_directive, directive_name)`.
 pub(crate) fn check_directive(directive_ln: &str) -> CheckDirectiveResult<'_> {
-    let directive_name =
-        directive_ln.split_once([':', ' ']).map(|(pre, _)| pre).unwrap_or(directive_ln);
+    let (directive_name, post) = directive_ln.split_once([':', ' ']).unwrap_or((directive_ln, ""));
+
+    let trailing = post.trim().split_once(' ').map(|(pre, _)| pre).unwrap_or(post);
+    let trailing_directive = {
+        // 1. is the directive name followed by a space? (to exclude `:`)
+        matches!(directive_ln.get(directive_name.len()..), Some(s) if s.starts_with(" "))
+            // 2. is what is after that directive also a directive (ex: "only-x86 only-arm")
+            && KNOWN_DIRECTIVE_NAMES.contains(&trailing)
+    }
+    .then_some(trailing);
 
     CheckDirectiveResult {
         is_known_directive: KNOWN_DIRECTIVE_NAMES.contains(&directive_name),
         directive_name: directive_ln,
+        trailing_directive,
     }
 }
 
@@ -1013,7 +1030,8 @@ fn iter_header(
             if testfile.extension().map(|e| e == "rs").unwrap_or(false) {
                 let directive_ln = non_revisioned_directive_line.trim();
 
-                let CheckDirectiveResult { is_known_directive, .. } = check_directive(directive_ln);
+                let CheckDirectiveResult { is_known_directive, trailing_directive, .. } =
+                    check_directive(directive_ln);
 
                 if !is_known_directive {
                     *poisoned = true;
@@ -1023,6 +1041,21 @@ fn iter_header(
                         directive_ln,
                         testfile.display(),
                         line_number,
+                    );
+
+                    return;
+                }
+
+                if let Some(trailing_directive) = &trailing_directive {
+                    *poisoned = true;
+
+                    eprintln!(
+                        "error: detected trailing compiletest test directive `{}` in {}:{}\n \
+                          help: put the trailing directive in it's own line: `//@ {}`",
+                        trailing_directive,
+                        testfile.display(),
+                        line_number,
+                        trailing_directive,
                     );
 
                     return;
@@ -1050,7 +1083,8 @@ fn iter_header(
 
             let rest = rest.trim_start();
 
-            let CheckDirectiveResult { is_known_directive, directive_name } = check_directive(rest);
+            let CheckDirectiveResult { is_known_directive, directive_name, .. } =
+                check_directive(rest);
 
             if is_known_directive {
                 *poisoned = true;

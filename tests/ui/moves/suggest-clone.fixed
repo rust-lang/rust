@@ -7,5 +7,5 @@ impl Foo {
 }
 fn main() {
     let foo = &Foo;
-    <Foo as Clone>::clone(&foo).foo(); //~ ERROR cannot move out
+    <Foo as Clone>::clone(&foo.clone()).foo(); //~ ERROR cannot move out
 }

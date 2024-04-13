@@ -846,6 +846,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(trap_unreachable, Some(false));
     tracked!(treat_err_as_bug, NonZero::new(1));
     tracked!(tune_cpu, Some(String::from("abc")));
+    tracked!(ub_checks, Some(false));
     tracked!(uninit_const_chunk_threshold, 123);
     tracked!(unleash_the_miri_inside_of_you, true);
     tracked!(use_ctors_section, Some(true));

@@ -1,3 +1,7 @@
+//@ run-rustfix
+
+#![allow(warnings)]
+
 struct Bar;
 
 trait Foo {

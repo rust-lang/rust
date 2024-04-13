@@ -31,6 +31,12 @@ pub struct VisibilityNotPermitted {
     pub span: Span,
     #[subdiagnostic]
     pub note: VisibilityNotPermittedNote,
+    #[suggestion(
+        ast_passes_remove_qualifier_sugg,
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub remove_qualifier_sugg: Span,
 }
 
 #[derive(Subdiagnostic)]

@@ -1,10 +1,13 @@
 // miri has some special hacks here that make things unused.
 #![cfg_attr(miri, allow(unused))]
 
+#[cfg(test)]
+mod tests;
+
 use crate::os::unix::prelude::*;
 
 use crate::ffi::{CStr, OsStr, OsString};
-use crate::fmt;
+use crate::fmt::{self, Write as _};
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
@@ -23,6 +26,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
     target_os = "ios",
     target_os = "tvos",
     target_os = "watchos",
+    target_os = "visionos",
 ))]
 use crate::sys::weak::syscall;
 #[cfg(any(target_os = "android", target_os = "macos", target_os = "solaris"))]
@@ -35,6 +39,7 @@ use libc::{c_int, mode_t};
     target_os = "ios",
     target_os = "tvos",
     target_os = "watchos",
+    target_os = "visionos",
     target_os = "solaris",
     all(target_os = "linux", target_env = "gnu")
 ))]
@@ -354,7 +359,7 @@ pub struct DirEntry {
     entry: dirent64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct OpenOptions {
     // generic
     read: bool,
@@ -368,7 +373,7 @@ pub struct OpenOptions {
     mode: mode_t,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FilePermissions {
     mode: mode_t,
 }
@@ -377,11 +382,17 @@ pub struct FilePermissions {
 pub struct FileTimes {
     accessed: Option<SystemTime>,
     modified: Option<SystemTime>,
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "tvos"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "visionos",
+        target_os = "tvos"
+    ))]
     created: Option<SystemTime>,
 }
 
-#[derive(Copy, Clone, Eq, Debug)]
+#[derive(Copy, Clone, Eq)]
 pub struct FileType {
     mode: mode_t,
 }
@@ -398,10 +409,12 @@ impl core::hash::Hash for FileType {
     }
 }
 
-#[derive(Debug)]
 pub struct DirBuilder {
     mode: mode_t,
 }
+
+#[derive(Copy, Clone)]
+struct Mode(mode_t);
 
 cfg_has_statx! {{
     impl FileAttr {
@@ -555,6 +568,7 @@ impl FileAttr {
         target_os = "ios",
         target_os = "tvos",
         target_os = "watchos",
+        target_os = "visionos",
     ))]
     pub fn created(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtime_nsec as i64)
@@ -567,6 +581,7 @@ impl FileAttr {
         target_os = "ios",
         target_os = "tvos",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "vita",
     )))]
     pub fn created(&self) -> io::Result<SystemTime> {
@@ -647,7 +662,13 @@ impl FileTimes {
         self.modified = Some(t);
     }
 
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "tvos"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "visionos",
+        target_os = "tvos"
+    ))]
     pub fn set_created(&mut self, t: SystemTime) {
         self.created = Some(t);
     }
@@ -673,9 +694,23 @@ impl FileType {
     }
 }
 
+impl fmt::Debug for FileType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let FileType { mode } = self;
+        f.debug_struct("FileType").field("mode", &Mode(*mode)).finish()
+    }
+}
+
 impl FromInner<u32> for FilePermissions {
     fn from_inner(mode: u32) -> FilePermissions {
         FilePermissions { mode: mode as mode_t }
+    }
+}
+
+impl fmt::Debug for FilePermissions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let FilePermissions { mode } = self;
+        f.debug_struct("FilePermissions").field("mode", &Mode(*mode)).finish()
     }
 }
 
@@ -938,6 +973,7 @@ impl DirEntry {
         target_os = "ios",
         target_os = "tvos",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "linux",
         target_os = "emscripten",
         target_os = "android",
@@ -974,6 +1010,7 @@ impl DirEntry {
         target_os = "ios",
         target_os = "tvos",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "freebsd",
@@ -993,6 +1030,7 @@ impl DirEntry {
         target_os = "ios",
         target_os = "tvos",
         target_os = "watchos",
+        target_os = "visionos",
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "freebsd",
@@ -1116,6 +1154,23 @@ impl OpenOptions {
     }
 }
 
+impl fmt::Debug for OpenOptions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let OpenOptions { read, write, append, truncate, create, create_new, custom_flags, mode } =
+            self;
+        f.debug_struct("OpenOptions")
+            .field("read", read)
+            .field("write", write)
+            .field("append", append)
+            .field("truncate", truncate)
+            .field("create", create)
+            .field("create_new", create_new)
+            .field("custom_flags", custom_flags)
+            .field("mode", &Mode(*mode))
+            .finish()
+    }
+}
+
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         run_path_with_cstr(path, &|path| File::open_c(path, opts))
@@ -1162,6 +1217,7 @@ impl File {
             target_os = "ios",
             target_os = "tvos",
             target_os = "watchos",
+            target_os = "visionos",
         ))]
         unsafe fn os_fsync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
@@ -1171,6 +1227,7 @@ impl File {
             target_os = "ios",
             target_os = "tvos",
             target_os = "watchos",
+            target_os = "visionos",
         )))]
         unsafe fn os_fsync(fd: c_int) -> c_int {
             libc::fsync(fd)
@@ -1186,6 +1243,7 @@ impl File {
             target_os = "ios",
             target_os = "tvos",
             target_os = "watchos",
+            target_os = "visionos",
         ))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
@@ -1212,6 +1270,7 @@ impl File {
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "watchos",
+            target_os = "visionos",
             target_os = "nto",
             target_os = "hurd",
         )))]
@@ -1322,7 +1381,7 @@ impl File {
                     io::ErrorKind::Unsupported,
                     "setting file times not supported",
                 ))
-            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))] {
+            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos", target_os = "visionos"))] {
                 let mut buf = [mem::MaybeUninit::<libc::timespec>::uninit(); 3];
                 let mut num_times = 0;
                 let mut attrlist: libc::attrlist = unsafe { mem::zeroed() };
@@ -1399,6 +1458,13 @@ impl DirBuilder {
 
     pub fn set_mode(&mut self, mode: u32) {
         self.mode = mode as mode_t;
+    }
+}
+
+impl fmt::Debug for DirBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let DirBuilder { mode } = self;
+        f.debug_struct("DirBuilder").field("mode", &Mode(*mode)).finish()
     }
 }
 
@@ -1571,6 +1637,73 @@ impl fmt::Debug for File {
             b.field("read", &read).field("write", &write);
         }
         b.finish()
+    }
+}
+
+// Format in octal, followed by the mode format used in `ls -l`.
+//
+// References:
+//   https://pubs.opengroup.org/onlinepubs/009696899/utilities/ls.html
+//   https://www.gnu.org/software/libc/manual/html_node/Testing-File-Type.html
+//   https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
+//
+// Example:
+//   0o100664 (-rw-rw-r--)
+impl fmt::Debug for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self(mode) = *self;
+        write!(f, "0o{mode:06o}")?;
+
+        let entry_type = match mode & libc::S_IFMT {
+            libc::S_IFDIR => 'd',
+            libc::S_IFBLK => 'b',
+            libc::S_IFCHR => 'c',
+            libc::S_IFLNK => 'l',
+            libc::S_IFIFO => 'p',
+            libc::S_IFREG => '-',
+            _ => return Ok(()),
+        };
+
+        f.write_str(" (")?;
+        f.write_char(entry_type)?;
+
+        // Owner permissions
+        f.write_char(if mode & libc::S_IRUSR != 0 { 'r' } else { '-' })?;
+        f.write_char(if mode & libc::S_IWUSR != 0 { 'w' } else { '-' })?;
+        let owner_executable = mode & libc::S_IXUSR != 0;
+        let setuid = mode as c_int & libc::S_ISUID as c_int != 0;
+        f.write_char(match (owner_executable, setuid) {
+            (true, true) => 's',  // executable and setuid
+            (false, true) => 'S', // setuid
+            (true, false) => 'x', // executable
+            (false, false) => '-',
+        })?;
+
+        // Group permissions
+        f.write_char(if mode & libc::S_IRGRP != 0 { 'r' } else { '-' })?;
+        f.write_char(if mode & libc::S_IWGRP != 0 { 'w' } else { '-' })?;
+        let group_executable = mode & libc::S_IXGRP != 0;
+        let setgid = mode as c_int & libc::S_ISGID as c_int != 0;
+        f.write_char(match (group_executable, setgid) {
+            (true, true) => 's',  // executable and setgid
+            (false, true) => 'S', // setgid
+            (true, false) => 'x', // executable
+            (false, false) => '-',
+        })?;
+
+        // Other permissions
+        f.write_char(if mode & libc::S_IROTH != 0 { 'r' } else { '-' })?;
+        f.write_char(if mode & libc::S_IWOTH != 0 { 'w' } else { '-' })?;
+        let other_executable = mode & libc::S_IXOTH != 0;
+        let sticky = mode as c_int & libc::S_ISVTX as c_int != 0;
+        f.write_char(match (entry_type, other_executable, sticky) {
+            ('d', true, true) => 't',  // searchable and restricted deletion
+            ('d', false, true) => 'T', // restricted deletion
+            (_, true, _) => 'x',       // executable
+            (_, false, _) => '-',
+        })?;
+
+        f.write_char(')')
     }
 }
 
@@ -1787,6 +1920,7 @@ fn open_to_and_set_permissions(
     target_os = "ios",
     target_os = "tvos",
     target_os = "watchos",
+    target_os = "visionos",
 )))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let (mut reader, reader_metadata) = open_from(from)?;
@@ -1813,43 +1947,19 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "watchos",
+    target_os = "visionos",
+    target_os = "tvos"
+))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use crate::sync::atomic::{AtomicBool, Ordering};
 
-    const COPYFILE_ACL: u32 = 1 << 0;
-    const COPYFILE_STAT: u32 = 1 << 1;
-    const COPYFILE_XATTR: u32 = 1 << 2;
-    const COPYFILE_DATA: u32 = 1 << 3;
+    const COPYFILE_ALL: libc::copyfile_flags_t = libc::COPYFILE_METADATA | libc::COPYFILE_DATA;
 
-    const COPYFILE_SECURITY: u32 = COPYFILE_STAT | COPYFILE_ACL;
-    const COPYFILE_METADATA: u32 = COPYFILE_SECURITY | COPYFILE_XATTR;
-    const COPYFILE_ALL: u32 = COPYFILE_METADATA | COPYFILE_DATA;
-
-    const COPYFILE_STATE_COPIED: u32 = 8;
-
-    #[allow(non_camel_case_types)]
-    type copyfile_state_t = *mut libc::c_void;
-    #[allow(non_camel_case_types)]
-    type copyfile_flags_t = u32;
-
-    extern "C" {
-        fn fcopyfile(
-            from: libc::c_int,
-            to: libc::c_int,
-            state: copyfile_state_t,
-            flags: copyfile_flags_t,
-        ) -> libc::c_int;
-        fn copyfile_state_alloc() -> copyfile_state_t;
-        fn copyfile_state_free(state: copyfile_state_t) -> libc::c_int;
-        fn copyfile_state_get(
-            state: copyfile_state_t,
-            flag: u32,
-            dst: *mut libc::c_void,
-        ) -> libc::c_int;
-    }
-
-    struct FreeOnDrop(copyfile_state_t);
+    struct FreeOnDrop(libc::copyfile_state_t);
     impl Drop for FreeOnDrop {
         fn drop(&mut self) {
             // The code below ensures that `FreeOnDrop` is never a null pointer
@@ -1857,7 +1967,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
                 // `copyfile_state_free` returns -1 if the `to` or `from` files
                 // cannot be closed. However, this is not considered this an
                 // error.
-                copyfile_state_free(self.0);
+                libc::copyfile_state_free(self.0);
             }
         }
     }
@@ -1866,6 +1976,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     // We store the availability in a global to avoid unnecessary syscalls
     static HAS_FCLONEFILEAT: AtomicBool = AtomicBool::new(true);
     syscall! {
+        // Mirrors `libc::fclonefileat`
         fn fclonefileat(
             srcfd: libc::c_int,
             dst_dirfd: libc::c_int,
@@ -1902,22 +2013,22 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     // We ensure that `FreeOnDrop` never contains a null pointer so it is
     // always safe to call `copyfile_state_free`
     let state = unsafe {
-        let state = copyfile_state_alloc();
+        let state = libc::copyfile_state_alloc();
         if state.is_null() {
             return Err(crate::io::Error::last_os_error());
         }
         FreeOnDrop(state)
     };
 
-    let flags = if writer_metadata.is_file() { COPYFILE_ALL } else { COPYFILE_DATA };
+    let flags = if writer_metadata.is_file() { COPYFILE_ALL } else { libc::COPYFILE_DATA };
 
-    cvt(unsafe { fcopyfile(reader.as_raw_fd(), writer.as_raw_fd(), state.0, flags) })?;
+    cvt(unsafe { libc::fcopyfile(reader.as_raw_fd(), writer.as_raw_fd(), state.0, flags) })?;
 
     let mut bytes_copied: libc::off_t = 0;
     cvt(unsafe {
-        copyfile_state_get(
+        libc::copyfile_state_get(
             state.0,
-            COPYFILE_STATE_COPIED,
+            libc::COPYFILE_STATE_COPIED as u32,
             core::ptr::addr_of_mut!(bytes_copied) as *mut libc::c_void,
         )
     })?;

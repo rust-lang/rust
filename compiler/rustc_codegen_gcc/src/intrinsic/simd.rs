@@ -82,7 +82,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let place = PlaceRef::alloca(bx, args[0].layout);
                 args[0].val.store(bx, place);
                 let int_ty = bx.type_ix(expected_bytes * 8);
-                let ptr = bx.pointercast(place.llval, bx.cx.type_ptr_to(int_ty));
+                let ptr = bx.pointercast(place.val.llval, bx.cx.type_ptr_to(int_ty));
                 bx.load(int_ty, ptr, Align::ONE)
             }
             _ => return_error!(InvalidMonomorphization::InvalidBitmask {

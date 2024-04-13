@@ -5,7 +5,7 @@ fn main() {
 
     match x {
       Some(ref y) => {
-        let _b = y; //~ ERROR cannot move out
+        let _b = y.clone(); //~ ERROR cannot move out
       }
       _ => {}
     }

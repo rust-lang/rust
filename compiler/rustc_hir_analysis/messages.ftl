@@ -349,8 +349,14 @@ hir_analysis_pass_to_variadic_function = can't pass `{$ty}` to variadic function
     .suggestion = cast the value to `{$cast_ty}`
     .help = cast the value to `{$cast_ty}`
 
+hir_analysis_pattern_type_non_const_range = "range patterns must have constant range start and end"
+hir_analysis_pattern_type_wild_pat = "wildcard patterns are not permitted for pattern types"
+    .label = "this type is the same as the inner type without a pattern"
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
+
+hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
+    .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`
 
 hir_analysis_requires_note = the `{$trait_name}` impl for `{$ty}` requires that `{$error_predicate}`
 

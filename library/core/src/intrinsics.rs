@@ -1128,7 +1128,7 @@ extern "rust-intrinsic" {
     /// any safety invariants.
     ///
     /// Consider using [`core::panic::Location::caller`] instead.
-    #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
+    #[rustc_const_stable(feature = "const_caller_location", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
@@ -2704,17 +2704,17 @@ pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
 }
 
 /// Returns whether we should perform some UB-checking at runtime. This eventually evaluates to
-/// `cfg!(debug_assertions)`, but behaves different from `cfg!` when mixing crates built with different
-/// flags: if the crate has debug assertions enabled or carries the `#[rustc_preserve_ub_checks]`
+/// `cfg!(ub_checks)`, but behaves different from `cfg!` when mixing crates built with different
+/// flags: if the crate has UB checks enabled or carries the `#[rustc_preserve_ub_checks]`
 /// attribute, evaluation is delayed until monomorphization (or until the call gets inlined into
 /// a crate that does not delay evaluation further); otherwise it can happen any time.
 ///
-/// The common case here is a user program built with debug_assertions linked against the distributed
-/// sysroot which is built without debug_assertions but with `#[rustc_preserve_ub_checks]`.
+/// The common case here is a user program built with ub_checks linked against the distributed
+/// sysroot which is built without ub_checks but with `#[rustc_preserve_ub_checks]`.
 /// For code that gets monomorphized in the user crate (i.e., generic functions and functions with
-/// `#[inline]`), gating assertions on `ub_checks()` rather than `cfg!(debug_assertions)` means that
-/// assertions are enabled whenever the *user crate* has debug assertions enabled. However if the
-/// user has debug assertions disabled, the checks will still get optimized out. This intrinsic is
+/// `#[inline]`), gating assertions on `ub_checks()` rather than `cfg!(ub_checks)` means that
+/// assertions are enabled whenever the *user crate* has UB checks enabled. However if the
+/// user has UB checks disabled, the checks will still get optimized out. This intrinsic is
 /// primarily used by [`ub_checks::assert_unsafe_precondition`].
 #[rustc_const_unstable(feature = "const_ub_checks", issue = "none")]
 #[unstable(feature = "core_intrinsics", issue = "none")]

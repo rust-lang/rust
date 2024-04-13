@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "r-efi"
-version = "4.3.0"
+version = "4.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e244f96e03a3067f9e521d3167bd42657594cb8588c8d3a2db01545dc1af2e0"
+checksum = "c47196f636c4cc0634b73b0405323d177753c2e15e866952c64ea22902567a34"
 
 [[package]]
 name = "uefi_qemu_test"

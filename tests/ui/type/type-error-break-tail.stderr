@@ -8,7 +8,7 @@ LL |     loop {
 LL |         if false { break; }
    |                    ^^^^^ expected `i32`, found `()`
    |
-help: give it a value of the expected type
+help: give the `break` a value of the expected type
    |
 LL |         if false { break 42; }
    |                          ++

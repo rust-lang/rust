@@ -316,11 +316,11 @@ impl<'tcx> Generics {
     /// of this item, excluding `Self`.
     ///
     /// **This should only be used for diagnostics purposes.**
-    pub fn own_args_no_defaults(
+    pub fn own_args_no_defaults<'a>(
         &'tcx self,
         tcx: TyCtxt<'tcx>,
-        args: &'tcx [ty::GenericArg<'tcx>],
-    ) -> &'tcx [ty::GenericArg<'tcx>] {
+        args: &'a [ty::GenericArg<'tcx>],
+    ) -> &'a [ty::GenericArg<'tcx>] {
         let mut own_params = self.parent_count..self.count();
         if self.has_self && self.parent.is_none() {
             own_params.start = 1;

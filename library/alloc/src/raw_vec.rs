@@ -259,6 +259,17 @@ impl<T, A: Allocator> RawVec<T, A> {
         Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap, alloc }
     }
 
+    /// A convenience method for hoisting the non-null precondition out of [`RawVec::from_raw_parts_in`].
+    ///
+    /// # Safety
+    ///
+    /// See [`RawVec::from_raw_parts_in`].
+    #[inline]
+    pub(crate) unsafe fn from_nonnull_in(ptr: NonNull<T>, capacity: usize, alloc: A) -> Self {
+        let cap = if T::IS_ZST { Cap::ZERO } else { unsafe { Cap(capacity) } };
+        Self { ptr: Unique::from(ptr), cap, alloc }
+    }
+
     /// Gets a raw pointer to the start of the allocation. Note that this is
     /// `Unique::dangling()` if `capacity == 0` or `T` is zero-sized. In the former case, you must
     /// be careful.

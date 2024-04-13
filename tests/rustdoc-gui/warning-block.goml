@@ -1,4 +1,5 @@
 // Test to check that the "warning blocks" are displayed as expected.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 show-text: true
 
@@ -7,8 +8,7 @@ define-function: (
     "check-warning",
     [theme, color, border_color],
     block {
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
 
         // The IDs are added directly into the DOM to make writing this test easier.
         assert-css: ("#doc-warning-1", {

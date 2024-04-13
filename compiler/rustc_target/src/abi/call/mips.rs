@@ -27,7 +27,7 @@ where
 
     if arg.layout.is_aggregate() {
         let pad_i32 = !offset.is_aligned(align);
-        arg.cast_to_and_pad_i32(Uniform { unit: Reg::i32(), total: size }, pad_i32);
+        arg.cast_to_and_pad_i32(Uniform::new(Reg::i32(), size), pad_i32);
     } else {
         arg.extend_integer_width_to(32);
     }

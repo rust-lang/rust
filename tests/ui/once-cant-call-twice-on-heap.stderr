@@ -8,15 +8,13 @@ LL |     blk();
 LL |     blk();
    |     ^^^ value used here after move
    |
-note: this value implements `FnOnce`, which causes it to be moved when called
-  --> $DIR/once-cant-call-twice-on-heap.rs:7:5
+note: `FnOnce` closures can only be called once
+  --> $DIR/once-cant-call-twice-on-heap.rs:6:10
    |
+LL | fn foo<F:FnOnce()>(blk: F) {
+   |          ^^^^^^^^ `F` is made to be an `FnOnce` closure here
 LL |     blk();
-   |     ^^^
-help: consider further restricting this bound
-   |
-LL | fn foo<F:FnOnce() + Copy>(blk: F) {
-   |                   ++++++
+   |     ----- this value implements `FnOnce`, which causes it to be moved when called
 
 error: aborting due to 1 previous error
 

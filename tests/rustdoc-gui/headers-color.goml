@@ -1,5 +1,7 @@
 // This test check for headings text and background colors for the different themes.
 
+include: "utils.goml"
+
 define-function: (
     "check-colors",
     [theme, color, code_header_color, focus_background_color, headings_color],
@@ -7,8 +9,7 @@ define-function: (
         go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
         // This is needed so that the text color is computed.
         show-text: true
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (
             ".impl",
             {"color": |color|, "background-color": "rgba(0, 0, 0, 0)"},

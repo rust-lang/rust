@@ -1572,7 +1572,7 @@ pub trait Iterator {
     ///
     /// The returned iterator implements [`FusedIterator`], because once `self`
     /// returns `None`, even if it returns a `Some(T)` again in the next iterations,
-    /// we cannot put it into a contigious array buffer, and thus the returned iterator
+    /// we cannot put it into a contiguous array buffer, and thus the returned iterator
     /// should be fused.
     ///
     /// [`slice::windows()`]: slice::windows

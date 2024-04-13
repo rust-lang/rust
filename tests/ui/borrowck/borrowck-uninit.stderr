@@ -8,8 +8,8 @@ LL |     foo(x);
    |
 help: consider assigning a value
    |
-LL |     let x: isize = 0;
-   |                  +++
+LL |     let x: isize = 42;
+   |                  ++++
 
 error[E0381]: used binding `a` isn't initialized
   --> $DIR/borrowck-uninit.rs:14:32

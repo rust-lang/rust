@@ -153,11 +153,6 @@ pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
     pub region_constraints: QueryRegionConstraints<'tcx>,
     pub certainty: Certainty,
-    /// List of opaque types which we tried to compare to another type.
-    /// Inside the query we don't know yet whether the opaque type actually
-    /// should get its hidden type inferred. So we bubble the opaque type
-    /// and the type it was compared against upwards and let the query caller
-    /// handle it.
     pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
     pub value: R,
 }
@@ -330,6 +325,7 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
                 max_universe: ty::UniverseIndex::ROOT,
                 variables: List::empty(),
                 value: key,
+                defining_opaque_types: ty::List::empty(),
             };
         }
 
@@ -340,6 +336,14 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
         match self.map.borrow().entry(key) {
             Entry::Occupied(e) => {
                 let (canonical, var_values) = e.get();
+                if cfg!(debug_assertions) {
+                    let mut state = state.clone();
+                    let rerun_canonical = canonicalize_op(tcx, key, &mut state);
+                    assert_eq!(rerun_canonical, *canonical);
+                    let OriginalQueryValues { var_values: rerun_var_values, universe_map } = state;
+                    assert_eq!(universe_map.len(), 1);
+                    assert_eq!(**var_values, *rerun_var_values);
+                }
                 state.var_values.extend_from_slice(var_values);
                 *canonical
             }

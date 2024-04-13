@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for `Vec<T>`
+error[E0282]: type annotations needed for `Vec<_>`
   --> $DIR/vector-no-ann.rs:2:9
    |
 LL |     let _foo = Vec::new();

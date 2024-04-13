@@ -221,6 +221,7 @@ where
                     | ty::Ref(..)
                     | ty::RawPtr(..)
                     | ty::FnDef(..)
+                    | ty::Pat(..)
                     | ty::FnPtr(..)
                     | ty::Tuple(_)
                     | ty::Bound(..)

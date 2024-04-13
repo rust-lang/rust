@@ -8,11 +8,13 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
+use rustc_macros::LintDiagnostic;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -135,6 +137,8 @@ where
     let implied_bounds =
         infcx.implied_bounds_tys_compat(param_env, body_def_id, &assumed_wf_types, false);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+
+    lint_redundant_lifetimes(tcx, body_def_id, &outlives_env);
 
     let errors = infcx.resolve_regions(&outlives_env);
     if errors.is_empty() {
@@ -2008,6 +2012,137 @@ fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), Error
         super::entry::check_for_entry_fn(tcx);
     }
     res
+}
+
+fn lint_redundant_lifetimes<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    owner_id: LocalDefId,
+    outlives_env: &OutlivesEnvironment<'tcx>,
+) {
+    let def_kind = tcx.def_kind(owner_id);
+    match def_kind {
+        DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Trait
+        | DefKind::TraitAlias
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::Impl { of_trait: _ } => {
+            // Proceed
+        }
+        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
+            let parent_def_id = tcx.local_parent(owner_id);
+            if matches!(tcx.def_kind(parent_def_id), DefKind::Impl { of_trait: true }) {
+                // Don't check for redundant lifetimes for associated items of trait
+                // implementations, since the signature is required to be compatible
+                // with the trait, even if the implementation implies some lifetimes
+                // are redundant.
+                return;
+            }
+        }
+        DefKind::Mod
+        | DefKind::Variant
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::Static { .. }
+        | DefKind::Ctor(_, _)
+        | DefKind::Macro(_)
+        | DefKind::ExternCrate
+        | DefKind::Use
+        | DefKind::ForeignMod
+        | DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::OpaqueTy
+        | DefKind::Field
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::Closure => return,
+    }
+
+    // The ordering of this lifetime map is a bit subtle.
+    //
+    // Specifically, we want to find a "candidate" lifetime that precedes a "victim" lifetime,
+    // where we can prove that `'candidate = 'victim`.
+    //
+    // `'static` must come first in this list because we can never replace `'static` with
+    // something else, but if we find some lifetime `'a` where `'a = 'static`, we want to
+    // suggest replacing `'a` with `'static`.
+    let mut lifetimes = vec![tcx.lifetimes.re_static];
+    lifetimes.extend(
+        ty::GenericArgs::identity_for_item(tcx, owner_id).iter().filter_map(|arg| arg.as_region()),
+    );
+    // If we are in a function, add its late-bound lifetimes too.
+    if matches!(def_kind, DefKind::Fn | DefKind::AssocFn) {
+        for var in tcx.fn_sig(owner_id).instantiate_identity().bound_vars() {
+            let ty::BoundVariableKind::Region(kind) = var else { continue };
+            lifetimes.push(ty::Region::new_late_param(tcx, owner_id.to_def_id(), kind));
+        }
+    }
+    lifetimes.retain(|candidate| candidate.has_name());
+
+    // Keep track of lifetimes which have already been replaced with other lifetimes.
+    // This makes sure that if `'a = 'b = 'c`, we don't say `'c` should be replaced by
+    // both `'a` and `'b`.
+    let mut shadowed = FxHashSet::default();
+
+    for (idx, &candidate) in lifetimes.iter().enumerate() {
+        // Don't suggest removing a lifetime twice. We only need to check this
+        // here and not up in the `victim` loop because equality is transitive,
+        // so if A = C and B = C, then A must = B, so it'll be shadowed too in
+        // A's victim loop.
+        if shadowed.contains(&candidate) {
+            continue;
+        }
+
+        for &victim in &lifetimes[(idx + 1)..] {
+            // We should only have late-bound lifetimes of the `BrNamed` variety,
+            // since we get these signatures straight from `hir_lowering`. And any
+            // other regions (ReError/ReStatic/etc.) shouldn't matter, since we
+            // can't really suggest to remove them.
+            let (ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
+            | ty::ReLateParam(ty::LateParamRegion {
+                bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
+                ..
+            })) = victim.kind()
+            else {
+                continue;
+            };
+
+            // Do not rename lifetimes not local to this item since they'll overlap
+            // with the lint running on the parent. We still want to consider parent
+            // lifetimes which make child lifetimes redundant, otherwise we would
+            // have truncated the `identity_for_item` args above.
+            if tcx.parent(def_id) != owner_id.to_def_id() {
+                continue;
+            }
+
+            // If `candidate <: victim` and `victim <: candidate`, then they're equal.
+            if outlives_env.free_region_map().sub_free_regions(tcx, candidate, victim)
+                && outlives_env.free_region_map().sub_free_regions(tcx, victim, candidate)
+            {
+                shadowed.insert(victim);
+                tcx.emit_node_span_lint(
+                    rustc_lint_defs::builtin::REDUNDANT_LIFETIMES,
+                    tcx.local_def_id_to_hir_id(def_id.expect_local()),
+                    tcx.def_span(def_id),
+                    RedundantLifetimeArgsLint { candidate, victim },
+                );
+            }
+        }
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_redundant_lifetime_args)]
+#[note]
+struct RedundantLifetimeArgsLint<'tcx> {
+    /// The lifetime we have found to be redundant.
+    victim: ty::Region<'tcx>,
+    // The lifetime we can replace the victim with.
+    candidate: ty::Region<'tcx>,
 }
 
 pub fn provide(providers: &mut Providers) {

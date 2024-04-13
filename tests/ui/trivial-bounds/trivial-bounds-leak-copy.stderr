@@ -3,6 +3,12 @@ error[E0507]: cannot move out of `*t` which is behind a shared reference
    |
 LL |     *t
    |     ^^ move occurs because `*t` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     *t
+LL +     t.clone()
+   |
 
 error: aborting due to 1 previous error
 

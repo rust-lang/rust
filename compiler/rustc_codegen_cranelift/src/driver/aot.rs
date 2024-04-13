@@ -341,6 +341,8 @@ fn emit_cgu(
             object: Some(global_asm_object_file),
             dwarf_object: None,
             bytecode: None,
+            assembly: None,
+            llvm_ir: None,
         }),
         existing_work_product: None,
     })
@@ -378,7 +380,15 @@ fn emit_module(
 
     prof.artifact_size("object_file", &*name, file.metadata().unwrap().len());
 
-    Ok(CompiledModule { name, kind, object: Some(tmp_file), dwarf_object: None, bytecode: None })
+    Ok(CompiledModule {
+        name,
+        kind,
+        object: Some(tmp_file),
+        dwarf_object: None,
+        bytecode: None,
+        assembly: None,
+        llvm_ir: None,
+    })
 }
 
 fn reuse_workproduct_for_cgu(
@@ -426,6 +436,8 @@ fn reuse_workproduct_for_cgu(
             object: Some(obj_out_regular),
             dwarf_object: None,
             bytecode: None,
+            assembly: None,
+            llvm_ir: None,
         },
         module_global_asm: has_global_asm.then(|| CompiledModule {
             name: cgu.name().to_string(),
@@ -433,6 +445,8 @@ fn reuse_workproduct_for_cgu(
             object: Some(obj_out_global_asm),
             dwarf_object: None,
             bytecode: None,
+            assembly: None,
+            llvm_ir: None,
         }),
         existing_work_product: Some((cgu.work_product_id(), work_product)),
     })
@@ -678,6 +692,8 @@ pub(crate) fn run_aot(
             object: Some(tmp_file),
             dwarf_object: None,
             bytecode: None,
+            assembly: None,
+            llvm_ir: None,
         })
     } else {
         None

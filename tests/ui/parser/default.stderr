@@ -21,7 +21,7 @@ error[E0449]: visibility qualifiers are not permitted here
   --> $DIR/default.rs:17:5
    |
 LL |     pub default fn foo<T: Default>() -> T {
-   |     ^^^
+   |     ^^^ help: remove the qualifier
    |
    = note: trait items always share the visibility of their trait
 

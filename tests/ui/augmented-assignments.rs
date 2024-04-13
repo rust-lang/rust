@@ -1,5 +1,6 @@
 use std::ops::AddAssign;
 
+#[derive(Clone)]
 struct Int(i32);
 
 impl AddAssign for Int {
@@ -16,6 +17,7 @@ fn main() {
     x;
     //~^ ERROR cannot move out of `x` because it is borrowed
     //~| move out of `x` occurs here
+    //~| HELP consider cloning
 
     let y = Int(2);
     //~^ HELP consider changing this to be mutable

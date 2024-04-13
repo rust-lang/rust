@@ -81,6 +81,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_errors::{pluralize, struct_span_code_err, Diag};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::Mutability;
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::error_reporting::ObligationCauseExt as _;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
@@ -91,10 +92,11 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{self, def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::{def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -466,14 +468,64 @@ fn fn_sig_suggestion<'tcx>(
     )
 }
 
-pub fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
+pub fn ty_kind_suggestion<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<String> {
+    // Keep in sync with `rustc_borrowck/src/diagnostics/conflict_errors.rs:ty_kind_suggestion`.
+    // FIXME: deduplicate the above.
+    let implements_default = |ty| {
+        let Some(default_trait) = tcx.get_diagnostic_item(sym::Default) else {
+            return false;
+        };
+        let infcx = tcx.infer_ctxt().build();
+        infcx
+            .type_implements_trait(default_trait, [ty], ty::ParamEnv::reveal_all())
+            .must_apply_modulo_regions()
+    };
     Some(match ty.kind() {
-        ty::Bool => "true",
-        ty::Char => "'a'",
-        ty::Int(_) | ty::Uint(_) => "42",
-        ty::Float(_) => "3.14159",
-        ty::Error(_) | ty::Never => return None,
-        _ => "value",
+        ty::Never | ty::Error(_) => return None,
+        ty::Bool => "false".to_string(),
+        ty::Char => "\'x\'".to_string(),
+        ty::Int(_) | ty::Uint(_) => "42".into(),
+        ty::Float(_) => "3.14159".into(),
+        ty::Slice(_) => "[]".to_string(),
+        ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => {
+            "vec![]".to_string()
+        }
+        ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::String) => {
+            "String::new()".to_string()
+        }
+        ty::Adt(def, args) if def.is_box() => {
+            format!("Box::new({})", ty_kind_suggestion(args[0].expect_ty(), tcx)?)
+        }
+        ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Option) => {
+            "None".to_string()
+        }
+        ty::Adt(def, args) if Some(def.did()) == tcx.get_diagnostic_item(sym::Result) => {
+            format!("Ok({})", ty_kind_suggestion(args[0].expect_ty(), tcx)?)
+        }
+        ty::Adt(_, _) if implements_default(ty) => "Default::default()".to_string(),
+        ty::Ref(_, ty, mutability) => {
+            if let (ty::Str, Mutability::Not) = (ty.kind(), mutability) {
+                "\"\"".to_string()
+            } else {
+                let Some(ty) = ty_kind_suggestion(*ty, tcx) else {
+                    return None;
+                };
+                format!("&{}{ty}", mutability.prefix_str())
+            }
+        }
+        ty::Array(ty, len) => format!(
+            "[{}; {}]",
+            ty_kind_suggestion(*ty, tcx)?,
+            len.eval_target_usize(tcx, ty::ParamEnv::reveal_all()),
+        ),
+        ty::Tuple(tys) => format!(
+            "({})",
+            tys.iter()
+                .map(|ty| ty_kind_suggestion(ty, tcx))
+                .collect::<Option<Vec<String>>>()?
+                .join(", ")
+        ),
+        _ => "value".to_string(),
     })
 }
 
@@ -511,7 +563,7 @@ fn suggestion_signature<'tcx>(
         }
         ty::AssocKind::Const => {
             let ty = tcx.type_of(assoc.def_id).instantiate_identity();
-            let val = ty_kind_suggestion(ty).unwrap_or("todo!()");
+            let val = ty_kind_suggestion(ty, tcx).unwrap_or_else(|| "value".to_string());
             format!("const {}: {} = {};", assoc.name, ty, val)
         }
     }

@@ -1,6 +1,8 @@
 error[E0594]: cannot assign to `self.0`, which is behind a `&` reference
   --> $DIR/issue-68049-1.rs:7:9
    |
+LL |     unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
+   |                     ----- this is an immutable reference
 LL |         self.0 += 1;
    |         ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be written
 

@@ -1,4 +1,5 @@
 // Checking the colors of the codeblocks tooltips.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 show-text: true
 
@@ -6,9 +7,7 @@ define-function: (
     "check-colors",
     [theme, background, color, border],
     block {
-        // Setting the theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
 
         // compile_fail block
         assert-css: (

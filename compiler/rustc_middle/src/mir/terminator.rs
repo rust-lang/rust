@@ -85,6 +85,12 @@ impl SwitchTargets {
         self.values.push(value);
         self.targets.insert(self.targets.len() - 1, bb);
     }
+
+    /// Returns true if all targets (including the fallback target) are distinct.
+    #[inline]
+    pub fn is_distinct(&self) -> bool {
+        self.targets.iter().collect::<FxHashSet<_>>().len() == self.targets.len()
+    }
 }
 
 pub struct SwitchTargetsIter<'a> {

@@ -3585,8 +3585,7 @@ impl<'a> Parser<'a> {
 
             match self.expect_one_of(&[token::Comma], &[token::CloseDelim(close_delim)]) {
                 Ok(_) => {
-                    if let Some(f) =
-                        parsed_field.or_else(|guar| field_ident(self, guar).ok_or(guar)).ok()
+                    if let Ok(f) = parsed_field.or_else(|guar| field_ident(self, guar).ok_or(guar))
                     {
                         // Only include the field if there's no parse error for the field name.
                         fields.push(f);

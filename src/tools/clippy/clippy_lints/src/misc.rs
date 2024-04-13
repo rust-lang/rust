@@ -66,7 +66,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// The lint does not work properly with desugaring and
-    /// macro, it has been allowed in the mean time.
+    /// macro, it has been allowed in the meantime.
     ///
     /// ### Example
     /// ```no_run

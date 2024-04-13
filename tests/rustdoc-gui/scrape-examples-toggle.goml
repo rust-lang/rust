@@ -1,4 +1,5 @@
 // This tests checks that the "scraped examples" toggle is working as expected.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
 
 // Checking the color of the toggle line.
@@ -7,7 +8,7 @@ define-function: (
     "check-color",
     [theme, toggle_line_color, toggle_line_hover_color],
     block {
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        call-function: ("switch-theme", {"theme": |theme|})
         reload:
 
         // Clicking "More examples..." will open additional examples
@@ -21,6 +22,8 @@ define-function: (
             ".toggle-line:hover .toggle-line-inner",
             {"background-color": |toggle_line_hover_color|},
         )
+        // We put the toggle in the original state.
+        click: ".more-examples-toggle"
         // Moving cursor away from the toggle line to prevent disrupting next test.
         move-cursor-to: ".search-input"
     },

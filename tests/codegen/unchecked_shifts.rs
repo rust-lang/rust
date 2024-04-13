@@ -22,7 +22,7 @@ pub unsafe fn unchecked_shl_unsigned_smaller(a: u16, b: u32) -> u16 {
 
     // CHECK-DAG: %[[INRANGE:.+]] = icmp ult i32 %b, 16
     // CHECK-DAG: tail call void @llvm.assume(i1 %[[INRANGE]])
-    // CHECK-DAG: %[[TRUNC:.+]] = trunc i32 %b to i16
+    // CHECK-DAG: %[[TRUNC:.+]] = trunc{{( nuw)?( nsw)?}} i32 %b to i16
     // CHECK-DAG: shl i16 %a, %[[TRUNC]]
     a.unchecked_shl(b)
 }
@@ -54,7 +54,7 @@ pub unsafe fn unchecked_shr_signed_smaller(a: i16, b: u32) -> i16 {
 
     // CHECK-DAG: %[[INRANGE:.+]] = icmp ult i32 %b, 16
     // CHECK-DAG: tail call void @llvm.assume(i1 %[[INRANGE]])
-    // CHECK-DAG: %[[TRUNC:.+]] = trunc i32 %b to i16
+    // CHECK-DAG: %[[TRUNC:.+]] = trunc{{( nuw)?( nsw)?}}  i32 %b to i16
     // CHECK-DAG: ashr i16 %a, %[[TRUNC]]
     a.unchecked_shr(b)
 }
@@ -94,7 +94,7 @@ pub unsafe fn unchecked_shl_u8_i128(a: u8, b: i128) -> u8 {
 
     // CHECK-DAG: %[[INRANGE:.+]] = icmp ult i128 %b, 8
     // CHECK-DAG: tail call void @llvm.assume(i1 %[[INRANGE]])
-    // CHECK-DAG: %[[TRUNC:.+]] = trunc i128 %b to i8
+    // CHECK-DAG: %[[TRUNC:.+]] = trunc{{( nuw)?( nsw)?}} i128 %b to i8
     // CHECK-DAG: shl i8 %a, %[[TRUNC]]
     std::intrinsics::unchecked_shl(a, b)
 }
@@ -107,7 +107,7 @@ pub unsafe fn unchecked_shr_i8_u128(a: i8, b: u128) -> i8 {
 
     // CHECK-DAG: %[[INRANGE:.+]] = icmp ult i128 %b, 8
     // CHECK-DAG: tail call void @llvm.assume(i1 %[[INRANGE]])
-    // CHECK-DAG: %[[TRUNC:.+]] = trunc i128 %b to i8
+    // CHECK-DAG: %[[TRUNC:.+]] = trunc{{( nuw)?( nsw)?}} i128 %b to i8
     // CHECK-DAG: ashr i8 %a, %[[TRUNC]]
     std::intrinsics::unchecked_shr(a, b)
 }

@@ -1,0 +1,15 @@
+error: this URL is not a hyperlink
+  --> $DIR/auxiliary/include-str-bare-urls.md:1:11
+   |
+LL | HEADS UP! https://example.com MUST SHOW UP IN THE STDERR FILE!
+   |           ^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://example.com>`
+   |
+   = note: bare URLs are not automatically turned into clickable links
+note: the lint level is defined here
+  --> $DIR/include-str-bare-urls.rs:14:9
+   |
+LL | #![deny(rustdoc::bare_urls)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

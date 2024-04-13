@@ -106,7 +106,6 @@ static_files! {
     license_mit => "static/LICENSE-MIT.txt",
     rust_logo_svg => "static/images/rust-logo.svg",
     rust_favicon_svg => "static/images/favicon.svg",
-    rust_favicon_png_16 => "static/images/favicon-16x16.png",
     rust_favicon_png_32 => "static/images/favicon-32x32.png",
     fira_sans_regular => "static/fonts/FiraSans-Regular.woff2",
     fira_sans_medium => "static/fonts/FiraSans-Medium.woff2",

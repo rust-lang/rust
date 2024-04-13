@@ -110,7 +110,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                     .unstable_opts
                     .dwarf_version
                     .unwrap_or(sess.target.default_dwarf_version);
-                llvm::LLVMRustAddModuleFlag(
+                llvm::LLVMRustAddModuleFlagU32(
                     self.llmod,
                     llvm::LLVMModFlagBehavior::Warning,
                     c"Dwarf Version".as_ptr().cast(),
@@ -118,7 +118,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 );
             } else {
                 // Indicate that we want CodeView debug information on MSVC
-                llvm::LLVMRustAddModuleFlag(
+                llvm::LLVMRustAddModuleFlagU32(
                     self.llmod,
                     llvm::LLVMModFlagBehavior::Warning,
                     c"CodeView".as_ptr().cast(),
@@ -127,7 +127,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             }
 
             // Prevent bitcode readers from deleting the debug info.
-            llvm::LLVMRustAddModuleFlag(
+            llvm::LLVMRustAddModuleFlagU32(
                 self.llmod,
                 llvm::LLVMModFlagBehavior::Warning,
                 c"Debug Info Version".as_ptr().cast(),

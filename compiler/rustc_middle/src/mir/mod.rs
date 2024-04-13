@@ -30,7 +30,6 @@ pub use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
@@ -687,57 +686,6 @@ impl<'tcx> Body<'tcx> {
         self.injection_phase.is_some()
     }
 
-    /// Finds which basic blocks are actually reachable for a specific
-    /// monomorphization of this body.
-    ///
-    /// This is allowed to have false positives; just because this says a block
-    /// is reachable doesn't mean that's necessarily true. It's thus always
-    /// legal for this to return a filled set.
-    ///
-    /// Regardless, the [`BitSet::domain_size`] of the returned set will always
-    /// exactly match the number of blocks in the body so that `contains`
-    /// checks can be done without worrying about panicking.
-    ///
-    /// This is mostly useful because it lets us skip lowering the `false` side
-    /// of `if <T as Trait>::CONST`, as well as `intrinsics::debug_assertions`.
-    pub fn reachable_blocks_in_mono(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        instance: Instance<'tcx>,
-    ) -> BitSet<BasicBlock> {
-        let mut set = BitSet::new_empty(self.basic_blocks.len());
-        self.reachable_blocks_in_mono_from(tcx, instance, &mut set, START_BLOCK);
-        set
-    }
-
-    fn reachable_blocks_in_mono_from(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        instance: Instance<'tcx>,
-        set: &mut BitSet<BasicBlock>,
-        bb: BasicBlock,
-    ) {
-        if !set.insert(bb) {
-            return;
-        }
-
-        let data = &self.basic_blocks[bb];
-
-        if let Some((bits, targets)) = Self::try_const_mono_switchint(tcx, instance, data) {
-            let target = targets.target_for_value(bits);
-            ensure_sufficient_stack(|| {
-                self.reachable_blocks_in_mono_from(tcx, instance, set, target)
-            });
-            return;
-        }
-
-        for target in data.terminator().successors() {
-            ensure_sufficient_stack(|| {
-                self.reachable_blocks_in_mono_from(tcx, instance, set, target)
-            });
-        }
-    }
-
     /// If this basic block ends with a [`TerminatorKind::SwitchInt`] for which we can evaluate the
     /// dimscriminant in monomorphization, we return the discriminant bits and the
     /// [`SwitchTargets`], just so the caller doesn't also have to match on the terminator.
@@ -777,8 +725,8 @@ impl<'tcx> Body<'tcx> {
         // _1 = const _
         // SwitchInt(_1)
         //
-        // And MIR for if intrinsics::debug_assertions() looks like this:
-        // _1 = cfg!(debug_assertions)
+        // And MIR for if intrinsics::ub_checks() looks like this:
+        // _1 = UbChecks()
         // SwitchInt(_1)
         //
         // So we're going to try to recognize this pattern.
@@ -799,9 +747,7 @@ impl<'tcx> Body<'tcx> {
         }
 
         match rvalue {
-            Rvalue::NullaryOp(NullOp::UbChecks, _) => {
-                Some((tcx.sess.opts.debug_assertions as u128, targets))
-            }
+            Rvalue::NullaryOp(NullOp::UbChecks, _) => Some((tcx.sess.ub_checks() as u128, targets)),
             Rvalue::Use(Operand::Constant(constant)) => {
                 let bits = eval_mono_const(constant);
                 Some((bits, targets))

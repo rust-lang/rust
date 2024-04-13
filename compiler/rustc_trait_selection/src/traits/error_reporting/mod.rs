@@ -1,6 +1,6 @@
 // ignore-tidy-filelength :(
 
-mod ambiguity;
+pub mod ambiguity;
 mod infer_ctxt_ext;
 pub mod on_unimplemented;
 pub mod suggestions;
@@ -40,7 +40,7 @@ pub struct ImplCandidate<'tcx> {
 
 enum GetSafeTransmuteErrorAndReason {
     Silent,
-    Error { err_msg: String, safe_transmute_explanation: String },
+    Error { err_msg: String, safe_transmute_explanation: Option<String> },
 }
 
 struct UnsatisfiedConst(pub bool);

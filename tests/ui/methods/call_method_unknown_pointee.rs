@@ -8,10 +8,10 @@ fn main() {
     let ptr = &val as *const u32;
     unsafe {
         let _a: i32 = (ptr as *const _).read();
-        //~^ ERROR cannot call a method on a raw pointer with an unknown pointee type [E0699]
+        //~^ ERROR type annotations needed
         let b = ptr as *const _;
+        //~^ ERROR type annotations needed
         let _b: u8 = b.read();
-        //~^ ERROR cannot call a method on a raw pointer with an unknown pointee type [E0699]
         let _c = (ptr as *const u8).read(); // we know the type here
     }
 
@@ -19,10 +19,10 @@ fn main() {
     let ptr = &mut val as *mut u32;
     unsafe {
         let _a: i32 = (ptr as *mut _).read();
-        //~^ ERROR cannot call a method on a raw pointer with an unknown pointee type [E0699]
+        //~^ ERROR type annotations needed
         let b = ptr as *mut _;
+        //~^ ERROR type annotations needed
         b.write(10);
-        //~^ ERROR cannot call a method on a raw pointer with an unknown pointee type [E0699]
         (ptr as *mut i32).write(1000); // we know the type here
     }
 }

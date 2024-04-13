@@ -1,4 +1,5 @@
 // This test ensures that the elements in ".search-form" have the expected display.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true
 
@@ -9,11 +10,7 @@ define-function: (
         menu_button_border, menu_button_a_color, menu_button_a_border_hover, menu_a_color,
     ],
     block {
-        set-local-storage: {
-            "rustdoc-theme": |theme|,
-            "rustdoc-use-system-theme": "false",
-        }
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (
             ".search-input",
             {

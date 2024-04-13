@@ -14,6 +14,7 @@ pub fn opts() -> TargetOptions {
         pre_link_args,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
+        archive_format: "coff".into(),
 
         // Currently this is the only supported method of debuginfo on MSVC
         // where `*.pdb` files show up next to the final artifact.

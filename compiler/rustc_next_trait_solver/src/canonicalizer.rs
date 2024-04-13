@@ -69,7 +69,8 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
 
         let (max_universe, variables) = canonicalizer.finalize();
 
-        Canonical { max_universe, variables, value }
+        let defining_opaque_types = infcx.defining_opaque_types();
+        Canonical { defining_opaque_types, max_universe, variables, value }
     }
 
     fn finalize(self) -> (ty::UniverseIndex, I::CanonicalVars) {
@@ -349,6 +350,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
             | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
+            | ty::Pat(_, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)

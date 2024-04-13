@@ -1614,7 +1614,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
             let old_head = self.head;
             self.head = self.to_physical_idx(1);
             self.len -= 1;
-            Some(unsafe { self.buffer_read(old_head) })
+            unsafe {
+                core::hint::assert_unchecked(self.len < self.capacity());
+                Some(self.buffer_read(old_head))
+            }
         }
     }
 
@@ -1638,7 +1641,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
             None
         } else {
             self.len -= 1;
-            Some(unsafe { self.buffer_read(self.to_physical_idx(self.len)) })
+            unsafe {
+                core::hint::assert_unchecked(self.len < self.capacity());
+                Some(self.buffer_read(self.to_physical_idx(self.len)))
+            }
         }
     }
 

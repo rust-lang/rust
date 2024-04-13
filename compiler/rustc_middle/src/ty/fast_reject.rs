@@ -120,6 +120,7 @@ pub fn simplify_type<'tcx>(
         ty::Str => Some(SimplifiedType::Str),
         ty::Array(..) => Some(SimplifiedType::Array),
         ty::Slice(..) => Some(SimplifiedType::Slice),
+        ty::Pat(ty, ..) => simplify_type(tcx, ty, treat_params),
         ty::RawPtr(_, mutbl) => Some(SimplifiedType::Ptr(mutbl)),
         ty::Dynamic(trait_info, ..) => match trait_info.principal_def_id() {
             Some(principal_def_id) if !tcx.trait_is_auto(principal_def_id) => {
@@ -231,6 +232,7 @@ impl DeepRejectCtxt {
             | ty::Slice(..)
             | ty::RawPtr(..)
             | ty::Dynamic(..)
+            | ty::Pat(..)
             | ty::Ref(..)
             | ty::Never
             | ty::Tuple(..)
@@ -269,6 +271,10 @@ impl DeepRejectCtxt {
                 }
                 _ => false,
             },
+            ty::Pat(obl_ty, _) => {
+                // FIXME(pattern_types): take pattern into account
+                matches!(k, &ty::Pat(impl_ty, _) if self.types_may_unify(obl_ty, impl_ty))
+            }
             ty::Slice(obl_ty) => {
                 matches!(k, &ty::Slice(impl_ty) if self.types_may_unify(obl_ty, impl_ty))
             }

@@ -2,8 +2,10 @@
 //@ edition:2021
 #![warn(unused_imports)]
 
-use std::convert::TryFrom;//~ WARNING the item `TryFrom` is imported redundantly
-use std::convert::TryInto;//~ WARNING the item `TryInto` is imported redundantly
+use std::convert::TryFrom;
+//FIXME(unused_imports): ~^ WARNING the item `TryFrom` is imported redundantly
+use std::convert::TryInto;
+//FIXME(unused_imports): ~^ WARNING the item `TryInto` is imported redundantly
 
 fn main() {
     let _e: Result<i32, _> = 8u8.try_into();

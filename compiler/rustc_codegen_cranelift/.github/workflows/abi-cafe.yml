@@ -3,6 +3,8 @@ name: Abi-cafe
 on:
   - push
 
+permissions: {}
+
 jobs:
   abi_cafe:
     runs-on: ${{ matrix.os }}

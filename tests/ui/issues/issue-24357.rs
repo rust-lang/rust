@@ -1,4 +1,4 @@
-struct NoCopy;
+struct NoCopy; //~ NOTE if `NoCopy` implemented `Clone`, you could clone the value
 fn main() {
    let x = NoCopy;
    //~^ NOTE move occurs because `x` has type `NoCopy`

@@ -152,9 +152,9 @@ v("default-linker", "rust.default-linker", "the default linker")
 # (others are conditionally saved).
 o("manage-submodules", "build.submodules", "let the build manage the git submodules")
 o("full-bootstrap", "build.full-bootstrap", "build three compilers instead of two (not recommended except for testing reproducible builds)")
-o("bootstrap-cache-path", "build.bootstrap-cache-path", "use provided path for the bootstrap cache")
 o("extended", "build.extended", "build an extended rust tool set")
 
+v("bootstrap-cache-path", None, "use provided path for the bootstrap cache")
 v("tools", None, "List of extended tools will be installed")
 v("codegen-backends", None, "List of codegen backends to build")
 v("build", "build.build", "GNUs ./configure syntax LLVM build triple")
@@ -359,6 +359,8 @@ def apply_args(known_args, option_checking, config):
             set('target.{}.llvm-filecheck'.format(build_triple), value, config)
         elif option.name == 'tools':
             set('build.tools', value.split(','), config)
+        elif option.name == 'bootstrap-cache-path':
+            set('build.bootstrap-cache-path', value, config)
         elif option.name == 'codegen-backends':
             set('rust.codegen-backends', value.split(','), config)
         elif option.name == 'host':

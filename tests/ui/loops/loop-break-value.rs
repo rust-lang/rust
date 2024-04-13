@@ -23,6 +23,10 @@ fn main() {
         };
     };
 
+    let _: Option<String> = loop {
+        break; //~ ERROR mismatched types
+    };
+
     'while_loop: while true { //~ WARN denote infinite loops with
         break;
         break (); //~ ERROR `break` with value from a `while` loop

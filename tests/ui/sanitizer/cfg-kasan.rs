@@ -2,7 +2,7 @@
 // the `#[cfg(sanitize = "address")]` attribute is configured.
 
 //@ check-pass
-//@ compile-flags: -Zsanitizer=kernel-address --cfg kernel_address
+//@ compile-flags: -Zsanitizer=kernel-address
 //@ revisions: aarch64 riscv64imac riscv64gc x86_64
 //@[aarch64] compile-flags: --target aarch64-unknown-none
 //@[aarch64] needs-llvm-components: aarch64
@@ -22,5 +22,5 @@ trait Sized {}
 
 const _: fn() -> () = main;
 
-#[cfg(all(sanitize = "address", kernel_address))]
+#[cfg(sanitize = "address")]
 fn main() {}

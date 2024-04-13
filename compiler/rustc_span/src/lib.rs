@@ -743,6 +743,45 @@ impl Span {
         Some(self)
     }
 
+    /// Recursively walk down the expansion ancestors to find the oldest ancestor span with the same
+    /// [`SyntaxContext`] the initial span.
+    ///
+    /// This method is suitable for peeling through *local* macro expansions to find the "innermost"
+    /// span that is still local and shares the same [`SyntaxContext`]. For example, given
+    ///
+    /// ```ignore (illustrative example, contains type error)
+    ///  macro_rules! outer {
+    ///      ($x: expr) => {
+    ///          inner!($x)
+    ///      }
+    ///  }
+    ///
+    ///  macro_rules! inner {
+    ///      ($x: expr) => {
+    ///          format!("error: {}", $x)
+    ///          //~^ ERROR mismatched types
+    ///      }
+    ///  }
+    ///
+    ///  fn bar(x: &str) -> Result<(), Box<dyn std::error::Error>> {
+    ///      Err(outer!(x))
+    ///  }
+    /// ```
+    ///
+    /// if provided the initial span of `outer!(x)` inside `bar`, this method will recurse
+    /// the parent callsites until we reach `format!("error: {}", $x)`, at which point it is the
+    /// oldest ancestor span that is both still local and shares the same [`SyntaxContext`] as the
+    /// initial span.
+    pub fn find_oldest_ancestor_in_same_ctxt(self) -> Span {
+        let mut cur = self;
+        while cur.eq_ctxt(self)
+            && let Some(parent_callsite) = cur.parent_callsite()
+        {
+            cur = parent_callsite;
+        }
+        cur
+    }
+
     /// Edition of the crate from which this span came.
     pub fn edition(self) -> edition::Edition {
         self.ctxt().edition()

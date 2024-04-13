@@ -4,10 +4,14 @@
 use crate::alloc::{self, Layout, LayoutError};
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
+#[cfg(not(no_global_oom_handling))]
+use core::intrinsics::const_allocate;
 use core::marker::PhantomData;
 #[cfg(not(no_global_oom_handling))]
 use core::marker::Unsize;
-use core::mem::{self, SizedTypeProperties};
+use core::mem;
+#[cfg(not(no_global_oom_handling))]
+use core::mem::SizedTypeProperties;
 use core::ops::{Deref, DerefMut};
 use core::ptr::Pointee;
 use core::ptr::{self, NonNull};
@@ -109,9 +113,14 @@ impl<Dyn: ?Sized> ThinBox<Dyn> {
     where
         T: Unsize<Dyn>,
     {
-        let meta = ptr::metadata(&value as &Dyn);
-        let ptr = WithOpaqueHeader::new(meta, value);
-        ThinBox { ptr, _marker: PhantomData }
+        if mem::size_of::<T>() == 0 {
+            let ptr = WithOpaqueHeader::new_unsize_zst::<Dyn, T>(value);
+            ThinBox { ptr, _marker: PhantomData }
+        } else {
+            let meta = ptr::metadata(&value as &Dyn);
+            let ptr = WithOpaqueHeader::new(meta, value);
+            ThinBox { ptr, _marker: PhantomData }
+        }
     }
 }
 
@@ -197,6 +206,16 @@ impl WithOpaqueHeader {
     #[cfg(not(no_global_oom_handling))]
     fn new<H, T>(header: H, value: T) -> Self {
         let ptr = WithHeader::new(header, value);
+        Self(ptr.0)
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    fn new_unsize_zst<Dyn, T>(value: T) -> Self
+    where
+        Dyn: ?Sized,
+        T: Unsize<Dyn>,
+    {
+        let ptr = WithHeader::<<Dyn as Pointee>::Metadata>::new_unsize_zst::<Dyn, T>(value);
         Self(ptr.0)
     }
 
@@ -288,6 +307,58 @@ impl<H> WithHeader<H> {
         }
     }
 
+    // `Dyn` is `?Sized` type like `[u32]`, and `T` is ZST type like `[u32; 0]`.
+    #[cfg(not(no_global_oom_handling))]
+    fn new_unsize_zst<Dyn, T>(value: T) -> WithHeader<H>
+    where
+        Dyn: Pointee<Metadata = H> + ?Sized,
+        T: Unsize<Dyn>,
+    {
+        assert!(mem::size_of::<T>() == 0);
+
+        const fn max(a: usize, b: usize) -> usize {
+            if a > b { a } else { b }
+        }
+
+        // Compute a pointer to the right metadata. This will point to the beginning
+        // of the header, past the padding, so the assigned type makes sense.
+        // It also ensures that the address at the end of the header is sufficiently
+        // aligned for T.
+        let alloc: &<Dyn as Pointee>::Metadata = const {
+            // FIXME: just call `WithHeader::alloc_layout` with size reset to 0.
+            // Currently that's blocked on `Layout::extend` not being `const fn`.
+
+            let alloc_align =
+                max(mem::align_of::<T>(), mem::align_of::<<Dyn as Pointee>::Metadata>());
+
+            let alloc_size =
+                max(mem::align_of::<T>(), mem::size_of::<<Dyn as Pointee>::Metadata>());
+
+            unsafe {
+                // SAFETY: align is power of two because it is the maximum of two alignments.
+                let alloc: *mut u8 = const_allocate(alloc_size, alloc_align);
+
+                let metadata_offset =
+                    alloc_size.checked_sub(mem::size_of::<<Dyn as Pointee>::Metadata>()).unwrap();
+                // SAFETY: adding offset within the allocation.
+                let metadata_ptr: *mut <Dyn as Pointee>::Metadata =
+                    alloc.add(metadata_offset).cast();
+                // SAFETY: `*metadata_ptr` is within the allocation.
+                metadata_ptr.write(ptr::metadata::<Dyn>(ptr::dangling::<T>() as *const Dyn));
+
+                // SAFETY: we have just written the metadata.
+                &*(metadata_ptr)
+            }
+        };
+
+        // SAFETY: `alloc` points to `<Dyn as Pointee>::Metadata`, so addition stays in-bounds.
+        let value_ptr =
+            unsafe { (alloc as *const <Dyn as Pointee>::Metadata).add(1) }.cast::<T>().cast_mut();
+        debug_assert!(value_ptr.is_aligned());
+        mem::forget(value);
+        WithHeader(NonNull::new(value_ptr.cast()).unwrap(), PhantomData)
+    }
+
     // Safety:
     // - Assumes that either `value` can be dereferenced, or is the
     //   `NonNull::dangling()` we use when both `T` and `H` are ZSTs.
@@ -300,20 +371,19 @@ impl<H> WithHeader<H> {
 
         impl<H> Drop for DropGuard<H> {
             fn drop(&mut self) {
+                // All ZST are allocated statically.
+                if self.value_layout.size() == 0 {
+                    return;
+                }
+
                 unsafe {
                     // SAFETY: Layout must have been computable if we're in drop
                     let (layout, value_offset) =
                         WithHeader::<H>::alloc_layout(self.value_layout).unwrap_unchecked();
 
-                    // Note: Don't deallocate if the layout size is zero, because the pointer
-                    // didn't come from the allocator.
-                    if layout.size() != 0 {
-                        alloc::dealloc(self.ptr.as_ptr().sub(value_offset), layout);
-                    } else {
-                        debug_assert!(
-                            value_offset == 0 && H::IS_ZST && self.value_layout.size() == 0
-                        );
-                    }
+                    // Since we only allocate for non-ZSTs, the layout size cannot be zero.
+                    debug_assert!(layout.size() != 0);
+                    alloc::dealloc(self.ptr.as_ptr().sub(value_offset), layout);
                 }
             }
         }

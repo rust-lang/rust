@@ -11,6 +11,12 @@ LL |    let f = move || { let y = x; };
 ...
 LL |    let z = x;
    |            ^ value used here after move
+   |
+note: if `NoCopy` implemented `Clone`, you could clone the value
+  --> $DIR/issue-24357.rs:1:1
+   |
+LL | struct NoCopy;
+   | ^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

@@ -1,5 +1,6 @@
 // ignore-tidy-linelength
 // Checks that the search results have the expected width.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 set-window-size: (900, 1000)
 write-into: (".search-input", "test")
@@ -71,8 +72,7 @@ define-function: (
     "check-filter",
     [theme, border, filter, hover_border, hover_filter],
     block {
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         wait-for: "#crate-search"
         assert-css: ("#crate-search", {"border": "1px solid " + |border|})
         assert-css: ("#crate-search-div::after", {"filter": |filter|})

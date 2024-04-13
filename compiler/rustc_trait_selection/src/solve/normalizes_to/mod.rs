@@ -487,6 +487,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             bug!();
         };
 
+        // Bail if the upvars haven't been constrained.
+        if tupled_upvars_ty.expect_ty().is_ty_var() {
+            return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+        }
+
         let Some(closure_kind) = closure_fn_kind_ty.expect_ty().to_opt_closure_kind() else {
             // We don't need to worry about the self type being an infer var.
             return Err(NoSolution);
@@ -533,6 +538,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 | ty::Uint(..)
                 | ty::Float(..)
                 | ty::Array(..)
+                | ty::Pat(..)
                 | ty::RawPtr(..)
                 | ty::Ref(..)
                 | ty::FnDef(..)
@@ -768,6 +774,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             | ty::Uint(..)
             | ty::Float(..)
             | ty::Array(..)
+            | ty::Pat(..)
             | ty::RawPtr(..)
             | ty::Ref(..)
             | ty::FnDef(..)

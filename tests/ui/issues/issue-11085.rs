@@ -5,7 +5,7 @@
 //@ pretty-expanded FIXME #23616
 
 struct Foo {
-    #[cfg(fail)]
+    #[cfg(FALSE)]
     bar: baz,
     foo: isize,
 }
@@ -17,18 +17,18 @@ struct Foo2 {
 
 enum Bar1 {
     Bar1_1,
-    #[cfg(fail)]
+    #[cfg(FALSE)]
     Bar1_2(NotAType),
 }
 
 enum Bar2 {
-    #[cfg(fail)]
+    #[cfg(FALSE)]
     Bar2_1(NotAType),
 }
 
 enum Bar3 {
     Bar3_1 {
-        #[cfg(fail)]
+        #[cfg(FALSE)]
         foo: isize,
         bar: isize,
     }

@@ -273,6 +273,7 @@ ast_passes_visibility_not_permitted =
     .trait_impl = trait items always share the visibility of their trait
     .individual_impl_items = place qualifiers on individual impl items instead
     .individual_foreign_items = place qualifiers on individual foreign items instead
+    .remove_qualifier_sugg = remove the qualifier
 
 ast_passes_where_clause_after_type_alias = where clauses are not allowed after the type for type aliases
     .note = see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information

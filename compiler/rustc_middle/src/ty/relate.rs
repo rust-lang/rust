@@ -13,6 +13,8 @@ use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi;
 use std::iter;
 
+use super::Pattern;
+
 pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
 pub trait TypeRelation<'tcx>: Sized {
@@ -351,6 +353,36 @@ impl<'tcx> Relate<'tcx> for Ty<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for Pattern<'tcx> {
+    #[inline]
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: Self,
+        b: Self,
+    ) -> RelateResult<'tcx, Self> {
+        match (&*a, &*b) {
+            (
+                &ty::PatternKind::Range { start: start_a, end: end_a, include_end: inc_a },
+                &ty::PatternKind::Range { start: start_b, end: end_b, include_end: inc_b },
+            ) => {
+                // FIXME(pattern_types): make equal patterns equal (`0..=` is the same as `..=`).
+                let mut relate_opt_const = |a, b| match (a, b) {
+                    (None, None) => Ok(None),
+                    (Some(a), Some(b)) => relation.relate(a, b).map(Some),
+                    // FIXME(pattern_types): report a better error
+                    _ => Err(TypeError::Mismatch),
+                };
+                let start = relate_opt_const(start_a, start_b)?;
+                let end = relate_opt_const(end_a, end_b)?;
+                if inc_a != inc_b {
+                    todo!()
+                }
+                Ok(relation.tcx().mk_pat(ty::PatternKind::Range { start, end, include_end: inc_a }))
+            }
+        }
+    }
+}
+
 /// Relates `a` and `b` structurally, calling the relation for all nested values.
 /// Any semantic equality, e.g. of projections, and inference variables have to be
 /// handled by the caller.
@@ -531,6 +563,12 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             let alias_ty = relation.relate(a_data, b_data)?;
             assert_eq!(a_kind, b_kind);
             Ok(Ty::new_alias(tcx, a_kind, alias_ty))
+        }
+
+        (&ty::Pat(a_ty, a_pat), &ty::Pat(b_ty, b_pat)) => {
+            let ty = relation.relate(a_ty, b_ty)?;
+            let pat = relation.relate(a_pat, b_pat)?;
+            Ok(Ty::new_pat(tcx, ty, pat))
         }
 
         _ => Err(TypeError::Sorts(expected_found(a, b))),

@@ -920,14 +920,8 @@ impl BinOpKind {
         matches!(self, BinOpKind::And | BinOpKind::Or)
     }
 
-    pub fn is_comparison(&self) -> bool {
-        use BinOpKind::*;
-        // Note for developers: please keep this match exhaustive;
-        // we want compilation to fail if another variant is added.
-        match *self {
-            Eq | Lt | Le | Ne | Gt | Ge => true,
-            And | Or | Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr => false,
-        }
+    pub fn is_comparison(self) -> bool {
+        crate::util::parser::AssocOp::from_ast_binop(self).is_comparison()
     }
 
     /// Returns `true` if the binary operator takes its arguments by value.
@@ -2152,6 +2146,9 @@ pub enum TyKind {
     MacCall(P<MacCall>),
     /// Placeholder for a `va_list`.
     CVarArgs,
+    /// Pattern types like `pattern_type!(u32 is 1..=)`, which is the same as `NonZeroU32`,
+    /// just as part of the type system.
+    Pat(P<Ty>, P<Pat>),
     /// Sometimes we need a dummy value when no error has occurred.
     Dummy,
     /// Placeholder for a kind that has failed to be defined.

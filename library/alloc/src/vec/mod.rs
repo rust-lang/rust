@@ -603,6 +603,17 @@ impl<T> Vec<T> {
     pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {
         unsafe { Self::from_raw_parts_in(ptr, length, capacity, Global) }
     }
+
+    /// A convenience method for hoisting the non-null precondition out of [`Vec::from_raw_parts`].
+    ///
+    /// # Safety
+    ///
+    /// See [`Vec::from_raw_parts`].
+    #[inline]
+    #[cfg(not(no_global_oom_handling))] // required by tests/run-make/alloc-no-oom-handling
+    pub(crate) unsafe fn from_nonnull(ptr: NonNull<T>, length: usize, capacity: usize) -> Self {
+        unsafe { Self::from_nonnull_in(ptr, length, capacity, Global) }
+    }
 }
 
 impl<T, A: Allocator> Vec<T, A> {
@@ -818,6 +829,22 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
         unsafe { Vec { buf: RawVec::from_raw_parts_in(ptr, capacity, alloc), len: length } }
+    }
+
+    /// A convenience method for hoisting the non-null precondition out of [`Vec::from_raw_parts_in`].
+    ///
+    /// # Safety
+    ///
+    /// See [`Vec::from_raw_parts_in`].
+    #[inline]
+    #[cfg(not(no_global_oom_handling))] // required by tests/run-make/alloc-no-oom-handling
+    pub(crate) unsafe fn from_nonnull_in(
+        ptr: NonNull<T>,
+        length: usize,
+        capacity: usize,
+        alloc: A,
+    ) -> Self {
+        unsafe { Vec { buf: RawVec::from_nonnull_in(ptr, capacity, alloc), len: length } }
     }
 
     /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity)`.

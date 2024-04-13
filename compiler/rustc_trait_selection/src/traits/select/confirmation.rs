@@ -314,12 +314,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .flat_map(|cond| flatten_answer_tree(tcx, obligation, predicate, cond))
                     .collect(),
                 Condition::IfTransmutable { src, dst } => {
-                    let trait_def_id = obligation.predicate.def_id();
+                    let transmute_trait = obligation.predicate.def_id();
                     let assume_const = predicate.trait_ref.args.const_at(2);
-                    let make_obl = |from_ty, to_ty| {
-                        let trait_ref1 = ty::TraitRef::new(
+                    let make_transmute_obl = |from_ty, to_ty| {
+                        let trait_ref = ty::TraitRef::new(
                             tcx,
-                            trait_def_id,
+                            transmute_trait,
                             [
                                 ty::GenericArg::from(to_ty),
                                 ty::GenericArg::from(from_ty),
@@ -331,17 +331,45 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             obligation.cause.clone(),
                             obligation.recursion_depth + 1,
                             obligation.param_env,
-                            trait_ref1,
+                            trait_ref,
                         )
                     };
+
+                    let make_freeze_obl = |ty| {
+                        let trait_ref = ty::TraitRef::new(
+                            tcx,
+                            tcx.lang_items().freeze_trait().unwrap(),
+                            [ty::GenericArg::from(ty)],
+                        );
+                        Obligation::with_depth(
+                            tcx,
+                            obligation.cause.clone(),
+                            obligation.recursion_depth + 1,
+                            obligation.param_env,
+                            trait_ref,
+                        )
+                    };
+
+                    let mut obls = vec![];
+
+                    // If the source is a shared reference, it must be `Freeze`;
+                    // otherwise, transmuting could lead to data races.
+                    if src.mutability == Mutability::Not {
+                        obls.extend([make_freeze_obl(src.ty), make_freeze_obl(dst.ty)])
+                    }
 
                     // If Dst is mutable, check bidirectionally.
                     // For example, transmuting bool -> u8 is OK as long as you can't update that u8
                     // to be > 1, because you could later transmute the u8 back to a bool and get UB.
                     match dst.mutability {
-                        Mutability::Not => vec![make_obl(src.ty, dst.ty)],
-                        Mutability::Mut => vec![make_obl(src.ty, dst.ty), make_obl(dst.ty, src.ty)],
+                        Mutability::Not => obls.push(make_transmute_obl(src.ty, dst.ty)),
+                        Mutability::Mut => obls.extend([
+                            make_transmute_obl(src.ty, dst.ty),
+                            make_transmute_obl(dst.ty, src.ty),
+                        ]),
                     }
+
+                    obls
                 }
             }
         }
@@ -1417,7 +1445,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // These types are built-in, so we can fast-track by registering
                 // nested predicates for their constituent type(s)
-                ty::Array(ty, _) | ty::Slice(ty) => {
+                ty::Array(ty, _) | ty::Slice(ty) | ty::Pat(ty, _) => {
                     stack.push(ty);
                 }
                 ty::Tuple(tys) => {
@@ -1469,7 +1497,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // If we have any other type (e.g. an ADT), just register a nested obligation
                 // since it's either not `const Drop` (and we raise an error during selection),
                 // or it's an ADT (and we need to check for a custom impl during selection)
-                _ => {
+                ty::Error(_)
+                | ty::Dynamic(..)
+                | ty::CoroutineClosure(..)
+                | ty::Param(_)
+                | ty::Bound(..)
+                | ty::Adt(..)
+                | ty::Alias(ty::Opaque | ty::Weak, _)
+                | ty::Infer(_)
+                | ty::Placeholder(_) => {
                     let predicate = self_ty.rebind(ty::TraitPredicate {
                         trait_ref: ty::TraitRef::from_lang_item(
                             self.tcx(),

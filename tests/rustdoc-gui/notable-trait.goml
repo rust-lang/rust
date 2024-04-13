@@ -1,4 +1,5 @@
 // This test checks the position of the `i` for the notable traits.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/struct.NotableStructWithLongName.html"
 show-text: true
 // We start with a wide screen.
@@ -128,10 +129,7 @@ define-function: (
         // This is needed to ensure that the text color is computed.
         show-text: true
 
-        // Setting the theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        // We reload the page so the local storage settings are being used.
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
 
         assert-css: (
              "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",

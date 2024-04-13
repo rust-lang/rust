@@ -2,6 +2,7 @@
 // Playground. That button is hidden until the user hovers over the code block.
 // This test checks that it is hidden, and that it shows on hover. It also
 // checks for its color.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 show-text: true
 
@@ -9,8 +10,7 @@ define-function: (
     "check-run-button",
     [theme, color, background, hover_color, hover_background],
     block {
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (".test-arrow", {"visibility": "hidden"})
         move-cursor-to: ".example-wrap"
         assert-css: (".test-arrow", {

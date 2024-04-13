@@ -974,7 +974,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         &mut self,
         place: PlaceRef<'tcx, RValue<'gcc>>,
     ) -> OperandRef<'tcx, RValue<'gcc>> {
-        assert_eq!(place.llextra.is_some(), place.layout.is_unsized());
+        assert_eq!(place.val.llextra.is_some(), place.layout.is_unsized());
 
         if place.layout.is_zst() {
             return OperandRef::zero_sized(place.layout);
@@ -999,10 +999,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             }
         }
 
-        let val = if let Some(llextra) = place.llextra {
-            OperandValue::Ref(place.llval, Some(llextra), place.align)
+        let val = if let Some(_) = place.val.llextra {
+            // FIXME: Merge with the `else` below?
+            OperandValue::Ref(place.val)
         } else if place.layout.is_gcc_immediate() {
-            let load = self.load(place.layout.gcc_type(self), place.llval, place.align);
+            let load = self.load(place.layout.gcc_type(self), place.val.llval, place.val.align);
             if let abi::Abi::Scalar(ref scalar) = place.layout.abi {
                 scalar_load_metadata(self, load, scalar);
             }
@@ -1012,9 +1013,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
             let mut load = |i, scalar: &abi::Scalar, align| {
                 let llptr = if i == 0 {
-                    place.llval
+                    place.val.llval
                 } else {
-                    self.inbounds_ptradd(place.llval, self.const_usize(b_offset.bytes()))
+                    self.inbounds_ptradd(place.val.llval, self.const_usize(b_offset.bytes()))
                 };
                 let llty = place.layout.scalar_pair_element_gcc_type(self, i);
                 let load = self.load(llty, llptr, align);
@@ -1027,11 +1028,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             };
 
             OperandValue::Pair(
-                load(0, a, place.align),
-                load(1, b, place.align.restrict_for_offset(b_offset)),
+                load(0, a, place.val.align),
+                load(1, b, place.val.align.restrict_for_offset(b_offset)),
             )
         } else {
-            OperandValue::Ref(place.llval, None, place.align)
+            OperandValue::Ref(place.val)
         };
 
         OperandRef { val, layout: place.layout }
@@ -1045,8 +1046,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     ) {
         let zero = self.const_usize(0);
         let count = self.const_usize(count);
-        let start = dest.project_index(self, zero).llval;
-        let end = dest.project_index(self, count).llval;
+        let start = dest.project_index(self, zero).val.llval;
+        let end = dest.project_index(self, count).val.llval;
 
         let header_bb = self.append_sibling_block("repeat_loop_header");
         let body_bb = self.append_sibling_block("repeat_loop_body");
@@ -1064,7 +1065,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.cond_br(keep_going, body_bb, next_bb);
 
         self.switch_to_block(body_bb);
-        let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
+        let align = dest.val.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
         cg_elem.val.store(self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
         let next = self.inbounds_gep(

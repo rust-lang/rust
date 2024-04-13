@@ -1,9 +1,9 @@
 use std::env;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::{Command, Output};
 
-use crate::{handle_failed_output, tmp_dir};
+use crate::{handle_failed_output, set_host_rpath, tmp_dir};
 
 /// Construct a new `rustc` invocation.
 pub fn rustc() -> Rustc {
@@ -24,6 +24,7 @@ pub struct Rustc {
 fn setup_common() -> Command {
     let rustc = env::var("RUSTC").unwrap();
     let mut cmd = Command::new(rustc);
+    set_host_rpath(&mut cmd);
     cmd.arg("--out-dir").arg(tmp_dir()).arg("-L").arg(tmp_dir());
     cmd
 }
@@ -86,6 +87,45 @@ impl Rustc {
         self
     }
 
+    /// This flag defers LTO optimizations to the linker.
+    pub fn linker_plugin_lto(&mut self, option: &str) -> &mut Self {
+        self.cmd.arg(format!("-Clinker-plugin-lto={option}"));
+        self
+    }
+
+    /// Specify what happens when the code panics.
+    pub fn panic(&mut self, option: &str) -> &mut Self {
+        self.cmd.arg(format!("-Cpanic={option}"));
+        self
+    }
+
+    /// Specify number of codegen units
+    pub fn codegen_units(&mut self, units: usize) -> &mut Self {
+        self.cmd.arg(format!("-Ccodegen-units={units}"));
+        self
+    }
+
+    /// Specify directory path used for incremental cache
+    pub fn incremental<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        let mut arg = OsString::new();
+        arg.push("-Cincremental=");
+        arg.push(path.as_ref());
+        self.cmd.arg(&arg);
+        self
+    }
+
+    /// Specify error format to use
+    pub fn error_format(&mut self, format: &str) -> &mut Self {
+        self.cmd.arg(format!("--error-format={format}"));
+        self
+    }
+
+    /// Specify json messages printed by the compiler
+    pub fn json(&mut self, items: &str) -> &mut Self {
+        self.cmd.arg(format!("--json={items}"));
+        self
+    }
+
     /// Specify target triple.
     pub fn target(&mut self, target: &str) -> &mut Self {
         assert!(!target.contains(char::is_whitespace), "target triple cannot contain spaces");
@@ -94,13 +134,7 @@ impl Rustc {
     }
 
     /// Generic command argument provider. Use `.arg("-Zname")` over `.arg("-Z").arg("arg")`.
-    /// This method will panic if a plain `-Z` or `-C` is passed, or if `-Z <name>` or `-C <name>`
-    /// is passed (note the space).
-    pub fn arg(&mut self, arg: &str) -> &mut Self {
-        assert!(
-            !(["-Z", "-C"].contains(&arg) || arg.starts_with("-Z ") || arg.starts_with("-C ")),
-            "use `-Zarg` or `-Carg` over split `-Z` `arg` or `-C` `arg`"
-        );
+    pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
         self.cmd.arg(arg);
         self
     }
@@ -120,16 +154,7 @@ impl Rustc {
     }
 
     /// Generic command arguments provider. Use `.arg("-Zname")` over `.arg("-Z").arg("arg")`.
-    /// This method will panic if a plain `-Z` or `-C` is passed, or if `-Z <name>` or `-C <name>`
-    /// is passed (note the space).
-    pub fn args(&mut self, args: &[&str]) -> &mut Self {
-        for arg in args {
-            assert!(
-                !(["-Z", "-C"].contains(&arg) || arg.starts_with("-Z ") || arg.starts_with("-C ")),
-                "use `-Zarg` or `-Carg` over split `-Z` `arg` or `-C` `arg`"
-            );
-        }
-
+    pub fn args<S: AsRef<OsStr>>(&mut self, args: &[S]) -> &mut Self {
         self.cmd.args(args);
         self
     }
@@ -166,6 +191,18 @@ impl Rustc {
 
         let output = self.cmd.output().unwrap();
         if output.status.success() {
+            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+        }
+        output
+    }
+
+    #[track_caller]
+    pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
+        let caller_location = std::panic::Location::caller();
+        let caller_line_number = caller_location.line();
+
+        let output = self.cmd.output().unwrap();
+        if output.status.code().unwrap() != code {
             handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
         }
         output

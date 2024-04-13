@@ -262,6 +262,7 @@ impl<'a> Validator<'a> {
             Type::DynTrait(dyn_trait) => self.check_dyn_trait(dyn_trait),
             Type::Generic(_) => {}
             Type::Primitive(_) => {}
+            Type::Pat { type_, __pat_unstable_do_not_use: _ } => self.check_type(type_),
             Type::FunctionPointer(fp) => self.check_function_pointer(&**fp),
             Type::Tuple(tys) => tys.iter().for_each(|ty| self.check_type(ty)),
             Type::Slice(inner) => self.check_type(&**inner),

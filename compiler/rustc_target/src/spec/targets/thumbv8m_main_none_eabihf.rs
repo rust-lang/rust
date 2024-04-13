@@ -22,8 +22,7 @@ pub fn target() -> Target {
             // processor, the Cortex-M33 Technical Reference Manual states that
             // the FPU uses the FPv5 architecture, single-precision instructions
             // and 16 D registers.
-            // These parameters map to the following LLVM features.
-            features: "+fp-armv8,-fp64,-d32".into(),
+            features: "+fp-armv8d16sp".into(),
             max_atomic_width: Some(32),
             ..base::thumb::opts()
         },

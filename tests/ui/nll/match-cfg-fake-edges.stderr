@@ -126,8 +126,8 @@ LL |         _ if { x; false } => 2,
    |
 help: consider assigning a value
    |
-LL |     let x = 0;
-   |           +++
+LL |     let x = 42;
+   |           ++++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/match-cfg-fake-edges.rs:86:31
@@ -142,8 +142,8 @@ LL |         _ if let Some(()) = { x; None } => 2,
    |
 help: consider assigning a value
    |
-LL |     let x = 0;
-   |           +++
+LL |     let x = 42;
+   |           ++++
 
 error[E0382]: use of moved value: `x`
   --> $DIR/match-cfg-fake-edges.rs:99:22

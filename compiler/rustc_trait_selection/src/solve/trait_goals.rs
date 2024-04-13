@@ -155,10 +155,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         if let ty::Alias(ty::Opaque, opaque_ty) = goal.predicate.self_ty().kind() {
             if matches!(goal.param_env.reveal(), Reveal::All)
                 || matches!(ecx.solver_mode(), SolverMode::Coherence)
-                || opaque_ty
-                    .def_id
-                    .as_local()
-                    .is_some_and(|def_id| ecx.can_define_opaque_ty(def_id))
+                || ecx.can_define_opaque_ty(opaque_ty.def_id)
             {
                 return Err(NoSolution);
             }
@@ -1051,6 +1048,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Float(_)
             | ty::Str
             | ty::Array(_, _)
+            | ty::Pat(_, _)
             | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)

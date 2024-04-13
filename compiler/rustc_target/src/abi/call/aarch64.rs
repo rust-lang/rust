@@ -31,7 +31,7 @@ where
             RegKind::Vector => size.bits() == 64 || size.bits() == 128,
         };
 
-        valid_unit.then_some(Uniform { unit, total: size })
+        valid_unit.then_some(Uniform::consecutive(unit, size))
     })
 }
 
@@ -60,7 +60,7 @@ where
     let size = ret.layout.size;
     let bits = size.bits();
     if bits <= 128 {
-        ret.cast_to(Uniform { unit: Reg::i64(), total: size });
+        ret.cast_to(Uniform::new(Reg::i64(), size));
         return;
     }
     ret.make_indirect();
@@ -100,9 +100,9 @@ where
     };
     if size.bits() <= 128 {
         if align.bits() == 128 {
-            arg.cast_to(Uniform { unit: Reg::i128(), total: size });
+            arg.cast_to(Uniform::new(Reg::i128(), size));
         } else {
-            arg.cast_to(Uniform { unit: Reg::i64(), total: size });
+            arg.cast_to(Uniform::new(Reg::i64(), size));
         }
         return;
     }

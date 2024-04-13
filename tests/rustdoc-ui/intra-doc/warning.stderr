@@ -69,10 +69,10 @@ LL | bar [BarC] bar
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarD`
-  --> $DIR/warning.rs:45:1
+  --> $DIR/warning.rs:45:9
    |
 LL | #[doc = "Foo\nbar [BarD] bar\nbaz"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the link appears in this line:
            
@@ -82,13 +82,10 @@ LL | #[doc = "Foo\nbar [BarD] bar\nbaz"]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarF`
-  --> $DIR/warning.rs:50:9
+  --> $DIR/warning.rs:54:4
    |
-LL |         #[doc = $f]
-   |         ^^^^^^^^^^^
-...
 LL | f!("Foo\nbar [BarF] bar\nbaz");
-   | ------------------------------ in this macro invocation
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the link appears in this line:
            
@@ -115,10 +112,10 @@ LL |  * time to introduce a link [error]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
-  --> $DIR/warning.rs:68:1
+  --> $DIR/warning.rs:68:9
    |
 LL | #[doc = "single line [error]"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the link appears in this line:
            
@@ -128,10 +125,10 @@ LL | #[doc = "single line [error]"]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
-  --> $DIR/warning.rs:71:1
+  --> $DIR/warning.rs:71:9
    |
 LL | #[doc = "single line with \"escaping\" [error]"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the link appears in this line:
            
