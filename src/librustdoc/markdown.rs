@@ -164,7 +164,7 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
         options.input.filestem().to_string(),
         options.clone(),
         true,
-        opts,
+        opts.clone(),
         None,
         options.input.opt_path().map(ToOwned::to_owned),
         options.enable_per_target_ignores,
@@ -183,6 +183,6 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
         false,
     );
 
-    collector.tests.run_tests(options.test_args, options.nocapture);
+    collector.tests.run_tests(options.test_args, options.nocapture, opts);
     Ok(())
 }

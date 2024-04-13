@@ -1,6 +1,21 @@
-use super::{make_test, GlobalTestOptions};
+use super::{DocTest, GlobalTestOptions, IndividualTestOptions};
+use crate::html::markdown::LangString;
 use rustc_span::edition::DEFAULT_EDITION;
-use std::borrow::Cow;
+use std::sync::Arc;
+
+fn make_test(input: String, krate: Option<&str>) -> DocTest {
+    super::make_test(
+        input,
+        krate.map(|k| k.into()),
+        DEFAULT_EDITION,
+        String::new(), // test name
+        LangString::empty_for_test(),
+        0,             // line
+        String::new(), // file name
+        Arc::new(IndividualTestOptions::empty()),
+        String::new(), // test id
+    )
+}
 
 #[test]
 fn make_test_basic() {
@@ -13,8 +28,7 @@ assert_eq!(2+2, 4);
 }"
     .to_string();
     let krate = None;
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -29,9 +43,8 @@ fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let krate = Some(Cow::Borrowed("asdf"));
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let krate = Some("asdf");
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -51,9 +64,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let krate = Some(Cow::Borrowed("asdf"));
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let krate = Some("asdf");
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 3));
 }
 
@@ -72,9 +84,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let krate = Some(Cow::Borrowed("asdf"));
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let krate = Some("asdf");
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -93,9 +104,8 @@ use std::*;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let krate = Some(Cow::Borrowed("std"));
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let krate = Some("std");
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -115,9 +125,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let krate = Some(Cow::Borrowed("asdf"));
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let krate = Some("asdf");
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -135,9 +144,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let krate = Some(Cow::Borrowed("asdf"));
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let krate = Some("asdf");
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -158,9 +166,9 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let krate = Some(Cow::Borrowed("asdf"));
-    let (output, len) = make_test(input.clone(), krate.clone(), DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let krate = Some("asdf");
+    let (output, len) =
+        make_test(input.clone(), krate.clone()).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 3));
 
     // Adding more will also bump the returned line offset.
@@ -174,8 +182,7 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 4));
 }
 
@@ -194,8 +201,7 @@ assert_eq!(2+2, 4);
 }"
     .to_string();
     let krate = None;
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -213,8 +219,7 @@ fn main() {
 }"
     .to_string();
     let krate = None;
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 1));
 }
 
@@ -232,8 +237,7 @@ assert_eq!(2+2, 4);
 }"
     .to_string();
     let krate = None;
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -249,8 +253,7 @@ assert_eq!(2+2, 4);"
 assert_eq!(2+2, 4);"
         .to_string();
     let krate = None;
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(true, &opts, None);
+    let (output, len) = make_test(input, krate).generate_unique_doctest(true, &opts, None);
     assert_eq!((output, len), (expected, 1));
 }
 
@@ -270,8 +273,7 @@ assert_eq!(2+2, 4);
     .to_string();
 
     let krate = None;
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 
     let input = "extern crate hella_qwop;
@@ -287,9 +289,8 @@ assert_eq!(asdf::foo, 4);
 }"
     .to_string();
 
-    let krate = Some(Cow::Borrowed("asdf"));
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let krate = Some("asdf");
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 3));
 }
 
@@ -308,9 +309,8 @@ test_wrapper! {
 }"
     .to_string();
 
-    let krate = Some(Cow::Borrowed("my_crate"));
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let krate = Some("my_crate");
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 1));
 }
 
@@ -332,8 +332,7 @@ Ok::<(), io:Error>(())
 } _inner().unwrap() }"
         .to_string();
     let krate = None;
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -348,8 +347,8 @@ assert_eq!(2+2, 4);
 } _doctest_main__some_unique_name() }"
         .to_string();
     let krate = None;
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, Some("_some_unique_name"));
+    let (output, len) =
+        make_test(input, krate).generate_unique_doctest(false, &opts, Some("_some_unique_name"));
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -371,8 +370,7 @@ fn main() {
 }"
     .to_string();
     let krate = None;
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 2));
 }
 
@@ -395,7 +393,6 @@ fn main() {
 }"
     .to_string();
     let krate = None;
-    let (output, len) = make_test(input, krate, DEFAULT_EDITION, String::new())
-        .generate_unique_doctest(false, &opts, None);
+    let (output, len) = make_test(input, krate).generate_unique_doctest(false, &opts, None);
     assert_eq!((output, len), (expected, 1));
 }

@@ -23,6 +23,7 @@ use rustc_target::spec::{Target, TargetTriple};
 
 use std::borrow::Cow;
 use std::env;
+use std::fmt::Write as _;
 use std::fs::File;
 use std::io::{self, Write};
 use std::panic;
@@ -172,7 +173,7 @@ pub(crate) fn run(
     let file_path = temp_dir.path().join("rustdoc-cfgs");
     crate::wrap_return(dcx, generate_args_file(&file_path, &options))?;
 
-    let (tests, unused_extern_reports, compiling_test_count) =
+    let (tests, unused_extern_reports, compiling_test_count, opts) =
         interface::run_compiler(config, |compiler| {
             compiler.enter(|queries| {
                 let collector = queries.global_ctxt()?.enter(|tcx| {
@@ -215,11 +216,11 @@ pub(crate) fn run(
 
                 let unused_extern_reports = collector.unused_extern_reports.clone();
                 let compiling_test_count = collector.compiling_test_count.load(Ordering::SeqCst);
-                Ok((collector.tests, unused_extern_reports, compiling_test_count))
+                Ok((collector.tests, unused_extern_reports, compiling_test_count, collector.opts))
             })
         })?;
 
-    tests.run_tests(test_args, nocapture);
+    tests.run_tests(test_args, nocapture, opts);
 
     // Collect and warn about unused externs, but only if we've gotten
     // reports for each doctest
@@ -361,11 +362,13 @@ fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Com
 }
 
 fn run_test(
-    doctest: DocTest,
     test: String,
+    supports_color: bool,
     line_offset: usize,
     line: usize,
-    rustdoc_options: IndividualTestOptions,
+    rustdoc_options: Arc<IndividualTestOptions>,
+    is_multiple_tests: bool,
+    outdir: Arc<DirState>,
     mut lang_string: LangString,
     edition: Edition,
     path: PathBuf,
@@ -373,7 +376,7 @@ fn run_test(
 ) -> Result<(), TestFailure> {
     // Make sure we emit well-formed executable names for our target.
     let rust_out = add_exe_suffix("rust_out".to_owned(), &rustdoc_options.target);
-    let output_file = rustdoc_options.outdir.path().join(rust_out);
+    let output_file = outdir.path().join(rust_out);
 
     let rustc_binary = rustdoc_options
         .test_builder
@@ -401,16 +404,14 @@ fn run_test(
         compiler.arg("-Z").arg("unstable-options");
     }
 
-    if rustdoc_options.no_run
-        && !lang_string.compile_fail
-        && rustdoc_options.should_persist_doctests
+    if lang_string.no_run && !lang_string.compile_fail && rustdoc_options.persist_doctests.is_none()
     {
         compiler.arg("--emit=metadata");
     }
     compiler.arg("--target").arg(match rustdoc_options.target {
-        TargetTriple::TargetTriple(s) => s,
-        TargetTriple::TargetJson { path_for_rustdoc, .. } => {
-            path_for_rustdoc.to_str().expect("target path must be valid unicode").to_string()
+        TargetTriple::TargetTriple(ref s) => s.as_str(),
+        TargetTriple::TargetJson { ref path_for_rustdoc, .. } => {
+            path_for_rustdoc.to_str().expect("target path must be valid unicode")
         }
     });
     if let ErrorOutputType::HumanReadable(kind) = rustdoc_options.error_format {
@@ -428,11 +429,7 @@ fn run_test(
                 compiler.arg("--color").arg("always");
             }
             ColorConfig::Auto => {
-                compiler.arg("--color").arg(if doctest.supports_color {
-                    "always"
-                } else {
-                    "never"
-                });
+                compiler.arg("--color").arg(if supports_color { "always" } else { "never" });
             }
         }
     }
@@ -448,7 +445,12 @@ fn run_test(
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
         stdin.write_all(test.as_bytes()).expect("could write out test sources");
     }
-    let output = child.wait_with_output().expect("Failed to read stdout");
+    let output = if is_multiple_tests {
+        let status = child.wait().expect("Failed to wait");
+        process::Output { status, stdout: Vec::new(), stderr: Vec::new() }
+    } else {
+        child.wait_with_output().expect("Failed to read stdout")
+    };
 
     struct Bomb<'a>(&'a str);
     impl Drop for Bomb<'_> {
@@ -499,7 +501,7 @@ fn run_test(
         }
     }
 
-    if rustdoc_options.no_run {
+    if lang_string.no_run {
         return Ok(());
     }
 
@@ -507,19 +509,19 @@ fn run_test(
     let mut cmd;
 
     let output_file = make_maybe_absolute_path(output_file);
-    if let Some(tool) = rustdoc_options.runtool {
+    if let Some(ref tool) = rustdoc_options.runtool {
         let tool = make_maybe_absolute_path(tool.into());
         cmd = Command::new(tool);
-        cmd.args(rustdoc_options.runtool_args);
+        cmd.args(&rustdoc_options.runtool_args);
         cmd.arg(output_file);
     } else {
         cmd = Command::new(output_file);
     }
-    if let Some(run_directory) = rustdoc_options.test_run_directory {
+    if let Some(ref run_directory) = rustdoc_options.test_run_directory {
         cmd.current_dir(run_directory);
     }
 
-    let result = if rustdoc_options.nocapture {
+    let result = if is_multiple_tests || rustdoc_options.nocapture {
         cmd.status().map(|status| process::Output {
             status,
             stdout: Vec::new(),
@@ -561,14 +563,19 @@ pub(crate) struct DocTest {
     supports_color: bool,
     already_has_extern_crate: bool,
     main_fn_span: Option<Span>,
-    #[allow(dead_code)]
-    extern_crates: Vec<Span>,
     crate_attrs: String,
     crates: String,
     everything_else: String,
     ignore: bool,
     crate_name: Option<String>,
     name: String,
+    lang_string: LangString,
+    line: usize,
+    file: String,
+    failed_ast: bool,
+    test_id: String,
+    outdir: Arc<DirState>,
+    rustdoc_test_options: Arc<IndividualTestOptions>,
 }
 
 impl DocTest {
@@ -584,20 +591,7 @@ impl DocTest {
             self.test_code.len() + self.crate_attrs.len() + self.crates.len(),
         );
 
-        if opts.attrs.is_empty() {
-            // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
-            // lints that are commonly triggered in doctests. The crate-level test attributes are
-            // commonly used to make tests fail in case they trigger warnings, so having this there in
-            // that case may cause some tests to pass when they shouldn't have.
-            prog.push_str("#![allow(unused)]\n");
-            line_offset += 1;
-        }
-
-        // Next, any attributes that came from the crate root via #![doc(test(attr(...)))].
-        for attr in &opts.attrs {
-            prog.push_str(&format!("#![{attr}]\n"));
-            line_offset += 1;
-        }
+        Self::push_attrs(&mut prog, opts, &mut line_offset);
 
         // Now push any outer attributes from the example, assuming they
         // are intended to be crate attributes.
@@ -678,26 +672,37 @@ impl DocTest {
         (prog, line_offset)
     }
 
+    fn push_attrs(prog: &mut String, opts: &GlobalTestOptions, line_offset: &mut usize) {
+        if opts.attrs.is_empty() {
+            // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
+            // lints that are commonly triggered in doctests. The crate-level test attributes are
+            // commonly used to make tests fail in case they trigger warnings, so having this there in
+            // that case may cause some tests to pass when they shouldn't have.
+            prog.push_str("#![allow(unused)]\n");
+            *line_offset += 1;
+        }
+
+        // Next, any attributes that came from the crate root via #![doc(test(attr(...)))].
+        for attr in &opts.attrs {
+            prog.push_str(&format!("#![{attr}]\n"));
+            *line_offset += 1;
+        }
+    }
+
     fn generate_test_desc_and_fn(
         mut self,
-        config: LangString,
-        target_str: &str,
-        line: usize,
-        rustdoc_test_options: IndividualTestOptions,
         opts: &GlobalTestOptions,
         edition: Edition,
         path: PathBuf,
         unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
     ) -> TestDescAndFn {
-        let (code, line_offset) = self.generate_unique_doctest(
-            config.test_harness,
-            opts,
-            Some(&rustdoc_test_options.test_id),
-        );
+        let (code, line_offset) =
+            self.generate_unique_doctest(self.lang_string.test_harness, opts, Some(&self.test_id));
+        let Self { supports_color, rustdoc_test_options, lang_string, outdir, .. } = self;
         TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(std::mem::replace(&mut self.name, String::new())),
-                ignore: ignore_to_bool(&config.ignore, target_str),
+                ignore: self.ignore,
                 ignore_message: None,
                 source_file: "",
                 start_line: 0,
@@ -706,8 +711,8 @@ impl DocTest {
                 end_col: 0,
                 // compiler failures are test failures
                 should_panic: test::ShouldPanic::No,
-                compile_fail: config.compile_fail,
-                no_run: rustdoc_test_options.no_run,
+                compile_fail: lang_string.compile_fail,
+                no_run: lang_string.no_run,
                 test_type: test::TestType::DocTest,
             },
             testfn: test::DynTestFn(Box::new(move || {
@@ -715,12 +720,14 @@ impl DocTest {
                     unused_externs.lock().unwrap().push(uext);
                 };
                 let res = run_test(
-                    self,
                     code,
+                    supports_color,
                     line_offset,
-                    line,
+                    self.line,
                     rustdoc_test_options,
-                    config,
+                    false,
+                    outdir,
+                    lang_string,
                     edition,
                     path,
                     report_unused_externs,
@@ -781,6 +788,67 @@ impl DocTest {
             })),
         }
     }
+
+    fn generate_test_desc(&self, id: usize, output: &mut String) -> String {
+        let test_id = format!("__doctest_{id}");
+
+        writeln!(output, "mod {test_id} {{\n{}", self.crates).unwrap();
+
+        if self.main_fn_span.is_some() {
+            output.push_str(&self.everything_else);
+        } else {
+            let returns_result = if self.everything_else.trim_end().ends_with("(())") {
+                "-> Result<(), impl core::fmt::Debug>"
+            } else {
+                ""
+            };
+            write!(
+                output,
+                "\
+fn main() {returns_result} {{
+    {}
+}}",
+                self.everything_else
+            )
+            .unwrap();
+        }
+        writeln!(
+            output,
+            "
+#[rustc_test_marker = {test_name:?}]
+pub const TEST: test::TestDescAndFn = test::TestDescAndFn {{
+    desc: test::TestDesc {{
+        name: test::StaticTestName({test_name:?}),
+        ignore: {ignore},
+        ignore_message: None,
+        source_file: {file:?},
+        start_line: {line},
+        start_col: 0,
+        end_line: 0,
+        end_col: 0,
+        compile_fail: false,
+        no_run: false,
+        should_panic: test::ShouldPanic::{should_panic},
+        test_type: test::TestType::UnitTest,
+    }},
+    testfn: test::StaticTestFn(
+        #[coverage(off)]
+        || test::assert_test_result({runner}),
+    )
+}};
+}}",
+            test_name = self.name,
+            ignore = self.ignore,
+            file = self.file,
+            line = self.line,
+            should_panic = if self.lang_string.should_panic { "Yes" } else { "No" },
+            // Setting `no_run` to `true` in `TestDesc` still makes the test run, so we simply
+            // don't give it the function to run.
+            runner = if self.lang_string.no_run { "Ok::<(), String>(())" } else { "self::main()" },
+        )
+        .unwrap();
+        test_id
+    }
 }
 
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
@@ -790,7 +858,26 @@ pub(crate) fn make_test(
     crate_name: Option<Cow<'_, str>>,
     edition: Edition,
     name: String,
+    lang_string: LangString,
+    line: usize,
+    file: String,
+    rustdoc_test_options: Arc<IndividualTestOptions>,
+    test_id: String,
 ) -> DocTest {
+    let outdir = Arc::new(if let Some(ref path) = rustdoc_test_options.persist_doctests {
+        let mut path = path.clone();
+        path.push(&test_id);
+
+        if let Err(err) = std::fs::create_dir_all(&path) {
+            eprintln!("Couldn't create directory for doctest executables: {err}");
+            panic::resume_unwind(Box::new(()));
+        }
+
+        DirState::Perm(path)
+    } else {
+        DirState::Temp(get_doctest_dir().expect("rustdoc needs a tempdir"))
+    });
+
     let (crate_attrs, everything_else, crates) = partition_source(&s, edition);
     let mut supports_color = false;
     let crate_name = crate_name.map(|c| c.into_owned());
@@ -827,13 +914,12 @@ pub(crate) fn make_test(
             let mut found_main = None;
             let mut found_extern_crate = crate_name.is_none();
             let mut found_macro = false;
-            let mut extern_crates = Vec::new();
 
             let mut parser = match maybe_new_parser_from_source_str(&psess, filename, source) {
                 Ok(p) => p,
                 Err(errs) => {
                     errs.into_iter().for_each(|err| err.cancel());
-                    return (found_main, found_extern_crate, found_macro, Vec::new());
+                    return (found_main, found_extern_crate, found_macro);
                 }
             };
 
@@ -849,12 +935,11 @@ pub(crate) fn make_test(
 
                         if let ast::ItemKind::ExternCrate(original) = item.kind {
                             if !found_extern_crate && let Some(ref crate_name) = crate_name {
-                                match original {
-                                    Some(name) => found_extern_crate = name.as_str() == crate_name,
-                                    None => found_extern_crate = item.ident.as_str() == crate_name,
-                                }
+                                found_extern_crate = match original {
+                                    Some(name) => name.as_str() == crate_name,
+                                    None => item.ident.as_str() == crate_name,
+                                };
                             }
-                            extern_crates.push(item.span);
                         }
 
                         if !found_macro && let ast::ItemKind::MacCall(..) = item.kind {
@@ -883,18 +968,16 @@ pub(crate) fn make_test(
             // drop.
             psess.dcx.reset_err_count();
 
-            (found_main, found_extern_crate, found_macro, extern_crates)
+            (found_main, found_extern_crate, found_macro)
         })
     });
-    let Ok((mut main_fn_span, already_has_extern_crate, found_macro, extern_crates)) = result
-    else {
+    let Ok((mut main_fn_span, already_has_extern_crate, found_macro)) = result else {
         // If the parser panicked due to a fatal error, pass the test code through unchanged.
         // The error will be reported during compilation.
         return DocTest {
             test_code: s,
             supports_color: false,
             main_fn_span: None,
-            extern_crates: Vec::new(),
             crate_attrs,
             crates,
             everything_else,
@@ -902,6 +985,13 @@ pub(crate) fn make_test(
             ignore: false,
             crate_name,
             name,
+            lang_string,
+            line,
+            file,
+            failed_ast: true,
+            rustdoc_test_options,
+            outdir,
+            test_id,
         };
     };
 
@@ -925,7 +1015,6 @@ pub(crate) fn make_test(
         test_code: s,
         supports_color,
         main_fn_span,
-        extern_crates,
         crate_attrs,
         crates,
         everything_else,
@@ -933,6 +1022,13 @@ pub(crate) fn make_test(
         ignore: false,
         crate_name,
         name,
+        lang_string,
+        line,
+        file,
+        failed_ast: false,
+        rustdoc_test_options,
+        outdir,
+        test_id,
     }
 }
 
@@ -1074,56 +1170,54 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
     (before, after.trim().to_owned(), crates)
 }
 
+#[derive(Clone)]
 pub(crate) struct IndividualTestOptions {
     test_builder: Option<PathBuf>,
     test_builder_wrappers: Vec<PathBuf>,
     is_json_unused_externs_enabled: bool,
-    should_persist_doctests: bool,
+    persist_doctests: Option<PathBuf>,
     error_format: ErrorOutputType,
     test_run_directory: Option<PathBuf>,
     nocapture: bool,
     arg_file: PathBuf,
-    outdir: DirState,
     runtool: Option<String>,
     runtool_args: Vec<String>,
     target: TargetTriple,
-    test_id: String,
     maybe_sysroot: Option<PathBuf>,
-    no_run: bool,
 }
 
 impl IndividualTestOptions {
-    fn new(options: &RustdocOptions, arg_file: &Path, test_id: String) -> Self {
-        let outdir = if let Some(ref path) = options.persist_doctests {
-            let mut path = path.clone();
-            path.push(&test_id);
-
-            if let Err(err) = std::fs::create_dir_all(&path) {
-                eprintln!("Couldn't create directory for doctest executables: {err}");
-                panic::resume_unwind(Box::new(()));
-            }
-
-            DirState::Perm(path)
-        } else {
-            DirState::Temp(get_doctest_dir().expect("rustdoc needs a tempdir"))
-        };
-
+    fn new(options: &RustdocOptions, arg_file: PathBuf) -> Self {
         Self {
             test_builder: options.test_builder.clone(),
             test_builder_wrappers: options.test_builder_wrappers.clone(),
             is_json_unused_externs_enabled: options.json_unused_externs.is_enabled(),
-            should_persist_doctests: options.persist_doctests.is_none(),
+            persist_doctests: options.persist_doctests.clone(),
             error_format: options.error_format,
             test_run_directory: options.test_run_directory.clone(),
             nocapture: options.nocapture,
-            arg_file: arg_file.into(),
-            outdir,
+            arg_file,
             runtool: options.runtool.clone(),
             runtool_args: options.runtool_args.clone(),
             target: options.target.clone(),
-            test_id,
             maybe_sysroot: options.maybe_sysroot.clone(),
-            no_run: options.no_run,
+        }
+    }
+
+    pub(crate) fn empty() -> Self {
+        Self {
+            test_builder: Default::default(),
+            test_builder_wrappers: Default::default(),
+            is_json_unused_externs_enabled: Default::default(),
+            persist_doctests: Default::default(),
+            error_format: Default::default(),
+            test_run_directory: Default::default(),
+            nocapture: Default::default(),
+            arg_file: Default::default(),
+            runtool: Default::default(),
+            runtool_args: Default::default(),
+            target: TargetTriple::from_triple(""),
+            maybe_sysroot: Default::default(),
         }
     }
 }
@@ -1152,24 +1246,21 @@ pub(crate) struct DocTestKinds {
 }
 
 impl DocTestKinds {
-    pub(crate) fn add_test(
+    pub(crate) fn add_doctest(
         &mut self,
         doctest: DocTest,
-        config: LangString,
-        target_str: &str,
-        line: usize,
-        rustdoc_test_options: IndividualTestOptions,
         opts: &GlobalTestOptions,
         edition: Edition,
         path: PathBuf,
         unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
     ) {
-        if config.compile_fail || config.test_harness {
+        if doctest.failed_ast
+            || doctest.lang_string.compile_fail
+            || doctest.lang_string.test_harness
+            || doctest.ignore
+            || doctest.crate_attrs.contains("#![no_std]")
+        {
             self.standalone.push(doctest.generate_test_desc_and_fn(
-                config,
-                target_str,
-                line,
-                rustdoc_test_options,
                 opts,
                 edition,
                 path,
@@ -1180,24 +1271,73 @@ impl DocTestKinds {
         }
     }
 
-    pub(crate) fn run_tests(self, mut test_args: Vec<String>, nocapture: bool) {
+    pub(crate) fn run_tests(
+        self,
+        mut test_args: Vec<String>,
+        nocapture: bool,
+        opts: GlobalTestOptions,
+    ) {
         test_args.insert(0, "rustdoctest".to_string());
         if nocapture {
             test_args.push("--nocapture".to_string());
         }
         let Self { mut standalone, others } = self;
+
+        for (edition, mut doctests) in others {
+            doctests.sort_by(|a, b| a.name.cmp(&b.name));
+            let mut ids = String::new();
+            let mut output = "\
+#![allow(unused_extern_crates)]
+#![allow(internal_features)]
+#![feature(test)]
+#![feature(rustc_attrs)]
+#![feature(coverage_attribute)]\n"
+                .to_string();
+
+            DocTest::push_attrs(&mut output, &opts, &mut 0);
+            output.push_str("extern crate test;\n");
+
+            let rustdoc_test_options = Arc::clone(&doctests[0].rustdoc_test_options);
+            let outdir = Arc::clone(&doctests[0].outdir);
+
+            let mut supports_color = true;
+            for (pos, doctest) in doctests.into_iter().enumerate() {
+                if !ids.is_empty() {
+                    ids.push(',');
+                }
+                ids.push_str(&format!("&{}::TEST", doctest.generate_test_desc(pos, &mut output)));
+                supports_color &= doctest.supports_color;
+            }
+            write!(
+                output,
+                "\
+#[rustc_main]
+#[coverage(off)]
+fn main() {{
+    test::test_main_static(&[{ids}]);
+    panic!(\"fuck\");
+}}",
+            )
+            .unwrap();
+            if let Err(TestFailure::CompileError) = run_test(
+                output,
+                supports_color,
+                0,
+                0,
+                rustdoc_test_options,
+                true,
+                outdir,
+                LangString::empty_for_test(),
+                edition,
+                PathBuf::from(format!("doctest_edition_{edition}.rs")),
+                |_: UnusedExterns| {},
+            ) {
+                // FIXME: run all tests one by one.
+            }
+        }
+
         standalone.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
         test::test_main(&test_args, standalone, None);
-
-        // FIXME: generate code for others
-        // for (edition, doctests) in others {
-        // let mut id = 0;
-        // let mut output = String::new();
-
-        // for doctest in doctests {
-        // }
-        // }
-        drop(others);
     }
 }
 
@@ -1237,7 +1377,7 @@ pub(crate) struct Collector {
     visited_tests: FxHashMap<(String, usize), usize>,
     unused_extern_reports: Arc<Mutex<Vec<UnusedExterns>>>,
     compiling_test_count: AtomicUsize,
-    arg_file: PathBuf,
+    rustdoc_test_options: Arc<IndividualTestOptions>,
 }
 
 impl Collector {
@@ -1251,6 +1391,7 @@ impl Collector {
         enable_per_target_ignores: bool,
         arg_file: PathBuf,
     ) -> Collector {
+        let rustdoc_test_options = Arc::new(IndividualTestOptions::new(&rustdoc_options, arg_file));
         Collector {
             tests: Default::default(),
             names: Vec::new(),
@@ -1265,7 +1406,7 @@ impl Collector {
             visited_tests: FxHashMap::default(),
             unused_extern_reports: Default::default(),
             compiling_test_count: AtomicUsize::new(0),
-            arg_file,
+            rustdoc_test_options,
         }
     }
 
@@ -1323,7 +1464,7 @@ impl Tester for Collector {
                     unreachable!("doctest from a different crate");
                 }
             }
-            _ => PathBuf::from(r"doctest.rs"),
+            _ => PathBuf::from("doctest.rs"),
         };
 
         // For example `module/file.rs` would become `module_file_rs`
@@ -1335,8 +1476,6 @@ impl Tester for Collector {
             .collect::<String>();
         let test_id = format!(
             "{file}_{line}_{number}",
-            file = file,
-            line = line,
             number = {
                 // Increases the current test number, if this file already
                 // exists or it creates a new entry with a test number of 0.
@@ -1344,22 +1483,25 @@ impl Tester for Collector {
             },
         );
 
-        let rustdoc_test_options =
-            IndividualTestOptions::new(&self.rustdoc_options, &self.arg_file, test_id);
-
         debug!("creating test {name}: {test}");
-        let mut doctest = make_test(test, Some(crate_name), edition, name);
-        doctest.ignore = ignore_to_bool(&config.ignore, &target_str);
-        self.tests.add_test(
-            doctest,
+        let mut doctest = make_test(
+            test,
+            Some(crate_name),
+            edition,
+            name,
             config,
-            &target_str,
             line,
-            rustdoc_test_options,
+            file,
+            Arc::clone(&self.rustdoc_test_options),
+            test_id,
+        );
+        doctest.ignore = ignore_to_bool(&doctest.lang_string.ignore, &target_str);
+        self.tests.add_doctest(
+            doctest,
             &opts,
             edition,
             path,
-            self.unused_extern_reports.clone(),
+            Arc::clone(&self.unused_extern_reports),
         );
     }
 
