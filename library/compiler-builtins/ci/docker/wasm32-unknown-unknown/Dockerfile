@@ -1,4 +1,5 @@
-FROM ubuntu:20.04
+ARG IMAGE=ubuntu:20.04
+FROM $IMAGE
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     gcc clang libc6-dev ca-certificates

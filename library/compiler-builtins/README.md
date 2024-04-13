@@ -78,6 +78,26 @@ features = ["c"]
 [8]: http://en.cppreference.com/w/cpp/language/implicit_conversion
 [9]: https://doc.rust-lang.org/std/primitive.i32.html
 
+## Testing
+
+The easiest way to test locally is using Docker. This can be done by running
+`./ci/run-docker.sh [target]`. If no target is specified, all targets will be
+run.
+
+In order to run the full test suite, you will also need the C compiler runtime
+to test against, located in a directory called `compiler-rt`. This can be
+obtained with the following:
+
+```sh
+curl -L -o rustc-llvm-18.0.tar.gz https://github.com/rust-lang/llvm-project/archive/rustc/18.0-2024-02-13.tar.gz
+tar xzf rustc-llvm-18.0.tar.gz --strip-components 1 llvm-project-rustc-18.0-2024-02-13/compiler-rt
+````
+
+Local targets may also be tested with `./ci/run.sh [target]`.
+
+Note that testing may not work on all hosts, in which cases it is acceptable to
+rely on CI.
+
 ## Progress
 
 - [x] adddf3.c
