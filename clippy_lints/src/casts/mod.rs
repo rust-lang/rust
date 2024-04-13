@@ -757,7 +757,6 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
-        ptr_as_ptr::check(cx, expr, &self.msrv);
 
         if let ExprKind::Cast(cast_expr, cast_to_hir) = expr.kind {
             if is_hir_ty_cfg_dependant(cx, cast_to_hir) {
