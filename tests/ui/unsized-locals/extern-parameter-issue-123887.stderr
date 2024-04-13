@@ -1,0 +1,15 @@
+error[E0277]: the size for values of type `ExternType` cannot be known at compilation time
+  --> $DIR/extern-parameter-issue-123887.rs:10:6
+   |
+LL | fn f(_: ExternType) {}
+   |      ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `ExternType`
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn f(_: &ExternType) {}
+   |         +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
