@@ -196,7 +196,7 @@ pub struct Mutex<T: ?Sized> {
 ///
 /// - impl Sync for Mutex
 ///
-/// Mutex<T> provides mutable access to `T` to one thread at a time. However, it's essential
+/// `Mutex<T>` provides mutable access to `T` to one thread at a time. However, it's essential
 /// for `T` to be `Send` because it's not safe for non-`Send` structures to be accessed in
 /// this manner. For instance, consider `Rc`, a non-atomic reference counted smart pointer,
 /// which is not `Send`. With `Rc`, we can have multiple copies pointing to the same heap
