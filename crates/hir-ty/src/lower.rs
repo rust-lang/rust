@@ -67,9 +67,9 @@ use crate::{
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, Const, ConstScalar, DebruijnIndex, DynTy,
     FnAbi, FnPointer, FnSig, FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime,
-    LifetimeData, LifetimeOutlives, ParamKind, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
-    QuantifiedWhereClauses, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder,
-    TyKind, WhereClause,
+    LifetimeData, LifetimeOutlives, ParamKind, PolyFnSig, ProgramClause, ProjectionTy,
+    QuantifiedWhereClause, QuantifiedWhereClauses, Substitution, TraitEnvironment, TraitRef,
+    TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
 };
 
 #[derive(Debug)]
@@ -1052,11 +1052,11 @@ impl<'a> TyLoweringContext<'a> {
         self_ty: Ty,
         ignore_bindings: bool,
     ) -> impl Iterator<Item = QuantifiedWhereClause> + 'a {
-        let mut bindings = None;
-        let trait_ref = match bound.as_ref() {
+        let mut trait_ref = None;
+        let clause = match bound.as_ref() {
             TypeBound::Path(path, TraitBoundModifier::None) => {
-                bindings = self.lower_trait_ref_from_path(path, Some(self_ty));
-                bindings
+                trait_ref = self.lower_trait_ref_from_path(path, Some(self_ty));
+                trait_ref
                     .clone()
                     .filter(|tr| {
                         // ignore `T: Drop` or `T: Destruct` bounds.
@@ -1092,8 +1092,8 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeBound::ForLifetime(_, path) => {
                 // FIXME Don't silently drop the hrtb lifetimes here
-                bindings = self.lower_trait_ref_from_path(path, Some(self_ty));
-                bindings.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
+                trait_ref = self.lower_trait_ref_from_path(path, Some(self_ty));
+                trait_ref.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
             }
             TypeBound::Lifetime(l) => {
                 let lifetime = self.lower_lifetime(l);
@@ -1104,8 +1104,8 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeBound::Error => None,
         };
-        trait_ref.into_iter().chain(
-            bindings
+        clause.into_iter().chain(
+            trait_ref
                 .into_iter()
                 .filter(move |_| !ignore_bindings)
                 .flat_map(move |tr| self.assoc_type_bindings_from_type_bound(bound, tr)),
@@ -1624,10 +1624,14 @@ pub(crate) fn generic_predicates_for_param_query(
 
     let subst = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
     let explicitly_unsized_tys = ctx.unsized_types.into_inner();
-    let implicitly_sized_predicates =
+    if let Some(implicitly_sized_predicates) =
         implicitly_sized_clauses(db, param_id.parent, &explicitly_unsized_tys, &subst, &resolver)
-            .map(|p| make_binders(db, &generics, crate::wrap_empty_binders(p)));
-    predicates.extend(implicitly_sized_predicates);
+    {
+        predicates.extend(
+            implicitly_sized_predicates
+                .map(|p| make_binders(db, &generics, crate::wrap_empty_binders(p))),
+        );
+    }
     predicates.into()
 }
 
@@ -1685,24 +1689,23 @@ pub(crate) fn trait_environment_query(
         let substs = TyBuilder::placeholder_subst(db, trait_id);
         let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution: substs };
         let pred = WhereClause::Implemented(trait_ref);
-        let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(Interner);
-        clauses.push(program_clause.into_from_env_clause(Interner));
+        clauses.push(pred.cast::<ProgramClause>(Interner).into_from_env_clause(Interner));
     }
 
     let subst = generics(db.upcast(), def).placeholder_subst(db);
     let explicitly_unsized_tys = ctx.unsized_types.into_inner();
-    let implicitly_sized_clauses =
-        implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver).map(|pred| {
-            let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(Interner);
-            program_clause.into_from_env_clause(Interner)
-        });
-    clauses.extend(implicitly_sized_clauses);
-
-    let krate = def.module(db.upcast()).krate();
+    if let Some(implicitly_sized_clauses) =
+        implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver)
+    {
+        clauses.extend(
+            implicitly_sized_clauses
+                .map(|pred| pred.cast::<ProgramClause>(Interner).into_from_env_clause(Interner)),
+        );
+    }
 
     let env = chalk_ir::Environment::new(Interner).add_clauses(Interner, clauses);
 
-    TraitEnvironment::new(krate, None, traits_in_scope.into_boxed_slice(), env)
+    TraitEnvironment::new(resolver.krate(), None, traits_in_scope.into_boxed_slice(), env)
 }
 
 /// Resolve the where clause(s) of an item with generics.
@@ -1730,10 +1733,14 @@ pub(crate) fn generic_predicates_query(
 
     let subst = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
     let explicitly_unsized_tys = ctx.unsized_types.into_inner();
-    let implicitly_sized_predicates =
+    if let Some(implicitly_sized_predicates) =
         implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver)
-            .map(|p| make_binders(db, &generics, crate::wrap_empty_binders(p)));
-    predicates.extend(implicitly_sized_predicates);
+    {
+        predicates.extend(
+            implicitly_sized_predicates
+                .map(|p| make_binders(db, &generics, crate::wrap_empty_binders(p))),
+        );
+    }
     predicates.into()
 }
 
@@ -1745,24 +1752,24 @@ fn implicitly_sized_clauses<'a>(
     explicitly_unsized_tys: &'a FxHashSet<Ty>,
     substitution: &'a Substitution,
     resolver: &Resolver,
-) -> impl Iterator<Item = WhereClause> + 'a {
+) -> Option<impl Iterator<Item = WhereClause> + 'a> {
     let is_trait_def = matches!(def, GenericDefId::TraitId(..));
     let generic_args = &substitution.as_slice(Interner)[is_trait_def as usize..];
     let sized_trait = db
         .lang_item(resolver.krate(), LangItem::Sized)
         .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
 
-    sized_trait.into_iter().flat_map(move |sized_trait| {
-        let implicitly_sized_tys = generic_args
+    sized_trait.map(move |sized_trait| {
+        generic_args
             .iter()
             .filter_map(|generic_arg| generic_arg.ty(Interner))
-            .filter(move |&self_ty| !explicitly_unsized_tys.contains(self_ty));
-        implicitly_sized_tys.map(move |self_ty| {
-            WhereClause::Implemented(TraitRef {
-                trait_id: sized_trait,
-                substitution: Substitution::from1(Interner, self_ty.clone()),
+            .filter(move |&self_ty| !explicitly_unsized_tys.contains(self_ty))
+            .map(move |self_ty| {
+                WhereClause::Implemented(TraitRef {
+                    trait_id: sized_trait,
+                    substitution: Substitution::from1(Interner, self_ty.clone()),
+                })
             })
-        })
     })
 }
 
