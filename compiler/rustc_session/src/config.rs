@@ -18,7 +18,7 @@ use rustc_feature::UnstableFeatures;
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
-use rustc_target::spec::LinkSelfContainedComponents;
+use rustc_target::spec::{LinkSelfContainedComponents, LinkerFeatures};
 use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple};
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
@@ -288,6 +288,48 @@ impl LinkSelfContained {
         } else {
             let common = self.enabled_components.intersection(self.disabled_components);
             if common.is_empty() { None } else { Some(common) }
+        }
+    }
+}
+
+/// The different values that `-Z linker-features` can take on the CLI: a list of individually
+/// enabled or disabled features used during linking.
+///
+/// There is no need to enable or disable them in bulk. Each feature is fine-grained, and can be
+/// used to turn `LinkerFeatures` on or off, without needing to change the linker flavor:
+/// - using the system lld, or the self-contained `rust-lld` linker
+/// - using a C/C++ compiler to drive the linker (not yet exposed on the CLI)
+/// - etc.
+#[derive(Default, Copy, Clone, PartialEq, Debug)]
+pub struct LinkerFeaturesCli {
+    /// The linker features that are enabled on the CLI, using the `+feature` syntax.
+    pub enabled: LinkerFeatures,
+
+    /// The linker features that are disabled on the CLI, using the `-feature` syntax.
+    pub disabled: LinkerFeatures,
+}
+
+impl LinkerFeaturesCli {
+    /// Accumulates an enabled or disabled feature as specified on the CLI, if possible.
+    /// For example: `+lld`, and `-lld`.
+    pub(crate) fn handle_cli_feature(&mut self, feature: &str) -> Option<()> {
+        // Duplicate flags are reduced as we go, the last occurrence wins:
+        // `+feature,-feature,+feature` only enables the feature, and does not record it as both
+        // enabled and disabled on the CLI.
+        // We also only expose `+/-lld` at the moment, as it's currenty the only implemented linker
+        // feature and toggling `LinkerFeatures::CC` would be a noop.
+        match feature {
+            "+lld" => {
+                self.enabled.insert(LinkerFeatures::LLD);
+                self.disabled.remove(LinkerFeatures::LLD);
+                Some(())
+            }
+            "-lld" => {
+                self.disabled.insert(LinkerFeatures::LLD);
+                self.enabled.remove(LinkerFeatures::LLD);
+                Some(())
+            }
+            _ => None,
         }
     }
 }
