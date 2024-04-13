@@ -10,4 +10,7 @@ When adding crashes from https://github.com/rust-lang/rust/issues, the
 issue number should be noted in the file name (12345.rs should suffice)
 and perhaps also inside the file via `//@ known-bug #4321`
 
-If you happen to fix one of the crashes, please move it to `tests/ui`! :)
+If you happen to fix one of the crashes, please move it to a fitting
+subdirectory in `tests/ui` and give it a meaningful name.
+Also please add a doc comment at the top of the file explaining why
+this test exists. :)
