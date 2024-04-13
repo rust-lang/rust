@@ -41,10 +41,10 @@ target | notes
 `x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 10+)
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
 
-[^x86_32-floats-return-ABI]: Due to limitations of the C ABI, floating-point support on `i686` targets is non-compliant: floating-point return values are passed via an x87 register, so NaN payload bits can be lost. See [issue #114479][x86-32-float-issue].
+[^x86_32-floats-return-ABI]: Due to limitations of the C ABI, floating-point support on `i686` targets is non-compliant: floating-point return values are passed via an x87 register, so NaN payload bits can be lost. Functions with the default Rust ABI are not affected. See [issue #115567][x86-32-float-return-issue].
 
 [77071]: https://github.com/rust-lang/rust/issues/77071
-[x86-32-float-issue]: https://github.com/rust-lang/rust/issues/114479
+[x86-32-float-return-issue]: https://github.com/rust-lang/rust/issues/115567
 
 ## Tier 1
 
@@ -206,6 +206,8 @@ target | std | notes
 [`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | ? | 64-bit UEFI
 
 [^x86_32-floats-x87]: Floating-point support on `i586` targets is non-compliant: the `x87` registers and instructions used for these targets do not provide IEEE-754-compliant behavior, in particular when it comes to rounding and NaN payload bits. See [issue #114479][x86-32-float-issue].
+
+[x86-32-float-issue]: https://github.com/rust-lang/rust/issues/114479
 
 [wasi-rename]: https://github.com/rust-lang/compiler-team/issues/607
 
