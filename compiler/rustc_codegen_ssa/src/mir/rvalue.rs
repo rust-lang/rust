@@ -74,8 +74,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if val.llextra.is_some() {
                             bug!("unsized coercion on an unsized rvalue");
                         }
-                        let source = PlaceRef { val, layout: operand.layout };
-                        base::coerce_unsized_into(bx, source, dest);
+                        base::coerce_unsized_into(bx, val.with_type(operand.layout), dest);
                     }
                     OperandValue::ZeroSized => {
                         bug!("unsized coercion on a ZST rvalue");
@@ -184,10 +183,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             OperandValue::Immediate(..) | OperandValue::Pair(..) => {
                 // When we have immediate(s), the alignment of the source is irrelevant,
                 // so we can store them using the destination's alignment.
-                src.val.store(
-                    bx,
-                    PlaceRef::new_sized_aligned(dst.val.llval, src.layout, dst.val.align),
-                );
+                src.val.store(bx, dst.val.with_type(src.layout));
             }
         }
     }
@@ -225,8 +221,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             OperandValue::Ref(source_place_val) => {
                 debug_assert_eq!(source_place_val.llextra, None);
                 debug_assert!(matches!(operand_kind, OperandValueKind::Ref));
-                let fake_place = PlaceRef { val: source_place_val, layout: cast };
-                Some(bx.load_operand(fake_place).val)
+                Some(bx.load_operand(source_place_val.with_type(cast)).val)
             }
             OperandValue::ZeroSized => {
                 let OperandValueKind::ZeroSized = operand_kind else {
@@ -452,23 +447,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     mir::CastKind::PointerCoercion(PointerCoercion::Unsize) => {
                         assert!(bx.cx().is_backend_scalar_pair(cast));
-                        let (lldata, llextra) = match operand.val {
-                            OperandValue::Pair(lldata, llextra) => {
-                                // unsize from a fat pointer -- this is a
-                                // "trait-object-to-supertrait" coercion.
-                                (lldata, Some(llextra))
-                            }
-                            OperandValue::Immediate(lldata) => {
-                                // "standard" unsize
-                                (lldata, None)
-                            }
-                            OperandValue::Ref(..) => {
-                                bug!("by-ref operand {:?} in `codegen_rvalue_operand`", operand);
-                            }
-                            OperandValue::ZeroSized => {
-                                bug!("zero-sized operand {:?} in `codegen_rvalue_operand`", operand);
-                            }
-                        };
+                        let (lldata, llextra) = operand.val.pointer_parts();
                         let (lldata, llextra) =
                             base::unsize_ptr(bx, lldata, operand.layout.ty, cast.ty, llextra);
                         OperandValue::Pair(lldata, llextra)
@@ -489,12 +468,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                     mir::CastKind::DynStar => {
-                        let (lldata, llextra) = match operand.val {
-                            OperandValue::Ref(..) => todo!(),
-                            OperandValue::Immediate(v) => (v, None),
-                            OperandValue::Pair(v, l) => (v, Some(l)),
-                            OperandValue::ZeroSized => bug!("ZST -- which is not PointerLike -- in DynStar"),
-                        };
+                        let (lldata, llextra) = operand.val.pointer_parts();
                         let (lldata, llextra) =
                             base::cast_to_dyn_star(bx, lldata, operand.layout, cast.ty, llextra);
                         OperandValue::Pair(lldata, llextra)
@@ -812,16 +786,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         mk_ptr_ty: impl FnOnce(TyCtxt<'tcx>, Ty<'tcx>) -> Ty<'tcx>,
     ) -> OperandRef<'tcx, Bx::Value> {
         let cg_place = self.codegen_place(bx, place.as_ref());
+        let val = cg_place.val.address();
 
         let ty = cg_place.layout.ty;
-
-        // Note: places are indirect, so storing the `llval` into the
-        // destination effectively creates a reference.
-        let val = if !bx.cx().type_has_metadata(ty) {
-            OperandValue::Immediate(cg_place.val.llval)
+        debug_assert!(
+            if bx.cx().type_has_metadata(ty) {
+                matches!(val, OperandValue::Pair(..))
         } else {
-            OperandValue::Pair(cg_place.val.llval, cg_place.val.llextra.unwrap())
-        };
+                matches!(val, OperandValue::Immediate(..))
+            },
+            "Address of place was unexpectedly {val:?} for pointee type {ty:?}",
+        );
+
         OperandRef { val, layout: self.cx.layout_of(mk_ptr_ty(self.cx.tcx(), ty)) }
     }
 
