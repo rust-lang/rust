@@ -561,9 +561,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Unify `interior` with `witness` and collect all the resulting obligations.
             let span = self.tcx.hir().body(body_id).value.span;
+            let ty::Infer(ty::InferTy::TyVar(_)) = interior.kind() else {
+                span_bug!(span, "coroutine interior witness not infer: {:?}", interior.kind())
+            };
             let ok = self
                 .at(&self.misc(span), self.param_env)
-                .eq(DefineOpaqueTypes::No, interior, witness)
+                // Will never define opaque types, as all we do is instantiate a type variable.
+                .eq(DefineOpaqueTypes::Yes, interior, witness)
                 .expect("Failed to unify coroutine interior type");
             let mut obligations = ok.obligations;
 
