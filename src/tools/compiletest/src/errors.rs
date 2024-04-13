@@ -74,7 +74,11 @@ enum WhichLine {
 ///
 /// If revision is not None, then we look
 /// for `//[X]~` instead, where `X` is the current revision.
-pub fn load_errors(testfile: &Path, revision: Option<&str>) -> Vec<Error> {
+pub fn load_errors(
+    testfile: &Path,
+    revision: Option<&str>,
+    all_revisions: &[Option<&str>],
+) -> Vec<Error> {
     let rdr = BufReader::new(File::open(testfile).unwrap());
 
     // `last_nonfollow_error` tracks the most recently seen
@@ -90,16 +94,20 @@ pub fn load_errors(testfile: &Path, revision: Option<&str>) -> Vec<Error> {
     rdr.lines()
         .enumerate()
         .filter_map(|(line_num, line)| {
-            parse_expected(last_nonfollow_error, line_num + 1, &line.unwrap(), revision).map(
-                |(which, error)| {
-                    match which {
-                        FollowPrevious(_) => {}
-                        _ => last_nonfollow_error = Some(error.line_num),
-                    }
-
-                    error
-                },
+            parse_expected(
+                last_nonfollow_error,
+                line_num + 1,
+                &line.unwrap(),
+                revision,
+                all_revisions,
             )
+            .map(|(which, error)| {
+                if !matches!(which, FollowPrevious(_)) {
+                    last_nonfollow_error = Some(error.line_num);
+                }
+
+                error
+            })
         })
         .collect()
 }
@@ -109,6 +117,7 @@ fn parse_expected(
     line_num: usize,
     line: &str,
     test_revision: Option<&str>,
+    all_revisions: &[Option<&str>],
 ) -> Option<(WhichLine, Error)> {
     // Matches comments like:
     //     //~
@@ -125,7 +134,18 @@ fn parse_expected(
     match (test_revision, captures.name("revs")) {
         // Only error messages that contain our revision between the square brackets apply to us.
         (Some(test_revision), Some(revision_filters)) => {
-            if !revision_filters.as_str().split(',').any(|r| r == test_revision) {
+            let mut error_revisions = revision_filters.as_str().split(',');
+            // Make sure all revisions are valid
+            for rev in error_revisions.clone() {
+                if !all_revisions.contains(&Some(rev)) {
+                    panic!(
+                        "found unexpected revision '{rev}' at line {line_num}. \
+                        Expected one of {all_revisions:?}"
+                    );
+                }
+            }
+
+            if !error_revisions.any(|r| r == test_revision) {
                 return None;
             }
         }

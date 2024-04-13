@@ -100,7 +100,14 @@ fn get_lib_name(lib: &str, aux_type: AuxType) -> Option<String> {
     }
 }
 
-pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
+pub fn run(
+    config: Arc<Config>,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+    all_revisions: &[Option<String>],
+) {
+    let all_revisions_refs: Vec<_> = all_revisions.iter().map(Option::as_deref).collect();
+    let all_revisions = &all_revisions_refs;
     match &*config.target {
         "arm-linux-androideabi"
         | "armv7-linux-androideabi"
@@ -133,7 +140,7 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
         props.incremental_dir = Some(incremental_dir(&config, testpaths, revision));
     }
 
-    let cx = TestCx { config: &config, props: &props, testpaths, revision };
+    let cx = TestCx { config: &config, props: &props, testpaths, revision, all_revisions };
     create_dir_all(&cx.output_base_dir())
         .with_context(|| {
             format!("failed to create output base directory {}", cx.output_base_dir().display())
@@ -155,6 +162,7 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
                 props: &revision_props,
                 testpaths,
                 revision: Some(revision),
+                all_revisions,
             };
             rev_cx.run_revision();
         }
@@ -209,6 +217,8 @@ struct TestCx<'test> {
     props: &'test TestProps,
     testpaths: &'test TestPaths,
     revision: Option<&'test str>,
+    /// List of all revisions for the test, so we can reject any that are unexpected
+    all_revisions: &'test [Option<&'test str>],
 }
 
 enum ReadFrom {
@@ -339,7 +349,8 @@ impl<'test> TestCx<'test> {
         self.check_no_compiler_crash(&proc_res, self.props.should_ice);
 
         let output_to_check = self.get_output(&proc_res);
-        let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
+        let expected_errors =
+            errors::load_errors(&self.testpaths.file, self.revision, self.all_revisions);
         if !expected_errors.is_empty() {
             if !self.props.error_patterns.is_empty() || !self.props.regex_error_patterns.is_empty()
             {
@@ -417,7 +428,8 @@ impl<'test> TestCx<'test> {
         }
 
         // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
+        if !errors::load_errors(&self.testpaths.file, self.revision, self.all_revisions).is_empty()
+        {
             self.fatal("compile-pass tests with expected warnings should be moved to ui/");
         }
     }
@@ -432,7 +444,8 @@ impl<'test> TestCx<'test> {
         }
 
         // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
+        if !errors::load_errors(&self.testpaths.file, self.revision, self.all_revisions).is_empty()
+        {
             self.fatal("run-pass tests with expected warnings should be moved to ui/");
         }
 
@@ -1922,6 +1935,7 @@ impl<'test> TestCx<'test> {
                     props: &aux_props,
                     testpaths: &aux_testpaths,
                     revision: self.revision,
+                    all_revisions: self.all_revisions,
                 };
                 // Create the directory for the stdout/stderr files.
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
@@ -2183,6 +2197,7 @@ impl<'test> TestCx<'test> {
             props: &aux_props,
             testpaths: &aux_testpaths,
             revision: self.revision,
+            all_revisions: self.all_revisions,
         };
         // Create the directory for the stdout/stderr files.
         create_dir_all(aux_cx.output_base_dir()).unwrap();
@@ -3318,7 +3333,7 @@ impl<'test> TestCx<'test> {
             .map(|line| str_to_mono_item(line, true))
             .collect();
 
-        let expected: Vec<MonoItem> = errors::load_errors(&self.testpaths.file, None)
+        let expected: Vec<MonoItem> = errors::load_errors(&self.testpaths.file, None, &[])
             .iter()
             .map(|e| str_to_mono_item(&e.msg[..], false))
             .collect();
@@ -4207,7 +4222,8 @@ impl<'test> TestCx<'test> {
             );
         }
 
-        let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
+        let expected_errors =
+            errors::load_errors(&self.testpaths.file, self.revision, self.all_revisions);
 
         if let WillExecute::Yes = should_run {
             let proc_res = self.exec_compiled_test();

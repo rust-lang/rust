@@ -770,21 +770,21 @@ fn make_test(
     };
 
     revisions
-        .into_iter()
+        .iter()
         .map(|revision| {
             let src_file =
                 std::fs::File::open(&test_path).expect("open test file to parse ignores");
-            let test_name = crate::make_test_name(&config, testpaths, revision);
+            let test_name = crate::make_test_name(&config, testpaths, *revision);
             let mut desc = make_test_description(
-                &config, cache, test_name, &test_path, src_file, revision, poisoned,
+                &config, cache, test_name, &test_path, src_file, *revision, poisoned,
             );
             // Ignore tests that already run and are up to date with respect to inputs.
             if !config.force_rerun {
-                desc.ignore |= is_up_to_date(&config, testpaths, &early_props, revision, inputs);
+                desc.ignore |= is_up_to_date(&config, testpaths, &early_props, *revision, inputs);
             }
             test::TestDescAndFn {
                 desc,
-                testfn: make_test_closure(config.clone(), testpaths, revision),
+                testfn: make_test_closure(config.clone(), testpaths, *revision, &revisions),
             }
         })
         .collect()
@@ -922,12 +922,14 @@ fn make_test_closure(
     config: Arc<Config>,
     testpaths: &TestPaths,
     revision: Option<&str>,
+    all_revisions: &[Option<&str>],
 ) -> test::TestFn {
     let config = config.clone();
     let testpaths = testpaths.clone();
-    let revision = revision.map(str::to_owned);
+    let revision = revision.map(ToOwned::to_owned);
+    let all_revisions: Vec<_> = all_revisions.iter().map(|v| (*v).map(ToOwned::to_owned)).collect();
     test::DynTestFn(Box::new(move || {
-        runtest::run(config, &testpaths, revision.as_deref());
+        runtest::run(config, &testpaths, revision.as_deref(), &all_revisions);
         Ok(())
     }))
 }
