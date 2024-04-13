@@ -336,7 +336,8 @@ fn build_postfix_snippet_builder<'ctx>(
     ) -> impl Fn(&str, &str, &str) -> Builder + 'ctx {
         move |label, detail, snippet| {
             let edit = TextEdit::replace(delete_range, snippet.to_owned());
-            let mut item = CompletionItem::new(CompletionItemKind::Snippet, delete_range, label);
+            let mut item =
+                CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), label);
             item.detail(detail).snippet_edit(cap, edit);
             let postfix_match = if ctx.original_token.text() == label {
                 cov_mark::hit!(postfix_exact_match_is_high_priority);
