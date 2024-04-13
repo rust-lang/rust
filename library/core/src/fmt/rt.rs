@@ -74,7 +74,28 @@ pub(super) enum Flag {
 #[derive(Copy, Clone)]
 pub struct Argument<'a> {
     value: &'a Opaque,
-    formatter: fn(&Opaque, &mut Formatter<'_>) -> Result,
+    formatter: unsafe fn(&Opaque, &mut Formatter<'_>) -> Result,
+    #[cfg(any(sanitize = "cfi", sanitize = "kcfi"))]
+    cast_stub: unsafe fn(
+        fn(&Opaque, &mut Formatter<'_>) -> Result,
+        &Opaque,
+        f: &mut Formatter<'_>,
+    ) -> Result,
+}
+
+/// This function acts as a witness to an earlier type erasure when constructing an `Argument`.
+/// The type parameter `T` should be instantiated to the erased type.
+/// SAFETY: This function should be called on a value and formatter which underwent a
+/// T->Opaque cast at their definition site.
+#[cfg(any(sanitize = "cfi", sanitize = "kcfi"))]
+unsafe fn cast_stub<T>(
+    formatter: unsafe fn(&Opaque, &mut Formatter<'_>) -> Result,
+    value: &Opaque,
+    f: &mut Formatter<'_>,
+) -> Result {
+    let value: &T = mem::transmute(value);
+    let formatter: fn(&T, &mut Formatter<'_>) -> Result = mem::transmute(formatter);
+    formatter(value, f)
 }
 
 #[rustc_diagnostic_item = "ArgumentMethods"]
@@ -89,7 +110,14 @@ impl<'a> Argument<'a> {
         // `mem::transmute(f)` is safe since `fn(&T, &mut Formatter<'_>) -> Result`
         // and `fn(&Opaque, &mut Formatter<'_>) -> Result` have the same ABI
         // (as long as `T` is `Sized`)
-        unsafe { Argument { formatter: mem::transmute(f), value: mem::transmute(x) } }
+        unsafe {
+            Argument {
+                formatter: mem::transmute(f),
+                value: mem::transmute(x),
+                #[cfg(any(sanitize = "cfi", sanitize = "kcfi"))]
+                cast_stub: cast_stub::<T>,
+            }
+        }
     }
 
     #[inline(always)]
@@ -139,7 +167,22 @@ impl<'a> Argument<'a> {
     #[no_sanitize(cfi, kcfi)]
     #[inline(always)]
     pub(super) fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        (self.formatter)(self.value, f)
+        cfg_if! {
+            if #[cfg(any(sanitize = "cfi", sanitize = "kcfi"))] {
+                // SAFETY: We're calling cast_stub on the formatter/value pair it was constructed
+                // with, and we don't allow mutation of any individual members. As a result, this
+                // cast_stub should be at the T representing the formatter/value pair.
+                unsafe {
+                    (self.cast_stub)(self.formatter, self.value, f)
+                }
+            } else {
+                // SAFETY: We're calling the formatter on the value that had its type erased
+                // alongside it.
+                unsafe {
+                    (self.formatter)(self.value, f)
+                }
+            }
+        }
     }
 
     #[inline(always)]
