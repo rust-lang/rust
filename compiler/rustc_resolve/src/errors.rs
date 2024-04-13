@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use rustc_errors::{codes::*, Applicability, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{

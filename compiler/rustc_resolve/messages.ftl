@@ -152,10 +152,6 @@ resolve_extern_crate_self_requires_renaming =
     `extern crate self;` requires renaming
     .suggestion = rename the `self` crate to be able to import it
 
-resolve_failed_resolve_unresolve_import = failed to resolve: unresolved import
-
-resolve_failed_resolve_unresolve_import_label = unresolved import
-
 resolve_forward_declared_generic_param =
     generic parameters with a default cannot use forward declared identifiers
     .label = defaulted generic parameters cannot be forward declared
@@ -194,8 +190,6 @@ resolve_ident_bound_more_than_once_in_parameter_list =
     identifier `{$identifier}` is bound more than once in this parameter list
     .label = used as parameter more than once
 
-resolve_implicit_elided_lifetimes_not_allowed_here = implicit elided lifetime not allowed here
-
 resolve_ident_bound_more_than_once_in_same_pattern =
     identifier `{$identifier}` is bound more than once in the same pattern
     .label = used in a pattern more than once
@@ -205,6 +199,8 @@ resolve_ident_imported_here_but_it_is_desc =
 
 resolve_ident_in_scope_but_it_is_desc =
     `{$imported_ident}` is in scope, but it is {$imported_ident_desc}
+
+resolve_implicit_elided_lifetimes_not_allowed_here = implicit elided lifetime not allowed here
 
 resolve_imported_crate = `$crate` may not be imported
 
@@ -408,6 +404,10 @@ resolve_trait_impl_duplicate =
     .old_span_label = previous definition here
     .trait_item_span = item in trait
 
+resolve_trait_impl_mismatch =
+    item `{$name}` is an associated {$kind}, which doesn't match its trait `{$trait_path}`
+    .label = does not match trait
+    .trait_impl_mismatch_label_item = item in trait
 resolve_try_using_similarly_named_label =
     try using similarly named label
 
@@ -467,10 +467,3 @@ resolve_variable_is_not_bound_in_all_patterns =
     variable `{$name}` is not bound in all patterns
 
 resolve_variable_not_in_all_patterns = variable not in all patterns
-
-resolve_you_could_import_this_desc = you could import this {$desc}
-
-resolve_trait_impl_mismatch =
-    item `{$name}` is an associated {$kind}, which doesn't match its trait `{$trait_path}`
-    .label = does not match trait
-    .trait_impl_mismatch_label_item = item in trait
