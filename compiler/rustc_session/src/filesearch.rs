@@ -45,11 +45,6 @@ impl<'a> FileSearch<'a> {
         debug!("using sysroot = {}, triple = {}", sysroot.display(), triple);
         FileSearch { sysroot, triple, search_paths, tlib_path, kind }
     }
-
-    /// Returns just the directories within the search paths.
-    pub fn search_path_dirs(&self) -> impl Iterator<Item = &'a Path> {
-        self.search_paths().map(|sp| &*sp.dir)
-    }
 }
 
 pub fn make_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
