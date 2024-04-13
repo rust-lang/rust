@@ -86,7 +86,10 @@ pub(crate) struct GlobalState {
     pub(crate) last_flycheck_error: Option<String>,
 
     // Test explorer
-    pub(crate) test_run_session: Option<flycheck::CargoTestHandle>,
+    pub(crate) test_run_session: Option<Vec<flycheck::CargoTestHandle>>,
+    pub(crate) test_run_sender: Sender<flycheck::CargoTestMessage>,
+    pub(crate) test_run_receiver: Receiver<flycheck::CargoTestMessage>,
+    pub(crate) test_run_remaining_jobs: usize,
 
     // VFS
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
@@ -191,6 +194,7 @@ impl GlobalState {
             analysis_host.update_lru_capacities(capacities);
         }
         let (flycheck_sender, flycheck_receiver) = unbounded();
+        let (test_run_sender, test_run_receiver) = unbounded();
         let mut this = GlobalState {
             sender,
             req_queue: ReqQueue::default(),
@@ -219,6 +223,9 @@ impl GlobalState {
             last_flycheck_error: None,
 
             test_run_session: None,
+            test_run_sender,
+            test_run_receiver,
+            test_run_remaining_jobs: 0,
 
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), IntMap::default()))),
             vfs_config_version: 0,

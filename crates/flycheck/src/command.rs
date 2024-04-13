@@ -4,12 +4,13 @@
 use std::{
     ffi::OsString,
     fmt, io,
+    marker::PhantomData,
     path::PathBuf,
     process::{ChildStderr, ChildStdout, Command, Stdio},
 };
 
 use command_group::{CommandGroup, GroupChild};
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::Sender;
 use stdx::process::streaming_output;
 
 /// Cargo output is structured as a one JSON per line. This trait abstracts parsing one line of
@@ -99,10 +100,10 @@ pub(crate) struct CommandHandle<T> {
     /// a read syscall dropping and therefore terminating the process is our best option.
     child: JodGroupChild,
     thread: stdx::thread::JoinHandle<io::Result<(bool, String)>>,
-    pub(crate) receiver: Receiver<T>,
     program: OsString,
     arguments: Vec<OsString>,
     current_dir: Option<PathBuf>,
+    _phantom: PhantomData<T>,
 }
 
 impl<T> fmt::Debug for CommandHandle<T> {
@@ -116,7 +117,7 @@ impl<T> fmt::Debug for CommandHandle<T> {
 }
 
 impl<T: ParseFromLine> CommandHandle<T> {
-    pub(crate) fn spawn(mut command: Command) -> std::io::Result<Self> {
+    pub(crate) fn spawn(mut command: Command, sender: Sender<T>) -> std::io::Result<Self> {
         command.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
         let mut child = command.group_spawn().map(JodGroupChild)?;
 
@@ -127,13 +128,12 @@ impl<T: ParseFromLine> CommandHandle<T> {
         let stdout = child.0.inner().stdout.take().unwrap();
         let stderr = child.0.inner().stderr.take().unwrap();
 
-        let (sender, receiver) = unbounded();
         let actor = CargoActor::<T>::new(sender, stdout, stderr);
         let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
             .name("CommandHandle".to_owned())
             .spawn(move || actor.run())
             .expect("failed to spawn thread");
-        Ok(CommandHandle { program, arguments, current_dir, child, thread, receiver })
+        Ok(CommandHandle { program, arguments, current_dir, child, thread, _phantom: PhantomData })
     }
 
     pub(crate) fn cancel(mut self) {

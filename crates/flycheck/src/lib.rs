@@ -215,6 +215,8 @@ struct FlycheckActor {
     /// have to wrap sub-processes output handling in a thread and pass messages
     /// back over a channel.
     command_handle: Option<CommandHandle<CargoCheckMessage>>,
+    /// The receiver side of the channel mentioned above.
+    command_receiver: Option<Receiver<CargoCheckMessage>>,
 }
 
 enum Event {
@@ -240,6 +242,7 @@ impl FlycheckActor {
             sysroot_root,
             root: workspace_root,
             command_handle: None,
+            command_receiver: None,
         }
     }
 
@@ -248,14 +251,13 @@ impl FlycheckActor {
     }
 
     fn next_event(&self, inbox: &Receiver<StateChange>) -> Option<Event> {
-        let check_chan = self.command_handle.as_ref().map(|cargo| &cargo.receiver);
         if let Ok(msg) = inbox.try_recv() {
             // give restarts a preference so check outputs don't block a restart or stop
             return Some(Event::RequestStateChange(msg));
         }
         select! {
             recv(inbox) -> msg => msg.ok().map(Event::RequestStateChange),
-            recv(check_chan.unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
+            recv(self.command_receiver.as_ref().unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
         }
     }
 
@@ -284,10 +286,12 @@ impl FlycheckActor {
                     let formatted_command = format!("{:?}", command);
 
                     tracing::debug!(?command, "will restart flycheck");
-                    match CommandHandle::spawn(command) {
+                    let (sender, receiver) = unbounded();
+                    match CommandHandle::spawn(command, sender) {
                         Ok(command_handle) => {
                             tracing::debug!(command = formatted_command, "did restart flycheck");
                             self.command_handle = Some(command_handle);
+                            self.command_receiver = Some(receiver);
                             self.report_progress(Progress::DidStart);
                         }
                         Err(error) => {
@@ -303,6 +307,7 @@ impl FlycheckActor {
 
                     // Watcher finished
                     let command_handle = self.command_handle.take().unwrap();
+                    self.command_receiver.take();
                     let formatted_handle = format!("{:?}", command_handle);
 
                     let res = command_handle.join();

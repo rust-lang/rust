@@ -219,14 +219,28 @@ pub(crate) fn handle_run_test(
             .unwrap_or_default(),
         None => "".to_owned(),
     };
-    let handle = if lca.is_empty() {
-        flycheck::CargoTestHandle::new(None, state.config.cargo_test_options())
+    let test_path = if lca.is_empty() {
+        None
     } else if let Some((_, path)) = lca.split_once("::") {
-        flycheck::CargoTestHandle::new(Some(path), state.config.cargo_test_options())
+        Some(path)
     } else {
-        flycheck::CargoTestHandle::new(None, state.config.cargo_test_options())
+        None
     };
-    state.test_run_session = Some(handle?);
+    let mut handles = vec![];
+    for ws in &*state.workspaces {
+        if let ProjectWorkspace::Cargo { cargo, .. } = ws {
+            let handle = flycheck::CargoTestHandle::new(
+                test_path,
+                state.config.cargo_test_options(),
+                cargo.workspace_root(),
+                state.test_run_sender.clone(),
+            )?;
+            handles.push(handle);
+        }
+    }
+    // Each process send finished signal twice, once for stdout and once for stderr
+    state.test_run_remaining_jobs = 2 * handles.len();
+    state.test_run_session = Some(handles);
     Ok(())
 }
 

@@ -7,7 +7,7 @@ use std::{
 };
 
 use always_assert::always;
-use crossbeam_channel::{never, select, Receiver};
+use crossbeam_channel::{select, Receiver};
 use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
@@ -220,7 +220,7 @@ impl GlobalState {
             recv(self.flycheck_receiver) -> task =>
                 Some(Event::Flycheck(task.unwrap())),
 
-            recv(self.test_run_session.as_ref().map(|s| s.receiver()).unwrap_or(&never())) -> task =>
+            recv(self.test_run_receiver) -> task =>
                 Some(Event::TestResult(task.unwrap())),
 
         }
@@ -337,9 +337,7 @@ impl GlobalState {
                         .entered();
                 self.handle_cargo_test_msg(message);
                 // Coalesce many test result event into a single loop turn
-                while let Some(message) =
-                    self.test_run_session.as_ref().and_then(|r| r.receiver().try_recv().ok())
-                {
+                while let Ok(message) = self.test_run_receiver.try_recv() {
                     self.handle_cargo_test_msg(message);
                 }
             }
@@ -792,8 +790,11 @@ impl GlobalState {
             }
             flycheck::CargoTestMessage::Suite => (),
             flycheck::CargoTestMessage::Finished => {
-                self.send_notification::<lsp_ext::EndRunTest>(());
-                self.test_run_session = None;
+                self.test_run_remaining_jobs = self.test_run_remaining_jobs.saturating_sub(1);
+                if self.test_run_remaining_jobs == 0 {
+                    self.send_notification::<lsp_ext::EndRunTest>(());
+                    self.test_run_session = None;
+                }
             }
             flycheck::CargoTestMessage::Custom { text } => {
                 self.send_notification::<lsp_ext::AppendOutputToRunTest>(text);
