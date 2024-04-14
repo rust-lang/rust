@@ -60,7 +60,7 @@ pub use crate::{
     },
     token_text::TokenText,
 };
-pub use parser::{SyntaxKind, T};
+pub use parser::{Edition, SyntaxKind, T};
 pub use rowan::{
     api::Preorder, Direction, GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize,
     TokenAtOffset, WalkEvent,
@@ -172,7 +172,7 @@ pub use crate::ast::SourceFile;
 impl SourceFile {
     pub fn parse(text: &str) -> Parse<SourceFile> {
         let _p = tracing::span!(tracing::Level::INFO, "SourceFile::parse").entered();
-        let (green, errors) = parsing::parse_text(text);
+        let (green, errors) = parsing::parse_text(text, parser::Edition::CURRENT);
         let root = SyntaxNode::new_root(green.clone());
 
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
@@ -185,7 +185,10 @@ impl SourceFile {
 }
 
 impl ast::TokenTree {
-    pub fn reparse_as_comma_separated_expr(self) -> Parse<ast::MacroEagerInput> {
+    pub fn reparse_as_comma_separated_expr(
+        self,
+        edition: parser::Edition,
+    ) -> Parse<ast::MacroEagerInput> {
         let tokens = self.syntax().descendants_with_tokens().filter_map(NodeOrToken::into_token);
 
         let mut parser_input = parser::Input::default();
@@ -219,7 +222,7 @@ impl ast::TokenTree {
             }
         }
 
-        let parser_output = parser::TopEntryPoint::MacroEagerInput.parse(&parser_input);
+        let parser_output = parser::TopEntryPoint::MacroEagerInput.parse(&parser_input, edition);
 
         let mut tokens =
             self.syntax().descendants_with_tokens().filter_map(NodeOrToken::into_token);

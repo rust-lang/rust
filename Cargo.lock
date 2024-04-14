@@ -551,6 +551,7 @@ dependencies = [
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "limit",
  "mbe",
+ "parser",
  "rustc-hash",
  "smallvec",
  "span",
@@ -1821,6 +1822,7 @@ dependencies = [
  "salsa",
  "stdx",
  "syntax",
+ "text-size",
  "vfs",
 ]
 

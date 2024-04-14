@@ -260,7 +260,7 @@ impl ChangeFixture {
 
             let core_crate = crate_graph.add_crate_root(
                 core_file,
-                Edition::Edition2021,
+                Edition::CURRENT,
                 Some(CrateDisplayName::from_canonical_name("core".to_owned())),
                 None,
                 Default::default(),
@@ -299,7 +299,7 @@ impl ChangeFixture {
 
             let proc_macros_crate = crate_graph.add_crate_root(
                 proc_lib_file,
-                Edition::Edition2021,
+                Edition::CURRENT,
                 Some(CrateDisplayName::from_canonical_name("proc_macros".to_owned())),
                 None,
                 Default::default(),
