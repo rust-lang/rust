@@ -26,29 +26,19 @@ fn demo_byte_add_thin(_1: *const u32, _2: usize) -> *const u32 {
             scope 6 (inlined std::ptr::from_raw_parts::<u32>) {
                 debug data_pointer => _5;
                 debug metadata => const ();
-                let mut _6: std::ptr::metadata::PtrComponents<u32>;
-                let mut _7: std::ptr::metadata::PtrRepr<u32>;
             }
         }
     }
 
     bb0: {
-        StorageLive(_4);
         StorageLive(_3);
         _3 = _1 as *const u8 (PtrToPtr);
         _4 = Offset(_3, _2);
         StorageDead(_3);
         StorageLive(_5);
         _5 = _4 as *const () (PtrToPtr);
-        StorageLive(_7);
-        StorageLive(_6);
-        _6 = std::ptr::metadata::PtrComponents::<u32> { data_pointer: _5, metadata: const () };
-        _7 = std::ptr::metadata::PtrRepr::<u32> { const_ptr: move _6 };
-        StorageDead(_6);
-        _0 = (_7.0: *const u32);
-        StorageDead(_7);
+        _0 = _4 as *const u32 (PtrToPtr);
         StorageDead(_5);
-        StorageDead(_4);
         return;
     }
 }

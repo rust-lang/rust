@@ -28,8 +28,6 @@ fn demo_byte_add_fat(_1: *const [u32], _2: usize) -> *const [u32] {
             scope 6 (inlined std::ptr::from_raw_parts::<[u32]>) {
                 debug data_pointer => _5;
                 debug metadata => _7;
-                let mut _8: std::ptr::metadata::PtrComponents<[u32]>;
-                let mut _9: std::ptr::metadata::PtrRepr<[u32]>;
             }
         }
     }
@@ -47,13 +45,7 @@ fn demo_byte_add_fat(_1: *const [u32], _2: usize) -> *const [u32] {
         _6 = std::ptr::metadata::PtrRepr::<[u32]> { const_ptr: _1 };
         _7 = ((_6.2: std::ptr::metadata::PtrComponents<[u32]>).1: usize);
         StorageDead(_6);
-        StorageLive(_9);
-        StorageLive(_8);
-        _8 = std::ptr::metadata::PtrComponents::<[u32]> { data_pointer: _5, metadata: _7 };
-        _9 = std::ptr::metadata::PtrRepr::<[u32]> { const_ptr: move _8 };
-        StorageDead(_8);
-        _0 = (_9.0: *const [u32]);
-        StorageDead(_9);
+        _0 = *const [u32] from (_5, _7);
         StorageDead(_7);
         StorageDead(_5);
         StorageDead(_4);
