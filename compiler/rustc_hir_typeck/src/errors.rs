@@ -164,6 +164,11 @@ pub struct MissingParenthesesInRange {
     pub add_missing_parentheses: Option<AddMissingParenthesesInRange>,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_never_type_fallback_flowing_into_unsafe)]
+#[help]
+pub struct NeverTypeFallbackFlowingIntoUnsafe {}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     hir_typeck_add_missing_parentheses_in_range,
@@ -632,7 +637,6 @@ pub enum SuggestBoxingForReturnImplTrait {
         ends: Vec<Span>,
     },
 }
-
 #[derive(LintDiagnostic)]
 #[diag(hir_typeck_dereferencing_mut_binding)]
 pub struct DereferencingMutBinding {

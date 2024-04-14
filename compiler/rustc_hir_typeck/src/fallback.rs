@@ -1,10 +1,15 @@
-use crate::FnCtxt;
+use std::cell::OnceCell;
+
+use crate::{errors, FnCtxt};
 use rustc_data_structures::{
     graph::{self, iterate::DepthFirstSearch, vec_graph::VecGraph},
     unord::{UnordBag, UnordMap, UnordSet},
 };
+use rustc_hir::HirId;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
+use rustc_session::lint;
+use rustc_span::Span;
 use rustc_span::DUMMY_SP;
 
 #[derive(Copy, Clone)]
@@ -335,6 +340,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // reach a member of N. If so, it falls back to `()`. Else
         // `!`.
         let mut diverging_fallback = UnordMap::with_capacity(diverging_vids.len());
+        let unsafe_infer_vars = OnceCell::new();
         for &diverging_vid in &diverging_vids {
             let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
             let root_vid = self.root_var(diverging_vid);
@@ -354,11 +360,35 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 output: infer_var_infos.items().any(|info| info.output),
             };
 
+            let mut fallback_to = |ty| {
+                let unsafe_infer_vars = unsafe_infer_vars.get_or_init(|| {
+                    let unsafe_infer_vars = compute_unsafe_infer_vars(self.root_ctxt, self.body_id);
+                    debug!(?unsafe_infer_vars);
+                    unsafe_infer_vars
+                });
+
+                let affected_unsafe_infer_vars =
+                    graph::depth_first_search_as_undirected(&coercion_graph, root_vid)
+                        .filter_map(|x| unsafe_infer_vars.get(&x).copied())
+                        .collect::<Vec<_>>();
+
+                for (hir_id, span) in affected_unsafe_infer_vars {
+                    self.tcx.emit_node_span_lint(
+                        lint::builtin::NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
+                        hir_id,
+                        span,
+                        errors::NeverTypeFallbackFlowingIntoUnsafe {},
+                    );
+                }
+
+                diverging_fallback.insert(diverging_ty, ty);
+            };
+
             use DivergingFallbackBehavior::*;
             match behavior {
                 FallbackToUnit => {
                     debug!("fallback to () - legacy: {:?}", diverging_vid);
-                    diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+                    fallback_to(self.tcx.types.unit);
                 }
                 FallbackToNiko => {
                     if found_infer_var_info.self_in_trait && found_infer_var_info.output {
@@ -387,13 +417,13 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         // set, see the relationship finding module in
                         // compiler/rustc_trait_selection/src/traits/relationships.rs.
                         debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
-                        diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+                        fallback_to(self.tcx.types.unit);
                     } else if can_reach_non_diverging {
                         debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);
-                        diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+                        fallback_to(self.tcx.types.unit);
                     } else {
                         debug!("fallback to ! - all diverging: {:?}", diverging_vid);
-                        diverging_fallback.insert(diverging_ty, self.tcx.types.never);
+                        fallback_to(self.tcx.types.never);
                     }
                 }
                 FallbackToNever => {
@@ -401,7 +431,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         "fallback to ! - `rustc_never_type_mode = \"fallback_to_never\")`: {:?}",
                         diverging_vid
                     );
-                    diverging_fallback.insert(diverging_ty, self.tcx.types.never);
+                    fallback_to(self.tcx.types.never);
                 }
                 NoFallback => {
                     debug!(
@@ -417,7 +447,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
     /// Returns a graph whose nodes are (unresolved) inference variables and where
     /// an edge `?A -> ?B` indicates that the variable `?A` is coerced to `?B`.
-    fn create_coercion_graph(&self) -> VecGraph<ty::TyVid> {
+    fn create_coercion_graph(&self) -> VecGraph<ty::TyVid, true> {
         let pending_obligations = self.fulfillment_cx.borrow_mut().pending_obligations();
         debug!("create_coercion_graph: pending_obligations={:?}", pending_obligations);
         let coercion_edges: Vec<(ty::TyVid, ty::TyVid)> = pending_obligations
@@ -451,6 +481,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .collect();
         debug!("create_coercion_graph: coercion_edges={:?}", coercion_edges);
         let num_ty_vars = self.num_ty_vars();
+
         VecGraph::new(num_ty_vars, coercion_edges)
     }
 
@@ -458,4 +489,92 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     fn root_vid(&self, ty: Ty<'tcx>) -> Option<ty::TyVid> {
         Some(self.root_var(self.shallow_resolve(ty).ty_vid()?))
     }
+}
+
+/// Finds all type variables which are passed to an `unsafe` function.
+///
+/// For example, for this function `f`:
+/// ```ignore (demonstrative)
+/// fn f() {
+///     unsafe {
+///         let x /* ?X */ = core::mem::zeroed();
+///         //               ^^^^^^^^^^^^^^^^^^^ -- hir_id, span
+///
+///         let y = core::mem::zeroed::<Option<_ /* ?Y */>>();
+///         //               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ -- hir_id, span
+///     }
+/// }
+/// ```
+///
+/// Will return `{ id(?X) -> (hir_id, span) }`
+fn compute_unsafe_infer_vars<'a, 'tcx>(
+    root_ctxt: &'a crate::TypeckRootCtxt<'tcx>,
+    body_id: rustc_span::def_id::LocalDefId,
+) -> UnordMap<ty::TyVid, (HirId, Span)> {
+    use rustc_hir as hir;
+
+    let tcx = root_ctxt.infcx.tcx;
+    let body_id = tcx.hir().maybe_body_owned_by(body_id).unwrap();
+    let body = tcx.hir().body(body_id);
+    let mut res = <_>::default();
+
+    struct UnsafeInferVarsVisitor<'a, 'tcx, 'r> {
+        root_ctxt: &'a crate::TypeckRootCtxt<'tcx>,
+        res: &'r mut UnordMap<ty::TyVid, (HirId, Span)>,
+    }
+
+    use hir::intravisit::Visitor;
+    impl hir::intravisit::Visitor<'_> for UnsafeInferVarsVisitor<'_, '_, '_> {
+        fn visit_expr(&mut self, ex: &'_ hir::Expr<'_>) {
+            // FIXME: method calls
+            if let hir::ExprKind::Call(func, ..) = ex.kind {
+                let typeck_results = self.root_ctxt.typeck_results.borrow();
+
+                let func_ty = typeck_results.expr_ty(func);
+
+                // `is_fn` is required to ignore closures (which can't be unsafe)
+                if func_ty.is_fn()
+                    && let sig = func_ty.fn_sig(self.root_ctxt.infcx.tcx)
+                    && let hir::Unsafety::Unsafe = sig.unsafety()
+                {
+                    let mut collector =
+                        InferVarCollector { hir_id: ex.hir_id, call_span: ex.span, res: self.res };
+
+                    // Collect generic arguments of the function which are inference variables
+                    typeck_results
+                        .node_args(ex.hir_id)
+                        .types()
+                        .for_each(|t| t.visit_with(&mut collector));
+
+                    // Also check the return type, for cases like `(unsafe_fn::<_> as unsafe fn() -> _)()`
+                    sig.output().visit_with(&mut collector);
+                }
+            }
+
+            hir::intravisit::walk_expr(self, ex);
+        }
+    }
+
+    struct InferVarCollector<'r> {
+        hir_id: HirId,
+        call_span: Span,
+        res: &'r mut UnordMap<ty::TyVid, (HirId, Span)>,
+    }
+
+    impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for InferVarCollector<'_> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) {
+            if let Some(vid) = t.ty_vid() {
+                self.res.insert(vid, (self.hir_id, self.call_span));
+            } else {
+                use ty::TypeSuperVisitable as _;
+                t.super_visit_with(self)
+            }
+        }
+    }
+
+    UnsafeInferVarsVisitor { root_ctxt, res: &mut res }.visit_expr(&body.value);
+
+    debug!(?res, "collected the following unsafe vars for {body_id:?}");
+
+    res
 }

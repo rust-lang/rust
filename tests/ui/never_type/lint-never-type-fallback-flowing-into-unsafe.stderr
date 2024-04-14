@@ -1,0 +1,23 @@
+warning: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:6:18
+   |
+LL |         unsafe { mem::zeroed() }
+   |                  ^^^^^^^^^^^^^
+   |
+   = help: specify the type explicitly
+   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` on by default
+
+warning: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:24:19
+   |
+LL |             match send_message::<_ /* ?0 */>() {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |         msg_send!();
+   |         ----------- in this macro invocation
+   |
+   = help: specify the type explicitly
+   = note: this warning originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 2 warnings emitted
+
