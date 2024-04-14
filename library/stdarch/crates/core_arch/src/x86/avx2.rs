@@ -32,7 +32,10 @@ use stdarch_test::assert_instr;
 #[cfg_attr(test, assert_instr(vpabsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_abs_epi32(a: __m256i) -> __m256i {
-    transmute(pabsd(a.as_i32x8()))
+    let a = a.as_i32x8();
+    let zero = i32x8::splat(0);
+    let r = simd_select::<m32x8, _>(simd_lt(a, zero), simd_neg(a), a);
+    transmute(r)
 }
 
 /// Computes the absolute values of packed 16-bit integers in `a`.
@@ -43,7 +46,10 @@ pub unsafe fn _mm256_abs_epi32(a: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpabsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_abs_epi16(a: __m256i) -> __m256i {
-    transmute(pabsw(a.as_i16x16()))
+    let a = a.as_i16x16();
+    let zero = i16x16::splat(0);
+    let r = simd_select::<m16x16, _>(simd_lt(a, zero), simd_neg(a), a);
+    transmute(r)
 }
 
 /// Computes the absolute values of packed 8-bit integers in `a`.
@@ -54,7 +60,10 @@ pub unsafe fn _mm256_abs_epi16(a: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpabsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_abs_epi8(a: __m256i) -> __m256i {
-    transmute(pabsb(a.as_i8x32()))
+    let a = a.as_i8x32();
+    let zero = i8x32::splat(0);
+    let r = simd_select::<m8x32, _>(simd_lt(a, zero), simd_neg(a), a);
+    transmute(r)
 }
 
 /// Adds packed 64-bit integers in `a` and `b`.
@@ -3639,12 +3648,6 @@ pub unsafe fn _mm256_cvtsi256_si32(a: __m256i) -> i32 {
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.x86.avx2.pabs.b"]
-    fn pabsb(a: i8x32) -> u8x32;
-    #[link_name = "llvm.x86.avx2.pabs.w"]
-    fn pabsw(a: i16x16) -> u16x16;
-    #[link_name = "llvm.x86.avx2.pabs.d"]
-    fn pabsd(a: i32x8) -> u32x8;
     #[link_name = "llvm.x86.avx2.phadd.w"]
     fn phaddw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.phadd.d"]

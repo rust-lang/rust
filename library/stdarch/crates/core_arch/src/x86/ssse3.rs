@@ -17,7 +17,10 @@ use stdarch_test::assert_instr;
 #[cfg_attr(test, assert_instr(pabsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_abs_epi8(a: __m128i) -> __m128i {
-    transmute(pabsb128(a.as_i8x16()))
+    let a = a.as_i8x16();
+    let zero = i8x16::splat(0);
+    let r = simd_select::<m8x16, _>(simd_lt(a, zero), simd_neg(a), a);
+    transmute(r)
 }
 
 /// Computes the absolute value of each of the packed 16-bit signed integers in
@@ -30,7 +33,10 @@ pub unsafe fn _mm_abs_epi8(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pabsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_abs_epi16(a: __m128i) -> __m128i {
-    transmute(pabsw128(a.as_i16x8()))
+    let a = a.as_i16x8();
+    let zero = i16x8::splat(0);
+    let r = simd_select::<m16x8, _>(simd_lt(a, zero), simd_neg(a), a);
+    transmute(r)
 }
 
 /// Computes the absolute value of each of the packed 32-bit signed integers in
@@ -43,7 +49,10 @@ pub unsafe fn _mm_abs_epi16(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pabsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_abs_epi32(a: __m128i) -> __m128i {
-    transmute(pabsd128(a.as_i32x4()))
+    let a = a.as_i32x4();
+    let zero = i32x4::splat(0);
+    let r = simd_select::<m32x4, _>(simd_lt(a, zero), simd_neg(a), a);
+    transmute(r)
 }
 
 /// Shuffles bytes from `a` according to the content of `b`.
@@ -285,15 +294,6 @@ pub unsafe fn _mm_sign_epi32(a: __m128i, b: __m128i) -> __m128i {
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.x86.ssse3.pabs.b.128"]
-    fn pabsb128(a: i8x16) -> u8x16;
-
-    #[link_name = "llvm.x86.ssse3.pabs.w.128"]
-    fn pabsw128(a: i16x8) -> u16x8;
-
-    #[link_name = "llvm.x86.ssse3.pabs.d.128"]
-    fn pabsd128(a: i32x4) -> u32x4;
-
     #[link_name = "llvm.x86.ssse3.pshuf.b.128"]
     fn pshufb128(a: u8x16, b: u8x16) -> u8x16;
 
