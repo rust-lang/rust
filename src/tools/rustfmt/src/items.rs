@@ -1725,7 +1725,7 @@ fn rewrite_ty<R: Rewrite>(
     result.push_str(&format!("{}type ", format_visibility(context, vis)));
     let ident_str = rewrite_ident(context, ident);
 
-    if generics.params.is_empty() {
+    if generics.is_empty() {
         result.push_str(ident_str)
     } else {
         // 2 = `= `
@@ -2834,7 +2834,7 @@ fn rewrite_generics(
     // FIXME: convert bounds to where-clauses where they get too big or if
     // there is a where-clause at all.
 
-    if generics.params.is_empty() {
+    if generics.is_empty() {
         return Some(ident.to_owned());
     }
 
@@ -3191,7 +3191,7 @@ fn format_generics(
 
     // If the generics are not parameterized then generics.span.hi() == 0,
     // so we use span.lo(), which is the position after `struct Foo`.
-    let span_end_before_where = if !generics.params.is_empty() {
+    let span_end_before_where = if !generics.is_empty() {
         generics.span.hi()
     } else {
         span.lo()

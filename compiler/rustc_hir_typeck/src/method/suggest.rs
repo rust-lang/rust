@@ -1881,10 +1881,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 self.tcx.value_path_str_with_args(def.did(), infer_args)
             } else {
-                self.ty_to_value_string(target_ty)
+                self.ty_to_string(target_ty)
             }
         } else {
-            self.ty_to_value_string(rcvr_ty.peel_refs())
+            self.ty_to_string(rcvr_ty.peel_refs())
         };
         if let SelfSource::MethodCall(_) = source {
             let first_arg = static_candidates.get(0).and_then(|candidate_source| {
@@ -2485,7 +2485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return;
                 };
 
-                let name = self.ty_to_value_string(actual);
+                let name = self.ty_to_string(actual);
                 let inner_id = kind.did();
                 let mutable = if let Some(AutorefOrPtrAdjustment::Autoref { mutbl, .. }) =
                     pick.autoref_or_ptr_adjustment
@@ -2826,14 +2826,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 return;
             }
-        }
-    }
-
-    /// Print out the type for use in value namespace.
-    fn ty_to_value_string(&self, ty: Ty<'tcx>) -> String {
-        match ty.kind() {
-            ty::Adt(def, args) => self.tcx.def_path_str_with_args(def.did(), args),
-            _ => self.ty_to_string(ty),
         }
     }
 

@@ -1871,7 +1871,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let generics = self.tcx.generics_of(method);
         assert_eq!(args.len(), generics.parent_count);
 
-        let xform_fn_sig = if generics.params.is_empty() {
+        let xform_fn_sig = if generics.is_empty() {
             fn_sig.instantiate(self.tcx, args)
         } else {
             let args = GenericArgs::for_item(self.tcx, method, |param, _| {

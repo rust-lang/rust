@@ -1773,7 +1773,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // If this type is a GAT, and of the GAT args resolve to something new,
             // that means that we must have newly inferred something about the GAT.
             // We should give up in that case.
-            if !generics.params.is_empty()
+            if !generics.is_empty()
                 && obligation.predicate.args[generics.parent_count..]
                     .iter()
                     .any(|&p| p.has_non_region_infer() && self.infcx.shallow_resolve(p) != p)

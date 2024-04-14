@@ -145,6 +145,11 @@ pub struct Generics {
 }
 
 impl<'tcx> Generics {
+    /// Are there no generics (including parent generics)?
+    pub fn is_empty(&self) -> bool {
+        self.count() == 0
+    }
+
     /// Looks through the generics and all parents to find the index of the
     /// given param def-id. This is in comparison to the `param_def_id_to_index`
     /// struct member, which only stores information about this item's own
