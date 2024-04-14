@@ -1150,7 +1150,12 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
                 if !piece.is_empty() {
                     formatter.buf.write_str(*piece)?;
                 }
-                arg.fmt(&mut formatter)?;
+
+                // SAFETY: There are no formatting parameters and hence no
+                // count arguments.
+                unsafe {
+                    arg.fmt(&mut formatter)?;
+                }
                 idx += 1;
             }
         }
@@ -1198,7 +1203,8 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argume
     let value = unsafe { args.get_unchecked(arg.position) };
 
     // Then actually do some printing
-    value.fmt(fmt)
+    // SAFETY: this is a placeholder argument.
+    unsafe { value.fmt(fmt) }
 }
 
 unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> Option<usize> {
