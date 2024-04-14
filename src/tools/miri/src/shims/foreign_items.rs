@@ -2,17 +2,10 @@ use std::{collections::hash_map::Entry, io::Write, iter, path::Path};
 
 use rustc_apfloat::Float;
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_hir::{
-    def::DefKind,
-    def_id::{CrateNum, LOCAL_CRATE},
-};
-use rustc_middle::middle::{
-    codegen_fn_attrs::CodegenFnAttrFlags, dependency_format::Linkage,
-    exported_symbols::ExportedSymbol,
-};
+use rustc_hir::{def::DefKind, def_id::CrateNum};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;
-use rustc_session::config::CrateType;
 use rustc_span::Symbol;
 use rustc_target::{
     abi::{Align, Size},
@@ -158,81 +151,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(())
     }
 
-    fn lookup_init_array(&mut self) -> InterpResult<'tcx, Vec<ty::Instance<'tcx>>> {
-        let this = self.eval_context_mut();
-        let tcx = this.tcx.tcx;
-
-        let mut init_arrays = vec![];
-
-        let dependency_formats = tcx.dependency_formats(());
-        let dependency_format = dependency_formats
-            .iter()
-            .find(|(crate_type, _)| *crate_type == CrateType::Executable)
-            .expect("interpreting a non-executable crate");
-        for cnum in iter::once(LOCAL_CRATE).chain(
-            dependency_format.1.iter().enumerate().filter_map(|(num, &linkage)| {
-                // We add 1 to the number because that's what rustc also does everywhere it
-                // calls `CrateNum::new`...
-                #[allow(clippy::arithmetic_side_effects)]
-                (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
-            }),
-        ) {
-            for &(symbol, _export_info) in tcx.exported_symbols(cnum) {
-                if let ExportedSymbol::NonGeneric(def_id) = symbol {
-                    let attrs = tcx.codegen_fn_attrs(def_id);
-                    let link_section = if let Some(link_section) = attrs.link_section {
-                        if !link_section.as_str().starts_with(".init_array") {
-                            continue;
-                        }
-                        link_section
-                    } else {
-                        continue;
-                    };
-
-                    init_arrays.push((link_section, def_id));
-                }
-            }
-        }
-
-        init_arrays.sort_by(|(a, _), (b, _)| a.as_str().cmp(b.as_str()));
-
-        let endianness = tcx.data_layout.endian;
-        let ptr_size = tcx.data_layout.pointer_size;
-
-        let mut init_array = vec![];
-
-        for (_, def_id) in init_arrays {
-            let alloc = tcx.eval_static_initializer(def_id)?.inner();
-            let mut expected_offset = Size::ZERO;
-            for &(offset, prov) in alloc.provenance().ptrs().iter() {
-                if offset != expected_offset {
-                    throw_ub_format!(".init_array.* may not contain any non-function pointer data");
-                }
-                expected_offset += ptr_size;
-
-                let alloc_id = prov.alloc_id();
-
-                let reloc_target_alloc = tcx.global_alloc(alloc_id);
-                match reloc_target_alloc {
-                    GlobalAlloc::Function(instance) => {
-                        let addend = {
-                            let offset = offset.bytes() as usize;
-                            let bytes = &alloc.inspect_with_uninit_and_ptr_outside_interpreter(
-                                offset..offset + ptr_size.bytes() as usize,
-                            );
-                            read_target_uint(endianness, bytes).unwrap()
-                        };
-                        assert_eq!(addend, 0);
-                        init_array.push(instance);
-                    }
-                    _ => throw_ub_format!(".init_array.* member is not a function pointer"),
-                }
-            }
-        }
-
-        Ok(init_array)
-    }
-
     /// Lookup the body of a function that has `link_name` as the symbol name.
     fn lookup_exported_symbol(
         &mut self,
@@ -249,74 +167,48 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             Entry::Vacant(e) => {
                 // Find it if it was not cached.
                 let mut instance_and_crate: Option<(ty::Instance<'_>, CrateNum)> = None;
-                // `dependency_formats` includes all the transitive informations needed to link a crate,
-                // which is what we need here since we need to dig out `exported_symbols` from all transitive
-                // dependencies.
-                let dependency_formats = tcx.dependency_formats(());
-                let dependency_format = dependency_formats
-                    .iter()
-                    .find(|(crate_type, _)| *crate_type == CrateType::Executable)
-                    .expect("interpreting a non-executable crate");
-                for cnum in iter::once(LOCAL_CRATE).chain(
-                    dependency_format.1.iter().enumerate().filter_map(|(num, &linkage)| {
-                        // We add 1 to the number because that's what rustc also does everywhere it
-                        // calls `CrateNum::new`...
-                        #[allow(clippy::arithmetic_side_effects)]
-                        (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
-                    }),
-                ) {
-                    // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
-                    // from a Rust crate.
-                    for &(symbol, _export_info) in tcx.exported_symbols(cnum) {
-                        if let ExportedSymbol::NonGeneric(def_id) = symbol {
-                            let attrs = tcx.codegen_fn_attrs(def_id);
-                            let symbol_name = if let Some(export_name) = attrs.export_name {
-                                export_name
-                            } else if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
-                                tcx.item_name(def_id)
+                helpers::iter_exported_symbols(tcx, |cnum, def_id| {
+                    let attrs = tcx.codegen_fn_attrs(def_id);
+                    let symbol_name = if let Some(export_name) = attrs.export_name {
+                        export_name
+                    } else if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
+                        tcx.item_name(def_id)
+                    } else {
+                        // Skip over items without an explicitly defined symbol name.
+                        return Ok(());
+                    };
+                    if symbol_name == link_name {
+                        if let Some((original_instance, original_cnum)) = instance_and_crate {
+                            // Make sure we are consistent wrt what is 'first' and 'second'.
+                            let original_span = tcx.def_span(original_instance.def_id()).data();
+                            let span = tcx.def_span(def_id).data();
+                            if original_span < span {
+                                throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
+                                    link_name,
+                                    first: original_span,
+                                    first_crate: tcx.crate_name(original_cnum),
+                                    second: span,
+                                    second_crate: tcx.crate_name(cnum),
+                                });
                             } else {
-                                // Skip over items without an explicitly defined symbol name.
-                                continue;
-                            };
-                            if symbol_name == link_name {
-                                if let Some((original_instance, original_cnum)) = instance_and_crate
-                                {
-                                    // Make sure we are consistent wrt what is 'first' and 'second'.
-                                    let original_span =
-                                        tcx.def_span(original_instance.def_id()).data();
-                                    let span = tcx.def_span(def_id).data();
-                                    if original_span < span {
-                                        throw_machine_stop!(
-                                            TerminationInfo::MultipleSymbolDefinitions {
-                                                link_name,
-                                                first: original_span,
-                                                first_crate: tcx.crate_name(original_cnum),
-                                                second: span,
-                                                second_crate: tcx.crate_name(cnum),
-                                            }
-                                        );
-                                    } else {
-                                        throw_machine_stop!(
-                                            TerminationInfo::MultipleSymbolDefinitions {
-                                                link_name,
-                                                first: span,
-                                                first_crate: tcx.crate_name(cnum),
-                                                second: original_span,
-                                                second_crate: tcx.crate_name(original_cnum),
-                                            }
-                                        );
-                                    }
-                                }
-                                if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
-                                    throw_ub_format!(
-                                        "attempt to call an exported symbol that is not defined as a function"
-                                    );
-                                }
-                                instance_and_crate = Some((ty::Instance::mono(tcx, def_id), cnum));
+                                throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
+                                    link_name,
+                                    first: span,
+                                    first_crate: tcx.crate_name(cnum),
+                                    second: original_span,
+                                    second_crate: tcx.crate_name(original_cnum),
+                                });
                             }
                         }
+                        if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
+                            throw_ub_format!(
+                                "attempt to call an exported symbol that is not defined as a function"
+                            );
+                        }
+                        instance_and_crate = Some((ty::Instance::mono(tcx, def_id), cnum));
                     }
-                }
+                    Ok(())
+                })?;
 
                 e.insert(instance_and_crate.map(|ic| ic.0))
             }

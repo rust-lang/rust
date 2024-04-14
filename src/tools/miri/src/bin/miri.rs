@@ -137,8 +137,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
             config.override_queries = Some(|_, local_providers| {
                 // `exported_symbols` and `reachable_non_generics` provided by rustc always returns
                 // an empty result if `tcx.sess.opts.output_types.should_codegen()` is false.
-                // In addition we need to add #[used] symbols to exported_symbols for .init_array
-                // handling.
+                // In addition we need to add #[used] symbols to exported_symbols for `lookup_link_section`.
                 local_providers.exported_symbols = |tcx, LocalCrate| {
                     let reachable_set = tcx.with_stable_hashing_context(|hcx| {
                         tcx.reachable_set(()).to_sorted(&hcx, true)
