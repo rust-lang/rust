@@ -839,6 +839,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-profiler-support",
     "needs-relocation-model-pic",
     "needs-run-enabled",
+    "needs-rust-lld",
     "needs-rust-lldb",
     "needs-sanitizer-address",
     "needs-sanitizer-cfi",
