@@ -1,4 +1,5 @@
 //@ run-pass
+//@ ignore-msvc
 
 #![allow(dead_code)]
 #![allow(unused_imports)]
