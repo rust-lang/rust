@@ -44,10 +44,8 @@ pub trait Predecessors: DirectedGraph {
     fn predecessors(&self, node: Self::Node) -> Self::Predecessors<'_>;
 }
 
-pub trait ControlFlowGraph: DirectedGraph + StartNode + Predecessors + Successors {
-    // convenient trait
-}
-
+/// Alias for [`DirectedGraph`] + [`StartNode`] + [`Predecessors`] + [`Successors`].
+pub trait ControlFlowGraph: DirectedGraph + StartNode + Predecessors + Successors {}
 impl<T> ControlFlowGraph for T where T: DirectedGraph + StartNode + Predecessors + Successors {}
 
 /// Returns `true` if the graph has a cycle that is reachable from the start node.
