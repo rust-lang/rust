@@ -23,12 +23,12 @@ use lsp_types::{
     notification::DidOpenTextDocument,
     request::{
         CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest,
-        WillRenameFiles, WorkspaceSymbolRequest,
+        InlayHintRequest, InlayHintResolveRequest, WillRenameFiles, WorkspaceSymbolRequest,
     },
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
     DocumentFormattingParams, FileRename, FormattingOptions, GotoDefinitionParams, HoverParams,
-    PartialResultParams, Position, Range, RenameFilesParams, TextDocumentItem,
-    TextDocumentPositionParams, WorkDoneProgressParams,
+    InlayHint, InlayHintLabel, InlayHintParams, PartialResultParams, Position, Range,
+    RenameFilesParams, TextDocumentItem, TextDocumentPositionParams, WorkDoneProgressParams,
 };
 use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams, UnindexedProject};
 use serde_json::json;
@@ -73,6 +73,48 @@ use std::collections::Spam;
         work_done_progress_params: WorkDoneProgressParams::default(),
     });
     assert!(res.to_string().contains("HashMap"));
+}
+
+#[test]
+fn resolves_inlay_hints() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/lib.rs
+struct Foo;
+fn f() {
+    let x = Foo;
+}
+"#,
+    )
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    let res = server.send_request::<InlayHintRequest>(InlayHintParams {
+        range: Range::new(Position::new(0, 0), Position::new(3, 1)),
+        text_document: server.doc_id("src/lib.rs"),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    let mut hints = serde_json::from_value::<Option<Vec<InlayHint>>>(res).unwrap().unwrap();
+    let hint = hints.pop().unwrap();
+    assert!(hint.data.is_some());
+    assert!(
+        matches!(&hint.label, InlayHintLabel::LabelParts(parts) if parts[1].location.is_none())
+    );
+    let res = server.send_request::<InlayHintResolveRequest>(hint);
+    let hint = serde_json::from_value::<InlayHint>(res).unwrap();
+    assert!(hint.data.is_none());
+    assert!(
+        matches!(&hint.label, InlayHintLabel::LabelParts(parts) if parts[1].location.is_some())
+    );
 }
 
 #[test]

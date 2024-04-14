@@ -453,6 +453,8 @@ pub(crate) fn inlay_hint(
             &std::hash::BuildHasherDefault::<FxHasher>::default(),
             &inlay_hint,
         )
+        // json only supports numbers up to 2^53 - 1 as integers, so mask the rest
+         & ((1 << 53) - 1)
     });
 
     let mut something_to_resolve = false;
