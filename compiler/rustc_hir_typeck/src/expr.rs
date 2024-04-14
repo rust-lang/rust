@@ -35,7 +35,6 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath};
-use rustc_hir_analysis::check::ty_kind_suggestion;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -57,6 +56,7 @@ use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
@@ -694,7 +694,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                             let error = Some(Sorts(ExpectedFound { expected: ty, found: e_ty }));
                             self.annotate_loop_expected_due_to_inference(err, expr, error);
-                            if let Some(val) = ty_kind_suggestion(ty, tcx) {
+                            if let Some(val) =
+                                self.err_ctxt().ty_kind_suggestion(self.param_env, ty)
+                            {
                                 err.span_suggestion_verbose(
                                     expr.span.shrink_to_hi(),
                                     "give the `break` a value of the expected type",
