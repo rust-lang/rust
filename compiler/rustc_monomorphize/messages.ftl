@@ -30,6 +30,7 @@ monomorphize_type_length_limit = reached the type-length limit while instantiati
 monomorphize_unknown_cgu_collection_mode =
     unknown codegen-item collection mode '{$mode}', falling back to 'lazy' mode
 
+monomorphize_unsized_extern_fn_param = unsized arguments must not be `extern` types
 monomorphize_unused_generic_params = item has unused generic parameters
 
 monomorphize_written_to_path = the full type name has been written to '{$path}'

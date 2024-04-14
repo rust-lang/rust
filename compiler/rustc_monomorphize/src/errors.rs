@@ -104,3 +104,10 @@ pub struct StartNotFound;
 pub struct UnknownCguCollectionMode<'a> {
     pub mode: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_unsized_extern_fn_param)]
+pub struct UnsizedExternParam {
+    #[primary_span]
+    pub span: Span,
+}

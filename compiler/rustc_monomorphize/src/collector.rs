@@ -1041,6 +1041,12 @@ fn visit_fn_use<'tcx>(
                 _ => bug!("failed to resolve instance for {ty}"),
             }
         };
+        for &param_ty in ty.fn_sig(tcx).inputs().skip_binder() {
+            let tail = tcx.struct_tail_with_normalize(param_ty, |ty| ty, || {});
+            if matches!(tail.kind(), ty::Foreign(..)) {
+                tcx.dcx().emit_fatal(errors::UnsizedExternParam { span: source });
+            }
+        }
         visit_instance_use(tcx, instance, is_direct_call, source, output);
     }
 }

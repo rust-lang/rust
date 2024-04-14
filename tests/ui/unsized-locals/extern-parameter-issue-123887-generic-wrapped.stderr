@@ -1,0 +1,8 @@
+error: unsized arguments must not be `extern` types
+  --> $DIR/extern-parameter-issue-123887-generic-wrapped.rs:13:5
+   |
+LL |     f(*x);
+   |     ^^^^^
+
+error: aborting due to 1 previous error
+
