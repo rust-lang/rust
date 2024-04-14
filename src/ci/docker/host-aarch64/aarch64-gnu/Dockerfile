@@ -28,4 +28,4 @@ ENV RUST_CONFIGURE_ARGS \
  --enable-compiler-docs
 # FIXME: Skipping cargo panic_abort_doc_tests due to https://github.com/rust-lang/rust/issues/123733
 ENV SCRIPT python3 ../x.py --stage 2 test && \
-  python3 ../x.py --stage 2 test src/tools/cargo --test-args "--skip panic_abort_doc_tests"
+  python3 ../x.py --stage 2 test src/tools/cargo --test-args \"--skip panic_abort_doc_tests\"
