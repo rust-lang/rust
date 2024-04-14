@@ -25,7 +25,7 @@ use rustc_target::abi::Align;
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet};
 use rustc_target::spec::{Target, TargetTriple, TARGETS};
 
-use crate::config::CrateType;
+use crate::config::{CrateType, FmtDebug};
 use crate::Session;
 
 use std::hash::Hash;
@@ -113,6 +113,20 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
 
     if sess.opts.debug_assertions {
         ins_none!(sym::debug_assertions);
+    }
+
+    if sess.is_nightly_build() {
+        match sess.opts.unstable_opts.fmt_debug {
+            FmtDebug::Full => {
+                ins_sym!(sym::fmt_debug, sym::full);
+            }
+            FmtDebug::Shallow => {
+                ins_sym!(sym::fmt_debug, sym::shallow);
+            }
+            FmtDebug::None => {
+                ins_sym!(sym::fmt_debug, sym::none);
+            }
+        }
     }
 
     if sess.overflow_checks() {
@@ -261,6 +275,8 @@ impl CheckCfg {
         // in the unstable book as well!
 
         ins!(sym::debug_assertions, no_values);
+
+        ins!(sym::fmt_debug, empty_values).extend(FmtDebug::all());
 
         // These four are never set by rustc, but we set them anyway; they
         // should not trigger the lint because `cargo clippy`, `cargo doc`,
