@@ -8,6 +8,8 @@ LL |     send(format_args!("{:?}", c));
    |
    = help: within `[core::fmt::rt::Argument<'_>]`, the trait `Sync` is not implemented for `core::fmt::rt::Opaque`, which is required by `Arguments<'_>: Send`
    = note: required because it appears within the type `&core::fmt::rt::Opaque`
+note: required because it appears within the type `core::fmt::rt::ArgumentType<'_>`
+  --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
 note: required because it appears within the type `core::fmt::rt::Argument<'_>`
   --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
    = note: required because it appears within the type `[core::fmt::rt::Argument<'_>]`
@@ -30,6 +32,8 @@ LL |     sync(format_args!("{:?}", c));
    |
    = help: within `Arguments<'_>`, the trait `Sync` is not implemented for `core::fmt::rt::Opaque`, which is required by `Arguments<'_>: Sync`
    = note: required because it appears within the type `&core::fmt::rt::Opaque`
+note: required because it appears within the type `core::fmt::rt::ArgumentType<'_>`
+  --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
 note: required because it appears within the type `core::fmt::rt::Argument<'_>`
   --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
    = note: required because it appears within the type `[core::fmt::rt::Argument<'_>]`

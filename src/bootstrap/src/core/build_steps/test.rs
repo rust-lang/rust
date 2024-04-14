@@ -2713,7 +2713,7 @@ impl Step for Crate {
                 }
             }
             Mode::Rustc => {
-                compile::rustc_cargo(builder, &mut cargo, target, compiler.stage);
+                compile::rustc_cargo(builder, &mut cargo, target, &compiler);
             }
             _ => panic!("can only test libraries"),
         };

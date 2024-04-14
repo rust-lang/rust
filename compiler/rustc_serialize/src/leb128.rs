@@ -1,6 +1,10 @@
 use crate::opaque::MemDecoder;
 use crate::serialize::Decoder;
 
+// This code is very hot and uses lots of arithmetic, avoid overflow checks for performance.
+// See https://github.com/rust-lang/rust/pull/119440#issuecomment-1874255727
+use crate::int_overflow::DebugStrictAdd;
+
 /// Returns the length of the longest LEB128 encoding for `T`, assuming `T` is an integer type
 pub const fn max_leb128_len<T>() -> usize {
     // The longest LEB128 encoding for an integer uses 7 bits per byte.
@@ -24,7 +28,7 @@ macro_rules! impl_write_unsigned_leb128 {
                         *out.get_unchecked_mut(i) = value as u8;
                     }
 
-                    i += 1;
+                    i = i.debug_strict_add(1);
                     break;
                 } else {
                     unsafe {
@@ -32,7 +36,7 @@ macro_rules! impl_write_unsigned_leb128 {
                     }
 
                     value >>= 7;
-                    i += 1;
+                    i = i.debug_strict_add(1);
                 }
             }
 
@@ -69,7 +73,7 @@ macro_rules! impl_read_unsigned_leb128 {
                 } else {
                     result |= ((byte & 0x7F) as $int_ty) << shift;
                 }
-                shift += 7;
+                shift = shift.debug_strict_add(7);
             }
         }
     };
@@ -101,7 +105,7 @@ macro_rules! impl_write_signed_leb128 {
                     *out.get_unchecked_mut(i) = byte;
                 }
 
-                i += 1;
+                i = i.debug_strict_add(1);
 
                 if !more {
                     break;
@@ -130,7 +134,7 @@ macro_rules! impl_read_signed_leb128 {
             loop {
                 byte = decoder.read_u8();
                 result |= <$int_ty>::from(byte & 0x7F) << shift;
-                shift += 7;
+                shift = shift.debug_strict_add(7);
 
                 if (byte & 0x80) == 0 {
                     break;

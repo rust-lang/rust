@@ -454,15 +454,10 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
                 continue;
             }
             // If the REPLACE_LIBRS hack is enabled and we are building a `lib.rs` file, and a
-            // `lib.miri.rs` file exists, then build that instead. We only consider relative paths
-            // as cargo uses those for files in the workspace; dependencies from crates.io get
-            // absolute paths.
+            // `lib.miri.rs` file exists, then build that instead.
             if replace_librs {
                 let path = Path::new(&arg);
-                if path.is_relative()
-                    && path.file_name().is_some_and(|f| f == "lib.rs")
-                    && path.is_file()
-                {
+                if path.file_name().is_some_and(|f| f == "lib.rs") && path.is_file() {
                     let miri_rs = Path::new(&arg).with_extension("miri.rs");
                     if miri_rs.is_file() {
                         if verbose > 0 {
