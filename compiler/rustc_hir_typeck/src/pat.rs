@@ -308,10 +308,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             AdjustMode::ResetAndConsumeRef(ref_pat_mutbl) => {
                 let mutbls_match = def_bm.0 == ByRef::Yes(ref_pat_mutbl);
                 if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
-                    let max_ref_mutbl = cmp::min(max_ref_mutbl, ref_pat_mutbl);
                     if mutbls_match {
                         debug!("consuming inherited reference");
-                        (expected, INITIAL_BM, max_ref_mutbl, true)
+                        (expected, INITIAL_BM, cmp::min(max_ref_mutbl, ref_pat_mutbl), true)
                     } else {
                         let (new_ty, new_bm, max_ref_mutbl) = if ref_pat_mutbl == Mutability::Mut {
                             self.peel_off_references(
