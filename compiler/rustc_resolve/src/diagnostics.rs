@@ -128,13 +128,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self.report_with_use_injections(krate);
 
         for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
-            let msg = "macro-expanded `macro_export` macros from the current crate \
-                       cannot be referred to by absolute paths";
             self.lint_buffer.buffer_lint_with_diagnostic(
                 MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
                 CRATE_NODE_ID,
                 span_use,
-                msg,
                 BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def),
             );
         }
@@ -149,7 +146,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     AMBIGUOUS_GLOB_IMPORTS,
                     import.root_id,
                     ambiguity_error.ident.span,
-                    diag.msg.to_string(),
                     BuiltinLintDiag::AmbiguousGlobImports { diag },
                 );
             } else {
@@ -530,8 +526,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             node_id,
             root_span,
-            "absolute paths must start with `self`, `super`, \
-             `crate`, or an external crate name in the 2018 edition",
             diag,
         );
     }

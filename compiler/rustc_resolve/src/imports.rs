@@ -623,7 +623,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             AMBIGUOUS_GLOB_REEXPORTS,
                             import.root_id,
                             import.root_span,
-                            "ambiguous glob re-exports",
                             BuiltinLintDiag::AmbiguousGlobReexports {
                                 name: key.ident.to_string(),
                                 namespace: key.ns.descr().to_string(),
@@ -659,7 +658,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 HIDDEN_GLOB_REEXPORTS,
                                 binding_id,
                                 binding.span,
-                                "private item shadows public glob re-export",
                                 BuiltinLintDiag::HiddenGlobReexports {
                                     name: key.ident.name.to_string(),
                                     namespace: key.ns.descr().to_owned(),
@@ -1015,17 +1013,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         && !max_vis.is_at_least(import_vis, self.tcx)
                     {
                         let def_id = self.local_def_id(id);
-                        let msg = format!(
-                            "glob import doesn't reexport anything with visibility `{}` because no imported item is public enough",
-                            import_vis.to_string(def_id, self.tcx)
-                        );
                         self.lint_buffer.buffer_lint_with_diagnostic(
                             UNUSED_IMPORTS,
                             id,
                             import.span,
-                            msg,
                             BuiltinLintDiag::RedundantImportVisibility {
                                 max_vis: max_vis.to_string(def_id, self.tcx),
+                                import_vis: import_vis.to_string(def_id, self.tcx),
                                 span: import.span,
                             },
                         );
@@ -1397,7 +1391,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 UNUSED_IMPORTS,
                 id,
                 import.span,
-                format!("the item `{source}` is imported redundantly"),
                 BuiltinLintDiag::RedundantImport(redundant_spans, source),
             );
             */

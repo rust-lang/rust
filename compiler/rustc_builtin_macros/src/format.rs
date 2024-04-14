@@ -556,7 +556,6 @@ fn make_format_args(
             let arg_name = args.explicit_args()[index].kind.ident().unwrap();
             ecx.buffered_early_lint.push(BufferedEarlyLint {
                 span: arg_name.span.into(),
-                msg: format!("named argument `{}` is not used by name", arg_name.name).into(),
                 node_id: rustc_ast::CRATE_NODE_ID,
                 lint_id: LintId::of(NAMED_ARGUMENTS_USED_POSITIONALLY),
                 diagnostic: BuiltinLintDiag::NamedArgumentUsedPositionally {

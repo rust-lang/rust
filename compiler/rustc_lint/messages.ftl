@@ -180,6 +180,9 @@ lint_deprecated_lint_name =
     .suggestion = change it to
     .help = change it to {$replace}
 
+lint_deprecated_where_clause_location =
+    where clause not allowed here
+
 lint_diag_out_of_impl =
     diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
 
@@ -208,6 +211,8 @@ lint_enum_intrinsics_mem_variant =
 lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
     .rationale = {$rationale}
+
+lint_extern_without_abi = extern declarations without an explicit ABI are deprecated
 
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ty}`. This is more readably written as an `if let` statement
@@ -520,6 +525,12 @@ lint_path_statement_drop = path statement drops value
     .suggestion = use `drop` to clarify the intent
 
 lint_path_statement_no_effect = path statement with no effect
+
+lint_pattern_in_bodiless = patterns aren't allowed in functions without bodies
+    .label = pattern not allowed in function without body
+
+lint_pattern_in_foreign = patterns aren't allowed in foreign function declarations
+    .label = pattern not allowed in foreign function
 
 lint_ptr_null_checks_fn_ptr = function pointers are not nullable, so checking them for null will always return false
     .help = wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value

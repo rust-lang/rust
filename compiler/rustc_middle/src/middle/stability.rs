@@ -200,8 +200,8 @@ pub fn early_report_deprecation(
         return;
     }
 
-    let diag = BuiltinLintDiag::DeprecatedMacro(suggestion, span);
-    lint_buffer.buffer_lint_with_diagnostic(lint, node_id, span, message, diag);
+    let diag = BuiltinLintDiag::DeprecatedMacro { suggestion, span, message };
+    lint_buffer.buffer_lint_with_diagnostic(lint, node_id, span, diag);
 }
 
 fn late_report_deprecation(

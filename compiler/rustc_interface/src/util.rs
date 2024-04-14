@@ -409,7 +409,6 @@ pub(crate) fn check_attr_crate_type(
                             lint::builtin::UNKNOWN_CRATE_TYPES,
                             ast::CRATE_NODE_ID,
                             span,
-                            "invalid `crate_type` value",
                             BuiltinLintDiag::UnknownCrateTypes(
                                 span,
                                 "did you mean".to_string(),
