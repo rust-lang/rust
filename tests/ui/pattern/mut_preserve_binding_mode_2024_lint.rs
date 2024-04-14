@@ -1,6 +1,6 @@
 //@ edition: 2021
 #![feature(mut_preserve_binding_mode_2024)]
-#![allow(unused)]
+#![allow(incomplete_features, unused)]
 #![forbid(dereferencing_mut_binding)]
 
 struct Foo(u8);
