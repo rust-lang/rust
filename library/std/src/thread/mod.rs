@@ -487,9 +487,11 @@ impl Builder {
             amt
         });
 
-        let my_thread = Thread::new(name.map(|name| {
-            CString::new(name).expect("thread name may not contain interior null bytes")
-        }));
+        let my_thread = name.map_or_else(Thread::new_unnamed, |name| unsafe {
+            Thread::new(
+                CString::new(name).expect("thread name may not contain interior null bytes"),
+            )
+        });
         let their_thread = my_thread.clone();
 
         let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
@@ -711,7 +713,7 @@ pub(crate) fn set_current(thread: Thread) {
 /// In contrast to the public `current` function, this will not panic if called
 /// from inside a TLS destructor.
 pub(crate) fn try_current() -> Option<Thread> {
-    CURRENT.try_with(|current| current.get_or_init(|| Thread::new(None)).clone()).ok()
+    CURRENT.try_with(|current| current.get_or_init(|| Thread::new_unnamed()).clone()).ok()
 }
 
 /// Gets a handle to the thread that invokes it.
@@ -1307,21 +1309,26 @@ pub struct Thread {
 }
 
 impl Thread {
-    // Used only internally to construct a thread object without spawning
-    pub(crate) fn new(name: Option<CString>) -> Thread {
-        if let Some(name) = name {
-            Self::new_inner(ThreadName::Other(name))
-        } else {
-            Self::new_inner(ThreadName::Unnamed)
-        }
+    /// Used only internally to construct a thread object without spawning.
+    ///
+    /// # Safety
+    /// `name` must be valid UTF-8.
+    pub(crate) unsafe fn new(name: CString) -> Thread {
+        unsafe { Self::new_inner(ThreadName::Other(name)) }
+    }
+
+    pub(crate) fn new_unnamed() -> Thread {
+        unsafe { Self::new_inner(ThreadName::Unnamed) }
     }
 
     // Used in runtime to construct main thread
     pub(crate) fn new_main() -> Thread {
-        Self::new_inner(ThreadName::Main)
+        unsafe { Self::new_inner(ThreadName::Main) }
     }
 
-    fn new_inner(name: ThreadName) -> Thread {
+    /// # Safety
+    /// If `name` is `ThreadName::Other(_)`, the contained string must be valid UTF-8.
+    unsafe fn new_inner(name: ThreadName) -> Thread {
         // We have to use `unsafe` here to construct the `Parker` in-place,
         // which is required for the UNIX implementation.
         //
