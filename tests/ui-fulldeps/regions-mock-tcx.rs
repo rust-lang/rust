@@ -9,10 +9,9 @@
 // - Multiple lifetime parameters
 // - Arenas
 
-#![feature(rustc_private, libc)]
+#![feature(rustc_private)]
 
 extern crate rustc_arena;
-extern crate libc;
 
 // Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
 // files.
