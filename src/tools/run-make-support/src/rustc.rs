@@ -1,5 +1,5 @@
 use std::env;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::path::Path;
 use std::process::{Command, Output};
 
@@ -20,6 +20,8 @@ pub fn aux_build() -> Rustc {
 pub struct Rustc {
     cmd: Command,
 }
+
+crate::impl_common_helpers!(Rustc);
 
 fn setup_common() -> Command {
     let rustc = env::var("RUSTC").unwrap();
@@ -133,12 +135,6 @@ impl Rustc {
         self
     }
 
-    /// Generic command argument provider. Use `.arg("-Zname")` over `.arg("-Z").arg("arg")`.
-    pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.cmd.arg(arg);
-        self
-    }
-
     /// Specify the crate type.
     pub fn crate_type(&mut self, crate_type: &str) -> &mut Self {
         self.cmd.arg("--crate-type");
@@ -153,49 +149,6 @@ impl Rustc {
         self
     }
 
-    /// Generic command arguments provider. Use `.arg("-Zname")` over `.arg("-Z").arg("arg")`.
-    pub fn args<S: AsRef<OsStr>>(&mut self, args: &[S]) -> &mut Self {
-        self.cmd.args(args);
-        self
-    }
-
-    pub fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self {
-        self.cmd.env(name, value);
-        self
-    }
-
-    // Command inspection, output and running helper methods
-
-    /// Get the [`Output`][std::process::Output] of the finished `rustc` process.
-    pub fn output(&mut self) -> Output {
-        self.cmd.output().unwrap()
-    }
-
-    /// Run the constructed `rustc` command and assert that it is successfully run.
-    #[track_caller]
-    pub fn run(&mut self) -> Output {
-        let caller_location = std::panic::Location::caller();
-        let caller_line_number = caller_location.line();
-
-        let output = self.cmd.output().unwrap();
-        if !output.status.success() {
-            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
-        }
-        output
-    }
-
-    #[track_caller]
-    pub fn run_fail(&mut self) -> Output {
-        let caller_location = std::panic::Location::caller();
-        let caller_line_number = caller_location.line();
-
-        let output = self.cmd.output().unwrap();
-        if output.status.success() {
-            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
-        }
-        output
-    }
-
     #[track_caller]
     pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
         let caller_location = std::panic::Location::caller();
@@ -203,14 +156,8 @@ impl Rustc {
 
         let output = self.cmd.output().unwrap();
         if output.status.code().unwrap() != code {
-            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+            handle_failed_output(&self.cmd, output, caller_line_number);
         }
         output
-    }
-
-    /// Inspect what the underlying [`Command`] is up to the current construction.
-    pub fn inspect(&mut self, f: impl FnOnce(&Command)) -> &mut Self {
-        f(&self.cmd);
-        self
     }
 }

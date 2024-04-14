@@ -766,7 +766,7 @@ dependencies = [
  "miropt-test-tools",
  "once_cell",
  "regex",
- "rustfix",
+ "rustfix 0.8.1",
  "serde",
  "serde_json",
  "tracing",
@@ -4856,6 +4856,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustfix"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81864b097046da5df3758fdc6e4822bbb70afa06317e8ca45ea1b51cb8c5e5a4"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "rustfmt-config_proc_macro"
 version = "0.3.0"
 dependencies = [
@@ -5896,7 +5908,7 @@ dependencies = [
  "prettydiff",
  "regex",
  "rustc_version",
- "rustfix",
+ "rustfix 0.6.1",
  "serde",
  "serde_json",
  "tempfile",
@@ -5923,7 +5935,7 @@ dependencies = [
  "prettydiff",
  "regex",
  "rustc_version",
- "rustfix",
+ "rustfix 0.6.1",
  "serde",
  "serde_json",
  "spanned",
