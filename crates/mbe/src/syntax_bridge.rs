@@ -196,7 +196,7 @@ where
 
     while iter.peek_n(0).is_some() {
         let expanded =
-            iter.expect_fragment(parser::PrefixEntryPoint::Expr, parser::Edition::Edition2021);
+            iter.expect_fragment(parser::PrefixEntryPoint::Expr, parser::Edition::CURRENT);
 
         res.push(match expanded.value {
             None => break,

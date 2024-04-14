@@ -676,7 +676,7 @@ fn token_tree_to_syntax_node(
         ExpandTo::Type => mbe::TopEntryPoint::Type,
         ExpandTo::Expr => mbe::TopEntryPoint::Expr,
     };
-    mbe::token_tree_to_syntax_node(tt, entry_point, parser::Edition::Edition2021)
+    mbe::token_tree_to_syntax_node(tt, entry_point, parser::Edition::CURRENT)
 }
 
 fn check_tt_count(tt: &tt::Subtree) -> Result<(), ExpandResult<()>> {

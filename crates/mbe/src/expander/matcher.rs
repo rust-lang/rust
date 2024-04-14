@@ -744,7 +744,7 @@ fn match_meta_var(
     let fragment = match kind {
         MetaVarKind::Path => {
             return input
-                .expect_fragment(parser::PrefixEntryPoint::Path, parser::Edition::Edition2021)
+                .expect_fragment(parser::PrefixEntryPoint::Path, parser::Edition::CURRENT)
                 .map(|it| {
                     it.map(|it| tt::TokenTree::subtree_or_wrap(it, delim_span)).map(Fragment::Path)
                 });
@@ -773,7 +773,7 @@ fn match_meta_var(
                 _ => {}
             };
             return input
-                .expect_fragment(parser::PrefixEntryPoint::Expr, parser::Edition::Edition2021)
+                .expect_fragment(parser::PrefixEntryPoint::Expr, parser::Edition::CURRENT)
                 .map(|tt| {
                     tt.map(|tt| match tt {
                         tt::TokenTree::Leaf(leaf) => tt::Subtree {
@@ -823,7 +823,7 @@ fn match_meta_var(
             return tt_result.map(|it| Some(Fragment::Tokens(it))).into();
         }
     };
-    input.expect_fragment(fragment, parser::Edition::Edition2021).map(|it| it.map(Fragment::Tokens))
+    input.expect_fragment(fragment, parser::Edition::CURRENT).map(|it| it.map(Fragment::Tokens))
 }
 
 fn collect_vars(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate) {

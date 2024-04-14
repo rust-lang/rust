@@ -172,7 +172,7 @@ pub use crate::ast::SourceFile;
 impl SourceFile {
     pub fn parse(text: &str) -> Parse<SourceFile> {
         let _p = tracing::span!(tracing::Level::INFO, "SourceFile::parse").entered();
-        let (green, errors) = parsing::parse_text(text, parser::Edition::Edition2021);
+        let (green, errors) = parsing::parse_text(text, parser::Edition::CURRENT);
         let root = SyntaxNode::new_root(green.clone());
 
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);

@@ -319,7 +319,7 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         let (parse, _) = ::mbe::token_tree_to_syntax_node(
             subtree,
             ::mbe::TopEntryPoint::MacroItems,
-            parser::Edition::Edition2021,
+            span::Edition::CURRENT,
         );
         if parse.errors().is_empty() {
             Ok(subtree.clone())

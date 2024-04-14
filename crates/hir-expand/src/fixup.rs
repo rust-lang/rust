@@ -420,7 +420,7 @@ mod tests {
         let (parse, _) = mbe::token_tree_to_syntax_node(
             &tt,
             ::mbe::TopEntryPoint::MacroItems,
-            parser::Edition::Edition2021,
+            parser::Edition::CURRENT,
         );
         assert!(
             parse.errors().is_empty(),

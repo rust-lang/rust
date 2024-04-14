@@ -27,7 +27,7 @@ pub(crate) fn incremental_reparse(
     }
 
     if let Some((green, new_errors, old_range)) =
-        reparse_block(node, edit, parser::Edition::Edition2021)
+        reparse_block(node, edit, parser::Edition::CURRENT)
     {
         return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
     }

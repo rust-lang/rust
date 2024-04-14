@@ -521,7 +521,6 @@ dependencies = [
  "limit",
  "mbe",
  "once_cell",
- "parser",
  "profile",
  "ra-ap-rustc_abi",
  "ra-ap-rustc_parse_format",
