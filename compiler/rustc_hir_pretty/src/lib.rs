@@ -49,10 +49,6 @@ pub trait PpAnn {
     fn post(&self, _state: &mut State<'_>, _node: AnnNode<'_>) {}
 }
 
-pub struct NoAnn;
-
-impl PpAnn for NoAnn {}
-
 impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
         match nested {
@@ -190,16 +186,16 @@ where
     printer.s.eof()
 }
 
-pub fn ty_to_string(ty: &hir::Ty<'_>) -> String {
-    to_string(&NoAnn, |s| s.print_type(ty))
+pub fn ty_to_string(ann: &dyn PpAnn, ty: &hir::Ty<'_>) -> String {
+    to_string(ann, |s| s.print_type(ty))
 }
 
-pub fn qpath_to_string(segment: &hir::QPath<'_>) -> String {
-    to_string(&NoAnn, |s| s.print_qpath(segment, false))
+pub fn qpath_to_string(ann: &dyn PpAnn, segment: &hir::QPath<'_>) -> String {
+    to_string(ann, |s| s.print_qpath(segment, false))
 }
 
-pub fn pat_to_string(pat: &hir::Pat<'_>) -> String {
-    to_string(&NoAnn, |s| s.print_pat(pat))
+pub fn pat_to_string(ann: &dyn PpAnn, pat: &hir::Pat<'_>) -> String {
+    to_string(ann, |s| s.print_pat(pat))
 }
 
 impl<'a> State<'a> {

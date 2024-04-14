@@ -724,7 +724,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 def::CtorOf::Variant => "enum variant",
             };
             let removal_span = callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
-            unit_variant = Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(qpath)));
+            unit_variant =
+                Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(&self.tcx, qpath)));
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);

@@ -374,7 +374,7 @@ fn report_unexpected_variant_res(
         Res::Def(DefKind::Variant, _) => "struct variant",
         _ => res.descr(),
     };
-    let path_str = rustc_hir_pretty::qpath_to_string(qpath);
+    let path_str = rustc_hir_pretty::qpath_to_string(&tcx, qpath);
     let err = tcx
         .dcx()
         .struct_span_err(span, format!("expected {expected}, found {res_descr} `{path_str}`"))
