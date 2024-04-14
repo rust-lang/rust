@@ -3746,8 +3746,10 @@ name = "rustc_codegen_ssa"
 version = "0.0.0"
 dependencies = [
  "ar_archive_writer",
+ "arrayvec",
  "bitflags 2.5.0",
  "cc",
+ "either",
  "itertools 0.12.1",
  "jobserver",
  "libc",
