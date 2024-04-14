@@ -1651,7 +1651,7 @@ declare_lint! {
     /// ### Explanation
     ///
     /// Without the `mut`, `x` would have type `&u32`. Pre-2024, adding `mut` makes `x` have type
-    /// `u32`, which was deeped surprising. After edition 2024, adding `mut` will not change the
+    /// `u32`, which was deemed surprising. After edition 2024, adding `mut` will not change the
     /// type of `x`. This lint warns users of editions before 2024 to update their code.
     pub DEREFERENCING_MUT_BINDING,
     Allow,
