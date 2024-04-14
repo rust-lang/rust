@@ -187,9 +187,9 @@ fn file_test_io_seek_and_tell_smoke_test() {
     {
         let mut read_stream = check!(File::open(filename));
         check!(read_stream.seek(SeekFrom::Start(set_cursor)));
-        tell_pos_pre_read = check!(read_stream.seek(SeekFrom::Current(0)));
+        tell_pos_pre_read = check!(read_stream.stream_position());
         check!(read_stream.read(&mut read_mem));
-        tell_pos_post_read = check!(read_stream.seek(SeekFrom::Current(0)));
+        tell_pos_post_read = check!(read_stream.stream_position());
     }
     check!(fs::remove_file(filename));
     let read_str = str::from_utf8(&read_mem).unwrap();
@@ -284,42 +284,42 @@ fn file_test_io_read_write_at() {
         let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
         let mut rw = check!(oo.open(&filename));
         assert_eq!(check!(rw.write_at(write1.as_bytes(), 5)), write1.len());
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 0);
+        assert_eq!(check!(rw.stream_position()), 0);
         assert_eq!(check!(rw.read_at(&mut buf, 5)), write1.len());
         assert_eq!(str::from_utf8(&buf[..write1.len()]), Ok(write1));
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 0);
+        assert_eq!(check!(rw.stream_position()), 0);
         assert_eq!(check!(rw.read_at(&mut buf[..write2.len()], 0)), write2.len());
         assert_eq!(str::from_utf8(&buf[..write2.len()]), Ok("\0\0\0\0\0"));
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 0);
+        assert_eq!(check!(rw.stream_position()), 0);
         assert_eq!(check!(rw.write(write2.as_bytes())), write2.len());
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 5);
+        assert_eq!(check!(rw.stream_position()), 5);
         assert_eq!(check!(rw.read(&mut buf)), write1.len());
         assert_eq!(str::from_utf8(&buf[..write1.len()]), Ok(write1));
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+        assert_eq!(check!(rw.stream_position()), 9);
         assert_eq!(check!(rw.read_at(&mut buf[..write2.len()], 0)), write2.len());
         assert_eq!(str::from_utf8(&buf[..write2.len()]), Ok(write2));
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+        assert_eq!(check!(rw.stream_position()), 9);
         assert_eq!(check!(rw.write_at(write3.as_bytes(), 9)), write3.len());
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+        assert_eq!(check!(rw.stream_position()), 9);
     }
     {
         let mut read = check!(File::open(&filename));
         assert_eq!(check!(read.read_at(&mut buf, 0)), content.len());
         assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
-        assert_eq!(check!(read.seek(SeekFrom::Current(0))), 0);
+        assert_eq!(check!(read.stream_position()), 0);
         assert_eq!(check!(read.seek(SeekFrom::End(-5))), 9);
         assert_eq!(check!(read.read_at(&mut buf, 0)), content.len());
         assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
-        assert_eq!(check!(read.seek(SeekFrom::Current(0))), 9);
+        assert_eq!(check!(read.stream_position()), 9);
         assert_eq!(check!(read.read(&mut buf)), write3.len());
         assert_eq!(str::from_utf8(&buf[..write3.len()]), Ok(write3));
-        assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+        assert_eq!(check!(read.stream_position()), 14);
         assert_eq!(check!(read.read_at(&mut buf, 0)), content.len());
         assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
-        assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+        assert_eq!(check!(read.stream_position()), 14);
         assert_eq!(check!(read.read_at(&mut buf, 14)), 0);
         assert_eq!(check!(read.read_at(&mut buf, 15)), 0);
-        assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+        assert_eq!(check!(read.stream_position()), 14);
     }
     check!(fs::remove_file(&filename));
 }
@@ -362,38 +362,38 @@ fn file_test_io_seek_read_write() {
         let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
         let mut rw = check!(oo.open(&filename));
         assert_eq!(check!(rw.seek_write(write1.as_bytes(), 5)), write1.len());
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+        assert_eq!(check!(rw.stream_position()), 9);
         assert_eq!(check!(rw.seek_read(&mut buf, 5)), write1.len());
         assert_eq!(str::from_utf8(&buf[..write1.len()]), Ok(write1));
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+        assert_eq!(check!(rw.stream_position()), 9);
         assert_eq!(check!(rw.seek(SeekFrom::Start(0))), 0);
         assert_eq!(check!(rw.write(write2.as_bytes())), write2.len());
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 5);
+        assert_eq!(check!(rw.stream_position()), 5);
         assert_eq!(check!(rw.read(&mut buf)), write1.len());
         assert_eq!(str::from_utf8(&buf[..write1.len()]), Ok(write1));
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+        assert_eq!(check!(rw.stream_position()), 9);
         assert_eq!(check!(rw.seek_read(&mut buf[..write2.len()], 0)), write2.len());
         assert_eq!(str::from_utf8(&buf[..write2.len()]), Ok(write2));
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 5);
+        assert_eq!(check!(rw.stream_position()), 5);
         assert_eq!(check!(rw.seek_write(write3.as_bytes(), 9)), write3.len());
-        assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 14);
+        assert_eq!(check!(rw.stream_position()), 14);
     }
     {
         let mut read = check!(File::open(&filename));
         assert_eq!(check!(read.seek_read(&mut buf, 0)), content.len());
         assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
-        assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+        assert_eq!(check!(read.stream_position()), 14);
         assert_eq!(check!(read.seek(SeekFrom::End(-5))), 9);
         assert_eq!(check!(read.seek_read(&mut buf, 0)), content.len());
         assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
-        assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+        assert_eq!(check!(read.stream_position()), 14);
         assert_eq!(check!(read.seek(SeekFrom::End(-5))), 9);
         assert_eq!(check!(read.read(&mut buf)), write3.len());
         assert_eq!(str::from_utf8(&buf[..write3.len()]), Ok(write3));
-        assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+        assert_eq!(check!(read.stream_position()), 14);
         assert_eq!(check!(read.seek_read(&mut buf, 0)), content.len());
         assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
-        assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+        assert_eq!(check!(read.stream_position()), 14);
         assert_eq!(check!(read.seek_read(&mut buf, 14)), 0);
         assert_eq!(check!(read.seek_read(&mut buf, 15)), 0);
     }
