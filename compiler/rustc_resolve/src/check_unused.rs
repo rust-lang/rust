@@ -292,7 +292,7 @@ fn calc_unused_spans(
                 UnusedSpanResult::Used
             }
         }
-        ast::UseTreeKind::Nested { items: ref nested, .. } => {
+        ast::UseTreeKind::Nested { items: ref nested, span: tree_span } => {
             if nested.is_empty() {
                 return UnusedSpanResult::Unused { spans: vec![use_tree.span], remove: full_span };
             }
@@ -300,6 +300,7 @@ fn calc_unused_spans(
             let mut unused_spans = Vec::new();
             let mut to_remove = Vec::new();
             let mut used_childs = 0;
+            let mut contains_self = false;
             let mut previous_unused = false;
             for (pos, (use_tree, use_tree_id)) in nested.iter().enumerate() {
                 let remove = match calc_unused_spans(unused_import, use_tree, *use_tree_id) {
@@ -339,6 +340,8 @@ fn calc_unused_spans(
                         to_remove.push(remove_span);
                     }
                 }
+                contains_self |= use_tree.prefix == kw::SelfLower
+                    && matches!(use_tree.kind, ast::UseTreeKind::Simple(None));
                 previous_unused = remove.is_some();
             }
             if unused_spans.is_empty() {
@@ -346,6 +349,28 @@ fn calc_unused_spans(
             } else if used_childs == 0 {
                 UnusedSpanResult::Unused { spans: unused_spans, remove: full_span }
             } else {
+                // If there is only one remaining child that is used, the braces around the use
+                // tree are not needed anymore. In that case, we determine the span of the left
+                // brace and the right brace, and tell rustfix to remove them as well.
+                //
+                // This means that `use a::{B, C};` will be turned into `use a::B;` rather than
+                // `use a::{B};`, removing a rustfmt roundtrip.
+                //
+                // Note that we cannot remove the braces if the only item inside the use tree is
+                // `self`: `use foo::{self};` is valid Rust syntax, while `use foo::self;` errors
+                // out. We also cannot turn `use foo::{self}` into `use foo`, as the former doesn't
+                // import types with the same name as the module.
+                if used_childs == 1 && !contains_self {
+                    // Left brace, from the start of the nested group to the first item.
+                    to_remove.push(
+                        tree_span.shrink_to_lo().to(nested.first().unwrap().0.span.shrink_to_lo()),
+                    );
+                    // Right brace, from the end of the last item to the end of the nested group.
+                    to_remove.push(
+                        nested.last().unwrap().0.span.shrink_to_hi().to(tree_span.shrink_to_hi()),
+                    );
+                }
+
                 UnusedSpanResult::PartialUnused { spans: unused_spans, remove: to_remove }
             }
         }
