@@ -82,7 +82,9 @@ expand_invalid_cfg_predicate_literal = `cfg` predicate key cannot be a literal
 
 expand_invalid_fragment_specifier =
     invalid fragment specifier `{$fragment}`
-    .help = {$help}
+    .help_expr_2021 = fragment specifier `expr_2021` requires Rust 2021 or later
+    .help_valid_names_2021 = valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
+    .help_valid_names_other = valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
 
 expand_macro_body_stability =
     macros cannot have body stability attributes

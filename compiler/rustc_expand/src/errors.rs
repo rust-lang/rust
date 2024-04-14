@@ -417,14 +417,24 @@ pub struct DuplicateMatcherBinding {
     pub prev: Span,
 }
 
+#[derive(Subdiagnostic)]
+pub enum InvalidFragmentSpecifierValidNames {
+    #[help(expand_help_valid_names_2021)]
+    Edition2021,
+    #[help(expand_help_valid_names_other)]
+    Other,
+}
+
 #[derive(Diagnostic)]
 #[diag(expand_invalid_fragment_specifier)]
-#[help]
 pub struct InvalidFragmentSpecifier {
     #[primary_span]
     pub span: Span,
+    #[help(expand_help_expr_2021)]
+    pub help_expr_2021: bool,
+    #[subdiagnostic]
+    pub help_valid_names: InvalidFragmentSpecifierValidNames,
     pub fragment: Ident,
-    pub help: String,
 }
 
 #[derive(Diagnostic)]

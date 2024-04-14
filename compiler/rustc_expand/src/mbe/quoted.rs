@@ -13,14 +13,6 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::edition::Edition;
 use rustc_span::Span;
 
-const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
-                                        `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
-                                        `literal`, `path`, `meta`, `tt`, `item` and `vis`";
-const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
-                                             `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, \
-                                             `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, \
-                                             `item` and `vis`";
-
 /// Takes a `tokenstream::TokenStream` and returns a `Vec<self::TokenTree>`. Specifically, this
 /// takes a generic `TokenStream`, such as is used in the rest of the compiler, and returns a
 /// collection of `TokenTree` for use in parsing a macro.
@@ -85,27 +77,29 @@ pub(super) fn parse(
                                     let kind =
                                         token::NonterminalKind::from_symbol(fragment.name, edition)
                                             .unwrap_or_else(|| {
-                                                let help = match fragment.name {
-                                                    sym::expr_2021 => {
-                                                        format!(
-                                                            "fragment specifier `expr_2021` \
-                                                             requires Rust 2021 or later\n\
-                                                             {VALID_FRAGMENT_NAMES_MSG}"
-                                                        )
-                                                    }
+                                                let (help_expr_2021, help_valid_names) = match fragment.name {
+                                                    sym::expr_2021 => (
+                                                        true,
+                                                        errors::InvalidFragmentSpecifierValidNames::Other,
+                                                    ),
                                                     _ if edition().at_least_rust_2021()
                                                         && features
-                                                            .expr_fragment_specifier_2024 =>
-                                                    {
-                                                        VALID_FRAGMENT_NAMES_MSG_2021.into()
-                                                    }
-                                                    _ => VALID_FRAGMENT_NAMES_MSG.into(),
+                                                            .expr_fragment_specifier_2024 => (
+                                                        false,
+                                                        errors::InvalidFragmentSpecifierValidNames::Edition2021,
+                                                    ),
+                                                    _ => (
+                                                        false,
+                                                        errors::InvalidFragmentSpecifierValidNames::Other,
+                                                    )
+
                                                 };
                                                 sess.dcx().emit_err(
                                                     errors::InvalidFragmentSpecifier {
                                                         span,
                                                         fragment,
-                                                        help,
+                                                        help_expr_2021,
+                                                        help_valid_names,
                                                     },
                                                 );
                                                 token::NonterminalKind::Ident
