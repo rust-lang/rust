@@ -12,6 +12,34 @@ use rustc_span::{
 };
 use std::borrow::Cow;
 
+fn int_ty_max(int_ty: IntTy) -> Option<u128> {
+    match int_ty {
+        // isize is platform-dependent, so we should use
+        // TyCtxt.data_layout.pointer_size
+        // This is available, for example, from a LoweringContext
+        IntTy::Isize => None,
+        IntTy::I8 => Some(i8::MAX as u128),
+        IntTy::I16 => Some(i16::MAX as u128),
+        IntTy::I32 => Some(i32::MAX as u128),
+        IntTy::I64 => Some(i64::MAX as u128),
+        IntTy::I128 => Some(i128::MAX as u128),
+    }
+}
+
+fn uint_ty_max(uint_ty: UintTy) -> Option<u128> {
+    match uint_ty {
+        // usize is platform-dependent, so we should use
+        // TyCtxt.data_layout.pointer_size
+        // This is available, for example, from a LoweringContext
+        UintTy::Usize => None,
+        UintTy::U8 => Some(u8::MAX as u128),
+        UintTy::U16 => Some(u16::MAX as u128),
+        UintTy::U32 => Some(u32::MAX as u128),
+        UintTy::U64 => Some(u64::MAX as u128),
+        UintTy::U128 => Some(u128::MAX as u128),
+    }
+}
+
 impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
         // Never call the const constructor of `fmt::Arguments` if the
@@ -20,9 +48,103 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut fmt = Cow::Borrowed(fmt);
         if self.tcx.sess.opts.unstable_opts.flatten_format_args {
             fmt = flatten_format_args(fmt);
-            fmt = inline_literals(fmt);
+            fmt = self.inline_literals(fmt);
         }
         expand_format_args(self, sp, &fmt, allow_const)
+    }
+
+    /// Try to convert a literal into an interned string
+    fn try_inline_lit(&self, lit: token::Lit) -> Option<Symbol> {
+        match LitKind::from_token_lit(lit) {
+            Ok(LitKind::Str(s, _)) => Some(s),
+            Ok(LitKind::Int(n, ty)) => {
+                // platform-dependent usize and isize MAX
+                let usize_bits = self.tcx.data_layout.pointer_size.bits();
+                let usize_max = if usize_bits >= 128 { u128::MAX } else { 1u128 << usize_bits - 1 };
+                let isize_max = usize_max >> 1;
+                match ty {
+                    // unsuffixed integer literals are assumed to be i32's
+                    LitIntType::Unsuffixed => (n <= i32::MAX as u128).then_some(Symbol::intern(&n.to_string())),
+                    LitIntType::Signed(int_ty) => {
+                        let max_literal = int_ty_max(int_ty).unwrap_or(isize_max);
+                        (n <= max_literal).then_some(Symbol::intern(&n.to_string()))
+                    }
+                    LitIntType::Unsigned(uint_ty) => {
+                        let max_literal = uint_ty_max(uint_ty).unwrap_or(usize_max);
+                        (n <= max_literal).then_some(Symbol::intern(&n.to_string()))
+                    }
+                }
+            }
+            _ => None,
+        }
+    }
+
+    /// Inline literals into the format string.
+    ///
+    /// Turns
+    ///
+    /// `format_args!("Hello, {}! {} {}", "World", 123, x)`
+    ///
+    /// into
+    ///
+    /// `format_args!("Hello, World! 123 {}", x)`.
+    fn inline_literals<'fmt>(&self, mut fmt: Cow<'fmt, FormatArgs>) -> Cow<'fmt, FormatArgs> {
+        let mut was_inlined = vec![false; fmt.arguments.all_args().len()];
+        let mut inlined_anything = false;
+
+        for i in 0..fmt.template.len() {
+            let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i] else { continue };
+            let Ok(arg_index) = placeholder.argument.index else { continue };
+
+            let mut literal = None;
+
+            if let FormatTrait::Display = placeholder.format_trait
+                && placeholder.format_options == Default::default()
+                && let arg = fmt.arguments.all_args()[arg_index].expr.peel_parens_and_refs()
+                && let ExprKind::Lit(lit) = arg.kind
+            {
+                literal = self.try_inline_lit(lit);
+            }
+
+            if let Some(literal) = literal {
+                // Now we need to mutate the outer FormatArgs.
+                // If this is the first time, this clones the outer FormatArgs.
+                let fmt = fmt.to_mut();
+                // Replace the placeholder with the literal.
+                fmt.template[i] = FormatArgsPiece::Literal(literal);
+                was_inlined[arg_index] = true;
+                inlined_anything = true;
+            }
+        }
+
+        // Remove the arguments that were inlined.
+        if inlined_anything {
+            let fmt = fmt.to_mut();
+
+            let mut remove = was_inlined;
+
+            // Don't remove anything that's still used.
+            for_all_argument_indexes(&mut fmt.template, |index| remove[*index] = false);
+
+            // Drop all the arguments that are marked for removal.
+            let mut remove_it = remove.iter();
+            fmt.arguments.all_args_mut().retain(|_| remove_it.next() != Some(&true));
+
+            // Calculate the mapping of old to new indexes for the remaining arguments.
+            let index_map: Vec<usize> = remove
+                .into_iter()
+                .scan(0, |i, remove| {
+                    let mapped = *i;
+                    *i += !remove as usize;
+                    Some(mapped)
+                })
+                .collect();
+
+            // Correct the indexes that refer to arguments that have shifted position.
+            for_all_argument_indexes(&mut fmt.template, |index| *index = index_map[*index]);
+        }
+
+        fmt
     }
 }
 
@@ -100,82 +222,6 @@ fn flatten_format_args(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
             i += 1;
         }
     }
-    fmt
-}
-
-/// Inline literals into the format string.
-///
-/// Turns
-///
-/// `format_args!("Hello, {}! {} {}", "World", 123, x)`
-///
-/// into
-///
-/// `format_args!("Hello, World! 123 {}", x)`.
-fn inline_literals(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
-    let mut was_inlined = vec![false; fmt.arguments.all_args().len()];
-    let mut inlined_anything = false;
-
-    for i in 0..fmt.template.len() {
-        let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i] else { continue };
-        let Ok(arg_index) = placeholder.argument.index else { continue };
-
-        let mut literal = None;
-
-        if let FormatTrait::Display = placeholder.format_trait
-            && placeholder.format_options == Default::default()
-            && let arg = fmt.arguments.all_args()[arg_index].expr.peel_parens_and_refs()
-            && let ExprKind::Lit(lit) = arg.kind
-        {
-            if let token::LitKind::Str | token::LitKind::StrRaw(_) = lit.kind
-                && let Ok(LitKind::Str(s, _)) = LitKind::from_token_lit(lit)
-            {
-                literal = Some(s);
-            } else if let token::LitKind::Integer = lit.kind
-                && let Ok(LitKind::Int(n, _)) = LitKind::from_token_lit(lit)
-            {
-                literal = Some(Symbol::intern(&n.to_string()));
-            }
-        }
-
-        if let Some(literal) = literal {
-            // Now we need to mutate the outer FormatArgs.
-            // If this is the first time, this clones the outer FormatArgs.
-            let fmt = fmt.to_mut();
-            // Replace the placeholder with the literal.
-            fmt.template[i] = FormatArgsPiece::Literal(literal);
-            was_inlined[arg_index] = true;
-            inlined_anything = true;
-        }
-    }
-
-    // Remove the arguments that were inlined.
-    if inlined_anything {
-        let fmt = fmt.to_mut();
-
-        let mut remove = was_inlined;
-
-        // Don't remove anything that's still used.
-        for_all_argument_indexes(&mut fmt.template, |index| remove[*index] = false);
-
-        // Drop all the arguments that are marked for removal.
-        let mut remove_it = remove.iter();
-        fmt.arguments.all_args_mut().retain(|_| remove_it.next() != Some(&true));
-
-        // Calculate the mapping of old to new indexes for the remaining arguments.
-        let index_map: Vec<usize> = remove
-            .into_iter()
-            .scan(0, |i, remove| {
-                let mapped = *i;
-                *i += !remove as usize;
-                Some(mapped)
-            })
-            .collect();
-
-        // Correct the indexes that refer to arguments that have shifted position.
-        for_all_argument_indexes(&mut fmt.template, |index| *index = index_map[*index]);
-    }
-
     fmt
 }
 
