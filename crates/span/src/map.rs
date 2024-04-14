@@ -4,11 +4,11 @@
 use std::{fmt, hash::Hash};
 
 use stdx::{always, itertools::Itertools};
-use syntax::{TextRange, TextSize};
 use vfs::FileId;
 
 use crate::{
-    ErasedFileAstId, Span, SpanAnchor, SpanData, SyntaxContextId, ROOT_ERASED_FILE_AST_ID,
+    ErasedFileAstId, Span, SpanAnchor, SpanData, SyntaxContextId, TextRange, TextSize,
+    ROOT_ERASED_FILE_AST_ID,
 };
 
 /// Maps absolute text ranges for the corresponding file to the relevant span data.

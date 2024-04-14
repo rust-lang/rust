@@ -8,6 +8,7 @@ use limit::Limit;
 use crate::{
     event::Event,
     input::Input,
+    Edition,
     SyntaxKind::{self, EOF, ERROR, TOMBSTONE},
     TokenSet, T,
 };
@@ -27,13 +28,6 @@ pub(crate) struct Parser<'t> {
     events: Vec<Event>,
     steps: Cell<u32>,
     _edition: Edition,
-}
-
-#[non_exhaustive]
-pub enum Edition {
-    Edition2015,
-    Edition2018,
-    Edition2021,
 }
 
 static PARSER_STEP_LIMIT: Limit = Limit::new(15_000_000);

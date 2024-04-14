@@ -1823,6 +1823,7 @@ dependencies = [
  "salsa",
  "stdx",
  "syntax",
+ "text-size",
  "vfs",
 ]
 
