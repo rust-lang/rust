@@ -20,55 +20,40 @@ pub trait WithNumEdges: DirectedGraph {
     fn num_edges(&self) -> usize;
 }
 
-pub trait WithSuccessors: DirectedGraph
-where
-    Self: for<'graph> GraphSuccessors<'graph, Item = <Self as DirectedGraph>::Node>,
-{
-    fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter;
+pub trait Successors: DirectedGraph {
+    type Successors<'g>: Iterator<Item = Self::Node>
+    where
+        Self: 'g;
+
+    fn successors(&self, node: Self::Node) -> Self::Successors<'_>;
 
     fn depth_first_search(&self, from: Self::Node) -> iterate::DepthFirstSearch<'_, Self> {
         iterate::DepthFirstSearch::new(self).with_start_node(from)
     }
 }
 
-#[allow(unused_lifetimes)]
-pub trait GraphSuccessors<'graph> {
-    type Item;
-    type Iter: Iterator<Item = Self::Item>;
-}
+pub trait Predecessors: DirectedGraph {
+    type Predecessors<'g>: Iterator<Item = Self::Node>
+    where
+        Self: 'g;
 
-pub trait WithPredecessors: DirectedGraph
-where
-    Self: for<'graph> GraphPredecessors<'graph, Item = <Self as DirectedGraph>::Node>,
-{
-    fn predecessors(&self, node: Self::Node) -> <Self as GraphPredecessors<'_>>::Iter;
-}
-
-#[allow(unused_lifetimes)]
-pub trait GraphPredecessors<'graph> {
-    type Item;
-    type Iter: Iterator<Item = Self::Item>;
+    fn predecessors(&self, node: Self::Node) -> Self::Predecessors<'_>;
 }
 
 pub trait WithStartNode: DirectedGraph {
     fn start_node(&self) -> Self::Node;
 }
 
-pub trait ControlFlowGraph:
-    DirectedGraph + WithStartNode + WithPredecessors + WithSuccessors
-{
+pub trait ControlFlowGraph: DirectedGraph + WithStartNode + Predecessors + Successors {
     // convenient trait
 }
 
-impl<T> ControlFlowGraph for T where
-    T: DirectedGraph + WithStartNode + WithPredecessors + WithSuccessors
-{
-}
+impl<T> ControlFlowGraph for T where T: DirectedGraph + WithStartNode + Predecessors + Successors {}
 
 /// Returns `true` if the graph has a cycle that is reachable from the start node.
 pub fn is_cyclic<G>(graph: &G) -> bool
 where
-    G: ?Sized + DirectedGraph + WithStartNode + WithSuccessors,
+    G: ?Sized + DirectedGraph + WithStartNode + Successors,
 {
     iterate::TriColorDepthFirstSearch::new(graph)
         .run_from_start(&mut iterate::CycleDetector)

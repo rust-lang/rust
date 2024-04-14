@@ -1,7 +1,7 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{self, Dominators};
-use rustc_data_structures::graph::{self, DirectedGraph, GraphSuccessors, WithStartNode};
+use rustc_data_structures::graph::{self, DirectedGraph, WithStartNode};
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
@@ -208,28 +208,20 @@ impl graph::WithStartNode for CoverageGraph {
     }
 }
 
-type BcbSuccessors<'graph> = std::slice::Iter<'graph, BasicCoverageBlock>;
+impl graph::Successors for CoverageGraph {
+    type Successors<'g> = std::iter::Cloned<std::slice::Iter<'g, BasicCoverageBlock>>;
 
-impl<'graph> graph::GraphSuccessors<'graph> for CoverageGraph {
-    type Item = BasicCoverageBlock;
-    type Iter = std::iter::Cloned<BcbSuccessors<'graph>>;
-}
-
-impl graph::WithSuccessors for CoverageGraph {
     #[inline]
-    fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
+    fn successors(&self, node: Self::Node) -> Self::Successors<'_> {
         self.successors[node].iter().cloned()
     }
 }
 
-impl<'graph> graph::GraphPredecessors<'graph> for CoverageGraph {
-    type Item = BasicCoverageBlock;
-    type Iter = std::iter::Copied<std::slice::Iter<'graph, BasicCoverageBlock>>;
-}
+impl graph::Predecessors for CoverageGraph {
+    type Predecessors<'g> = std::iter::Copied<std::slice::Iter<'g, BasicCoverageBlock>>;
 
-impl graph::WithPredecessors for CoverageGraph {
     #[inline]
-    fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
+    fn predecessors(&self, node: Self::Node) -> Self::Predecessors<'_> {
         self.predecessors[node].iter().copied()
     }
 }

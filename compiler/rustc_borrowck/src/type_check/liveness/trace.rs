@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::graph::WithSuccessors;
+use rustc_data_structures::graph::Successors;
 use rustc_index::bit_set::BitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;

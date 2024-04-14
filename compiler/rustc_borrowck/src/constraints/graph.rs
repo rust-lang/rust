@@ -222,15 +222,10 @@ impl<'s, 'tcx, D: ConstraintGraphDirection> graph::DirectedGraph for RegionGraph
     }
 }
 
-impl<'s, 'tcx, D: ConstraintGraphDirection> graph::WithSuccessors for RegionGraph<'s, 'tcx, D> {
-    fn successors(&self, node: Self::Node) -> <Self as graph::GraphSuccessors<'_>>::Iter {
+impl<'s, 'tcx, D: ConstraintGraphDirection> graph::Successors for RegionGraph<'s, 'tcx, D> {
+    type Successors<'g> = Successors<'s, 'tcx, D> where Self: 'g;
+
+    fn successors(&self, node: Self::Node) -> Self::Successors<'_> {
         self.outgoing_regions(node)
     }
-}
-
-impl<'s, 'tcx, D: ConstraintGraphDirection> graph::GraphSuccessors<'_>
-    for RegionGraph<'s, 'tcx, D>
-{
-    type Item = RegionVid;
-    type Iter = Successors<'s, 'tcx, D>;
 }

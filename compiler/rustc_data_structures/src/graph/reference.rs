@@ -14,24 +14,18 @@ impl<'graph, G: WithStartNode> WithStartNode for &'graph G {
     }
 }
 
-impl<'graph, G: WithSuccessors> WithSuccessors for &'graph G {
-    fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
+impl<'graph, G: Successors> Successors for &'graph G {
+    type Successors<'g> = G::Successors<'g> where 'graph: 'g;
+
+    fn successors(&self, node: Self::Node) -> Self::Successors<'_> {
         (**self).successors(node)
     }
 }
 
-impl<'graph, G: WithPredecessors> WithPredecessors for &'graph G {
-    fn predecessors(&self, node: Self::Node) -> <Self as GraphPredecessors<'_>>::Iter {
+impl<'graph, G: Predecessors> Predecessors for &'graph G {
+    type Predecessors<'g> = G::Predecessors<'g> where 'graph: 'g;
+
+    fn predecessors(&self, node: Self::Node) -> Self::Predecessors<'_> {
         (**self).predecessors(node)
     }
-}
-
-impl<'iter, 'graph, G: WithPredecessors> GraphPredecessors<'iter> for &'graph G {
-    type Item = G::Node;
-    type Iter = <G as GraphPredecessors<'iter>>::Iter;
-}
-
-impl<'iter, 'graph, G: WithSuccessors> GraphSuccessors<'iter> for &'graph G {
-    type Item = G::Node;
-    type Iter = <G as GraphSuccessors<'iter>>::Iter;
 }

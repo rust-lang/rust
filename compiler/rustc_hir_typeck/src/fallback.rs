@@ -1,6 +1,6 @@
 use crate::FnCtxt;
 use rustc_data_structures::{
-    graph::WithSuccessors,
+    graph::Successors,
     graph::{iterate::DepthFirstSearch, vec_graph::VecGraph},
     unord::{UnordBag, UnordMap, UnordSet},
 };

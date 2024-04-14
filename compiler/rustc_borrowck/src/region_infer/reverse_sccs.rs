@@ -2,7 +2,7 @@ use crate::constraints::ConstraintSccIndex;
 use crate::RegionInferenceContext;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::vec_graph::VecGraph;
-use rustc_data_structures::graph::WithSuccessors;
+use rustc_data_structures::graph::Successors;
 use rustc_middle::ty::RegionVid;
 use std::ops::Range;
 

@@ -1,4 +1,4 @@
-use crate::graph::{DirectedGraph, GraphSuccessors, WithNumEdges, WithSuccessors};
+use crate::graph::{DirectedGraph, Successors, WithNumEdges};
 use rustc_index::{Idx, IndexVec};
 
 #[cfg(test)]
@@ -92,14 +92,10 @@ impl<N: Idx> WithNumEdges for VecGraph<N> {
     }
 }
 
-impl<'graph, N: Idx> GraphSuccessors<'graph> for VecGraph<N> {
-    type Item = N;
+impl<N: Idx + Ord> Successors for VecGraph<N> {
+    type Successors<'g> = std::iter::Cloned<std::slice::Iter<'g, N>>;
 
-    type Iter = std::iter::Cloned<std::slice::Iter<'graph, N>>;
-}
-
-impl<N: Idx + Ord> WithSuccessors for VecGraph<N> {
-    fn successors(&self, node: N) -> <Self as GraphSuccessors<'_>>::Iter {
+    fn successors(&self, node: N) -> Self::Successors<'_> {
         self.successors(node).iter().cloned()
     }
 }

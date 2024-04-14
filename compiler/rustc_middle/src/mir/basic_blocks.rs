@@ -155,26 +155,20 @@ impl<'tcx> graph::WithStartNode for BasicBlocks<'tcx> {
     }
 }
 
-impl<'tcx> graph::WithSuccessors for BasicBlocks<'tcx> {
+impl<'tcx> graph::Successors for BasicBlocks<'tcx> {
+    type Successors<'b> = Successors<'b> where 'tcx: 'b;
+
     #[inline]
-    fn successors(&self, node: Self::Node) -> <Self as graph::GraphSuccessors<'_>>::Iter {
+    fn successors(&self, node: Self::Node) -> Self::Successors<'_> {
         self.basic_blocks[node].terminator().successors()
     }
 }
 
-impl<'a, 'b> graph::GraphSuccessors<'b> for BasicBlocks<'a> {
-    type Item = BasicBlock;
-    type Iter = Successors<'b>;
-}
+impl<'tcx> graph::Predecessors for BasicBlocks<'tcx> {
+    type Predecessors<'b> = std::iter::Copied<std::slice::Iter<'b, BasicBlock>> where 'tcx: 'b;
 
-impl<'tcx, 'graph> graph::GraphPredecessors<'graph> for BasicBlocks<'tcx> {
-    type Item = BasicBlock;
-    type Iter = std::iter::Copied<std::slice::Iter<'graph, BasicBlock>>;
-}
-
-impl<'tcx> graph::WithPredecessors for BasicBlocks<'tcx> {
     #[inline]
-    fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
+    fn predecessors(&self, node: Self::Node) -> Self::Predecessors<'_> {
         self.predecessors()[node].iter().copied()
     }
 }

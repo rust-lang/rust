@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::graph::WithSuccessors;
+use rustc_data_structures::graph::Successors;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{
     self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
