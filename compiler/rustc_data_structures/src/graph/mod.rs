@@ -30,10 +30,6 @@ pub trait Successors: DirectedGraph {
         Self: 'g;
 
     fn successors(&self, node: Self::Node) -> Self::Successors<'_>;
-
-    fn depth_first_search(&self, from: Self::Node) -> iterate::DepthFirstSearch<'_, Self> {
-        iterate::DepthFirstSearch::new(self).with_start_node(from)
-    }
 }
 
 pub trait Predecessors: DirectedGraph {
@@ -56,4 +52,11 @@ where
     iterate::TriColorDepthFirstSearch::new(graph)
         .run_from_start(&mut iterate::CycleDetector)
         .is_some()
+}
+
+pub fn depth_first_search<G>(graph: &G, from: G::Node) -> iterate::DepthFirstSearch<'_, G>
+where
+    G: ?Sized + Successors,
+{
+    iterate::DepthFirstSearch::new(graph).with_start_node(from)
 }
