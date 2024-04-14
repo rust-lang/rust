@@ -447,10 +447,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // This is because a `& &mut` cannot mutate the underlying value.
                 ByRef::Yes(Mutability::Not) => Mutability::Not,
             });
+        }
 
-            if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
-                max_ref_mutability = cmp::min(max_ref_mutability, inner_mutability);
-                def_bm = def_bm.cap_ref_mutability(max_ref_mutability);
+        if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
+            def_bm = def_bm.cap_ref_mutability(max_ref_mutability);
+            if def_bm.0 == ByRef::Yes(Mutability::Not) {
+                max_ref_mutability = Mutability::Not;
             }
         }
 

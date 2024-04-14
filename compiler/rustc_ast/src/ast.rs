@@ -734,8 +734,8 @@ impl BindingAnnotation {
     }
 
     pub fn cap_ref_mutability(mut self, mutbl: Mutability) -> Self {
-        if let ByRef::Yes(old_mutbl) = self.0 {
-            self.0 = ByRef::Yes(cmp::min(old_mutbl, mutbl));
+        if let ByRef::Yes(old_mutbl) = &mut self.0 {
+            *old_mutbl = cmp::min(*old_mutbl, mutbl);
         }
         self
     }
