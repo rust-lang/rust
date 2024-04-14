@@ -1,6 +1,6 @@
 //@ known-bug: #23707
 //@ compile-flags: -Copt-level=0 --edition=2021
-
+//@ only-x86_64
 #![recursion_limit="2048"]
 
 use std::marker::PhantomData;

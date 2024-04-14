@@ -1,4 +1,5 @@
 //@ known-bug: #123077
+//@ only-x86_64
 use std::arch::x86_64::{__m128, _mm_blend_ps};
 
 pub fn sse41_blend_noinline( ) -> __m128 {

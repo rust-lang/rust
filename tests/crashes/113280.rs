@@ -1,4 +1,5 @@
 //@ known-bug: #113280
+//@ only-x86_64
 
 #![feature(dyn_star, pointer_like_trait)]
 #![allow(incomplete_features)]
