@@ -327,7 +327,7 @@ mod tests {
     use crate::cfg_process::parse_from_attr_meta;
 
     fn check_dnf_from_syntax(input: &str, expect: Expect) {
-        let parse = SourceFile::parse(input);
+        let parse = SourceFile::parse(input, span::Edition::CURRENT);
         let node = match parse.tree().syntax().descendants().find_map(Attr::cast) {
             Some(it) => it,
             None => {

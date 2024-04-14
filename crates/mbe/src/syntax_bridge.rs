@@ -3,7 +3,7 @@
 use std::fmt;
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{SpanAnchor, SpanData, SpanMap};
+use span::{Edition, SpanAnchor, SpanData, SpanMap};
 use stdx::{never, non_empty_vec::NonEmptyVec};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
@@ -183,7 +183,12 @@ where
 }
 
 /// Split token tree with separate expr: $($e:expr)SEP*
-pub fn parse_exprs_with_sep<S>(tt: &tt::Subtree<S>, sep: char, span: S) -> Vec<tt::Subtree<S>>
+pub fn parse_exprs_with_sep<S>(
+    tt: &tt::Subtree<S>,
+    sep: char,
+    span: S,
+    edition: Edition,
+) -> Vec<tt::Subtree<S>>
 where
     S: Copy + fmt::Debug,
 {
@@ -195,8 +200,7 @@ where
     let mut res = Vec::new();
 
     while iter.peek_n(0).is_some() {
-        let expanded =
-            iter.expect_fragment(parser::PrefixEntryPoint::Expr, parser::Edition::CURRENT);
+        let expanded = iter.expect_fragment(parser::PrefixEntryPoint::Expr, edition);
 
         res.push(match expanded.value {
             None => break,

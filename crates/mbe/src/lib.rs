@@ -250,8 +250,9 @@ impl DeclarativeMacro {
         marker: impl Fn(&mut Span) + Copy,
         new_meta_vars: bool,
         call_site: Span,
+        def_site_edition: Edition,
     ) -> ExpandResult<tt::Subtree<Span>> {
-        expander::expand_rules(&self.rules, tt, marker, new_meta_vars, call_site)
+        expander::expand_rules(&self.rules, tt, marker, new_meta_vars, call_site, def_site_edition)
     }
 }
 

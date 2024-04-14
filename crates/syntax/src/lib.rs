@@ -141,8 +141,8 @@ impl Parse<SourceFile> {
         buf
     }
 
-    pub fn reparse(&self, indel: &Indel) -> Parse<SourceFile> {
-        self.incremental_reparse(indel).unwrap_or_else(|| self.full_reparse(indel))
+    pub fn reparse(&self, indel: &Indel, edition: Edition) -> Parse<SourceFile> {
+        self.incremental_reparse(indel).unwrap_or_else(|| self.full_reparse(indel, edition))
     }
 
     fn incremental_reparse(&self, indel: &Indel) -> Option<Parse<SourceFile>> {
@@ -159,10 +159,10 @@ impl Parse<SourceFile> {
         })
     }
 
-    fn full_reparse(&self, indel: &Indel) -> Parse<SourceFile> {
+    fn full_reparse(&self, indel: &Indel, edition: Edition) -> Parse<SourceFile> {
         let mut text = self.tree().syntax().text().to_string();
         indel.apply(&mut text);
-        SourceFile::parse(&text)
+        SourceFile::parse(&text, edition)
     }
 }
 
@@ -170,9 +170,9 @@ impl Parse<SourceFile> {
 pub use crate::ast::SourceFile;
 
 impl SourceFile {
-    pub fn parse(text: &str) -> Parse<SourceFile> {
+    pub fn parse(text: &str, edition: Edition) -> Parse<SourceFile> {
         let _p = tracing::span!(tracing::Level::INFO, "SourceFile::parse").entered();
-        let (green, errors) = parsing::parse_text(text, parser::Edition::CURRENT);
+        let (green, errors) = parsing::parse_text(text, edition);
         let root = SyntaxNode::new_root(green.clone());
 
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
@@ -340,7 +340,7 @@ fn api_walkthrough() {
     //
     // The `parse` method returns a `Parse` -- a pair of syntax tree and a list
     // of errors. That is, syntax tree is constructed even in presence of errors.
-    let parse = SourceFile::parse(source_code);
+    let parse = SourceFile::parse(source_code, parser::Edition::CURRENT);
     assert!(parse.errors().is_empty());
 
     // The `tree` method returns an owned syntax node of type `SourceFile`.

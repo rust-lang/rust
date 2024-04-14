@@ -6,7 +6,7 @@ mod matcher;
 mod transcriber;
 
 use rustc_hash::FxHashMap;
-use span::Span;
+use span::{Edition, Span};
 use syntax::SmolStr;
 
 use crate::{parser::MetaVarKind, ExpandError, ExpandResult};
@@ -17,10 +17,11 @@ pub(crate) fn expand_rules(
     marker: impl Fn(&mut Span) + Copy,
     new_meta_vars: bool,
     call_site: Span,
+    def_site_edition: Edition,
 ) -> ExpandResult<tt::Subtree<Span>> {
     let mut match_: Option<(matcher::Match, &crate::Rule)> = None;
     for rule in rules {
-        let new_match = matcher::match_(&rule.lhs, input);
+        let new_match = matcher::match_(&rule.lhs, input, def_site_edition);
 
         if new_match.err.is_none() {
             // If we find a rule that applies without errors, we're done.

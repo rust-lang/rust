@@ -208,6 +208,7 @@ fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
 mod tests {
     use super::*;
 
+    use ide::Edition;
     use mbe::{syntax_node_to_token_tree, DummyTestSpanMap, DUMMY};
     use syntax::{
         ast::{self, AstNode},
@@ -216,7 +217,7 @@ mod tests {
 
     fn check(cfg: &str, expected_features: &[&str]) {
         let cfg_expr = {
-            let source_file = ast::SourceFile::parse(cfg).ok().unwrap();
+            let source_file = ast::SourceFile::parse(cfg, Edition::CURRENT).ok().unwrap();
             let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
             let tt = syntax_node_to_token_tree(tt.syntax(), &DummyTestSpanMap, DUMMY);
             CfgExpr::parse(&tt)

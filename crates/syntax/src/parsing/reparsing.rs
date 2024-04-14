@@ -177,6 +177,7 @@ fn merge_errors(
 
 #[cfg(test)]
 mod tests {
+    use parser::Edition;
     use test_utils::{assert_eq_text, extract_range};
 
     use super::*;
@@ -191,9 +192,9 @@ mod tests {
             after
         };
 
-        let fully_reparsed = SourceFile::parse(&after);
+        let fully_reparsed = SourceFile::parse(&after, Edition::CURRENT);
         let incrementally_reparsed: Parse<SourceFile> = {
-            let before = SourceFile::parse(&before);
+            let before = SourceFile::parse(&before, Edition::CURRENT);
             let (green, new_errors, range) = incremental_reparse(
                 before.tree().syntax(),
                 &edit,
