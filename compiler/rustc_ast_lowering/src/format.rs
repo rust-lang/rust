@@ -64,7 +64,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let isize_max = usize_max >> 1;
                 match ty {
                     // unsuffixed integer literals are assumed to be i32's
-                    LitIntType::Unsuffixed => (n <= i32::MAX as u128).then_some(Symbol::intern(&n.to_string())),
+                    LitIntType::Unsuffixed => {
+                        (n <= i32::MAX as u128).then_some(Symbol::intern(&n.to_string()))
+                    }
                     LitIntType::Signed(int_ty) => {
                         let max_literal = int_ty_max(int_ty).unwrap_or(isize_max);
                         (n <= max_literal).then_some(Symbol::intern(&n.to_string()))
