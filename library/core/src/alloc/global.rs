@@ -124,8 +124,8 @@ pub unsafe trait GlobalAlloc {
     ///
     /// # Safety
     ///
-    /// This function is unsafe because undefined behavior can result
-    /// if the caller does not ensure that `layout` has non-zero size.
+    /// `layout` must have non-zero size. Attempting to allocate for a zero-sized `layout` may
+    /// result in undefined behavior.
     ///
     /// (Extension subtraits might provide more specific bounds on
     /// behavior, e.g., guarantee a sentinel address or a null pointer
@@ -156,14 +156,14 @@ pub unsafe trait GlobalAlloc {
     ///
     /// # Safety
     ///
-    /// This function is unsafe because undefined behavior can result
-    /// if the caller does not ensure all of the following:
+    /// The caller must ensure:
     ///
-    /// * `ptr` must denote a block of memory currently allocated via
-    ///   this allocator,
+    /// * `ptr` is a block of memory currently allocated via this allocator and,
     ///
-    /// * `layout` must be the same layout that was used
-    ///   to allocate that block of memory.
+    /// * `layout` is the same layout that was used to allocate that block of
+    ///   memory.
+    ///
+    /// Otherwise undefined behavior can result.
     #[stable(feature = "global_alloc", since = "1.28.0")]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 
@@ -172,7 +172,8 @@ pub unsafe trait GlobalAlloc {
     ///
     /// # Safety
     ///
-    /// This function is unsafe for the same reasons that `alloc` is.
+    /// The caller has to ensure that `layout` has non-zero size. Like `alloc`
+    /// zero sized `layout` can result in undefined behaviour.
     /// However the allocated block of memory is guaranteed to be initialized.
     ///
     /// # Errors
@@ -220,19 +221,20 @@ pub unsafe trait GlobalAlloc {
     ///
     /// # Safety
     ///
-    /// This function is unsafe because undefined behavior can result
-    /// if the caller does not ensure all of the following:
+    /// The caller must ensure that:
     ///
-    /// * `ptr` must be currently allocated via this allocator,
+    /// * `ptr` is allocated via this allocator,
     ///
-    /// * `layout` must be the same layout that was used
+    /// * `layout` is the same layout that was used
     ///   to allocate that block of memory,
     ///
-    /// * `new_size` must be greater than zero.
+    /// * `new_size` is greater than zero.
     ///
     /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`,
-    ///   must not overflow `isize` (i.e., the rounded value must be less than or
+    ///   does not overflow `isize` (i.e., the rounded value must be less than or
     ///   equal to `isize::MAX`).
+    ///
+    /// If these are not followed, undefined behaviour can result.
     ///
     /// (Extension subtraits might provide more specific bounds on
     /// behavior, e.g., guarantee a sentinel address or a null pointer
