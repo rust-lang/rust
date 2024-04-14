@@ -93,41 +93,6 @@ fn leading_zeros() {
     })
 }
 
-macro_rules! extend {
-    ($fX:ident, $fD:ident, $fn:ident) => {
-        fuzz_float(N, |x: $fX| {
-            let tmp0 = x as $fD;
-            let tmp1: $fD = $fn(x);
-            if !Float::eq_repr(tmp0, tmp1) {
-                panic!(
-                    "{}({}): std: {}, builtins: {}",
-                    stringify!($fn),
-                    x,
-                    tmp0,
-                    tmp1
-                );
-            }
-        });
-    };
-}
-
-// PowerPC tests are failing on LLVM 13: https://github.com/rust-lang/rust/issues/88520
-#[cfg(not(target_arch = "powerpc64"))]
-#[test]
-fn float_extend() {
-    use compiler_builtins::float::extend::__extendsfdf2;
-
-    extend!(f32, f64, __extendsfdf2);
-}
-
-#[cfg(target_arch = "arm")]
-#[test]
-fn float_extend_arm() {
-    use compiler_builtins::float::extend::__extendsfdf2vfp;
-
-    extend!(f32, f64, __extendsfdf2vfp);
-}
-
 // This is approximate because of issues related to
 // https://github.com/rust-lang/rust/issues/73920.
 // TODO how do we resolve this indeterminacy?
@@ -178,37 +143,4 @@ fn float_pow() {
         f32, 1e-4, __powisf2;
         f64, 1e-12, __powidf2;
     );
-}
-
-macro_rules! trunc {
-    ($fX:ident, $fD:ident, $fn:ident) => {
-        fuzz_float(N, |x: $fX| {
-            let tmp0 = x as $fD;
-            let tmp1: $fD = $fn(x);
-            if !Float::eq_repr(tmp0, tmp1) {
-                panic!(
-                    "{}({}): std: {}, builtins: {}",
-                    stringify!($fn),
-                    x,
-                    tmp0,
-                    tmp1
-                );
-            }
-        });
-    };
-}
-
-#[test]
-fn float_trunc() {
-    use compiler_builtins::float::trunc::__truncdfsf2;
-
-    trunc!(f64, f32, __truncdfsf2);
-}
-
-#[cfg(target_arch = "arm")]
-#[test]
-fn float_trunc_arm() {
-    use compiler_builtins::float::trunc::__truncdfsf2vfp;
-
-    trunc!(f64, f32, __truncdfsf2vfp);
 }

@@ -28,6 +28,8 @@ else
     $run --features c --release
     $run --features no-asm
     $run --features no-asm --release
+    $run --features no-f16-f128
+    $run --features no-f16-f128 --release
 fi
 
 if [ -d /builtins-target ]; then
@@ -45,6 +47,8 @@ cargo build --target "$target" --features c
 cargo build --target "$target" --release --features c
 cargo build --target "$target" --features no-asm
 cargo build --target "$target" --release --features no-asm
+cargo build --target "$target" --features no-f16-f128
+cargo build --target "$target" --release --features no-f16-f128
 
 PREFIX=${target//unknown-/}-
 case "$target" in

@@ -2,7 +2,7 @@
 name = "testcrate"
 version = "0.1.0"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
-edition = "2018"
+edition = "2021"
 
 [lib]
 test = false
@@ -13,6 +13,8 @@ doctest = false
 # problems with system RNGs on the variety of platforms this crate is tested on.
 # `xoshiro128**` is used for its quality, size, and speed at generating `u32` shift amounts.
 rand_xoshiro = "0.6"
+# To compare float builtins against
+rustc_apfloat = "0.2.0"
 
 [dependencies.compiler_builtins]
 path = ".."
@@ -28,5 +30,6 @@ utest-macros = { git = "https://github.com/japaric/utest" }
 default = ["mangled-names"]
 c = ["compiler_builtins/c"]
 no-asm = ["compiler_builtins/no-asm"]
+no-f16-f128 = ["compiler_builtins/no-f16-f128"]
 mem = ["compiler_builtins/mem"]
 mangled-names = ["compiler_builtins/mangled-names"]

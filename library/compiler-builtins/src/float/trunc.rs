@@ -52,8 +52,10 @@ where
         // destination format.  We can convert by simply right-shifting with
         // rounding and adjusting the exponent.
         abs_result = (a_abs >> sign_bits_delta).cast();
-        let tmp = src_exp_bias.wrapping_sub(dst_exp_bias) << R::SIGNIFICAND_BITS;
-        abs_result = abs_result.wrapping_sub(tmp.cast());
+        // Cast before shifting to prevent overflow.
+        let bias_diff: R::Int = src_exp_bias.wrapping_sub(dst_exp_bias).cast();
+        let tmp = bias_diff << R::SIGNIFICAND_BITS;
+        abs_result = abs_result.wrapping_sub(tmp);
 
         let round_bits = a_abs & round_mask;
         if round_bits > halfway {
@@ -67,13 +69,17 @@ where
         // a is NaN.
         // Conjure the result by beginning with infinity, setting the qNaN
         // bit and inserting the (truncated) trailing NaN field.
-        abs_result = (dst_inf_exp << R::SIGNIFICAND_BITS).cast();
+        // Cast before shifting to prevent overflow.
+        let dst_inf_exp: R::Int = dst_inf_exp.cast();
+        abs_result = dst_inf_exp << R::SIGNIFICAND_BITS;
         abs_result |= dst_qnan;
         abs_result |= dst_nan_code
             & ((a_abs & src_nan_code) >> (F::SIGNIFICAND_BITS - R::SIGNIFICAND_BITS)).cast();
     } else if a_abs >= overflow {
         // a overflows to infinity.
-        abs_result = (dst_inf_exp << R::SIGNIFICAND_BITS).cast();
+        // Cast before shifting to prevent overflow.
+        let dst_inf_exp: R::Int = dst_inf_exp.cast();
+        abs_result = dst_inf_exp << R::SIGNIFICAND_BITS;
     } else {
         // a underflows on conversion to the destination type or is an exact
         // zero.  The result may be a denormal or zero.  Extract the exponent
@@ -122,5 +128,46 @@ intrinsics! {
     #[cfg(target_arch = "arm")]
     pub extern "C" fn __truncdfsf2vfp(a: f64) -> f32 {
         a as f32
+    }
+}
+
+#[cfg(not(feature = "no-f16-f128"))]
+intrinsics! {
+    #[avr_skip]
+    #[aapcs_on_arm]
+    #[arm_aeabi_alias = __aeabi_f2h]
+    pub extern "C" fn __truncsfhf2(a: f32) -> f16 {
+        trunc(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    pub extern "C" fn __gnu_f2h_ieee(a: f32) -> f16 {
+        trunc(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    #[arm_aeabi_alias = __aeabi_d2h]
+    pub extern "C" fn __truncdfhf2(a: f64) -> f16 {
+        trunc(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    pub extern "C" fn __trunctfhf2(a: f128) -> f16 {
+        trunc(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    pub extern "C" fn __trunctfsf2(a: f128) -> f32 {
+        trunc(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    pub extern "C" fn __trunctfdf2(a: f128) -> f64 {
+        trunc(a)
     }
 }

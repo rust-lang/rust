@@ -1,3 +1,13 @@
+#![cfg_attr(not(feature = "no-f16-f128"), feature(f16))]
+#![cfg_attr(not(feature = "no-f16-f128"), feature(f128))]
+// makes configuration easier
+#![allow(unused_macros)]
+
+use compiler_builtins::float::Float;
+use rustc_apfloat::ieee::{Double, Single};
+#[cfg(not(feature = "no-f16-f128"))]
+use rustc_apfloat::ieee::{Half, Quad};
+use rustc_apfloat::{Float as _, FloatConvert as _};
 use testcrate::*;
 
 macro_rules! i_to_f {
@@ -129,4 +139,119 @@ fn float_to_int() {
             i128, __fixdfti;
         );
     });
+}
+
+macro_rules! conv {
+    ($fX:ident, $fD:ident, $fn:ident, $apfloatX:ident, $apfloatD:ident) => {
+        fuzz_float(N, |x: $fX| {
+            let tmp0: $apfloatD = $apfloatX::from_bits(x.to_bits().into())
+                .convert(&mut false)
+                .value;
+            let tmp0 = $fD::from_bits(tmp0.to_bits().try_into().unwrap());
+            let tmp1: $fD = $fn(x);
+            if !Float::eq_repr(tmp0, tmp1) {
+                panic!(
+                    "{}({x:?}): apfloat: {tmp0:?}, builtins: {tmp1:?}",
+                    stringify!($fn)
+                );
+            }
+        });
+    };
+}
+
+macro_rules! extend {
+    ($fX:ident, $fD:ident, $fn:ident) => {
+        fuzz_float(N, |x: $fX| {
+            let tmp0 = x as $fD;
+            let tmp1: $fD = $fn(x);
+            if !Float::eq_repr(tmp0, tmp1) {
+                panic!(
+                    "{}({}): std: {}, builtins: {}",
+                    stringify!($fn),
+                    x,
+                    tmp0,
+                    tmp1
+                );
+            }
+        });
+    };
+}
+
+// PowerPC tests are failing on LLVM 13: https://github.com/rust-lang/rust/issues/88520
+#[cfg(not(target_arch = "powerpc64"))]
+#[test]
+fn float_extend() {
+    use compiler_builtins::float::extend::__extendsfdf2;
+
+    extend!(f32, f64, __extendsfdf2);
+    conv!(f32, f64, __extendsfdf2, Single, Double);
+    #[cfg(not(feature = "no-f16-f128"))]
+    {
+        use compiler_builtins::float::extend::{
+            __extenddftf2, __extendhfsf2, __extendhftf2, __extendsftf2, __gnu_h2f_ieee,
+        };
+        // FIXME(f16_f128): Also do extend!() for `f16` and `f128` when builtins are in nightly
+        conv!(f16, f32, __extendhfsf2, Half, Single);
+        conv!(f16, f32, __gnu_h2f_ieee, Half, Single);
+        conv!(f16, f128, __extendhftf2, Half, Quad);
+        conv!(f32, f128, __extendsftf2, Single, Quad);
+        conv!(f64, f128, __extenddftf2, Double, Quad);
+    }
+}
+
+#[cfg(target_arch = "arm")]
+#[test]
+fn float_extend_arm() {
+    use compiler_builtins::float::extend::__extendsfdf2vfp;
+
+    extend!(f32, f64, __extendsfdf2vfp);
+    conv!(f32, f64, __extendsfdf2vfp, Single, Double);
+}
+
+macro_rules! trunc {
+    ($fX:ident, $fD:ident, $fn:ident) => {
+        fuzz_float(N, |x: $fX| {
+            let tmp0 = x as $fD;
+            let tmp1: $fD = $fn(x);
+            if !Float::eq_repr(tmp0, tmp1) {
+                panic!(
+                    "{}({}): std: {}, builtins: {}",
+                    stringify!($fn),
+                    x,
+                    tmp0,
+                    tmp1
+                );
+            }
+        });
+    };
+}
+
+#[test]
+fn float_trunc() {
+    use compiler_builtins::float::trunc::__truncdfsf2;
+
+    trunc!(f64, f32, __truncdfsf2);
+    conv!(f64, f32, __truncdfsf2, Double, Single);
+    #[cfg(not(feature = "no-f16-f128"))]
+    {
+        use compiler_builtins::float::trunc::{
+            __gnu_f2h_ieee, __truncdfhf2, __truncsfhf2, __trunctfdf2, __trunctfhf2, __trunctfsf2,
+        };
+        // FIXME(f16_f128): Also do trunc!() for `f16` and `f128` when builtins are in nightly
+        conv!(f32, f16, __truncsfhf2, Single, Half);
+        conv!(f32, f16, __gnu_f2h_ieee, Single, Half);
+        conv!(f64, f16, __truncdfhf2, Double, Half);
+        conv!(f128, f16, __trunctfhf2, Quad, Half);
+        conv!(f128, f32, __trunctfsf2, Quad, Single);
+        conv!(f128, f64, __trunctfdf2, Quad, Double);
+    }
+}
+
+#[cfg(target_arch = "arm")]
+#[test]
+fn float_trunc_arm() {
+    use compiler_builtins::float::trunc::__truncdfsf2vfp;
+
+    trunc!(f64, f32, __truncdfsf2vfp);
+    conv!(f64, f32, __truncdfsf2vfp, Double, Single)
 }
