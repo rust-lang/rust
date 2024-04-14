@@ -49,7 +49,10 @@ pub(crate) struct VarStillRepeating {
 pub(crate) struct MetaVarsDifSeqMatchers {
     #[primary_span]
     pub span: Span,
-    pub msg: String,
+    pub var1_id: String,
+    pub var1_len: usize,
+    pub var2_id: String,
+    pub var2_len: usize,
 }
 
 #[derive(Diagnostic)]

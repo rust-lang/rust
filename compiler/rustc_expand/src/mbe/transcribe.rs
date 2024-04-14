@@ -9,7 +9,7 @@ use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{pluralize, Diag, PResult};
+use rustc_errors::{Diag, PResult};
 use rustc_parse::parser::ParseNtResult;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
@@ -206,14 +206,18 @@ pub(super) fn transcribe<'a>(
                             .create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
                     }
 
-                    LockstepIterSize::Contradiction(msg) => {
+                    LockstepIterSize::Contradiction { var1_id, var1_len, var2_id, var2_len } => {
                         // FIXME: this really ought to be caught at macro definition time... It
                         // happens when two meta-variables are used in the same repetition in a
                         // sequence, but they come from different sequence matchers and repeat
                         // different amounts.
-                        return Err(cx
-                            .dcx()
-                            .create_err(MetaVarsDifSeqMatchers { span: seq.span(), msg }));
+                        return Err(cx.dcx().create_err(MetaVarsDifSeqMatchers {
+                            span: seq.span(),
+                            var1_id,
+                            var1_len,
+                            var2_id,
+                            var2_len,
+                        }));
                     }
 
                     LockstepIterSize::Constraint(len, _) => {
@@ -459,7 +463,7 @@ enum LockstepIterSize {
     Constraint(usize, MacroRulesNormalizedIdent),
 
     /// Two `Constraint`s on the same sequence had different lengths. This is an error.
-    Contradiction(String),
+    Contradiction { var1_id: String, var1_len: usize, var2_id: String, var2_len: usize },
 }
 
 impl LockstepIterSize {
@@ -470,23 +474,17 @@ impl LockstepIterSize {
     fn with(self, other: LockstepIterSize) -> LockstepIterSize {
         match self {
             LockstepIterSize::Unconstrained => other,
-            LockstepIterSize::Contradiction(_) => self,
+            LockstepIterSize::Contradiction { .. } => self,
             LockstepIterSize::Constraint(l_len, l_id) => match other {
                 LockstepIterSize::Unconstrained => self,
-                LockstepIterSize::Contradiction(_) => other,
+                LockstepIterSize::Contradiction { .. } => other,
                 LockstepIterSize::Constraint(r_len, _) if l_len == r_len => self,
-                LockstepIterSize::Constraint(r_len, r_id) => {
-                    let msg = format!(
-                        "meta-variable `{}` repeats {} time{}, but `{}` repeats {} time{}",
-                        l_id,
-                        l_len,
-                        pluralize!(l_len),
-                        r_id,
-                        r_len,
-                        pluralize!(r_len),
-                    );
-                    LockstepIterSize::Contradiction(msg)
-                }
+                LockstepIterSize::Constraint(r_len, r_id) => LockstepIterSize::Contradiction {
+                    var1_id: l_id.to_string(),
+                    var1_len: l_len,
+                    var2_id: r_id.to_string(),
+                    var2_len: r_len,
+                },
             },
         }
     }

@@ -102,7 +102,14 @@ expand_malformed_feature_attribute =
     malformed `feature` attribute input
     .expected = expected just one word
 
-expand_meta_var_dif_seq_matchers = {$msg}
+expand_meta_var_dif_seq_matchers =
+    meta-variable `{$var1_id}` repeats {$var1_len} {$var1_len ->
+        [one] time
+        *[count] times
+    }, but `{$var2_id}` repeats {$var2_len} {$var2_len ->
+        [one] time
+        *[count] times
+    }
 
 expand_meta_var_expr_unrecognized_var =
     variable `{$key}` is not recognized in meta-variable expression
