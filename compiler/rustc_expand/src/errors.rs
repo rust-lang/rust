@@ -169,6 +169,7 @@ pub(crate) struct FeatureRemoved<'a> {
 #[derive(Subdiagnostic)]
 #[note(expand_reason)]
 pub(crate) struct FeatureRemovedReason<'a> {
+    // FIXME: make this translatable
     pub reason: &'a str,
 }
 
@@ -300,6 +301,7 @@ pub(crate) struct IncompleteParse<'a> {
 pub(crate) struct RemoveNodeNotSupported {
     #[primary_span]
     pub span: Span,
+    // FIXME: make this translatable
     pub descr: &'static str,
 }
 
