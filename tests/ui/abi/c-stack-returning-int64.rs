@@ -1,14 +1,10 @@
 //@ run-pass
 //@ ignore-sgx no libc
 
-#![feature(rustc_private)]
-
-extern crate libc;
-
 use std::ffi::CString;
 
 mod mlibc {
-    use libc::{c_char, c_long, c_longlong};
+    use std::ffi::{c_char, c_long, c_longlong};
 
     extern "C" {
         pub fn atol(x: *const c_char) -> c_long;
