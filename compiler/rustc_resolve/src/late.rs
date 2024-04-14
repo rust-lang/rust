@@ -24,7 +24,7 @@ use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::ty::DelegationFnSig;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
-use rustc_session::lint;
+use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::parse::feature_err;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -4815,7 +4815,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.diag_metadata.unused_labels.iter() {
-            self.lint_buffer.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
+            self.lint_buffer.buffer_lint_with_diagnostic(
+                lint::builtin::UNUSED_LABELS,
+                *id,
+                *span,
+                BuiltinLintDiag::UnusedLabel,
+            );
         }
     }
 }

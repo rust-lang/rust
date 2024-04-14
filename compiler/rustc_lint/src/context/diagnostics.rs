@@ -11,7 +11,12 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::Session;
 use rustc_span::BytePos;
 
+use std::fmt::Write;
+
 mod check_cfg;
+
+#[cfg(test)]
+mod tests;
 
 pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Diag<'_, ()>) {
     match diagnostic {
@@ -52,7 +57,6 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
                 );
             }
         }
-        BuiltinLintDiag::Normal(_) => (),
         BuiltinLintDiag::AbsPathWithModule(span) => {
             let (sugg, app) = match sess.source_map().span_to_snippet(span) {
                 Ok(ref s) => {
@@ -87,8 +91,15 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
                 ),
             );
         }
-        BuiltinLintDiag::UnknownCrateTypes(span, note, sugg) => {
-            diag.span_suggestion(span, note, sugg, Applicability::MaybeIncorrect);
+        BuiltinLintDiag::UnknownCrateTypes { span, candidate } => {
+            if let Some(candidate) = candidate {
+                diag.span_suggestion(
+                    span,
+                    "did you mean",
+                    format!(r#""{candidate}""#),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
         BuiltinLintDiag::UnusedImports { fix_msg, fixes, test_module_span, .. } => {
             if !fixes.is_empty() {
@@ -361,20 +372,46 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
                 "reduce the glob import's visibility or increase visibility of imported items",
             );
         }
-        BuiltinLintDiag::MaybeTypo { span, name } => {
-            diag.span_suggestion_verbose(
-                span,
-                "an attribute with a similar name exists",
-                name,
-                Applicability::MachineApplicable,
-            );
+        BuiltinLintDiag::UnknownDiagnosticAttribute { span, typo_name } => {
+            if let Some(typo_name) = typo_name {
+                diag.span_suggestion_verbose(
+                    span,
+                    "an attribute with a similar name exists",
+                    typo_name,
+                    Applicability::MachineApplicable,
+                );
+            }
         }
+        BuiltinLintDiag::MacroUseDeprecated
+        | BuiltinLintDiag::UnusedMacroUse
+        | BuiltinLintDiag::PrivateExternCrateReexport(_)
+        | BuiltinLintDiag::UnusedLabel
+        | BuiltinLintDiag::MacroIsPrivate(_)
+        | BuiltinLintDiag::UnusedMacroDefinition(_)
+        | BuiltinLintDiag::MacroRuleNeverUsed(_, _)
+        | BuiltinLintDiag::UnstableFeature(_)
+        | BuiltinLintDiag::AvoidUsingIntelSyntax
+        | BuiltinLintDiag::AvoidUsingAttSyntax
+        | BuiltinLintDiag::IncompleteInclude
+        | BuiltinLintDiag::UnnameableTestItems
+        | BuiltinLintDiag::DuplicateMacroAttribute
+        | BuiltinLintDiag::CfgAttrNoAttributes
+        | BuiltinLintDiag::CrateTypeInCfgAttr
+        | BuiltinLintDiag::CrateNameInCfgAttr
+        | BuiltinLintDiag::MissingFragmentSpecifier
+        | BuiltinLintDiag::MetaVariableStillRepeating(_)
+        | BuiltinLintDiag::MetaVariableWrongOperator
+        | BuiltinLintDiag::DuplicateMatcherBinding
+        | BuiltinLintDiag::UnknownMacroVariable(_)
+        | BuiltinLintDiag::UnusedExternCrate2 { .. }
+        | BuiltinLintDiag::WasmCAbi
+        | BuiltinLintDiag::IllFormedAttributeInput { .. }
+        | BuiltinLintDiag::InnerAttributeUnstable { .. } => {}
     }
 }
 
 pub(super) fn builtin_message(diagnostic: &BuiltinLintDiag) -> DiagMessage {
     match diagnostic {
-        BuiltinLintDiag::Normal(msg) => msg.clone(),
         BuiltinLintDiag::AbsPathWithModule(_) => {
             "absolute paths must start with `self`, `super`, `crate`, or an \
                 external crate name in the 2018 edition"
@@ -391,7 +428,7 @@ pub(super) fn builtin_message(diagnostic: &BuiltinLintDiag) -> DiagMessage {
         BuiltinLintDiag::ElidedLifetimesInPaths(_, _, _, _) => {
             "hidden lifetime parameters in types are deprecated".into()
         }
-        BuiltinLintDiag::UnknownCrateTypes(_, _, _) => "invalid `crate_type` value".into(),
+        BuiltinLintDiag::UnknownCrateTypes { .. } => "invalid `crate_type` value".into(),
         BuiltinLintDiag::UnusedImports { span_snippets, .. } => format!(
             "unused import{}{}",
             pluralize!(span_snippets.len()),
@@ -490,5 +527,81 @@ pub(super) fn builtin_message(diagnostic: &BuiltinLintDiag) -> DiagMessage {
             import_vis
         )
         .into(),
+        BuiltinLintDiag::MacroUseDeprecated => "deprecated `#[macro_use]` attribute used to \
+                                import macros should be replaced at use sites \
+                                with a `use` item to import the macro \
+                                instead"
+            .into(),
+        BuiltinLintDiag::UnusedMacroUse => "unused `#[macro_use]` import".into(),
+        BuiltinLintDiag::PrivateExternCrateReexport(ident) => format!(
+            "extern crate `{ident}` is private, and cannot be \
+                                   re-exported (error E0365), consider declaring with \
+                                   `pub`"
+        )
+        .into(),
+        BuiltinLintDiag::UnusedLabel => "unused label".into(),
+        BuiltinLintDiag::MacroIsPrivate(ident) => format!("macro `{ident}` is private").into(),
+        BuiltinLintDiag::UnusedMacroDefinition(name) => {
+            format!("unused macro definition: `{}`", name).into()
+        }
+        BuiltinLintDiag::MacroRuleNeverUsed(n, name) => {
+            format!("rule #{} of macro `{}` is never used", n + 1, name).into()
+        }
+        BuiltinLintDiag::UnstableFeature(msg) => msg.clone().into(),
+        BuiltinLintDiag::AvoidUsingIntelSyntax => {
+            "avoid using `.intel_syntax`, Intel syntax is the default".into()
+        }
+        BuiltinLintDiag::AvoidUsingAttSyntax => {
+            "avoid using `.att_syntax`, prefer using `options(att_syntax)` instead".into()
+        }
+        BuiltinLintDiag::IncompleteInclude => {
+            "include macro expected single expression in source".into()
+        }
+        BuiltinLintDiag::UnnameableTestItems => crate::fluent_generated::lint_unnameable_test_items,
+        BuiltinLintDiag::DuplicateMacroAttribute => "duplicated attribute".into(),
+        BuiltinLintDiag::CfgAttrNoAttributes => {
+            crate::fluent_generated::lint_cfg_attr_no_attributes
+        }
+        BuiltinLintDiag::CrateTypeInCfgAttr => {
+            crate::fluent_generated::lint_crate_type_in_cfg_attr_deprecated
+        }
+        BuiltinLintDiag::CrateNameInCfgAttr => {
+            crate::fluent_generated::lint_crate_name_in_cfg_attr_deprecated
+        }
+        BuiltinLintDiag::MissingFragmentSpecifier => "missing fragment specifier".into(),
+        BuiltinLintDiag::MetaVariableStillRepeating(name) => {
+            format!("variable '{name}' is still repeating at this depth").into()
+        }
+        BuiltinLintDiag::MetaVariableWrongOperator => {
+            "meta-variable repeats with different Kleene operator".into()
+        }
+        BuiltinLintDiag::DuplicateMatcherBinding => "duplicate matcher binding".into(),
+        BuiltinLintDiag::UnknownMacroVariable(name) => {
+            format!("unknown macro variable `{name}`").into()
+        }
+        BuiltinLintDiag::UnusedExternCrate2 { extern_crate, local_crate } => format!(
+            "external crate `{}` unused in `{}`: remove the dependency or add `use {} as _;`",
+            extern_crate, local_crate, extern_crate
+        )
+        .into(),
+        BuiltinLintDiag::WasmCAbi => crate::fluent_generated::lint_wasm_c_abi,
+        BuiltinLintDiag::IllFormedAttributeInput { suggestions } => suggestions
+            .iter()
+            .enumerate()
+            .fold("attribute must be of the form ".to_string(), |mut acc, (i, sugg)| {
+                if i != 0 {
+                    write!(acc, " or ").unwrap();
+                }
+                write!(acc, "`{sugg}`").unwrap();
+                acc
+            })
+            .into(),
+        BuiltinLintDiag::InnerAttributeUnstable { is_macro } => if *is_macro {
+            "inner macro attributes are unstable"
+        } else {
+            "custom inner attributes are unstable"
+        }
+        .into(),
+        BuiltinLintDiag::UnknownDiagnosticAttribute { .. } => "unknown diagnostic attribute".into(),
     }
 }

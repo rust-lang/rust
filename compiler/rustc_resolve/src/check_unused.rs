@@ -388,14 +388,11 @@ impl Resolver<'_, '_> {
                 {
                     if let ImportKind::MacroUse { .. } = import.kind {
                         if !import.span.is_dummy() {
-                            self.lint_buffer.buffer_lint(
+                            self.lint_buffer.buffer_lint_with_diagnostic(
                                 MACRO_USE_EXTERN_CRATE,
                                 import.root_id,
                                 import.span,
-                                "deprecated `#[macro_use]` attribute used to \
-                                import macros should be replaced at use sites \
-                                with a `use` item to import the macro \
-                                instead",
+                                BuiltinLintDiag::MacroUseDeprecated,
                             );
                         }
                     }
@@ -412,8 +409,12 @@ impl Resolver<'_, '_> {
                     }
                 }
                 ImportKind::MacroUse { .. } => {
-                    let msg = "unused `#[macro_use]` import";
-                    self.lint_buffer.buffer_lint(UNUSED_IMPORTS, import.root_id, import.span, msg);
+                    self.lint_buffer.buffer_lint_with_diagnostic(
+                        UNUSED_IMPORTS,
+                        import.root_id,
+                        import.span,
+                        BuiltinLintDiag::UnusedMacroUse,
+                    );
                 }
                 _ => {}
             }

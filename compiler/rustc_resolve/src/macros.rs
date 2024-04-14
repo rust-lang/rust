@@ -311,11 +311,11 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
 
     fn check_unused_macros(&mut self) {
         for (_, &(node_id, ident)) in self.unused_macros.iter() {
-            self.lint_buffer.buffer_lint(
+            self.lint_buffer.buffer_lint_with_diagnostic(
                 UNUSED_MACROS,
                 node_id,
                 ident.span,
-                format!("unused macro definition: `{}`", ident.name),
+                BuiltinLintDiag::UnusedMacroDefinition(ident.name),
             );
         }
         for (&(def_id, arm_i), &(ident, rule_span)) in self.unused_macro_rules.iter() {
@@ -324,11 +324,11 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                 continue;
             }
             let node_id = self.def_id_to_node_id[def_id];
-            self.lint_buffer.buffer_lint(
+            self.lint_buffer.buffer_lint_with_diagnostic(
                 UNUSED_MACRO_RULES,
                 node_id,
                 rule_span,
-                format!("rule #{} of macro `{}` is never used", arm_i + 1, ident.name),
+                BuiltinLintDiag::MacroRuleNeverUsed(arm_i, ident.name),
             );
         }
     }
@@ -552,14 +552,25 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // We are trying to avoid reporting this error if other related errors were reported.
         if res != Res::Err && inner_attr && !self.tcx.features().custom_inner_attributes {
-            let msg = match res {
-                Res::Def(..) => "inner macro attributes are unstable",
-                Res::NonMacroAttr(..) => "custom inner attributes are unstable",
+            let is_macro = match res {
+                Res::Def(..) => true,
+                Res::NonMacroAttr(..) => false,
                 _ => unreachable!(),
             };
             if soft_custom_inner_attributes_gate {
-                self.tcx.sess.psess.buffer_lint(SOFT_UNSTABLE, path.span, node_id, msg);
+                self.tcx.sess.psess.buffer_lint_with_diagnostic(
+                    SOFT_UNSTABLE,
+                    path.span,
+                    node_id,
+                    BuiltinLintDiag::InnerAttributeUnstable { is_macro },
+                );
             } else {
+                // FIXME: deduplicate with rustc_lint (`BuiltinLintDiag::InnerAttributeUnstable`)
+                let msg = if is_macro {
+                    "inner macro attributes are unstable"
+                } else {
+                    "custom inner attributes are unstable"
+                };
                 feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
             }
         }
@@ -572,17 +583,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let distance =
                 edit_distance(attribute.ident.name.as_str(), sym::on_unimplemented.as_str(), 5);
 
-            let help = if distance.is_some() {
-                BuiltinLintDiag::MaybeTypo { span: attribute.span(), name: sym::on_unimplemented }
-            } else {
-                BuiltinLintDiag::Normal
-            };
+            let typo_name = distance.map(|_| sym::on_unimplemented);
+
             self.tcx.sess.psess.buffer_lint_with_diagnostic(
                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                 attribute.span(),
                 node_id,
-                "unknown diagnostic attribute",
-                help,
+                BuiltinLintDiag::UnknownDiagnosticAttribute { span: attribute.span(), typo_name },
             );
         }
 
@@ -835,8 +842,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
                 if !is_allowed(feature) && !allowed_by_implication {
                     let lint_buffer = &mut self.lint_buffer;
-                    let soft_handler =
-                        |lint, span, msg: String| lint_buffer.buffer_lint(lint, node_id, span, msg);
+                    let soft_handler = |lint, span, msg: String| {
+                        lint_buffer.buffer_lint_with_diagnostic(
+                            lint,
+                            node_id,
+                            span,
+                            BuiltinLintDiag::UnstableFeature(msg),
+                        )
+                    };
                     stability::report_unstable(
                         self.tcx.sess,
                         feature,

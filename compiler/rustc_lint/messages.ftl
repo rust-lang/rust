@@ -156,6 +156,9 @@ lint_builtin_unused_doc_comment = unused doc comment
 lint_builtin_while_true = denote infinite loops with `loop {"{"} ... {"}"}`
     .suggestion = use `loop`
 
+lint_cfg_attr_no_attributes =
+    `#[cfg_attr]` does not expand to any attributes
+
 lint_check_name_unknown_tool = unknown lint tool: `{$tool_name}`
 
 lint_command_line_source = `forbid` lint level was set on command line
@@ -163,6 +166,12 @@ lint_command_line_source = `forbid` lint level was set on command line
 lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as identifiers, which look alike
     .current_use = this identifier can be confused with `{$existing_sym}`
     .other_use = other identifier used here
+
+lint_crate_name_in_cfg_attr_deprecated =
+    `crate_name` within an `#![cfg_attr] attribute is deprecated`
+
+lint_crate_type_in_cfg_attr_deprecated =
+    `crate_type` within an `#![cfg_attr] attribute is deprecated`
 
 lint_cstring_ptr = getting the inner pointer of a temporary `CString`
     .as_ptr_label = this pointer will be invalid
@@ -662,6 +671,8 @@ lint_unknown_lint =
 lint_unknown_tool_in_scoped_lint = unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`
     .help = add `#![register_tool({$tool_name})]` to the crate root
 
+lint_unnameable_test_items = cannot test inner items
+
 lint_unsupported_group = `{$lint_group}` lint group is not supported with ´--force-warn´
 
 lint_untranslatable_diag = diagnostics should be created using translatable messages
@@ -701,3 +712,6 @@ lint_unused_result = unused result of type `{$ty}`
 
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
+
+lint_wasm_c_abi =
+    older versions of the `wasm-bindgen` crate will be incompatible with future versions of Rust; please update to `wasm-bindgen` v0.2.88

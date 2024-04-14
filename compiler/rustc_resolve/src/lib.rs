@@ -51,7 +51,7 @@ use rustc_middle::ty::{self, DelegationFnSig, Feed, MainDefinition, RegisteredTo
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs, TyCtxt, TyCtxtFeed};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
-use rustc_session::lint::LintBuffer;
+use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -1860,8 +1860,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
         if let NameBindingKind::Import { import, binding } = used_binding.kind {
             if let ImportKind::MacroUse { warn_private: true } = import.kind {
-                let msg = format!("macro `{ident}` is private");
-                self.lint_buffer().buffer_lint(PRIVATE_MACRO_USE, import.root_id, ident.span, msg);
+                self.lint_buffer().buffer_lint_with_diagnostic(
+                    PRIVATE_MACRO_USE,
+                    import.root_id,
+                    ident.span,
+                    BuiltinLintDiag::MacroIsPrivate(ident),
+                );
             }
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.

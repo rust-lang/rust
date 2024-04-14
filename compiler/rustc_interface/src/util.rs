@@ -399,30 +399,17 @@ pub(crate) fn check_attr_crate_type(
 
                 if let ast::MetaItemKind::NameValue(spanned) = a.meta_kind().unwrap() {
                     let span = spanned.span;
-                    let lev_candidate = find_best_match_for_name(
+                    let candidate = find_best_match_for_name(
                         &CRATE_TYPES.iter().map(|(k, _)| *k).collect::<Vec<_>>(),
                         n,
                         None,
                     );
-                    if let Some(candidate) = lev_candidate {
-                        lint_buffer.buffer_lint_with_diagnostic(
-                            lint::builtin::UNKNOWN_CRATE_TYPES,
-                            ast::CRATE_NODE_ID,
-                            span,
-                            BuiltinLintDiag::UnknownCrateTypes(
-                                span,
-                                "did you mean".to_string(),
-                                format!("\"{candidate}\""),
-                            ),
-                        );
-                    } else {
-                        lint_buffer.buffer_lint(
-                            lint::builtin::UNKNOWN_CRATE_TYPES,
-                            ast::CRATE_NODE_ID,
-                            span,
-                            "invalid `crate_type` value",
-                        );
-                    }
+                    lint_buffer.buffer_lint_with_diagnostic(
+                        lint::builtin::UNKNOWN_CRATE_TYPES,
+                        ast::CRATE_NODE_ID,
+                        span,
+                        BuiltinLintDiag::UnknownCrateTypes { span, candidate },
+                    );
                 }
             } else {
                 // This is here mainly to check for using a macro, such as
