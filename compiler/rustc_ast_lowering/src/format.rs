@@ -12,34 +12,6 @@ use rustc_span::{
 };
 use std::borrow::Cow;
 
-fn int_ty_max(int_ty: IntTy) -> Option<u128> {
-    match int_ty {
-        // isize is platform-dependent, so we should use
-        // TyCtxt.data_layout.pointer_size
-        // This is available, for example, from a LoweringContext
-        IntTy::Isize => None,
-        IntTy::I8 => Some(i8::MAX as u128),
-        IntTy::I16 => Some(i16::MAX as u128),
-        IntTy::I32 => Some(i32::MAX as u128),
-        IntTy::I64 => Some(i64::MAX as u128),
-        IntTy::I128 => Some(i128::MAX as u128),
-    }
-}
-
-fn uint_ty_max(uint_ty: UintTy) -> Option<u128> {
-    match uint_ty {
-        // usize is platform-dependent, so we should use
-        // TyCtxt.data_layout.pointer_size
-        // This is available, for example, from a LoweringContext
-        UintTy::Usize => None,
-        UintTy::U8 => Some(u8::MAX as u128),
-        UintTy::U16 => Some(u16::MAX as u128),
-        UintTy::U32 => Some(u32::MAX as u128),
-        UintTy::U64 => Some(u64::MAX as u128),
-        UintTy::U128 => Some(u128::MAX as u128),
-    }
-}
-
 impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
         // Never call the const constructor of `fmt::Arguments` if the
@@ -58,26 +30,46 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match LitKind::from_token_lit(lit) {
             Ok(LitKind::Str(s, _)) => Some(s),
             Ok(LitKind::Int(n, ty)) => {
-                // platform-dependent usize and isize MAX
-                let usize_bits = self.tcx.data_layout.pointer_size.bits();
-                let usize_max = if usize_bits >= 128 { u128::MAX } else { 1u128 << usize_bits - 1 };
-                let isize_max = usize_max >> 1;
                 match ty {
                     // unsuffixed integer literals are assumed to be i32's
                     LitIntType::Unsuffixed => {
                         (n <= i32::MAX as u128).then_some(Symbol::intern(&n.to_string()))
                     }
                     LitIntType::Signed(int_ty) => {
-                        let max_literal = int_ty_max(int_ty).unwrap_or(isize_max);
+                        let max_literal = self.int_ty_max(int_ty);
                         (n <= max_literal).then_some(Symbol::intern(&n.to_string()))
                     }
                     LitIntType::Unsigned(uint_ty) => {
-                        let max_literal = uint_ty_max(uint_ty).unwrap_or(usize_max);
+                        let max_literal = self.uint_ty_max(uint_ty);
                         (n <= max_literal).then_some(Symbol::intern(&n.to_string()))
                     }
                 }
             }
             _ => None,
+        }
+    }
+
+    /// Get the maximum value of int_ty. It is platform-dependent due to the byte size of isize
+    fn int_ty_max(&self, int_ty: IntTy) -> u128 {
+        match int_ty {
+            IntTy::Isize => self.tcx.data_layout.pointer_size.signed_int_max() as u128,
+            IntTy::I8 => i8::MAX as u128,
+            IntTy::I16 => i16::MAX as u128,
+            IntTy::I32 => i32::MAX as u128,
+            IntTy::I64 => i64::MAX as u128,
+            IntTy::I128 => i128::MAX as u128,
+        }
+    }
+
+    /// Get the maximum value of uint_ty. It is platform-dependent due to the byte size of usize
+    fn uint_ty_max(&self, uint_ty: UintTy) -> u128 {
+        match uint_ty {
+            UintTy::Usize => self.tcx.data_layout.pointer_size.unsigned_int_max(),
+            UintTy::U8 => u8::MAX as u128,
+            UintTy::U16 => u16::MAX as u128,
+            UintTy::U32 => u32::MAX as u128,
+            UintTy::U64 => u64::MAX as u128,
+            UintTy::U128 => u128::MAX as u128,
         }
     }
 
