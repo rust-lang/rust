@@ -3300,6 +3300,11 @@ impl Step for CodegenCranelift {
             return;
         }
 
+        if builder.download_rustc() {
+            builder.info("CI rustc uses the default codegen backend. skipping");
+            return;
+        }
+
         if !target_supports_cranelift_backend(run.target) {
             builder.info("target not supported by rustc_codegen_cranelift. skipping");
             return;
@@ -3418,6 +3423,11 @@ impl Step for CodegenGCC {
         let compiler = run.builder.compiler_for(run.builder.top_stage, host, host);
 
         if builder.doc_tests == DocTests::Only {
+            return;
+        }
+
+        if builder.download_rustc() {
+            builder.info("CI rustc uses the default codegen backend. skipping");
             return;
         }
 
