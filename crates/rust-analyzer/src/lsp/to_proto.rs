@@ -453,8 +453,6 @@ pub(crate) fn inlay_hint(
             &std::hash::BuildHasherDefault::<FxHasher>::default(),
             &inlay_hint,
         )
-        // json only supports numbers up to 2^53 - 1 as integers, so mask the rest
-         & ((1 << 53) - 1)
     });
 
     let mut something_to_resolve = false;
@@ -481,7 +479,11 @@ pub(crate) fn inlay_hint(
 
     let data = match resolve_hash {
         Some(hash) if something_to_resolve => Some(
-            to_value(lsp_ext::InlayHintResolveData { file_id: file_id.index(), hash }).unwrap(),
+            to_value(lsp_ext::InlayHintResolveData {
+                file_id: file_id.index(),
+                hash: hash.to_string(),
+            })
+            .unwrap(),
         ),
         _ => None,
     };

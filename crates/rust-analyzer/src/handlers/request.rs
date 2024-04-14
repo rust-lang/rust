@@ -1490,12 +1490,9 @@ pub(crate) fn handle_inlay_hints_resolve(
 ) -> anyhow::Result<InlayHint> {
     let _p = tracing::span!(tracing::Level::INFO, "handle_inlay_hints_resolve").entered();
 
-    let data = match original_hint.data.take() {
-        Some(it) => it,
-        None => return Ok(original_hint),
-    };
-
+    let Some(data) = original_hint.data.take() else { return Ok(original_hint) };
     let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
+    let Some(hash) = resolve_data.hash.parse().ok() else { return Ok(original_hint) };
     let file_id = FileId::from_raw(resolve_data.file_id);
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
@@ -1507,14 +1504,12 @@ pub(crate) fn handle_inlay_hints_resolve(
         &forced_resolve_inlay_hints_config,
         file_id,
         hint_position,
-        resolve_data.hash,
+        hash,
         |hint| {
             std::hash::BuildHasher::hash_one(
                 &std::hash::BuildHasherDefault::<ide_db::FxHasher>::default(),
                 hint,
             )
-            // json only supports numbers up to 2^53 - 1 as integers, so mask the rest
-            & ((1 << 53) - 1)
         },
     )?;
 
