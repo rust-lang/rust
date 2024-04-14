@@ -8,7 +8,7 @@ impl<'graph, G: DirectedGraph> DirectedGraph for &'graph G {
     }
 }
 
-impl<'graph, G: WithStartNode> WithStartNode for &'graph G {
+impl<'graph, G: StartNode> StartNode for &'graph G {
     fn start_node(&self) -> Self::Node {
         (**self).start_node()
     }

@@ -1,7 +1,7 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{self, Dominators};
-use rustc_data_structures::graph::{self, DirectedGraph, WithStartNode};
+use rustc_data_structures::graph::{self, DirectedGraph, StartNode};
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
@@ -200,7 +200,7 @@ impl graph::DirectedGraph for CoverageGraph {
     }
 }
 
-impl graph::WithStartNode for CoverageGraph {
+impl graph::StartNode for CoverageGraph {
     #[inline]
     fn start_node(&self) -> Self::Node {
         self.bcb_from_bb(mir::START_BLOCK)

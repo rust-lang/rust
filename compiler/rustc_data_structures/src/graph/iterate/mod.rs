@@ -1,4 +1,4 @@
-use super::{DirectedGraph, Successors, WithStartNode};
+use super::{DirectedGraph, StartNode, Successors};
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use std::ops::ControlFlow;
@@ -278,7 +278,7 @@ where
 
 impl<G> TriColorDepthFirstSearch<'_, G>
 where
-    G: ?Sized + DirectedGraph + Successors + WithStartNode,
+    G: ?Sized + DirectedGraph + Successors + StartNode,
 {
     /// Performs a depth-first search, starting from `G::start_node()`.
     ///

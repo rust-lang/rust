@@ -148,7 +148,7 @@ impl<'tcx> graph::DirectedGraph for BasicBlocks<'tcx> {
     }
 }
 
-impl<'tcx> graph::WithStartNode for BasicBlocks<'tcx> {
+impl<'tcx> graph::StartNode for BasicBlocks<'tcx> {
     #[inline]
     fn start_node(&self) -> Self::Node {
         START_BLOCK

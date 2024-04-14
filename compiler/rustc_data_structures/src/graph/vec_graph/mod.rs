@@ -1,4 +1,4 @@
-use crate::graph::{DirectedGraph, Successors, WithNumEdges};
+use crate::graph::{DirectedGraph, NumEdges, Successors};
 use rustc_index::{Idx, IndexVec};
 
 #[cfg(test)]
@@ -86,7 +86,7 @@ impl<N: Idx> DirectedGraph for VecGraph<N> {
     }
 }
 
-impl<N: Idx> WithNumEdges for VecGraph<N> {
+impl<N: Idx> NumEdges for VecGraph<N> {
     fn num_edges(&self) -> usize {
         self.edge_targets.len()
     }

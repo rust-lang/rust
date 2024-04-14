@@ -7,7 +7,7 @@
 
 use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
-use crate::graph::{DirectedGraph, Successors, WithNumEdges};
+use crate::graph::{DirectedGraph, NumEdges, Successors};
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use std::ops::Range;
 
@@ -97,7 +97,7 @@ impl<N: Idx, S: Idx + Ord> DirectedGraph for Sccs<N, S> {
     }
 }
 
-impl<N: Idx, S: Idx + Ord> WithNumEdges for Sccs<N, S> {
+impl<N: Idx, S: Idx + Ord> NumEdges for Sccs<N, S> {
     fn num_edges(&self) -> usize {
         self.scc_data.all_successors.len()
     }

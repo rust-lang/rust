@@ -42,7 +42,7 @@ impl DirectedGraph for TestGraph {
     }
 }
 
-impl WithStartNode for TestGraph {
+impl StartNode for TestGraph {
     fn start_node(&self) -> usize {
         self.start_node
     }

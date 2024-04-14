@@ -16,8 +16,12 @@ pub trait DirectedGraph {
     fn num_nodes(&self) -> usize;
 }
 
-pub trait WithNumEdges: DirectedGraph {
+pub trait NumEdges: DirectedGraph {
     fn num_edges(&self) -> usize;
+}
+
+pub trait StartNode: DirectedGraph {
+    fn start_node(&self) -> Self::Node;
 }
 
 pub trait Successors: DirectedGraph {
@@ -40,20 +44,16 @@ pub trait Predecessors: DirectedGraph {
     fn predecessors(&self, node: Self::Node) -> Self::Predecessors<'_>;
 }
 
-pub trait WithStartNode: DirectedGraph {
-    fn start_node(&self) -> Self::Node;
-}
-
-pub trait ControlFlowGraph: DirectedGraph + WithStartNode + Predecessors + Successors {
+pub trait ControlFlowGraph: DirectedGraph + StartNode + Predecessors + Successors {
     // convenient trait
 }
 
-impl<T> ControlFlowGraph for T where T: DirectedGraph + WithStartNode + Predecessors + Successors {}
+impl<T> ControlFlowGraph for T where T: DirectedGraph + StartNode + Predecessors + Successors {}
 
 /// Returns `true` if the graph has a cycle that is reachable from the start node.
 pub fn is_cyclic<G>(graph: &G) -> bool
 where
-    G: ?Sized + DirectedGraph + WithStartNode + Successors,
+    G: ?Sized + DirectedGraph + StartNode + Successors,
 {
     iterate::TriColorDepthFirstSearch::new(graph)
         .run_from_start(&mut iterate::CycleDetector)
