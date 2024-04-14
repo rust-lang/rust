@@ -786,7 +786,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             LEGACY_DERIVE_HELPERS,
                             node_id,
                             ident.span,
-                            "derive helper attribute is used before it is introduced",
                             BuiltinLintDiag::LegacyDeriveHelpers(binding.span),
                         );
                     }

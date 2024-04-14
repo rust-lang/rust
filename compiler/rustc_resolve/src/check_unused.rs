@@ -32,7 +32,7 @@ use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{pluralize, MultiSpan};
+use rustc_errors::MultiSpan;
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES};
 use rustc_session::lint::builtin::{UNUSED_IMPORTS, UNUSED_QUALIFICATIONS};
@@ -155,7 +155,6 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                         UNUSED_EXTERN_CRATES,
                         extern_crate.id,
                         span,
-                        "unused extern crate",
                         BuiltinLintDiag::UnusedExternCrate {
                             removal_span: extern_crate.span_with_attributes,
                         },
@@ -208,7 +207,6 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                 UNUSED_EXTERN_CRATES,
                 extern_crate.id,
                 extern_crate.span,
-                "`extern crate` is not idiomatic in the new edition",
                 BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span },
             );
         }
@@ -459,16 +457,6 @@ impl Resolver<'_, '_> {
                 .collect::<Vec<String>>();
             span_snippets.sort();
 
-            let msg = format!(
-                "unused import{}{}",
-                pluralize!(ms.primary_spans().len()),
-                if !span_snippets.is_empty() {
-                    format!(": {}", span_snippets.join(", "))
-                } else {
-                    String::new()
-                }
-            );
-
             let fix_msg = if fixes.len() == 1 && fixes[0].0 == unused.item_span {
                 "remove the whole `use` item"
             } else if ms.primary_spans().len() > 1 {
@@ -505,8 +493,12 @@ impl Resolver<'_, '_> {
                 UNUSED_IMPORTS,
                 unused.use_tree_id,
                 ms,
-                msg,
-                BuiltinLintDiag::UnusedImports(fix_msg.into(), fixes, test_module_span),
+                BuiltinLintDiag::UnusedImports {
+                    fix_msg: fix_msg.into(),
+                    fixes,
+                    test_module_span,
+                    span_snippets,
+                },
             );
         }
 
@@ -556,7 +548,6 @@ impl Resolver<'_, '_> {
                 UNUSED_QUALIFICATIONS,
                 unn_qua.node_id,
                 unn_qua.path_span,
-                "unnecessary qualification",
                 BuiltinLintDiag::UnusedQualifications { removal_span: unn_qua.removal_span },
             );
         }

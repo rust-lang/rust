@@ -1370,7 +1370,6 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) -> bool {
                                         PROC_MACRO_BACK_COMPAT,
                                         item.ident.span,
                                         ast::CRATE_NODE_ID,
-                                        "using an old version of `rental`",
                                         BuiltinLintDiag::ProcMacroBackCompat(
                                         "older versions of the `rental` crate will stop compiling in future versions of Rust; \
                                         please update to `rental` v0.5.6, or switch to one of the `rental` alternatives".to_string()

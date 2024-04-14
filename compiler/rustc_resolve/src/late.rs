@@ -1675,16 +1675,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     return;
                 }
                 LifetimeRibKind::AnonymousWarn(node_id) => {
-                    let msg = if elided {
-                        "`&` without an explicit lifetime name cannot be used here"
-                    } else {
-                        "`'_` cannot be used here"
-                    };
                     self.r.lint_buffer.buffer_lint_with_diagnostic(
                         lint::builtin::ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
                         node_id,
                         lifetime.ident.span,
-                        msg,
                         lint::BuiltinLintDiag::AssociatedConstElidedLifetime {
                             elided,
                             span: lifetime.ident.span,
@@ -1970,7 +1964,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
                     segment_id,
                     elided_lifetime_span,
-                    "hidden lifetime parameters in types are deprecated",
                     lint::BuiltinLintDiag::ElidedLifetimesInPaths(
                         expected_lifetimes,
                         path_span,

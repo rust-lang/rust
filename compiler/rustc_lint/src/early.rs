@@ -44,14 +44,8 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     #[allow(rustc::diagnostic_outside_of_impl)]
     fn inlined_check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
-            let BufferedEarlyLint { span, msg, node_id: _, lint_id, diagnostic } = early_lint;
-            self.context.span_lint_with_diagnostics(
-                lint_id.lint,
-                Some(span),
-                msg,
-                |_| {},
-                diagnostic,
-            );
+            let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
+            self.context.span_lint_with_diagnostics(lint_id.lint, Some(span), |_| {}, diagnostic);
         }
     }
 

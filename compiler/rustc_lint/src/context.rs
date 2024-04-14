@@ -539,12 +539,11 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: Option<impl Into<MultiSpan>>,
-        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
         diagnostic: BuiltinLintDiag,
     ) {
         // We first generate a blank diagnostic.
-        self.opt_span_lint(lint, span, msg, |db| {
+        self.opt_span_lint(lint, span, diagnostics::builtin_message(&diagnostic), |db| {
             // Now, set up surrounding context.
             diagnostics::builtin(self.sess(), diagnostic, db);
             // Rewrap `db`, and pass control to the user.

@@ -1917,7 +1917,6 @@ impl<'a> Parser<'a> {
                         BREAK_WITH_LABEL_AND_LOOP,
                         lo.to(expr.span),
                         ast::CRATE_NODE_ID,
-                        "this labeled break expression is easy to confuse with an unlabeled break with a labeled value expression",
                         BuiltinLintDiag::BreakWithLabelAndLoop(expr.span),
                     );
                 }

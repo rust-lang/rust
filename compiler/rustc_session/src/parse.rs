@@ -311,9 +311,8 @@ impl ParseSess {
             buffered_lints.push(BufferedEarlyLint {
                 span: span.into(),
                 node_id,
-                msg: msg.into(),
                 lint_id: LintId::of(lint),
-                diagnostic: BuiltinLintDiag::Normal,
+                diagnostic: BuiltinLintDiag::Normal(msg.into()),
             });
         });
     }
@@ -323,14 +322,12 @@ impl ParseSess {
         lint: &'static Lint,
         span: impl Into<MultiSpan>,
         node_id: NodeId,
-        msg: impl Into<DiagMessage>,
         diagnostic: BuiltinLintDiag,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
             buffered_lints.push(BufferedEarlyLint {
                 span: span.into(),
                 node_id,
-                msg: msg.into(),
                 lint_id: LintId::of(lint),
                 diagnostic,
             });

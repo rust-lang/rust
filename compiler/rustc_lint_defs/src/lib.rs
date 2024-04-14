@@ -6,6 +6,7 @@ use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
 use rustc_error_messages::{DiagMessage, MultiSpan};
+use rustc_hir::def::Namespace;
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -569,15 +570,28 @@ pub struct AmbiguityErrorDiag {
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
 pub enum BuiltinLintDiag {
-    Normal,
+    Normal(DiagMessage),
     AbsPathWithModule(Span),
-    ProcMacroDeriveResolutionFallback(Span),
+    ProcMacroDeriveResolutionFallback {
+        span: Span,
+        ns: Namespace,
+        ident: Ident,
+    },
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span),
     UnknownCrateTypes(Span, String, String),
-    UnusedImports(String, Vec<(Span, String)>, Option<Span>),
+    UnusedImports {
+        fix_msg: String,
+        fixes: Vec<(Span, String)>,
+        test_module_span: Option<Span>,
+        span_snippets: Vec<String>,
+    },
     RedundantImport(Vec<(Span, bool)>, Ident),
-    DeprecatedMacro(Option<Symbol>, Span),
+    DeprecatedMacro {
+        suggestion: Option<Symbol>,
+        span: Span,
+        message: String,
+    },
     MissingAbi(Span, Abi),
     UnusedDocComment(Span),
     UnusedBuiltinAttribute {
@@ -585,11 +599,15 @@ pub enum BuiltinLintDiag {
         macro_name: String,
         invoc_span: Span,
     },
-    PatternsInFnsWithoutBody(Span, Ident),
+    PatternsInFnsWithoutBody {
+        span: Span,
+        ident: Ident,
+        is_foreign: bool,
+    },
     LegacyDeriveHelpers(Span),
     ProcMacroBackCompat(String),
     OrPatternsBackCompat(Span, String),
-    ReservedPrefix(Span),
+    ReservedPrefix(Span, String),
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),
@@ -605,6 +623,7 @@ pub enum BuiltinLintDiag {
         /// Span of the single use, or None if the lifetime is never used.
         /// If true, the lifetime will be fully elided.
         use_span: Option<(Span, bool)>,
+        ident: Ident,
     },
     NamedArgumentUsedPositionally {
         /// Span where the named argument is used by position and will be replaced with the named
@@ -619,7 +638,10 @@ pub enum BuiltinLintDiag {
         /// Indicates if the named argument is used as a width/precision for formatting
         is_formatting_arg: bool,
     },
-    ByteSliceInPackedStructWithDerive,
+    ByteSliceInPackedStructWithDerive {
+        // FIXME: enum of byte/string
+        ty: String,
+    },
     UnusedExternCrate {
         removal_span: Span,
     },
@@ -661,6 +683,7 @@ pub enum BuiltinLintDiag {
     RedundantImportVisibility {
         span: Span,
         max_vis: String,
+        import_vis: String,
     },
     MaybeTypo {
         span: Span,
@@ -674,9 +697,6 @@ pub enum BuiltinLintDiag {
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.
     pub span: MultiSpan,
-
-    /// The lint message.
-    pub msg: DiagMessage,
 
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
@@ -705,12 +725,10 @@ impl LintBuffer {
         lint: &'static Lint,
         node_id: NodeId,
         span: MultiSpan,
-        msg: impl Into<DiagMessage>,
         diagnostic: BuiltinLintDiag,
     ) {
         let lint_id = LintId::of(lint);
-        let msg = msg.into();
-        self.add_early_lint(BufferedEarlyLint { lint_id, node_id, span, msg, diagnostic });
+        self.add_early_lint(BufferedEarlyLint { lint_id, node_id, span, diagnostic });
     }
 
     pub fn take(&mut self, id: NodeId) -> Vec<BufferedEarlyLint> {
@@ -725,7 +743,7 @@ impl LintBuffer {
         sp: impl Into<MultiSpan>,
         msg: impl Into<DiagMessage>,
     ) {
-        self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiag::Normal)
+        self.add_lint(lint, id, sp.into(), BuiltinLintDiag::Normal(msg.into()))
     }
 
     pub fn buffer_lint_with_diagnostic(
@@ -733,10 +751,9 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagMessage>,
         diagnostic: BuiltinLintDiag,
     ) {
-        self.add_lint(lint, id, sp.into(), msg, diagnostic)
+        self.add_lint(lint, id, sp.into(), diagnostic)
     }
 }
 

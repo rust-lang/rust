@@ -1803,7 +1803,6 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     UNUSED_DOC_COMMENTS,
                     current_span,
                     self.cx.current_expansion.lint_node_id,
-                    "unused doc comment",
                     BuiltinLintDiag::UnusedDocComment(attr.span),
                 );
             } else if rustc_attr::is_builtin_attr(attr) {
@@ -1815,7 +1814,6 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         UNUSED_ATTRIBUTES,
                         attr.span,
                         self.cx.current_expansion.lint_node_id,
-                        format!("unused attribute `{attr_name}`"),
                         BuiltinLintDiag::UnusedBuiltinAttribute {
                             attr_name,
                             macro_name: pprust::path_to_string(&call.path),
