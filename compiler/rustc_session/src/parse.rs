@@ -300,23 +300,6 @@ impl ParseSess {
         self.source_map.clone()
     }
 
-    pub fn buffer_lint(
-        &self,
-        lint: &'static Lint,
-        span: impl Into<MultiSpan>,
-        node_id: NodeId,
-        msg: impl Into<DiagMessage>,
-    ) {
-        self.buffered_lints.with_lock(|buffered_lints| {
-            buffered_lints.push(BufferedEarlyLint {
-                span: span.into(),
-                node_id,
-                lint_id: LintId::of(lint),
-                diagnostic: BuiltinLintDiag::Normal(msg.into()),
-            });
-        });
-    }
-
     pub fn buffer_lint_with_diagnostic(
         &self,
         lint: &'static Lint,

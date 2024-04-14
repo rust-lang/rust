@@ -14,6 +14,7 @@ use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::Features;
 use rustc_feature::{ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES};
+use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -258,11 +259,11 @@ impl<'a> StripUnconfigured<'a> {
 
         // Lint on zero attributes in source.
         if expanded_attrs.is_empty() {
-            self.sess.psess.buffer_lint(
+            self.sess.psess.buffer_lint_with_diagnostic(
                 rustc_lint_defs::builtin::UNUSED_ATTRIBUTES,
                 attr.span,
                 ast::CRATE_NODE_ID,
-                "`#[cfg_attr]` does not expand to any attributes",
+                BuiltinLintDiag::CfgAttrNoAttributes,
             );
         }
 
@@ -342,19 +343,19 @@ impl<'a> StripUnconfigured<'a> {
             item_span,
         );
         if attr.has_name(sym::crate_type) {
-            self.sess.psess.buffer_lint(
+            self.sess.psess.buffer_lint_with_diagnostic(
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
                 attr.span,
                 ast::CRATE_NODE_ID,
-                "`crate_type` within an `#![cfg_attr] attribute is deprecated`",
+                BuiltinLintDiag::CrateTypeInCfgAttr,
             );
         }
         if attr.has_name(sym::crate_name) {
-            self.sess.psess.buffer_lint(
+            self.sess.psess.buffer_lint_with_diagnostic(
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
                 attr.span,
                 ast::CRATE_NODE_ID,
-                "`crate_name` within an `#![cfg_attr] attribute is deprecated`",
+                BuiltinLintDiag::CrateNameInCfgAttr,
             );
         }
         attr

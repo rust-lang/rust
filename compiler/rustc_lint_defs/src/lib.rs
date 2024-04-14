@@ -5,12 +5,13 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagMessage, MultiSpan};
+use rustc_error_messages::MultiSpan;
 use rustc_hir::def::Namespace;
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
+use rustc_span::symbol::MacroRulesNormalizedIdent;
 use rustc_span::{sym, symbol::Ident, Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
@@ -577,7 +578,6 @@ pub enum DeprecatedSinceKind {
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
 pub enum BuiltinLintDiag {
-    Normal(DiagMessage),
     AbsPathWithModule(Span),
     ProcMacroDeriveResolutionFallback {
         span: Span,
@@ -586,7 +586,10 @@ pub enum BuiltinLintDiag {
     },
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span),
-    UnknownCrateTypes(Span, String, String),
+    UnknownCrateTypes {
+        span: Span,
+        candidate: Option<Symbol>,
+    },
     UnusedImports {
         fix_msg: String,
         fixes: Vec<(Span, String)>,
@@ -694,9 +697,42 @@ pub enum BuiltinLintDiag {
         max_vis: String,
         import_vis: String,
     },
-    MaybeTypo {
+    UnknownDiagnosticAttribute {
         span: Span,
-        name: Symbol,
+        typo_name: Option<Symbol>,
+    },
+    MacroUseDeprecated,
+    UnusedMacroUse,
+    PrivateExternCrateReexport(Ident),
+    UnusedLabel,
+    MacroIsPrivate(Ident),
+    UnusedMacroDefinition(Symbol),
+    MacroRuleNeverUsed(usize, Symbol),
+    UnstableFeature(String),
+    AvoidUsingIntelSyntax,
+    AvoidUsingAttSyntax,
+    IncompleteInclude,
+    UnnameableTestItems,
+    DuplicateMacroAttribute,
+    CfgAttrNoAttributes,
+    CrateTypeInCfgAttr,
+    CrateNameInCfgAttr,
+    MissingFragmentSpecifier,
+    MetaVariableStillRepeating(MacroRulesNormalizedIdent),
+    MetaVariableWrongOperator,
+    DuplicateMatcherBinding,
+    UnknownMacroVariable(MacroRulesNormalizedIdent),
+    // FIXME: combine with UnusedExternCrate?
+    UnusedExternCrate2 {
+        extern_crate: Symbol,
+        local_crate: Symbol,
+    },
+    WasmCAbi,
+    IllFormedAttributeInput {
+        suggestions: Vec<String>,
+    },
+    InnerAttributeUnstable {
+        is_macro: bool,
     },
 }
 
@@ -743,16 +779,6 @@ impl LintBuffer {
     pub fn take(&mut self, id: NodeId) -> Vec<BufferedEarlyLint> {
         // FIXME(#120456) - is `swap_remove` correct?
         self.map.swap_remove(&id).unwrap_or_default()
-    }
-
-    pub fn buffer_lint(
-        &mut self,
-        lint: &'static Lint,
-        id: NodeId,
-        sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagMessage>,
-    ) {
-        self.add_lint(lint, id, sp.into(), BuiltinLintDiag::Normal(msg.into()))
     }
 
     pub fn buffer_lint_with_diagnostic(

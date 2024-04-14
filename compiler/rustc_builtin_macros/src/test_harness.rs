@@ -9,6 +9,7 @@ use rustc_ast::{attr, ModKind};
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_session::Session;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
@@ -159,11 +160,11 @@ struct InnerItemLinter<'a> {
 impl<'a> Visitor<'a> for InnerItemLinter<'_> {
     fn visit_item(&mut self, i: &'a ast::Item) {
         if let Some(attr) = attr::find_by_name(&i.attrs, sym::rustc_test_marker) {
-            self.sess.psess.buffer_lint(
+            self.sess.psess.buffer_lint_with_diagnostic(
                 UNNAMEABLE_TEST_ITEMS,
                 attr.span,
                 i.id,
-                crate::fluent_generated::builtin_macros_unnameable_test_items,
+                BuiltinLintDiag::UnnameableTestItems,
             );
         }
     }

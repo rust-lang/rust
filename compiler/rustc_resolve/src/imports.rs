@@ -1246,16 +1246,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if !any_successful_reexport {
             let (ns, binding) = reexport_error.unwrap();
             if pub_use_of_private_extern_crate_hack(import, binding) {
-                let msg = format!(
-                    "extern crate `{ident}` is private, and cannot be \
-                                   re-exported (error E0365), consider declaring with \
-                                   `pub`"
-                );
-                self.lint_buffer.buffer_lint(
+                self.lint_buffer.buffer_lint_with_diagnostic(
                     PUB_USE_OF_PRIVATE_EXTERN_CRATE,
                     import_id,
                     import.span,
-                    msg,
+                    BuiltinLintDiag::PrivateExternCrateReexport(ident),
                 );
             } else {
                 if ns == TypeNS {

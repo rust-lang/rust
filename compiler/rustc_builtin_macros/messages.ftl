@@ -247,5 +247,3 @@ builtin_macros_unexpected_lit = expected path to a trait, found literal
     .label = not a trait
     .str_lit = try using `#[derive({$sym})]`
     .other = for example, write `#[derive(Debug)]` for `Debug`
-
-builtin_macros_unnameable_test_items = cannot test inner items

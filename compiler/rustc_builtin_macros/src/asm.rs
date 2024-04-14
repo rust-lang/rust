@@ -1,6 +1,7 @@
 use crate::errors;
 use crate::util::expr_to_spanned_string;
 use ast::token::IdentIsRaw;
+use lint::BuiltinLintDiag;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
@@ -509,19 +510,19 @@ fn expand_preparsed_asm(
             };
 
             if template_str.contains(".intel_syntax") {
-                ecx.psess().buffer_lint(
+                ecx.psess().buffer_lint_with_diagnostic(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".intel_syntax"),
                     ecx.current_expansion.lint_node_id,
-                    "avoid using `.intel_syntax`, Intel syntax is the default",
+                    BuiltinLintDiag::AvoidUsingIntelSyntax,
                 );
             }
             if template_str.contains(".att_syntax") {
-                ecx.psess().buffer_lint(
+                ecx.psess().buffer_lint_with_diagnostic(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".att_syntax"),
                     ecx.current_expansion.lint_node_id,
-                    "avoid using `.att_syntax`, prefer using `options(att_syntax)` instead",
+                    BuiltinLintDiag::AvoidUsingAttSyntax,
                 );
             }
         }
