@@ -5,6 +5,11 @@ LL | fn g() -> isize { return; }
    |           -----   ^^^^^^ return type is not `()`
    |           |
    |           expected `isize` because of this return type
+   |
+help: give the `return` a value of the expected type
+   |
+LL | fn g() -> isize { return 42; }
+   |                          ++
 
 error: aborting due to 1 previous error
 
