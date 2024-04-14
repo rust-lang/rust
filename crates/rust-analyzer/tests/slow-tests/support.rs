@@ -159,6 +159,18 @@ impl Project<'_> {
                         content_format: Some(vec![lsp_types::MarkupKind::Markdown]),
                         ..Default::default()
                     }),
+                    inlay_hint: Some(lsp_types::InlayHintClientCapabilities {
+                        resolve_support: Some(lsp_types::InlayHintResolveClientCapabilities {
+                            properties: vec![
+                                "textEdits".to_owned(),
+                                "tooltip".to_owned(),
+                                "label.tooltip".to_owned(),
+                                "label.location".to_owned(),
+                                "label.command".to_owned(),
+                            ],
+                        }),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 window: Some(lsp_types::WindowClientCapabilities {

@@ -58,6 +58,8 @@ mod view_item_tree;
 mod view_memory_layout;
 mod view_mir;
 
+use std::panic::UnwindSafe;
+
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
 use hir::ChangeWithProcMacros;
@@ -428,8 +430,11 @@ impl Analysis {
         file_id: FileId,
         position: TextSize,
         hash: u64,
+        hasher: impl Fn(&InlayHint) -> u64 + Send + UnwindSafe,
     ) -> Cancellable<Option<InlayHint>> {
-        self.with_db(|db| inlay_hints::inlay_hints_resolve(db, file_id, position, hash, config))
+        self.with_db(|db| {
+            inlay_hints::inlay_hints_resolve(db, file_id, position, hash, config, hasher)
+        })
     }
 
     /// Returns the set of folding ranges.

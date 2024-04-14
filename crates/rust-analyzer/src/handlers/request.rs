@@ -1522,11 +1522,18 @@ pub(crate) fn handle_inlay_hints_resolve(
         file_id,
         hint_position,
         resolve_data.hash,
+        |hint| {
+            std::hash::BuildHasher::hash_one(
+                &std::hash::BuildHasherDefault::<ide_db::FxHasher>::default(),
+                hint,
+            )
+            // json only supports numbers up to 2^53 - 1 as integers, so mask the rest
+            & ((1 << 53) - 1)
+        },
     )?;
 
-    let mut resolved_hints = resolve_hints
-        .into_iter()
-        .filter_map(|it| {
+    Ok(resolve_hints
+        .and_then(|it| {
             to_proto::inlay_hint(
                 &snap,
                 &forced_resolve_inlay_hints_config.fields_to_resolve,
@@ -1537,13 +1544,8 @@ pub(crate) fn handle_inlay_hints_resolve(
             .ok()
         })
         .filter(|hint| hint.position == original_hint.position)
-        .filter(|hint| hint.kind == original_hint.kind);
-    if let Some(resolved_hint) = resolved_hints.next() {
-        if resolved_hints.next().is_none() {
-            return Ok(resolved_hint);
-        }
-    }
-    Ok(original_hint)
+        .filter(|hint| hint.kind == original_hint.kind)
+        .unwrap_or(original_hint))
 }
 
 pub(crate) fn handle_call_hierarchy_prepare(

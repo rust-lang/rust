@@ -463,13 +463,6 @@ pub struct TestInfo {
     pub runnable: Runnable,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct InlayHintsParams {
-    pub text_document: TextDocumentIdentifier,
-    pub range: Option<lsp_types::Range>,
-}
-
 pub enum Ssr {}
 
 impl Request for Ssr {
