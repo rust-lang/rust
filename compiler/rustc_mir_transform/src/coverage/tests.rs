@@ -28,8 +28,8 @@ use super::counters;
 use super::graph::{self, BasicCoverageBlock};
 
 use itertools::Itertools;
-use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::graph::WithSuccessors;
+use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty;

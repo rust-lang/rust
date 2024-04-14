@@ -2,9 +2,7 @@ use super::*;
 
 impl<'graph, G: DirectedGraph> DirectedGraph for &'graph G {
     type Node = G::Node;
-}
 
-impl<'graph, G: WithNumNodes> WithNumNodes for &'graph G {
     fn num_nodes(&self) -> usize {
         (**self).num_nodes()
     }

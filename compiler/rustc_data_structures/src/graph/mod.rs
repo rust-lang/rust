@@ -12,9 +12,7 @@ mod tests;
 
 pub trait DirectedGraph {
     type Node: Idx;
-}
 
-pub trait WithNumNodes: DirectedGraph {
     fn num_nodes(&self) -> usize;
 }
 
@@ -28,10 +26,7 @@ where
 {
     fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter;
 
-    fn depth_first_search(&self, from: Self::Node) -> iterate::DepthFirstSearch<'_, Self>
-    where
-        Self: WithNumNodes,
-    {
+    fn depth_first_search(&self, from: Self::Node) -> iterate::DepthFirstSearch<'_, Self> {
         iterate::DepthFirstSearch::new(self).with_start_node(from)
     }
 }
@@ -60,20 +55,20 @@ pub trait WithStartNode: DirectedGraph {
 }
 
 pub trait ControlFlowGraph:
-    DirectedGraph + WithStartNode + WithPredecessors + WithSuccessors + WithNumNodes
+    DirectedGraph + WithStartNode + WithPredecessors + WithSuccessors
 {
     // convenient trait
 }
 
 impl<T> ControlFlowGraph for T where
-    T: DirectedGraph + WithStartNode + WithPredecessors + WithSuccessors + WithNumNodes
+    T: DirectedGraph + WithStartNode + WithPredecessors + WithSuccessors
 {
 }
 
 /// Returns `true` if the graph has a cycle that is reachable from the start node.
 pub fn is_cyclic<G>(graph: &G) -> bool
 where
-    G: ?Sized + DirectedGraph + WithStartNode + WithSuccessors + WithNumNodes,
+    G: ?Sized + DirectedGraph + WithStartNode + WithSuccessors,
 {
     iterate::TriColorDepthFirstSearch::new(graph)
         .run_from_start(&mut iterate::CycleDetector)

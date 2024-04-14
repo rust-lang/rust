@@ -7,7 +7,7 @@
 
 use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
-use crate::graph::{DirectedGraph, GraphSuccessors, WithNumEdges, WithNumNodes, WithSuccessors};
+use crate::graph::{DirectedGraph, GraphSuccessors, WithNumEdges, WithSuccessors};
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use std::ops::Range;
 
@@ -39,7 +39,7 @@ pub struct SccData<S: Idx> {
 }
 
 impl<N: Idx, S: Idx + Ord> Sccs<N, S> {
-    pub fn new(graph: &(impl DirectedGraph<Node = N> + WithNumNodes + WithSuccessors)) -> Self {
+    pub fn new(graph: &(impl DirectedGraph<Node = N> + WithSuccessors)) -> Self {
         SccsConstruction::construct(graph)
     }
 
@@ -89,17 +89,15 @@ impl<N: Idx, S: Idx + Ord> Sccs<N, S> {
     }
 }
 
-impl<N: Idx, S: Idx> DirectedGraph for Sccs<N, S> {
+impl<N: Idx, S: Idx + Ord> DirectedGraph for Sccs<N, S> {
     type Node = S;
-}
 
-impl<N: Idx, S: Idx + Ord> WithNumNodes for Sccs<N, S> {
     fn num_nodes(&self) -> usize {
         self.num_sccs()
     }
 }
 
-impl<N: Idx, S: Idx> WithNumEdges for Sccs<N, S> {
+impl<N: Idx, S: Idx + Ord> WithNumEdges for Sccs<N, S> {
     fn num_edges(&self) -> usize {
         self.scc_data.all_successors.len()
     }
@@ -158,7 +156,7 @@ impl<S: Idx> SccData<S> {
     }
 }
 
-struct SccsConstruction<'c, G: DirectedGraph + WithNumNodes + WithSuccessors, S: Idx> {
+struct SccsConstruction<'c, G: DirectedGraph + WithSuccessors, S: Idx> {
     graph: &'c G,
 
     /// The state of each node; used during walk to record the stack
@@ -218,7 +216,7 @@ enum WalkReturn<S> {
 
 impl<'c, G, S> SccsConstruction<'c, G, S>
 where
-    G: DirectedGraph + WithNumNodes + WithSuccessors,
+    G: DirectedGraph + WithSuccessors,
     S: Idx,
 {
     /// Identifies SCCs in the graph `G` and computes the resulting

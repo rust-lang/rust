@@ -36,17 +36,15 @@ impl TestGraph {
 
 impl DirectedGraph for TestGraph {
     type Node = usize;
+
+    fn num_nodes(&self) -> usize {
+        self.num_nodes
+    }
 }
 
 impl WithStartNode for TestGraph {
     fn start_node(&self) -> usize {
         self.start_node
-    }
-}
-
-impl WithNumNodes for TestGraph {
-    fn num_nodes(&self) -> usize {
-        self.num_nodes
     }
 }
 

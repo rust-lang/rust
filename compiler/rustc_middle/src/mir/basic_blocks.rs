@@ -141,9 +141,7 @@ impl<'tcx> std::ops::Deref for BasicBlocks<'tcx> {
 
 impl<'tcx> graph::DirectedGraph for BasicBlocks<'tcx> {
     type Node = BasicBlock;
-}
 
-impl<'tcx> graph::WithNumNodes for BasicBlocks<'tcx> {
     #[inline]
     fn num_nodes(&self) -> usize {
         self.basic_blocks.len()

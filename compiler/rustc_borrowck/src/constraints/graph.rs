@@ -216,9 +216,7 @@ impl<'s, 'tcx, D: ConstraintGraphDirection> Iterator for Successors<'s, 'tcx, D>
 
 impl<'s, 'tcx, D: ConstraintGraphDirection> graph::DirectedGraph for RegionGraph<'s, 'tcx, D> {
     type Node = RegionVid;
-}
 
-impl<'s, 'tcx, D: ConstraintGraphDirection> graph::WithNumNodes for RegionGraph<'s, 'tcx, D> {
     fn num_nodes(&self) -> usize {
         self.constraint_graph.first_constraints.len()
     }

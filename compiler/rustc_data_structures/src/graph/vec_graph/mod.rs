@@ -1,4 +1,4 @@
-use crate::graph::{DirectedGraph, GraphSuccessors, WithNumEdges, WithNumNodes, WithSuccessors};
+use crate::graph::{DirectedGraph, GraphSuccessors, WithNumEdges, WithSuccessors};
 use rustc_index::{Idx, IndexVec};
 
 #[cfg(test)]
@@ -80,9 +80,7 @@ impl<N: Idx + Ord> VecGraph<N> {
 
 impl<N: Idx> DirectedGraph for VecGraph<N> {
     type Node = N;
-}
 
-impl<N: Idx> WithNumNodes for VecGraph<N> {
     fn num_nodes(&self) -> usize {
         self.node_starts.len() - 1
     }
