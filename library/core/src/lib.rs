@@ -178,6 +178,7 @@
 #![feature(ip_bits)]
 #![feature(is_ascii_octdigit)]
 #![feature(isqrt)]
+#![feature(link_cfg)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(non_null_convenience)]
 #![feature(offset_of_enum)]
