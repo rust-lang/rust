@@ -1082,9 +1082,8 @@ impl<T> (T,) {}
 /// bits. Please see [the documentation for [`prim@f32`] or [Wikipedia on
 /// half-precision values][wikipedia] for more information.
 ///
-/// Note that not all major platforms have hardware support for f16, in which case a
-/// software implementation will be used. This may be slower than expected.
-///
+/// Note that most major platforms will provide `f16` math support by converting to and from
+/// an `f32`, which is usually fairly performant but will not be as fast as using `f32` directly.
 /// *[See also the `std::f16::consts` module](crate::f16::consts).*
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Half-precision_floating-point_format
@@ -1184,8 +1183,8 @@ mod prim_f64 {}
 /// as many bits as `f64`. Please see [the documentation for [`prim@f32`] or [Wikipedia on
 /// quad-precision values][wikipedia] for more information.
 ///
-/// Note that not all major platforms have hardware support for f128, in which case a
-/// software implementation will be used. This may be slower than expected.
+/// Note that most major platforms do not have hardware support for `f128`, in which case a
+/// software implementation will be used. This can be significantly slower than using `f64`.
 ///
 /// *[See also the `std::f128::consts` module](crate::f128::consts).*
 ///
