@@ -794,7 +794,8 @@ pub struct CompletionResolveData {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InlayHintResolveData {
     pub file_id: u32,
-    pub hash: u64,
+    // This is a string instead of a u64 as javascript can't represent u64 fully
+    pub hash: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
