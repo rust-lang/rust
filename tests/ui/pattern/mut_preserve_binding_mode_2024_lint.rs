@@ -1,5 +1,5 @@
 //@ edition: 2021
-#![feature(mut_dont_reset_binding_mode_2024)]
+#![feature(mut_preserve_binding_mode_2024)]
 #![allow(unused)]
 #![forbid(dereferencing_mut_binding)]
 

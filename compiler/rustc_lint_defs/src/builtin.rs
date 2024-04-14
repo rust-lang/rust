@@ -1656,7 +1656,7 @@ declare_lint! {
     pub DEREFERENCING_MUT_BINDING,
     Allow,
     "detects `mut x` bindings that change the type of `x`",
-    @feature_gate = sym::mut_dont_reset_binding_mode_2024;
+    @feature_gate = sym::mut_preserve_binding_mode_2024;
     // FIXME uncomment below upon stabilization
     /*@future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),

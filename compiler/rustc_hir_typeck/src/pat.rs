@@ -636,7 +636,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let bm = match ba {
             BindingAnnotation(ByRef::No, Mutability::Mut)
                 if !(pat.span.at_least_rust_2024()
-                    && self.tcx.features().mut_dont_reset_binding_mode_2024)
+                    && self.tcx.features().mut_preserve_binding_mode_2024)
                     && matches!(def_br, ByRef::Yes(_)) =>
             {
                 // `mut x` resets the binding mode in edition <= 2021.
