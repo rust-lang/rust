@@ -58,8 +58,6 @@ use core::ops::{self, Range, RangeBounds};
 use core::ptr;
 use core::slice;
 use core::str::pattern::Pattern;
-#[cfg(not(no_global_oom_handling))]
-use core::str::Utf8Chunks;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
@@ -633,7 +631,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str> {
-        let mut iter = Utf8Chunks::new(v);
+        let mut iter = v.utf8_chunks();
 
         let first_valid = if let Some(chunk) = iter.next() {
             let valid = chunk.valid();
