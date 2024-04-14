@@ -610,7 +610,8 @@ mod tests {
     ) {
         let (db, pos) = TestDB::with_position(ra_fixture);
         let module = db.module_at_position(pos);
-        let parsed_path_file = syntax::SourceFile::parse(&format!("use {path};"));
+        let parsed_path_file =
+            syntax::SourceFile::parse(&format!("use {path};"), span::Edition::CURRENT);
         let ast_path =
             parsed_path_file.syntax_node().descendants().find_map(syntax::ast::Path::cast).unwrap();
         let mod_path = ModPath::from_src(&db, ast_path, &mut |range| {

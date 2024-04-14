@@ -396,7 +396,7 @@ mod tests {
 
     #[track_caller]
     fn check(ra_fixture: &str, mut expect: Expect) {
-        let parsed = syntax::SourceFile::parse(ra_fixture);
+        let parsed = syntax::SourceFile::parse(ra_fixture, span::Edition::CURRENT);
         let span_map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(FileId::from_raw(0))));
         let fixups = super::fixup_syntax(
             span_map.as_ref(),
