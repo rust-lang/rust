@@ -4577,9 +4577,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if let (ty::Str, hir::Mutability::Not) = (ty.kind(), mutability) {
                     "\"\"".to_string()
                 } else {
-                    let Some(ty) = self.ty_kind_suggestion(param_env, *ty) else {
-                        return None;
-                    };
+                    let ty = self.ty_kind_suggestion(param_env, *ty)?;
                     format!("&{}{ty}", mutability.prefix_str())
                 }
             }
@@ -4587,11 +4585,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 format!("[{}; {}]", self.ty_kind_suggestion(param_env, *ty)?, len)
             }
             ty::Tuple(tys) => format!(
-                "({})",
+                "({}{})",
                 tys.iter()
                     .map(|ty| self.ty_kind_suggestion(param_env, ty))
                     .collect::<Option<Vec<String>>>()?
-                    .join(", ")
+                    .join(", "),
+                if tys.len() == 1 { "," } else { "" }
             ),
             _ => "value".to_string(),
         })
