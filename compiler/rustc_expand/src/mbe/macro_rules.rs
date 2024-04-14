@@ -12,7 +12,7 @@ use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::{Applicability, ErrorGuaranteed};
+use rustc_errors::ErrorGuaranteed;
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
@@ -33,9 +33,10 @@ use crate::base::{
     DummyResult, ExpandResult, ExtCtxt, MacResult, MacroExpanderResult, SyntaxExtension,
     SyntaxExtensionKind, TTMacroExpander,
 };
+use crate::errors::{self, InvalidFollowNote, MatchFailureLabel};
 use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
 use crate::mbe;
-use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
+use crate::mbe::diagnostics::parse_failure_err;
 use crate::mbe::macro_check;
 use crate::mbe::macro_parser::NamedMatch::*;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
@@ -147,6 +148,21 @@ fn trace_macros_note(cx_expansions: &mut FxIndexMap<Span, Vec<String>>, sp: Span
     cx_expansions.entry(sp).or_default().push(message);
 }
 
+#[derive(Debug, Copy, Clone)]
+pub(super) enum MatchFailureReason {
+    MissingTokens,
+    UnexpectedToken,
+}
+
+impl MatchFailureReason {
+    pub(super) fn into_label(self, sp: Span) -> MatchFailureLabel {
+        match self {
+            MatchFailureReason::MissingTokens => MatchFailureLabel::MissingTokens(sp),
+            MatchFailureReason::UnexpectedToken => MatchFailureLabel::UnexpectedToken(sp),
+        }
+    }
+}
+
 pub(super) trait Tracker<'matcher> {
     /// The contents of `ParseResult::Failure`.
     type Failure;
@@ -154,7 +170,7 @@ pub(super) trait Tracker<'matcher> {
     /// Arm failed to match. If the token is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
     /// The usize is the approximate position of the token in the input token stream.
-    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure;
+    fn build_failure(tok: Token, position: u32, msg: MatchFailureReason) -> Self::Failure;
 
     /// This is called before trying to match next MatcherLoc on the current token.
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
@@ -183,7 +199,7 @@ pub(super) struct NoopTracker;
 impl<'matcher> Tracker<'matcher> for NoopTracker {
     type Failure = ();
 
-    fn build_failure(_tok: Token, _position: u32, _msg: &'static str) -> Self::Failure {}
+    fn build_failure(_tok: Token, _position: u32, _msg: MatchFailureReason) -> Self::Failure {}
 
     fn description() -> &'static str {
         "none"
@@ -465,17 +481,20 @@ pub fn compile_declarative_macro(
                     unreachable!("matcher returned something other than Failure after retry");
                 };
 
-                let s = parse_failure_msg(&token, track.get_expected_token());
                 let sp = token.span.substitute_dummy(def.span);
-                let mut err = sess.dcx().struct_span_err(sp, s);
-                err.span_label(sp, msg);
-                annotate_doc_comment(&mut err, sess.source_map(), sp);
+                let err = sess.dcx().create_err(parse_failure_err(
+                    sp,
+                    sess.source_map(),
+                    msg,
+                    token,
+                    track.get_expected_token().cloned(),
+                ));
                 let guar = err.emit();
                 return dummy_syn_ext(guar);
             }
             Error(sp, msg) => {
-                let guar = sess.dcx().span_err(sp.substitute_dummy(def.span), msg);
-                return dummy_syn_ext(guar);
+                let span = sp.substitute_dummy(def.span);
+                return dummy_syn_ext(msg.emit_err(sess.dcx(), span));
             }
             ErrorReported(guar) => {
                 return dummy_syn_ext(guar);
@@ -554,10 +573,12 @@ pub fn compile_declarative_macro(
     let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) => {
-            dcx.span_err(span, format!("unknown macro transparency: `{value}`"));
+            dcx.emit_err(errors::UnknownMacroTransparency { span, value });
         }
         Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) => {
-            dcx.span_err(vec![old_span, new_span], "multiple macro transparency attributes");
+            dcx.emit_err(errors::MultipleTransparencyAttrs {
+                spans: vec![old_span, new_span].into(),
+            });
         }
         None => {}
     }
@@ -622,8 +643,7 @@ fn check_lhs_nt_follows(
     if let mbe::TokenTree::Delimited(.., delimited) = lhs {
         check_matcher(sess, def, &delimited.tts)
     } else {
-        let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
-        Err(sess.dcx().span_err(lhs.span(), msg))
+        Err(sess.dcx().emit_err(errors::UnbalancedDelimsAroundMatcher { span: lhs.span() }))
     }
 }
 
@@ -646,7 +666,7 @@ fn is_empty_token_tree(sess: &Session, seq: &mbe::SequenceRepetition) -> bool {
                         iter.next();
                     }
                     let span = t.span.to(now.span);
-                    sess.dcx().span_note(span, "doc comments are ignored in matcher position");
+                    sess.dcx().emit_note(errors::DocCommentsIgnoredInMatcherPosition { span });
                 }
                 mbe::TokenTree::Sequence(_, sub_seq)
                     if (sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
@@ -671,8 +691,9 @@ fn check_lhs_no_empty_seq(sess: &Session, tts: &[mbe::TokenTree]) -> Result<(), 
             TokenTree::Delimited(.., del) => check_lhs_no_empty_seq(sess, &del.tts)?,
             TokenTree::Sequence(span, seq) => {
                 if is_empty_token_tree(sess, seq) {
-                    let sp = span.entire();
-                    let guar = sess.dcx().span_err(sp, "repetition matches empty token tree");
+                    let span = span.entire();
+                    let guar =
+                        sess.dcx().emit_err(errors::RepetitionMatchesEmptyTokenTree { span });
                     return Err(guar);
                 }
                 check_lhs_no_empty_seq(sess, &seq.tts)?
@@ -686,7 +707,7 @@ fn check_lhs_no_empty_seq(sess: &Session, tts: &[mbe::TokenTree]) -> Result<(), 
 fn check_rhs(sess: &Session, rhs: &mbe::TokenTree) -> Result<(), ErrorGuaranteed> {
     match *rhs {
         mbe::TokenTree::Delimited(..) => Ok(()),
-        _ => Err(sess.dcx().span_err(rhs.span(), "macro rhs must be delimited")),
+        _ => Err(sess.dcx().emit_err(errors::MacroRhsMustBeDelimited { span: rhs.span() })),
     }
 }
 
@@ -1173,61 +1194,41 @@ fn check_matcher_core<'tt>(
                     match is_in_follow(next_token, kind) {
                         IsInFollow::Yes => {}
                         IsInFollow::No(possible) => {
-                            let may_be = if last.tokens.len() == 1 && suffix_first.tokens.len() == 1
-                            {
-                                "is"
-                            } else {
-                                "may be"
-                            };
+                            let only_option =
+                                last.tokens.len() == 1 && suffix_first.tokens.len() == 1;
 
-                            let sp = next_token.span();
-                            let mut err = sess.dcx().struct_span_err(
-                                sp,
-                                format!(
-                                    "`${name}:{frag}` {may_be} followed by `{next}`, which \
-                                     is not allowed for `{frag}` fragments",
-                                    name = name,
-                                    frag = kind,
-                                    next = quoted_tt_to_string(next_token),
-                                    may_be = may_be
-                                ),
-                            );
-                            err.span_label(sp, format!("not allowed after `{kind}` fragments"));
-
-                            if kind == NonterminalKind::Pat(PatWithOr)
+                            let suggestion = if kind == NonterminalKind::Pat(PatWithOr)
                                 && sess.psess.edition.at_least_rust_2021()
                                 && next_token.is_token(&BinOp(token::BinOpToken::Or))
                             {
-                                let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
+                                Some(errors::InvalidFollowSuggestion {
                                     span,
-                                    name,
-                                    Some(NonterminalKind::Pat(PatParam { inferred: false })),
-                                ));
-                                err.span_suggestion(
-                                    span,
-                                    "try a `pat_param` fragment specifier instead",
-                                    suggestion,
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
+                                    suggestion: quoted_tt_to_string(&TokenTree::MetaVarDecl(
+                                        span,
+                                        name,
+                                        Some(NonterminalKind::Pat(PatParam { inferred: false })),
+                                    )),
+                                })
+                            } else {
+                                None
+                            };
 
-                            let msg = "allowed there are: ";
-                            match possible {
-                                &[] => {}
-                                &[t] => {
-                                    err.note(format!(
-                                        "only {t} is allowed after `{kind}` fragments",
-                                    ));
-                                }
-                                ts => {
-                                    err.note(format!(
-                                        "{}{} or {}",
-                                        msg,
-                                        ts[..ts.len() - 1].to_vec().join(", "),
-                                        ts[ts.len() - 1],
-                                    ));
-                                }
-                            }
+                            let note_allowed = (possible.len() != 0).then(|| InvalidFollowNote {
+                                num_possible: possible.len(),
+                                possible: rustc_errors::DiagArgValue::StrListSepByOr(
+                                    possible.into_iter().copied().map(Cow::Borrowed).collect(),
+                                ),
+                            });
+
+                            let err = sess.dcx().create_err(errors::InvalidFollow {
+                                span: next_token.span(),
+                                name,
+                                kind,
+                                next: quoted_tt_to_string(next_token),
+                                only_option,
+                                suggestion,
+                                note_allowed,
+                            });
                             errored = Err(err.emit());
                         }
                     }

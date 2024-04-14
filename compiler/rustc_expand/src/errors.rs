@@ -1,8 +1,10 @@
 use std::borrow::Cow;
 
 use rustc_ast::ast;
+use rustc_ast::token::{NonterminalKind, Token};
+use rustc_ast::tokenstream::TokenTree;
 use rustc_errors::codes::*;
-use rustc_errors::IntoDiagArg;
+use rustc_errors::{DiagArgValue, IntoDiagArg, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::FeatureGateSubdiagnostic;
 use rustc_session::Limit;
@@ -51,7 +53,10 @@ pub(crate) struct VarStillRepeating {
 pub(crate) struct MetaVarsDifSeqMatchers {
     #[primary_span]
     pub span: Span,
-    pub msg: String,
+    pub var1_id: String,
+    pub var1_len: usize,
+    pub var2_id: String,
+    pub var2_len: usize,
 }
 
 #[derive(Diagnostic)]
@@ -421,10 +426,17 @@ pub(crate) struct DuplicateMatcherBinding {
     pub prev: Span,
 }
 
+#[derive(Subdiagnostic)]
+pub(crate) enum InvalidFragmentSpecifierValidNames {
+    #[help(expand_valid_fragment_names_2021)]
+    Edition2021,
+    #[help(expand_valid_fragment_names_other)]
+    Other,
+}
+
 #[derive(Diagnostic)]
 #[diag(expand_missing_fragment_specifier)]
 #[note]
-#[help(expand_valid)]
 pub(crate) struct MissingFragmentSpecifier {
     #[primary_span]
     pub span: Span,
@@ -435,17 +447,20 @@ pub(crate) struct MissingFragmentSpecifier {
         applicability = "maybe-incorrect"
     )]
     pub add_span: Span,
-    pub valid: &'static str,
+    #[subdiagnostic]
+    pub valid: InvalidFragmentSpecifierValidNames,
 }
 
 #[derive(Diagnostic)]
 #[diag(expand_invalid_fragment_specifier)]
-#[help]
 pub(crate) struct InvalidFragmentSpecifier {
     #[primary_span]
     pub span: Span,
+    #[help(expand_help_expr_2021)]
+    pub help_expr_2021: bool,
+    #[subdiagnostic]
+    pub help_valid_names: InvalidFragmentSpecifierValidNames,
     pub fragment: Ident,
-    pub help: String,
 }
 
 #[derive(Diagnostic)]
@@ -521,4 +536,322 @@ pub(crate) struct NonInlineModuleInProcMacroUnstable {
     pub span: Span,
     #[subdiagnostic]
     pub subdiag: FeatureGateSubdiagnostic,
+}
+
+#[derive(Subdiagnostic)]
+#[label(expand_label_error_while_parsing_argument)]
+pub(crate) struct NoteParseErrorInMacroArgument {
+    #[primary_span]
+    pub span: Span,
+    pub kind: NonterminalKind,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_meta_var_expr_needs_parens)]
+pub(crate) struct MetaVarExprParamNeedsParens {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_unsupported_concat_elem)]
+pub(crate) struct UnsupportedConcatElem {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_concat_raw_ident)]
+pub(crate) struct ConcatRawIdent {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_expected_comma)]
+pub(crate) struct ExpectedComma {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_concat_too_few_args)]
+pub(crate) struct ConcatTooFewArgs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_unrecognized_meta_var_expr)]
+#[help]
+pub(crate) struct UnrecognizedMetaVarExpr {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_count_with_comma_no_index)]
+pub(crate) struct CountWithCommaNoIndex {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_nested_meta_var_expr_without_dollar)]
+pub(crate) struct NestedMetaVarExprWithoutDollar {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_meta_var_expr_depth_not_literal)]
+pub(crate) struct MetaVarExprDepthNotLiteral {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_meta_var_expr_depth_suffixed)]
+pub(crate) struct MetaVarExprDepthSuffixed {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_meta_var_expr_unexpected_token)]
+pub(crate) struct MetaVarExprUnexpectedToken {
+    #[primary_span]
+    #[note]
+    pub span: Span,
+    pub tt: TokenTree,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_meta_var_expr_expected_identifier)]
+pub(crate) struct MetaVarExprExpectedIdentifier {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub span: Span,
+    pub found: Token,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_expected_identifier)]
+pub(crate) struct ExpectedIdentifier {
+    #[primary_span]
+    pub span: Span,
+    pub found: Token,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_question_mark_with_separator)]
+pub(crate) struct QuestionMarkWithSeparator {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_expected_repetition_operator)]
+pub(crate) struct ExpectedRepetitionOperator {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_dollar_or_metavar_in_lhs)]
+pub(crate) struct DollarOrMetavarInLhs {
+    #[primary_span]
+    #[note]
+    pub span: Span,
+    pub token: Token,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_meta_var_expr_out_of_bounds)]
+pub(crate) struct MetaVarExprOutOfBounds {
+    #[primary_span]
+    pub span: Span,
+    pub ty: String,
+    pub max: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_concat_generated_invalid_ident)]
+pub(crate) struct ConcatGeneratedInvalidIdent {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_invalid_concat_arg_type)]
+#[note]
+pub(crate) struct InvalidConcatArgType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum MatchFailureLabel {
+    #[label(expand_match_failure_missing_tokens)]
+    MissingTokens(#[primary_span] Span),
+    #[label(expand_match_failure_unexpected_token)]
+    UnexpectedToken(#[primary_span] Span),
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ExplainDocComment {
+    #[label(expand_explain_doc_comment_inner)]
+    Inner {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(expand_explain_doc_comment_outer)]
+    Outer {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) struct ParseFailureSubdiags {
+    #[subdiagnostic]
+    pub failure_label: MatchFailureLabel,
+    #[subdiagnostic]
+    pub doc_comment: Option<ExplainDocComment>,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum ParseFailure {
+    #[diag(expand_parse_failure_expected_token)]
+    ExpectedToken {
+        #[primary_span]
+        span: Span,
+        expected: Token,
+        found: Token,
+        #[subdiagnostic]
+        subdiags: ParseFailureSubdiags,
+    },
+    #[diag(expand_parse_failure_unexpected_eof)]
+    UnexpectedEof {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: ParseFailureSubdiags,
+    },
+    #[diag(expand_parse_failure_unexpected_token)]
+    UnexpectedToken {
+        #[primary_span]
+        span: Span,
+        found: Token,
+        #[subdiagnostic]
+        subdiags: ParseFailureSubdiags,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_unknown_macro_transparency)]
+pub(crate) struct UnknownMacroTransparency {
+    #[primary_span]
+    pub span: Span,
+    pub value: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_multiple_transparency_attrs)]
+pub(crate) struct MultipleTransparencyAttrs {
+    #[primary_span]
+    pub spans: MultiSpan,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_unbalanced_delims_around_matcher)]
+pub(crate) struct UnbalancedDelimsAroundMatcher {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_doc_comments_ignored_in_matcher_position)]
+pub(crate) struct DocCommentsIgnoredInMatcherPosition {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_repetition_matches_empty_token_tree)]
+pub(crate) struct RepetitionMatchesEmptyTokenTree {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_macro_rhs_must_be_delimited)]
+pub(crate) struct MacroRhsMustBeDelimited {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(expand_suggestion, code = "{suggestion}", applicability = "maybe-incorrect")]
+pub(crate) struct InvalidFollowSuggestion {
+    #[primary_span]
+    pub span: Span,
+    pub suggestion: String,
+}
+
+#[derive(Subdiagnostic)]
+#[note(expand_note)]
+pub(crate) struct InvalidFollowNote {
+    pub num_possible: usize,
+    pub possible: DiagArgValue,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_invalid_follow)]
+pub(crate) struct InvalidFollow {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub name: Ident,
+    pub kind: NonterminalKind,
+    pub next: String,
+    pub only_option: bool,
+
+    #[subdiagnostic]
+    pub suggestion: Option<InvalidFollowSuggestion>,
+    #[subdiagnostic]
+    pub note_allowed: Option<InvalidFollowNote>,
+}
+
+// FIXME: unify this with MissingFragmentSpecifier
+#[derive(Diagnostic)]
+#[diag(expand_missing_fragment_specifier)]
+pub(crate) struct MissingFragmentSpecifierThin {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_multiple_successful_parses)]
+pub(crate) struct MultipleSuccessfulParses {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_duplicate_binding_name)]
+pub(crate) struct DuplicateBindingName {
+    #[primary_span]
+    pub span: Span,
+    pub bind: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_multiple_parsing_options)]
+pub(crate) struct MultipleParsingOptions {
+    #[primary_span]
+    pub span: Span,
+    pub macro_name: Ident,
+    pub n: usize,
+    pub nts: DiagArgValue,
 }

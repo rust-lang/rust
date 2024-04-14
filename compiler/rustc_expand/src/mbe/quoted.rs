@@ -9,16 +9,9 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 
-use crate::errors;
 use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
-
-const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
-    `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, \
-    `item` and `vis`";
-pub(crate) const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
-    `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, `ty`, `lifetime`, `literal`, `path`, \
-    `meta`, `tt`, `item` and `vis`";
+use crate::{errors, fluent_generated as fluent};
 
 /// Takes a `tokenstream::TokenStream` and returns a `Vec<self::TokenTree>`. Specifically, this
 /// takes a generic `TokenStream`, such as is used in the rest of the compiler, and returns a
@@ -92,26 +85,31 @@ pub(super) fn parse(
                                     };
                                     let kind = NonterminalKind::from_symbol(fragment.name, edition)
                                         .unwrap_or_else(|| {
-                                            let help = match fragment.name {
-                                                sym::expr_2021 => {
-                                                    format!(
-                                                        "fragment specifier `expr_2021` \
-                                                         requires Rust 2021 or later\n\
-                                                         {VALID_FRAGMENT_NAMES_MSG}"
-                                                    )
-                                                }
+                                            let (help_expr_2021, help_valid_names) = match fragment.name {
+                                                sym::expr_2021 => (
+                                                    true,
+                                                    errors::InvalidFragmentSpecifierValidNames::Other,
+                                                ),
                                                 _ if edition().at_least_rust_2021()
                                                     && features.expr_fragment_specifier_2024 =>
-                                                {
-                                                    VALID_FRAGMENT_NAMES_MSG_2021.into()
-                                                }
-                                                _ => VALID_FRAGMENT_NAMES_MSG.into(),
+                                                (
+                                                    false,
+                                                    errors::InvalidFragmentSpecifierValidNames::Edition2021,
+                                                ),
+                                                _ => (
+                                                    false,
+                                                    errors::InvalidFragmentSpecifierValidNames::Other,
+                                                )
+
                                             };
-                                            sess.dcx().emit_err(errors::InvalidFragmentSpecifier {
-                                                span,
-                                                fragment,
-                                                help,
-                                            });
+                                            sess.dcx().emit_err(
+                                                errors::InvalidFragmentSpecifier {
+                                                    span,
+                                                    fragment,
+                                                    help_expr_2021,
+                                                    help_valid_names,
+                                                },
+                                            );
                                             NonterminalKind::Ident
                                         });
                                     if kind == NonterminalKind::Expr(Expr2021 { inferred: false })
@@ -121,7 +119,7 @@ pub(super) fn parse(
                                             sess,
                                             sym::expr_fragment_specifier_2024,
                                             span,
-                                            "fragment specifier `expr_2021` is unstable",
+                                            fluent::expand_expr_2021_unstable,
                                         )
                                         .emit();
                                     }
@@ -152,15 +150,20 @@ pub(super) fn parse(
 /// Asks for the `macro_metavar_expr` feature if it is not already declared
 fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &Session, span: Span) {
     if !features.macro_metavar_expr {
-        let msg = "meta-variable expressions are unstable";
-        feature_err(sess, sym::macro_metavar_expr, span, msg).emit();
+        feature_err(sess, sym::macro_metavar_expr, span, fluent::expand_meta_var_expr_unstable)
+            .emit();
     }
 }
 
 fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Session, span: Span) {
     if !features.macro_metavar_expr_concat {
-        let msg = "the `concat` meta-variable expression is unstable";
-        feature_err(sess, sym::macro_metavar_expr_concat, span, msg).emit();
+        feature_err(
+            sess,
+            sym::macro_metavar_expr_concat,
+            span,
+            fluent::expand_meta_var_expr_concat_unstable,
+        )
+        .emit();
     }
 }
 
@@ -299,9 +302,10 @@ fn parse_tree<'a>(
 
                 // `tree` is followed by some other token. This is an error.
                 Some(tokenstream::TokenTree::Token(token, _)) => {
-                    let msg =
-                        format!("expected identifier, found `{}`", pprust::token_to_string(token),);
-                    sess.dcx().span_err(token.span, msg);
+                    sess.dcx().emit_err(errors::ExpectedIdentifier {
+                        span: token.span,
+                        found: token.clone(),
+                    });
                     TokenTree::MetaVar(token.span, Ident::empty())
                 }
 
@@ -382,10 +386,7 @@ fn parse_sep_and_kleene_op<'a>(
             // #2 is the `?` Kleene op, which does not take a separator (error)
             Ok(Ok((KleeneOp::ZeroOrOne, span))) => {
                 // Error!
-                sess.dcx().span_err(
-                    token.span,
-                    "the `?` macro repetition operator does not take a separator",
-                );
+                sess.dcx().emit_err(errors::QuestionMarkWithSeparator { span: token.span });
 
                 // Return a dummy
                 return (None, KleeneToken::new(KleeneOp::ZeroOrMore, span));
@@ -403,7 +404,7 @@ fn parse_sep_and_kleene_op<'a>(
     };
 
     // If we ever get to this point, we have experienced an "unexpected token" error
-    sess.dcx().span_err(span, "expected one of: `*`, `+`, or `?`");
+    sess.dcx().emit_err(errors::ExpectedRepetitionOperator { span });
 
     // Return a dummy
     (None, KleeneToken::new(KleeneOp::ZeroOrMore, span))
@@ -413,10 +414,5 @@ fn parse_sep_and_kleene_op<'a>(
 //
 // For example, `macro_rules! foo { ( ${len()} ) => {} }`
 fn span_dollar_dollar_or_metavar_in_the_lhs_err(sess: &Session, token: &Token) {
-    sess.dcx()
-        .span_err(token.span, format!("unexpected token: {}", pprust::token_to_string(token)));
-    sess.dcx().span_note(
-        token.span,
-        "`$$` and meta-variable expressions are not allowed inside macro parameter definitions",
-    );
+    sess.dcx().emit_err(errors::DollarOrMetavarInLhs { span: token.span, token: token.clone() });
 }

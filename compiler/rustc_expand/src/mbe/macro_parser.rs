@@ -78,14 +78,15 @@ use std::rc::Rc;
 use rustc_ast::token::{self, DocComment, NonterminalKind, Token};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::ErrorGuaranteed;
-use rustc_lint_defs::pluralize;
+use rustc_errors::{DiagArgValue, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_parse::parser::{ParseNtResult, Parser};
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
 pub(crate) use NamedMatch::*;
 pub(crate) use ParseResult::*;
 
+use super::macro_rules::MatchFailureReason;
+use crate::errors;
 use crate::mbe::macro_rules::Tracker;
 use crate::mbe::{KleeneOp, TokenTree};
 
@@ -305,6 +306,43 @@ enum EofMatcherPositions {
     Multiple,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) enum ErrorMessage {
+    MissingFragmentSpecifier,
+    MultipleSuccessfulParses,
+    // FIXME: check if this can ever be reached
+    DuplicateBindingName(Ident),
+    MultipleParsingOptions { macro_name: Ident, n: usize, nts: Vec<(NonterminalKind, Ident)> },
+}
+
+impl ErrorMessage {
+    pub(crate) fn emit_err(&self, dcx: DiagCtxtHandle<'_>, span: Span) -> ErrorGuaranteed {
+        match self {
+            ErrorMessage::MissingFragmentSpecifier => {
+                dcx.emit_err(errors::MissingFragmentSpecifierThin { span })
+            }
+            ErrorMessage::MultipleSuccessfulParses => {
+                dcx.emit_err(errors::MultipleSuccessfulParses { span })
+            }
+            ErrorMessage::DuplicateBindingName(bind) => {
+                dcx.emit_err(errors::DuplicateBindingName { span, bind: bind.clone() })
+            }
+            ErrorMessage::MultipleParsingOptions { macro_name, n, nts } => {
+                dcx.emit_err(errors::MultipleParsingOptions {
+                    span,
+                    macro_name: macro_name.clone(),
+                    n: *n,
+                    nts: DiagArgValue::StrListSepByOr(
+                        nts.into_iter()
+                            .map(|(kind, bind)| format!("{kind} ('{bind}')").into())
+                            .collect(),
+                    ),
+                })
+            }
+        }
+    }
+}
+
 /// Represents the possible results of an attempted parse.
 pub(crate) enum ParseResult<T, F> {
     /// Parsed successfully.
@@ -314,7 +352,7 @@ pub(crate) enum ParseResult<T, F> {
     /// The usize is the approximate position of the token in the input token stream.
     Failure(F),
     /// Fatal error (malformed macro?). Abort compilation.
-    Error(rustc_span::Span, String),
+    Error(rustc_span::Span, ErrorMessage),
     ErrorReported(ErrorGuaranteed),
 }
 
@@ -564,7 +602,7 @@ impl TtParser {
                     } else {
                         // E.g. `$e` instead of `$e:expr`, reported as a hard error if actually used.
                         // Both this check and the one in `nameize` are necessary, surprisingly.
-                        return Some(Error(span, "missing fragment specifier".to_string()));
+                        return Some(Error(span, ErrorMessage::MissingFragmentSpecifier));
                     }
                 }
                 MatcherLoc::Eof => {
@@ -593,7 +631,7 @@ impl TtParser {
                     self.nameize(matcher, matches)
                 }
                 EofMatcherPositions::Multiple => {
-                    Error(token.span, "ambiguity: multiple successful parses".to_string())
+                    Error(token.span, ErrorMessage::MultipleSuccessfulParses)
                 }
                 EofMatcherPositions::None => Failure(T::build_failure(
                     Token::new(
@@ -601,7 +639,7 @@ impl TtParser {
                         if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
                     ),
                     approx_position,
-                    "missing tokens in macro arguments",
+                    MatchFailureReason::MissingTokens,
                 )),
             })
         } else {
@@ -652,7 +690,7 @@ impl TtParser {
                     return Failure(T::build_failure(
                         parser.token.clone(),
                         parser.approx_token_stream_pos(),
-                        "no rules expected this token in macro call",
+                        MatchFailureReason::UnexpectedToken,
                     ));
                 }
 
@@ -678,15 +716,12 @@ impl TtParser {
                         // We use the span of the metavariable declaration to determine any
                         // edition-specific matching behavior for non-terminals.
                         let nt = match parser.to_mut().parse_nonterminal(kind) {
-                            Err(err) => {
-                                let guarantee = err.with_span_label(
+                            Err(mut err) => {
+                                err.subdiagnostic(errors::NoteParseErrorInMacroArgument {
                                     span,
-                                    format!(
-                                        "while parsing argument for this `{kind}` macro fragment"
-                                    ),
-                                )
-                                .emit();
-                                return ErrorReported(guarantee);
+                                    kind,
+                                });
+                                return ErrorReported(err.emit());
                             }
                             Ok(nt) => nt,
                         };
@@ -718,23 +753,19 @@ impl TtParser {
             .iter()
             .map(|mp| match &matcher[mp.idx] {
                 MatcherLoc::MetaVarDecl { bind, kind: Some(kind), .. } => {
-                    format!("{kind} ('{bind}')")
+                    (kind.clone(), bind.clone())
                 }
                 _ => unreachable!(),
             })
-            .collect::<Vec<String>>()
-            .join(" or ");
+            .collect();
 
         Error(
             token_span,
-            format!(
-                "local ambiguity when calling macro `{}`: multiple parsing options: {}",
-                self.macro_name,
-                match self.next_mps.len() {
-                    0 => format!("built-in NTs {nts}."),
-                    n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
-                }
-            ),
+            ErrorMessage::MultipleParsingOptions {
+                macro_name: self.macro_name,
+                n: self.next_mps.len(),
+                nts,
+            },
         )
     }
 
@@ -752,13 +783,13 @@ impl TtParser {
                     match ret_val.entry(MacroRulesNormalizedIdent::new(bind)) {
                         Vacant(spot) => spot.insert(res.next().unwrap()),
                         Occupied(..) => {
-                            return Error(span, format!("duplicated bind name: {bind}"));
+                            return Error(span, ErrorMessage::DuplicateBindingName(bind));
                         }
                     };
                 } else {
                     // E.g. `$e` instead of `$e:expr`, reported as a hard error if actually used.
                     // Both this check and the one in `parse_tt_inner` are necessary, surprisingly.
-                    return Error(span, "missing fragment specifier".to_string());
+                    return Error(span, ErrorMessage::MissingFragmentSpecifier);
                 }
             }
         }

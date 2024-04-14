@@ -3,6 +3,8 @@
 //! why we call this module `mbe`. For external documentation, prefer the
 //! official terminology: "declarative macros".
 
+// FIXME(Noratrieb) Translate diagnostics
+#[allow(rustc::untranslatable_diagnostic)]
 pub(crate) mod diagnostics;
 pub(crate) mod macro_rules;
 

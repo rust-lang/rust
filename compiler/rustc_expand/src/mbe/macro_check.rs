@@ -119,9 +119,8 @@ use rustc_span::symbol::{kw, MacroRulesNormalizedIdent};
 use rustc_span::{ErrorGuaranteed, Span};
 use smallvec::SmallVec;
 
-use super::quoted::VALID_FRAGMENT_NAMES_MSG_2021;
-use crate::errors;
 use crate::mbe::{KleeneToken, TokenTree};
+use crate::{errors, fluent_generated as fluent};
 
 /// Stack represented as linked list.
 ///
@@ -254,7 +253,7 @@ fn check_binders(
             if let Some(prev_info) = binders.get(&name) {
                 // 1. The meta-variable is already bound in the current LHS: This is an error.
                 let mut span = MultiSpan::from_span(span);
-                span.push_span_label(prev_info.span, "previous declaration");
+                span.push_span_label(prev_info.span, fluent::expand_label_previous_declaration);
                 buffer_lint(psess, span, node_id, BuiltinLintDiag::DuplicateMatcherBinding);
             } else if get_binder_info(macros, binders, name).is_none() {
                 // 2. The meta-variable is free: This is a binder.
@@ -274,7 +273,7 @@ fn check_binders(
                     psess.dcx().emit_err(errors::MissingFragmentSpecifier {
                         span,
                         add_span: span.shrink_to_hi(),
-                        valid: VALID_FRAGMENT_NAMES_MSG_2021,
+                        valid: errors::InvalidFragmentSpecifierValidNames::Edition2021,
                     });
                 } else {
                     psess.buffer_lint(
@@ -638,15 +637,15 @@ fn ops_is_prefix(
     for (i, binder) in binder_ops.iter().enumerate() {
         if i >= occurrence_ops.len() {
             let mut span = MultiSpan::from_span(span);
-            span.push_span_label(binder.span, "expected repetition");
+            span.push_span_label(binder.span, fluent::expand_label_expected_repetition);
             buffer_lint(psess, span, node_id, BuiltinLintDiag::MetaVariableStillRepeating(name));
             return;
         }
         let occurrence = &occurrence_ops[i];
         if occurrence.op != binder.op {
             let mut span = MultiSpan::from_span(span);
-            span.push_span_label(binder.span, "expected repetition");
-            span.push_span_label(occurrence.span, "conflicting repetition");
+            span.push_span_label(binder.span, fluent::expand_label_expected_repetition);
+            span.push_span_label(occurrence.span, fluent::expand_label_conflicting_repetition);
             buffer_lint(psess, span, node_id, BuiltinLintDiag::MetaVariableWrongOperator);
             return;
         }

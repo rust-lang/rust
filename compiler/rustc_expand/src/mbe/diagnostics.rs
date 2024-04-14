@@ -2,9 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage};
-use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
@@ -12,7 +10,8 @@ use rustc_span::symbol::Ident;
 use rustc_span::{ErrorGuaranteed, Span};
 use tracing::debug;
 
-use super::macro_rules::{parser_from_cx, NoopTracker};
+use super::macro_rules::{parser_from_cx, MatchFailureReason, NoopTracker};
+use crate::errors::{self, ParseFailureSubdiags};
 use crate::expand::{parse_ast_fragment, AstFragmentKind};
 use crate::mbe::macro_parser::ParseResult::*;
 use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
@@ -53,13 +52,16 @@ pub(super) fn failed_to_match_macro(
 
     let span = token.span.substitute_dummy(sp);
 
-    let mut err = psess.dcx().struct_span_err(span, parse_failure_msg(&token, None));
-    err.span_label(span, label);
+    let mut err = psess.dcx().create_err(parse_failure_err(
+        span,
+        psess.source_map(),
+        label,
+        token.clone(),
+        None,
+    ));
     if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
         err.span_label(psess.source_map().guess_head_span(def_span), "when calling this macro");
     }
-
-    annotate_doc_comment(&mut err, psess.source_map(), span);
 
     if let Some(span) = remaining_matcher.span() {
         err.span_note(span, format!("while trying to match {remaining_matcher}"));
@@ -118,7 +120,7 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
 struct BestFailure {
     token: Token,
     position_in_tokenstream: u32,
-    msg: &'static str,
+    msg: MatchFailureReason,
     remaining_matcher: MatcherLoc,
 }
 
@@ -129,9 +131,9 @@ impl BestFailure {
 }
 
 impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'matcher> {
-    type Failure = (Token, u32, &'static str);
+    type Failure = (Token, u32, MatchFailureReason);
 
-    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure {
+    fn build_failure(tok: Token, position: u32, msg: MatchFailureReason) -> Self::Failure {
         (tok, position, msg)
     }
 
@@ -164,7 +166,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                     self.best_failure = Some(BestFailure {
                         token: token.clone(),
                         position_in_tokenstream: *approx_position,
-                        msg,
+                        msg: *msg,
                         remaining_matcher: self
                             .remaining_matcher
                             .expect("must have collected matcher already")
@@ -174,7 +176,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             }
             Error(err_sp, msg) => {
                 let span = err_sp.substitute_dummy(self.root_span);
-                let guar = self.dcx.span_err(span, msg.clone());
+                let guar = msg.emit_err(self.dcx, span);
                 self.result = Some((span, guar));
             }
             ErrorReported(guar) => self.result = Some((self.root_span, *guar)),
@@ -209,9 +211,9 @@ impl<'matcher> FailureForwarder<'matcher> {
 }
 
 impl<'matcher> Tracker<'matcher> for FailureForwarder<'matcher> {
-    type Failure = (Token, u32, &'static str);
+    type Failure = (Token, u32, MatchFailureReason);
 
-    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure {
+    fn build_failure(tok: Token, position: u32, msg: MatchFailureReason) -> Self::Failure {
         (tok, position, msg)
     }
 
@@ -308,45 +310,35 @@ pub(crate) fn annotate_err_with_kind(err: &mut Diag<'_>, kind: AstFragmentKind, 
     };
 }
 
-#[derive(Subdiagnostic)]
-enum ExplainDocComment {
-    #[label(expand_explain_doc_comment_inner)]
-    Inner {
-        #[primary_span]
-        span: Span,
-    },
-    #[label(expand_explain_doc_comment_outer)]
-    Outer {
-        #[primary_span]
-        span: Span,
-    },
-}
-
-pub(super) fn annotate_doc_comment(err: &mut Diag<'_>, sm: &SourceMap, span: Span) {
-    if let Ok(src) = sm.span_to_snippet(span) {
-        if src.starts_with("///") || src.starts_with("/**") {
-            err.subdiagnostic(ExplainDocComment::Outer { span });
-        } else if src.starts_with("//!") || src.starts_with("/*!") {
-            err.subdiagnostic(ExplainDocComment::Inner { span });
-        }
-    }
-}
-
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
-pub(super) fn parse_failure_msg(tok: &Token, expected_token: Option<&Token>) -> Cow<'static, str> {
+pub(super) fn parse_failure_err(
+    span: Span,
+    sm: &SourceMap,
+    reason: MatchFailureReason,
+    tok: Token,
+    expected_token: Option<Token>,
+) -> errors::ParseFailure {
+    let failure_label = reason.into_label(span);
+    let doc_comment = if let Ok(src) = sm.span_to_snippet(span) {
+        if src.starts_with("///") || src.starts_with("/**") {
+            Some(errors::ExplainDocComment::Outer { span })
+        } else if src.starts_with("//!") || src.starts_with("/*!") {
+            Some(errors::ExplainDocComment::Inner { span })
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    let subdiags = ParseFailureSubdiags { failure_label, doc_comment };
+
     if let Some(expected_token) = expected_token {
-        Cow::from(format!(
-            "expected `{}`, found `{}`",
-            pprust::token_to_string(expected_token),
-            pprust::token_to_string(tok),
-        ))
+        errors::ParseFailure::ExpectedToken { span, expected: expected_token, found: tok, subdiags }
     } else {
         match tok.kind {
-            token::Eof => Cow::from("unexpected end of macro invocation"),
-            _ => {
-                Cow::from(format!("no rules expected the token `{}`", pprust::token_to_string(tok)))
-            }
+            token::Eof => errors::ParseFailure::UnexpectedEof { span, subdiags },
+            _ => errors::ParseFailure::UnexpectedToken { span, found: tok, subdiags },
         }
     }
 }

@@ -3,7 +3,7 @@ error: unexpected token: $
    |
 LL |     ( $$ $a:ident ) => {
    |        ^
-
+   |
 note: `$$` and meta-variable expressions are not allowed inside macro parameter definitions
   --> $DIR/syntax-errors.rs:50:8
    |
@@ -141,7 +141,7 @@ error: unexpected token: {
    |
 LL |     ( ${ len() } ) => {
    |        ^^^^^^^^^
-
+   |
 note: `$$` and meta-variable expressions are not allowed inside macro parameter definitions
   --> $DIR/syntax-errors.rs:92:8
    |

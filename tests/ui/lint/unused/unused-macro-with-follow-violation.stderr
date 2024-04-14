@@ -4,7 +4,7 @@ error: `$e:expr` is followed by `+`, which is not allowed for `expr` fragments
 LL |     ($e:expr +) => ()
    |              ^ not allowed after `expr` fragments
    |
-   = note: allowed there are: `=>`, `,` or `;`
+   = note: allowed there are: `=>`, `,`, or `;`
 
 error: aborting due to 1 previous error
 

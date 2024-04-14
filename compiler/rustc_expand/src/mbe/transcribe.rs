@@ -5,7 +5,7 @@ use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, LitKind, Nonterminal, T
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::ExprKind;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{pluralize, Diag, DiagCtxtHandle, PResult};
+use rustc_errors::{Diag, DiagCtxtHandle, PResult};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::{ParseSess, SymbolGallery};
@@ -15,12 +15,12 @@ use rustc_span::{with_metavar_spans, Span, Symbol, SyntaxContext};
 use smallvec::{smallvec, SmallVec};
 
 use crate::errors::{
-    CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
-    NoSyntaxVarsExprRepeat, VarStillRepeating,
+    self, CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers,
+    MustRepeatOnce, NoSyntaxVarsExprRepeat, VarStillRepeating,
 };
 use crate::mbe::macro_parser::NamedMatch;
 use crate::mbe::macro_parser::NamedMatch::*;
-use crate::mbe::metavar_expr::{MetaVarExprConcatElem, RAW_IDENT_ERR};
+use crate::mbe::metavar_expr::MetaVarExprConcatElem;
 use crate::mbe::{self, KleeneOp, MetaVarExpr};
 
 // A Marker adds the given mark to the syntax context.
@@ -211,14 +211,18 @@ pub(super) fn transcribe<'a>(
                         return Err(dcx.create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
                     }
 
-                    LockstepIterSize::Contradiction(msg) => {
+                    LockstepIterSize::Contradiction { var1_id, var1_len, var2_id, var2_len } => {
                         // FIXME: this really ought to be caught at macro definition time... It
                         // happens when two meta-variables are used in the same repetition in a
                         // sequence, but they come from different sequence matchers and repeat
                         // different amounts.
-                        return Err(
-                            dcx.create_err(MetaVarsDifSeqMatchers { span: seq.span(), msg })
-                        );
+                        return Err(dcx.create_err(MetaVarsDifSeqMatchers {
+                            span: seq.span(),
+                            var1_id,
+                            var1_len,
+                            var2_id,
+                            var2_len,
+                        }));
                     }
 
                     LockstepIterSize::Constraint(len, _) => {
@@ -485,7 +489,7 @@ enum LockstepIterSize {
     Constraint(usize, MacroRulesNormalizedIdent),
 
     /// Two `Constraint`s on the same sequence had different lengths. This is an error.
-    Contradiction(String),
+    Contradiction { var1_id: String, var1_len: usize, var2_id: String, var2_len: usize },
 }
 
 impl LockstepIterSize {
@@ -496,23 +500,17 @@ impl LockstepIterSize {
     fn with(self, other: LockstepIterSize) -> LockstepIterSize {
         match self {
             LockstepIterSize::Unconstrained => other,
-            LockstepIterSize::Contradiction(_) => self,
+            LockstepIterSize::Contradiction { .. } => self,
             LockstepIterSize::Constraint(l_len, l_id) => match other {
                 LockstepIterSize::Unconstrained => self,
-                LockstepIterSize::Contradiction(_) => other,
+                LockstepIterSize::Contradiction { .. } => other,
                 LockstepIterSize::Constraint(r_len, _) if l_len == r_len => self,
-                LockstepIterSize::Constraint(r_len, r_id) => {
-                    let msg = format!(
-                        "meta-variable `{}` repeats {} time{}, but `{}` repeats {} time{}",
-                        l_id,
-                        l_len,
-                        pluralize!(l_len),
-                        r_id,
-                        r_len,
-                        pluralize!(r_len),
-                    );
-                    LockstepIterSize::Contradiction(msg)
-                }
+                LockstepIterSize::Constraint(r_len, r_id) => LockstepIterSize::Contradiction {
+                    var1_id: l_id.to_string(),
+                    var1_len: l_len,
+                    var2_id: r_id.to_string(),
+                    var2_len: r_len,
+                },
             },
         }
     }
@@ -656,18 +654,7 @@ where
 /// Used by meta-variable expressions when an user input is out of the actual declared bounds. For
 /// example, index(999999) in an repetition of only three elements.
 fn out_of_bounds_err<'a>(dcx: DiagCtxtHandle<'a>, max: usize, span: Span, ty: &str) -> Diag<'a> {
-    let msg = if max == 0 {
-        format!(
-            "meta-variable expression `{ty}` with depth parameter \
-             must be called inside of a macro repetition"
-        )
-    } else {
-        format!(
-            "depth parameter of meta-variable expression `{ty}` \
-             must be less than {max}"
-        )
-    };
-    dcx.struct_span_err(span, msg)
+    dcx.create_err(errors::MetaVarExprOutOfBounds { span, ty: ty.to_string(), max })
 }
 
 fn transcribe_metavar_expr<'a>(
@@ -715,10 +702,9 @@ fn transcribe_metavar_expr<'a>(
             let symbol = nfc_normalize(&concatenated);
             let concatenated_span = visited_span();
             if !rustc_lexer::is_ident(symbol.as_str()) {
-                return Err(dcx.struct_span_err(
-                    concatenated_span,
-                    "`${concat(..)}` is not generating a valid identifier",
-                ));
+                return Err(
+                    dcx.create_err(errors::ConcatGeneratedInvalidIdent { span: concatenated_span })
+                );
             }
             symbol_gallery.insert(symbol, concatenated_span);
             // The current implementation marks the span as coming from the macro regardless of
@@ -773,7 +759,7 @@ fn extract_symbol_from_pnr<'a>(
     match pnr {
         ParseNtResult::Ident(nt_ident, is_raw) => {
             if let IdentIsRaw::Yes = is_raw {
-                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
+                Err(dcx.create_err(errors::ConcatRawIdent { span: span_err }))
             } else {
                 Ok(nt_ident.name)
             }
@@ -783,7 +769,7 @@ fn extract_symbol_from_pnr<'a>(
             _,
         )) => {
             if let IdentIsRaw::Yes = is_raw {
-                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
+                Err(dcx.create_err(errors::ConcatRawIdent { span: span_err }))
             } else {
                 Ok(*symbol)
             }
@@ -802,11 +788,6 @@ fn extract_symbol_from_pnr<'a>(
         {
             Ok(*symbol)
         }
-        _ => Err(dcx
-            .struct_err(
-                "metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`",
-            )
-            .with_note("currently only string literals are supported")
-            .with_span(span_err)),
+        _ => Err(dcx.create_err(errors::InvalidConcatArgType { span: span_err })),
     }
 }
