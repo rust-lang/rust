@@ -2875,3 +2875,10 @@ pub struct RedundantImportVisibility {
     pub import_vis: String,
     pub max_vis: String,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_reserved_string)]
+pub struct ReservedString {
+    #[suggestion(code = " ", applicability = "machine-applicable")]
+    pub suggestion: Option<Span>,
+}

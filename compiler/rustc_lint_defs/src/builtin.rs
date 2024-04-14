@@ -88,6 +88,7 @@ declare_lint_pass! {
         RUST_2021_INCOMPATIBLE_OR_PATTERNS,
         RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
         RUST_2021_PRELUDE_COLLISIONS,
+        RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
         RUST_2024_INCOMPATIBLE_PAT,
         SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
@@ -4892,4 +4893,44 @@ declare_lint! {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
         reference: "issue #27970 <https://github.com/rust-lang/rust/issues/27970>",
     };
+}
+
+declare_lint! {
+    /// The `rust_2024_guarded_string_incompatible_syntax` lint detects `#` tokens
+    /// that will be parsed as part of a guarded string literal in Rust 2024.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021,compile_fail
+    /// #![deny(rust_2024_guarded_string_incompatible_syntax)]
+    ///
+    /// macro_rules! m {
+    ///     (# $x:expr #) => ();
+    ///     (# $x:expr) => ();
+    /// }
+    ///
+    /// m!(#"hey"#);
+    /// m!(#"hello");
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Prior to Rust 2024, `#"hey"#` is three tokens: the first `#`
+    /// followed by the string literal `"hey"` then the final `#`.
+    /// In Rust 2024, the whole sequence is considered a single token.
+    ///
+    /// This lint suggests to add whitespace between the leading `#`
+    /// and the string to keep them separated in Rust 2024.
+    // Allow this lint -- rustdoc doesn't yet support threading edition into this lint's parser.
+    #[allow(rustdoc::invalid_rust_codeblocks)]
+    pub RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
+    Allow,
+    "will be parsed as a guarded string in Rust 2024",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "issue #123735 <https://github.com/rust-lang/rust/issues/123735>",
+    };
+    crate_level_only
 }

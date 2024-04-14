@@ -29,6 +29,8 @@ pub mod unescape;
 #[cfg(test)]
 mod tests;
 
+use std::num::NonZeroU8;
+
 pub use crate::cursor::Cursor;
 
 use self::LiteralKind::*;
@@ -179,24 +181,27 @@ pub enum DocStyle {
 /// `rustc_ast::ast::LitKind`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LiteralKind {
-    /// "12_u8", "0o100", "0b120i99", "1f32".
+    /// `12_u8`, `0o100`, `0b120i99`, `1f32`.
     Int { base: Base, empty_int: bool },
-    /// "12.34f32", "1e3", but not "1f32".
+    /// `12.34f32`, `1e3`, but not `1f32`.
     Float { base: Base, empty_exponent: bool },
-    /// "'a'", "'\\'", "'''", "';"
+    /// `'a'`, `'\\'`, `'''`, `';`
     Char { terminated: bool },
-    /// "b'a'", "b'\\'", "b'''", "b';"
+    /// `b'a'`, `b'\\'`, `b'''`, `b';`
     Byte { terminated: bool },
-    /// ""abc"", ""abc"
+    /// `"abc"`, `"abc`
     Str { terminated: bool },
-    /// "b"abc"", "b"abc"
+    /// `b"abc"`, `b"abc`
     ByteStr { terminated: bool },
     /// `c"abc"`, `c"abc`
     CStr { terminated: bool },
-    /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a". `None` indicates
+    /// `#"abc"#`, `#"a`, `##"a"#`. `None` indicates no closing quote.
+    /// Allows fewer hashes to close the string to support older editions.
+    GuardedStr { n_start_hashes: Option<NonZeroU8>, n_end_hashes: u8 },
+    /// `r"abc"`, `r#"abc"#`, `r####"ab"###"c"####`, `r#"a`. `None` indicates
     /// an invalid literal.
     RawStr { n_hashes: Option<u8> },
-    /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a". `None`
+    /// `br"abc"`, `br#"abc"#`, `br####"ab"###"c"####`, `br#"a`. `None`
     /// indicates an invalid literal.
     RawByteStr { n_hashes: Option<u8> },
     /// `cr"abc"`, "cr#"abc"#", `cr#"a`. `None` indicates an invalid literal.
@@ -364,6 +369,9 @@ impl Cursor<'_> {
                 }
                 _ => self.ident_or_unknown_prefix(),
             },
+
+            // Guarded string literal (reserved syntax).
+            '#' if matches!(self.first(), '"' | '#') => self.guarded_double_quoted_string(),
 
             // Byte literal, byte string literal, raw byte string literal or identifier.
             'b' => self.c_or_byte_string(
@@ -756,6 +764,74 @@ impl Cursor<'_> {
         }
         // End of file reached.
         false
+    }
+
+    /// Eats the double-quoted string and returns `n_hashes` and an error if encountered.
+    fn guarded_double_quoted_string(&mut self) -> TokenKind {
+        // Create a backup to restore later if this
+        // turns out to not be a guarded literal.
+        let backup = self.clone();
+
+        let mut n_start_hashes: u32 = 1; // Already captured one `#`.
+        while self.first() == '#' {
+            n_start_hashes += 1;
+            self.bump();
+        }
+
+        if self.first() == '"' {
+            self.bump();
+
+            debug_assert!(self.prev() == '"');
+
+            // Lex the string itself as a normal string literal
+            // so we can recover that for older editions later.
+            let terminated = self.double_quoted_string();
+            let suffix_start = self.pos_within_token();
+            if terminated {
+                self.eat_literal_suffix();
+            }
+            if !terminated {
+                return Literal {
+                    kind: GuardedStr { n_start_hashes: None, n_end_hashes: 0 },
+                    suffix_start,
+                };
+            }
+
+            // Consume closing '#' symbols.
+            // Note that this will not consume extra trailing `#` characters:
+            // `###"abcde"####` is lexed as a `GuardedStr { n_end_hashes: 3, .. }`
+            // followed by a `#` token.
+            let mut n_end_hashes = 0;
+            while self.first() == '#' && n_end_hashes < n_start_hashes {
+                n_end_hashes += 1;
+                self.bump();
+            }
+
+            // Reserved syntax, always an error, so it doesn't matter if
+            // `n_start_hashes != n_end_hashes`.
+
+            let suffix_start = self.pos_within_token();
+
+            if let Ok(n) = u8::try_from(n_start_hashes) {
+                self.eat_literal_suffix();
+
+                Literal {
+                    kind: GuardedStr {
+                        n_start_hashes: NonZeroU8::new(n),
+                        // Always succeeds because `n_end_hashes <= n_start_hashes`
+                        n_end_hashes: n_end_hashes.try_into().unwrap(),
+                    },
+                    suffix_start,
+                }
+            } else {
+                Literal { kind: GuardedStr { n_start_hashes: None, n_end_hashes: 0 }, suffix_start }
+            }
+        } else {
+            // Not a guarded string, so restore old state.
+            *self = backup;
+            // Return a pound token.
+            Pound
+        }
     }
 
     /// Eats the double-quoted string and returns `n_hashes` and an error if encountered.

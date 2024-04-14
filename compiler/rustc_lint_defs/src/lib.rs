@@ -624,6 +624,7 @@ pub enum BuiltinLintDiag {
     },
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
+    ReservedString(Option<Span>),
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),

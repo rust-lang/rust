@@ -1,0 +1,32 @@
+error: prefix `Ñ` is unknown
+  --> $DIR/reserved-guarded-strings-lexing.rs:17:12
+   |
+LL |     demo2!(Ñ"foo");
+   |            ^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+   |
+LL |     demo2!(Ñ "foo");
+   |             +
+
+error: prefix `Ñ` is unknown
+  --> $DIR/reserved-guarded-strings-lexing.rs:18:12
+   |
+LL |     demo4!(Ñ#""#);
+   |            ^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+   |
+LL |     demo4!(Ñ #""#);
+   |             +
+
+error: identifiers cannot contain emoji: `🙃`
+  --> $DIR/reserved-guarded-strings-lexing.rs:19:12
+   |
+LL |     demo3!(🙃#"");
+   |            ^^
+
+error: aborting due to 3 previous errors
+
