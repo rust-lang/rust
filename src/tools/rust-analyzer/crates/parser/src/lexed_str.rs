@@ -187,6 +187,12 @@ impl<'a> Converter<'a> {
                 }
 
                 rustc_lexer::TokenKind::RawIdent => IDENT,
+
+                rustc_lexer::TokenKind::GuardedStrPrefix => {
+                    err = "Invalid string literal (reserved syntax)";
+                    ERROR
+                },
+
                 rustc_lexer::TokenKind::Literal { kind, .. } => {
                     self.extend_literal(token_text.len(), kind);
                     return;

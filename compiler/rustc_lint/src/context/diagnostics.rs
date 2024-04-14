@@ -176,6 +176,9 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
             lints::RawPrefix { label: label_span, suggestion: label_span.shrink_to_hi() }
                 .decorate_lint(diag);
         }
+        BuiltinLintDiag::ReservedString(suggestion) => {
+            lints::ReservedString { suggestion }.decorate_lint(diag);
+        }
         BuiltinLintDiag::UnusedBuiltinAttribute { attr_name, macro_name, invoc_span } => {
             lints::UnusedBuiltinAttribute { invoc_span, attr_name, macro_name }.decorate_lint(diag);
         }

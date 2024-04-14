@@ -3053,3 +3053,10 @@ pub(crate) enum MutRefSugg {
 #[derive(LintDiagnostic)]
 #[diag(lint_unqualified_local_imports)]
 pub(crate) struct UnqualifiedLocalImportsDiag {}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_reserved_string)]
+pub(crate) struct ReservedString {
+    #[suggestion(code = " ", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}
