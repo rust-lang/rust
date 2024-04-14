@@ -58,13 +58,11 @@ jobs:
           - name: mingw-check-tidy
             os: ubuntu-20.04-4core-16gb
             env: {}
-          - name: x86_64-gnu-llvm-17
+          - name: x86_64-msvc
             env:
-              ENABLE_GCC_CODEGEN: "1"
-            os: ubuntu-20.04-16core-64gb
-          - name: x86_64-gnu-tools
-            os: ubuntu-20.04-16core-64gb
-            env: {}
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
+              SCRIPT: make ci-msvc
+            os: windows-2019-8core-32gb
     defaults:
       run:
         shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"

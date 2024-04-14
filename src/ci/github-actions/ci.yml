@@ -358,13 +358,11 @@ jobs:
           - name: mingw-check-tidy
             <<: *job-linux-4c
 
-          - name: x86_64-gnu-llvm-17
+          - name: x86_64-msvc
             env:
-              ENABLE_GCC_CODEGEN: "1"
-            <<: *job-linux-16c
-
-          - name: x86_64-gnu-tools
-            <<: *job-linux-16c
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+              SCRIPT: make ci-msvc
+            <<: *job-windows-8c
 
   auto:
     <<: *base-ci-job
