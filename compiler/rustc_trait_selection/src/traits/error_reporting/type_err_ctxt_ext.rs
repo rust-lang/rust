@@ -2399,12 +2399,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if ambiguities.len() > 5 {
                     let infcx = self.infcx;
                     if !ambiguities.iter().all(|option| match option {
-                        DefId(did) => infcx.fresh_args_for_item(DUMMY_SP, *did).is_empty(),
+                        DefId(did) => infcx.tcx.generics_of(*did).count() == 0,
                         ParamEnv(_) => true,
                     }) {
                         // If not all are blanket impls, we filter blanked impls out.
                         ambiguities.retain(|option| match option {
-                            DefId(did) => infcx.fresh_args_for_item(DUMMY_SP, *did).is_empty(),
+                            DefId(did) => infcx.tcx.generics_of(*did).count() == 0,
                             ParamEnv(_) => true,
                         });
                     }

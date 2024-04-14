@@ -464,8 +464,8 @@ impl<T: ?Sized> *mut T {
     /// let ptr: *mut u32 = s.as_mut_ptr();
     ///
     /// unsafe {
-    ///     println!("{}", *ptr.offset(1));
-    ///     println!("{}", *ptr.offset(2));
+    ///     assert_eq!(2, *ptr.offset(1));
+    ///     assert_eq!(3, *ptr.offset(2));
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1027,8 +1027,8 @@ impl<T: ?Sized> *mut T {
     /// let ptr: *const u8 = s.as_ptr();
     ///
     /// unsafe {
-    ///     println!("{}", *ptr.add(1) as char);
-    ///     println!("{}", *ptr.add(2) as char);
+    ///     assert_eq!('2', *ptr.add(1) as char);
+    ///     assert_eq!('3', *ptr.add(2) as char);
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
@@ -1111,8 +1111,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// unsafe {
     ///     let end: *const u8 = s.as_ptr().add(3);
-    ///     println!("{}", *end.sub(1) as char);
-    ///     println!("{}", *end.sub(2) as char);
+    ///     assert_eq!('3', *end.sub(1) as char);
+    ///     assert_eq!('2', *end.sub(2) as char);
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
