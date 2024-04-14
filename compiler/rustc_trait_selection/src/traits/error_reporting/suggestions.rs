@@ -4583,11 +4583,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     format!("&{}{ty}", mutability.prefix_str())
                 }
             }
-            ty::Array(ty, len) => format!(
-                "[{}; {}]",
-                self.ty_kind_suggestion(param_env, *ty)?,
-                len.eval_target_usize(tcx, ty::ParamEnv::reveal_all()),
-            ),
+            ty::Array(ty, len) if let Some(len) = len.try_eval_target_usize(tcx, param_env) => {
+                format!("[{}; {}]", self.ty_kind_suggestion(param_env, *ty)?, len)
+            }
             ty::Tuple(tys) => format!(
                 "({})",
                 tys.iter()
