@@ -436,17 +436,12 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 //
                 // In practice currently the two ways that this happens is
                 // coercion and subtyping.
-                let (a, b) = if let ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) = atom {
-                    (a, b)
-                } else if let ty::PredicateKind::Subtype(ty::SubtypePredicate {
-                    a_is_expected: _,
-                    a,
-                    b,
-                }) = atom
-                {
-                    (a, b)
-                } else {
-                    return None;
+                let (a, b) = match atom {
+                    ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => (a, b),
+                    ty::PredicateKind::Subtype(ty::SubtypePredicate { a_is_expected: _, a, b }) => {
+                        (a, b)
+                    }
+                    _ => return None,
                 };
 
                 let a_vid = self.root_vid(a)?;
