@@ -46,9 +46,9 @@ where
         .is_some()
 }
 
-pub fn depth_first_search<G>(graph: &G, from: G::Node) -> iterate::DepthFirstSearch<'_, G>
+pub fn depth_first_search<G>(graph: G, from: G::Node) -> iterate::DepthFirstSearch<G>
 where
-    G: ?Sized + Successors,
+    G: Successors,
 {
     iterate::DepthFirstSearch::new(graph).with_start_node(from)
 }
