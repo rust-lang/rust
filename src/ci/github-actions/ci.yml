@@ -340,6 +340,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The job matrix for `calculate_matrix` is defined in src/ci/github-actions/jobs.yml.
   calculate_matrix:
     name: Calculate job matrix
     runs-on: ubuntu-latest
@@ -362,6 +363,7 @@ jobs:
     continue-on-error: ${{ matrix.name == 'mingw-check-tidy' }}
     strategy:
       matrix:
+        # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
 
   auto:
