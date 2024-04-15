@@ -45,14 +45,6 @@ mod macros;
 pub mod float;
 pub mod int;
 
-#[cfg(any(
-    all(target_family = "wasm", target_os = "unknown"),
-    target_os = "uefi",
-    target_os = "none",
-    target_os = "xous",
-    all(target_vendor = "fortanix", target_env = "sgx"),
-    target_os = "windows"
-))]
 pub mod math;
 pub mod mem;
 
