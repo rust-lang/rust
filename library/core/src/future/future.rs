@@ -22,7 +22,7 @@ use crate::task::{Context, Poll};
 /// When using a future, you generally won't call `poll` directly, but instead
 /// `.await` the value.
 ///
-/// [`async`]: ../../std/keyword.async.html
+/// [`async`]: ../../../std/keyword.async.html
 /// [`Waker`]: crate::task::Waker
 #[doc(notable_trait)]
 #[must_use = "futures do nothing unless you `.await` or poll them"]
