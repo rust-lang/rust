@@ -579,7 +579,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!(?obligations);
             self.typeck_results
                 .borrow_mut()
-                .coroutine_interior_predicates
+                .coroutine_stalled_predicates
                 .insert(expr_def_id, obligations);
         }
     }

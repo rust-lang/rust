@@ -1552,8 +1552,8 @@ pub(super) fn check_coroutine_obligations(
     let typeck = tcx.typeck(def_id);
     let param_env = tcx.param_env(typeck.hir_owner.def_id);
 
-    let coroutine_interior_predicates = &typeck.coroutine_interior_predicates[&def_id];
-    debug!(?coroutine_interior_predicates);
+    let coroutine_stalled_predicates = &typeck.coroutine_stalled_predicates[&def_id];
+    debug!(?coroutine_stalled_predicates);
 
     let infcx = tcx
         .infer_ctxt()
@@ -1566,7 +1566,7 @@ pub(super) fn check_coroutine_obligations(
         .build();
 
     let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(&infcx);
-    for (predicate, cause) in coroutine_interior_predicates {
+    for (predicate, cause) in coroutine_stalled_predicates {
         let obligation = Obligation::new(tcx, cause.clone(), param_env, *predicate);
         fulfillment_cx.register_predicate_obligation(&infcx, obligation);
     }

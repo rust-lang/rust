@@ -201,7 +201,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Stores the predicates that apply on coroutine witness types.
     /// formatting modified file tests/ui/coroutine/retain-resume-ref.rs
-    pub coroutine_interior_predicates:
+    pub coroutine_stalled_predicates:
         LocalDefIdMap<Vec<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>>,
 
     /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
@@ -243,7 +243,7 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_min_captures: Default::default(),
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),
-            coroutine_interior_predicates: Default::default(),
+            coroutine_stalled_predicates: Default::default(),
             treat_byte_string_as_slice: Default::default(),
             closure_size_eval: Default::default(),
             offset_of_data: Default::default(),

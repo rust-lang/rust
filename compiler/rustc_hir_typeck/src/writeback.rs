@@ -552,11 +552,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         self.tcx().with_stable_hashing_context(move |ref hcx| {
             for (&expr_def_id, predicates) in
-                fcx_typeck_results.coroutine_interior_predicates.to_sorted(hcx, false).into_iter()
+                fcx_typeck_results.coroutine_stalled_predicates.to_sorted(hcx, false).into_iter()
             {
                 let predicates =
                     self.resolve(predicates.clone(), &self.fcx.tcx.def_span(expr_def_id));
-                self.typeck_results.coroutine_interior_predicates.insert(expr_def_id, predicates);
+                self.typeck_results.coroutine_stalled_predicates.insert(expr_def_id, predicates);
             }
         })
     }
