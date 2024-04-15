@@ -8,10 +8,14 @@ macro_rules! test_impl {
         }
     };
     ($fun:ident ($($v:ident : $ty:ty),*) -> $r:ty [$call:ident, $instr_altivec:ident / $instr_vsx:ident]) => {
+        test_impl! { $fun ($($v : $ty),*) -> $r [$call, $instr_altivec / $instr_vsx / $instr_vsx] }
+    };
+    ($fun:ident ($($v:ident : $ty:ty),*) -> $r:ty [$call:ident, $instr_altivec:ident / $instr_vsx:ident / $instr_pwr9:ident]) => {
         #[inline]
         #[target_feature(enable = "altivec")]
-        #[cfg_attr(all(test, not(target_feature="vsx")), assert_instr($instr_altivec))]
-        #[cfg_attr(all(test, target_feature="vsx"), assert_instr($instr_vsx))]
+        #[cfg_attr(all(test, not(target_feature="vsx"), not(target_feature = "power9-vector")), assert_instr($instr_altivec))]
+        #[cfg_attr(all(test, target_feature="vsx", not(target_feature = "power9-vector")), assert_instr($instr_vsx))]
+        #[cfg_attr(all(test, not(target_feature="vsx"), target_feature = "power9-vector"), assert_instr($instr_pwr9))]
         pub unsafe fn $fun ($($v : $ty),*) -> $r {
             $call ($($v),*)
         }
