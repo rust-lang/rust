@@ -77,6 +77,7 @@ pub enum HlMod {
     Library,
     /// Used to differentiate individual elements within macro calls.
     Macro,
+    /// Used to differentiate individual elements within proc-macro calls.
     ProcMacro,
     /// Mutable binding.
     Mutable,
@@ -262,6 +263,7 @@ impl HlMod {
     }
 
     fn mask(self) -> u32 {
+        debug_assert!(Self::ALL.len() <= 32, "HlMod::mask is not enough to cover all variants");
         1 << (self as u32)
     }
 }
