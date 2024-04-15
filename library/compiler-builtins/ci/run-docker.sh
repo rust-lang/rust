@@ -3,7 +3,7 @@
 # Small script to run tests for a target (or all targets) inside all the
 # respective docker images.
 
-set -eux
+set -euxo pipefail
 
 run() {
     local target="$1"

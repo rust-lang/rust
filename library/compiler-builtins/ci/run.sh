@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -eux
 
 target="${1:-}"
@@ -29,13 +31,13 @@ else
 fi
 
 if [ -d /builtins-target ]; then
-    path=/builtins-target/${target}/debug/deps/libcompiler_builtins-*.rlib
+    rlib_paths=/builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib
 else
-    path=target/${target}/debug/deps/libcompiler_builtins-*.rlib
+    rlib_paths=target/"${target}"/debug/deps/libcompiler_builtins-*.rlib
 fi
 
 # Remove any existing artifacts from previous tests that don't set #![compiler_builtins]
-rm -f $path
+rm -f $rlib_paths
 
 cargo build --target "$target"
 cargo build --target "$target" --release
@@ -44,7 +46,7 @@ cargo build --target "$target" --release --features c
 cargo build --target "$target" --features no-asm
 cargo build --target "$target" --release --features no-asm
 
-PREFIX=$(echo "$target" | sed -e 's/unknown-//')-
+PREFIX=${target//unknown-/}-
 case "$target" in
     armv7-*)
         PREFIX=arm-linux-gnueabihf-
@@ -57,7 +59,7 @@ case "$target" in
         ;;
 esac
 
-NM=$(find $(rustc --print sysroot) \( -name llvm-nm -o -name llvm-nm.exe \) )
+NM=$(find "$(rustc --print sysroot)" \( -name llvm-nm -o -name llvm-nm.exe \) )
 if [ "$NM" = "" ]; then
   NM="${PREFIX}nm"
 fi
@@ -69,37 +71,41 @@ if [[ "$TOOLCHAIN" == *i686-pc-windows-gnu ]]; then
 fi
 
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
-for rlib in $(echo $path); do
+for rlib in $rlib_paths; do
     set +x
     echo "================================================================"
     echo "checking $rlib for duplicate symbols"
     echo "================================================================"
+    
+    duplicates_found=0
 
-    stdout=$($NM -g --defined-only $rlib 2>&1)
     # NOTE On i586, It's normal that the get_pc_thunk symbol appears several
     # times so ignore it
-    set +e
-    echo "$stdout" | \
-      sort | \
-      uniq -d | \
-      grep -v __x86.get_pc_thunk | \
-      grep 'T __'
+    $NM -g --defined-only "$rlib" 2>&1 |
+      sort |
+      uniq -d |
+      grep -v __x86.get_pc_thunk --quiet |
+      grep 'T __' && duplicates_found=1
 
-    if test $? = 0; then
+    if [ "$duplicates_found" != 0 ]; then
+        echo "error: found duplicate symbols"
         exit 1
+    else
+        echo "success; no duplicate symbols found"
     fi
-
-    set -ex
 done
 
-rm -f $path
+rm -f $rlib_paths
+
+build_intrinsics() {
+    cargo build --target "$target" -v --example intrinsics  "$@"
+}
 
 # Verify that we haven't drop any intrinsic/symbol
-build_intrinsics="cargo build --target "$target" -v --example intrinsics"
-$build_intrinsics
-$build_intrinsics --release
-$build_intrinsics --features c
-$build_intrinsics --features c --release
+build_intrinsics
+build_intrinsics --release
+build_intrinsics --features c
+build_intrinsics --features c --release
 
 # Verify that there are no undefined symbols to `panic` within our
 # implementations
@@ -109,7 +115,7 @@ CARGO_PROFILE_RELEASE_LTO=true \
     cargo build --target "$target" --example intrinsics --release
 
 # Ensure no references to any symbols from core
-for rlib in $(echo $path); do
+for rlib in $(echo $rlib_paths); do
     set +x
     echo "================================================================"
     echo "checking $rlib for references to core"
@@ -121,14 +127,14 @@ for rlib in $(echo $path); do
     defined="$tmpdir/defined_symbols.txt"
     undefined="$tmpdir/defined_symbols.txt"
 
-    $NM --quiet -U $rlib | grep 'T _ZN4core' | awk '{print $3}' | sort | uniq > "$defined"
-    $NM --quiet -u $rlib | grep 'U _ZN4core' | awk '{print $2}' | sort | uniq > "$undefined"
-    grep_failed=0
-    grep -v -F -x -f "$defined" "$undefined" && grep_failed=1
+    $NM --quiet -U "$rlib" | grep 'T _ZN4core' | awk '{print $3}' | sort | uniq > "$defined"
+    $NM --quiet -u "$rlib" | grep 'U _ZN4core' | awk '{print $2}' | sort | uniq > "$undefined"
+    grep_has_results=0
+    grep -v -F -x -f "$defined" "$undefined" && grep_has_results=1
 
     if [ "$target" = "powerpc64-unknown-linux-gnu" ]; then
         echo "FIXME: powerpc64 fails these tests"
-    elif [ "$grep_failed" != 0 ]; then
+    elif [ "$grep_has_results" != 0 ]; then
         echo "error: found unexpected references to core"
         exit 1
     else
