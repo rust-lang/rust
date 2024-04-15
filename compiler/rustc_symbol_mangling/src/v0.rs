@@ -831,7 +831,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 ///   e.g. `1` becomes `"0_"`, `62` becomes `"Z_"`, etc.
 pub(crate) fn push_integer_62(x: u64, output: &mut String) {
     if let Some(x) = x.checked_sub(1) {
-        base_n::push_str(x as u128, 62, output);
+        base_n::push_str(x as u128, base_n::ALPHANUMERIC_ONLY, output);
     }
     output.push('_');
 }
