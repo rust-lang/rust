@@ -454,7 +454,12 @@ fn run_test(
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
         stdin.write_all(test.as_bytes()).expect("could write out test sources");
     }
-    let output = child.wait_with_output().expect("Failed to read stdout");
+    let output = if is_multiple_tests {
+        let status = child.wait().expect("Failed to wait");
+        process::Output { status, stdout: Vec::new(), stderr: Vec::new() }
+    } else {
+        child.wait_with_output().expect("Failed to read stdout")
+    };
 
     struct Bomb<'a>(&'a str);
     impl Drop for Bomb<'_> {
@@ -535,17 +540,17 @@ fn run_test(
         cmd.output()
     };
     match result {
-        Err(e) => return Err(TestFailure::ExecutionError(e)),
+        Err(e) => Err(TestFailure::ExecutionError(e)),
         Ok(out) => {
             if lang_string.should_panic && out.status.success() {
-                return Err(TestFailure::UnexpectedRunPass);
+                Err(TestFailure::UnexpectedRunPass)
             } else if !lang_string.should_panic && !out.status.success() {
-                return Err(TestFailure::ExecutionFailure(out));
+                Err(TestFailure::ExecutionFailure(out))
+            } else {
+                Ok(())
             }
         }
     }
-
-    Ok(())
 }
 
 /// Converts a path intended to use as a command to absolute if it is
@@ -1271,11 +1276,14 @@ impl DocTestKinds {
         doctest: DocTest,
         opts: &GlobalTestOptions,
         edition: Edition,
+        rustdoc_options: &RustdocOptions,
         unused_externs: &Arc<Mutex<Vec<UnusedExterns>>>,
     ) {
         if doctest.failed_ast
             || doctest.lang_string.compile_fail
             || doctest.lang_string.test_harness
+            || rustdoc_options.nocapture
+            || rustdoc_options.test_args.iter().any(|arg| arg == "--show-output")
             || doctest.crate_attrs.contains("#![no_std]")
         {
             self.standalone.push(doctest.generate_test_desc_and_fn(
@@ -1301,6 +1309,7 @@ impl DocTestKinds {
         }
         let Self { mut standalone, others } = self;
         let mut ran_edition_tests = 0;
+        let mut nb_errors = 0;
 
         for (edition, mut doctests) in others {
             doctests.sort_by(|a, b| a.name.cmp(&b.name));
@@ -1343,7 +1352,7 @@ fn main() {{
 }}",
             )
             .unwrap();
-            if let Err(TestFailure::CompileError) = run_test(
+            let ret = run_test(
                 output,
                 supports_color,
                 None,
@@ -1354,7 +1363,8 @@ fn main() {{
                 edition,
                 |_: UnusedExterns| {},
                 false,
-            ) {
+            );
+            if let Err(TestFailure::CompileError) = ret {
                 // We failed to compile all compatible tests as one so we push them into the
                 // "standalone" doctests.
                 debug!("Failed to compile compatible doctests for edition {edition} all at once");
@@ -1367,12 +1377,19 @@ fn main() {{
                 }
             } else {
                 ran_edition_tests += 1;
+                if ret.is_err() {
+                    nb_errors += 1;
+                }
             }
         }
 
         if ran_edition_tests == 0 || !standalone.is_empty() {
             standalone.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
             test::test_main(&test_args, standalone, None);
+        }
+        if nb_errors != 0 {
+            // libtest::ERROR_EXIT_CODE is not public but it's the same value.
+            std::process::exit(101);
         }
     }
 }
@@ -1534,7 +1551,13 @@ impl Tester for Collector {
             path,
             no_run,
         );
-        self.tests.add_doctest(doctest, &opts, edition, &self.unused_extern_reports);
+        self.tests.add_doctest(
+            doctest,
+            &opts,
+            edition,
+            &self.rustdoc_options,
+            &self.unused_extern_reports,
+        );
     }
 
     fn get_line(&self) -> usize {
