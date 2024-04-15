@@ -11,6 +11,7 @@ use hir_def::{ItemContainerId, Lookup};
 use hir_expand::name;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
+use rustc_pattern_analysis::constructor::Constructor;
 use syntax::{ast, AstNode};
 use tracing::debug;
 use triomphe::Arc;
@@ -266,15 +267,17 @@ impl ExprValidator {
 
             let mut have_errors = false;
             let deconstructed_pat = self.lower_pattern(&cx, pat, db, &mut have_errors);
+
+            // optimization, wildcard trivially hold
+            if have_errors || matches!(deconstructed_pat.ctor(), Constructor::Wildcard) {
+                continue;
+            }
+
             let match_arm = rustc_pattern_analysis::MatchArm {
                 pat: pattern_arena.alloc(deconstructed_pat),
                 has_guard: false,
                 arm_data: (),
             };
-            if have_errors {
-                continue;
-            }
-
             let report = match cx.compute_match_usefulness(&[match_arm], ty.clone()) {
                 Ok(v) => v,
                 Err(e) => {

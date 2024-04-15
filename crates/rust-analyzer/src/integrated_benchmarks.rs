@@ -300,7 +300,7 @@ fn integrated_diagnostics_benchmark() {
         .diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)
         .unwrap();
 
-    let _g = crate::tracing::hprof::init("*>1");
+    let _g = crate::tracing::hprof::init("*");
 
     {
         let _it = stdx::timeit("change");
