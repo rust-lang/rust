@@ -60,3 +60,5 @@ RUN /scripts/build-gccjit.sh /scripts
 
 COPY scripts/x86_64-gnu-llvm.sh /tmp/script.sh
 ENV SCRIPT /tmp/script.sh
+
+# dummy comment to update the dockerfile and have it rebuild the image
