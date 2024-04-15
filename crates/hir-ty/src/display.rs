@@ -422,13 +422,7 @@ impl HirDisplay for ProjectionTy {
         let proj_params_count =
             self.substitution.len(Interner) - trait_ref.substitution.len(Interner);
         let proj_params = &self.substitution.as_slice(Interner)[..proj_params_count];
-        if !proj_params.is_empty() {
-            write!(f, "<")?;
-            // FIXME use `hir_fmt_generics` here
-            f.write_joined(proj_params, ", ")?;
-            write!(f, ">")?;
-        }
-        Ok(())
+        hir_fmt_generics(f, proj_params, None)
     }
 }
 
@@ -469,7 +463,11 @@ impl HirDisplay for Const {
                 ConstScalar::Bytes(b, m) => render_const_scalar(f, b, m, &data.ty),
                 ConstScalar::UnevaluatedConst(c, parameters) => {
                     write!(f, "{}", c.name(f.db.upcast()))?;
-                    hir_fmt_generics(f, parameters, c.generic_def(f.db.upcast()))?;
+                    hir_fmt_generics(
+                        f,
+                        parameters.as_slice(Interner),
+                        c.generic_def(f.db.upcast()),
+                    )?;
                     Ok(())
                 }
                 ConstScalar::Unknown => f.write_char('_'),
@@ -945,37 +943,31 @@ impl HirDisplay for Ty {
                     }
                 };
                 f.end_location_link();
+
                 if parameters.len(Interner) > 0 {
                     let generics = generics(db.upcast(), def.into());
-                    let (
-                        parent_params,
-                        self_param,
-                        type_params,
-                        const_params,
-                        _impl_trait_params,
-                        lifetime_params,
-                    ) = generics.provenance_split();
-                    let total_len =
-                        parent_params + self_param + type_params + const_params + lifetime_params;
+                    let (parent_len, self_, type_, const_, impl_, lifetime) =
+                        generics.provenance_split();
+                    let parameters = parameters.as_slice(Interner);
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
-                    if total_len > 0 {
+                    if parameters.len() - impl_ > 0 {
                         // `parameters` are in the order of fn's params (including impl traits), fn's lifetimes
                         // parent's params (those from enclosing impl or trait, if any).
-                        let parameters = parameters.as_slice(Interner);
-                        let fn_params_len = self_param + type_params + const_params;
-                        // This will give slice till last type or const
-                        let fn_params = parameters.get(..fn_params_len);
-                        let fn_lt_params =
-                            parameters.get(fn_params_len..(fn_params_len + lifetime_params));
-                        let parent_params = parameters.get(parameters.len() - parent_params..);
-                        let params = parent_params
-                            .into_iter()
-                            .chain(fn_lt_params)
-                            .chain(fn_params)
-                            .flatten();
+                        let (fn_params, other) =
+                            parameters.split_at(self_ + type_ + const_ + lifetime);
+                        let (_impl, parent_params) = other.split_at(impl_);
+                        debug_assert_eq!(parent_params.len(), parent_len);
+
+                        let parent_params =
+                            generic_args_sans_defaults(f, Some(def.into()), parent_params);
+                        let fn_params = generic_args_sans_defaults(f, Some(def.into()), fn_params);
+
                         write!(f, "<")?;
-                        // FIXME use `hir_fmt_generics` here
-                        f.write_joined(params, ", ")?;
+                        hir_fmt_generic_arguments(f, parent_params)?;
+                        if !parent_params.is_empty() && !fn_params.is_empty() {
+                            write!(f, ", ")?;
+                        }
+                        hir_fmt_generic_arguments(f, fn_params)?;
                         write!(f, ">")?;
                     }
                 }
@@ -1019,7 +1011,7 @@ impl HirDisplay for Ty {
 
                 let generic_def = self.as_generic_def(db);
 
-                hir_fmt_generics(f, parameters, generic_def)?;
+                hir_fmt_generics(f, parameters.as_slice(Interner), generic_def)?;
             }
             TyKind::AssociatedType(assoc_type_id, parameters) => {
                 let type_alias = from_assoc_type_id(*assoc_type_id);
@@ -1042,21 +1034,15 @@ impl HirDisplay for Ty {
                     f.end_location_link();
                     // Note that the generic args for the associated type come before those for the
                     // trait (including the self type).
-                    // FIXME: reconsider the generic args order upon formatting?
-                    if parameters.len(Interner) > 0 {
-                        write!(f, "<")?;
-                        // FIXME use `hir_fmt_generics` here
-                        f.write_joined(parameters.as_slice(Interner), ", ")?;
-                        write!(f, ">")?;
-                    }
+                    hir_fmt_generics(f, parameters.as_slice(Interner), None)
                 } else {
                     let projection_ty = ProjectionTy {
                         associated_ty_id: to_assoc_type_id(type_alias),
                         substitution: parameters.clone(),
                     };
 
-                    projection_ty.hir_fmt(f)?;
-                }
+                    projection_ty.hir_fmt(f)
+                }?;
             }
             TyKind::Foreign(type_alias) => {
                 let alias = from_foreign_def_id(*type_alias);
@@ -1150,7 +1136,7 @@ impl HirDisplay for Ty {
                     }
                     ClosureStyle::ClosureWithSubst => {
                         write!(f, "{{closure#{:?}}}", id.0.as_u32())?;
-                        return hir_fmt_generics(f, substs, None);
+                        return hir_fmt_generics(f, substs.as_slice(Interner), None);
                     }
                     _ => (),
                 }
@@ -1336,15 +1322,14 @@ impl HirDisplay for Ty {
 
 fn hir_fmt_generics(
     f: &mut HirFormatter<'_>,
-    parameters: &Substitution,
+    parameters: &[GenericArg],
     generic_def: Option<hir_def::GenericDefId>,
 ) -> Result<(), HirDisplayError> {
-    if parameters.is_empty(Interner) {
+    if parameters.is_empty() {
         return Ok(());
     }
 
-    let parameters_to_write =
-        generic_args_sans_defaults(f, generic_def, parameters.as_slice(Interner));
+    let parameters_to_write = generic_args_sans_defaults(f, generic_def, parameters);
     if !parameters_to_write.is_empty() {
         write!(f, "<")?;
         hir_fmt_generic_arguments(f, parameters_to_write)?;
@@ -1677,13 +1662,7 @@ fn fmt_trait_ref(
     f.start_location_link(trait_.into());
     write!(f, "{}", f.db.trait_data(trait_).name.display(f.db.upcast()))?;
     f.end_location_link();
-    if tr.substitution.len(Interner) > 1 {
-        write!(f, "<")?;
-        // FIXME use `hir_fmt_generics` here
-        f.write_joined(&tr.substitution.as_slice(Interner)[1..], ", ")?;
-        write!(f, ">")?;
-    }
-    Ok(())
+    hir_fmt_generics(f, &tr.substitution.as_slice(Interner)[1..], None)
 }
 
 impl HirDisplay for TraitRef {
