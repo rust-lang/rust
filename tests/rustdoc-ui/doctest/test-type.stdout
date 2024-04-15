@@ -1,10 +1,15 @@
 
-running 5 tests
+running 4 tests
 test $DIR/test-type.rs - f (line 12) ... ignored
-test $DIR/test-type.rs - f (line 15) - compile ... ok
-test $DIR/test-type.rs - f (line 21) - compile fail ... ok
+test $DIR/test-type.rs - f (line 15) ... ok
 test $DIR/test-type.rs - f (line 6) ... ok
-test $DIR/test-type.rs - f (line 9) ... ok
+test $DIR/test-type.rs - f (line 9) - should panic ... ok
 
-test result: ok. 4 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in $TIME
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+
+running 1 test
+test $DIR/test-type.rs - f (line 21) - compile fail ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 
