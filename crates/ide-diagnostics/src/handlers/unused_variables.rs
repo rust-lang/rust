@@ -25,10 +25,13 @@ pub(crate) fn unused_variables(
     }
     let diagnostic_range = ctx.sema.diagnostics_display_range(ast);
     // The range for the Actual Name. We don't want to replace the entire declarition. Using the diagnostic range causes issues within in Array Destructuring.
-    let name_range =
-        d.local.primary_source(ctx.sema.db).name().map(|v| v.syntax().value.text_range())?;
-    // Make sure we are within the diagnostic range for the variable
-    if !diagnostic_range.range.contains_range(name_range) {
+    let name_range = d
+        .local
+        .primary_source(ctx.sema.db)
+        .name()
+        .map(|v| v.syntax().original_file_range_rooted(ctx.sema.db))
+        .filter(|it| Some(it.file_id) == ast.file_id.file_id())?;
+    if !diagnostic_range.range.contains_range(name_range.range) {
         return None;
     }
     let var_name = d.local.name(ctx.sema.db);
@@ -42,7 +45,7 @@ pub(crate) fn unused_variables(
         .with_fixes(fixes(
             ctx.sema.db,
             var_name,
-            name_range,
+            name_range.range,
             diagnostic_range,
             ast.file_id.is_macro(),
         ))
