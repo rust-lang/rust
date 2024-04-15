@@ -1,0 +1,55 @@
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/suggest-explicit-lifetime-for-associated-types-issue-122025.rs:5:24
+   |
+LL |     F: Iterator<Item = &MyType>,
+   |                        ^ explicit lifetime name needed here
+   |
+help: consider adding an explicit lifetime here
+   |
+LL ~ fn foo<'a, F>()
+LL | where
+LL ~     F: Iterator<Item = &'a MyType>,
+   |
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/suggest-explicit-lifetime-for-associated-types-issue-122025.rs:12:28
+   |
+LL |         F: Iterator<Item = &MyType>,
+   |                            ^ explicit lifetime name needed here
+   |
+help: consider adding an explicit lifetime here
+   |
+LL ~     fn baz<'a, F>()
+LL |     where
+LL ~         F: Iterator<Item = &'a MyType>,
+   |
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/suggest-explicit-lifetime-for-associated-types-issue-122025.rs:19:24
+   |
+LL |     T: Iterator<Item = &MyType>,
+   |                        ^ explicit lifetime name needed here
+   |
+help: consider adding an explicit lifetime here
+   |
+LL ~ fn function<'a, T>()
+LL | where
+LL ~     T: Iterator<Item = &'a MyType>,
+   |
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/suggest-explicit-lifetime-for-associated-types-issue-122025.rs:23:28
+   |
+LL |         A: Iterator<Item = &u8>,
+   |                            ^ explicit lifetime name needed here
+   |
+help: consider adding an explicit lifetime here
+   |
+LL ~     fn lambda<'a, A>()
+LL |     where
+LL ~         A: Iterator<Item = &'a u8>,
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0637`.

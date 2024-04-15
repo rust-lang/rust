@@ -1634,7 +1634,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn resolve_anonymous_lifetime(&mut self, lifetime: &Lifetime, elided: bool) {
         debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
-
         let kind =
             if elided { MissingLifetimeKind::Ampersand } else { MissingLifetimeKind::Underscore };
         let missing_lifetime =
@@ -1685,14 +1684,53 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 ..
                             } = &rib.kind
                             {
-                                diag.multipart_suggestion(
-                                    "consider introducing a higher-ranked lifetime here",
-                                    vec![
-                                        (span.shrink_to_lo(), "for<'a> ".into()),
-                                        (lifetime.ident.span.shrink_to_hi(), "'a ".into()),
-                                    ],
-                                    Applicability::MachineApplicable,
-                                );
+                                // hacky way to check if lifetime suggestion is for
+                                // an associated type binding
+                                let is_associated_type_binding = lifetime.ident.span
+                                    != self.r.tcx.sess.source_map().span_extend_to_prev_char(
+                                        lifetime.ident.span,
+                                        '=',
+                                        false,
+                                    );
+                                if is_associated_type_binding {
+                                    for upper_rib in self.lifetime_ribs[0..i].iter().rev() {
+                                        if let LifetimeRibKind::Generics {
+                                            kind: LifetimeBinderKind::Function,
+                                            span: function_span,
+                                            ..
+                                        } = upper_rib.kind
+                                        {
+                                            let type_parameter_span = self
+                                                .r
+                                                .tcx
+                                                .sess
+                                                .source_map()
+                                                .span_through_char(function_span, '<')
+                                                .shrink_to_hi();
+                                            diag.multipart_suggestion(
+                                                "consider adding an explicit lifetime here",
+                                                vec![
+                                                    (type_parameter_span, "'a, ".into()),
+                                                    (
+                                                        lifetime.ident.span.shrink_to_hi(),
+                                                        "'a ".into(),
+                                                    ),
+                                                ],
+                                                Applicability::MaybeIncorrect,
+                                            );
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    diag.multipart_suggestion(
+                                        "consider introducing a higher-ranked lifetime here",
+                                        vec![
+                                            (span.shrink_to_lo(), "for<'a> ".into()),
+                                            (lifetime.ident.span.shrink_to_hi(), "'a ".into()),
+                                        ],
+                                        Applicability::MachineApplicable,
+                                    );
+                                }
                                 break;
                             }
                         }
