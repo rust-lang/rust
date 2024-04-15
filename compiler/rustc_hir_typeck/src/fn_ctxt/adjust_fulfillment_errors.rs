@@ -367,7 +367,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }),
         ) = error.code
             && let ty::Closure(def_id, _) | ty::Coroutine(def_id, ..) =
-                expected_trait_ref.skip_binder().self_ty().kind()
+                expected_trait_ref.self_ty().kind()
             && span.overlaps(self.tcx.def_span(*def_id))
         {
             true
