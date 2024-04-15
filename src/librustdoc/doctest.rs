@@ -454,12 +454,7 @@ fn run_test(
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
         stdin.write_all(test.as_bytes()).expect("could write out test sources");
     }
-    let output = if !is_multiple_tests {
-        let status = child.wait().expect("Failed to wait");
-        process::Output { status, stdout: Vec::new(), stderr: Vec::new() }
-    } else {
-        child.wait_with_output().expect("Failed to read stdout")
-    };
+    let output = child.wait_with_output().expect("Failed to read stdout");
 
     struct Bomb<'a>(&'a str);
     impl Drop for Bomb<'_> {
@@ -598,6 +593,11 @@ impl DocTest {
         // If `test_id` is `None`, it means we're generating code for a code example "run" link.
         test_id: Option<&str>,
     ) -> (String, usize) {
+        if self.failed_ast {
+            // If the AST failed to compile, no need to go generate a complete doctest, the error
+            // will be better this way.
+            return (self.everything_else.clone(), 0);
+        }
         let mut line_offset = 0;
         let mut prog = String::with_capacity(
             self.test_code.len() + self.crate_attrs.len() + self.crates.len(),
@@ -841,7 +841,7 @@ pub const TEST: test::TestDescAndFn = test::TestDescAndFn {{
         end_line: 0,
         end_col: 0,
         compile_fail: false,
-        no_run: false,
+        no_run: {no_run},
         should_panic: test::ShouldPanic::{should_panic},
         test_type: test::TestType::UnitTest,
     }},
@@ -855,6 +855,7 @@ pub const TEST: test::TestDescAndFn = test::TestDescAndFn {{
             ignore = self.ignore,
             file = self.file,
             line = self.line,
+            no_run = self.no_run,
             should_panic = if !self.no_run && self.lang_string.should_panic { "Yes" } else { "No" },
             // Setting `no_run` to `true` in `TestDesc` still makes the test run, so we simply
             // don't give it the function to run.
@@ -937,11 +938,10 @@ pub(crate) fn make_test(
                 Ok(p) => p,
                 Err(errs) => {
                     errs.into_iter().for_each(|err| err.cancel());
-                    return (found_main, found_extern_crate, found_macro, true);
+                    return (found_main, found_extern_crate, found_macro);
                 }
             };
 
-            let mut has_errors = false;
             loop {
                 match parser.parse_item(ForceCollect::No) {
                     Ok(Some(item)) => {
@@ -972,7 +972,6 @@ pub(crate) fn make_test(
                     Ok(None) => break,
                     Err(e) => {
                         e.cancel();
-                        has_errors = true;
                         break;
                     }
                 }
@@ -982,14 +981,13 @@ pub(crate) fn make_test(
                 parser.maybe_consume_incorrect_semicolon(None);
             }
 
-            has_errors = has_errors || psess.dcx.has_errors_or_delayed_bugs().is_some();
             // Reset errors so that they won't be reported as compiler bugs when dropping the
             // dcx. Any errors in the tests will be reported when the test file is compiled,
             // Note that we still need to cancel the errors above otherwise `Diag` will panic on
             // drop.
             psess.dcx.reset_err_count();
 
-            (found_main, found_extern_crate, found_macro, has_errors)
+            (found_main, found_extern_crate, found_macro)
         })
     });
 
@@ -998,7 +996,7 @@ pub(crate) fn make_test(
         Ignore::None => false,
         Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
     };
-    let Ok((mut main_fn_span, already_has_extern_crate, found_macro, has_errors)) = result else {
+    let Ok((mut main_fn_span, already_has_extern_crate, found_macro)) = result else {
         // If the parser panicked due to a fatal error, pass the test code through unchanged.
         // The error will be reported during compilation.
         return DocTest {
@@ -1054,7 +1052,7 @@ pub(crate) fn make_test(
         lang_string,
         line,
         file,
-        failed_ast: has_errors,
+        failed_ast: false,
         rustdoc_test_options,
         outdir,
         test_id,
@@ -1314,6 +1312,10 @@ impl DocTestKinds {
 #![feature(rustc_attrs)]
 #![feature(coverage_attribute)]\n"
                 .to_string();
+
+            for doctest in &doctests {
+                output.push_str(&doctest.crate_attrs);
+            }
 
             DocTest::push_attrs(&mut output, &opts, &mut 0);
             output.push_str("extern crate test;\n");
