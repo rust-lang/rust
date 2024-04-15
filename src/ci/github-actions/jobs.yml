@@ -1,0 +1,50 @@
+# This file contains definitions of CI job parameters that are loaded
+# dynamically in CI from ci.yml.
+# You *do not* need to re-run `src/tools/expand-yaml-anchors` when you
+# modify this file.
+shared_defs:
+  - &base-job
+    env: { }
+
+  - &job-linux-4c
+    os: ubuntu-20.04-4core-16gb
+    <<: *base-job
+
+  - &job-linux-8c
+    os: ubuntu-20.04-8core-32gb
+    <<: *base-job
+
+  - &job-linux-16c
+    os: ubuntu-20.04-16core-64gb
+    <<: *base-job
+
+  - &job-macos-xl
+    os: macos-13 # We use the standard runner for now
+    <<: *base-job
+
+  - &job-macos-m1
+    os: macos-14
+    <<: *base-job
+
+  - &job-windows-8c
+    os: windows-2019-8core-32gb
+    <<: *base-job
+
+  - &job-windows-16c
+    os: windows-2019-16core-64gb
+    <<: *base-job
+
+  - &job-aarch64-linux
+    os: [ self-hosted, ARM64, linux ]
+
+pr:
+  - name: mingw-check
+    <<: *job-linux-4c
+  - name: mingw-check-tidy
+    <<: *job-linux-4c
+  - name: x86_64-gnu-llvm-17
+    env:
+      ENABLE_GCC_CODEGEN: "1"
+    <<: *job-linux-16c
+  - name: x86_64-gnu-tools
+    <<: *job-linux-16c
