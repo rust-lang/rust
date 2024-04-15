@@ -98,6 +98,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ///
     /// If `truncate == true`, then in case `size` is not large enough it *will* write the first
     /// `size.saturating_sub(1)` many items, followed by a null terminator (if `size > 0`).
+    /// The return value is still `(false, length)` in that case.
     fn write_os_str_to_wide_str(
         &mut self,
         os_str: &OsStr,
