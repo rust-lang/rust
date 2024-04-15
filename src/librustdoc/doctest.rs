@@ -377,6 +377,7 @@ fn run_test(
     mut lang_string: LangString,
     edition: Edition,
     report_unused_externs: impl Fn(UnusedExterns),
+    no_run: bool,
 ) -> Result<(), TestFailure> {
     // Make sure we emit well-formed executable names for our target.
     let rust_out = add_exe_suffix("rust_out".to_owned(), &rustdoc_options.target);
@@ -413,8 +414,7 @@ fn run_test(
         compiler.arg("-Z").arg("unstable-options");
     }
 
-    if lang_string.no_run && !lang_string.compile_fail && rustdoc_options.persist_doctests.is_none()
-    {
+    if no_run && !lang_string.compile_fail && rustdoc_options.persist_doctests.is_none() {
         compiler.arg("--emit=metadata");
     }
     compiler.arg("--target").arg(match rustdoc_options.target {
@@ -454,7 +454,7 @@ fn run_test(
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
         stdin.write_all(test.as_bytes()).expect("could write out test sources");
     }
-    let output = if is_multiple_tests {
+    let output = if !is_multiple_tests {
         let status = child.wait().expect("Failed to wait");
         process::Output { status, stdout: Vec::new(), stderr: Vec::new() }
     } else {
@@ -510,7 +510,7 @@ fn run_test(
         }
     }
 
-    if lang_string.no_run {
+    if no_run {
         return Ok(());
     }
 
@@ -709,7 +709,9 @@ impl DocTest {
     ) -> TestDescAndFn {
         let (code, line_offset) =
             self.generate_unique_doctest(self.lang_string.test_harness, opts, Some(&self.test_id));
-        let Self { supports_color, rustdoc_test_options, lang_string, outdir, path, .. } = self;
+        let Self {
+            supports_color, rustdoc_test_options, lang_string, outdir, path, no_run, ..
+        } = self;
         TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(std::mem::replace(&mut self.name, String::new())),
@@ -723,7 +725,7 @@ impl DocTest {
                 // compiler failures are test failures
                 should_panic: test::ShouldPanic::No,
                 compile_fail: lang_string.compile_fail,
-                no_run: lang_string.no_run,
+                no_run,
                 test_type: test::TestType::DocTest,
             },
             testfn: test::DynTestFn(Box::new(move || {
@@ -740,6 +742,7 @@ impl DocTest {
                     lang_string,
                     edition,
                     report_unused_externs,
+                    no_run,
                 );
 
                 if let Err(err) = res {
@@ -803,7 +806,9 @@ impl DocTest {
 
         writeln!(output, "mod {test_id} {{\n{}", self.crates).unwrap();
 
-        if self.main_fn_span.is_some() {
+        if self.ignore {
+            // We generate nothing.
+        } else if self.main_fn_span.is_some() {
             output.push_str(&self.everything_else);
         } else {
             let returns_result = if self.everything_else.trim_end().ends_with("(())") {
@@ -850,10 +855,11 @@ pub const TEST: test::TestDescAndFn = test::TestDescAndFn {{
             ignore = self.ignore,
             file = self.file,
             line = self.line,
-            should_panic = if self.lang_string.should_panic { "Yes" } else { "No" },
+            should_panic = if !self.no_run && self.lang_string.should_panic { "Yes" } else { "No" },
             // Setting `no_run` to `true` in `TestDesc` still makes the test run, so we simply
             // don't give it the function to run.
-            runner = if self.no_run { "Ok::<(), String>(())" } else { "self::main()" },
+            runner =
+                if self.no_run || self.ignore { "Ok::<(), String>(())" } else { "self::main()" },
         )
         .unwrap();
         test_id
@@ -931,10 +937,11 @@ pub(crate) fn make_test(
                 Ok(p) => p,
                 Err(errs) => {
                     errs.into_iter().for_each(|err| err.cancel());
-                    return (found_main, found_extern_crate, found_macro);
+                    return (found_main, found_extern_crate, found_macro, true);
                 }
             };
 
+            let mut has_errors = false;
             loop {
                 match parser.parse_item(ForceCollect::No) {
                     Ok(Some(item)) => {
@@ -965,6 +972,7 @@ pub(crate) fn make_test(
                     Ok(None) => break,
                     Err(e) => {
                         e.cancel();
+                        has_errors = true;
                         break;
                     }
                 }
@@ -974,13 +982,14 @@ pub(crate) fn make_test(
                 parser.maybe_consume_incorrect_semicolon(None);
             }
 
+            has_errors = has_errors || psess.dcx.has_errors_or_delayed_bugs().is_some();
             // Reset errors so that they won't be reported as compiler bugs when dropping the
             // dcx. Any errors in the tests will be reported when the test file is compiled,
             // Note that we still need to cancel the errors above otherwise `Diag` will panic on
             // drop.
             psess.dcx.reset_err_count();
 
-            (found_main, found_extern_crate, found_macro)
+            (found_main, found_extern_crate, found_macro, has_errors)
         })
     });
 
@@ -989,7 +998,7 @@ pub(crate) fn make_test(
         Ignore::None => false,
         Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
     };
-    let Ok((mut main_fn_span, already_has_extern_crate, found_macro)) = result else {
+    let Ok((mut main_fn_span, already_has_extern_crate, found_macro, has_errors)) = result else {
         // If the parser panicked due to a fatal error, pass the test code through unchanged.
         // The error will be reported during compilation.
         return DocTest {
@@ -1045,7 +1054,7 @@ pub(crate) fn make_test(
         lang_string,
         line,
         file,
-        failed_ast: false,
+        failed_ast: has_errors,
         rustdoc_test_options,
         outdir,
         test_id,
@@ -1192,7 +1201,6 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
     (before, after.trim().to_owned(), crates)
 }
 
-#[derive(Clone)]
 pub(crate) struct IndividualTestOptions {
     test_builder: Option<PathBuf>,
     test_builder_wrappers: Vec<PathBuf>,
@@ -1270,7 +1278,6 @@ impl DocTestKinds {
         if doctest.failed_ast
             || doctest.lang_string.compile_fail
             || doctest.lang_string.test_harness
-            || doctest.ignore
             || doctest.crate_attrs.contains("#![no_std]")
         {
             self.standalone.push(doctest.generate_test_desc_and_fn(
@@ -1295,6 +1302,7 @@ impl DocTestKinds {
             test_args.push("--nocapture".to_string());
         }
         let Self { mut standalone, others } = self;
+        let mut ran_edition_tests = 0;
 
         for (edition, mut doctests) in others {
             doctests.sort_by(|a, b| a.name.cmp(&b.name));
@@ -1318,17 +1326,18 @@ impl DocTestKinds {
                 if !ids.is_empty() {
                     ids.push(',');
                 }
-                ids.push_str(&format!("&{}::TEST", doctest.generate_test_desc(pos, &mut output)));
+                ids.push_str(&format!("{}::TEST", doctest.generate_test_desc(pos, &mut output)));
                 supports_color &= doctest.supports_color;
             }
+            let test_args =
+                test_args.iter().map(|arg| format!("{arg:?}.to_string(),")).collect::<String>();
             write!(
                 output,
                 "\
 #[rustc_main]
 #[coverage(off)]
 fn main() {{
-    test::test_main_static(&[{ids}]);
-    panic!(\"fuck\");
+    test::test_main(&[{test_args}], vec![{ids}], None);
 }}",
             )
             .unwrap();
@@ -1342,6 +1351,7 @@ fn main() {{
                 LangString::empty_for_test(),
                 edition,
                 |_: UnusedExterns| {},
+                false,
             ) {
                 // We failed to compile all compatible tests as one so we push them into the
                 // "standalone" doctests.
@@ -1353,10 +1363,12 @@ fn main() {{
                         Arc::clone(unused_externs),
                     ));
                 }
+            } else {
+                ran_edition_tests += 1;
             }
         }
 
-        if !standalone.is_empty() {
+        if ran_edition_tests == 0 || !standalone.is_empty() {
             standalone.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
             test::test_main(&test_args, standalone, None);
         }
