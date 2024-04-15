@@ -40,7 +40,7 @@ fn integrated_highlighting_benchmark() {
     };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
-        with_proc_macro_server: ProcMacroServerChoice::None,
+        with_proc_macro_server: ProcMacroServerChoice::Sysroot,
         prefill_caches: false,
     };
 
@@ -100,7 +100,7 @@ fn integrated_completion_benchmark() {
     };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
-        with_proc_macro_server: ProcMacroServerChoice::None,
+        with_proc_macro_server: ProcMacroServerChoice::Sysroot,
         prefill_caches: true,
     };
 
@@ -262,7 +262,7 @@ fn integrated_diagnostics_benchmark() {
     };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
-        with_proc_macro_server: ProcMacroServerChoice::None,
+        with_proc_macro_server: ProcMacroServerChoice::Sysroot,
         prefill_caches: true,
     };
 

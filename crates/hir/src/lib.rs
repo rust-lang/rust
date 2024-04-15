@@ -548,8 +548,7 @@ impl Module {
         acc: &mut Vec<AnyDiagnostic>,
         style_lints: bool,
     ) {
-        let name = self.name(db);
-        let _p = tracing::span!(tracing::Level::INFO, "Module::diagnostics", ?name);
+        let _p = tracing::span!(tracing::Level::INFO, "Module::diagnostics", name = ?self.name(db));
         let def_map = self.id.def_map(db.upcast());
         for diag in def_map.diagnostics() {
             if diag.in_module != self.id.local_id {
@@ -684,7 +683,7 @@ impl Module {
                 let items = &db.trait_data(trait_.into()).items;
                 let required_items = items.iter().filter(|&(_, assoc)| match *assoc {
                     AssocItemId::FunctionId(it) => !db.function_data(it).has_body(),
-                    AssocItemId::ConstId(id) => Const::from(id).value(db).is_none(),
+                    AssocItemId::ConstId(id) => !db.const_data(id).has_body,
                     AssocItemId::TypeAliasId(it) => db.type_alias_data(it).type_ref.is_none(),
                 });
                 impl_assoc_items_scratch.extend(db.impl_data(impl_def.id).items.iter().filter_map(
@@ -1628,7 +1627,6 @@ impl DefWithBody {
         acc: &mut Vec<AnyDiagnostic>,
         style_lints: bool,
     ) {
-        db.unwind_if_cancelled();
         let krate = self.module(db).id.krate();
 
         let (body, source_map) = db.body_with_source_map(self.into());
@@ -1762,7 +1760,9 @@ impl DefWithBody {
                         need_mut = &mir::MutabilityReason::Not;
                     }
                     let local = Local { parent: self.into(), binding_id };
-                    match (need_mut, local.is_mut(db)) {
+                    let is_mut = body[binding_id].mode == BindingAnnotation::Mutable;
+
+                    match (need_mut, is_mut) {
                         (mir::MutabilityReason::Unused, _) => {
                             let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
                             if !should_ignore {

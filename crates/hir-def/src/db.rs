@@ -22,13 +22,13 @@ use crate::{
     lang_item::{self, LangItem, LangItemTarget, LangItems},
     nameres::{diagnostics::DefDiagnostics, DefMap},
     visibility::{self, Visibility},
-    AdtId, AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc,
-    DefWithBodyId, EnumId, EnumLoc, EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc,
-    ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc,
-    InTypeConstId, InTypeConstLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroId, MacroRulesId,
-    MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId,
-    StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId,
-    UnionLoc, UseId, UseLoc, VariantId,
+    AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
+    EnumId, EnumLoc, EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId,
+    ExternCrateLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, InTypeConstId,
+    InTypeConstLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroId, MacroRulesId, MacroRulesLoc,
+    MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc,
+    TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc,
+    UseId, UseLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]

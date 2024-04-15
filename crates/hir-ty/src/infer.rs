@@ -432,6 +432,7 @@ pub struct InferenceResult {
     /// Whether there are any type-mismatching errors in the result.
     pub(crate) has_errors: bool,
     /// Interned common types to return references to.
+    // FIXME: Move this into `InferenceContext`
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
     pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
