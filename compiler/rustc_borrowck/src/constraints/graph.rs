@@ -223,9 +223,7 @@ impl<'s, 'tcx, D: ConstraintGraphDirection> graph::DirectedGraph for RegionGraph
 }
 
 impl<'s, 'tcx, D: ConstraintGraphDirection> graph::Successors for RegionGraph<'s, 'tcx, D> {
-    type Successors<'g> = Successors<'s, 'tcx, D> where Self: 'g;
-
-    fn successors(&self, node: Self::Node) -> Self::Successors<'_> {
+    fn successors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.outgoing_regions(node)
     }
 }

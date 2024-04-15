@@ -209,19 +209,15 @@ impl graph::StartNode for CoverageGraph {
 }
 
 impl graph::Successors for CoverageGraph {
-    type Successors<'g> = std::iter::Cloned<std::slice::Iter<'g, BasicCoverageBlock>>;
-
     #[inline]
-    fn successors(&self, node: Self::Node) -> Self::Successors<'_> {
+    fn successors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.successors[node].iter().cloned()
     }
 }
 
 impl graph::Predecessors for CoverageGraph {
-    type Predecessors<'g> = std::iter::Copied<std::slice::Iter<'g, BasicCoverageBlock>>;
-
     #[inline]
-    fn predecessors(&self, node: Self::Node) -> Self::Predecessors<'_> {
+    fn predecessors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.predecessors[node].iter().copied()
     }
 }

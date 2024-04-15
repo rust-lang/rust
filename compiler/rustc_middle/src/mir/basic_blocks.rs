@@ -1,5 +1,5 @@
 use crate::mir::traversal::Postorder;
-use crate::mir::{BasicBlock, BasicBlockData, Successors, Terminator, TerminatorKind, START_BLOCK};
+use crate::mir::{BasicBlock, BasicBlockData, Terminator, TerminatorKind, START_BLOCK};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
@@ -156,19 +156,15 @@ impl<'tcx> graph::StartNode for BasicBlocks<'tcx> {
 }
 
 impl<'tcx> graph::Successors for BasicBlocks<'tcx> {
-    type Successors<'b> = Successors<'b> where 'tcx: 'b;
-
     #[inline]
-    fn successors(&self, node: Self::Node) -> Self::Successors<'_> {
+    fn successors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.basic_blocks[node].terminator().successors()
     }
 }
 
 impl<'tcx> graph::Predecessors for BasicBlocks<'tcx> {
-    type Predecessors<'b> = std::iter::Copied<std::slice::Iter<'b, BasicBlock>> where 'tcx: 'b;
-
     #[inline]
-    fn predecessors(&self, node: Self::Node) -> Self::Predecessors<'_> {
+    fn predecessors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.predecessors()[node].iter().copied()
     }
 }

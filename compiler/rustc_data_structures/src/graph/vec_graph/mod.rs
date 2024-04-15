@@ -93,9 +93,7 @@ impl<N: Idx> NumEdges for VecGraph<N> {
 }
 
 impl<N: Idx + Ord> Successors for VecGraph<N> {
-    type Successors<'g> = std::iter::Cloned<std::slice::Iter<'g, N>>;
-
-    fn successors(&self, node: N) -> Self::Successors<'_> {
+    fn successors(&self, node: N) -> impl Iterator<Item = Self::Node> {
         self.successors(node).iter().cloned()
     }
 }

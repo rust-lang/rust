@@ -25,19 +25,11 @@ pub trait StartNode: DirectedGraph {
 }
 
 pub trait Successors: DirectedGraph {
-    type Successors<'g>: Iterator<Item = Self::Node>
-    where
-        Self: 'g;
-
-    fn successors(&self, node: Self::Node) -> Self::Successors<'_>;
+    fn successors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node>;
 }
 
 pub trait Predecessors: DirectedGraph {
-    type Predecessors<'g>: Iterator<Item = Self::Node>
-    where
-        Self: 'g;
-
-    fn predecessors(&self, node: Self::Node) -> Self::Predecessors<'_>;
+    fn predecessors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node>;
 }
 
 /// Alias for [`DirectedGraph`] + [`StartNode`] + [`Predecessors`] + [`Successors`].

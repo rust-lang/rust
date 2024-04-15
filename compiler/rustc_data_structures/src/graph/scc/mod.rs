@@ -104,9 +104,7 @@ impl<N: Idx, S: Idx + Ord> NumEdges for Sccs<N, S> {
 }
 
 impl<N: Idx, S: Idx + Ord> Successors for Sccs<N, S> {
-    type Successors<'g> = std::iter::Cloned<std::slice::Iter<'g, S>>;
-
-    fn successors(&self, node: S) -> Self::Successors<'_> {
+    fn successors(&self, node: S) -> impl Iterator<Item = Self::Node> {
         self.successors(node).iter().cloned()
     }
 }
