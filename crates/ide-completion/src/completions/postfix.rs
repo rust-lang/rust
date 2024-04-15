@@ -12,6 +12,7 @@ use ide_db::{
 use stdx::never;
 use syntax::{
     ast::{self, make, AstNode, AstToken},
+    format_smolstr,
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
     TextRange, TextSize,
 };
@@ -55,10 +56,11 @@ pub(crate) fn complete_postfix(
         None => return,
     };
 
-    let postfix_snippet = match build_postfix_snippet_builder(ctx, cap, dot_receiver) {
-        Some(it) => it,
-        None => return,
-    };
+    let postfix_snippet =
+        match build_postfix_snippet_builder(ctx, cap, dot_receiver, &receiver_text) {
+            Some(it) => it,
+            None => return,
+        };
 
     if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
         if receiver_ty.impls_trait(ctx.db, drop_trait, &[]) {
@@ -173,10 +175,11 @@ pub(crate) fn complete_postfix(
     let (dot_receiver, node_to_replace_with) = include_references(dot_receiver);
     let receiver_text =
         get_receiver_text(&node_to_replace_with, receiver_is_ambiguous_float_literal);
-    let postfix_snippet = match build_postfix_snippet_builder(ctx, cap, &dot_receiver) {
-        Some(it) => it,
-        None => return,
-    };
+    let postfix_snippet =
+        match build_postfix_snippet_builder(ctx, cap, &dot_receiver, &receiver_text) {
+            Some(it) => it,
+            None => return,
+        };
 
     if !ctx.config.snippets.is_empty() {
         add_custom_postfix_completions(acc, ctx, &postfix_snippet, &receiver_text);
@@ -317,6 +320,7 @@ fn build_postfix_snippet_builder<'ctx>(
     ctx: &'ctx CompletionContext<'_>,
     cap: SnippetCap,
     receiver: &'ctx ast::Expr,
+    receiver_text: &'ctx str,
 ) -> Option<impl Fn(&str, &str, &str) -> Builder + 'ctx> {
     let receiver_range = ctx.sema.original_range_opt(receiver.syntax())?.range;
     if ctx.source_range().end() < receiver_range.start() {
@@ -332,13 +336,16 @@ fn build_postfix_snippet_builder<'ctx>(
     fn build<'ctx>(
         ctx: &'ctx CompletionContext<'_>,
         cap: SnippetCap,
+        receiver_text: &'ctx str,
         delete_range: TextRange,
     ) -> impl Fn(&str, &str, &str) -> Builder + 'ctx {
         move |label, detail, snippet| {
             let edit = TextEdit::replace(delete_range, snippet.to_owned());
-            let mut item =
-                CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), label);
+            let mut item = CompletionItem::new(CompletionItemKind::Snippet, delete_range, label);
             item.detail(detail).snippet_edit(cap, edit);
+            // Editors may filter completion item with the text within delete_range, so we need to
+            // include the receiver text in the lookup for editors to find the completion item.
+            item.lookup_by(format_smolstr!("{}.{}", receiver_text, label));
             let postfix_match = if ctx.original_token.text() == label {
                 cov_mark::hit!(postfix_exact_match_is_high_priority);
                 Some(CompletionRelevancePostfixMatch::Exact)
@@ -351,7 +358,7 @@ fn build_postfix_snippet_builder<'ctx>(
             item
         }
     }
-    Some(build(ctx, cap, delete_range))
+    Some(build(ctx, cap, receiver_text, delete_range))
 }
 
 fn add_custom_postfix_completions(
