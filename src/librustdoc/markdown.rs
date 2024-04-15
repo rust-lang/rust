@@ -2,6 +2,7 @@ use std::fmt::Write as _;
 use std::fs::{create_dir_all, read_to_string, File};
 use std::io::prelude::*;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 use tempfile::tempdir;
 
@@ -183,6 +184,7 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
         false,
     );
 
-    collector.tests.run_tests(options.test_args, options.nocapture, opts);
+    let unused_externs = Arc::new(Mutex::new(Vec::new()));
+    collector.tests.run_tests(options.test_args, options.nocapture, opts, &unused_externs);
     Ok(())
 }

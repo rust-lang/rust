@@ -220,7 +220,7 @@ pub(crate) fn run(
             })
         })?;
 
-    tests.run_tests(test_args, nocapture, opts);
+    tests.run_tests(test_args, nocapture, opts, &unused_extern_reports);
 
     // Collect and warn about unused externs, but only if we've gotten
     // reports for each doctest
@@ -1251,7 +1251,7 @@ impl DocTestKinds {
         opts: &GlobalTestOptions,
         edition: Edition,
         path: PathBuf,
-        unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
+        unused_externs: &Arc<Mutex<Vec<UnusedExterns>>>,
     ) {
         if doctest.failed_ast
             || doctest.lang_string.compile_fail
@@ -1263,7 +1263,7 @@ impl DocTestKinds {
                 opts,
                 edition,
                 path,
-                unused_externs,
+                Arc::clone(unused_externs),
             ));
         } else {
             self.others.entry(edition).or_default().push(doctest);
@@ -1275,6 +1275,7 @@ impl DocTestKinds {
         mut test_args: Vec<String>,
         nocapture: bool,
         opts: GlobalTestOptions,
+        unused_externs: &Arc<Mutex<Vec<UnusedExterns>>>,
     ) {
         test_args.insert(0, "rustdoctest".to_string());
         if nocapture {
@@ -1300,7 +1301,7 @@ impl DocTestKinds {
             let outdir = Arc::clone(&doctests[0].outdir);
 
             let mut supports_color = true;
-            for (pos, doctest) in doctests.into_iter().enumerate() {
+            for (pos, doctest) in doctests.iter().enumerate() {
                 if !ids.is_empty() {
                     ids.push(',');
                 }
@@ -1331,7 +1332,17 @@ fn main() {{
                 PathBuf::from(format!("doctest_edition_{edition}.rs")),
                 |_: UnusedExterns| {},
             ) {
-                // FIXME: run all tests one by one.
+                // We failed to compile all compatible tests as one so we push them into the
+                // "standalone" doctests.
+                debug!("Failed to compile compatible doctests for edition {edition} all at once");
+                for (pos, doctest) in doctests.into_iter().enumerate() {
+                    standalone.push(doctest.generate_test_desc_and_fn(
+                        &opts,
+                        edition,
+                        format!("doctest_{edition}_{pos}").into(),
+                        Arc::clone(unused_externs),
+                    ));
+                }
             }
         }
 
@@ -1495,13 +1506,7 @@ impl Tester for Collector {
             test_id,
             &target_str,
         );
-        self.tests.add_doctest(
-            doctest,
-            &opts,
-            edition,
-            path,
-            Arc::clone(&self.unused_extern_reports),
-        );
+        self.tests.add_doctest(doctest, &opts, edition, path, &self.unused_extern_reports);
     }
 
     fn get_line(&self) -> usize {
