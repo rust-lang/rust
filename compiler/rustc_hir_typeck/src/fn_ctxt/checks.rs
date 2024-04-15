@@ -297,22 +297,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // 3. Check if the formal type is a supertype of the checked one
             //    and register any such obligations for future type checks
             let supertype_error = self.at(&self.misc(provided_arg.span), self.param_env).sup(
-                DefineOpaqueTypes::No,
+                DefineOpaqueTypes::Yes,
                 formal_input_ty,
                 coerced_ty,
             );
-            let subtyping_error = match supertype_error {
-                Ok(InferOk { obligations, value: () }) => {
-                    self.register_predicates(obligations);
-                    None
-                }
-                Err(err) => Some(err),
-            };
 
             // If neither check failed, the types are compatible
-            match subtyping_error {
-                None => Compatibility::Compatible,
-                Some(_) => Compatibility::Incompatible(subtyping_error),
+            match supertype_error {
+                Ok(InferOk { obligations, value: () }) => {
+                    self.register_predicates(obligations);
+                    Compatibility::Compatible
+                }
+                Err(err) => Compatibility::Incompatible(Some(err)),
             }
         };
 

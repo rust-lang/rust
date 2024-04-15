@@ -715,32 +715,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let formal_ret = self.resolve_vars_with_obligations(formal_ret);
         let ret_ty = expected_ret.only_has_type(self)?;
 
-        // HACK(oli-obk): This is a hack to keep RPIT and TAIT in sync wrt their behaviour.
-        // Without it, the inference
-        // variable will get instantiated with the opaque type. The inference variable often
-        // has various helpful obligations registered for it that help closures figure out their
-        // signature. If we infer the inference var to the opaque type, the closure won't be able
-        // to find those obligations anymore, and it can't necessarily find them from the opaque
-        // type itself. We could be more powerful with inference if we *combined* the obligations
-        // so that we got both the obligations from the opaque type and the ones from the inference
-        // variable. That will accept more code than we do right now, so we need to carefully consider
-        // the implications.
-        // Note: this check is pessimistic, as the inference type could be matched with something other
-        // than the opaque type, but then we need a new `TypeRelation` just for this specific case and
-        // can't re-use `sup` below.
-        // See tests/ui/impl-trait/hidden-type-is-opaque.rs and
-        // tests/ui/impl-trait/hidden-type-is-opaque-2.rs for examples that hit this path.
-        if formal_ret.has_infer_types() {
-            for ty in ret_ty.walk() {
-                if let ty::GenericArgKind::Type(ty) = ty.unpack()
-                    && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *ty.kind()
-                    && self.can_define_opaque_ty(def_id)
-                {
-                    return None;
-                }
-            }
-        }
-
         let expect_args = self
             .fudge_inference_if_ok(|| {
                 let ocx = ObligationCtxt::new(self);
