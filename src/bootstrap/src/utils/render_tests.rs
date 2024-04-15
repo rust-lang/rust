@@ -377,7 +377,7 @@ struct SuiteOutcome {
     measured: usize,
     filtered_out: usize,
     /// The time it took to execute this test suite, or `None` if time measurement was not possible
-    /// (e.g. due to running inside Miri).
+    /// (e.g. due to running on wasm).
     exec_time: Option<f64>,
 }
 
