@@ -3,10 +3,9 @@
 #![allow(private_interfaces)]
 #![deny(improper_ctypes)]
 
-extern crate libc;
-
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
+use std::ffi::{c_int, c_uint};
 
 trait Bar { }
 trait Mirror { type It: ?Sized; }
@@ -110,8 +109,8 @@ extern "C" {
 
 #[cfg(not(target_arch = "wasm32"))]
 extern "C" {
-    pub fn good1(size: *const libc::c_int);
-    pub fn good2(size: *const libc::c_uint);
+    pub fn good1(size: *const c_int);
+    pub fn good2(size: *const c_uint);
 }
 
 fn main() {

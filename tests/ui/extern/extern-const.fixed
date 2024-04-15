@@ -6,12 +6,12 @@
 
 //@ run-rustfix
 //@ compile-flags: -g
-#![feature(rustc_private)]
-extern crate libc;
+
+use std::ffi::c_int;
 
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
-    static rust_dbg_static_mut: libc::c_int; //~ ERROR extern items cannot be `const`
+    static rust_dbg_static_mut: c_int; //~ ERROR extern items cannot be `const`
 }
 
 fn main() {
