@@ -8,6 +8,7 @@
 
 #![allow(non_camel_case_types)]
 
+use crate::core_arch::powerpc::*;
 use crate::intrinsics::simd::*;
 
 #[cfg(test)]
@@ -34,6 +35,16 @@ types! {
     // pub struct vector_bool_long_long = vector_bool_long;
     // pub struct vector_signed___int128 = i128x1;
     // pub struct vector_unsigned___int128 = i128x1;
+}
+
+#[allow(improper_ctypes)]
+extern "C" {
+    #[link_name = "llvm.ppc.altivec.vperm"]
+    fn vperm(
+        a: vector_signed_int,
+        b: vector_signed_int,
+        c: vector_unsigned_char,
+    ) -> vector_signed_int;
 }
 
 mod sealed {
@@ -80,6 +91,73 @@ mod sealed {
     vec_xxpermdi! { vector_signed_long }
     vec_xxpermdi! { vector_bool_long }
     vec_xxpermdi! { vector_double }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorMergeEo {
+        #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+        unsafe fn vec_mergee(self, b: Self) -> Self;
+        #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+        unsafe fn vec_mergeo(self, b: Self) -> Self;
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(
+        all(test, target_endian = "little", target_feature = "power8-vector"),
+        assert_instr(vmrgow)
+    )]
+    #[cfg_attr(
+        all(test, target_endian = "big", target_feature = "power8-vector"),
+        assert_instr(vmrgew)
+    )]
+    unsafe fn mergee(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int {
+        let p = transmute(u8x16::new(
+            0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x13, 0x08, 0x09, 0x0A, 0x0B, 0x18, 0x19,
+            0x1A, 0x1B,
+        ));
+        vec_perm(a, b, p)
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(
+        all(test, target_endian = "little", target_feature = "power8-vector"),
+        assert_instr(vmrgew)
+    )]
+    #[cfg_attr(
+        all(test, target_endian = "big", target_feature = "power8-vector"),
+        assert_instr(vmrgow)
+    )]
+    unsafe fn mergeo(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int {
+        let p = transmute(u8x16::new(
+            0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17, 0x0C, 0x0D, 0x0E, 0x0F, 0x1C, 0x1D,
+            0x1E, 0x1F,
+        ));
+        vec_perm(a, b, p)
+    }
+
+    macro_rules! vec_mergeeo {
+        { $impl: ident, $even: ident, $odd: ident } => {
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+            impl VectorMergeEo for $impl {
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_mergee(self, b: Self) -> Self {
+                    transmute(mergee(transmute(self), transmute(b)))
+                }
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_mergeo(self, b: Self) -> Self {
+                    transmute(mergeo(transmute(self), transmute(b)))
+                }
+            }
+        }
+    }
+
+    vec_mergeeo! { vector_signed_int, mergee, mergeo }
+    vec_mergeeo! { vector_unsigned_int, mergee, mergeo }
+    vec_mergeeo! { vector_bool_int, mergee, mergeo }
+    vec_mergeeo! { vector_float, mergee, mergeo }
 }
 
 /// Vector permute.
@@ -93,6 +171,42 @@ where
 {
     static_assert_uimm_bits!(DM, 2);
     a.vec_xxpermdi(b, DM as u8)
+}
+
+/// Vector Merge Even
+///
+/// ## Purpose
+/// Merges the even-numbered values from two vectors.
+///
+/// ## Result value
+/// The even-numbered elements of a are stored into the even-numbered elements of r.
+/// The even-numbered elements of b are stored into the odd-numbered elements of r.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_mergee<T>(a: T, b: T) -> T
+where
+    T: sealed::VectorMergeEo,
+{
+    a.vec_mergee(b)
+}
+
+/// Vector Merge Odd
+///
+/// ## Purpose
+/// Merges the odd-numbered values from two vectors.
+///
+/// ## Result value
+/// The odd-numbered elements of a are stored into the even-numbered elements of r.
+/// The odd-numbered elements of b are stored into the odd-numbered elements of r.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_mergeo<T>(a: T, b: T) -> T
+where
+    T: sealed::VectorMergeEo,
+{
+    a.vec_mergeo(b)
 }
 
 #[cfg(test)]
