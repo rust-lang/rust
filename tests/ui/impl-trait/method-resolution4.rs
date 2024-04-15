@@ -4,9 +4,9 @@
 //! variable, but get a type mismatch when comparing `&mut _` with
 //! `std::iter::Empty`.
 
-//@[current] check-pass
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
+//@[current] check-pass
 
 fn foo(b: bool) -> impl Iterator<Item = ()> {
     if b {

@@ -3,7 +3,7 @@
 
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
-//@[next] check-pass
+//@ check-pass
 
 #![feature(type_alias_impl_trait)]
 
@@ -23,7 +23,6 @@ impl Bar<u32> {
         Foo:,
     {
         self.bar()
-        //[current]~^ ERROR: no method named `bar`
     }
 }
 

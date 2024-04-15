@@ -1,10 +1,9 @@
-//! Check that we do not constrain hidden types during method resolution.
-//! Otherwise we'd pick up that calling `bar` can be satisfied iff `u32`
-//! is the hidden type of the RPIT.
+//! Since there is only one possible `bar` method, we invoke it and subsequently
+//! constrain `foo`'s RPIT to `u32`.
 
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
-//@[next] check-pass
+//@ check-pass
 
 trait Trait {}
 
@@ -17,11 +16,9 @@ impl Bar<u32> {
 }
 
 fn foo(x: bool) -> Bar<impl Sized> {
-    //[current]~^ ERROR: cycle detected
     if x {
         let x = foo(false);
         x.bar();
-        //[current]~^ ERROR: no method named `bar` found
     }
     todo!()
 }

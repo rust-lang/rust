@@ -16,12 +16,10 @@ impl Bar<i32> {
 }
 
 fn foo(x: bool) -> Bar<impl Sized> {
-    //[current]~^ ERROR: cycle
     if x {
         let x = foo(false);
         x.bar();
-        //[current]~^ ERROR: no method named `bar`
-        //[next]~^^ ERROR: multiple applicable items in scope
+        //~^ ERROR: multiple applicable items in scope
     }
     todo!()
 }

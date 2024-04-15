@@ -1,21 +1,19 @@
-//! Check that we do not unify `Bar<Foo>` with `Bar<u32>`, even though the
+//! Check that we do unify `Bar<Foo>` with `Bar<u32>`, as the
 //! `foo` method call can be resolved unambiguously by doing so.
 
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
-//@[next] check-pass
+//@ check-pass
 
 #![feature(type_alias_impl_trait)]
 
 type Foo = impl Sized;
-//[current]~^ ERROR: cycle
 
 struct Bar<T>(T);
 
 impl Bar<Foo> {
     fn bar(self) {
         self.foo()
-        //[current]~^ ERROR: no method named `foo`
     }
 }
 

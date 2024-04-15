@@ -1,5 +1,5 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/method-resolution3.rs:22:11
+  --> $DIR/method-resolution3.rs:21:11
    |
 LL |         x.bar();
    |           ^^^ multiple `bar` found

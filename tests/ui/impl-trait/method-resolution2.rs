@@ -1,5 +1,5 @@
 //! Check that the method call does not constrain the RPIT to `i32`, even though
-//! `i32` is the only trait that satisfies the RPIT's trait bounds.
+//! `i32` is the only type that satisfies the RPIT's trait bounds.
 
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver

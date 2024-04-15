@@ -1,37 +1,20 @@
-error[E0599]: no method named `bar` found for struct `Bar<impl Sized>` in the current scope
-  --> $DIR/method-resolution3.rs:22:11
-   |
-LL | struct Bar<T>(T);
-   | ------------- method `bar` not found for this struct
-...
-LL |         x.bar();
-   |           ^^^ method not found in `Bar<impl Sized>`
-   |
-   = note: the method was found for
-           - `Bar<i32>`
-           - `Bar<u32>`
-
-error[E0391]: cycle detected when computing type of opaque `foo::{opaque#0}`
-  --> $DIR/method-resolution3.rs:18:24
-   |
-LL | fn foo(x: bool) -> Bar<impl Sized> {
-   |                        ^^^^^^^^^^
-   |
-note: ...which requires type-checking `foo`...
-  --> $DIR/method-resolution3.rs:22:9
+error[E0034]: multiple applicable items in scope
+  --> $DIR/method-resolution3.rs:21:11
    |
 LL |         x.bar();
-   |         ^
-   = note: ...which requires evaluating trait selection obligation `Bar<foo::{opaque#0}>: core::marker::Unpin`...
-   = note: ...which again requires computing type of opaque `foo::{opaque#0}`, completing the cycle
-note: cycle used when computing type of `foo::{opaque#0}`
-  --> $DIR/method-resolution3.rs:18:24
+   |           ^^^ multiple `bar` found
    |
-LL | fn foo(x: bool) -> Bar<impl Sized> {
-   |                        ^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+note: candidate #1 is defined in an impl for the type `Bar<i32>`
+  --> $DIR/method-resolution3.rs:15:5
+   |
+LL |     fn bar(self) {}
+   |     ^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `Bar<u32>`
+  --> $DIR/method-resolution3.rs:11:5
+   |
+LL |     fn bar(self) {}
+   |     ^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
-Some errors have detailed explanations: E0391, E0599.
-For more information about an error, try `rustc --explain E0391`.
+For more information about this error, try `rustc --explain E0034`.
