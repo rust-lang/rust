@@ -72,7 +72,7 @@ define_semantic_token_types![
         (BRACE, "brace"),
         (BRACKET, "bracket"),
         (BUILTIN_ATTRIBUTE, "builtinAttribute") => DECORATOR,
-        (BUILTIN_TYPE, "builtinType"),
+        (BUILTIN_TYPE, "builtinType") => TYPE,
         (CHAR, "character") => STRING,
         (COLON, "colon"),
         (COMMA, "comma"),
@@ -99,7 +99,7 @@ define_semantic_token_types![
         (STATIC, "static") => VARIABLE,
         (TOOL_MODULE, "toolModule") => DECORATOR,
         (TYPE_ALIAS, "typeAlias") => TYPE,
-        (UNION, "union") => STRUCT,
+        (UNION, "union") => TYPE,
         (UNRESOLVED_REFERENCE, "unresolvedReference"),
     }
 ];
@@ -155,7 +155,7 @@ define_semantic_token_modifiers![
         (LIBRARY, "library"),
         (MACRO_MODIFIER, "macro"),
         (MUTABLE, "mutable"),
-        (PROC_MACRO_MODIFIER, "proc_macro"),
+        (PROC_MACRO_MODIFIER, "procMacro"),
         (PUBLIC, "public"),
         (REFERENCE, "reference"),
         (TRAIT_MODIFIER, "trait"),
