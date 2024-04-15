@@ -296,12 +296,13 @@ fn main() -> Result<()> {
 
 fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Result<()> {
     let path = args.next().expect("./miri run-dep must be followed by a file name");
-    let config = miri_config(
+    let mut config = miri_config(
         &target,
         "",
         Mode::Yolo { rustfix: RustfixMode::Disabled },
         /* with dependencies */ true,
     );
+    config.program.args.clear(); // remove the `--error-format` that ui_test adds by default
     let dep_args = config.build_dependencies()?;
 
     let mut cmd = config.program.build(&config.out_dir);
