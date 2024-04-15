@@ -1035,7 +1035,7 @@ fn main() {
     fn postfix_drop_completion() {
         cov_mark::check!(postfix_drop_completion);
         check_edit(
-            "drop",
+            "x.drop",
             r#"
 //- minicore: drop
 struct Vec<T>(T);
