@@ -15340,7 +15340,7 @@ pub unsafe fn vsha512su1q_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> ui
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd32x_f32)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint32x))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint32x))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd32x_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
@@ -15356,7 +15356,7 @@ pub unsafe fn vrnd32x_f32(a: float32x2_t) -> float32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd32xq_f32)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint32x))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint32x))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd32xq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
@@ -15372,7 +15372,7 @@ pub unsafe fn vrnd32xq_f32(a: float32x4_t) -> float32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd32xq_f64)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint32x))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint32x))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd32xq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
@@ -15388,7 +15388,7 @@ pub unsafe fn vrnd32xq_f64(a: float64x2_t) -> float64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd32x_f64)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint32x))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint32x))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd32x_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
@@ -15404,7 +15404,7 @@ pub unsafe fn vrnd32x_f64(a: float64x1_t) -> float64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd32z_f32)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint32z))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint32z))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd32z_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
@@ -15420,7 +15420,7 @@ pub unsafe fn vrnd32z_f32(a: float32x2_t) -> float32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd32zq_f32)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint32z))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint32z))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd32zq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
@@ -15436,7 +15436,7 @@ pub unsafe fn vrnd32zq_f32(a: float32x4_t) -> float32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd32zq_f64)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint32z))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint32z))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd32zq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
@@ -15452,7 +15452,7 @@ pub unsafe fn vrnd32zq_f64(a: float64x2_t) -> float64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd32z_f64)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint32z))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint32z))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd32z_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
@@ -15468,7 +15468,7 @@ pub unsafe fn vrnd32z_f64(a: float64x1_t) -> float64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64x_f32)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint64x))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint64x))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd64x_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
@@ -15484,7 +15484,7 @@ pub unsafe fn vrnd64x_f32(a: float32x2_t) -> float32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64xq_f32)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint64x))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint64x))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd64xq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
@@ -15500,7 +15500,7 @@ pub unsafe fn vrnd64xq_f32(a: float32x4_t) -> float32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64xq_f64)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint64x))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint64x))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd64xq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
@@ -15516,7 +15516,7 @@ pub unsafe fn vrnd64xq_f64(a: float64x2_t) -> float64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64x_f64)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint64x))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint64x))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd64x_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
@@ -15532,7 +15532,7 @@ pub unsafe fn vrnd64x_f64(a: float64x1_t) -> float64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64z_f32)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint64z))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint64z))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd64z_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
@@ -15548,7 +15548,7 @@ pub unsafe fn vrnd64z_f32(a: float32x2_t) -> float32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64zq_f32)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint64z))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint64z))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd64zq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
@@ -15564,7 +15564,7 @@ pub unsafe fn vrnd64zq_f32(a: float32x4_t) -> float32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64zq_f64)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint64z))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint64z))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd64zq_f64(a: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
@@ -15580,7 +15580,7 @@ pub unsafe fn vrnd64zq_f64(a: float64x2_t) -> float64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64z_f64)
 #[inline]
 #[target_feature(enable = "neon,frintts")]
-#[cfg_attr(test, assert_instr(frint64z))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(frint64z))]
 #[unstable(feature = "stdarch_neon_ftts", issue = "117227")]
 pub unsafe fn vrnd64z_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
@@ -15596,7 +15596,7 @@ pub unsafe fn vrnd64z_f64(a: float64x1_t) -> float64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
@@ -15607,7 +15607,7 @@ pub unsafe fn vtrn1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_shuffle!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30])
@@ -15618,7 +15618,7 @@ pub unsafe fn vtrn1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_shuffle!(a, b, [0, 4, 2, 6])
@@ -15629,7 +15629,7 @@ pub unsafe fn vtrn1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
@@ -15640,7 +15640,7 @@ pub unsafe fn vtrn1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_shuffle!(a, b, [0, 4, 2, 6])
@@ -15651,7 +15651,7 @@ pub unsafe fn vtrn1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
@@ -15662,7 +15662,7 @@ pub unsafe fn vtrn1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_shuffle!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30])
@@ -15673,7 +15673,7 @@ pub unsafe fn vtrn1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_shuffle!(a, b, [0, 4, 2, 6])
@@ -15684,7 +15684,7 @@ pub unsafe fn vtrn1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
@@ -15695,7 +15695,7 @@ pub unsafe fn vtrn1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_shuffle!(a, b, [0, 4, 2, 6])
@@ -15706,7 +15706,7 @@ pub unsafe fn vtrn1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_p8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
@@ -15717,7 +15717,7 @@ pub unsafe fn vtrn1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_p8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     simd_shuffle!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30])
@@ -15728,7 +15728,7 @@ pub unsafe fn vtrn1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_p16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     simd_shuffle!(a, b, [0, 4, 2, 6])
@@ -15739,7 +15739,7 @@ pub unsafe fn vtrn1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_p16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
@@ -15750,7 +15750,7 @@ pub unsafe fn vtrn1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -15761,7 +15761,7 @@ pub unsafe fn vtrn1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -15772,7 +15772,7 @@ pub unsafe fn vtrn1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -15783,7 +15783,7 @@ pub unsafe fn vtrn1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_u64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -15794,7 +15794,7 @@ pub unsafe fn vtrn1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_p64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -15805,7 +15805,7 @@ pub unsafe fn vtrn1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     simd_shuffle!(a, b, [0, 4, 2, 6])
@@ -15816,7 +15816,7 @@ pub unsafe fn vtrn1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -15827,7 +15827,7 @@ pub unsafe fn vtrn1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_f64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -15838,7 +15838,7 @@ pub unsafe fn vtrn1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
@@ -15849,7 +15849,7 @@ pub unsafe fn vtrn2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_shuffle!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31])
@@ -15860,7 +15860,7 @@ pub unsafe fn vtrn2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_shuffle!(a, b, [1, 5, 3, 7])
@@ -15871,7 +15871,7 @@ pub unsafe fn vtrn2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
@@ -15882,7 +15882,7 @@ pub unsafe fn vtrn2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_shuffle!(a, b, [1, 5, 3, 7])
@@ -15893,7 +15893,7 @@ pub unsafe fn vtrn2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
@@ -15904,7 +15904,7 @@ pub unsafe fn vtrn2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_shuffle!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31])
@@ -15915,7 +15915,7 @@ pub unsafe fn vtrn2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_shuffle!(a, b, [1, 5, 3, 7])
@@ -15926,7 +15926,7 @@ pub unsafe fn vtrn2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
@@ -15937,7 +15937,7 @@ pub unsafe fn vtrn2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_shuffle!(a, b, [1, 5, 3, 7])
@@ -15948,7 +15948,7 @@ pub unsafe fn vtrn2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_p8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
@@ -15959,7 +15959,7 @@ pub unsafe fn vtrn2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_p8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     simd_shuffle!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31])
@@ -15970,7 +15970,7 @@ pub unsafe fn vtrn2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_p16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     simd_shuffle!(a, b, [1, 5, 3, 7])
@@ -15981,7 +15981,7 @@ pub unsafe fn vtrn2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_p16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
@@ -15992,7 +15992,7 @@ pub unsafe fn vtrn2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16003,7 +16003,7 @@ pub unsafe fn vtrn2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16014,7 +16014,7 @@ pub unsafe fn vtrn2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16025,7 +16025,7 @@ pub unsafe fn vtrn2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_u64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16036,7 +16036,7 @@ pub unsafe fn vtrn2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_p64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16047,7 +16047,7 @@ pub unsafe fn vtrn2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     simd_shuffle!(a, b, [1, 5, 3, 7])
@@ -16058,7 +16058,7 @@ pub unsafe fn vtrn2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16069,7 +16069,7 @@ pub unsafe fn vtrn2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_f64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vtrn2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16080,7 +16080,7 @@ pub unsafe fn vtrn2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
@@ -16091,7 +16091,7 @@ pub unsafe fn vzip1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_shuffle!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23])
@@ -16102,7 +16102,7 @@ pub unsafe fn vzip1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_shuffle!(a, b, [0, 4, 1, 5])
@@ -16113,7 +16113,7 @@ pub unsafe fn vzip1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
@@ -16124,7 +16124,7 @@ pub unsafe fn vzip1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16135,7 +16135,7 @@ pub unsafe fn vzip1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_shuffle!(a, b, [0, 4, 1, 5])
@@ -16146,7 +16146,7 @@ pub unsafe fn vzip1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16157,7 +16157,7 @@ pub unsafe fn vzip1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
@@ -16168,7 +16168,7 @@ pub unsafe fn vzip1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_shuffle!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23])
@@ -16179,7 +16179,7 @@ pub unsafe fn vzip1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_shuffle!(a, b, [0, 4, 1, 5])
@@ -16190,7 +16190,7 @@ pub unsafe fn vzip1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
@@ -16201,7 +16201,7 @@ pub unsafe fn vzip1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16212,7 +16212,7 @@ pub unsafe fn vzip1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_shuffle!(a, b, [0, 4, 1, 5])
@@ -16223,7 +16223,7 @@ pub unsafe fn vzip1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_u64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16234,7 +16234,7 @@ pub unsafe fn vzip1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_p8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
@@ -16245,7 +16245,7 @@ pub unsafe fn vzip1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_p8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     simd_shuffle!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23])
@@ -16256,7 +16256,7 @@ pub unsafe fn vzip1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_p16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     simd_shuffle!(a, b, [0, 4, 1, 5])
@@ -16267,7 +16267,7 @@ pub unsafe fn vzip1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_p16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
@@ -16278,7 +16278,7 @@ pub unsafe fn vzip1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_p64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16289,7 +16289,7 @@ pub unsafe fn vzip1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16300,7 +16300,7 @@ pub unsafe fn vzip1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     simd_shuffle!(a, b, [0, 4, 1, 5])
@@ -16311,7 +16311,7 @@ pub unsafe fn vzip1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_f64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16322,7 +16322,7 @@ pub unsafe fn vzip1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
@@ -16333,7 +16333,7 @@ pub unsafe fn vzip2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_shuffle!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31])
@@ -16344,7 +16344,7 @@ pub unsafe fn vzip2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_shuffle!(a, b, [2, 6, 3, 7])
@@ -16355,7 +16355,7 @@ pub unsafe fn vzip2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
@@ -16366,7 +16366,7 @@ pub unsafe fn vzip2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16377,7 +16377,7 @@ pub unsafe fn vzip2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_shuffle!(a, b, [2, 6, 3, 7])
@@ -16388,7 +16388,7 @@ pub unsafe fn vzip2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16399,7 +16399,7 @@ pub unsafe fn vzip2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
@@ -16410,7 +16410,7 @@ pub unsafe fn vzip2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_shuffle!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31])
@@ -16421,7 +16421,7 @@ pub unsafe fn vzip2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_shuffle!(a, b, [2, 6, 3, 7])
@@ -16432,7 +16432,7 @@ pub unsafe fn vzip2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
@@ -16443,7 +16443,7 @@ pub unsafe fn vzip2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16454,7 +16454,7 @@ pub unsafe fn vzip2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_shuffle!(a, b, [2, 6, 3, 7])
@@ -16465,7 +16465,7 @@ pub unsafe fn vzip2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_u64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16476,7 +16476,7 @@ pub unsafe fn vzip2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_p8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
@@ -16487,7 +16487,7 @@ pub unsafe fn vzip2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_p8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     simd_shuffle!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31])
@@ -16498,7 +16498,7 @@ pub unsafe fn vzip2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_p16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     simd_shuffle!(a, b, [2, 6, 3, 7])
@@ -16509,7 +16509,7 @@ pub unsafe fn vzip2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_p16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
@@ -16520,7 +16520,7 @@ pub unsafe fn vzip2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_p64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16531,7 +16531,7 @@ pub unsafe fn vzip2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16542,7 +16542,7 @@ pub unsafe fn vzip2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     simd_shuffle!(a, b, [2, 6, 3, 7])
@@ -16553,7 +16553,7 @@ pub unsafe fn vzip2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_f64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vzip2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16564,7 +16564,7 @@ pub unsafe fn vzip2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
@@ -16575,7 +16575,7 @@ pub unsafe fn vuzp1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
@@ -16586,7 +16586,7 @@ pub unsafe fn vuzp1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_shuffle!(a, b, [0, 2, 4, 6])
@@ -16597,7 +16597,7 @@ pub unsafe fn vuzp1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
@@ -16608,7 +16608,7 @@ pub unsafe fn vuzp1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_shuffle!(a, b, [0, 2, 4, 6])
@@ -16619,7 +16619,7 @@ pub unsafe fn vuzp1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
@@ -16630,7 +16630,7 @@ pub unsafe fn vuzp1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
@@ -16641,7 +16641,7 @@ pub unsafe fn vuzp1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_shuffle!(a, b, [0, 2, 4, 6])
@@ -16652,7 +16652,7 @@ pub unsafe fn vuzp1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
@@ -16663,7 +16663,7 @@ pub unsafe fn vuzp1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_shuffle!(a, b, [0, 2, 4, 6])
@@ -16674,7 +16674,7 @@ pub unsafe fn vuzp1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_p8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
@@ -16685,7 +16685,7 @@ pub unsafe fn vuzp1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_p8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
@@ -16696,7 +16696,7 @@ pub unsafe fn vuzp1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_p16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     simd_shuffle!(a, b, [0, 2, 4, 6])
@@ -16707,7 +16707,7 @@ pub unsafe fn vuzp1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_p16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
@@ -16718,7 +16718,7 @@ pub unsafe fn vuzp1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16729,7 +16729,7 @@ pub unsafe fn vuzp1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16740,7 +16740,7 @@ pub unsafe fn vuzp1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16751,7 +16751,7 @@ pub unsafe fn vuzp1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_u64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16762,7 +16762,7 @@ pub unsafe fn vuzp1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_p64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16773,7 +16773,7 @@ pub unsafe fn vuzp1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     simd_shuffle!(a, b, [0, 2, 4, 6])
@@ -16784,7 +16784,7 @@ pub unsafe fn vuzp1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16795,7 +16795,7 @@ pub unsafe fn vuzp1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_f64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_shuffle!(a, b, [0, 2])
@@ -16806,7 +16806,7 @@ pub unsafe fn vuzp1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
@@ -16817,7 +16817,7 @@ pub unsafe fn vuzp2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31])
@@ -16828,7 +16828,7 @@ pub unsafe fn vuzp2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_shuffle!(a, b, [1, 3, 5, 7])
@@ -16839,7 +16839,7 @@ pub unsafe fn vuzp2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
@@ -16850,7 +16850,7 @@ pub unsafe fn vuzp2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_shuffle!(a, b, [1, 3, 5, 7])
@@ -16861,7 +16861,7 @@ pub unsafe fn vuzp2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
@@ -16872,7 +16872,7 @@ pub unsafe fn vuzp2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31])
@@ -16883,7 +16883,7 @@ pub unsafe fn vuzp2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_shuffle!(a, b, [1, 3, 5, 7])
@@ -16894,7 +16894,7 @@ pub unsafe fn vuzp2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
@@ -16905,7 +16905,7 @@ pub unsafe fn vuzp2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_shuffle!(a, b, [1, 3, 5, 7])
@@ -16916,7 +16916,7 @@ pub unsafe fn vuzp2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_p8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
@@ -16927,7 +16927,7 @@ pub unsafe fn vuzp2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_p8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31])
@@ -16938,7 +16938,7 @@ pub unsafe fn vuzp2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_p16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     simd_shuffle!(a, b, [1, 3, 5, 7])
@@ -16949,7 +16949,7 @@ pub unsafe fn vuzp2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_p16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
@@ -16960,7 +16960,7 @@ pub unsafe fn vuzp2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16971,7 +16971,7 @@ pub unsafe fn vuzp2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16982,7 +16982,7 @@ pub unsafe fn vuzp2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -16993,7 +16993,7 @@ pub unsafe fn vuzp2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_u64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -17004,7 +17004,7 @@ pub unsafe fn vuzp2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_p64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -17015,7 +17015,7 @@ pub unsafe fn vuzp2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uzp2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     simd_shuffle!(a, b, [1, 3, 5, 7])
@@ -17026,7 +17026,7 @@ pub unsafe fn vuzp2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -17037,7 +17037,7 @@ pub unsafe fn vuzp2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_f64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(zip2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuzp2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_shuffle!(a, b, [1, 3])
@@ -17048,7 +17048,7 @@ pub unsafe fn vuzp2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_high_u8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uabal))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uabal))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vabal_high_u8(a: uint16x8_t, b: uint8x16_t, c: uint8x16_t) -> uint16x8_t {
     let d: uint8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
@@ -17062,7 +17062,7 @@ pub unsafe fn vabal_high_u8(a: uint16x8_t, b: uint8x16_t, c: uint8x16_t) -> uint
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_high_u16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uabal))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uabal))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vabal_high_u16(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uint32x4_t {
     let d: uint16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
@@ -17076,7 +17076,7 @@ pub unsafe fn vabal_high_u16(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uin
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_high_u32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(uabal))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uabal))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vabal_high_u32(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uint64x2_t {
     let d: uint32x2_t = simd_shuffle!(b, b, [2, 3]);
@@ -17090,7 +17090,7 @@ pub unsafe fn vabal_high_u32(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uin
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_high_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sabal))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sabal))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vabal_high_s8(a: int16x8_t, b: int8x16_t, c: int8x16_t) -> int16x8_t {
     let d: int8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
@@ -17105,7 +17105,7 @@ pub unsafe fn vabal_high_s8(a: int16x8_t, b: int8x16_t, c: int8x16_t) -> int16x8
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_high_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sabal))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sabal))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vabal_high_s16(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x4_t {
     let d: int16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
@@ -17120,7 +17120,7 @@ pub unsafe fn vabal_high_s16(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_high_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sabal))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sabal))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vabal_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x2_t {
     let d: int32x2_t = simd_shuffle!(b, b, [2, 3]);
@@ -17135,7 +17135,7 @@ pub unsafe fn vabal_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabs_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sqabs))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sqabs))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqabs_s64(a: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
@@ -17151,7 +17151,7 @@ pub unsafe fn vqabs_s64(a: int64x1_t) -> int64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sqabs))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sqabs))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqabsq_s64(a: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
@@ -17167,7 +17167,7 @@ pub unsafe fn vqabsq_s64(a: int64x2_t) -> int64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsb_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sqabs))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sqabs))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqabsb_s8(a: i8) -> i8 {
     simd_extract!(vqabs_s8(vdup_n_s8(a)), 0)
@@ -17178,7 +17178,7 @@ pub unsafe fn vqabsb_s8(a: i8) -> i8 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsh_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sqabs))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sqabs))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqabsh_s16(a: i16) -> i16 {
     simd_extract!(vqabs_s16(vdup_n_s16(a)), 0)
@@ -17189,7 +17189,7 @@ pub unsafe fn vqabsh_s16(a: i16) -> i16 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabss_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sqabs))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sqabs))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqabss_s32(a: i32) -> i32 {
     #[allow(improper_ctypes)]
@@ -17205,7 +17205,7 @@ pub unsafe fn vqabss_s32(a: i32) -> i32 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsd_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sqabs))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sqabs))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqabsd_s64(a: i64) -> i64 {
     #[allow(improper_ctypes)]
@@ -17221,7 +17221,7 @@ pub unsafe fn vqabsd_s64(a: i64) -> i64 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vslid_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sli, N = 2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sli, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vslid_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
@@ -17234,7 +17234,7 @@ pub unsafe fn vslid_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vslid_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sli, N = 2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sli, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vslid_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
@@ -17247,7 +17247,7 @@ pub unsafe fn vslid_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsrid_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sri, N = 2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sri, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vsrid_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
@@ -17260,7 +17260,7 @@ pub unsafe fn vsrid_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsrid_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(sri, N = 2))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sri, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vsrid_n_u64<const N: i32>(a: u64, b: u64) -> u64 {

@@ -2036,7 +2036,8 @@ pub unsafe fn vmovq_n_f64(value: f64) -> float64x2_t {
 /// Duplicate vector element to vector or scalar
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(mov))]
+#[cfg_attr(all(test, target_env = "msvc"), assert_instr(dup))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vget_high_f64(a: float64x2_t) -> float64x1_t {
     float64x1_t(simd_extract!(a, 1))

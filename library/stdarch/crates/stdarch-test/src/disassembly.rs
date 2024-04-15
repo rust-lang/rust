@@ -48,13 +48,15 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
             "x86_64-pc-windows-msvc"
         } else if cfg!(target_arch = "x86") {
             "i686-pc-windows-msvc"
+        } else if cfg!(target_arch = "aarch64") {
+            "aarch64-pc-windows-msvc"
         } else {
             panic!("disassembly unimplemented")
         };
         let mut cmd = cc::windows_registry::find(target, "dumpbin.exe")
             .expect("failed to find `dumpbin` tool");
         let output = cmd
-            .arg("/DISASM")
+            .arg("/DISASM:NOBYTES")
             .arg(&me)
             .output()
             .expect("failed to execute dumpbin");
@@ -138,16 +140,12 @@ fn parse(output: &str) -> HashSet<Function> {
             let mut parts = if cfg!(target_env = "msvc") {
                 // Each line looks like:
                 //
-                // >  $addr: ab cd ef     $instr..
-                // >         00 12          # this line os optional
-                if instruction.starts_with("       ") {
-                    continue;
-                }
+                // >  $addr: $instr..
                 instruction
-                    .split_whitespace()
+                    .split(&[' ', ','])
+                    .filter(|&x| !x.is_empty())
                     .skip(1)
-                    .skip_while(|s| s.len() == 2 && usize::from_str_radix(s, 16).is_ok())
-                    .map(std::string::ToString::to_string)
+                    .map(str::to_lowercase)
                     .skip_while(|s| *s == "lock") // skip x86-specific prefix
                     .collect::<Vec<String>>()
             } else {
@@ -165,15 +163,19 @@ fn parse(output: &str) -> HashSet<Function> {
 
             if cfg!(any(target_arch = "aarch64", target_arch = "arm64ec")) {
                 // Normalize [us]shll.* ..., #0 instructions to the preferred form: [us]xtl.* ...
-                // as LLVM objdump does not do that.
+                // as neither LLVM objdump nor dumpbin does that.
                 // See https://developer.arm.com/documentation/ddi0602/latest/SIMD-FP-Instructions/UXTL--UXTL2--Unsigned-extend-Long--an-alias-of-USHLL--USHLL2-
                 // and https://developer.arm.com/documentation/ddi0602/latest/SIMD-FP-Instructions/SXTL--SXTL2--Signed-extend-Long--an-alias-of-SSHLL--SSHLL2-
                 // for details.
+                fn is_shll(instr: &str) -> bool {
+                    if cfg!(target_env = "msvc") {
+                        instr.starts_with("ushll") || instr.starts_with("sshll")
+                    } else {
+                        instr.starts_with("ushll.") || instr.starts_with("sshll.")
+                    }
+                }
                 match (parts.first(), parts.last()) {
-                    (Some(instr), Some(last_arg))
-                        if (instr.starts_with("ushll.") || instr.starts_with("sshll."))
-                            && last_arg == "#0" =>
-                    {
+                    (Some(instr), Some(last_arg)) if is_shll(&instr) && last_arg == "#0" => {
                         assert_eq!(parts.len(), 4);
                         let mut new_parts = Vec::with_capacity(3);
                         let new_instr = format!("{}{}{}", &instr[..1], "xtl", &instr[5..]);
@@ -181,6 +183,10 @@ fn parse(output: &str) -> HashSet<Function> {
                         new_parts.push(parts[1].clone());
                         new_parts.push(parts[2][0..parts[2].len() - 1].to_owned()); // strip trailing comma
                         parts = new_parts;
+                    }
+                    // dumpbin uses "ins" instead of "mov"
+                    (Some(instr), _) if cfg!(target_env = "msvc") && instr == "ins" => {
+                        parts[0] = "mov".to_string()
                     }
                     _ => {}
                 };

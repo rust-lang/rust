@@ -7213,6 +7213,8 @@ validate -2.0, 3.0, 2.0, -2.0
 
 aarch64 = frint32x
 link-aarch64 = frint32x._EXT_
+// dumpbin doesn't know how to disassembly this
+assert_instr_cfg = not(target_env = "msvc")
 generate float32x2_t, float32x4_t
 
 // The float64x1_t form uses a different LLVM link and isn't supported by Clang
@@ -7254,6 +7256,8 @@ validate -1.0, 2.0, 1.0, -2.0
 
 aarch64 = frint32z
 link-aarch64 = frint32z._EXT_
+// dumpbin doesn't know how to disassembly this
+assert_instr_cfg = not(target_env = "msvc")
 generate float32x2_t, float32x4_t
 
 // The float64x1_t form uses a different LLVM link and isn't supported by Clang
@@ -7296,6 +7300,8 @@ validate -2.0, 3.0, 2.0, -2.0
 
 aarch64 = frint64x
 link-aarch64 = frint64x._EXT_
+// dumpbin doesn't know how to disassembly this
+assert_instr_cfg = not(target_env = "msvc")
 generate float32x2_t, float32x4_t
 
 // The float64x1_t form uses a different LLVM link and isn't supported by Clang
@@ -7337,6 +7343,8 @@ validate -1.0, 2.0, 1.0, -2.0
 
 aarch64 = frint64z
 link-aarch64 = frint64z._EXT_
+// dumpbin doesn't know how to disassembly this
+assert_instr_cfg = not(target_env = "msvc")
 generate float32x2_t, float32x4_t
 
 // The float64x1_t form uses a different LLVM link and isn't supported by Clang

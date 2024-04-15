@@ -1273,6 +1273,7 @@ fn gen_aarch64(
     fixed: &[String],
     multi_fn: &[String],
     fn_type: Fntype,
+    assert_instr_cfg: &Option<String>,
 ) -> (String, String) {
     let name = match suffix {
         Normal => format!("{current_name}{}", type_to_suffix(in_t[1])),
@@ -1627,12 +1628,17 @@ fn gen_aarch64(
             }
         }
     };
+    let assert_instr_cfg = if let Some(assert_instr_cfg) = assert_instr_cfg {
+        format!("all(test, {assert_instr_cfg})")
+    } else {
+        "test".to_string()
+    };
     let stable = target.stability(true);
     let function = format!(
         r#"
 {function_doc}
 #[inline]{target_feature}
-#[cfg_attr(test, assert_instr({current_aarch64}{const_assert}))]{const_legacy}
+#[cfg_attr({assert_instr_cfg}, assert_instr({current_aarch64}{const_assert}))]{const_legacy}
 #[{stable}]
 {fn_decl}{{
     {call_params}
@@ -3223,6 +3229,7 @@ fn main() -> io::Result<()> {
     let mut target: TargetFeature = Default;
     let mut fn_type: Fntype = Fntype::Normal;
     let mut separate = false;
+    let mut assert_instr_cfg = None;
 
     //
     // THIS FILE IS GENERATED FORM neon.spec DO NOT CHANGE IT MANUALLY
@@ -3402,6 +3409,8 @@ mod test {
                 },
                 _ => Default,
             }
+        } else if let Some(line) = line.strip_prefix("assert_instr_cfg = ") {
+            assert_instr_cfg = Some(String::from(line));
         } else if let Some(line) = line.strip_prefix("generate ") {
             let types: Vec<String> = line
                 .split(',')
@@ -3489,6 +3498,7 @@ mod test {
                         &fixed,
                         &multi_fn,
                         fn_type,
+                        &assert_instr_cfg,
                     );
                     out_aarch64.push_str(&function);
                     tests_aarch64.push_str(&test);

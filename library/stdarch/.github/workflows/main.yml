@@ -98,10 +98,10 @@ jobs:
         # Windows targets
         - x86_64-pc-windows-msvc
         - i686-pc-windows-msvc
+        - aarch64-pc-windows-msvc
         # FIXME: Disassembly not implemented for the # following targets:
         # - x86_64-pc-windows-gnu:
         # - i686-pc-windows-gnu:
-        # - aarch64-pc-windows-msvc:
 
         include:
         - target: i686-unknown-linux-gnu
@@ -148,6 +148,9 @@ jobs:
           os: windows-latest
         - target: i686-pc-windows-msvc
           os: windows-latest
+        - target: aarch64-pc-windows-msvc
+          os: windows-latest
+          norun: true
         - target: i586-unknown-linux-gnu
           os: ubuntu-latest
         - target: nvptx64-nvidia-cuda
@@ -192,14 +195,19 @@ jobs:
 
     # Configure some env vars based on matrix configuration
     - run: echo "NORUN=1" >> $GITHUB_ENV
+      shell: bash
       if: matrix.norun != '' || startsWith(matrix.target, 'thumb') || matrix.target == 'nvptx64-nvidia-cuda'
     - run: echo "STDARCH_TEST_EVERYTHING=1" >> $GITHUB_ENV
+      shell: bash
       if: matrix.test_everything != ''
     - run: echo "RUSTFLAGS=${{ matrix.rustflags }}" >> $GITHUB_ENV
+      shell: bash
       if: matrix.rustflags != ''
     - run: echo "STDARCH_DISABLE_ASSERT_INSTR=1" >> $GITHUB_ENV
+      shell: bash
       if: matrix.disable_assert_instr != ''
     - run: echo "NOSTD=1" >> $GITHUB_ENV
+      shell: bash
       if: startsWith(matrix.target, 'thumb') || matrix.target == 'nvptx64-nvidia-cuda'
 
     # Windows & OSX go straight to `run.sh` ...

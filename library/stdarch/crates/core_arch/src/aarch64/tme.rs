@@ -76,6 +76,9 @@ pub const _TMFAILURE_INT: u64 = 1 << 23;
 #[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMFAILURE_TRIVIAL: u64 = 1 << 24;
 
+// NOTE: Tests for these instructions are disabled on MSVC as dumpbin doesn't
+// understand these instructions.
+
 /// Starts a new transaction. When the transaction starts successfully the return value is 0.
 /// If the transaction fails, all state modifications are discarded and a cause of the failure
 /// is encoded in the return value.
@@ -83,7 +86,7 @@ pub const _TMFAILURE_TRIVIAL: u64 = 1 << 24;
 /// [ARM TME Intrinsics](https://developer.arm.com/docs/101028/0010/transactional-memory-extension-tme-intrinsics).
 #[inline]
 #[target_feature(enable = "tme")]
-#[cfg_attr(test, assert_instr(tstart))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(tstart))]
 #[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub unsafe fn __tstart() -> u64 {
     aarch64_tstart()
@@ -96,7 +99,7 @@ pub unsafe fn __tstart() -> u64 {
 /// [ARM TME Intrinsics](https://developer.arm.com/docs/101028/0010/transactional-memory-extension-tme-intrinsics).
 #[inline]
 #[target_feature(enable = "tme")]
-#[cfg_attr(test, assert_instr(tcommit))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(tcommit))]
 #[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub unsafe fn __tcommit() {
     aarch64_tcommit()
@@ -107,7 +110,10 @@ pub unsafe fn __tcommit() {
 /// [ARM TME Intrinsics](https://developer.arm.com/docs/101028/0010/transactional-memory-extension-tme-intrinsics).
 #[inline]
 #[target_feature(enable = "tme")]
-#[cfg_attr(test, assert_instr(tcancel, IMM16 = 0x0))]
+#[cfg_attr(
+    all(test, not(target_env = "msvc")),
+    assert_instr(tcancel, IMM16 = 0x0)
+)]
 #[rustc_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub unsafe fn __tcancel<const IMM16: u64>() {
@@ -121,7 +127,7 @@ pub unsafe fn __tcancel<const IMM16: u64>() {
 /// [ARM TME Intrinsics](https://developer.arm.com/docs/101028/0010/transactional-memory-extension-tme-intrinsics).
 #[inline]
 #[target_feature(enable = "tme")]
-#[cfg_attr(test, assert_instr(ttest))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ttest))]
 #[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub unsafe fn __ttest() -> u64 {
     aarch64_ttest()
