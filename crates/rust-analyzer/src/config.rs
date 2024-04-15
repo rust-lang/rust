@@ -6,7 +6,6 @@
 //! Of particular interest is the `feature_flags` hash map: while other fields
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
-#![allow(dead_code)]
 use std::{fmt, iter, ops::Not};
 
 use cfg::{CfgAtom, CfgDiff};
@@ -67,7 +66,7 @@ config_data! {
     /// 3. `rust-analyzer.toml` file located at the workspace root
     ///
     /// A config is searched for by traversing a "config tree" in a bottom up fashion. It is chosen by the nearest first principle.
-    global: struct GlobalConfigData <- GlobalConfigInput  -> {
+    global: struct GlobalDefaultConfigData <- GlobalConfigInput -> {
         /// Whether to insert #[must_use] when generating `as_` methods
         /// for enum variants.
         assist_emitMustUse: bool               = false,
@@ -83,7 +82,7 @@ config_data! {
         cargo_allTargets: bool           = true,
         /// Automatically refresh project info via `cargo metadata` on
         /// `Cargo.toml` or `.cargo/config.toml` changes.
-        cargo_autoreload: bool           = true,
+        pub(crate) cargo_autoreload: bool           = true,
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool  = true,
         /// Specifies the working directory for running build scripts.
@@ -440,7 +439,7 @@ config_data! {
 config_data! {
     /// Local configurations can be overridden for every crate by placing a `rust-analyzer.toml` on crate root.
     /// A config is searched for by traversing a "config tree" in a bottom up fashion. It is chosen by the nearest first principle.
-    local: struct LocalConfigData <- LocalConfigInput ->  {
+    local: struct LocalDefaultConfigData <- LocalConfigInput ->  {
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = true,
@@ -631,7 +630,7 @@ config_data! {
 config_data! {
     /// Configs that only make sense when they are set by a client. As such they can only be defined
     /// by setting them using client's settings (e.g `settings.json` on VS Code).
-    client: struct ClientConfigData <- ClientConfigInput -> {}
+    client: struct ClientDefaultConfigData <- ClientConfigInput -> {}
 }
 
 #[derive(Debug, Clone)]
@@ -645,15 +644,18 @@ pub struct Config {
     snippets: Vec<Snippet>,
     visual_studio_code_version: Option<Version>,
 
-    default_config: ConfigData,
-    client_config: ConfigInput,
-    user_config: ConfigInput,
+    default_config: DefaultConfigData,
+    client_config: FullConfigInput,
+    user_config: GlobalLocalConfigInput,
+    #[allow(dead_code)]
     ratoml_files: FxHashMap<SourceRootId, RatomlNode>,
 }
 
 #[derive(Clone, Debug)]
 struct RatomlNode {
-    node: ConfigInput,
+    #[allow(dead_code)]
+    node: GlobalLocalConfigInput,
+    #[allow(dead_code)]
     parent: Option<SourceRootId>,
 }
 
@@ -880,10 +882,10 @@ impl Config {
             snippets: Default::default(),
             workspace_roots,
             visual_studio_code_version,
-            client_config: ConfigInput::default(),
-            user_config: ConfigInput::default(),
+            client_config: FullConfigInput::default(),
+            user_config: GlobalLocalConfigInput::default(),
             ratoml_files: FxHashMap::default(),
-            default_config: ConfigData::default(),
+            default_config: DefaultConfigData::default(),
         }
     }
 
@@ -919,7 +921,7 @@ impl Config {
                 .map(AbsPathBuf::assert)
                 .collect();
         patch_old_style::patch_json_for_outdated_configs(&mut json);
-        self.client_config = ConfigInput::from_json(json, &mut errors);
+        self.client_config = FullConfigInput::from_json(json, &mut errors);
         tracing::debug!(?self.client_config, "deserialized config data");
         self.snippets.clear();
 
@@ -972,7 +974,7 @@ impl Config {
     }
 
     pub fn json_schema() -> serde_json::Value {
-        ConfigInput::json_schema()
+        FullConfigInput::json_schema()
     }
 
     pub fn root_path(&self) -> &AbsPathBuf {
@@ -2074,14 +2076,14 @@ mod single_or_array {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
-pub(crate) enum ManifestOrProjectJson {
+enum ManifestOrProjectJson {
     Manifest(Utf8PathBuf),
     ProjectJson(ProjectJsonData),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum ExprFillDefaultDef {
+enum ExprFillDefaultDef {
     Todo,
     Default,
 }
@@ -2106,7 +2108,7 @@ enum CallableCompletionDef {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
-pub(crate) enum CargoFeaturesDef {
+enum CargoFeaturesDef {
     #[serde(with = "unit_v::all")]
     All,
     Selected(Vec<String>),
@@ -2120,11 +2122,11 @@ pub(crate) enum InvocationStrategy {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct CheckOnSaveTargets(#[serde(with = "single_or_array")] Vec<String>);
+struct CheckOnSaveTargets(#[serde(with = "single_or_array")] Vec<String>);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum InvocationLocation {
+enum InvocationLocation {
     Root,
     Workspace,
 }
@@ -2204,7 +2206,7 @@ enum AdjustmentHintsModeDef {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum FilesWatcherDef {
+enum FilesWatcherDef {
     Client,
     Notify,
     Server,
@@ -2222,21 +2224,21 @@ enum ImportPrefixDef {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum WorkspaceSymbolSearchScopeDef {
+enum WorkspaceSymbolSearchScopeDef {
     Workspace,
     WorkspaceAndDependencies,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum SignatureDetail {
+enum SignatureDetail {
     Full,
     Parameters,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum WorkspaceSymbolSearchKindDef {
+enum WorkspaceSymbolSearchKindDef {
     OnlyTypes,
     AllSymbols,
 }
@@ -2244,7 +2246,7 @@ pub(crate) enum WorkspaceSymbolSearchKindDef {
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[serde(untagged)]
-pub(crate) enum MemoryLayoutHoverRenderKindDef {
+enum MemoryLayoutHoverRenderKindDef {
     #[serde(with = "unit_v::decimal")]
     Decimal,
     #[serde(with = "unit_v::hexadecimal")]
@@ -2282,6 +2284,7 @@ macro_rules! _default_val {
         default_
     }};
 }
+use _default_val as default_val;
 
 macro_rules! _default_str {
     (@verbatim: $s:literal, $_ty:ty) => {
@@ -2292,18 +2295,19 @@ macro_rules! _default_str {
         serde_json::to_string_pretty(&val).unwrap()
     }};
 }
+use _default_str as default_str;
 
 macro_rules! _impl_for_config_data {
     (local, $(
             $(#[doc=$doc:literal])*
-            $field:ident : $ty:ty = $default:expr,
+            $vis:vis $field:ident : $ty:ty = $default:expr,
         )*
     ) => {
         impl Config {
             $(
                 $($doc)*
                 #[allow(non_snake_case)]
-                fn $field(&self, _source_root: Option<SourceRootId>) -> &$ty {
+                $vis fn $field(&self, _source_root: Option<SourceRootId>) -> &$ty {
                     if let Some(v) = self.client_config.local.$field.as_ref() {
                         return &v;
                     }
@@ -2319,14 +2323,14 @@ macro_rules! _impl_for_config_data {
     };
     (global, $(
                 $(#[doc=$doc:literal])*
-                $field:ident : $ty:ty = $default:expr,
+                $vis:vis $field:ident : $ty:ty = $default:expr,
             )*
         ) => {
         impl Config {
             $(
                 $($doc)*
                 #[allow(non_snake_case)]
-                pub(crate) fn $field(&self) -> &$ty {
+                $vis fn $field(&self) -> &$ty {
                     if let Some(v) = self.client_config.global.$field.as_ref() {
                         return &v;
                     }
@@ -2342,14 +2346,14 @@ macro_rules! _impl_for_config_data {
     };
     (client, $(
         $(#[doc=$doc:literal])*
-        $field:ident : $ty:ty = $default:expr,
+        $vis:vis $field:ident : $ty:ty = $default:expr,
     )*
     ) => {
         impl Config {
             $(
                 $($doc)*
                 #[allow(non_snake_case)]
-                fn $field(&self) -> &$ty {
+                $vis fn $field(&self) -> &$ty {
                     if let Some(v) = self.client_config.global.$field.as_ref() {
                         return &v;
                     }
@@ -2360,17 +2364,17 @@ macro_rules! _impl_for_config_data {
         }
     };
 }
+use _impl_for_config_data as impl_for_config_data;
 
 macro_rules! _config_data {
     // modname is for the tests
     ($(#[doc=$dox:literal])* $modname:ident: struct $name:ident <- $input:ident -> {
         $(
             $(#[doc=$doc:literal])*
-            $field:ident $(| $alias:ident)*: $ty:ty = $(@$marker:ident: )? $default:expr,
+            $vis:vis $field:ident $(| $alias:ident)*: $ty:ty = $(@$marker:ident: )? $default:expr,
         )*
     }) => {
-        /// All fields raw `T`, representing either a root config, or a root config + overrides from
-        /// some distal configuration blob(s).
+        /// Default config values for this grouping.
         #[allow(non_snake_case)]
         #[derive(Debug, Clone, Serialize)]
         struct $name { $($field: $ty,)* }
@@ -2378,7 +2382,7 @@ macro_rules! _config_data {
         impl_for_config_data!{
             $modname,
             $(
-                $field : $ty = $default,
+                $vis $field : $ty = $default,
             )*
         }
 
@@ -2410,9 +2414,9 @@ macro_rules! _config_data {
             }
         }
 
+        #[allow(unused)]
         impl $name {
             /// Applies overrides from some more local config blob, to self.
-            #[allow(unused)]
             fn apply_input(&mut self, input: $input) {
                 $(
                     if let Some(value) = input.$field {
@@ -2421,7 +2425,6 @@ macro_rules! _config_data {
                 )*
             }
 
-            #[allow(unused)]
             fn clone_with_overrides(&self, input: $input) -> Self {
                 Self {$(
                     $field: input.$field.unwrap_or_else(|| self.$field.clone()),
@@ -2429,8 +2432,8 @@ macro_rules! _config_data {
             }
         }
 
+        #[allow(unused, clippy::ptr_arg)]
         impl $input {
-            #[allow(unused, clippy::ptr_arg)]
             fn from_json(json: &mut serde_json::Value, error_sink: &mut Vec<(String, serde_json::Error)>) -> Self {
                 Self {$(
                     $field: get_field(
@@ -2442,8 +2445,7 @@ macro_rules! _config_data {
                 )*}
             }
 
-            #[allow(unused, clippy::ptr_arg)]
-            fn from_toml(toml: &mut toml::Table , error_sink: &mut Vec<(String, toml::de::Error)>) -> Self {
+            fn from_toml(toml: &mut toml::Table, error_sink: &mut Vec<(String, toml::de::Error)>) -> Self {
                 Self {$(
                     $field: get_field_toml::<$ty>(
                         toml,
@@ -2476,52 +2478,36 @@ macro_rules! _config_data {
         }
     };
 }
-
 use _config_data as config_data;
-use _default_str as default_str;
-use _default_val as default_val;
-use _impl_for_config_data as impl_for_config_data;
 
 #[derive(Default, Debug, Clone)]
-struct ConfigData {
-    global: GlobalConfigData,
-    local: LocalConfigData,
-    client: ClientConfigData,
+struct DefaultConfigData {
+    global: GlobalDefaultConfigData,
+    local: LocalDefaultConfigData,
+    #[allow(dead_code)]
+    client: ClientDefaultConfigData,
 }
 
 /// All of the config levels, all fields `Option<T>`, to describe fields that are actually set by
 /// some rust-analyzer.toml file or JSON blob. An empty rust-analyzer.toml corresponds to
 /// all fields being None.
-#[derive(Debug, Clone, Serialize, Default)]
-struct ConfigInput {
-    #[serde(flatten)]
+#[derive(Debug, Clone, Default)]
+struct FullConfigInput {
     global: GlobalConfigInput,
-    #[serde(flatten)]
     local: LocalConfigInput,
-    #[serde(flatten)]
+    #[allow(dead_code)]
     client: ClientConfigInput,
 }
 
-impl ConfigInput {
+impl FullConfigInput {
     fn from_json(
         mut json: serde_json::Value,
         error_sink: &mut Vec<(String, serde_json::Error)>,
-    ) -> ConfigInput {
-        ConfigInput {
+    ) -> FullConfigInput {
+        FullConfigInput {
             global: GlobalConfigInput::from_json(&mut json, error_sink),
             local: LocalConfigInput::from_json(&mut json, error_sink),
             client: ClientConfigInput::from_json(&mut json, error_sink),
-        }
-    }
-
-    fn from_toml(
-        mut toml: toml::Table,
-        error_sink: &mut Vec<(String, toml::de::Error)>,
-    ) -> ConfigInput {
-        ConfigInput {
-            global: GlobalConfigInput::from_toml(&mut toml, error_sink),
-            local: LocalConfigInput::from_toml(&mut toml, error_sink),
-            client: ClientConfigInput::from_toml(&mut toml, error_sink),
         }
     }
 
@@ -2542,6 +2528,28 @@ impl ConfigInput {
     #[cfg(test)]
     fn manual() -> String {
         manual(&Self::schema_fields())
+    }
+}
+
+/// All of the config levels, all fields `Option<T>`, to describe fields that are actually set by
+/// some rust-analyzer.toml file or JSON blob. An empty rust-analyzer.toml corresponds to
+/// all fields being None.
+#[derive(Debug, Clone, Default)]
+struct GlobalLocalConfigInput {
+    global: GlobalConfigInput,
+    local: LocalConfigInput,
+}
+
+impl GlobalLocalConfigInput {
+    #[allow(dead_code)]
+    fn from_toml(
+        mut toml: toml::Table,
+        error_sink: &mut Vec<(String, toml::de::Error)>,
+    ) -> GlobalLocalConfigInput {
+        GlobalLocalConfigInput {
+            global: GlobalConfigInput::from_toml(&mut toml, error_sink),
+            local: LocalConfigInput::from_toml(&mut toml, error_sink),
+        }
     }
 }
 
@@ -3067,7 +3075,7 @@ mod tests {
     #[test]
     fn generate_config_documentation() {
         let docs_path = project_root().join("docs/user/generated_config.adoc");
-        let expected = ConfigInput::manual();
+        let expected = FullConfigInput::manual();
         ensure_file_contents(&docs_path, &expected);
     }
 
