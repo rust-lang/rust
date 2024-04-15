@@ -3394,12 +3394,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (obligation.cause.clone(), terr)
         };
         self.report_and_explain_type_error(
-            TypeTrace::poly_trait_refs(
-                &cause,
-                true,
-                ty::Binder::dummy(expected_trait_ref),
-                ty::Binder::dummy(found_trait_ref),
-            ),
+            TypeTrace::trait_refs(&cause, true, expected_trait_ref, found_trait_ref),
             terr,
         )
     }
@@ -3493,11 +3488,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 && not_tupled
             {
                 self.report_and_explain_type_error(
-                    TypeTrace::poly_trait_refs(
+                    TypeTrace::trait_refs(
                         &obligation.cause,
                         true,
-                        ty::Binder::dummy(expected_trait_ref),
-                        ty::Binder::dummy(found_trait_ref),
+                        expected_trait_ref,
+                        found_trait_ref,
                     ),
                     ty::error::TypeError::Mismatch,
                 )
