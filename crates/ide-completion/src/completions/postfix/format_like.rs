@@ -48,10 +48,11 @@ pub(crate) fn add_format_like_completions(
     cap: SnippetCap,
     receiver_text: &ast::String,
 ) {
-    let postfix_snippet = match build_postfix_snippet_builder(ctx, cap, dot_receiver) {
-        Some(it) => it,
-        None => return,
-    };
+    let postfix_snippet =
+        match build_postfix_snippet_builder(ctx, cap, dot_receiver, receiver_text.text()) {
+            Some(it) => it,
+            None => return,
+        };
 
     if let Ok((mut out, mut exprs)) = parse_format_exprs(receiver_text.text()) {
         // Escape any snippet bits in the out text and any of the exprs.

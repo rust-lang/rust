@@ -519,7 +519,7 @@ fn main() {
     #[test]
     fn option_iflet() {
         check_edit(
-            "ifl",
+            "bar.ifl",
             r#"
 //- minicore: option
 fn main() {
@@ -541,7 +541,7 @@ fn main() {
     #[test]
     fn option_letelse() {
         check_edit(
-            "lete",
+            "bar.lete",
             r#"
 //- minicore: option
 fn main() {
@@ -564,7 +564,7 @@ $0
     #[test]
     fn result_match() {
         check_edit(
-            "match",
+            "bar.match",
             r#"
 //- minicore: result
 fn main() {
@@ -586,13 +586,13 @@ fn main() {
 
     #[test]
     fn postfix_completion_works_for_ambiguous_float_literal() {
-        check_edit("refm", r#"fn main() { 42.$0 }"#, r#"fn main() { &mut 42 }"#)
+        check_edit("42.refm", r#"fn main() { 42.$0 }"#, r#"fn main() { &mut 42 }"#)
     }
 
     #[test]
     fn works_in_simple_macro() {
         check_edit(
-            "dbg",
+            "bar.dbg",
             r#"
 macro_rules! m { ($e:expr) => { $e } }
 fn main() {
@@ -612,10 +612,10 @@ fn main() {
 
     #[test]
     fn postfix_completion_for_references() {
-        check_edit("dbg", r#"fn main() { &&42.$0 }"#, r#"fn main() { dbg!(&&42) }"#);
-        check_edit("refm", r#"fn main() { &&42.$0 }"#, r#"fn main() { &&&mut 42 }"#);
+        check_edit("&&42.dbg", r#"fn main() { &&42.$0 }"#, r#"fn main() { dbg!(&&42) }"#);
+        check_edit("42.refm", r#"fn main() { &&42.$0 }"#, r#"fn main() { &&&mut 42 }"#);
         check_edit(
-            "ifl",
+            "bar.ifl",
             r#"
 //- minicore: option
 fn main() {
@@ -636,35 +636,39 @@ fn main() {
 
     #[test]
     fn postfix_completion_for_unsafe() {
-        check_edit("unsafe", r#"fn main() { foo.$0 }"#, r#"fn main() { unsafe { foo } }"#);
-        check_edit("unsafe", r#"fn main() { { foo }.$0 }"#, r#"fn main() { unsafe { foo } }"#);
+        check_edit("foo.unsafe", r#"fn main() { foo.$0 }"#, r#"fn main() { unsafe { foo } }"#);
         check_edit(
-            "unsafe",
+            "{ foo }.unsafe",
+            r#"fn main() { { foo }.$0 }"#,
+            r#"fn main() { unsafe { foo } }"#,
+        );
+        check_edit(
+            "if x { foo }.unsafe",
             r#"fn main() { if x { foo }.$0 }"#,
             r#"fn main() { unsafe { if x { foo } } }"#,
         );
         check_edit(
-            "unsafe",
+            "loop { foo }.unsafe",
             r#"fn main() { loop { foo }.$0 }"#,
             r#"fn main() { unsafe { loop { foo } } }"#,
         );
         check_edit(
-            "unsafe",
+            "if true {}.unsafe",
             r#"fn main() { if true {}.$0 }"#,
             r#"fn main() { unsafe { if true {} } }"#,
         );
         check_edit(
-            "unsafe",
+            "while true {}.unsafe",
             r#"fn main() { while true {}.$0 }"#,
             r#"fn main() { unsafe { while true {} } }"#,
         );
         check_edit(
-            "unsafe",
+            "for i in 0..10 {}.unsafe",
             r#"fn main() { for i in 0..10 {}.$0 }"#,
             r#"fn main() { unsafe { for i in 0..10 {} } }"#,
         );
         check_edit(
-            "unsafe",
+            "if true {1} else {2}.unsafe",
             r#"fn main() { let x = if true {1} else {2}.$0 }"#,
             r#"fn main() { let x = unsafe { if true {1} else {2} } }"#,
         );
@@ -694,7 +698,7 @@ fn main() {
 
         check_edit_with_config(
             config.clone(),
-            "break",
+            "42.break",
             r#"
 //- minicore: try
 fn main() { 42.$0 }
@@ -713,7 +717,7 @@ fn main() { ControlFlow::Break(42) }
         // what users would see. Unescaping happens thereafter.
         check_edit_with_config(
             config.clone(),
-            "break",
+            r#"'\\\\'.break"#,
             r#"
 //- minicore: try
 fn main() { '\\'.$0 }
@@ -727,7 +731,10 @@ fn main() { ControlFlow::Break('\\\\') }
 
         check_edit_with_config(
             config,
-            "break",
+            r#"match true {
+        true => "\${1:placeholder}",
+        false => "\\\$",
+    }.break"#,
             r#"
 //- minicore: try
 fn main() {
@@ -753,39 +760,47 @@ fn main() {
     #[test]
     fn postfix_completion_for_format_like_strings() {
         check_edit(
-            "format",
+            r#""{some_var:?}".format"#,
             r#"fn main() { "{some_var:?}".$0 }"#,
             r#"fn main() { format!("{some_var:?}") }"#,
         );
         check_edit(
-            "panic",
+            r#""Panic with {a}".panic"#,
             r#"fn main() { "Panic with {a}".$0 }"#,
             r#"fn main() { panic!("Panic with {a}") }"#,
         );
         check_edit(
-            "println",
+            r#""{ 2+2 } { SomeStruct { val: 1, other: 32 } :?}".println"#,
             r#"fn main() { "{ 2+2 } { SomeStruct { val: 1, other: 32 } :?}".$0 }"#,
             r#"fn main() { println!("{} {:?}", 2+2, SomeStruct { val: 1, other: 32 }) }"#,
         );
         check_edit(
-            "loge",
+            r#""{2+2}".loge"#,
             r#"fn main() { "{2+2}".$0 }"#,
             r#"fn main() { log::error!("{}", 2+2) }"#,
         );
         check_edit(
-            "logt",
+            r#""{2+2}".logt"#,
             r#"fn main() { "{2+2}".$0 }"#,
             r#"fn main() { log::trace!("{}", 2+2) }"#,
         );
         check_edit(
-            "logd",
+            r#""{2+2}".logd"#,
             r#"fn main() { "{2+2}".$0 }"#,
             r#"fn main() { log::debug!("{}", 2+2) }"#,
         );
-        check_edit("logi", r#"fn main() { "{2+2}".$0 }"#, r#"fn main() { log::info!("{}", 2+2) }"#);
-        check_edit("logw", r#"fn main() { "{2+2}".$0 }"#, r#"fn main() { log::warn!("{}", 2+2) }"#);
         check_edit(
-            "loge",
+            r#""{2+2}".logi"#,
+            r#"fn main() { "{2+2}".$0 }"#,
+            r#"fn main() { log::info!("{}", 2+2) }"#,
+        );
+        check_edit(
+            r#""{2+2}".logw"#,
+            r#"fn main() { "{2+2}".$0 }"#,
+            r#"fn main() { log::warn!("{}", 2+2) }"#,
+        );
+        check_edit(
+            r#""{2+2}".loge"#,
             r#"fn main() { "{2+2}".$0 }"#,
             r#"fn main() { log::error!("{}", 2+2) }"#,
         );
@@ -807,21 +822,21 @@ fn main() {
 
         check_edit_with_config(
             CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
-            "ok",
+            "&&42.ok",
             r#"fn main() { &&42.o$0 }"#,
             r#"fn main() { Ok(&&42) }"#,
         );
 
         check_edit_with_config(
             CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
-            "ok",
+            "&&42.ok",
             r#"fn main() { &&42.$0 }"#,
             r#"fn main() { Ok(&&42) }"#,
         );
 
         check_edit_with_config(
             CompletionConfig { snippets: vec![snippet], ..TEST_CONFIG },
-            "ok",
+            "&a.a.ok",
             r#"
 struct A {
     a: i32,
