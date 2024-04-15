@@ -854,12 +854,16 @@ impl Error {
 
     /// Attempt to downcast the custom boxed error to `E`.
     ///
-    /// If this [`Error`] when this contains a custom boxed error,
+    /// If this [`Error`] contains a custom boxed error,
     /// then it would attempt downcasting on the boxed error,
     /// otherwise it will return [`Err`].
     ///
     /// If the custom boxed error has the same type as `E`, it will return [`Ok`],
     /// otherwise it will also return [`Err`].
+    ///
+    /// This method is meant to be a convenience routine for calling
+    /// `Box<dyn Error + Sync + Send>::downcast` on the custom boxed error, returned by
+    /// [`Error::into_inner`].
     ///
     ///
     /// # Examples
