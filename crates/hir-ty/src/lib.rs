@@ -56,7 +56,6 @@ use base_db::salsa::impl_intern_value_trivial;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
-    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
     NoSolution,
 };
 use either::Either;
@@ -98,7 +97,9 @@ pub use traits::TraitEnvironment;
 pub use utils::{all_super_traits, is_fn_unsafe_to_call};
 
 pub use chalk_ir::{
-    cast::Cast, AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
+    cast::Cast,
+    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
+    AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
 };
 
 pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
