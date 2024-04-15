@@ -1157,7 +1157,7 @@ fn iterate_trait_method_candidates(
         {
             // FIXME: this should really be using the edition of the method name's span, in case it
             // comes from a macro
-            if db.crate_graph()[krate].edition < Edition::CURRENT {
+            if db.crate_graph()[krate].edition < Edition::Edition2021 {
                 continue;
             }
         }
