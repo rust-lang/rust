@@ -158,7 +158,7 @@ pub struct Thread<'mir, 'tcx> {
 }
 
 pub type StackEmptyCallback<'mir, 'tcx> =
-    Box<dyn FnMut(&mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, Poll<()>>>;
+    Box<dyn FnMut(&mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, Poll<()>> + 'tcx>;
 
 impl<'mir, 'tcx> Thread<'mir, 'tcx> {
     /// Get the name of the current thread if it was set.

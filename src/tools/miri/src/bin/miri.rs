@@ -32,8 +32,9 @@ use rustc_driver::Compilation;
 use rustc_hir::{self as hir, Node};
 use rustc_interface::interface::Config;
 use rustc_middle::{
-    middle::exported_symbols::{
-        ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
+    middle::{
+        codegen_fn_attrs::CodegenFnAttrFlags,
+        exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel},
     },
     query::LocalCrate,
     ty::TyCtxt,
@@ -136,6 +137,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
             config.override_queries = Some(|_, local_providers| {
                 // `exported_symbols` and `reachable_non_generics` provided by rustc always returns
                 // an empty result if `tcx.sess.opts.output_types.should_codegen()` is false.
+                // In addition we need to add #[used] symbols to exported_symbols for `lookup_link_section`.
                 local_providers.exported_symbols = |tcx, LocalCrate| {
                     let reachable_set = tcx.with_stable_hashing_context(|hcx| {
                         tcx.reachable_set(()).to_sorted(&hcx, true)
@@ -160,19 +162,28 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                                 })
                                 if !tcx.generics_of(local_def_id).requires_monomorphization(tcx)
                             );
-                            (is_reachable_non_generic
-                                && tcx.codegen_fn_attrs(local_def_id).contains_extern_indicator())
-                            .then_some((
-                                ExportedSymbol::NonGeneric(local_def_id.to_def_id()),
-                                // Some dummy `SymbolExportInfo` here. We only use
-                                // `exported_symbols` in shims/foreign_items.rs and the export info
-                                // is ignored.
-                                SymbolExportInfo {
-                                    level: SymbolExportLevel::C,
-                                    kind: SymbolExportKind::Text,
-                                    used: false,
-                                },
-                            ))
+                            if !is_reachable_non_generic {
+                                return None;
+                            }
+                            let codegen_fn_attrs = tcx.codegen_fn_attrs(local_def_id);
+                            if codegen_fn_attrs.contains_extern_indicator()
+                                || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                                || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
+                            {
+                                Some((
+                                    ExportedSymbol::NonGeneric(local_def_id.to_def_id()),
+                                    // Some dummy `SymbolExportInfo` here. We only use
+                                    // `exported_symbols` in shims/foreign_items.rs and the export info
+                                    // is ignored.
+                                    SymbolExportInfo {
+                                        level: SymbolExportLevel::C,
+                                        kind: SymbolExportKind::Text,
+                                        used: false,
+                                    },
+                                ))
+                            } else {
+                                None
+                            }
                         }),
                     )
                 }
