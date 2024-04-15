@@ -19,7 +19,7 @@ fn main() {
         .arg("-Zlinker-features=+lld")
         .arg("-Clink-self-contained=+linker")
         .arg("-Zunstable-options")
-        .arg("-Clink-args=-Wl,-v")
+        .link_arg("-Wl,-v")
         .input("main.rs")
         .run();
     assert!(
@@ -30,7 +30,7 @@ fn main() {
     // It should not be used when we explictly opt-out of lld.
     let output = rustc()
         .env("RUSTC_LOG", "rustc_codegen_ssa::back::link=info")
-        .arg("-Clink-args=-Wl,-v")
+        .link_arg("-Wl,-v")
         .arg("-Zlinker-features=-lld")
         .input("main.rs")
         .run();
@@ -43,7 +43,7 @@ fn main() {
     // times to rustc.
     let output = rustc()
         .env("RUSTC_LOG", "rustc_codegen_ssa::back::link=info")
-        .arg("-Clink-args=-Wl,-v")
+        .link_arg("-Wl,-v")
         .arg("-Clink-self-contained=+linker")
         .arg("-Zunstable-options")
         .arg("-Zlinker-features=-lld")

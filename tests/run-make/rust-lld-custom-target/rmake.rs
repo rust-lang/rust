@@ -21,7 +21,7 @@ fn main() {
         .env("RUSTC_LOG", "rustc_codegen_ssa::back::link=info")
         .crate_type("cdylib")
         .target("custom-target.json")
-        .arg("-Clink-args=-Wl,-v")
+        .link_arg("-Wl,-v")
         .input("lib.rs")
         .run();
     assert!(
@@ -35,7 +35,7 @@ fn main() {
         .crate_type("cdylib")
         .target("custom-target.json")
         .arg("-Zlinker-features=-lld")
-        .arg("-Clink-args=-Wl,-v")
+        .link_arg("-Wl,-v")
         .input("lib.rs")
         .run();
     assert!(

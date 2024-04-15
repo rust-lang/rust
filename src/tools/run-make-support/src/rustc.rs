@@ -149,6 +149,12 @@ impl Rustc {
         self
     }
 
+    /// Add an extra argument to the linker invocation, via `-Clink-arg`.
+    pub fn link_arg(&mut self, link_arg: &str) -> &mut Self {
+        self.cmd.arg(format!("-Clink-arg={link_arg}"));
+        self
+    }
+
     #[track_caller]
     pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
         let caller_location = std::panic::Location::caller();
