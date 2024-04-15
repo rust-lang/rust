@@ -17,15 +17,19 @@ macro_rules! define_semantic_token_types {
         }
 
     ) => {
-        $(pub(crate) const $standard: SemanticTokenType = SemanticTokenType::$standard;)*
-        $(pub(crate) const $custom: SemanticTokenType = SemanticTokenType::new($string);)*
+        pub(crate) mod types {
+            use super::SemanticTokenType;
+            $(pub(crate) const $standard: SemanticTokenType = SemanticTokenType::$standard;)*
+            $(pub(crate) const $custom: SemanticTokenType = SemanticTokenType::new($string);)*
+        }
 
         pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
             $(SemanticTokenType::$standard,)*
-            $($custom),*
+            $(self::types::$custom),*
         ];
 
         pub(crate) fn standard_fallback_type(token: SemanticTokenType) -> Option<SemanticTokenType> {
+            use self::types::*;
             $(
                 if token == $custom {
                     None $(.or(Some(SemanticTokenType::$fallback)))?
@@ -61,39 +65,41 @@ define_semantic_token_types![
     custom {
         (ANGLE, "angle"),
         (ARITHMETIC, "arithmetic") => OPERATOR,
-        (ATTRIBUTE, "attribute") => DECORATOR,
         (ATTRIBUTE_BRACKET, "attributeBracket") => DECORATOR,
+        (ATTRIBUTE, "attribute") => DECORATOR,
         (BITWISE, "bitwise") => OPERATOR,
         (BOOLEAN, "boolean"),
         (BRACE, "brace"),
         (BRACKET, "bracket"),
         (BUILTIN_ATTRIBUTE, "builtinAttribute") => DECORATOR,
-        (BUILTIN_TYPE, "builtinType"),
+        (BUILTIN_TYPE, "builtinType") => TYPE,
         (CHAR, "character") => STRING,
         (COLON, "colon"),
         (COMMA, "comma"),
         (COMPARISON, "comparison") => OPERATOR,
         (CONST_PARAMETER, "constParameter"),
-        (DERIVE, "derive") => DECORATOR,
+        (CONST, "const") => VARIABLE,
         (DERIVE_HELPER, "deriveHelper") => DECORATOR,
+        (DERIVE, "derive") => DECORATOR,
         (DOT, "dot"),
         (ESCAPE_SEQUENCE, "escapeSequence") => STRING,
-        (INVALID_ESCAPE_SEQUENCE, "invalidEscapeSequence") => STRING,
         (FORMAT_SPECIFIER, "formatSpecifier") => STRING,
         (GENERIC, "generic") => TYPE_PARAMETER,
+        (INVALID_ESCAPE_SEQUENCE, "invalidEscapeSequence") => STRING,
         (LABEL, "label"),
         (LIFETIME, "lifetime"),
         (LOGICAL, "logical") => OPERATOR,
         (MACRO_BANG, "macroBang") => MACRO,
-        (PROC_MACRO, "procMacro") => MACRO,
         (PARENTHESIS, "parenthesis"),
+        (PROC_MACRO, "procMacro") => MACRO,
         (PUNCTUATION, "punctuation"),
         (SELF_KEYWORD, "selfKeyword") => KEYWORD,
         (SELF_TYPE_KEYWORD, "selfTypeKeyword") => KEYWORD,
         (SEMICOLON, "semicolon"),
-        (TYPE_ALIAS, "typeAlias"),
+        (STATIC, "static") => VARIABLE,
         (TOOL_MODULE, "toolModule") => DECORATOR,
-        (UNION, "union"),
+        (TYPE_ALIAS, "typeAlias") => TYPE,
+        (UNION, "union") => TYPE,
         (UNRESOLVED_REFERENCE, "unresolvedReference"),
     }
 ];
@@ -112,13 +118,16 @@ macro_rules! define_semantic_token_modifiers {
         }
 
     ) => {
+        pub(crate) mod modifiers {
+            use super::SemanticTokenModifier;
 
-        $(pub(crate) const $standard: SemanticTokenModifier = SemanticTokenModifier::$standard;)*
-        $(pub(crate) const $custom: SemanticTokenModifier = SemanticTokenModifier::new($string);)*
+            $(pub(crate) const $standard: SemanticTokenModifier = SemanticTokenModifier::$standard;)*
+            $(pub(crate) const $custom: SemanticTokenModifier = SemanticTokenModifier::new($string);)*
+        }
 
         pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
             $(SemanticTokenModifier::$standard,)*
-            $($custom),*
+            $(self::modifiers::$custom),*
         ];
 
         const LAST_STANDARD_MOD: usize = count_tts!($($standard)*);
@@ -145,8 +154,8 @@ define_semantic_token_modifiers![
         (INTRA_DOC_LINK, "intraDocLink"),
         (LIBRARY, "library"),
         (MACRO_MODIFIER, "macro"),
-        (PROC_MACRO_MODIFIER, "proc_macro"),
         (MUTABLE, "mutable"),
+        (PROC_MACRO_MODIFIER, "procMacro"),
         (PUBLIC, "public"),
         (REFERENCE, "reference"),
         (TRAIT_MODIFIER, "trait"),

@@ -1935,6 +1935,11 @@
                 "description": "Style for const generics"
             },
             {
+                "id": "const",
+                "description": "Style for consts",
+                "superType": "variable"
+            },
+            {
                 "id": "derive",
                 "description": "Style for derives",
                 "superType": "attribute"
@@ -1980,18 +1985,23 @@
                 "superType": "punctuation"
             },
             {
-                "id": "operator",
-                "description": "Style for operators",
-                "superType": "punctuation"
-            },
-            {
                 "id": "parenthesis",
                 "description": "Style for ( or )",
                 "superType": "punctuation"
             },
             {
+                "id": "procMacro",
+                "description": "Style for proc macro code",
+                "superType": "macro"
+            },
+            {
                 "id": "punctuation",
                 "description": "Style for generic punctuation"
+            },
+            {
+                "id": "operator",
+                "description": "Style for operators",
+                "superType": "punctuation"
             },
             {
                 "id": "selfKeyword",
@@ -2007,6 +2017,16 @@
                 "id": "semicolon",
                 "description": "Style for ;",
                 "superType": "punctuation"
+            },
+            {
+                "id": "static",
+                "description": "Style for statics",
+                "superType": "variable"
+            },
+            {
+                "id": "toolModule",
+                "description": "Style for tool module attributes",
+                "superType": "decorator"
             },
             {
                 "id": "typeAlias",
@@ -2065,8 +2085,16 @@
                 "description": "Style for items that are defined outside of the current crate"
             },
             {
+                "id": "macro",
+                "description": "Style for tokens inside of macro calls"
+            },
+            {
                 "id": "mutable",
                 "description": "Style for mutable locals and statics as well as functions taking `&mut self`"
+            },
+            {
+                "id": "procMacro",
+                "description": "Style for tokens inside of proc-macro calls"
             },
             {
                 "id": "public",
