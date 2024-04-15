@@ -1130,17 +1130,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
         // The found `Self` type of the method call.
         let Some(possible_rcvr_ty) = tables.node_type_opt(rcvr.hir_id) else { return };
-
-        // The `MethodCall` expression is `Res::Err`, so we search for the method on the `rcvr_ty`.
-        let Some(method) = tcx.lookup_method_for_diagnostic((self.mir_def_id(), expr.hir_id))
-        else {
-            return;
-        };
+        let Some(method_def_id) = tables.type_dependent_def_id(expr.hir_id) else { return };
 
         // Get the type for the parameter corresponding to the argument the closure with the
         // lifetime error we had.
         let Some(input) = tcx
-            .fn_sig(method)
+            .fn_sig(method_def_id)
             .instantiate_identity()
             .inputs()
             .skip_binder()
@@ -1155,7 +1150,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let ty::Param(closure_param) = input.kind() else { return };
 
         // Get the arguments for the found method, only specifying that `Self` is the receiver type.
-        let args = GenericArgs::for_item(tcx, method, |param, _| {
+        let args = GenericArgs::for_item(tcx, method_def_id, |param, _| {
             if param.index == 0 {
                 possible_rcvr_ty.into()
             } else if param.index == closure_param.index {
@@ -1165,7 +1160,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         });
 
-        let preds = tcx.predicates_of(method).instantiate(tcx, args);
+        let preds = tcx.predicates_of(method_def_id).instantiate(tcx, args);
 
         let ocx = ObligationCtxt::new(&self.infcx);
         ocx.register_obligations(preds.iter().map(|(pred, span)| {
