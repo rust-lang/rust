@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::MultiSpan;
+use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::def::Namespace;
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
@@ -591,8 +591,9 @@ pub enum BuiltinLintDiag {
         candidate: Option<Symbol>,
     },
     UnusedImports {
-        fix_msg: String,
-        fixes: Vec<(Span, String)>,
+        remove_whole_use: bool,
+        num_to_remove: usize,
+        remove_spans: Vec<Span>,
         test_module_span: Option<Span>,
         span_snippets: Vec<String>,
     },
@@ -617,7 +618,10 @@ pub enum BuiltinLintDiag {
         is_foreign: bool,
     },
     LegacyDeriveHelpers(Span),
-    ProcMacroBackCompat(String),
+    ProcMacroBackCompat {
+        crate_name: String,
+        fixed_version: String,
+    },
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
     TrailingMacro(bool, Ident),
@@ -625,7 +629,7 @@ pub enum BuiltinLintDiag {
     UnicodeTextFlow(Span, String),
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
-    DeprecatedWhereclauseLocation(Option<(Span, String)>),
+    DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,
@@ -708,7 +712,7 @@ pub enum BuiltinLintDiag {
     MacroIsPrivate(Ident),
     UnusedMacroDefinition(Symbol),
     MacroRuleNeverUsed(usize, Symbol),
-    UnstableFeature(String),
+    UnstableFeature(DiagMessage),
     AvoidUsingIntelSyntax,
     AvoidUsingAttSyntax,
     IncompleteInclude,
@@ -722,8 +726,7 @@ pub enum BuiltinLintDiag {
     MetaVariableWrongOperator,
     DuplicateMatcherBinding,
     UnknownMacroVariable(MacroRulesNormalizedIdent),
-    // FIXME: combine with UnusedExternCrate?
-    UnusedExternCrate2 {
+    UnusedCrateDependency {
         extern_crate: Symbol,
         local_crate: Symbol,
     },

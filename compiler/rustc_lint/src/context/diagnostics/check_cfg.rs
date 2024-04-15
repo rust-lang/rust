@@ -1,4 +1,3 @@
-use rustc_errors::Diag;
 use rustc_middle::bug;
 use rustc_session::{config::ExpectedValues, Session};
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -45,10 +44,9 @@ fn to_check_cfg_arg(name: Symbol, value: Option<Symbol>, quotes: EscapeQuotes) -
 
 pub(super) fn unexpected_cfg_name(
     sess: &Session,
-    diag: &mut Diag<'_, ()>,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
-) {
+) -> lints::UnexpectedCfgName {
     #[allow(rustc::potential_query_instability)]
     let possibilities: Vec<Symbol> = sess.psess.check_config.expecteds.keys().copied().collect();
 
@@ -179,15 +177,14 @@ pub(super) fn unexpected_cfg_name(
         ))
     };
 
-    diag.subdiagnostic(diag.dcx, lints::UnexpectedCfgNameSub { code_sugg, invocation_help });
+    lints::UnexpectedCfgName { code_sugg, invocation_help, name }
 }
 
 pub(super) fn unexpected_cfg_value(
     sess: &Session,
-    diag: &mut Diag<'_, ()>,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
-) {
+) -> lints::UnexpectedCfgValue {
     let Some(ExpectedValues::Some(values)) = &sess.psess.check_config.expecteds.get(&name) else {
         bug!(
             "it shouldn't be possible to have a diagnostic on a value whose name is not in values"
@@ -287,5 +284,10 @@ pub(super) fn unexpected_cfg_value(
         lints::unexpected_cfg_value::InvocationHelp::Rustc(help)
     };
 
-    diag.subdiagnostic(diag.dcx, lints::UnexpectedCfgValueSub { code_sugg, invocation_help });
+    lints::UnexpectedCfgValue {
+        code_sugg,
+        invocation_help,
+        has_value: value.is_some(),
+        value: value.map_or_else(String::new, |(v, _span)| v.to_string()),
+    }
 }

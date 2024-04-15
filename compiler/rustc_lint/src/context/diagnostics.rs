@@ -1,64 +1,57 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
+use std::borrow::Cow;
+
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
-use rustc_errors::{
-    elided_lifetime_in_path_suggestion, pluralize, Diag, DiagMessage, LintDiagnostic,
-};
-use rustc_errors::{Applicability, SuggestionStyle};
+use rustc_errors::Applicability;
+use rustc_errors::{elided_lifetime_in_path_suggestion, DiagArgValue, MultiSpan};
 use rustc_middle::middle::stability;
-use rustc_session::lint::BuiltinLintDiag;
-use rustc_session::Session;
+use rustc_session::lint::{BuiltinLintDiag, Lint};
 use rustc_span::BytePos;
 
-use std::fmt::Write;
+use crate::{lints, EarlyContext, LintContext as _};
 
 mod check_cfg;
 
-#[cfg(test)]
-mod tests;
-
-pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Diag<'_, ()>) {
+pub(super) fn emit_buffered_lint(
+    ctx: &EarlyContext<'_>,
+    lint: &'static Lint,
+    span: MultiSpan,
+    diagnostic: BuiltinLintDiag,
+) {
+    let sess = ctx.sess();
     match diagnostic {
-        BuiltinLintDiag::UnicodeTextFlow(span, content) => {
+        BuiltinLintDiag::UnicodeTextFlow(comment_span, content) => {
             let spans: Vec<_> = content
                 .char_indices()
                 .filter_map(|(i, c)| {
                     TEXT_FLOW_CONTROL_CHARS.contains(&c).then(|| {
-                        let lo = span.lo() + BytePos(2 + i as u32);
-                        (c, span.with_lo(lo).with_hi(lo + BytePos(c.len_utf8() as u32)))
+                        let lo = comment_span.lo() + BytePos(2 + i as u32);
+                        (c, comment_span.with_lo(lo).with_hi(lo + BytePos(c.len_utf8() as u32)))
                     })
                 })
                 .collect();
-            let (an, s) = match spans.len() {
-                1 => ("an ", ""),
-                _ => ("", "s"),
-            };
-            diag.span_label(
+            let characters = spans
+                .iter()
+                .map(|&(c, span)| lints::UnicodeCharNoteSub { span, c_debug: format!("{c:?}") })
+                .collect();
+            let suggestions = (!spans.is_empty()).then_some(lints::UnicodeTextFlowSuggestion {
+                spans: spans.iter().map(|(_c, span)| *span).collect(),
+            });
+            ctx.emit_span_lint(
+                lint,
                 span,
-                format!(
-                    "this comment contains {an}invisible unicode text flow control codepoint{s}",
-                ),
-            );
-            for (c, span) in &spans {
-                diag.span_label(*span, format!("{c:?}"));
-            }
-            diag.note(
-                "these kind of unicode codepoints change the way text flows on \
-                         applications that support them, but can cause confusion because they \
-                         change the order of characters on the screen",
-            );
-            if !spans.is_empty() {
-                diag.multipart_suggestion_with_style(
-                    "if their presence wasn't intentional, you can remove them",
-                    spans.into_iter().map(|(_, span)| (span, "".to_string())).collect(),
-                    Applicability::MachineApplicable,
-                    SuggestionStyle::HideCodeAlways,
-                );
-            }
+                lints::UnicodeTextFlow {
+                    comment_span,
+                    characters,
+                    suggestions,
+                    num_codepoints: spans.len(),
+                },
+            )
         }
-        BuiltinLintDiag::AbsPathWithModule(span) => {
-            let (sugg, app) = match sess.source_map().span_to_snippet(span) {
+        BuiltinLintDiag::AbsPathWithModule(mod_span) => {
+            let (replacement, applicability) = match sess.source_map().span_to_snippet(mod_span) {
                 Ok(ref s) => {
                     // FIXME(Manishearth) ideally the emitting code
                     // can tell us whether or not this is global
@@ -68,64 +61,90 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
                 }
                 Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
             };
-            diag.span_suggestion(span, "use `crate`", sugg, app);
-        }
-        BuiltinLintDiag::ProcMacroDeriveResolutionFallback { span, .. } => {
-            diag.span_label(
+            ctx.emit_span_lint(
+                lint,
                 span,
-                "names from parent modules are not accessible without an explicit import",
+                lints::AbsPathWithModule {
+                    sugg: lints::AbsPathWithModuleSugg {
+                        span: mod_span,
+                        applicability,
+                        replacement,
+                    },
+                },
             );
         }
-        BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
-            diag.span_note(span_def, "the macro is defined here");
-        }
+        BuiltinLintDiag::ProcMacroDeriveResolutionFallback { span: macro_span, ns, ident } => ctx
+            .emit_span_lint(
+                lint,
+                span,
+                lints::ProcMacroDeriveResolutionFallback { span: macro_span, ns, ident },
+            ),
+        BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => ctx
+            .emit_span_lint(
+                lint,
+                span,
+                lints::MacroExpandedMacroExportsAccessedByAbsolutePaths { definition: span_def },
+            ),
         BuiltinLintDiag::ElidedLifetimesInPaths(n, path_span, incl_angl_brckt, insertion_span) => {
-            diag.subdiagnostic(
-                sess.dcx(),
-                elided_lifetime_in_path_suggestion(
-                    sess.source_map(),
-                    n,
-                    path_span,
-                    incl_angl_brckt,
-                    insertion_span,
-                ),
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::ElidedLifetimesInPaths {
+                    subdiag: elided_lifetime_in_path_suggestion(
+                        sess.source_map(),
+                        n,
+                        path_span,
+                        incl_angl_brckt,
+                        insertion_span,
+                    ),
+                },
             );
         }
         BuiltinLintDiag::UnknownCrateTypes { span, candidate } => {
-            if let Some(candidate) = candidate {
-                diag.span_suggestion(
-                    span,
-                    "did you mean",
-                    format!(r#""{candidate}""#),
-                    Applicability::MaybeIncorrect,
-                );
-            }
+            let sugg = candidate.map(|candidate| lints::UnknownCrateTypesSub { span, candidate });
+            ctx.emit_span_lint(lint, span, lints::UnknownCrateTypes { sugg });
         }
-        BuiltinLintDiag::UnusedImports { fix_msg, fixes, test_module_span, .. } => {
-            if !fixes.is_empty() {
-                diag.tool_only_multipart_suggestion(
-                    fix_msg,
-                    fixes,
-                    Applicability::MachineApplicable,
-                );
-            }
+        BuiltinLintDiag::UnusedImports {
+            remove_whole_use,
+            num_to_remove,
+            remove_spans,
+            test_module_span,
+            span_snippets,
+        } => {
+            let sugg = if remove_whole_use {
+                lints::UnusedImportsSugg::RemoveWholeUse { span: remove_spans[0] }
+            } else {
+                lints::UnusedImportsSugg::RemoveImports { remove_spans, num_to_remove }
+            };
+            let test_module_span =
+                test_module_span.map(|span| sess.source_map().guess_head_span(span));
 
-            if let Some(span) = test_module_span {
-                diag.span_help(
-                    sess.source_map().guess_head_span(span),
-                    "if this is a test module, consider adding a `#[cfg(test)]` to the containing module",
-                );
-            }
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::UnusedImports {
+                    sugg,
+                    test_module_span,
+                    num_snippets: span_snippets.len(),
+                    span_snippets: DiagArgValue::StrListSepByAnd(
+                        span_snippets.into_iter().map(Cow::Owned).collect(),
+                    ),
+                },
+            );
         }
         BuiltinLintDiag::RedundantImport(spans, ident) => {
-            for (span, is_imported) in spans {
-                let introduced = if is_imported { "imported" } else { "defined" };
-                let span_msg = if span.is_dummy() { "by the extern prelude" } else { "here" };
-                diag.span_label(
-                    span,
-                    format!("the item `{ident}` is already {introduced} {span_msg}"),
-                );
-            }
+            let subs = spans
+                .into_iter()
+                .map(|(span, is_imported)| {
+                    (match (span.is_dummy(), is_imported) {
+                        (false, true) => lints::RedundantImportSub::ImportedHere,
+                        (false, false) => lints::RedundantImportSub::DefinedHere,
+                        (true, true) => lints::RedundantImportSub::ImportedPrelude,
+                        (true, false) => lints::RedundantImportSub::DefinedPrelude,
+                    })(span)
+                })
+                .collect();
+            ctx.emit_span_lint(lint, span, lints::RedundantImport { subs, ident });
         }
         BuiltinLintDiag::DeprecatedMacro {
             suggestion,
@@ -139,106 +158,110 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
                 kind: "macro".to_owned(),
                 suggestion,
             });
-            let deprecated =
-                stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind };
-            deprecated.decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnusedDocComment(span) => {
-            diag.span_label(span, "rustdoc does not generate documentation for macro invocations");
-            diag.help("to document an item produced by a macro, \
-                                  the macro must produce the documentation as part of its expansion");
-        }
-        BuiltinLintDiag::PatternsInFnsWithoutBody { span, ident, .. } => {
-            diag.span_suggestion(
+            ctx.emit_span_lint(
+                lint,
                 span,
-                "remove `mut` from the parameter",
-                ident,
-                Applicability::MachineApplicable,
+                stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind },
             );
         }
-        BuiltinLintDiag::MissingAbi(span, default_abi) => {
-            diag.span_label(span, "ABI should be specified here");
-            diag.help(format!("the default ABI is {}", default_abi.name()));
+        BuiltinLintDiag::UnusedDocComment(attr_span) => {
+            ctx.emit_span_lint(lint, span, lints::UnusedDocComment { span: attr_span });
         }
-        BuiltinLintDiag::LegacyDeriveHelpers(span) => {
-            diag.span_label(span, "the attribute is introduced here");
-        }
-        BuiltinLintDiag::ProcMacroBackCompat(note) => {
-            diag.note(note);
-        }
-        BuiltinLintDiag::OrPatternsBackCompat(span, suggestion) => {
-            diag.span_suggestion(
+        BuiltinLintDiag::PatternsInFnsWithoutBody { span: remove_span, ident, is_foreign } => {
+            let sub = lints::PatternsInFnsWithoutBodySub { ident, span: remove_span };
+
+            ctx.emit_span_lint(
+                lint,
                 span,
-                "use pat_param to preserve semantics",
-                suggestion,
-                Applicability::MachineApplicable,
+                if is_foreign {
+                    lints::PatternsInFnsWithoutBody::Foreign { sub }
+                } else {
+                    lints::PatternsInFnsWithoutBody::Bodiless { sub }
+                },
             );
         }
-        BuiltinLintDiag::ReservedPrefix(span, _) => {
-            diag.span_label(span, "unknown prefix");
-            diag.span_suggestion_verbose(
-                span.shrink_to_hi(),
-                "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
-                " ",
-                Applicability::MachineApplicable,
+        BuiltinLintDiag::MissingAbi(label_span, default_abi) => {
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::MissingAbi { span: label_span, default_abi: default_abi.name() },
+            );
+        }
+        BuiltinLintDiag::LegacyDeriveHelpers(label_span) => {
+            ctx.emit_span_lint(lint, span, lints::LegacyDeriveHelpers { span: label_span });
+        }
+        BuiltinLintDiag::ProcMacroBackCompat { crate_name, fixed_version } => {
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::ProcMacroBackCompat { crate_name, fixed_version },
+            );
+        }
+        BuiltinLintDiag::OrPatternsBackCompat(suggestion_span, suggestion) => {
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::OrPatternsBackCompat { span: suggestion_span, suggestion },
+            );
+        }
+        BuiltinLintDiag::ReservedPrefix(label_span, prefix) => {
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::ReservedPrefix {
+                    label: label_span,
+                    suggestion: label_span.shrink_to_hi(),
+                    prefix,
+                },
             );
         }
         BuiltinLintDiag::UnusedBuiltinAttribute { attr_name, macro_name, invoc_span } => {
-            diag.span_note(
-                        invoc_span,
-                        format!("the built-in attribute `{attr_name}` will be ignored, since it's applied to the macro invocation `{macro_name}`")
-                    );
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::UnusedBuiltinAttribute { invoc_span, attr_name, macro_name },
+            );
         }
         BuiltinLintDiag::TrailingMacro(is_trailing, name) => {
-            if is_trailing {
-                diag.note("macro invocations at the end of a block are treated as expressions");
-                diag.note(format!("to ignore the value produced by the macro, add a semicolon after the invocation of `{name}`"));
-            }
+            ctx.emit_span_lint(lint, span, lints::TrailingMacro { is_trailing, name });
         }
-        BuiltinLintDiag::BreakWithLabelAndLoop(span) => {
-            diag.multipart_suggestion(
-                "wrap this expression in parentheses",
-                vec![
-                    (span.shrink_to_lo(), "(".to_string()),
-                    (span.shrink_to_hi(), ")".to_string()),
-                ],
-                Applicability::MachineApplicable,
+        BuiltinLintDiag::BreakWithLabelAndLoop(sugg_span) => {
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::BreakWithLabelAndLoop {
+                    sub: lints::BreakWithLabelAndLoopSub {
+                        left: sugg_span.shrink_to_lo(),
+                        right: sugg_span.shrink_to_hi(),
+                    },
+                },
             );
         }
         BuiltinLintDiag::UnexpectedCfgName(name, value) => {
-            check_cfg::unexpected_cfg_name(sess, diag, name, value)
+            ctx.emit_span_lint(lint, span, check_cfg::unexpected_cfg_name(sess, name, value));
         }
         BuiltinLintDiag::UnexpectedCfgValue(name, value) => {
-            check_cfg::unexpected_cfg_value(sess, diag, name, value)
+            ctx.emit_span_lint(lint, span, check_cfg::unexpected_cfg_value(sess, name, value));
         }
-        BuiltinLintDiag::DeprecatedWhereclauseLocation(sugg) => {
-            let left_sp = diag.span.primary_span().unwrap();
-            match sugg {
-                Some((right_sp, sugg)) => diag.multipart_suggestion(
-                    "move it to the end of the type declaration",
-                    vec![(left_sp, String::new()), (right_sp, sugg)],
-                    Applicability::MachineApplicable,
-                ),
-                None => diag.span_suggestion(
-                    left_sp,
-                    "remove this `where`",
-                    "",
-                    Applicability::MachineApplicable,
-                ),
+        BuiltinLintDiag::DeprecatedWhereclauseLocation(left_sp, sugg) => {
+            let suggestion = match sugg {
+                Some((right_sp, sugg)) => lints::DeprecatedWhereClauseLocationSugg::MoveToEnd {
+                    left: left_sp,
+                    right: right_sp,
+                    sugg,
+                },
+                None => lints::DeprecatedWhereClauseLocationSugg::RemoveWhere { span: left_sp },
             };
-            diag.note("see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information");
+            ctx.emit_span_lint(lint, span, lints::DeprecatedWhereClauseLocation { suggestion });
         }
         BuiltinLintDiag::SingleUseLifetime {
             param_span,
             use_span: Some((use_span, elide)),
             deletion_span,
-            ..
+            ident,
         } => {
             debug!(?param_span, ?use_span, ?deletion_span);
-            diag.span_label(param_span, "this lifetime...");
-            diag.span_label(use_span, "...is used only here");
-            if let Some(deletion_span) = deletion_span {
-                let msg = "elide the single-use lifetime";
+            let suggestion = if let Some(deletion_span) = deletion_span {
                 let (use_span, replace_lt) = if elide {
                     let use_span = sess.source_map().span_extend_while_whitespace(use_span);
                     (use_span, String::new())
@@ -249,26 +272,22 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
 
                 // issue 107998 for the case such as a wrong function pointer type
                 // `deletion_span` is empty and there is no need to report lifetime uses here
-                let suggestions = if deletion_span.is_empty() {
-                    vec![(use_span, replace_lt)]
-                } else {
-                    vec![(deletion_span, String::new()), (use_span, replace_lt)]
-                };
-                diag.multipart_suggestion(msg, suggestions, Applicability::MachineApplicable);
-            }
+                let deletion_span =
+                    if deletion_span.is_empty() { None } else { Some(deletion_span) };
+                Some(lints::SingleUseLifetimeSugg { deletion_span, use_span, replace_lt })
+            } else {
+                None
+            };
+
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::SingleUseLifetime { suggestion, param_span, use_span, ident },
+            );
         }
-        BuiltinLintDiag::SingleUseLifetime {
-            param_span: _, use_span: None, deletion_span, ..
-        } => {
+        BuiltinLintDiag::SingleUseLifetime { use_span: None, deletion_span, ident, .. } => {
             debug!(?deletion_span);
-            if let Some(deletion_span) = deletion_span {
-                diag.span_suggestion(
-                    deletion_span,
-                    "elide the unused lifetime",
-                    "",
-                    Applicability::MachineApplicable,
-                );
-            }
+            ctx.emit_span_lint(lint, span, lints::UnusedLifetime { deletion_span, ident });
         }
         BuiltinLintDiag::NamedArgumentUsedPositionally {
             position_sp_to_replace,
@@ -277,19 +296,12 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
             named_arg_name,
             is_formatting_arg,
         } => {
-            diag.span_label(
-                named_arg_sp,
-                "this named argument is referred to by position in formatting string",
-            );
-            if let Some(positional_arg_for_msg) = position_sp_for_msg {
-                let msg = format!(
-                    "this formatting argument uses named argument `{named_arg_name}` by position"
-                );
-                diag.span_label(positional_arg_for_msg, msg);
-            }
-
-            if let Some(positional_arg_to_replace) = position_sp_to_replace {
-                let name = if is_formatting_arg { named_arg_name + "$" } else { named_arg_name };
+            let (suggestion, name) = if let Some(positional_arg_to_replace) = position_sp_to_replace
+            {
+                let mut name = named_arg_name.clone();
+                if is_formatting_arg {
+                    name.push('$')
+                };
                 let span_to_replace = if let Ok(positional_arg_content) =
                     sess.source_map().span_to_snippet(positional_arg_to_replace)
                     && positional_arg_content.starts_with(':')
@@ -298,31 +310,40 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
                 } else {
                     positional_arg_to_replace
                 };
-                diag.span_suggestion_verbose(
-                    span_to_replace,
-                    "use the named argument by name to avoid ambiguity",
+                (Some(span_to_replace), name)
+            } else {
+                (None, String::new())
+            };
+
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::NamedArgumentUsedPositionally {
+                    named_arg_sp,
+                    position_label_sp: position_sp_for_msg,
+                    suggestion,
                     name,
-                    Applicability::MaybeIncorrect,
-                );
-            }
+                    named_arg_name,
+                },
+            )
         }
-        BuiltinLintDiag::ByteSliceInPackedStructWithDerive { .. } => {
-            diag.help("consider implementing the trait by hand, or remove the `packed` attribute");
+        BuiltinLintDiag::ByteSliceInPackedStructWithDerive { ty } => {
+            ctx.emit_span_lint(lint, span, lints::ByteSliceInPackedStructWithDerive { ty })
         }
         BuiltinLintDiag::UnusedExternCrate { removal_span } => {
-            diag.span_suggestion(removal_span, "remove it", "", Applicability::MachineApplicable);
+            ctx.emit_span_lint(lint, span, lints::UnusedExternCrate { removal_span })
         }
         BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span } => {
             let suggestion_span = vis_span.between(ident_span);
-            diag.span_suggestion_verbose(
-                suggestion_span,
-                "convert it to a `use`",
-                if vis_span.is_empty() { "use " } else { " use " },
-                Applicability::MachineApplicable,
+            let code = if vis_span.is_empty() { "use " } else { " use " };
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::ExternCrateNotIdiomatic { span: suggestion_span, code },
             );
         }
         BuiltinLintDiag::AmbiguousGlobImports { diag: ambiguity } => {
-            rustc_errors::report_ambiguity_error(diag, ambiguity);
+            ctx.emit_span_lint(lint, span, lints::AmbiguousGlobImports { ambiguity });
         }
         BuiltinLintDiag::AmbiguousGlobReexports {
             name,
@@ -330,15 +351,15 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
             first_reexport_span,
             duplicate_reexport_span,
         } => {
-            diag.span_label(
-                first_reexport_span,
-                format!("the name `{name}` in the {namespace} namespace is first re-exported here"),
-            );
-            diag.span_label(
-                duplicate_reexport_span,
-                format!(
-                    "but the name `{name}` in the {namespace} namespace is also re-exported here"
-                ),
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::AmbiguousGlobReexports {
+                    first_reexport: first_reexport_span,
+                    duplicate_reexport: duplicate_reexport_span,
+                    name,
+                    namespace,
+                },
             );
         }
         BuiltinLintDiag::HiddenGlobReexports {
@@ -347,261 +368,127 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
             glob_reexport_span,
             private_item_span,
         } => {
-            diag.span_note(glob_reexport_span, format!("the name `{name}` in the {namespace} namespace is supposed to be publicly re-exported here"));
-            diag.span_note(private_item_span, "but the private item here shadows it".to_owned());
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::HiddenGlobReexports {
+                    glob_reexport: glob_reexport_span,
+                    private_item: private_item_span,
+
+                    name,
+                    namespace,
+                },
+            );
         }
         BuiltinLintDiag::UnusedQualifications { removal_span } => {
-            diag.span_suggestion_verbose(
-                removal_span,
-                "remove the unnecessary path segments",
-                "",
-                Applicability::MachineApplicable,
+            ctx.emit_span_lint(lint, span, lints::UnusedQualifications { removal_span });
+        }
+        BuiltinLintDiag::AssociatedConstElidedLifetime { elided, span: lt_span } => {
+            let lt_span = if elided { lt_span.shrink_to_hi() } else { lt_span };
+            let code = if elided { "'static " } else { "'static" };
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::AssociatedConstElidedLifetime { span: lt_span, code, elided },
             );
         }
-        BuiltinLintDiag::AssociatedConstElidedLifetime { elided, span } => {
-            diag.span_suggestion_verbose(
-                if elided { span.shrink_to_hi() } else { span },
-                "use the `'static` lifetime",
-                if elided { "'static " } else { "'static" },
-                Applicability::MachineApplicable,
+        BuiltinLintDiag::RedundantImportVisibility { max_vis, span: vis_span, import_vis } => {
+            ctx.emit_span_lint(
+                lint,
+                span,
+                lints::RedundantImportVisibility { span: vis_span, help: (), max_vis, import_vis },
             );
         }
-        BuiltinLintDiag::RedundantImportVisibility { max_vis, span, .. } => {
-            diag.span_note(span, format!("the most public imported item is `{max_vis}`"));
-            diag.help(
-                "reduce the glob import's visibility or increase visibility of imported items",
-            );
+        BuiltinLintDiag::UnknownDiagnosticAttribute { span: typo_span, typo_name } => {
+            let typo = typo_name.map(|typo_name| lints::UnknownDiagnosticAttributeTypoSugg {
+                span: typo_span,
+                typo_name,
+            });
+            ctx.emit_span_lint(lint, span, lints::UnknownDiagnosticAttribute { typo });
         }
-        BuiltinLintDiag::UnknownDiagnosticAttribute { span, typo_name } => {
-            if let Some(typo_name) = typo_name {
-                diag.span_suggestion_verbose(
-                    span,
-                    "an attribute with a similar name exists",
-                    typo_name,
-                    Applicability::MachineApplicable,
-                );
-            }
+        BuiltinLintDiag::MacroUseDeprecated => {
+            ctx.emit_span_lint(lint, span, lints::MacroUseDeprecated)
         }
-        BuiltinLintDiag::MacroUseDeprecated
-        | BuiltinLintDiag::UnusedMacroUse
-        | BuiltinLintDiag::PrivateExternCrateReexport(_)
-        | BuiltinLintDiag::UnusedLabel
-        | BuiltinLintDiag::MacroIsPrivate(_)
-        | BuiltinLintDiag::UnusedMacroDefinition(_)
-        | BuiltinLintDiag::MacroRuleNeverUsed(_, _)
-        | BuiltinLintDiag::UnstableFeature(_)
-        | BuiltinLintDiag::AvoidUsingIntelSyntax
-        | BuiltinLintDiag::AvoidUsingAttSyntax
-        | BuiltinLintDiag::IncompleteInclude
-        | BuiltinLintDiag::UnnameableTestItems
-        | BuiltinLintDiag::DuplicateMacroAttribute
-        | BuiltinLintDiag::CfgAttrNoAttributes
-        | BuiltinLintDiag::CrateTypeInCfgAttr
-        | BuiltinLintDiag::CrateNameInCfgAttr
-        | BuiltinLintDiag::MissingFragmentSpecifier
-        | BuiltinLintDiag::MetaVariableStillRepeating(_)
-        | BuiltinLintDiag::MetaVariableWrongOperator
-        | BuiltinLintDiag::DuplicateMatcherBinding
-        | BuiltinLintDiag::UnknownMacroVariable(_)
-        | BuiltinLintDiag::UnusedExternCrate2 { .. }
-        | BuiltinLintDiag::WasmCAbi
-        | BuiltinLintDiag::IllFormedAttributeInput { .. }
-        | BuiltinLintDiag::InnerAttributeUnstable { .. } => {}
-    }
-}
-
-pub(super) fn builtin_message(diagnostic: &BuiltinLintDiag) -> DiagMessage {
-    match diagnostic {
-        BuiltinLintDiag::AbsPathWithModule(_) => {
-            "absolute paths must start with `self`, `super`, `crate`, or an \
-                external crate name in the 2018 edition"
-                .into()
+        BuiltinLintDiag::UnusedMacroUse => ctx.emit_span_lint(lint, span, lints::UnusedMacroUse),
+        BuiltinLintDiag::PrivateExternCrateReexport(ident) => {
+            ctx.emit_span_lint(lint, span, lints::PrivateExternCrateReexport { ident })
         }
-        BuiltinLintDiag::ProcMacroDeriveResolutionFallback { ns, ident, .. } => {
-            format!("cannot find {} `{}` in this scope", ns.descr(), ident).into()
+        BuiltinLintDiag::UnusedLabel => ctx.emit_span_lint(lint, span, lints::UnusedLabel),
+        BuiltinLintDiag::MacroIsPrivate(ident) => {
+            ctx.emit_span_lint(lint, span, lints::MacroIsPrivate { ident })
         }
-        BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(_) => {
-            "macro-expanded `macro_export` macros from the current crate cannot \
-                be referred to by absolute paths"
-                .into()
-        }
-        BuiltinLintDiag::ElidedLifetimesInPaths(_, _, _, _) => {
-            "hidden lifetime parameters in types are deprecated".into()
-        }
-        BuiltinLintDiag::UnknownCrateTypes { .. } => "invalid `crate_type` value".into(),
-        BuiltinLintDiag::UnusedImports { span_snippets, .. } => format!(
-            "unused import{}{}",
-            pluralize!(span_snippets.len()),
-            if !span_snippets.is_empty() {
-                format!(": {}", span_snippets.join(", "))
-            } else {
-                String::new()
-            }
-        )
-        .into(),
-        BuiltinLintDiag::RedundantImport(_, source) => {
-            format!("the item `{source}` is imported redundantly").into()
-        }
-        BuiltinLintDiag::DeprecatedMacro { since_kind, .. } => {
-            stability::Deprecated::msg_for_since_kind(since_kind)
-        }
-        BuiltinLintDiag::MissingAbi(_, _) => crate::fluent_generated::lint_extern_without_abi,
-        BuiltinLintDiag::UnusedDocComment(_) => "unused doc comment".into(),
-        BuiltinLintDiag::UnusedBuiltinAttribute { attr_name, .. } => {
-            format!("unused attribute `{attr_name}`").into()
-        }
-        BuiltinLintDiag::PatternsInFnsWithoutBody { is_foreign, .. } => {
-            if *is_foreign {
-                crate::fluent_generated::lint_pattern_in_foreign
-            } else {
-                crate::fluent_generated::lint_pattern_in_bodiless
-            }
-        }
-        BuiltinLintDiag::LegacyDeriveHelpers(_) => {
-            "derive helper attribute is used before it is introduced".into()
-        }
-        BuiltinLintDiag::ProcMacroBackCompat(_) => "using an old version of `rental`".into(),
-        BuiltinLintDiag::OrPatternsBackCompat(_, _) => {
-            "the meaning of the `pat` fragment specifier is changing in Rust 2021, \
-            which may affect this macro"
-                .into()
-        }
-        BuiltinLintDiag::ReservedPrefix(_, prefix) => {
-            format!("prefix `{prefix}` is unknown").into()
-        }
-        BuiltinLintDiag::TrailingMacro(_, _) => {
-            "trailing semicolon in macro used in expression position".into()
-        }
-        BuiltinLintDiag::BreakWithLabelAndLoop(_) => {
-            "this labeled break expression is easy to confuse with an unlabeled break with a \
-            labeled value expression"
-                .into()
-        }
-        BuiltinLintDiag::UnicodeTextFlow(_, _) => {
-            "unicode codepoint changing visible direction of text present in comment".into()
-        }
-        BuiltinLintDiag::UnexpectedCfgName((name, _), _) => {
-            format!("unexpected `cfg` condition name: `{}`", name).into()
-        }
-        BuiltinLintDiag::UnexpectedCfgValue(_, v) => if let Some((value, _)) = v {
-            format!("unexpected `cfg` condition value: `{value}`")
-        } else {
-            format!("unexpected `cfg` condition value: (none)")
-        }
-        .into(),
-        BuiltinLintDiag::DeprecatedWhereclauseLocation(_) => {
-            crate::fluent_generated::lint_deprecated_where_clause_location
-        }
-        BuiltinLintDiag::SingleUseLifetime { use_span, ident, .. } => {
-            if use_span.is_some() {
-                format!("lifetime parameter `{}` only used once", ident).into()
-            } else {
-                format!("lifetime parameter `{}` never used", ident).into()
-            }
-        }
-        BuiltinLintDiag::NamedArgumentUsedPositionally { named_arg_name, .. } => {
-            format!("named argument `{}` is not used by name", named_arg_name).into()
-        }
-        BuiltinLintDiag::ByteSliceInPackedStructWithDerive { ty } => {
-            format!("{ty} slice in a packed struct that derives a built-in trait").into()
-        }
-        BuiltinLintDiag::UnusedExternCrate { .. } => "unused extern crate".into(),
-        BuiltinLintDiag::ExternCrateNotIdiomatic { .. } => {
-            "`extern crate` is not idiomatic in the new edition".into()
-        }
-        BuiltinLintDiag::AmbiguousGlobImports { diag } => diag.msg.clone().into(),
-        BuiltinLintDiag::AmbiguousGlobReexports { .. } => "ambiguous glob re-exports".into(),
-        BuiltinLintDiag::HiddenGlobReexports { .. } => {
-            "private item shadows public glob re-export".into()
-        }
-        BuiltinLintDiag::UnusedQualifications { .. } => "unnecessary qualification".into(),
-        BuiltinLintDiag::AssociatedConstElidedLifetime { elided, .. } => if *elided {
-            "`&` without an explicit lifetime name cannot be used here"
-        } else {
-            "`'_` cannot be used here"
-        }
-        .into(),
-        BuiltinLintDiag::RedundantImportVisibility { import_vis, .. } => format!(
-            "glob import doesn't reexport anything with visibility `{}` \
-            because no imported item is public enough",
-            import_vis
-        )
-        .into(),
-        BuiltinLintDiag::MacroUseDeprecated => "deprecated `#[macro_use]` attribute used to \
-                                import macros should be replaced at use sites \
-                                with a `use` item to import the macro \
-                                instead"
-            .into(),
-        BuiltinLintDiag::UnusedMacroUse => "unused `#[macro_use]` import".into(),
-        BuiltinLintDiag::PrivateExternCrateReexport(ident) => format!(
-            "extern crate `{ident}` is private, and cannot be \
-                                   re-exported (error E0365), consider declaring with \
-                                   `pub`"
-        )
-        .into(),
-        BuiltinLintDiag::UnusedLabel => "unused label".into(),
-        BuiltinLintDiag::MacroIsPrivate(ident) => format!("macro `{ident}` is private").into(),
         BuiltinLintDiag::UnusedMacroDefinition(name) => {
-            format!("unused macro definition: `{}`", name).into()
+            ctx.emit_span_lint(lint, span, lints::UnusedMacroDefinition { name })
         }
         BuiltinLintDiag::MacroRuleNeverUsed(n, name) => {
-            format!("rule #{} of macro `{}` is never used", n + 1, name).into()
+            ctx.emit_span_lint(lint, span, lints::MacroRuleNeverUsed { n: n + 1, name })
         }
-        BuiltinLintDiag::UnstableFeature(msg) => msg.clone().into(),
+        BuiltinLintDiag::UnstableFeature(msg) => {
+            ctx.emit_span_lint(lint, span, lints::UnstableFeature { msg })
+        }
         BuiltinLintDiag::AvoidUsingIntelSyntax => {
-            "avoid using `.intel_syntax`, Intel syntax is the default".into()
+            ctx.emit_span_lint(lint, span, lints::AvoidIntelSyntax)
         }
         BuiltinLintDiag::AvoidUsingAttSyntax => {
-            "avoid using `.att_syntax`, prefer using `options(att_syntax)` instead".into()
+            ctx.emit_span_lint(lint, span, lints::AvoidAttSyntax)
         }
         BuiltinLintDiag::IncompleteInclude => {
-            "include macro expected single expression in source".into()
+            ctx.emit_span_lint(lint, span, lints::IncompleteInclude)
         }
-        BuiltinLintDiag::UnnameableTestItems => crate::fluent_generated::lint_unnameable_test_items,
-        BuiltinLintDiag::DuplicateMacroAttribute => "duplicated attribute".into(),
+        BuiltinLintDiag::UnnameableTestItems => {
+            ctx.emit_span_lint(lint, span, lints::UnnameableTestItems)
+        }
+        BuiltinLintDiag::DuplicateMacroAttribute => {
+            ctx.emit_span_lint(lint, span, lints::DuplicateMacroAttribute)
+        }
         BuiltinLintDiag::CfgAttrNoAttributes => {
-            crate::fluent_generated::lint_cfg_attr_no_attributes
+            ctx.emit_span_lint(lint, span, lints::CfgAttrNoAttributes)
         }
         BuiltinLintDiag::CrateTypeInCfgAttr => {
-            crate::fluent_generated::lint_crate_type_in_cfg_attr_deprecated
+            ctx.emit_span_lint(lint, span, lints::CrateTypeInCfgAttr)
         }
         BuiltinLintDiag::CrateNameInCfgAttr => {
-            crate::fluent_generated::lint_crate_name_in_cfg_attr_deprecated
+            ctx.emit_span_lint(lint, span, lints::CrateNameInCfgAttr)
         }
-        BuiltinLintDiag::MissingFragmentSpecifier => "missing fragment specifier".into(),
+        BuiltinLintDiag::MissingFragmentSpecifier => {
+            ctx.emit_span_lint(lint, span, lints::MissingFragmentSpecifier)
+        }
         BuiltinLintDiag::MetaVariableStillRepeating(name) => {
-            format!("variable '{name}' is still repeating at this depth").into()
+            ctx.emit_span_lint(lint, span, lints::MetaVariableStillRepeating { name })
         }
         BuiltinLintDiag::MetaVariableWrongOperator => {
-            "meta-variable repeats with different Kleene operator".into()
+            ctx.emit_span_lint(lint, span, lints::MetaVariableWrongOperator)
         }
-        BuiltinLintDiag::DuplicateMatcherBinding => "duplicate matcher binding".into(),
+        BuiltinLintDiag::DuplicateMatcherBinding => {
+            ctx.emit_span_lint(lint, span, lints::DuplicateMatcherBinding)
+        }
         BuiltinLintDiag::UnknownMacroVariable(name) => {
-            format!("unknown macro variable `{name}`").into()
+            ctx.emit_span_lint(lint, span, lints::UnknownMacroVariable { name })
         }
-        BuiltinLintDiag::UnusedExternCrate2 { extern_crate, local_crate } => format!(
-            "external crate `{}` unused in `{}`: remove the dependency or add `use {} as _;`",
-            extern_crate, local_crate, extern_crate
-        )
-        .into(),
-        BuiltinLintDiag::WasmCAbi => crate::fluent_generated::lint_wasm_c_abi,
-        BuiltinLintDiag::IllFormedAttributeInput { suggestions } => suggestions
-            .iter()
-            .enumerate()
-            .fold("attribute must be of the form ".to_string(), |mut acc, (i, sugg)| {
-                if i != 0 {
-                    write!(acc, " or ").unwrap();
-                }
-                write!(acc, "`{sugg}`").unwrap();
-                acc
-            })
-            .into(),
-        BuiltinLintDiag::InnerAttributeUnstable { is_macro } => if *is_macro {
-            "inner macro attributes are unstable"
-        } else {
-            "custom inner attributes are unstable"
-        }
-        .into(),
-        BuiltinLintDiag::UnknownDiagnosticAttribute { .. } => "unknown diagnostic attribute".into(),
+        BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => ctx.emit_span_lint(
+            lint,
+            span,
+            lints::UnusedCrateDependency { extern_crate, local_crate },
+        ),
+        BuiltinLintDiag::WasmCAbi => ctx.emit_span_lint(lint, span, lints::WasmCAbi),
+        BuiltinLintDiag::IllFormedAttributeInput { suggestions } => ctx.emit_span_lint(
+            lint,
+            span,
+            lints::IllFormedAttributeInput {
+                num_suggestions: suggestions.len(),
+                suggestions: DiagArgValue::StrListSepByAnd(
+                    suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
+                ),
+            },
+        ),
+        BuiltinLintDiag::InnerAttributeUnstable { is_macro } => ctx.emit_span_lint(
+            lint,
+            span,
+            if is_macro {
+                lints::InnerAttributeUnstable::InnerMacroAttribute
+            } else {
+                lints::InnerAttributeUnstable::CustomInnerAttribute
+            },
+        ),
     }
 }

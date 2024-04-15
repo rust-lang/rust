@@ -978,7 +978,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                 span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::UnusedExternCrate2 {
+                BuiltinLintDiag::UnusedCrateDependency {
                     extern_crate: name_interned,
                     local_crate: self.tcx.crate_name(LOCAL_CRATE),
                 },

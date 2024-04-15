@@ -433,20 +433,12 @@ impl Resolver<'_, '_> {
         visitor.report_unused_extern_crate_items(maybe_unused_extern_crates);
 
         for unused in visitor.unused_imports.values() {
-            let mut fixes = Vec::new();
-            let spans = match calc_unused_spans(unused, &unused.use_tree, unused.use_tree_id) {
-                UnusedSpanResult::Used => continue,
-                UnusedSpanResult::Unused { spans, remove } => {
-                    fixes.push((remove, String::new()));
-                    spans
-                }
-                UnusedSpanResult::PartialUnused { spans, remove } => {
-                    for fix in &remove {
-                        fixes.push((*fix, String::new()));
-                    }
-                    spans
-                }
-            };
+            let (spans, remove_spans) =
+                match calc_unused_spans(unused, &unused.use_tree, unused.use_tree_id) {
+                    UnusedSpanResult::Used => continue,
+                    UnusedSpanResult::Unused { spans, remove } => (spans, vec![remove]),
+                    UnusedSpanResult::PartialUnused { spans, remove } => (spans, remove),
+                };
 
             let ms = MultiSpan::from_spans(spans);
 
@@ -458,13 +450,8 @@ impl Resolver<'_, '_> {
                 .collect::<Vec<String>>();
             span_snippets.sort();
 
-            let fix_msg = if fixes.len() == 1 && fixes[0].0 == unused.item_span {
-                "remove the whole `use` item"
-            } else if ms.primary_spans().len() > 1 {
-                "remove the unused imports"
-            } else {
-                "remove the unused import"
-            };
+            let remove_whole_use = remove_spans.len() == 1 && remove_spans[0] == unused.item_span;
+            let num_to_remove = ms.primary_spans().len();
 
             // If we are in the `--test` mode, suppress a help that adds the `#[cfg(test)]`
             // attribute; however, if not, suggest adding the attribute. There is no way to
@@ -495,8 +482,9 @@ impl Resolver<'_, '_> {
                 unused.use_tree_id,
                 ms,
                 BuiltinLintDiag::UnusedImports {
-                    fix_msg: fix_msg.into(),
-                    fixes,
+                    remove_whole_use,
+                    num_to_remove,
+                    remove_spans,
                     test_module_span,
                     span_snippets,
                 },

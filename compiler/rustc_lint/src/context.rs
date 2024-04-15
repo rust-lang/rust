@@ -527,29 +527,24 @@ pub struct EarlyContext<'a> {
     pub buffered: LintBuffer,
 }
 
-pub trait LintContext {
-    fn sess(&self) -> &Session;
-
+impl EarlyContext<'_> {
     /// Emit a lint at the appropriate level, with an optional associated span and an existing
     /// diagnostic.
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
-    fn span_lint_with_diagnostics(
+    pub fn span_lint_with_diagnostics(
         &self,
         lint: &'static Lint,
-        span: Option<impl Into<MultiSpan>>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
+        span: MultiSpan,
         diagnostic: BuiltinLintDiag,
     ) {
-        // We first generate a blank diagnostic.
-        self.opt_span_lint(lint, span, diagnostics::builtin_message(&diagnostic), |db| {
-            // Now, set up surrounding context.
-            diagnostics::builtin(self.sess(), diagnostic, db);
-            // Rewrap `db`, and pass control to the user.
-            decorate(db)
-        });
+        diagnostics::emit_buffered_lint(self, lint, span, diagnostic)
     }
+}
+
+pub trait LintContext {
+    fn sess(&self) -> &Session;
 
     // FIXME: These methods should not take an Into<MultiSpan> -- instead, callers should need to
     // set the span in their `decorate` function (preferably using set_span).
