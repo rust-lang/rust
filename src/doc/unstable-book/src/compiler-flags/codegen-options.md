@@ -10,6 +10,10 @@ In addition to the stable set of linker flavors, the following unstable values a
 - `ptx`: use [`rust-ptx-linker`](https://github.com/denzp/rust-ptx-linker)
   for Nvidia NVPTX GPGPU support.
 - `bpf`: use [`bpf-linker`](https://github.com/alessandrod/bpf-linker) for eBPF support.
+- `llbc`: for linking in llvm bitcode. Install the preview rustup components`llvm-bitcode-linker`
+  and `llvm-tools` to use as a self-contained linker by passing
+  `-Zunstable-options -Clink-self-contained=+linker` together with `-Clinker-flavor=llbc`.
+  Can currently only be used for Nvidia NVPTX targets (`nvptx64-nvidia-cuda`).
 
 Additionally, a set of more precise linker flavors also exists, for example allowing targets to
 declare that they use the LLD linker by default. The following values are currently unstable, and

@@ -62,7 +62,7 @@ impl Session {
             .arg("-o")
             .arg(&self.link_path)
             .output()
-            .unwrap();
+            .context("An error occured when calling llvm-link. Make sure the llvm-tools component is installed.")?;
 
         if !llvm_link_output.status.success() {
             tracing::error!(
@@ -108,7 +108,9 @@ impl Session {
             opt_cmd.arg("--strip-debug");
         }
 
-        let opt_output = opt_cmd.output().unwrap();
+        let opt_output = opt_cmd.output().context(
+            "An error occured when calling opt. Make sure the llvm-tools component is installed.",
+        )?;
 
         if !opt_output.status.success() {
             tracing::error!(
@@ -133,8 +135,11 @@ impl Session {
             lcc_command.arg("--mcpu").arg(mcpu);
         }
 
-        let lcc_output =
-            lcc_command.arg(&self.opt_path).arg("-o").arg(&self.out_path).output().unwrap();
+        let lcc_output = lcc_command
+            .arg(&self.opt_path)
+            .arg("-o").arg(&self.out_path)
+            .output()
+            .context("An error occured when calling llc. Make sure the llvm-tools component is installed.")?;
 
         if !lcc_output.status.success() {
             tracing::error!(

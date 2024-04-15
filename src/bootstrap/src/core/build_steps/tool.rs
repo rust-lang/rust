@@ -746,9 +746,11 @@ impl Step for LlvmBitcodeLinker {
             .join(exe(bin_name, self.compiler.host));
 
         if self.compiler.stage > 0 {
-            let bindir = builder.sysroot(self.compiler).join("bin");
-            t!(fs::create_dir_all(&bindir));
-            let bin_destination = bindir.join(exe(bin_name, self.compiler.host));
+            let bindir_self_contained = builder
+                .sysroot(self.compiler)
+                .join(format!("lib/rustlib/{}/bin/self-contained", self.target.triple));
+            t!(fs::create_dir_all(&bindir_self_contained));
+            let bin_destination = bindir_self_contained.join(exe(bin_name, self.compiler.host));
             builder.copy_link(&tool_out, &bin_destination);
             bin_destination
         } else {
