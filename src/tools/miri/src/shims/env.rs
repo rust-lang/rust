@@ -9,21 +9,7 @@ use rustc_middle::ty::Ty;
 use rustc_target::abi::Size;
 
 use crate::*;
-
-/// Check whether an operation that writes to a target buffer was successful.
-/// Accordingly select return value.
-/// Local helper function to be used in Windows shims.
-fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
-    if success {
-        // If the function succeeds, the return value is the number of characters stored in the target buffer,
-        // not including the terminating null character.
-        u32::try_from(len.checked_sub(1).unwrap()).unwrap()
-    } else {
-        // If the target buffer was not large enough to hold the data, the return value is the buffer size, in characters,
-        // required to hold the string and its terminating null character.
-        u32::try_from(len).unwrap()
-    }
-}
+use helpers::windows_check_buffer_size;
 
 #[derive(Default)]
 pub struct EnvVars<'tcx> {
@@ -164,7 +150,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let name_ptr = this.read_pointer(name_op)?;
         let name = this.read_os_str_from_wide_str(name_ptr)?;
         Ok(match this.machine.env_vars.map.get(&name) {
-            Some(var_ptr) => {
+            Some(&var_ptr) => {
+                this.set_last_error(Scalar::from_u32(0))?; // make sure this is unambiguously not an error
                 // The offset is used to strip the "{name}=" part of the string.
                 #[rustfmt::skip]
                 let name_offset_bytes = u64::try_from(name.len()).unwrap()
@@ -375,10 +362,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // If we cannot get the current directory, we return 0
         match env::current_dir() {
-            Ok(cwd) =>
+            Ok(cwd) => {
+                this.set_last_error(Scalar::from_u32(0))?; // make sure this is unambiguously not an error
                 return Ok(Scalar::from_u32(windows_check_buffer_size(
                     this.write_path_to_wide_str(&cwd, buf, size, /*truncate*/ false)?,
-                ))),
+                )));
+            }
             Err(e) => this.set_last_error_from_io_error(e.kind())?,
         }
         Ok(Scalar::from_u32(0))
