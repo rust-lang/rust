@@ -853,6 +853,7 @@ impl<'a> Builder<'a> {
                 dist::Clippy,
                 dist::Miri,
                 dist::LlvmTools,
+                dist::LlvmBitcodeLinker,
                 dist::RustDev,
                 dist::Bootstrap,
                 dist::Extended,
