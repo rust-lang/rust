@@ -282,7 +282,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace } = self;
         debug_assert!(at.infcx.next_trait_solver());
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, DefineOpaqueTypes::No);
+        let mut fields = at.infcx.combine_fields(trace, at.param_env, DefineOpaqueTypes::Yes);
         fields
             .equate(StructurallyRelateAliases::Yes)
             .relate(a, b)
