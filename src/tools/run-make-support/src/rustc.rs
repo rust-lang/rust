@@ -128,9 +128,8 @@ impl Rustc {
         self
     }
 
-    /// Specify target triple.
+    /// Specify the target triple, or a path to a custom target json spec file.
     pub fn target(&mut self, target: &str) -> &mut Self {
-        assert!(!target.contains(char::is_whitespace), "target triple cannot contain spaces");
         self.cmd.arg(format!("--target={target}"));
         self
     }
