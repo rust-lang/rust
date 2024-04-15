@@ -31,7 +31,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::structured_errors::StructuredDiag;
 use rustc_index::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::TypeTrace;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::ObligationCauseCode::ExprBindingObligation;
@@ -2184,7 +2184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             [
                                 callee_ty,
                                 self.next_ty_var(TypeVariableOrigin {
-                                    kind: TypeVariableOriginKind::MiscVariable,
+                                    param_def_id: None,
                                     span: rustc_span::DUMMY_SP,
                                 }),
                             ],

@@ -24,7 +24,7 @@ use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_middle::hir::map;
 use rustc_middle::traits::IsConstable;
@@ -1894,10 +1894,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id) => {
                     infcx.tcx.mk_fn_sig(
                         *inputs,
-                        infcx.next_ty_var(TypeVariableOrigin {
-                            span: DUMMY_SP,
-                            kind: TypeVariableOriginKind::MiscVariable,
-                        }),
+                        infcx
+                            .next_ty_var(TypeVariableOrigin { span: DUMMY_SP, param_def_id: None }),
                         false,
                         hir::Unsafety::Normal,
                         abi::Abi::Rust,
@@ -1905,10 +1903,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
                 _ => infcx.tcx.mk_fn_sig(
                     [inputs],
-                    infcx.next_ty_var(TypeVariableOrigin {
-                        span: DUMMY_SP,
-                        kind: TypeVariableOriginKind::MiscVariable,
-                    }),
+                    infcx.next_ty_var(TypeVariableOrigin { span: DUMMY_SP, param_def_id: None }),
                     false,
                     hir::Unsafety::Normal,
                     abi::Abi::Rust,
@@ -4269,7 +4264,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 continue;
             };
 
-            let origin = TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span };
+            let origin = TypeVariableOrigin { param_def_id: None, span };
             // Make `Self` be equivalent to the type of the call chain
             // expression we're looking at now, so that we can tell what
             // for example `Iterator::Item` is at this point in the chain.

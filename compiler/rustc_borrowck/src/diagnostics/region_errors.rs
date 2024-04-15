@@ -26,7 +26,7 @@ use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_middle::ty::{Region, TyCtxt};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
-use rustc_trait_selection::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_trait_selection::infer::type_variable::TypeVariableOrigin;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 
@@ -1104,10 +1104,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         );
         let closure_kind = args.as_closure().kind();
         let closure_kind_ty = Ty::from_closure_kind(tcx, closure_kind);
-        let tupled_upvars_ty = self.infcx.next_ty_var(TypeVariableOrigin {
-            kind: TypeVariableOriginKind::ClosureSynthetic,
-            span: closure_expr.span,
-        });
+        let tupled_upvars_ty = self
+            .infcx
+            .next_ty_var(TypeVariableOrigin { param_def_id: None, span: closure_expr.span });
         let closure_args = ty::ClosureArgs::new(
             tcx,
             ty::ClosureArgsParts {
