@@ -5,7 +5,7 @@ use std::io::{self, Write};
 
 pub struct GraphvizWriter<
     'a,
-    G: graph::DirectedGraph + graph::WithSuccessors + graph::WithStartNode + graph::WithNumNodes,
+    G: graph::DirectedGraph + graph::Successors + graph::StartNode,
     NodeContentFn: Fn(<G as graph::DirectedGraph>::Node) -> Vec<String>,
     EdgeLabelsFn: Fn(<G as graph::DirectedGraph>::Node) -> Vec<String>,
 > {
@@ -19,7 +19,7 @@ pub struct GraphvizWriter<
 
 impl<
     'a,
-    G: graph::DirectedGraph + graph::WithSuccessors + graph::WithStartNode + graph::WithNumNodes,
+    G: graph::DirectedGraph + graph::Successors + graph::StartNode,
     NodeContentFn: Fn(<G as graph::DirectedGraph>::Node) -> Vec<String>,
     EdgeLabelsFn: Fn(<G as graph::DirectedGraph>::Node) -> Vec<String>,
 > GraphvizWriter<'a, G, NodeContentFn, EdgeLabelsFn>
