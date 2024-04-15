@@ -112,6 +112,13 @@ fn run_tests(
     config.program.envs.push(("RUST_BACKTRACE".into(), Some("1".into())));
 
     // Add some flags we always want.
+    config.program.args.push(
+        format!(
+            "--sysroot={}",
+            env::var("MIRI_SYSROOT").expect("MIRI_SYSROOT must be set to run the ui test suite")
+        )
+        .into(),
+    );
     config.program.args.push("-Dwarnings".into());
     config.program.args.push("-Dunused".into());
     config.program.args.push("-Ainternal_features".into());
