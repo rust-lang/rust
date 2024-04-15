@@ -3,6 +3,8 @@
 
 // Should fail. Default items completely drop candidates instead of ambiguity,
 // which is unsound during coherence, since coherence requires completeness.
+//
+// A regression test for #105782.
 
 #![feature(specialization)]
 #![allow(incomplete_features)]
