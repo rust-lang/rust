@@ -1222,14 +1222,6 @@ impl IndividualTestOptions {
     }
 }
 
-fn ignore_to_bool(ignore: &Ignore, target_str: &str) -> bool {
-    match ignore {
-        Ignore::All => true,
-        Ignore::None => false,
-        Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
-    }
-}
-
 pub(crate) trait Tester {
     fn add_test(&mut self, test: String, config: LangString, line: usize);
     fn get_line(&self) -> usize {
@@ -1495,7 +1487,11 @@ impl Tester for Collector {
             Arc::clone(&self.rustdoc_test_options),
             test_id,
         );
-        doctest.ignore = ignore_to_bool(&doctest.lang_string.ignore, &target_str);
+        doctest.ignore = match doctest.lang_string.ignore {
+            Ignore::All => true,
+            Ignore::None => false,
+            Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
+        };
         self.tests.add_doctest(
             doctest,
             &opts,
