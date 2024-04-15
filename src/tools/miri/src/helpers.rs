@@ -78,6 +78,17 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("EAGAIN", WouldBlock),
     ]
 };
+// This mapping should match `decode_error_kind` in
+// <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/pal/windows/mod.rs>.
+const WINDOWS_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
+    use std::io::ErrorKind::*;
+    // FIXME: this is still incomplete.
+    &[
+        ("ERROR_ACCESS_DENIED", PermissionDenied),
+        ("ERROR_FILE_NOT_FOUND", NotFound),
+        ("ERROR_INVALID_PARAMETER", InvalidInput),
+    ]
+};
 
 /// Gets an instance for a path.
 ///
@@ -712,20 +723,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             throw_unsup_format!("io error {:?} cannot be translated into a raw os error", err_kind)
         } else if target.families.iter().any(|f| f == "windows") {
-            // FIXME: we have to finish implementing the Windows equivalent of this.
-            use std::io::ErrorKind::*;
-            Ok(this.eval_windows(
-                "c",
-                match err_kind {
-                    NotFound => "ERROR_FILE_NOT_FOUND",
-                    PermissionDenied => "ERROR_ACCESS_DENIED",
-                    _ =>
-                        throw_unsup_format!(
-                            "io error {:?} cannot be translated into a raw os error",
-                            err_kind
-                        ),
-                },
-            ))
+            for &(name, kind) in WINDOWS_IO_ERROR_TABLE {
+                if err_kind == kind {
+                    return Ok(this.eval_windows("c", name));
+                }
+            }
+            throw_unsup_format!("io error {:?} cannot be translated into a raw os error", err_kind);
         } else {
             throw_unsup_format!(
                 "converting io::Error into errnum is unsupported for OS {}",
@@ -749,8 +752,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     return Ok(Some(kind));
                 }
             }
-            // Our table is as complete as the mapping in std, so we are okay with saying "that's a
-            // strange one" here.
+            return Ok(None);
+        } else if target.families.iter().any(|f| f == "windows") {
+            let errnum = errnum.to_u32()?;
+            for &(name, kind) in WINDOWS_IO_ERROR_TABLE {
+                if errnum == this.eval_windows("c", name).to_u32()? {
+                    return Ok(Some(kind));
+                }
+            }
             return Ok(None);
         } else {
             throw_unsup_format!(

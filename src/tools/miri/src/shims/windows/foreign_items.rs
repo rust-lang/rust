@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::iter;
 use std::str;
 
@@ -532,6 +533,43 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let insufficient_buffer = this.eval_windows("c", "ERROR_INSUFFICIENT_BUFFER");
                     this.set_last_error(insufficient_buffer)?;
                 }
+            }
+            "FormatMessageW" => {
+                let [flags, module, message_id, language_id, buffer, size, arguments] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                let flags = this.read_scalar(flags)?.to_u32()?;
+                let _module = this.read_pointer(module)?; // seems to contain a module name
+                let message_id = this.read_scalar(message_id)?;
+                let _language_id = this.read_scalar(language_id)?.to_u32()?;
+                let buffer = this.read_pointer(buffer)?;
+                let size = this.read_scalar(size)?.to_u32()?;
+                let _arguments = this.read_pointer(arguments)?;
+
+                // We only support `FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS`
+                // This also means `arguments` can be ignored.
+                if flags != 4096u32 | 512u32 {
+                    throw_unsup_format!("FormatMessageW: unsupported flags {flags:#x}");
+                }
+
+                let error = this.try_errnum_to_io_error(message_id)?;
+                let formatted = match error {
+                    Some(err) => format!("{err}"),
+                    None => format!("<unknown error in FormatMessageW: {message_id}>"),
+                };
+                let (complete, length) = this.write_os_str_to_wide_str(
+                    OsStr::new(&formatted),
+                    buffer,
+                    size.into(),
+                    /*trunacte*/ false,
+                )?;
+                if !complete {
+                    // The API docs don't say what happens when the buffer is not big enough...
+                    // Let's just bail.
+                    throw_unsup_format!("FormatMessageW: buffer not big enough");
+                }
+                // The return value is the number of characters stored *excluding* the null terminator.
+                this.write_int(length.checked_sub(1).unwrap(), dest)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
