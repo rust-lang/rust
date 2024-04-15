@@ -90,6 +90,10 @@ overflow-checks = false
 # (more data to chew through) and binaries to be larger without really all that
 # much benefit. This section turns them all to down to have no debuginfo which
 # helps to improve link times a little bit.
+#
+# We also trim down the binary size of generated code by telling LLVM to
+# optimize for size. This code should not be particularly hot, so there's not
+# much advantage in making it fast (vs. making it small).
 [profile.release.package]
 addr2line.debug = 0
 adler.debug = 0
@@ -97,6 +101,12 @@ gimli.debug = 0
 miniz_oxide.debug = 0
 object.debug = 0
 rustc-demangle.debug = 0
+addr2line.opt-level = "z"
+adler.opt-level = "z"
+gimli.opt-level = "z"
+miniz_oxide.opt-level = "z"
+object.opt-level = "z"
+rustc-demangle.opt-level = "z"
 
 # These are very thin wrappers around executing lld with the right binary name.
 # Basically nothing within them can go wrong without having been explicitly logged anyway.
