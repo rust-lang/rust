@@ -628,7 +628,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return;
             };
 
-            let pick = self.confirm_method(
+            let pick = self.confirm_method_for_diagnostic(
                 call_expr.span,
                 callee_expr,
                 call_expr,
