@@ -1,6 +1,7 @@
 use super::{DocTest, GlobalTestOptions, IndividualTestOptions};
 use crate::html::markdown::LangString;
 use rustc_span::edition::DEFAULT_EDITION;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 fn make_test(input: String, krate: Option<&str>) -> DocTest {
@@ -13,8 +14,10 @@ fn make_test(input: String, krate: Option<&str>) -> DocTest {
         0,             // line
         String::new(), // file name
         Arc::new(IndividualTestOptions::empty()),
-        String::new(), // test id
-        "",            // target_str
+        String::new(),  // test id
+        "",             // target_str
+        PathBuf::new(), // path
+        true,           // no_run
     )
 }
 

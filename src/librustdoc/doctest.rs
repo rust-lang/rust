@@ -361,17 +361,21 @@ fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Com
     command
 }
 
+pub(crate) struct DocTestInfo {
+    line_offset: usize,
+    line: usize,
+    path: PathBuf,
+}
+
 fn run_test(
     test: String,
     supports_color: bool,
-    line_offset: usize,
-    line: usize,
+    test_info: Option<DocTestInfo>,
     rustdoc_options: Arc<IndividualTestOptions>,
     is_multiple_tests: bool,
     outdir: Arc<DirState>,
     mut lang_string: LangString,
     edition: Edition,
-    path: PathBuf,
     report_unused_externs: impl Fn(UnusedExterns),
 ) -> Result<(), TestFailure> {
     // Make sure we emit well-formed executable names for our target.
@@ -391,8 +395,13 @@ fn run_test(
     }
 
     compiler.arg("--edition").arg(&edition.to_string());
-    compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", path);
-    compiler.env("UNSTABLE_RUSTDOC_TEST_LINE", format!("{}", line as isize - line_offset as isize));
+    if let Some(test_info) = test_info {
+        compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", test_info.path);
+        compiler.env(
+            "UNSTABLE_RUSTDOC_TEST_LINE",
+            format!("{}", test_info.line as isize - test_info.line_offset as isize),
+        );
+    }
     compiler.arg("-o").arg(&output_file);
     if lang_string.test_harness {
         compiler.arg("--test");
@@ -571,11 +580,14 @@ pub(crate) struct DocTest {
     name: String,
     lang_string: LangString,
     line: usize,
+    // Path that will be displayed if the test failed to compile.
+    path: PathBuf,
     file: String,
     failed_ast: bool,
     test_id: String,
     outdir: Arc<DirState>,
     rustdoc_test_options: Arc<IndividualTestOptions>,
+    no_run: bool,
 }
 
 impl DocTest {
@@ -693,12 +705,11 @@ impl DocTest {
         mut self,
         opts: &GlobalTestOptions,
         edition: Edition,
-        path: PathBuf,
         unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
     ) -> TestDescAndFn {
         let (code, line_offset) =
             self.generate_unique_doctest(self.lang_string.test_harness, opts, Some(&self.test_id));
-        let Self { supports_color, rustdoc_test_options, lang_string, outdir, .. } = self;
+        let Self { supports_color, rustdoc_test_options, lang_string, outdir, path, .. } = self;
         TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(std::mem::replace(&mut self.name, String::new())),
@@ -722,14 +733,12 @@ impl DocTest {
                 let res = run_test(
                     code,
                     supports_color,
-                    line_offset,
-                    self.line,
+                    Some(DocTestInfo { line_offset, line: self.line, path }),
                     rustdoc_test_options,
                     false,
                     outdir,
                     lang_string,
                     edition,
-                    path,
                     report_unused_externs,
                 );
 
@@ -844,7 +853,7 @@ pub const TEST: test::TestDescAndFn = test::TestDescAndFn {{
             should_panic = if self.lang_string.should_panic { "Yes" } else { "No" },
             // Setting `no_run` to `true` in `TestDesc` still makes the test run, so we simply
             // don't give it the function to run.
-            runner = if self.lang_string.no_run { "Ok::<(), String>(())" } else { "self::main()" },
+            runner = if self.no_run { "Ok::<(), String>(())" } else { "self::main()" },
         )
         .unwrap();
         test_id
@@ -864,6 +873,8 @@ pub(crate) fn make_test(
     rustdoc_test_options: Arc<IndividualTestOptions>,
     test_id: String,
     target_str: &str,
+    path: PathBuf,
+    no_run: bool,
 ) -> DocTest {
     let outdir = Arc::new(if let Some(ref path) = rustdoc_test_options.persist_doctests {
         let mut path = path.clone();
@@ -999,6 +1010,8 @@ pub(crate) fn make_test(
             rustdoc_test_options,
             outdir,
             test_id,
+            path,
+            no_run,
         };
     };
 
@@ -1036,6 +1049,8 @@ pub(crate) fn make_test(
         rustdoc_test_options,
         outdir,
         test_id,
+        path,
+        no_run,
     }
 }
 
@@ -1250,7 +1265,6 @@ impl DocTestKinds {
         doctest: DocTest,
         opts: &GlobalTestOptions,
         edition: Edition,
-        path: PathBuf,
         unused_externs: &Arc<Mutex<Vec<UnusedExterns>>>,
     ) {
         if doctest.failed_ast
@@ -1262,7 +1276,6 @@ impl DocTestKinds {
             self.standalone.push(doctest.generate_test_desc_and_fn(
                 opts,
                 edition,
-                path,
                 Arc::clone(unused_externs),
             ));
         } else {
@@ -1322,32 +1335,31 @@ fn main() {{
             if let Err(TestFailure::CompileError) = run_test(
                 output,
                 supports_color,
-                0,
-                0,
+                None,
                 rustdoc_test_options,
                 true,
                 outdir,
                 LangString::empty_for_test(),
                 edition,
-                PathBuf::from(format!("doctest_edition_{edition}.rs")),
                 |_: UnusedExterns| {},
             ) {
                 // We failed to compile all compatible tests as one so we push them into the
                 // "standalone" doctests.
                 debug!("Failed to compile compatible doctests for edition {edition} all at once");
-                for (pos, doctest) in doctests.into_iter().enumerate() {
+                for doctest in doctests {
                     standalone.push(doctest.generate_test_desc_and_fn(
                         &opts,
                         edition,
-                        format!("doctest_{edition}_{pos}").into(),
                         Arc::clone(unused_externs),
                     ));
                 }
             }
         }
 
-        standalone.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
-        test::test_main(&test_args, standalone, None);
+        if !standalone.is_empty() {
+            standalone.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
+            test::test_main(&test_args, standalone, None);
+        }
     }
 }
 
@@ -1460,7 +1472,7 @@ impl Tester for Collector {
         let opts = self.opts.clone();
         let edition = config.edition.unwrap_or(self.rustdoc_options.edition);
         let target_str = self.rustdoc_options.target.to_string();
-        // let no_run = config.no_run || self.rustdoc_options.no_run;
+        let no_run = config.no_run || self.rustdoc_options.no_run;
         if !config.compile_fail {
             self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
         }
@@ -1505,8 +1517,10 @@ impl Tester for Collector {
             Arc::clone(&self.rustdoc_test_options),
             test_id,
             &target_str,
+            path,
+            no_run,
         );
-        self.tests.add_doctest(doctest, &opts, edition, path, &self.unused_extern_reports);
+        self.tests.add_doctest(doctest, &opts, edition, &self.unused_extern_reports);
     }
 
     fn get_line(&self) -> usize {

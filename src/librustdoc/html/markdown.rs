@@ -316,6 +316,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 Arc::new(IndividualTestOptions::empty()),
                 String::new(),
                 "",
+                "doctest.rs".into(),
+                true,
             )
             .generate_unique_doctest(false, &opts, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
