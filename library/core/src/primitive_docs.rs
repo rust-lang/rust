@@ -1082,8 +1082,12 @@ impl<T> (T,) {}
 /// bits. Please see [the documentation for [`prim@f32`] or [Wikipedia on
 /// half-precision values][wikipedia] for more information.
 ///
-/// Note that most major platforms will provide `f16` math support by converting to and from
-/// an `f32`, which is usually fairly performant but will not be as fast as using `f32` directly.
+/// Note that most common platforms will not support `f16` in hardware without enabling extra target
+/// features, with the notable exception of Apple Silicon (also known as M1, M2, etc.) processors.
+/// Hardware support on x86-64 requires the avx512fp16 feature, while RISC-V requires Zhf.
+/// Usually the fallback implementation will be to use `f32` hardware if it exists, and convert
+/// between `f16` and `f32` when performing math.
+///
 /// *[See also the `std::f16::consts` module](crate::f16::consts).*
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Half-precision_floating-point_format
@@ -1183,12 +1187,15 @@ mod prim_f64 {}
 /// as many bits as `f64`. Please see [the documentation for [`prim@f32`] or [Wikipedia on
 /// quad-precision values][wikipedia] for more information.
 ///
-/// Note that most major platforms do not have hardware support for `f128`, in which case a
-/// software implementation will be used. This can be significantly slower than using `f64`.
+/// Note that no platforms have hardware support for `f128` without enabling target specific features
+/// (and [only some consumer level hardware has support][wikipedia-support], for example RISC-V has support, but
+/// neither amd64 nor aarch64 has support), in which case a software implementation will be used. This can be
+/// significantly slower than using `f64`.
 ///
 /// *[See also the `std::f128::consts` module](crate::f128::consts).*
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Quadruple-precision_floating-point_format
+/// [wikipedia-support]: https://en.wikipedia.org/wiki/Quadruple-precision_floating-point_format#Hardware_support
 #[unstable(feature = "f128", issue = "116909")]
 mod prim_f128 {}
 
