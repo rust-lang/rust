@@ -36,12 +36,12 @@ error: glob import doesn't reexport anything with visibility `pub` because no im
 LL |     pub use ::E::*;
    |             ^^^^^^
    |
+   = help: reduce the glob import's visibility or increase visibility of imported items
 note: the most public imported item is `pub(crate)`
   --> $DIR/private-variant-reexport.rs:15:13
    |
 LL |     pub use ::E::*;
    |             ^^^^^^
-   = help: reduce the glob import's visibility or increase visibility of imported items
 note: the lint level is defined here
   --> $DIR/private-variant-reexport.rs:13:8
    |

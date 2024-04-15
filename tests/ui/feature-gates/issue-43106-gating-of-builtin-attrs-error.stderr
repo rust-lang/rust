@@ -7,7 +7,7 @@ LL | #![rustc_main]
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: attribute must be of the form `#[inline]` or `#[inline(always|never)]`
+error: valid forms for the attribute are `#[inline]` and `#[inline(always|never)]`
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:47:5
    |
 LL |     #[inline = "2100"] fn f() { }

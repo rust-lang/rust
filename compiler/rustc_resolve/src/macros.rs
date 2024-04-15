@@ -847,7 +847,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             lint,
                             node_id,
                             span,
-                            BuiltinLintDiag::UnstableFeature(msg),
+                            BuiltinLintDiag::UnstableFeature(
+                                // FIXME make this translatable
+                                msg.into(),
+                            ),
                         )
                     };
                     stability::report_unstable(

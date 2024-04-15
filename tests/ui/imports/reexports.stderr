@@ -62,12 +62,12 @@ warning: glob import doesn't reexport anything with visibility `pub` because no 
 LL |         pub use super::*;
    |                 ^^^^^^^^
    |
+   = help: reduce the glob import's visibility or increase visibility of imported items
 note: the most public imported item is `pub(a)`
   --> $DIR/reexports.rs:11:17
    |
 LL |         pub use super::*;
    |                 ^^^^^^^^
-   = help: reduce the glob import's visibility or increase visibility of imported items
 
 warning: unused import: `super::*`
   --> $DIR/reexports.rs:11:17

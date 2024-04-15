@@ -154,19 +154,6 @@ pub struct Deprecated {
     pub since_kind: DeprecatedSinceKind,
 }
 
-impl Deprecated {
-    // FIXME: remove
-    pub fn msg_for_since_kind(since_kind: &DeprecatedSinceKind) -> rustc_errors::DiagMessage {
-        match since_kind {
-            DeprecatedSinceKind::InEffect => crate::fluent_generated::middle_deprecated,
-            DeprecatedSinceKind::InFuture => crate::fluent_generated::middle_deprecated_in_future,
-            DeprecatedSinceKind::InVersion(_) => {
-                crate::fluent_generated::middle_deprecated_in_version
-            }
-        }
-    }
-}
-
 impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecated {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
         diag.arg("kind", self.kind);
@@ -186,7 +173,13 @@ impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecate
     }
 
     fn msg(&self) -> rustc_errors::DiagMessage {
-        Self::msg_for_since_kind(&self.since_kind)
+        match &self.since_kind {
+            DeprecatedSinceKind::InEffect => crate::fluent_generated::middle_deprecated,
+            DeprecatedSinceKind::InFuture => crate::fluent_generated::middle_deprecated_in_future,
+            DeprecatedSinceKind::InVersion(_) => {
+                crate::fluent_generated::middle_deprecated_in_version
+            }
+        }
     }
 }
 
