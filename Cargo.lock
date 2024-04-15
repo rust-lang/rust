@@ -4278,6 +4278,7 @@ dependencies = [
  "rustc_fluent_macro",
  "rustc_graphviz",
  "rustc_hir",
+ "rustc_hir_pretty",
  "rustc_index",
  "rustc_macros",
  "rustc_query_system",

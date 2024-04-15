@@ -1556,7 +1556,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let has_shorthand_field_name = field_patterns.iter().any(|field| field.is_shorthand);
             if has_shorthand_field_name {
-                let path = rustc_hir_pretty::qpath_to_string(qpath);
+                let path = rustc_hir_pretty::qpath_to_string(&self.tcx, qpath);
                 let mut err = struct_span_code_err!(
                     self.dcx(),
                     pat.span,
@@ -1738,7 +1738,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return None;
             }
 
-            let path = rustc_hir_pretty::qpath_to_string(qpath);
+            let path = rustc_hir_pretty::qpath_to_string(&self.tcx, qpath);
             let mut err = struct_span_code_err!(
                 self.dcx(),
                 pat.span,
@@ -1788,7 +1788,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             f
                         }
                     }
-                    Err(_) => rustc_hir_pretty::pat_to_string(field.pat),
+                    Err(_) => rustc_hir_pretty::pat_to_string(&self.tcx, field.pat),
                 }
             })
             .collect::<Vec<String>>()
