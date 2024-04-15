@@ -3,19 +3,17 @@
 // statics cannot. This ensures that there's some form of error if this is
 // attempted.
 
-#![feature(rustc_private)]
-
-extern crate libc;
+use std::ffi::c_int;
 
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
-    static mut rust_dbg_static_mut: libc::c_int;
+    static mut rust_dbg_static_mut: c_int;
     pub fn rust_dbg_static_mut_check_four();
 }
 
-unsafe fn static_bound(_: &'static libc::c_int) {}
+unsafe fn static_bound(_: &'static c_int) {}
 
-fn static_bound_set(a: &'static mut libc::c_int) {
+fn static_bound_set(a: &'static mut c_int) {
     *a = 3;
 }
 

@@ -403,7 +403,7 @@ pub enum ValuePairs<'tcx> {
     Regions(ExpectedFound<ty::Region<'tcx>>),
     Terms(ExpectedFound<ty::Term<'tcx>>),
     Aliases(ExpectedFound<ty::AliasTy<'tcx>>),
-    PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
+    TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolySigs(ExpectedFound<ty::PolyFnSig<'tcx>>),
     ExistentialTraitRef(ExpectedFound<ty::PolyExistentialTraitRef<'tcx>>),
     ExistentialProjection(ExpectedFound<ty::PolyExistentialProjection<'tcx>>),
@@ -1882,15 +1882,15 @@ impl<'tcx> TypeTrace<'tcx> {
         }
     }
 
-    pub fn poly_trait_refs(
+    pub fn trait_refs(
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
-        a: ty::PolyTraitRef<'tcx>,
-        b: ty::PolyTraitRef<'tcx>,
+        a: ty::TraitRef<'tcx>,
+        b: ty::TraitRef<'tcx>,
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: PolyTraitRefs(ExpectedFound::new(a_is_expected, a, b)),
+            values: TraitRefs(ExpectedFound::new(a_is_expected, a, b)),
         }
     }
 

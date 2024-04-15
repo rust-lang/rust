@@ -3380,11 +3380,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn report_cyclic_signature_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        found_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-        expected_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        found_trait_ref: ty::TraitRef<'tcx>,
+        expected_trait_ref: ty::TraitRef<'tcx>,
         terr: TypeError<'tcx>,
     ) -> Diag<'tcx> {
-        let self_ty = found_trait_ref.self_ty().skip_binder();
+        let self_ty = found_trait_ref.self_ty();
         let (cause, terr) = if let ty::Closure(def_id, _) = self_ty.kind() {
             (
                 ObligationCause::dummy_with_span(self.tcx.def_span(def_id)),
@@ -3394,7 +3394,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (obligation.cause.clone(), terr)
         };
         self.report_and_explain_type_error(
-            TypeTrace::poly_trait_refs(&cause, true, expected_trait_ref, found_trait_ref),
+            TypeTrace::trait_refs(&cause, true, expected_trait_ref, found_trait_ref),
             terr,
         )
     }
@@ -3434,17 +3434,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         span: Span,
-        found_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-        expected_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        found_trait_ref: ty::TraitRef<'tcx>,
+        expected_trait_ref: ty::TraitRef<'tcx>,
     ) -> Result<Diag<'tcx>, ErrorGuaranteed> {
         let found_trait_ref = self.resolve_vars_if_possible(found_trait_ref);
         let expected_trait_ref = self.resolve_vars_if_possible(expected_trait_ref);
 
         expected_trait_ref.self_ty().error_reported()?;
-
-        let Some(found_trait_ty) = found_trait_ref.self_ty().no_bound_vars() else {
-            self.dcx().bug("bound vars outside binder");
-        };
+        let found_trait_ty = found_trait_ref.self_ty();
 
         let found_did = match *found_trait_ty.kind() {
             ty::Closure(did, _) | ty::FnDef(did, _) | ty::Coroutine(did, ..) => Some(did),
@@ -3462,7 +3459,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let mut not_tupled = false;
 
-        let found = match found_trait_ref.skip_binder().args.type_at(1).kind() {
+        let found = match found_trait_ref.args.type_at(1).kind() {
             ty::Tuple(tys) => vec![ArgKind::empty(); tys.len()],
             _ => {
                 not_tupled = true;
@@ -3470,7 +3467,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         };
 
-        let expected_ty = expected_trait_ref.skip_binder().args.type_at(1);
+        let expected_ty = expected_trait_ref.args.type_at(1);
         let expected = match expected_ty.kind() {
             ty::Tuple(tys) => {
                 tys.iter().map(|t| ArgKind::from_expected_ty(t, Some(span))).collect()
@@ -3487,11 +3484,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         // traits manually, but don't make it more confusing when it does
         // happen.
         Ok(
-            if Some(expected_trait_ref.def_id()) != self.tcx.lang_items().coroutine_trait()
+            if Some(expected_trait_ref.def_id) != self.tcx.lang_items().coroutine_trait()
                 && not_tupled
             {
                 self.report_and_explain_type_error(
-                    TypeTrace::poly_trait_refs(
+                    TypeTrace::trait_refs(
                         &obligation.cause,
                         true,
                         expected_trait_ref,

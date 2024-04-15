@@ -63,6 +63,7 @@ use rustc_span::DesugaringKind;
 use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::TraitEngineExt as _;
@@ -1616,6 +1617,15 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             E0069,
                             "`return;` in a function whose return type is not `()`"
                         );
+                        if let Some(value) = fcx.err_ctxt().ty_kind_suggestion(fcx.param_env, found)
+                        {
+                            err.span_suggestion_verbose(
+                                cause.span.shrink_to_hi(),
+                                "give the `return` a value of the expected type",
+                                format!(" {value}"),
+                                Applicability::HasPlaceholders,
+                            );
+                        }
                         err.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id, ..) => {
