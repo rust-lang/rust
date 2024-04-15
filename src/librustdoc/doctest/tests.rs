@@ -14,6 +14,7 @@ fn make_test(input: String, krate: Option<&str>) -> DocTest {
         String::new(), // file name
         Arc::new(IndividualTestOptions::empty()),
         String::new(), // test id
+        "",            // target_str
     )
 }
 
