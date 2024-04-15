@@ -72,7 +72,6 @@ pub(crate) struct GlobalState {
 
     // status
     pub(crate) shutdown_requested: bool,
-    pub(crate) send_hint_refresh_query: bool,
     pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
 
     // proc macros
@@ -207,7 +206,6 @@ impl GlobalState {
             mem_docs: MemDocs::default(),
             semantic_tokens_cache: Arc::new(Default::default()),
             shutdown_requested: false,
-            send_hint_refresh_query: false,
             last_reported_status: None,
             source_root_config: SourceRootConfig::default(),
             local_roots_parent_map: FxHashMap::default(),
