@@ -45,7 +45,7 @@ pub trait Upcast<T: ?Sized> {
 
 pub const DEFAULT_FILE_TEXT_LRU_CAP: usize = 16;
 pub const DEFAULT_PARSE_LRU_CAP: usize = 128;
-pub const DEFAULT_BORROWCK_LRU_CAP: usize = 1024;
+pub const DEFAULT_BORROWCK_LRU_CAP: usize = 2024;
 
 pub trait FileLoader {
     /// Text of the file.

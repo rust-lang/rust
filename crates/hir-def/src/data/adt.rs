@@ -26,7 +26,7 @@ use crate::{
     tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree},
     type_ref::TypeRef,
     visibility::RawVisibility,
-    EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId,
+    EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId, VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -376,6 +376,15 @@ impl VariantData {
             VariantData::Record(_) => StructKind::Record,
             VariantData::Tuple(_) => StructKind::Tuple,
             VariantData::Unit => StructKind::Unit,
+        }
+    }
+
+    #[allow(clippy::self_named_constructors)]
+    pub(crate) fn variant_data(db: &dyn DefDatabase, id: VariantId) -> Arc<VariantData> {
+        match id {
+            VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
+            VariantId::EnumVariantId(it) => db.enum_variant_data(it).variant_data.clone(),
+            VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
         }
     }
 }

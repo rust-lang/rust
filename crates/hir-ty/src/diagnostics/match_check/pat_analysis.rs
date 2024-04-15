@@ -1,9 +1,9 @@
 //! Interface with `rustc_pattern_analysis`.
 
 use std::fmt;
-use tracing::debug;
 
 use hir_def::{DefWithBodyId, EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
+use once_cell::unsync::Lazy;
 use rustc_hash::FxHashMap;
 use rustc_pattern_analysis::{
     constructor::{Constructor, ConstructorSet, VariantVisibility},
@@ -91,20 +91,13 @@ impl<'p> MatchCheckCtx<'p> {
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
-        is_ty_uninhabited_from(ty, self.module, self.db)
+        is_ty_uninhabited_from(self.db, ty, self.module)
     }
 
-    /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
-    fn is_foreign_non_exhaustive_enum(&self, ty: &Ty) -> bool {
-        match ty.as_adt() {
-            Some((adt @ hir_def::AdtId::EnumId(_), _)) => {
-                let has_non_exhaustive_attr =
-                    self.db.attrs(adt.into()).by_key("non_exhaustive").exists();
-                let is_local = adt.module(self.db.upcast()).krate() == self.module.krate();
-                has_non_exhaustive_attr && !is_local
-            }
-            _ => false,
-        }
+    /// Returns whether the given ADT is from another crate declared `#[non_exhaustive]`.
+    fn is_foreign_non_exhaustive(&self, adt: hir_def::AdtId) -> bool {
+        let is_local = adt.krate(self.db.upcast()) == self.module.krate();
+        !is_local && self.db.attrs(adt.into()).by_key("non_exhaustive").exists()
     }
 
     fn variant_id_for_adt(
@@ -376,24 +369,21 @@ impl<'p> PatCx for MatchCheckCtx<'p> {
                         single(subst_ty)
                     } else {
                         let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
-                        let (adt, _) = ty.as_adt().unwrap();
 
-                        let adt_is_local =
-                            variant.module(self.db.upcast()).krate() == self.module.krate();
                         // Whether we must not match the fields of this variant exhaustively.
-                        let is_non_exhaustive =
-                            self.db.attrs(variant.into()).by_key("non_exhaustive").exists()
-                                && !adt_is_local;
-                        let visibilities = self.db.field_visibilities(variant);
+                        let is_non_exhaustive = Lazy::new(|| self.is_foreign_non_exhaustive(adt));
+                        let visibilities = Lazy::new(|| self.db.field_visibilities(variant));
 
                         self.list_variant_fields(ty, variant)
                             .map(move |(fid, ty)| {
-                                let is_visible = matches!(adt, hir_def::AdtId::EnumId(..))
-                                    || visibilities[fid]
-                                        .is_visible_from(self.db.upcast(), self.module);
+                                let is_visible = || {
+                                    matches!(adt, hir_def::AdtId::EnumId(..))
+                                        || visibilities[fid]
+                                            .is_visible_from(self.db.upcast(), self.module)
+                                };
                                 let is_uninhabited = self.is_uninhabited(&ty);
                                 let private_uninhabited =
-                                    is_uninhabited && (!is_visible || is_non_exhaustive);
+                                    is_uninhabited && (!is_visible() || *is_non_exhaustive);
                                 (ty, PrivateUninhabitedField(private_uninhabited))
                             })
                             .collect()
@@ -445,17 +435,20 @@ impl<'p> PatCx for MatchCheckCtx<'p> {
             TyKind::Scalar(Scalar::Char) => unhandled(),
             TyKind::Scalar(Scalar::Int(..) | Scalar::Uint(..)) => unhandled(),
             TyKind::Array(..) | TyKind::Slice(..) => unhandled(),
-            TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), subst) => {
-                let enum_data = cx.db.enum_data(*enum_id);
-                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(ty);
+            &TyKind::Adt(AdtId(adt @ hir_def::AdtId::EnumId(enum_id)), ref subst) => {
+                let enum_data = cx.db.enum_data(enum_id);
+                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive(adt);
 
                 if enum_data.variants.is_empty() && !is_declared_nonexhaustive {
                     ConstructorSet::NoConstructors
                 } else {
-                    let mut variants = FxHashMap::default();
+                    let mut variants = FxHashMap::with_capacity_and_hasher(
+                        enum_data.variants.len(),
+                        Default::default(),
+                    );
                     for (i, &(variant, _)) in enum_data.variants.iter().enumerate() {
                         let is_uninhabited =
-                            is_enum_variant_uninhabited_from(variant, subst, cx.module, cx.db);
+                            is_enum_variant_uninhabited_from(cx.db, variant, subst, cx.module);
                         let visibility = if is_uninhabited {
                             VariantVisibility::Empty
                         } else {
@@ -506,7 +499,7 @@ impl<'p> PatCx for MatchCheckCtx<'p> {
     }
 
     fn bug(&self, fmt: fmt::Arguments<'_>) {
-        debug!("{}", fmt)
+        never!("{}", fmt)
     }
 
     fn complexity_exceeded(&self) -> Result<(), Self::Error> {
