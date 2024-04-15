@@ -7,7 +7,6 @@
       let _2: ();
       let mut _3: bool;
       scope 1 (inlined std::mem::drop::<bool>) {
-          debug _x => _3;
       }
   
       bb0: {
