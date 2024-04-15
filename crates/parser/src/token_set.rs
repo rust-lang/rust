@@ -6,6 +6,9 @@ use crate::SyntaxKind;
 #[derive(Clone, Copy)]
 pub(crate) struct TokenSet([u64; 3]);
 
+/// `TokenSet`s should only include token `SyntaxKind`s, so the discriminant of any passed/included
+/// `SyntaxKind` must *not* be greater than that of the last token `SyntaxKind`.
+/// See #17037.
 const LAST_TOKEN_KIND_DISCRIMINANT: usize = SyntaxKind::SHEBANG as usize;
 
 impl TokenSet {
@@ -15,13 +18,13 @@ impl TokenSet {
         let mut res = [0; 3];
         let mut i = 0;
         while i < kinds.len() {
-            let kind = kinds[i];
+            let discriminant = kinds[i] as usize;
             debug_assert!(
-                kind as usize <= LAST_TOKEN_KIND_DISCRIMINANT,
+                discriminant <= LAST_TOKEN_KIND_DISCRIMINANT,
                 "Expected a token `SyntaxKind`"
             );
-            let idx = kind as usize / 64;
-            res[idx] |= mask(kind);
+            let idx = discriminant / 64;
+            res[idx] |= 1 << (discriminant % 64);
             i += 1;
         }
         TokenSet(res)
@@ -32,18 +35,15 @@ impl TokenSet {
     }
 
     pub(crate) const fn contains(&self, kind: SyntaxKind) -> bool {
+        let discriminant = kind as usize;
         debug_assert!(
-            kind as usize <= LAST_TOKEN_KIND_DISCRIMINANT,
+            discriminant <= LAST_TOKEN_KIND_DISCRIMINANT,
             "Expected a token `SyntaxKind`"
         );
-        let idx = kind as usize / 64;
-        self.0[idx] & mask(kind) != 0
+        let idx = discriminant / 64;
+        let mask = 1 << (discriminant % 64);
+        self.0[idx] & mask != 0
     }
-}
-
-const fn mask(kind: SyntaxKind) -> u64 {
-    debug_assert!(kind as usize <= LAST_TOKEN_KIND_DISCRIMINANT, "Expected a token `SyntaxKind`");
-    1 << (kind as usize % 64)
 }
 
 #[test]
