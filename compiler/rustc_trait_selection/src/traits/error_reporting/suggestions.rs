@@ -4540,6 +4540,61 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             Applicability::MachineApplicable,
         );
     }
+
+    fn ty_kind_suggestion(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> Option<String> {
+        let tcx = self.infcx.tcx;
+        let implements_default = |ty| {
+            let Some(default_trait) = tcx.get_diagnostic_item(sym::Default) else {
+                return false;
+            };
+            self.type_implements_trait(default_trait, [ty], param_env).must_apply_modulo_regions()
+        };
+
+        Some(match ty.kind() {
+            ty::Never | ty::Error(_) => return None,
+            ty::Bool => "false".to_string(),
+            ty::Char => "\'x\'".to_string(),
+            ty::Int(_) | ty::Uint(_) => "42".into(),
+            ty::Float(_) => "3.14159".into(),
+            ty::Slice(_) => "[]".to_string(),
+            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => {
+                "vec![]".to_string()
+            }
+            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::String) => {
+                "String::new()".to_string()
+            }
+            ty::Adt(def, args) if def.is_box() => {
+                format!("Box::new({})", self.ty_kind_suggestion(param_env, args[0].expect_ty())?)
+            }
+            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Option) => {
+                "None".to_string()
+            }
+            ty::Adt(def, args) if Some(def.did()) == tcx.get_diagnostic_item(sym::Result) => {
+                format!("Ok({})", self.ty_kind_suggestion(param_env, args[0].expect_ty())?)
+            }
+            ty::Adt(_, _) if implements_default(ty) => "Default::default()".to_string(),
+            ty::Ref(_, ty, mutability) => {
+                if let (ty::Str, hir::Mutability::Not) = (ty.kind(), mutability) {
+                    "\"\"".to_string()
+                } else {
+                    let ty = self.ty_kind_suggestion(param_env, *ty)?;
+                    format!("&{}{ty}", mutability.prefix_str())
+                }
+            }
+            ty::Array(ty, len) if let Some(len) = len.try_eval_target_usize(tcx, param_env) => {
+                format!("[{}; {}]", self.ty_kind_suggestion(param_env, *ty)?, len)
+            }
+            ty::Tuple(tys) => format!(
+                "({}{})",
+                tys.iter()
+                    .map(|ty| self.ty_kind_suggestion(param_env, ty))
+                    .collect::<Option<Vec<String>>>()?
+                    .join(", "),
+                if tys.len() == 1 { "," } else { "" }
+            ),
+            _ => "value".to_string(),
+        })
+    }
 }
 
 /// Add a hint to add a missing borrow or remove an unnecessary one.

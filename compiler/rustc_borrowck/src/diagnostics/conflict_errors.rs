@@ -671,68 +671,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err
     }
 
-    fn ty_kind_suggestion(&self, ty: Ty<'tcx>) -> Option<String> {
-        // Keep in sync with `rustc_hir_analysis/src/check/mod.rs:ty_kind_suggestion`.
-        // FIXME: deduplicate the above.
-        let tcx = self.infcx.tcx;
-        let implements_default = |ty| {
-            let Some(default_trait) = tcx.get_diagnostic_item(sym::Default) else {
-                return false;
-            };
-            self.infcx
-                .type_implements_trait(default_trait, [ty], self.param_env)
-                .must_apply_modulo_regions()
-        };
-
-        Some(match ty.kind() {
-            ty::Never | ty::Error(_) => return None,
-            ty::Bool => "false".to_string(),
-            ty::Char => "\'x\'".to_string(),
-            ty::Int(_) | ty::Uint(_) => "42".into(),
-            ty::Float(_) => "3.14159".into(),
-            ty::Slice(_) => "[]".to_string(),
-            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => {
-                "vec![]".to_string()
-            }
-            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::String) => {
-                "String::new()".to_string()
-            }
-            ty::Adt(def, args) if def.is_box() => {
-                format!("Box::new({})", self.ty_kind_suggestion(args[0].expect_ty())?)
-            }
-            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Option) => {
-                "None".to_string()
-            }
-            ty::Adt(def, args) if Some(def.did()) == tcx.get_diagnostic_item(sym::Result) => {
-                format!("Ok({})", self.ty_kind_suggestion(args[0].expect_ty())?)
-            }
-            ty::Adt(_, _) if implements_default(ty) => "Default::default()".to_string(),
-            ty::Ref(_, ty, mutability) => {
-                if let (ty::Str, hir::Mutability::Not) = (ty.kind(), mutability) {
-                    "\"\"".to_string()
-                } else {
-                    let Some(ty) = self.ty_kind_suggestion(*ty) else {
-                        return None;
-                    };
-                    format!("&{}{ty}", mutability.prefix_str())
-                }
-            }
-            ty::Array(ty, len) => format!(
-                "[{}; {}]",
-                self.ty_kind_suggestion(*ty)?,
-                len.eval_target_usize(tcx, ty::ParamEnv::reveal_all()),
-            ),
-            ty::Tuple(tys) => format!(
-                "({})",
-                tys.iter()
-                    .map(|ty| self.ty_kind_suggestion(ty))
-                    .collect::<Option<Vec<String>>>()?
-                    .join(", ")
-            ),
-            _ => "value".to_string(),
-        })
-    }
-
     fn suggest_assign_value(
         &self,
         err: &mut Diag<'_>,
@@ -742,7 +680,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
         debug!("ty: {:?}, kind: {:?}", ty, ty.kind());
 
-        let Some(assign_value) = self.ty_kind_suggestion(ty) else {
+        let Some(assign_value) = self.infcx.err_ctxt().ty_kind_suggestion(self.param_env, ty)
+        else {
             return;
         };
 
