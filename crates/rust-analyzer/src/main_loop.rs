@@ -348,11 +348,7 @@ impl GlobalState {
         let memdocs_added_or_removed = self.mem_docs.take_changes();
 
         if self.is_quiescent() {
-            let became_quiescent = !(was_quiescent
-                || self.fetch_workspaces_queue.op_requested()
-                || self.fetch_build_data_queue.op_requested()
-                || self.fetch_proc_macros_queue.op_requested());
-
+            let became_quiescent = !was_quiescent;
             if became_quiescent {
                 if self.config.check_on_save() {
                     // Project has loaded properly, kick off initial flycheck
@@ -363,7 +359,7 @@ impl GlobalState {
                 }
             }
 
-            let client_refresh = !was_quiescent || state_changed;
+            let client_refresh = became_quiescent || state_changed;
             if client_refresh {
                 // Refresh semantic tokens if the client supports it.
                 if self.config.semantic_tokens_refresh() {
@@ -377,17 +373,17 @@ impl GlobalState {
                 }
 
                 // Refresh inlay hints if the client supports it.
-                if self.send_hint_refresh_query && self.config.inlay_hints_refresh() {
+                if self.config.inlay_hints_refresh() {
                     self.send_request::<lsp_types::request::InlayHintRefreshRequest>((), |_, _| ());
-                    self.send_hint_refresh_query = false;
                 }
             }
 
-            let things_changed = !was_quiescent || state_changed || memdocs_added_or_removed;
-            if things_changed && self.config.publish_diagnostics() {
+            let project_or_mem_docs_changed =
+                became_quiescent || state_changed || memdocs_added_or_removed;
+            if project_or_mem_docs_changed && self.config.publish_diagnostics() {
                 self.update_diagnostics();
             }
-            if things_changed && self.config.test_explorer() {
+            if project_or_mem_docs_changed && self.config.test_explorer() {
                 self.update_tests();
             }
         }
@@ -641,7 +637,6 @@ impl GlobalState {
                         }
 
                         self.switch_workspaces("fetched build data".to_owned());
-                        self.send_hint_refresh_query = true;
 
                         (Some(Progress::End), None)
                     }
@@ -658,7 +653,6 @@ impl GlobalState {
                     ProcMacroProgress::End(proc_macro_load_result) => {
                         self.fetch_proc_macros_queue.op_completed(true);
                         self.set_proc_macros(proc_macro_load_result);
-                        self.send_hint_refresh_query = true;
                         (Some(Progress::End), None)
                     }
                 };
