@@ -1,7 +1,7 @@
 fn main() {
-    transmute(); // does not ICE
+    read_via_copy();
 }
 
-extern "rust-intrinsic" fn transmute() {}
+extern "rust-intrinsic" fn read_via_copy() {}
 //~^ ERROR intrinsics are subject to change
 //~| ERROR intrinsic must be in `extern "rust-intrinsic" { ... }` block
