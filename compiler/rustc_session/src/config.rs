@@ -2317,13 +2317,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     check_error_format_stability(early_dcx, &unstable_opts, error_format);
 
-    if !unstable_opts.unstable_options && json_unused_externs.is_enabled() {
-        early_dcx.early_fatal(
-            "the `-Z unstable-options` flag must also be passed to enable \
-            the flag `--json=unused-externs`",
-        );
-    }
-
     let output_types = parse_output_types(early_dcx, &unstable_opts, matches);
 
     let mut cg = CodegenOptions::build(early_dcx, matches);
