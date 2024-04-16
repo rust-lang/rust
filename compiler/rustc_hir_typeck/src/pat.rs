@@ -7,7 +7,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::{self as hir, BindingAnnotation, ByRef, HirId, Mutability, Pat, PatKind};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_lint as lint;
@@ -667,7 +667,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_ident(
         &self,
         pat: &'tcx Pat<'tcx>,
-        ba: BindingAnnotation,
+        ba: BindingMode,
         var_id: HirId,
         sub: Option<&'tcx Pat<'tcx>>,
         expected: Ty<'tcx>,
@@ -677,7 +677,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Determine the binding mode...
         let bm = match ba {
-            BindingAnnotation(ByRef::No, Mutability::Mut)
+            BindingMode(ByRef::No, Mutability::Mut)
                 if !(pat.span.at_least_rust_2024()
                     && self.tcx.features().mut_preserve_binding_mode_2024)
                     && matches!(def_br, ByRef::Yes(_)) =>
@@ -689,10 +689,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     pat.span,
                     errors::DereferencingMutBinding { span: pat.span },
                 );
-                BindingAnnotation(ByRef::No, Mutability::Mut)
+                BindingMode(ByRef::No, Mutability::Mut)
             }
-            BindingAnnotation(ByRef::No, mutbl) => BindingAnnotation(def_br, mutbl),
-            BindingAnnotation(ByRef::Yes(_), _) => ba,
+            BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
+            BindingMode(ByRef::Yes(_), _) => ba,
         };
         // ...and store it in a side table:
         self.typeck_results.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);
@@ -734,7 +734,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// bindings have the same type by comparing them all against the type of that first pat.
     fn check_binding_alt_eq_ty(
         &self,
-        ba: BindingAnnotation,
+        ba: BindingMode,
         span: Span,
         var_id: HirId,
         ty: Ty<'tcx>,
@@ -774,10 +774,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-        ba: BindingAnnotation,
+        ba: BindingMode,
     ) {
         match (expected.kind(), actual.kind(), ba) {
-            (ty::Ref(_, inner_ty, _), _, BindingAnnotation::NONE)
+            (ty::Ref(_, inner_ty, _), _, BindingMode::NONE)
                 if self.can_eq(self.param_env, *inner_ty, actual) =>
             {
                 err.span_suggestion_verbose(
@@ -787,7 +787,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
             }
-            (_, ty::Ref(_, inner_ty, _), BindingAnnotation::REF)
+            (_, ty::Ref(_, inner_ty, _), BindingMode::REF)
                 if self.can_eq(self.param_env, expected, *inner_ty) =>
             {
                 err.span_suggestion_verbose(
@@ -879,7 +879,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let PatKind::Ref(the_ref, _) = i.kind
                             && let PatKind::Binding(mt, _, ident, _) = the_ref.kind
                         {
-                            let BindingAnnotation(_, mtblty) = mt;
+                            let BindingMode(_, mtblty) = mt;
                             err.span_suggestion_verbose(
                                 i.span,
                                 format!("consider removing `&{mutability}` from the pattern"),

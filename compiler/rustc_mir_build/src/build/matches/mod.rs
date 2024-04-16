@@ -14,7 +14,7 @@ use rustc_data_structures::{
     fx::{FxHashSet, FxIndexMap, FxIndexSet},
     stack::ensure_sufficient_stack,
 };
-use rustc_hir::{BindingAnnotation, ByRef};
+use rustc_hir::{BindingMode, ByRef};
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};
@@ -621,12 +621,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         match irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
-            PatKind::Binding {
-                mode: BindingAnnotation(ByRef::No, _),
-                var,
-                subpattern: None,
-                ..
-            } => {
+            PatKind::Binding { mode: BindingMode(ByRef::No, _), var, subpattern: None, .. } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
                 unpack!(block = self.expr_into_dest(place, block, initializer_id));
@@ -652,7 +647,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     box Pat {
                         kind:
                             PatKind::Binding {
-                                mode: BindingAnnotation(ByRef::No, _),
+                                mode: BindingMode(ByRef::No, _),
                                 var,
                                 subpattern: None,
                                 ..
@@ -893,7 +888,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         f: &mut impl FnMut(
             &mut Self,
             Symbol,
-            BindingAnnotation,
+            BindingMode,
             LocalVarId,
             Span,
             Ty<'tcx>,
@@ -1148,7 +1143,7 @@ struct Binding<'tcx> {
     span: Span,
     source: Place<'tcx>,
     var_id: LocalVarId,
-    binding_mode: BindingAnnotation,
+    binding_mode: BindingMode,
 }
 
 /// Indicates that the type of `source` must be a subtype of the
@@ -2412,7 +2407,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_info: SourceInfo,
         visibility_scope: SourceScope,
         name: Symbol,
-        mode: BindingAnnotation,
+        mode: BindingMode,
         var_id: LocalVarId,
         var_ty: Ty<'tcx>,
         user_ty: UserTypeProjections,
