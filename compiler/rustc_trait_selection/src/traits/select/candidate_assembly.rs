@@ -1173,8 +1173,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
-        match self_ty.skip_binder().kind() {
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        match self_ty.kind() {
             ty::Alias(..)
             | ty::Dynamic(..)
             | ty::Error(_)
@@ -1325,7 +1325,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
+        let self_ty = self.infcx.resolve_vars_if_possible(obligation.self_ty());
 
         match self_ty.skip_binder().kind() {
             ty::FnPtr(_) => candidates.vec.push(BuiltinCandidate { has_nested: false }),

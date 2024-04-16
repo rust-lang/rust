@@ -434,7 +434,7 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        let a = self.type_checker.infcx.shallow_resolve(a);
+        let a = self.type_checker.infcx.shallow_resolve_const(a);
         assert!(!a.has_non_region_infer(), "unexpected inference var {:?}", a);
         assert!(!b.has_non_region_infer(), "unexpected inference var {:?}", b);
 

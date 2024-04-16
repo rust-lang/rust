@@ -649,7 +649,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        let ct = self.infcx.shallow_resolve(ct);
+        let ct = self.infcx.shallow_resolve_const(ct);
         if let ty::ConstKind::Placeholder(p) = ct.kind() {
             let replace_var = self.mapped_consts.get(&p);
             match replace_var {

@@ -1254,19 +1254,76 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    /// Resolve any type variables found in `value` -- but only one
-    /// level. So, if the variable `?X` is bound to some type
-    /// `Foo<?Y>`, then this would return `Foo<?Y>` (but `?Y` may
-    /// itself be bound to a type).
-    ///
-    /// Useful when you only need to inspect the outermost level of
-    /// the type and don't care about nested types (or perhaps you
-    /// will be resolving them as well, e.g. in a loop).
-    pub fn shallow_resolve<T>(&self, value: T) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        value.fold_with(&mut ShallowResolver { infcx: self })
+    pub fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if let ty::Infer(v) = ty.kind() { self.fold_infer_ty(*v).unwrap_or(ty) } else { ty }
+    }
+
+    // This is separate from `shallow_resolve` to keep that method small and inlinable.
+    #[inline(never)]
+    fn fold_infer_ty(&self, v: InferTy) -> Option<Ty<'tcx>> {
+        match v {
+            ty::TyVar(v) => {
+                // Not entirely obvious: if `typ` is a type variable,
+                // it can be resolved to an int/float variable, which
+                // can then be recursively resolved, hence the
+                // recursion. Note though that we prevent type
+                // variables from unifying to other type variables
+                // directly (though they may be embedded
+                // structurally), and we prevent cycles in any case,
+                // so this recursion should always be of very limited
+                // depth.
+                //
+                // Note: if these two lines are combined into one we get
+                // dynamic borrow errors on `self.inner`.
+                let known = self.inner.borrow_mut().type_variables().probe(v).known();
+                known.map(|t| self.shallow_resolve(t))
+            }
+
+            ty::IntVar(v) => self
+                .inner
+                .borrow_mut()
+                .int_unification_table()
+                .probe_value(v)
+                .map(|v| v.to_type(self.tcx)),
+
+            ty::FloatVar(v) => self
+                .inner
+                .borrow_mut()
+                .float_unification_table()
+                .probe_value(v)
+                .map(|v| v.to_type(self.tcx)),
+
+            ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => None,
+        }
+    }
+
+    pub fn shallow_resolve_const(&self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        match ct.kind() {
+            ty::ConstKind::Infer(infer_ct) => match infer_ct {
+                InferConst::Var(vid) => self
+                    .inner
+                    .borrow_mut()
+                    .const_unification_table()
+                    .probe_value(vid)
+                    .known()
+                    .unwrap_or(ct),
+                InferConst::EffectVar(vid) => self
+                    .inner
+                    .borrow_mut()
+                    .effect_unification_table()
+                    .probe_value(vid)
+                    .known()
+                    .unwrap_or(ct),
+                InferConst::Fresh(_) => ct,
+            },
+            ty::ConstKind::Param(_)
+            | ty::ConstKind::Bound(_, _)
+            | ty::ConstKind::Placeholder(_)
+            | ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Value(_)
+            | ty::ConstKind::Error(_)
+            | ty::ConstKind::Expr(_) => ct,
+        }
     }
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
@@ -1773,89 +1830,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceLiteralEraser<'tcx> {
             ty::Infer(ty::IntVar(_) | ty::FreshIntTy(_)) => self.tcx.types.i32,
             ty::Infer(ty::FloatVar(_) | ty::FreshFloatTy(_)) => self.tcx.types.f64,
             _ => ty.super_fold_with(self),
-        }
-    }
-}
-
-struct ShallowResolver<'a, 'tcx> {
-    infcx: &'a InferCtxt<'tcx>,
-}
-
-impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ShallowResolver<'a, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
-    }
-
-    /// If `ty` is a type variable of some kind, resolve it one level
-    /// (but do not resolve types found in the result). If `typ` is
-    /// not a type variable, just return it unmodified.
-    #[inline]
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Infer(v) = ty.kind() { self.fold_infer_ty(*v).unwrap_or(ty) } else { ty }
-    }
-
-    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        match ct.kind() {
-            ty::ConstKind::Infer(InferConst::Var(vid)) => self
-                .infcx
-                .inner
-                .borrow_mut()
-                .const_unification_table()
-                .probe_value(vid)
-                .known()
-                .unwrap_or(ct),
-            ty::ConstKind::Infer(InferConst::EffectVar(vid)) => self
-                .infcx
-                .inner
-                .borrow_mut()
-                .effect_unification_table()
-                .probe_value(vid)
-                .known()
-                .unwrap_or(ct),
-            _ => ct,
-        }
-    }
-}
-
-impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
-    // This is separate from `fold_ty` to keep that method small and inlinable.
-    #[inline(never)]
-    fn fold_infer_ty(&mut self, v: InferTy) -> Option<Ty<'tcx>> {
-        match v {
-            ty::TyVar(v) => {
-                // Not entirely obvious: if `typ` is a type variable,
-                // it can be resolved to an int/float variable, which
-                // can then be recursively resolved, hence the
-                // recursion. Note though that we prevent type
-                // variables from unifying to other type variables
-                // directly (though they may be embedded
-                // structurally), and we prevent cycles in any case,
-                // so this recursion should always be of very limited
-                // depth.
-                //
-                // Note: if these two lines are combined into one we get
-                // dynamic borrow errors on `self.inner`.
-                let known = self.infcx.inner.borrow_mut().type_variables().probe(v).known();
-                known.map(|t| self.fold_ty(t))
-            }
-
-            ty::IntVar(v) => self
-                .infcx
-                .inner
-                .borrow_mut()
-                .int_unification_table()
-                .probe_value(v)
-                .map(|v| v.to_type(self.infcx.tcx)),
-
-            ty::FloatVar(v) => self
-                .infcx
-                .inner
-                .borrow_mut()
-                .float_unification_table()
-                .probe_value(v)
-                .map(|v| v.to_type(self.infcx.tcx)),
-
-            ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => None,
         }
     }
 }

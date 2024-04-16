@@ -501,7 +501,7 @@ fn plug_infer_with_placeholders<'tcx>(
         }
 
         fn visit_const(&mut self, ct: ty::Const<'tcx>) {
-            let ct = self.infcx.shallow_resolve(ct);
+            let ct = self.infcx.shallow_resolve_const(ct);
             if ct.is_ct_infer() {
                 let Ok(InferOk { value: (), obligations }) =
                     self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
