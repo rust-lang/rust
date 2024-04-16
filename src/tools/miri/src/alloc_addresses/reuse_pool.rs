@@ -4,6 +4,8 @@ use rand::Rng;
 
 use rustc_target::abi::{Align, Size};
 
+use crate::concurrency::VClock;
+
 const MAX_POOL_SIZE: usize = 64;
 
 // Just use fair coins, until we have evidence that other numbers are better.
@@ -21,7 +23,10 @@ pub struct ReusePool {
     ///
     /// Each of these maps has at most MAX_POOL_SIZE elements, and since alignment is limited to
     /// less than 64 different possible value, that bounds the overall size of the pool.
-    pool: Vec<Vec<(u64, Size)>>,
+    ///
+    /// We also store the clock from the thread that donated this pool element,
+    /// to ensure synchronization with the thread that picks up this address.
+    pool: Vec<Vec<(u64, Size, VClock)>>,
 }
 
 impl ReusePool {
@@ -29,7 +34,7 @@ impl ReusePool {
         ReusePool { pool: vec![] }
     }
 
-    fn subpool(&mut self, align: Align) -> &mut Vec<(u64, Size)> {
+    fn subpool(&mut self, align: Align) -> &mut Vec<(u64, Size, VClock)> {
         let pool_idx: usize = align.bytes().trailing_zeros().try_into().unwrap();
         if self.pool.len() <= pool_idx {
             self.pool.resize(pool_idx + 1, Vec::new());
@@ -37,26 +42,38 @@ impl ReusePool {
         &mut self.pool[pool_idx]
     }
 
-    pub fn add_addr(&mut self, rng: &mut impl Rng, addr: u64, size: Size, align: Align) {
+    pub fn add_addr(
+        &mut self,
+        rng: &mut impl Rng,
+        addr: u64,
+        size: Size,
+        align: Align,
+        clock: impl FnOnce() -> VClock,
+    ) {
         // Let's see if we even want to remember this address.
         if !rng.gen_bool(ADDR_REMEMBER_CHANCE) {
             return;
         }
         // Determine the pool to add this to, and where in the pool to put it.
         let subpool = self.subpool(align);
-        let pos = subpool.partition_point(|(_addr, other_size)| *other_size < size);
+        let pos = subpool.partition_point(|(_addr, other_size, _)| *other_size < size);
         // Make sure the pool does not grow too big.
         if subpool.len() >= MAX_POOL_SIZE {
             // Pool full. Replace existing element, or last one if this would be even bigger.
             let clamped_pos = pos.min(subpool.len() - 1);
-            subpool[clamped_pos] = (addr, size);
+            subpool[clamped_pos] = (addr, size, clock());
             return;
         }
         // Add address to pool, at the right position.
-        subpool.insert(pos, (addr, size));
+        subpool.insert(pos, (addr, size, clock()));
     }
 
-    pub fn take_addr(&mut self, rng: &mut impl Rng, size: Size, align: Align) -> Option<u64> {
+    pub fn take_addr(
+        &mut self,
+        rng: &mut impl Rng,
+        size: Size,
+        align: Align,
+    ) -> Option<(u64, VClock)> {
         // Determine whether we'll even attempt a reuse.
         if !rng.gen_bool(ADDR_TAKE_CHANCE) {
             return None;
@@ -65,9 +82,9 @@ impl ReusePool {
         let subpool = self.subpool(align);
         // Let's see if we can find something of the right size. We want to find the full range of
         // such items, beginning with the first, so we can't use `binary_search_by_key`.
-        let begin = subpool.partition_point(|(_addr, other_size)| *other_size < size);
+        let begin = subpool.partition_point(|(_addr, other_size, _)| *other_size < size);
         let mut end = begin;
-        while let Some((_addr, other_size)) = subpool.get(end) {
+        while let Some((_addr, other_size, _)) = subpool.get(end) {
             if *other_size != size {
                 break;
             }
@@ -80,8 +97,8 @@ impl ReusePool {
         // Pick a random element with the desired size.
         let idx = rng.gen_range(begin..end);
         // Remove it from the pool and return.
-        let (chosen_addr, chosen_size) = subpool.remove(idx);
+        let (chosen_addr, chosen_size, clock) = subpool.remove(idx);
         debug_assert!(chosen_size >= size && chosen_addr % align.bytes() == 0);
-        Some(chosen_addr)
+        Some((chosen_addr, clock))
     }
 }

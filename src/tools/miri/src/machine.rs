@@ -1303,12 +1303,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         {
             *deallocated_at = Some(machine.current_span());
         }
-        machine.alloc_addresses.get_mut().free_alloc_id(
-            machine.rng.get_mut(),
-            alloc_id,
-            size,
-            align,
-        );
+        machine.free_alloc_id(alloc_id, size, align);
         Ok(())
     }
 
