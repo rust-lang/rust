@@ -15,8 +15,8 @@ use crate::errors::{
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::{
-    get_native_object_symbols, try_extract_macho_fat_archive, ArArchiveBuilder,
-    ArchiveBuildFailure, ArchiveBuilder, ArchiveBuilderBuilder, UnknownArchiveKind,
+    try_extract_macho_fat_archive, ArArchiveBuilder, ArchiveBuildFailure, ArchiveBuilder,
+    ArchiveBuilderBuilder, ObjectReader, UnknownArchiveKind, DEFAULT_OBJECT_READER,
 };
 use tracing::trace;
 
@@ -115,7 +115,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
         if true {
             Box::new(LlvmArchiveBuilder { sess, additions: Vec::new() })
         } else {
-            Box::new(ArArchiveBuilder::new(sess, get_llvm_object_symbols))
+            Box::new(ArArchiveBuilder::new(sess, &LLVM_OBJECT_READER))
         }
     }
 
@@ -291,57 +291,82 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
 
 // The object crate doesn't know how to get symbols for LLVM bitcode and COFF bigobj files.
 // As such we need to use LLVM for them.
-#[deny(unsafe_op_in_unsafe_fn)]
-fn get_llvm_object_symbols(
-    buf: &[u8],
-    f: &mut dyn FnMut(&[u8]) -> io::Result<()>,
-) -> io::Result<bool> {
+
+static LLVM_OBJECT_READER: ObjectReader = ObjectReader {
+    get_symbols: get_llvm_object_symbols,
+    is_64_bit_object_file: llvm_is_64_bit_object_file,
+    is_ec_object_file: llvm_is_ec_object_file,
+    get_xcoff_member_alignment: DEFAULT_OBJECT_READER.get_xcoff_member_alignment,
+};
+
+fn should_use_llvm_reader(buf: &[u8]) -> bool {
     let is_bitcode = unsafe { llvm::LLVMRustIsBitcode(buf.as_ptr(), buf.len()) };
 
     // COFF bigobj file, msvc LTO file or import library. See
     // https://github.com/llvm/llvm-project/blob/453f27bc9/llvm/lib/BinaryFormat/Magic.cpp#L38-L51
     let is_unsupported_windows_obj_file = buf.get(0..4) == Some(b"\0\0\xFF\xFF");
 
-    if is_bitcode || is_unsupported_windows_obj_file {
-        let mut state = Box::new(f);
+    is_bitcode || is_unsupported_windows_obj_file
+}
 
-        let err = unsafe {
-            llvm::LLVMRustGetSymbols(
-                buf.as_ptr(),
-                buf.len(),
-                std::ptr::addr_of_mut!(*state) as *mut c_void,
-                callback,
-                error_callback,
-            )
-        };
-
-        if err.is_null() {
-            return Ok(true);
-        } else {
-            return Err(unsafe { *Box::from_raw(err as *mut io::Error) });
-        }
-
-        unsafe extern "C" fn callback(
-            state: *mut c_void,
-            symbol_name: *const c_char,
-        ) -> *mut c_void {
-            let f = unsafe { &mut *(state as *mut &mut dyn FnMut(&[u8]) -> io::Result<()>) };
-            match f(unsafe { CStr::from_ptr(symbol_name) }.to_bytes()) {
-                Ok(()) => std::ptr::null_mut(),
-                Err(err) => Box::into_raw(Box::new(err)) as *mut c_void,
-            }
-        }
-
-        unsafe extern "C" fn error_callback(error: *const c_char) -> *mut c_void {
-            let error = unsafe { CStr::from_ptr(error) };
-            Box::into_raw(Box::new(io::Error::new(
-                io::ErrorKind::Other,
-                format!("LLVM error: {}", error.to_string_lossy()),
-            ))) as *mut c_void
-        }
-    } else {
-        get_native_object_symbols(buf, f)
+#[deny(unsafe_op_in_unsafe_fn)]
+fn get_llvm_object_symbols(
+    buf: &[u8],
+    f: &mut dyn FnMut(&[u8]) -> io::Result<()>,
+) -> io::Result<bool> {
+    if !should_use_llvm_reader(buf) {
+        return (DEFAULT_OBJECT_READER.get_symbols)(buf, f);
     }
+
+    let mut state = Box::new(f);
+
+    let err = unsafe {
+        llvm::LLVMRustGetSymbols(
+            buf.as_ptr(),
+            buf.len(),
+            std::ptr::addr_of_mut!(*state) as *mut c_void,
+            callback,
+            error_callback,
+        )
+    };
+
+    if err.is_null() {
+        return Ok(true);
+    } else {
+        return Err(unsafe { *Box::from_raw(err as *mut io::Error) });
+    }
+
+    unsafe extern "C" fn callback(state: *mut c_void, symbol_name: *const c_char) -> *mut c_void {
+        let f = unsafe { &mut *(state as *mut &mut dyn FnMut(&[u8]) -> io::Result<()>) };
+        match f(unsafe { CStr::from_ptr(symbol_name) }.to_bytes()) {
+            Ok(()) => std::ptr::null_mut(),
+            Err(err) => Box::into_raw(Box::new(err)) as *mut c_void,
+        }
+    }
+
+    unsafe extern "C" fn error_callback(error: *const c_char) -> *mut c_void {
+        let error = unsafe { CStr::from_ptr(error) };
+        Box::into_raw(Box::new(io::Error::new(
+            io::ErrorKind::Other,
+            format!("LLVM error: {}", error.to_string_lossy()),
+        ))) as *mut c_void
+    }
+}
+
+fn llvm_is_64_bit_object_file(buf: &[u8]) -> bool {
+    if !should_use_llvm_reader(buf) {
+        return (DEFAULT_OBJECT_READER.is_64_bit_object_file)(buf);
+    }
+
+    unsafe { llvm::LLVMRustIs64BitSymbolicFile(buf.as_ptr(), buf.len()) }
+}
+
+fn llvm_is_ec_object_file(buf: &[u8]) -> bool {
+    if !should_use_llvm_reader(buf) {
+        return (DEFAULT_OBJECT_READER.is_ec_object_file)(buf);
+    }
+
+    unsafe { llvm::LLVMRustIsECObject(buf.as_ptr(), buf.len()) }
 }
 
 impl<'a> LlvmArchiveBuilder<'a> {

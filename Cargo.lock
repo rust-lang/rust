@@ -236,11 +236,11 @@ checksum = "d67af77d68a931ecd5cbd8a3b5987d63a1d1d1278f7f6a60ae33db485cdebb69"
 
 [[package]]
 name = "ar_archive_writer"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0c269894b6fe5e9d7ada0cf69b5bf847ff35bc25fc271f08e1d080fce80339a"
+checksum = "f8412a2d690663356cba5a2532f3ed55d1e8090743bc6695b88403b27df67733"
 dependencies = [
- "object 0.32.2",
+ "object 0.35.0",
 ]
 
 [[package]]
@@ -2635,6 +2635,15 @@ dependencies = [
  "flate2",
  "memchr",
  "ruzstd 0.6.0",
+]
+
+[[package]]
+name = "object"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8ec7ab813848ba4522158d5517a6093db1ded27575b070f4177b8d12b41db5e"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
