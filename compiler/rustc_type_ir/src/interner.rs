@@ -277,6 +277,11 @@ pub trait Interner:
         param_env: Self::ParamEnv,
         placeholder: Self::PlaceholderConst,
     ) -> Self::Ty;
+
+    fn is_impl_trait_in_trait(
+        self,
+        def_id: Self::DefId,
+    ) -> bool;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

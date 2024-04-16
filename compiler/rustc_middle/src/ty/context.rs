@@ -579,6 +579,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> Ty<'tcx> {
         placeholder.find_const_ty_from_env(param_env)
     }
+
+    fn is_impl_trait_in_trait(
+        self,
+        def_id: DefId,
+    ) -> bool {
+        self.is_impl_trait_in_trait(def_id)
+    }
 }
 
 fn trait_lang_item_to_lang_item(lang_item: TraitSolverLangItem) -> LangItem {
