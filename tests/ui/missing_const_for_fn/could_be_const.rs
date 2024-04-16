@@ -158,4 +158,16 @@ mod issue12677 {
             Self { strings: Vec::new() }
         }
     }
+
+    pub struct Other {
+        pub text: String,
+        pub vec: Vec<String>,
+    }
+
+    impl Other {
+        pub fn new(text: String) -> Self {
+            let vec = Vec::new();
+            Self { text, vec }
+        }
+    }
 }

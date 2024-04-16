@@ -146,5 +146,14 @@ LL | |             Self { strings: Vec::new() }
 LL | |         }
    | |_________^
 
-error: aborting due to 16 previous errors
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:168:9
+   |
+LL | /         pub fn new(text: String) -> Self {
+LL | |             let vec = Vec::new();
+LL | |             Self { text, vec }
+LL | |         }
+   | |_________^
+
+error: aborting due to 17 previous errors
 
