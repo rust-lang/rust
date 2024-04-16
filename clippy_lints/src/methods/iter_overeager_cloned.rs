@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_copy};
-use rustc_ast::BindingAnnotation;
+use rustc_ast::BindingMode;
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Expr, ExprKind, HirId, HirIdSet, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
@@ -89,7 +89,7 @@ pub(super) fn check<'tcx>(
                 }
 
                 match it.kind {
-                    PatKind::Binding(BindingAnnotation(_, Mutability::Mut), _, _, _)
+                    PatKind::Binding(BindingMode(_, Mutability::Mut), _, _, _)
                     | PatKind::Ref(_, Mutability::Mut) => {
                         to_be_discarded = true;
                         false

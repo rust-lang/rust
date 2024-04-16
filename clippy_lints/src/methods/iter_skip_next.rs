@@ -3,7 +3,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::{is_trait_method, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::{BindingAnnotation, Node, PatKind};
+use rustc_hir::{BindingMode, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
@@ -22,7 +22,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
                 if let Some(id) = path_to_local(recv)
                     && let Node::Pat(pat) = cx.tcx.hir_node(id)
                     && let PatKind::Binding(ann, _, _, _) = pat.kind
-                    && ann != BindingAnnotation::MUT
+                    && ann != BindingMode::MUT
                 {
                     application = Applicability::Unspecified;
                     diag.span_help(
