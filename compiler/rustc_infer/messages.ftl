@@ -144,6 +144,9 @@ infer_fps_items_are_distinct = fn items are distinct from fn pointers
 infer_fps_remove_ref = consider removing the reference
 infer_fps_use_ref = consider using a reference
 infer_fulfill_req_lifetime = the type `{$ty}` does not fulfill the required lifetime
+
+infer_full_type_written = the full type name has been written to '{$path}'
+
 infer_implicit_static_lifetime_note = this has an implicit `'static` lifetime requirement
 infer_implicit_static_lifetime_suggestion = consider relaxing the implicit `'static` requirement
 infer_label_bad = {$bad_kind ->

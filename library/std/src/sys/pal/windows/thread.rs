@@ -45,13 +45,11 @@ impl Thread {
             Err(io::Error::last_os_error())
         };
 
-        extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {
-            unsafe {
-                // Next, reserve some stack space for if we otherwise run out of stack.
-                stack_overflow::reserve_stack();
-                // Finally, let's run some code.
-                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
-            }
+        unsafe extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {
+            // Next, reserve some stack space for if we otherwise run out of stack.
+            stack_overflow::reserve_stack();
+            // Finally, let's run some code.
+            Box::from_raw(main as *mut Box<dyn FnOnce()>)();
             0
         }
     }
@@ -60,10 +58,18 @@ impl Thread {
         if let Ok(utf8) = name.to_str() {
             if let Ok(utf16) = to_u16s(utf8) {
                 unsafe {
-                    c::SetThreadDescription(c::GetCurrentThread(), utf16.as_ptr());
-                };
+                    // SAFETY: the vec returned by `to_u16s` ends with a zero value
+                    Self::set_name_wide(&utf16)
+                }
             };
         };
+    }
+
+    /// # Safety
+    ///
+    /// `name` must end with a zero value
+    pub unsafe fn set_name_wide(name: &[u16]) {
+        c::SetThreadDescription(c::GetCurrentThread(), name.as_ptr());
     }
 
     pub fn join(self) {
@@ -112,10 +118,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
         sysinfo.dwNumberOfProcessors as usize
     };
     match res {
-        0 => Err(io::const_io_error!(
-            io::ErrorKind::NotFound,
-            "The number of hardware threads is not known for the target platform",
-        )),
+        0 => Err(io::Error::UNKNOWN_THREAD_COUNT),
         cpus => Ok(unsafe { NonZero::new_unchecked(cpus) }),
     }
 }

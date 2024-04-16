@@ -57,10 +57,7 @@
 //
 // This cfg won't affect doc tests.
 #![cfg(not(test))]
-// To run core tests without x.py without ending up with two copies of core, Miri needs to be
-// able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
-// rustc itself never sets the feature, so this line has no effect there.
-#![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
+//
 #![stable(feature = "core", since = "1.6.0")]
 #![doc(
     html_playground_url = "https://play.rust-lang.org/",
@@ -71,7 +68,6 @@
 #![doc(rust_logo)]
 #![doc(cfg_hide(
     not(test),
-    any(not(feature = "miri-test-libstd"), test, doctest),
     no_fp_fmt_parse,
     target_pointer_width = "16",
     target_pointer_width = "32",
@@ -115,6 +111,7 @@
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![feature(array_ptr_get)]
+#![feature(asm_experimental_arch)]
 #![feature(char_indices_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]
@@ -125,7 +122,6 @@
 #![feature(const_array_into_iter_constructors)]
 #![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
-#![feature(const_caller_location)]
 #![feature(const_cell_into_inner)]
 #![feature(const_char_from_u32_unchecked)]
 #![feature(const_eval_select)]
@@ -163,7 +159,6 @@
 #![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_slice_from_ref)]
 #![feature(const_slice_index)]
-#![feature(const_slice_ptr_len)]
 #![feature(const_slice_split_at_mut)]
 #![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_strict_overflow_ops)]
@@ -183,6 +178,7 @@
 #![feature(ip_bits)]
 #![feature(is_ascii_octdigit)]
 #![feature(isqrt)]
+#![feature(link_cfg)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(non_null_convenience)]
 #![feature(offset_of_enum)]
@@ -205,8 +201,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(not(bootstrap), feature(f128))]
-#![cfg_attr(not(bootstrap), feature(f16))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -231,6 +225,8 @@
 #![feature(doc_notable_trait)]
 #![feature(effects)]
 #![feature(extern_types)]
+#![feature(f128)]
+#![feature(f16)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(generic_arg_infer)]
@@ -352,6 +348,10 @@ pub mod u8;
 #[path = "num/shells/usize.rs"]
 pub mod usize;
 
+#[path = "num/f128.rs"]
+pub mod f128;
+#[path = "num/f16.rs"]
+pub mod f16;
 #[path = "num/f32.rs"]
 pub mod f32;
 #[path = "num/f64.rs"]
@@ -401,6 +401,9 @@ pub mod net;
 pub mod option;
 pub mod panic;
 pub mod panicking;
+#[cfg(not(bootstrap))]
+#[unstable(feature = "core_pattern_types", issue = "none")]
+pub mod pat;
 pub mod pin;
 pub mod result;
 pub mod sync;

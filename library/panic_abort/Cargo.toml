@@ -15,5 +15,7 @@ doc = false
 alloc = { path = "../alloc" }
 cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 core = { path = "../core" }
-libc = { version = "0.2", default-features = false }
 compiler_builtins = "0.1.0"
+
+[target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
+libc = { version = "0.2", default-features = false }

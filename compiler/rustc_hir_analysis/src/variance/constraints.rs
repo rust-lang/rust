@@ -236,7 +236,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::FnDef(..) | ty::Coroutine(..) | ty::Closure(..) | ty::CoroutineClosure(..) => {
-                bug!("Unexpected coroutine/closure type in variance computation");
+                bug!("Unexpected unnameable type in variance computation: {ty}");
             }
 
             ty::Ref(region, ty, mutbl) => {
@@ -246,6 +246,20 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::Array(typ, len) => {
                 self.add_constraints_from_const(current, len, variance);
+                self.add_constraints_from_ty(current, typ, variance);
+            }
+
+            ty::Pat(typ, pat) => {
+                match *pat {
+                    ty::PatternKind::Range { start, end, include_end: _ } => {
+                        if let Some(start) = start {
+                            self.add_constraints_from_const(current, start, variance);
+                        }
+                        if let Some(end) = end {
+                            self.add_constraints_from_const(current, end, variance);
+                        }
+                    }
+                }
                 self.add_constraints_from_ty(current, typ, variance);
             }
 

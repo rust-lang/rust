@@ -6,8 +6,7 @@
 //! If you wonder why there's no `early.rs`, that's because it's split into three files -
 //! `build_reduced_graph.rs`, `macros.rs` and `imports.rs`.
 
-use crate::errors::ImportsCannotReferTo;
-use crate::{path_names_to_string, rustdoc, BindingError, Finalize, LexicalScopeBinding};
+use crate::{errors, path_names_to_string, rustdoc, BindingError, Finalize, LexicalScopeBinding};
 use crate::{BindingKey, Used};
 use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
@@ -16,9 +15,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, DiagArgValue, IntoDiagArg, StashKey,
-};
+use rustc_errors::{codes::*, Applicability, DiagArgValue, IntoDiagArg, StashKey};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -1666,18 +1663,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     );
                 }
                 LifetimeRibKind::AnonymousReportError => {
-                    let (msg, note) = if elided {
-                        (
-                            "`&` without an explicit lifetime name cannot be used here",
-                            "explicit lifetime name needed here",
-                        )
-                    } else {
-                        ("`'_` cannot be used here", "`'_` is a reserved lifetime name")
-                    };
-                    let mut diag =
-                        struct_span_code_err!(self.r.dcx(), lifetime.ident.span, E0637, "{}", msg,);
-                    diag.span_label(lifetime.ident.span, note);
                     if elided {
+                        let mut suggestion = None;
                         for rib in self.lifetime_ribs[i..].iter().rev() {
                             if let LifetimeRibKind::Generics {
                                 span,
@@ -1685,19 +1672,23 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 ..
                             } = &rib.kind
                             {
-                                diag.multipart_suggestion(
-                                    "consider introducing a higher-ranked lifetime here",
-                                    vec![
-                                        (span.shrink_to_lo(), "for<'a> ".into()),
-                                        (lifetime.ident.span.shrink_to_hi(), "'a ".into()),
-                                    ],
-                                    Applicability::MachineApplicable,
-                                );
+                                suggestion =
+                                    Some(errors::ElidedAnonymousLivetimeReportErrorSuggestion {
+                                        lo: span.shrink_to_lo(),
+                                        hi: lifetime.ident.span.shrink_to_hi(),
+                                    });
                                 break;
                             }
                         }
-                    }
-                    diag.emit();
+                        self.r.dcx().emit_err(errors::ElidedAnonymousLivetimeReportError {
+                            span: lifetime.ident.span,
+                            suggestion,
+                        });
+                    } else {
+                        self.r.dcx().emit_err(errors::ExplicitAnonymousLivetimeReportError {
+                            span: lifetime.ident.span,
+                        });
+                    };
                     self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
                     return;
                 }
@@ -1863,13 +1854,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     //     async fn foo(_: std::cell::Ref<u32>) { ... }
                     LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. }
                     | LifetimeRibKind::AnonymousWarn(_) => {
+                        let mut err =
+                            self.r.dcx().create_err(errors::ImplicitElidedLifetimeNotAllowedHere {
+                                span: path_span,
+                            });
                         let sess = self.r.tcx.sess;
-                        let mut err = struct_span_code_err!(
-                            sess.dcx(),
-                            path_span,
-                            E0726,
-                            "implicit elided lifetime not allowed here"
-                        );
                         rustc_errors::add_elided_lifetime_in_path_suggestion(
                             sess.source_map(),
                             &mut err,
@@ -2313,7 +2302,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             let report_error = |this: &Self, ns| {
                 if this.should_report_errs() {
                     let what = if ns == TypeNS { "type parameters" } else { "local variables" };
-                    this.r.dcx().emit_err(ImportsCannotReferTo { span: ident.span, what });
+                    this.r.dcx().emit_err(errors::ImportsCannotReferTo { span: ident.span, what });
                 }
             };
 
@@ -2633,29 +2622,19 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             if param.ident.name == kw::UnderscoreLifetime {
-                struct_span_code_err!(
-                    self.r.dcx(),
-                    param.ident.span,
-                    E0637,
-                    "`'_` cannot be used here"
-                )
-                .with_span_label(param.ident.span, "`'_` is a reserved lifetime name")
-                .emit();
+                self.r
+                    .dcx()
+                    .emit_err(errors::UnderscoreLifetimeIsReserved { span: param.ident.span });
                 // Record lifetime res, so lowering knows there is something fishy.
                 self.record_lifetime_param(param.id, LifetimeRes::Error);
                 continue;
             }
 
             if param.ident.name == kw::StaticLifetime {
-                struct_span_code_err!(
-                    self.r.dcx(),
-                    param.ident.span,
-                    E0262,
-                    "invalid lifetime parameter name: `{}`",
-                    param.ident,
-                )
-                .with_span_label(param.ident.span, "'static is a reserved lifetime name")
-                .emit();
+                self.r.dcx().emit_err(errors::StaticLifetimeIsReserved {
+                    span: param.ident.span,
+                    lifetime: param.ident,
+                });
                 // Record lifetime res, so lowering knows there is something fishy.
                 self.record_lifetime_param(param.id, LifetimeRes::Error);
                 continue;

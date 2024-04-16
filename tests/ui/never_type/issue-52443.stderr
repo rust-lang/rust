@@ -36,7 +36,7 @@ error[E0308]: mismatched types
 LL |     [(); loop { break }];
    |                 ^^^^^ expected `usize`, found `()`
    |
-help: give it a value of the expected type
+help: give the `break` a value of the expected type
    |
 LL |     [(); loop { break 42 }];
    |                       ++

@@ -20,12 +20,9 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
-use rustc_symbol_mangling::typeid::{
-    kcfi_typeid_for_fnabi, kcfi_typeid_for_instance, typeid_for_fnabi, typeid_for_instance,
-    TypeIdOptions,
-};
 use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
@@ -538,7 +535,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 panic!("unsized locals must not be `extern` types");
             }
         }
-        assert_eq!(place.llextra.is_some(), place.layout.is_unsized());
+        assert_eq!(place.val.llextra.is_some(), place.layout.is_unsized());
 
         if place.layout.is_zst() {
             return OperandRef::zero_sized(place.layout);
@@ -582,13 +579,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
         }
 
-        let val = if let Some(llextra) = place.llextra {
-            OperandValue::Ref(place.llval, Some(llextra), place.align)
+        let val = if let Some(_) = place.val.llextra {
+            // FIXME: Merge with the `else` below?
+            OperandValue::Ref(place.val)
         } else if place.layout.is_llvm_immediate() {
             let mut const_llval = None;
             let llty = place.layout.llvm_type(self);
             unsafe {
-                if let Some(global) = llvm::LLVMIsAGlobalVariable(place.llval) {
+                if let Some(global) = llvm::LLVMIsAGlobalVariable(place.val.llval) {
                     if llvm::LLVMIsGlobalConstant(global) == llvm::True {
                         if let Some(init) = llvm::LLVMGetInitializer(global) {
                             if self.val_ty(init) == llty {
@@ -599,7 +597,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
             let llval = const_llval.unwrap_or_else(|| {
-                let load = self.load(llty, place.llval, place.align);
+                let load = self.load(llty, place.val.llval, place.val.align);
                 if let abi::Abi::Scalar(scalar) = place.layout.abi {
                     scalar_load_metadata(self, load, scalar, place.layout, Size::ZERO);
                 }
@@ -611,9 +609,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
             let mut load = |i, scalar: abi::Scalar, layout, align, offset| {
                 let llptr = if i == 0 {
-                    place.llval
+                    place.val.llval
                 } else {
-                    self.inbounds_ptradd(place.llval, self.const_usize(b_offset.bytes()))
+                    self.inbounds_ptradd(place.val.llval, self.const_usize(b_offset.bytes()))
                 };
                 let llty = place.layout.scalar_pair_element_llvm_type(self, i, false);
                 let load = self.load(llty, llptr, align);
@@ -622,11 +620,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             };
 
             OperandValue::Pair(
-                load(0, a, place.layout, place.align, Size::ZERO),
-                load(1, b, place.layout, place.align.restrict_for_offset(b_offset), b_offset),
+                load(0, a, place.layout, place.val.align, Size::ZERO),
+                load(1, b, place.layout, place.val.align.restrict_for_offset(b_offset), b_offset),
             )
         } else {
-            OperandValue::Ref(place.llval, None, place.align)
+            OperandValue::Ref(place.val)
         };
 
         OperandRef { val, layout: place.layout }
@@ -1151,12 +1149,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         order: rustc_codegen_ssa::common::AtomicOrdering,
     ) -> &'ll Value {
         // The only RMW operation that LLVM supports on pointers is compare-exchange.
-        if self.val_ty(src) == self.type_ptr()
-            && op != rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicXchg
-        {
+        let requires_cast_to_int = self.val_ty(src) == self.type_ptr()
+            && op != rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicXchg;
+        if requires_cast_to_int {
             src = self.ptrtoint(src, self.type_isize());
         }
-        unsafe {
+        let mut res = unsafe {
             llvm::LLVMBuildAtomicRMW(
                 self.llbuilder,
                 AtomicRmwBinOp::from_generic(op),
@@ -1165,7 +1163,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 AtomicOrdering::from_generic(order),
                 llvm::False, // SingleThreaded
             )
+        };
+        if requires_cast_to_int {
+            res = self.inttoptr(res, self.type_ptr());
         }
+        res
     }
 
     fn atomic_fence(
@@ -1632,18 +1634,18 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 return;
             }
 
-            let mut options = TypeIdOptions::empty();
+            let mut options = cfi::TypeIdOptions::empty();
             if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
-                options.insert(TypeIdOptions::GENERALIZE_POINTERS);
+                options.insert(cfi::TypeIdOptions::GENERALIZE_POINTERS);
             }
             if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
-                options.insert(TypeIdOptions::NORMALIZE_INTEGERS);
+                options.insert(cfi::TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
             let typeid = if let Some(instance) = instance {
-                typeid_for_instance(self.tcx, instance, options)
+                cfi::typeid_for_instance(self.tcx, instance, options)
             } else {
-                typeid_for_fnabi(self.tcx, fn_abi, options)
+                cfi::typeid_for_fnabi(self.tcx, fn_abi, options)
             };
             let typeid_metadata = self.cx.typeid_metadata(typeid).unwrap();
 
@@ -1680,18 +1682,18 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 return None;
             }
 
-            let mut options = TypeIdOptions::empty();
+            let mut options = kcfi::TypeIdOptions::empty();
             if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
-                options.insert(TypeIdOptions::GENERALIZE_POINTERS);
+                options.insert(kcfi::TypeIdOptions::GENERALIZE_POINTERS);
             }
             if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
-                options.insert(TypeIdOptions::NORMALIZE_INTEGERS);
+                options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
             let kcfi_typeid = if let Some(instance) = instance {
-                kcfi_typeid_for_instance(self.tcx, instance, options)
+                kcfi::typeid_for_instance(self.tcx, instance, options)
             } else {
-                kcfi_typeid_for_fnabi(self.tcx, fn_abi, options)
+                kcfi::typeid_for_fnabi(self.tcx, fn_abi, options)
             };
 
             Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))

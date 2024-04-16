@@ -32,8 +32,8 @@ LL |     let _ = [x; 0];
    |
 help: consider assigning a value
    |
-LL |     let x: u8 = 0;
-   |               +++
+LL |     let x: u8 = 42;
+   |               ++++
 
 error: aborting due to 3 previous errors
 

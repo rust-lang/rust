@@ -5,9 +5,7 @@ use crate::alloc::Allocator;
 use crate::cmp;
 use crate::collections::VecDeque;
 use crate::fmt;
-use crate::io::{
-    self, BorrowedCursor, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write,
-};
+use crate::io::{self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 use crate::mem;
 use crate::str;
 
@@ -49,6 +47,10 @@ impl<R: Read + ?Sized> Read for &mut R {
     #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         (**self).read_exact(buf)
+    }
+    #[inline]
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf_exact(cursor)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -153,6 +155,10 @@ impl<R: Read + ?Sized> Read for Box<R> {
     #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         (**self).read_exact(buf)
+    }
+    #[inline]
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf_exact(cursor)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -281,10 +287,7 @@ impl Read for &[u8] {
     #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         if buf.len() > self.len() {
-            return Err(io::const_io_error!(
-                ErrorKind::UnexpectedEof,
-                "failed to fill whole buffer"
-            ));
+            return Err(io::Error::READ_EXACT_EOF);
         }
         let (a, b) = self.split_at(buf.len());
 
@@ -302,6 +305,19 @@ impl Read for &[u8] {
     }
 
     #[inline]
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        if cursor.capacity() > self.len() {
+            return Err(io::Error::READ_EXACT_EOF);
+        }
+        let (a, b) = self.split_at(cursor.capacity());
+
+        cursor.append(a);
+
+        *self = b;
+        Ok(())
+    }
+
+    #[inline]
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         let len = self.len();
         buf.try_reserve(len)?;
@@ -312,9 +328,7 @@ impl Read for &[u8] {
 
     #[inline]
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        let content = str::from_utf8(self).map_err(|_| {
-            io::const_io_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8")
-        })?;
+        let content = str::from_utf8(self).map_err(|_| io::Error::INVALID_UTF8)?;
         buf.push_str(content);
         let len = self.len();
         *self = &self[len..];
@@ -375,11 +389,7 @@ impl Write for &mut [u8] {
 
     #[inline]
     fn write_all(&mut self, data: &[u8]) -> io::Result<()> {
-        if self.write(data)? == data.len() {
-            Ok(())
-        } else {
-            Err(io::const_io_error!(ErrorKind::WriteZero, "failed to write whole buffer"))
-        }
+        if self.write(data)? == data.len() { Ok(()) } else { Err(io::Error::WRITE_ALL_EOF) }
     }
 
     #[inline]
@@ -467,9 +477,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
         // middle of an UTF-8 character.
         let len = self.len();
         let content = self.make_contiguous();
-        let string = str::from_utf8(content).map_err(|_| {
-            io::const_io_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8")
-        })?;
+        let string = str::from_utf8(content).map_err(|_| io::Error::INVALID_UTF8)?;
         buf.push_str(string);
         self.clear();
         Ok(len)

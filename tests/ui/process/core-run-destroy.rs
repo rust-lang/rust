@@ -14,10 +14,6 @@
 // memory, which makes for some *confusing* logs. That's why these are here
 // instead of in std.
 
-#![feature(rustc_private, duration)]
-
-extern crate libc;
-
 use std::process::{self, Command, Child, Output, Stdio};
 use std::str;
 use std::sync::mpsc::channel;

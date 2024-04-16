@@ -228,3 +228,19 @@ macro_rules! floating {
 
 floating! { f32 }
 floating! { f64 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Debug for f16 {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{:#06x}", self.to_bits())
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Debug for f128 {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{:#034x}", self.to_bits())
+    }
+}

@@ -45,8 +45,8 @@ pub(super) fn mangle<'tcx>(
         ty::InstanceDef::ThreadLocalShim(_) => Some("tls"),
         ty::InstanceDef::VTableShim(_) => Some("vtable"),
         ty::InstanceDef::ReifyShim(_, None) => Some("reify"),
-        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr)) => Some("reify-fnptr"),
-        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::Vtable)) => Some("reify-vtable"),
+        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr)) => Some("reify_fnptr"),
+        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::Vtable)) => Some("reify_vtable"),
 
         ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
         | ty::InstanceDef::CoroutineKindShim { .. } => Some("fn_once"),
@@ -370,6 +370,25 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 });
                 ty.print(self)?;
             }
+
+            ty::Pat(ty, pat) => match *pat {
+                ty::PatternKind::Range { start, end, include_end } => {
+                    let consts = [
+                        start.unwrap_or(self.tcx.consts.unit),
+                        end.unwrap_or(self.tcx.consts.unit),
+                        ty::Const::from_bool(self.tcx, include_end).into(),
+                    ];
+                    // HACK: Represent as tuple until we have something better.
+                    // HACK: constants are used in arrays, even if the types don't match.
+                    self.push("T");
+                    ty.print(self)?;
+                    for ct in consts {
+                        Ty::new_array_with_const_len(self.tcx, self.tcx.types.unit, ct)
+                            .print(self)?;
+                    }
+                    self.push("E");
+                }
+            },
 
             ty::Array(ty, len) => {
                 self.push("A");
@@ -812,7 +831,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 ///   e.g. `1` becomes `"0_"`, `62` becomes `"Z_"`, etc.
 pub(crate) fn push_integer_62(x: u64, output: &mut String) {
     if let Some(x) = x.checked_sub(1) {
-        base_n::push_str(x as u128, 62, output);
+        base_n::push_str(x as u128, base_n::ALPHANUMERIC_ONLY, output);
     }
     output.push('_');
 }

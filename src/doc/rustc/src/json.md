@@ -262,6 +262,36 @@ information, even if the diagnostics have been suppressed (such as with an
 }
 ```
 
+## Unused Dependency Notifications
+
+The options `--json=unused-externs` and `--json=unused-externs-silent` in
+conjunction with the `unused-crate-dependencies` lint will emit JSON structures
+reporting any crate dependencies (specified with `--extern`) which never had any
+symbols referenced. These are intended to be consumed by the build system which
+can then emit diagnostics telling the user to remove the unused dependencies
+from `Cargo.toml` (or whatever build-system file defines dependencies).
+
+The JSON structure is:
+```json
+{
+    "lint_level": "deny", /* Level of the warning */
+    "unused_names": [
+        "foo"  /* Names of unused crates, as specified with --extern foo=libfoo.rlib */
+    ],
+}
+```
+
+The warn/deny/forbid lint level (as defined either on the command line or in the
+source) dictates the `lint_level` in the JSON. With `unused-externs`, a
+`deny` or `forbid` level diagnostic will also cause `rustc` to exit with a
+failure exit code.
+
+`unused-externs-silent` will report the diagnostic the same way, but will not
+cause `rustc` to exit with failure - it's up to the consumer to flag failure
+appropriately. (This is needed by Cargo which shares the same dependencies
+across multiple build targets, so it should only report an unused dependency if
+its not used by any of the targets.)
+
 [option-emit]: command-line-arguments.md#option-emit
 [option-error-format]: command-line-arguments.md#option-error-format
 [option-json]: command-line-arguments.md#option-json

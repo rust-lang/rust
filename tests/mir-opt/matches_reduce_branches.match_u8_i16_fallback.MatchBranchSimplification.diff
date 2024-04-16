@@ -1,0 +1,31 @@
+- // MIR for `match_u8_i16_fallback` before MatchBranchSimplification
++ // MIR for `match_u8_i16_fallback` after MatchBranchSimplification
+  
+  fn match_u8_i16_fallback(_1: u8) -> i16 {
+      debug i => _1;
+      let mut _0: i16;
+  
+      bb0: {
+          switchInt(_1) -> [1: bb2, 2: bb3, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const 3_i16;
+          goto -> bb4;
+      }
+  
+      bb2: {
+          _0 = const 1_i16;
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _0 = const 2_i16;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          return;
+      }
+  }
+  

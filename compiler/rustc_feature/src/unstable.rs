@@ -215,6 +215,8 @@ declare_features! (
     (internal, omit_gdb_pretty_printer_section, "1.5.0", None),
     /// Set the maximum pattern complexity allowed (not limited by default).
     (internal, pattern_complexity, "1.78.0", None),
+    /// Allows using pattern types.
+    (internal, pattern_types, "CURRENT_RUSTC_VERSION", Some(123646)),
     /// Allows using `#[prelude_import]` on glob `use` items.
     (internal, prelude_import, "1.2.0", None),
     /// Used to identify crates that contain the profiler runtime.
@@ -381,6 +383,8 @@ declare_features! (
     (unstable, cfg_target_has_atomic_equal_alignment, "1.60.0", Some(93822)),
     /// Allows `cfg(target_thread_local)`.
     (unstable, cfg_target_thread_local, "1.7.0", Some(29594)),
+    /// Allows the use of `#[cfg(ub_checks)` to check if UB checks are enabled.
+    (unstable, cfg_ub_checks, "CURRENT_RUSTC_VERSION", Some(123499)),
     /// Allow conditional compilation depending on rust version
     (unstable, cfg_version, "1.45.0", Some(64796)),
     /// Allows to use the `#[cfi_encoding = ""]` attribute.
@@ -613,8 +617,6 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
-    /// Allows using type privacy lints (`private_interfaces`, `private_bounds`, `unnameable_types`).
-    (unstable, type_privacy_lints, "1.72.0", Some(48054)),
     /// Enables rustc to generate code that instructs libstd to NOT ignore SIGPIPE.
     (unstable, unix_sigpipe, "1.65.0", Some(97889)),
     /// Allows unnamed fields of struct and union type

@@ -2624,6 +2624,8 @@ pub enum TyKind<'hir> {
     Infer,
     /// Placeholder for a type that has failed to be defined.
     Err(rustc_span::ErrorGuaranteed),
+    /// Pattern types (`pattern_type!(u32 is 1..)`)
+    Pat(&'hir Ty<'hir>, &'hir Pat<'hir>),
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]

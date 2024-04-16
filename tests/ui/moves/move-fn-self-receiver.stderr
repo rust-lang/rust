@@ -101,6 +101,12 @@ LL |     mut_foo;
    |     ^^^^^^^ move out of `mut_foo` occurs here
 LL |     ret;
    |     --- borrow later used here
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/move-fn-self-receiver.rs:5:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
 
 error[E0382]: use of moved value: `rc_foo`
   --> $DIR/move-fn-self-receiver.rs:55:5
@@ -132,6 +138,11 @@ LL |     foo_add + Foo;
 LL |     foo_add;
    |     ^^^^^^^ value used here after move
    |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/move-fn-self-receiver.rs:5:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 

@@ -63,6 +63,7 @@ use rustc_span::DesugaringKind;
 use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::TraitEngineExt as _;
@@ -1318,6 +1319,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
+/// Check whether `ty` can be coerced to `output_ty`.
+/// Used from clippy.
+pub fn can_coerce<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    body_id: LocalDefId,
+    ty: Ty<'tcx>,
+    output_ty: Ty<'tcx>,
+) -> bool {
+    let root_ctxt = crate::typeck_root_ctxt::TypeckRootCtxt::new(tcx, body_id);
+    let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, body_id);
+    fn_ctxt.can_coerce(ty, output_ty)
+}
+
 /// CoerceMany encapsulates the pattern you should use when you have
 /// many expressions that are all getting coerced to a common
 /// type. This arises, for example, when you have a match (the result
@@ -1602,6 +1617,15 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             E0069,
                             "`return;` in a function whose return type is not `()`"
                         );
+                        if let Some(value) = fcx.err_ctxt().ty_kind_suggestion(fcx.param_env, found)
+                        {
+                            err.span_suggestion_verbose(
+                                cause.span.shrink_to_hi(),
+                                "give the `return` a value of the expected type",
+                                format!(" {value}"),
+                                Applicability::HasPlaceholders,
+                            );
+                        }
                         err.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id, ..) => {
@@ -1990,16 +2014,17 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
         }
 
-        let parent_id = fcx.tcx.hir().get_parent_item(id);
-        let mut parent_item = fcx.tcx.hir_node_by_def_id(parent_id.def_id);
+        let mut parent_id = fcx.tcx.hir().get_parent_item(id).def_id;
+        let mut parent_item = fcx.tcx.hir_node_by_def_id(parent_id);
         // When suggesting return, we need to account for closures and async blocks, not just items.
         for (_, node) in fcx.tcx.hir().parent_iter(id) {
             match node {
                 hir::Node::Expr(&hir::Expr {
-                    kind: hir::ExprKind::Closure(hir::Closure { .. }),
+                    kind: hir::ExprKind::Closure(hir::Closure { def_id, .. }),
                     ..
                 }) => {
                     parent_item = node;
+                    parent_id = *def_id;
                     break;
                 }
                 hir::Node::Item(_) | hir::Node::TraitItem(_) | hir::Node::ImplItem(_) => break,
@@ -2009,13 +2034,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
         if let (Some(expr), Some(_), Some(fn_decl)) = (expression, blk_id, parent_item.fn_decl()) {
             fcx.suggest_missing_break_or_return_expr(
-                &mut err,
-                expr,
-                fn_decl,
-                expected,
-                found,
-                id,
-                parent_id.into(),
+                &mut err, expr, fn_decl, expected, found, id, parent_id,
             );
         }
 

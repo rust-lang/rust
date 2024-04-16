@@ -11,6 +11,7 @@ use crate::{
 
 pub trait Interner: Sized + Copy {
     type DefId: Copy + Debug + Hash + Eq;
+    type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
     type AdtDef: Copy + Debug + Hash + Eq;
 
     type GenericArgs: Copy
@@ -49,6 +50,7 @@ pub trait Interner: Sized + Copy {
     type BoundExistentialPredicates: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type PolyFnSig: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type AllocId: Copy + Debug + Hash + Eq;
+    type Pat: Copy + Debug + Hash + Eq + DebugWithInfcx<Self>;
 
     // Kinds of consts
     type Const: Copy
@@ -100,6 +102,7 @@ pub trait Interner: Sized + Copy {
     type SubtypePredicate: Copy + Debug + Hash + Eq;
     type CoercePredicate: Copy + Debug + Hash + Eq;
     type ClosureKind: Copy + Debug + Hash + Eq;
+    type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
     fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
 }

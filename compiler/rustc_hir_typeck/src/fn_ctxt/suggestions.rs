@@ -9,6 +9,7 @@ use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use crate::rustc_middle::ty::Article;
 use core::cmp::min;
 use core::iter;
+use hir::def_id::LocalDefId;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan};
@@ -20,6 +21,7 @@ use rustc_hir::{
     CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node,
     Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
+use rustc_hir_analysis::collect::suggest_impl_trait;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{self};
 use rustc_middle::lint::in_external_macro;
@@ -795,7 +797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         can_suggest: bool,
-        fn_id: hir::HirId,
+        fn_id: LocalDefId,
     ) -> bool {
         let found =
             self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(found));
@@ -814,17 +816,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         errors::AddReturnTypeSuggestion::Add { span, found: found.to_string() },
                     );
                     return true;
-                } else if let ty::Closure(_, args) = found.kind()
-                    // FIXME(compiler-errors): Get better at printing binders...
-                    && let closure = args.as_closure()
-                    && closure.sig().is_suggestable(self.tcx, false)
-                {
+                } else if let Some(sugg) = suggest_impl_trait(self, self.param_env, found) {
                     err.subdiagnostic(
                         self.dcx(),
-                        errors::AddReturnTypeSuggestion::Add {
-                            span,
-                            found: closure.print_as_impl_trait().to_string(),
-                        },
+                        errors::AddReturnTypeSuggestion::Add { span, found: sugg },
                     );
                     return true;
                 } else {
@@ -929,7 +924,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-        fn_id: hir::HirId,
+        fn_id: LocalDefId,
     ) {
         // Only apply the suggestion if:
         //  - the return type is a generic parameter
@@ -943,7 +938,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty::Param(expected_ty_as_param) = expected.kind() else { return };
 
-        let fn_node = self.tcx.hir_node(fn_id);
+        let fn_node = self.tcx.hir_node_by_def_id(fn_id);
 
         let hir::Node::Item(hir::Item {
             kind:
@@ -1037,7 +1032,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         id: hir::HirId,
-        fn_id: hir::HirId,
+        fn_id: LocalDefId,
     ) {
         if !expected.is_unit() {
             return;
@@ -1089,11 +1084,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let can_return = match fn_decl.output {
             hir::FnRetTy::Return(ty) => {
                 let ty = self.lowerer().lower_ty(ty);
-                let bound_vars = self.tcx.late_bound_vars(fn_id);
+                let bound_vars = self.tcx.late_bound_vars(self.tcx.local_def_id_to_hir_id(fn_id));
                 let ty = self
                     .tcx
                     .instantiate_bound_regions_with_erased(Binder::bind_with_vars(ty, bound_vars));
-                let ty = match self.tcx.asyncness(fn_id.owner) {
+                let ty = match self.tcx.asyncness(fn_id) {
                     ty::Asyncness::Yes => self.get_impl_future_output_ty(ty).unwrap_or_else(|| {
                         span_bug!(
                             fn_decl.output.span(),
@@ -1114,8 +1109,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => false,
         };
         if can_return
-            && let Some(owner_node) = self.tcx.hir_node(fn_id).as_owner()
-            && let Some(span) = expr.span.find_ancestor_inside(*owner_node.span())
+            && let Some(span) = expr.span.find_ancestor_inside(
+                self.tcx.hir().span_with_body(self.tcx.local_def_id_to_hir_id(fn_id)),
+            )
         {
             err.multipart_suggestion(
                 "you might have meant to return this value",
@@ -1291,12 +1287,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::TraitRef::new(self.tcx, into_def_id, [expr_ty, expected_ty]),
             ))
         {
-            let mut span = expr.span;
-            while expr.span.eq_ctxt(span)
-                && let Some(parent_callsite) = span.parent_callsite()
-            {
-                span = parent_callsite;
-            }
+            let span = expr.span.find_oldest_ancestor_in_same_ctxt();
 
             let mut sugg = if expr.precedence().order() >= PREC_POSTFIX {
                 vec![(span.shrink_to_hi(), ".into()".to_owned())]
@@ -1901,12 +1892,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => sugg.to_string(),
         };
 
-        err.span_suggestion_verbose(
-            expr.span.shrink_to_hi(),
-            msg,
-            sugg,
-            Applicability::HasPlaceholders,
-        );
+        let span = expr.span.find_oldest_ancestor_in_same_ctxt();
+        err.span_suggestion_verbose(span.shrink_to_hi(), msg, sugg, Applicability::HasPlaceholders);
         return true;
     }
 

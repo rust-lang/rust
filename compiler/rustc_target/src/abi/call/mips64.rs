@@ -68,7 +68,7 @@ where
         }
 
         // Cast to a uniform int structure
-        ret.cast_to(Uniform { unit: Reg::i64(), total: size });
+        ret.cast_to(Uniform::new(Reg::i64(), size));
     } else {
         ret.make_indirect();
     }
@@ -139,7 +139,7 @@ where
     let rest_size = size - Size::from_bytes(8) * prefix_index as u64;
     arg.cast_to(CastTarget {
         prefix,
-        rest: Uniform { unit: Reg::i64(), total: rest_size },
+        rest: Uniform::new(Reg::i64(), rest_size),
         attrs: ArgAttributes {
             regular: ArgAttribute::default(),
             arg_ext: ArgExtension::None,

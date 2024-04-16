@@ -4,5 +4,5 @@
 
 //@ pretty-expanded FIXME #23616
 
-#[cfg_attr(foo, cfg(bar))]
+#[cfg_attr(FALSE, cfg(bar))]
 fn main() { }

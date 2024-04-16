@@ -1,4 +1,4 @@
-error: linking with `cc` failed: exit status: 1
+error: linking with `LINKER` failed: exit status: 1
    |
            ld: Undefined symbols:
              _CFRunLoopGetTypeID, referenced from:

@@ -21,7 +21,7 @@ use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 
 use crate::diagnostics::BorrowedContentSource;
 use crate::util::FindAssignments;
-use crate::MirBorrowckCtxt;
+use crate::{session_diagnostics, MirBorrowckCtxt};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum AccessKind {
@@ -234,7 +234,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         Some(mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default }),
                         |_kind, var_span| {
                             let place = self.describe_any_place(access_place.as_ref());
-                            crate::session_diagnostics::CaptureVarCause::MutableBorrowUsePlaceClosure {
+                            session_diagnostics::CaptureVarCause::MutableBorrowUsePlaceClosure {
                                 place,
                                 var_span,
                             }
@@ -667,19 +667,26 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// User cannot make signature of a trait mutable without changing the
     /// trait. So we find if this error belongs to a trait and if so we move
     /// suggestion to the trait or disable it if it is out of scope of this crate
-    fn is_error_in_trait(&self, local: Local) -> (bool, Option<Span>) {
+    ///
+    /// The returned values are:
+    ///  - is the current item an assoc `fn` of an impl that corresponds to a trait def? if so, we
+    ///    have to suggest changing both the impl `fn` arg and the trait `fn` arg
+    ///  - is the trait from the local crate? If not, we can't suggest changing signatures
+    ///  - `Span` of the argument in the trait definition
+    fn is_error_in_trait(&self, local: Local) -> (bool, bool, Option<Span>) {
         if self.body.local_kind(local) != LocalKind::Arg {
-            return (false, None);
+            return (false, false, None);
         }
         let my_def = self.body.source.def_id();
         let my_hir = self.infcx.tcx.local_def_id_to_hir_id(my_def.as_local().unwrap());
         let Some(td) =
             self.infcx.tcx.impl_of_method(my_def).and_then(|x| self.infcx.tcx.trait_id_of_impl(x))
         else {
-            return (false, None);
+            return (false, false, None);
         };
         (
             true,
+            td.is_local(),
             td.as_local().and_then(|tld| match self.infcx.tcx.hir_node_by_def_id(tld) {
                 Node::Item(hir::Item { kind: hir::ItemKind::Trait(_, _, _, _, items), .. }) => {
                     let mut f_in_trait_opt = None;
@@ -695,19 +702,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         break;
                     }
                     f_in_trait_opt.and_then(|f_in_trait| {
-                        match self.infcx.tcx.hir_node(f_in_trait) {
-                            Node::TraitItem(hir::TraitItem {
-                                kind:
-                                    hir::TraitItemKind::Fn(
-                                        hir::FnSig { decl: hir::FnDecl { inputs, .. }, .. },
-                                        _,
-                                    ),
-                                ..
-                            }) => {
-                                let hir::Ty { span, .. } = *inputs.get(local.index() - 1)?;
-                                Some(span)
-                            }
-                            _ => None,
+                        if let Node::TraitItem(ti) = self.infcx.tcx.hir_node(f_in_trait)
+                            && let hir::TraitItemKind::Fn(sig, _) = ti.kind
+                            && let Some(ty) = sig.decl.inputs.get(local.index() - 1)
+                            && let hir::TyKind::Ref(_, mut_ty) = ty.kind
+                            && let hir::Mutability::Not = mut_ty.mutbl
+                            && sig.decl.implicit_self.has_implicit_self()
+                        {
+                            Some(ty.span)
+                        } else {
+                            None
                         }
                     })
                 }
@@ -1061,20 +1065,24 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let (pointer_sigil, pointer_desc) =
             if local_decl.ty.is_ref() { ("&", "reference") } else { ("*const", "pointer") };
 
-        let (is_trait_sig, local_trait) = self.is_error_in_trait(local);
-        if is_trait_sig && local_trait.is_none() {
+        let (is_trait_sig, is_local, local_trait) = self.is_error_in_trait(local);
+
+        if is_trait_sig && !is_local {
+            // Do not suggest to change the signature when the trait comes from another crate.
+            err.span_label(
+                local_decl.source_info.span,
+                format!("this is an immutable {pointer_desc}"),
+            );
             return;
         }
-
-        let decl_span = match local_trait {
-            Some(span) => span,
-            None => local_decl.source_info.span,
-        };
+        let decl_span = local_decl.source_info.span;
 
         let label = match *local_decl.local_info() {
             LocalInfo::User(mir::BindingForm::ImplicitSelf(_)) => {
                 let suggestion = suggest_ampmut_self(self.infcx.tcx, decl_span);
-                Some((true, decl_span, suggestion))
+                let additional =
+                    local_trait.map(|span| (span, suggest_ampmut_self(self.infcx.tcx, span)));
+                Some((true, decl_span, suggestion, additional))
             }
 
             LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
@@ -1113,7 +1121,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     // don't create labels for compiler-generated spans
                     Some(_) => None,
                     None => {
-                        let label = if name != kw::SelfLower {
+                        let (has_sugg, decl_span, sugg) = if name != kw::SelfLower {
                             suggest_ampmut(
                                 self.infcx.tcx,
                                 local_decl.ty,
@@ -1140,7 +1148,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 ),
                             }
                         };
-                        Some(label)
+                        Some((has_sugg, decl_span, sugg, None))
                     }
                 }
             }
@@ -1151,22 +1159,33 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             })) => {
                 let pattern_span: Span = local_decl.source_info.span;
                 suggest_ref_mut(self.infcx.tcx, pattern_span)
-                    .map(|span| (true, span, "mut ".to_owned()))
+                    .map(|span| (true, span, "mut ".to_owned(), None))
             }
 
             _ => unreachable!(),
         };
 
         match label {
-            Some((true, err_help_span, suggested_code)) => {
-                err.span_suggestion_verbose(
-                    err_help_span,
-                    format!("consider changing this to be a mutable {pointer_desc}"),
-                    suggested_code,
+            Some((true, err_help_span, suggested_code, additional)) => {
+                let mut sugg = vec![(err_help_span, suggested_code)];
+                if let Some(s) = additional {
+                    sugg.push(s);
+                }
+
+                err.multipart_suggestion_verbose(
+                    format!(
+                        "consider changing this to be a mutable {pointer_desc}{}",
+                        if is_trait_sig {
+                            " in the `impl` method and the `trait` definition"
+                        } else {
+                            ""
+                        }
+                    ),
+                    sugg,
                     Applicability::MachineApplicable,
                 );
             }
-            Some((false, err_label_span, message)) => {
+            Some((false, err_label_span, message, _)) => {
                 let def_id = self.body.source.def_id();
                 let hir_id = if let Some(local_def_id) = def_id.as_local()
                     && let Some(body_id) = self.infcx.tcx.hir().maybe_body_owned_by(local_def_id)

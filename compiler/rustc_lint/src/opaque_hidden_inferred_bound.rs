@@ -20,7 +20,7 @@ declare_lint! {
     /// This functionality was removed in #97346, but then rolled back in #99860
     /// because it caused regressions.
     ///
-    /// We plan on reintroducing this as a hard error, but in the mean time,
+    /// We plan on reintroducing this as a hard error, but in the meantime,
     /// this lint serves to warn and suggest fixes for any use-cases which rely
     /// on this behavior.
     ///

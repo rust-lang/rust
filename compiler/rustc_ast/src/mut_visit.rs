@@ -502,6 +502,10 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
         }
         TyKind::Tup(tys) => visit_thin_vec(tys, |ty| vis.visit_ty(ty)),
         TyKind::Paren(ty) => vis.visit_ty(ty),
+        TyKind::Pat(ty, pat) => {
+            vis.visit_ty(ty);
+            vis.visit_pat(pat);
+        }
         TyKind::Path(qself, path) => {
             vis.visit_qself(qself);
             vis.visit_path(path);

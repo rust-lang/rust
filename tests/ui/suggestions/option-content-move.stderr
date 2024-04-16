@@ -13,6 +13,10 @@ help: you can `clone` the value and consume it, but this might not be your desir
    |
 LL |                 if <Option<String> as Clone>::clone(&selection.1).unwrap().contains(selection.0) {
    |                    ++++++++++++++++++++++++++++++++++           +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |                 if selection.1.clone().unwrap().contains(selection.0) {
+   |                               ++++++++
 
 error[E0507]: cannot move out of `selection.1` which is behind a shared reference
   --> $DIR/option-content-move.rs:28:20
@@ -29,6 +33,10 @@ help: you can `clone` the value and consume it, but this might not be your desir
    |
 LL |                 if <Result<String, String> as Clone>::clone(&selection.1).unwrap().contains(selection.0) {
    |                    ++++++++++++++++++++++++++++++++++++++++++           +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |                 if selection.1.clone().unwrap().contains(selection.0) {
+   |                               ++++++++
 
 error: aborting due to 2 previous errors
 

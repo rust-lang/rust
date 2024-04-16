@@ -19,7 +19,7 @@ LL |         loop { break };
    |         |
    |         this loop is expected to be of type `i32`
    |
-help: give it a value of the expected type
+help: give the `break` a value of the expected type
    |
 LL |         loop { break 42 };
    |                      ++

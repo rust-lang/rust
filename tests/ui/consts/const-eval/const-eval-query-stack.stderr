@@ -4,6 +4,8 @@ error: internal compiler error[E0080]: evaluation of constant value failed
 LL | const X: i32 = 1 / 0;
    |                ^^^^^ attempt to divide `1_i32` by zero
 
+note: please make sure that you have updated to the latest nightly
+
 query stack during panic:
 #0 [eval_to_allocation_raw] const-evaluating + checking `X`
 #1 [eval_to_const_value_raw] simplifying constant for the type system `X`

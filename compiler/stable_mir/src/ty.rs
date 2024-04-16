@@ -99,6 +99,12 @@ impl Ty {
     }
 }
 
+/// Represents a pattern in the type system
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Pattern {
+    Range { start: Option<Const>, end: Option<Const>, include_end: bool },
+}
+
 /// Represents a constant in MIR or from the Type system.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Const {
@@ -481,6 +487,7 @@ pub enum RigidTy {
     Foreign(ForeignDef),
     Str,
     Array(Ty, Const),
+    Pat(Ty, Pattern),
     Slice(Ty),
     RawPtr(Ty, Mutability),
     Ref(Region, Ty, Mutability),

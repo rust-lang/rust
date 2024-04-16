@@ -505,12 +505,9 @@ impl<'tcx> InferCtxt<'tcx> {
             let b = instantiate_value(self.tcx, &result_args, b);
             debug!(?a, ?b, "constrain opaque type");
             // We use equate here instead of, for example, just registering the
-            // opaque type's hidden value directly, because we may be instantiating
-            // a query response that was canonicalized in an InferCtxt that had
-            // a different defining anchor. In that case, we may have inferred
-            // `NonLocalOpaque := LocalOpaque` but can only instantiate it in
-            // the other direction as `LocalOpaque := NonLocalOpaque`. Using eq
-            // here allows us to try both directions (in `InferCtxt::handle_opaque_type`).
+            // opaque type's hidden value directly, because the hidden type may have been an inference
+            // variable that got constrained to the opaque type itself. In that case we want to equate
+            // the generic args of the opaque with the generic params of its hidden type version.
             obligations.extend(
                 self.at(cause, param_env)
                     .eq(

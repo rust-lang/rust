@@ -63,8 +63,6 @@ pub(crate) fn try_inline(
 
     let import_def_id = attrs.and_then(|(_, def_id)| def_id);
 
-    let (attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs);
-
     let kind = match res {
         Res::Def(DefKind::Trait, did) => {
             record_extern_fqn(cx, did, ItemType::Trait);
@@ -134,7 +132,11 @@ pub(crate) fn try_inline(
             cx.with_param_env(did, |cx| clean::ConstantItem(build_const(cx, did)))
         }
         Res::Def(DefKind::Macro(kind), did) => {
-            let mac = build_macro(cx, did, name, import_def_id, kind, attrs.is_doc_hidden());
+            let is_doc_hidden = cx.tcx.is_doc_hidden(did)
+                || attrs_without_docs
+                    .map(|(attrs, _)| attrs)
+                    .is_some_and(|attrs| utils::attrs_have_doc_flag(attrs.iter(), sym::hidden));
+            let mac = build_macro(cx, did, name, import_def_id, kind, is_doc_hidden);
 
             let type_kind = match kind {
                 MacroKind::Bang => ItemType::Macro,
@@ -148,8 +150,14 @@ pub(crate) fn try_inline(
     };
 
     cx.inlined.insert(did.into());
-    let mut item =
-        clean::Item::from_def_id_and_attrs_and_parts(did, Some(name), kind, Box::new(attrs), cfg);
+    let mut item = crate::clean::generate_item_with_correct_attrs(
+        cx,
+        kind,
+        did,
+        name,
+        import_def_id.and_then(|def_id| def_id.as_local()),
+        None,
+    );
     // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
     item.inline_stmt_id = import_def_id;
     ret.push(item);
@@ -179,6 +187,7 @@ pub(crate) fn try_inline_glob(
                 .iter()
                 .filter(|child| !child.reexport_chain.is_empty())
                 .filter_map(|child| child.res.opt_def_id())
+                .filter(|def_id| !cx.tcx.is_doc_hidden(def_id))
                 .collect();
             let attrs = cx.tcx.hir().attrs(import.hir_id());
             let mut items = build_module_items(

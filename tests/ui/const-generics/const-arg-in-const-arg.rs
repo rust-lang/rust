@@ -2,8 +2,8 @@
 // we use a single revision because this should have a `full` revision
 // but right now that ICEs and I(@BoxyUwU) could not get stderr normalization to work
 
-#![cfg_attr(full, feature(generic_const_exprs))]
-#![cfg_attr(full, allow(incomplete_features))]
+// #![cfg_attr(full, feature(generic_const_exprs))]
+// #![cfg_attr(full, allow(incomplete_features))]
 
 const fn foo<T>() -> usize { std::mem::size_of::<T>() }
 const fn bar<const N: usize>() -> usize { N }

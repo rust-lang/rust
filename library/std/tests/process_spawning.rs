@@ -8,6 +8,7 @@ use std::str;
 mod common;
 
 #[test]
+#[cfg_attr(miri, ignore)] // Process spawning not supported by Miri
 fn issue_15149() {
     // If we're the parent, copy our own binary to a new directory.
     let my_path = env::current_exe().unwrap();

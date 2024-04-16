@@ -20,7 +20,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
-use rustc_session::lint;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -719,6 +718,11 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
+    fn visit_pattern_type_pattern(&mut self, p: &'tcx hir::Pat<'tcx>) {
+        intravisit::walk_pat(self, p)
+    }
+
+    #[instrument(level = "debug", skip(self))]
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         use self::hir::TraitItemKind::*;
         match trait_item.kind {
@@ -867,31 +871,6 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }) => {
                 self.visit_lifetime(lifetime);
                 walk_list!(self, visit_param_bound, bounds);
-
-                if lifetime.res != hir::LifetimeName::Static {
-                    for bound in bounds {
-                        let hir::GenericBound::Outlives(lt) = bound else {
-                            continue;
-                        };
-                        if lt.res != hir::LifetimeName::Static {
-                            continue;
-                        }
-                        self.insert_lifetime(lt, ResolvedArg::StaticLifetime);
-                        self.tcx.node_span_lint(
-                            lint::builtin::UNUSED_LIFETIMES,
-                            lifetime.hir_id,
-                            lifetime.ident.span,
-                            format!("unnecessary lifetime parameter `{}`", lifetime.ident),
-                            |lint| {
-                                let help = format!(
-                                    "you can use the `'static` lifetime directly, in place of `{}`",
-                                    lifetime.ident,
-                                );
-                                lint.help(help);
-                            },
-                        );
-                    }
-                }
             }
             &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate { lhs_ty, rhs_ty, .. }) => {
                 self.visit_ty(lhs_ty);
