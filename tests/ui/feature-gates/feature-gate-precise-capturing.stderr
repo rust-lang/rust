@@ -1,0 +1,13 @@
+error[E0658]: precise captures on `impl Trait` are experimental
+  --> $DIR/feature-gate-precise-capturing.rs:1:20
+   |
+LL | fn hello() -> impl use<> Sized {}
+   |                    ^^^
+   |
+   = note: see issue #123432 <https://github.com/rust-lang/rust/issues/123432> for more information
+   = help: add `#![feature(precise_capturing)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

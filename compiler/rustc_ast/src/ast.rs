@@ -63,7 +63,7 @@ impl fmt::Debug for Label {
 
 /// A "Lifetime" is an annotation of the scope in which variable
 /// can be used, e.g. `'a` in `&'a i32`.
-#[derive(Clone, Encodable, Decodable, Copy, PartialEq, Eq)]
+#[derive(Clone, Encodable, Decodable, Copy, PartialEq, Eq, Hash)]
 pub struct Lifetime {
     pub id: NodeId,
     pub ident: Ident,
@@ -2132,7 +2132,7 @@ pub enum TyKind {
     /// The `NodeId` exists to prevent lowering from having to
     /// generate `NodeId`s on the fly, which would complicate
     /// the generation of opaque `type Foo = impl Trait` items significantly.
-    ImplTrait(NodeId, GenericBounds),
+    ImplTrait(NodeId, GenericBounds, Option<P<(ThinVec<PreciseCapturingArg>, Span)>>),
     /// No-op; kept solely so that we can pretty-print faithfully.
     Paren(P<Ty>),
     /// Unused for now.
@@ -2186,6 +2186,14 @@ pub enum TraitObjectSyntax {
     Dyn,
     DynStar,
     None,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum PreciseCapturingArg {
+    /// Lifetime parameter
+    Lifetime(Lifetime),
+    /// Type or const parameter
+    Arg(Path, NodeId),
 }
 
 /// Inline assembly operand explicit register or register class.

@@ -910,6 +910,7 @@ impl<'hir> Map<'hir> {
             Node::Crate(item) => item.spans.inner_span,
             Node::WhereBoundPredicate(pred) => pred.span,
             Node::ArrayLenInfer(inf) => inf.span,
+            Node::PreciseCapturingNonLifetimeArg(param) => param.ident.span,
             Node::Synthetic => unreachable!(),
             Node::Err(span) => *span,
         }
@@ -1183,6 +1184,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Node::ArrayLenInfer(_) => node_str("array len infer"),
         Node::Synthetic => unreachable!(),
         Node::Err(_) => node_str("error"),
+        Node::PreciseCapturingNonLifetimeArg(_param) => node_str("parameter"),
     }
 }
 

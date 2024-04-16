@@ -1375,6 +1375,7 @@ symbols! {
         powif32,
         powif64,
         pre_dash_lto: "pre-lto",
+        precise_capturing,
         precise_pointer_size_matching,
         pref_align_of,
         prefetch_read_data,

@@ -1150,8 +1150,17 @@ impl<'a> State<'a> {
                 }
                 self.print_type_bounds(bounds);
             }
-            ast::TyKind::ImplTrait(_, bounds) => {
+            ast::TyKind::ImplTrait(_, bounds, precise_capturing_args) => {
                 self.word_nbsp("impl");
+                if let Some((precise_capturing_args, ..)) = precise_capturing_args.as_deref() {
+                    self.word("use");
+                    self.word("<");
+                    self.commasep(Inconsistent, precise_capturing_args, |s, arg| match arg {
+                        ast::PreciseCapturingArg::Arg(p, _) => s.print_path(p, false, 0),
+                        ast::PreciseCapturingArg::Lifetime(lt) => s.print_lifetime(*lt),
+                    });
+                    self.word(">")
+                }
                 self.print_type_bounds(bounds);
             }
             ast::TyKind::Array(ty, length) => {

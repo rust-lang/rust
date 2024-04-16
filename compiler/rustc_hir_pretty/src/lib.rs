@@ -95,6 +95,7 @@ impl<'a> State<'a> {
             Node::PatField(a) => self.print_patfield(a),
             Node::Arm(a) => self.print_arm(a),
             Node::Infer(_) => self.word("_"),
+            Node::PreciseCapturingNonLifetimeArg(param) => self.print_ident(param.ident),
             Node::Block(a) => {
                 // Containing cbox, will be closed by print-block at `}`.
                 self.cbox(INDENT_UNIT);

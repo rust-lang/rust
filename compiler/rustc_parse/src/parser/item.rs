@@ -625,7 +625,7 @@ impl<'a> Parser<'a> {
                     // This notably includes paths passed through `ty` macro fragments (#46438).
                     TyKind::Path(None, path) => path,
                     other => {
-                        if let TyKind::ImplTrait(_, bounds) = other
+                        if let TyKind::ImplTrait(_, bounds, None) = other
                             && let [bound] = bounds.as_slice()
                         {
                             // Suggest removing extra `impl` keyword:

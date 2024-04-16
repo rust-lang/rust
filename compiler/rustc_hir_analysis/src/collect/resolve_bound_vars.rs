@@ -557,6 +557,50 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         }
     }
 
+    fn visit_precise_capturing_arg(
+        &mut self,
+        arg: &'tcx hir::PreciseCapturingArg<'tcx>,
+    ) -> Self::Result {
+        match *arg {
+            hir::PreciseCapturingArg::Lifetime(lt) => match lt.res {
+                LifetimeName::Param(def_id) => {
+                    self.resolve_lifetime_ref(def_id, lt);
+                }
+                LifetimeName::Error => {}
+                LifetimeName::ImplicitObjectLifetimeDefault
+                | LifetimeName::Infer
+                | LifetimeName::Static => {
+                    self.tcx.dcx().emit_err(errors::BadPreciseCapture {
+                        span: lt.ident.span,
+                        kind: "lifetime",
+                        found: format!("`{}`", lt.ident.name),
+                    });
+                }
+            },
+            hir::PreciseCapturingArg::Param(param) => match param.res {
+                Res::Def(DefKind::TyParam | DefKind::ConstParam, def_id)
+                | Res::SelfTyParam { trait_: def_id } => {
+                    self.resolve_type_ref(def_id.expect_local(), param.hir_id);
+                }
+                Res::Err => {}
+                Res::SelfTyAlias { alias_to, .. } => {
+                    self.tcx.dcx().emit_err(errors::PreciseCaptureSelfAlias {
+                        span: param.ident.span,
+                        self_span: self.tcx.def_span(alias_to),
+                        what: self.tcx.def_descr(alias_to),
+                    });
+                }
+                res => {
+                    self.tcx.dcx().emit_err(errors::BadPreciseCapture {
+                        span: param.ident.span,
+                        kind: "type or const",
+                        found: res.descr().to_string(),
+                    });
+                }
+            },
+        }
+    }
+
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
         match item.kind {
             hir::ForeignItemKind::Fn(_, _, generics) => {
