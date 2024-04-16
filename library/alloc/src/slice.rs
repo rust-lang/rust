@@ -864,18 +864,17 @@ fn stable_sort<T, F>(v: &mut [T], mut is_less: F)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    use sort::stable::BufGuard;
+    sort::stable::sort::<T, F, Vec<T>>(v, &mut is_less);
+}
 
-    #[unstable(issue = "none", feature = "std_internals")]
-    impl<T> BufGuard<T> for Vec<T> {
-        fn with_capacity(capacity: usize) -> Self {
-            Vec::with_capacity(capacity)
-        }
-
-        fn as_uninit_slice_mut(&mut self) -> &mut [MaybeUninit<T>] {
-            self.spare_capacity_mut()
-        }
+#[cfg(not(no_global_oom_handling))]
+#[unstable(issue = "none", feature = "std_internals")]
+impl<T> sort::stable::BufGuard<T> for Vec<T> {
+    fn with_capacity(capacity: usize) -> Self {
+        Vec::with_capacity(capacity)
     }
 
-    sort::stable::sort::<T, F, Vec<T>>(v, &mut is_less);
+    fn as_uninit_slice_mut(&mut self) -> &mut [MaybeUninit<T>] {
+        self.spare_capacity_mut()
+    }
 }
