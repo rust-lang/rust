@@ -2,7 +2,9 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::Nonterminal::*;
 use rustc_ast::token::NtExprKind::*;
 use rustc_ast::token::NtPatKind::*;
-use rustc_ast::token::{self, Delimiter, NonterminalKind, Token};
+use rustc_ast::token::{
+    self, Delimiter, InvisibleOrigin, MetaVarKind, Nonterminal, NonterminalKind, Token,
+};
 use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
@@ -22,7 +24,29 @@ impl<'a> Parser<'a> {
     #[inline]
     pub fn nonterminal_may_begin_with(kind: NonterminalKind, token: &Token) -> bool {
         /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
-        fn may_be_ident(nt: &token::Nonterminal) -> bool {
+        fn may_be_ident(kind: MetaVarKind) -> bool {
+            use MetaVarKind::*;
+            match kind {
+                Stmt
+                | Pat(_)
+                | Expr { .. }
+                | Ty
+                | Literal // `true`, `false`
+                | Meta
+                | Path => true,
+
+                Item
+                | Block
+                | Vis => false,
+
+                Ident
+                | Lifetime
+                | TT => unreachable!(),
+            }
+        }
+
+        /// Old variant of `may_be_ident`. Being phased out.
+        fn nt_may_be_ident(nt: &Nonterminal) -> bool {
             match nt {
                 NtStmt(_)
                 | NtPat(_)
@@ -69,7 +93,8 @@ impl<'a> Parser<'a> {
                 | token::Ident(..)
                 | token::NtIdent(..)
                 | token::NtLifetime(..)
-                | token::Interpolated(_) => true,
+                | token::Interpolated(_)
+                | token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => true,
                 _ => token.can_begin_type(),
             },
             NonterminalKind::Block => match &token.kind {
@@ -79,11 +104,29 @@ impl<'a> Parser<'a> {
                     NtBlock(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
                     NtItem(_) | NtPat(_) | NtTy(_) | NtMeta(_) | NtPath(_) | NtVis(_) => false,
                 },
+                token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(k))) => match k {
+                    MetaVarKind::Block
+                    | MetaVarKind::Stmt
+                    | MetaVarKind::Expr { .. }
+                    | MetaVarKind::Literal => true,
+                    MetaVarKind::Item
+                    | MetaVarKind::Pat(_)
+                    | MetaVarKind::Ty
+                    | MetaVarKind::Meta
+                    | MetaVarKind::Path
+                    | MetaVarKind::Vis => false,
+                    MetaVarKind::Lifetime | MetaVarKind::Ident | MetaVarKind::TT => {
+                        unreachable!()
+                    }
+                },
                 _ => false,
             },
             NonterminalKind::Path | NonterminalKind::Meta => match &token.kind {
                 token::PathSep | token::Ident(..) | token::NtIdent(..) => true,
-                token::Interpolated(nt) => may_be_ident(nt),
+                token::Interpolated(nt) => nt_may_be_ident(nt),
+                token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(kind))) => {
+                    may_be_ident(*kind)
+                }
                 _ => false,
             },
             NonterminalKind::Pat(pat_kind) => token.can_begin_pattern(pat_kind),
