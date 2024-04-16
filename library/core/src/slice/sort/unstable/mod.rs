@@ -11,10 +11,10 @@ pub(crate) mod quicksort;
 
 /// Unstable sort called ipnsort by Lukas Bergdoll.
 /// Design document:
-/// https://github.com/Voultapher/sort-research-rs/blob/main/writeup/ipnsort_introduction/text.md
+/// <https://github.com/Voultapher/sort-research-rs/blob/main/writeup/ipnsort_introduction/text.md>
 ///
 /// Upholds all safety properties outlined here:
-/// https://github.com/Voultapher/sort-research-rs/blob/main/writeup/sort_safety/text.md
+/// <https://github.com/Voultapher/sort-research-rs/blob/main/writeup/sort_safety/text.md>
 #[inline(always)]
 pub fn sort<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F) {
     // Arrays of zero-sized types are always all-equal, and thus sorted.

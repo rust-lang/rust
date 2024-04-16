@@ -14,10 +14,10 @@ pub(crate) mod quicksort;
 
 /// Stable sort called driftsort by Orson Peters and Lukas Bergdoll.
 /// Design document:
-/// https://github.com/Voultapher/sort-research-rs/blob/main/writeup/driftsort_introduction/text.md
+/// <https://github.com/Voultapher/sort-research-rs/blob/main/writeup/driftsort_introduction/text.md>
 ///
 /// Upholds all safety properties outlined here:
-/// https://github.com/Voultapher/sort-research-rs/blob/main/writeup/sort_safety/text.md
+/// <https://github.com/Voultapher/sort-research-rs/blob/main/writeup/sort_safety/text.md>
 #[inline(always)]
 pub fn sort<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less: &mut F) {
     // Arrays of zero-sized types are always all-equal, and thus sorted.
