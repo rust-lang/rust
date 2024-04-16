@@ -4,7 +4,7 @@ use crate::mbe::{
     macro_parser::{MatcherLoc, NamedParseResult, ParseResult::*, TtParser},
     macro_rules::{try_match_macro, Tracker},
 };
-use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_macros::Subdiagnostic;
@@ -70,7 +70,9 @@ pub(super) fn failed_to_match_macro<'cx>(
 
     if let MatcherLoc::Token { token: expected_token } = &remaining_matcher
         && (matches!(expected_token.kind, TokenKind::Interpolated(_))
-            || matches!(token.kind, TokenKind::Interpolated(_)))
+            || matches!(token.kind, TokenKind::Interpolated(_))
+            || matches!(expected_token.kind, TokenKind::OpenDelim(Delimiter::Invisible(_)))
+            || matches!(token.kind, TokenKind::OpenDelim(Delimiter::Invisible(_))))
     {
         err.note("captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens");
         err.note("see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information");
