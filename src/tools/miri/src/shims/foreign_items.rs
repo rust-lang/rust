@@ -657,6 +657,16 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     dest,
                 )?;
             }
+            "wcslen" => {
+                let [ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
+                let n = this.read_wchar_t_str(ptr)?.len();
+                this.write_scalar(
+                    Scalar::from_target_usize(u64::try_from(n).unwrap(), this),
+                    dest,
+                )?;
+            }
             "memcpy" => {
                 let [ptr_dest, ptr_src, n] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
