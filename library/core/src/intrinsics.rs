@@ -1987,6 +1987,13 @@ extern "rust-intrinsic" {
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `count_ones` method. For example,
     /// [`u32::count_ones`]
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_ctpop", since = "1.40.0")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn ctpop<T: Copy>(x: T) -> u32;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_ctpop", since = "1.40.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
@@ -2028,6 +2035,13 @@ extern "rust-intrinsic" {
     /// let num_leading = ctlz(x);
     /// assert_eq!(num_leading, 16);
     /// ```
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_ctlz", since = "1.40.0")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn ctlz<T: Copy>(x: T) -> u32;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_ctlz", since = "1.40.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
@@ -2050,6 +2064,12 @@ extern "rust-intrinsic" {
     /// let num_leading = unsafe { ctlz_nonzero(x) };
     /// assert_eq!(num_leading, 3);
     /// ```
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "constctlz", since = "1.50.0")]
+    #[rustc_nounwind]
+    pub fn ctlz_nonzero<T: Copy>(x: T) -> u32;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "constctlz", since = "1.50.0")]
     #[rustc_nounwind]
     pub fn ctlz_nonzero<T: Copy>(x: T) -> T;
@@ -2090,6 +2110,13 @@ extern "rust-intrinsic" {
     /// let num_trailing = cttz(x);
     /// assert_eq!(num_trailing, 16);
     /// ```
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_cttz", since = "1.40.0")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn cttz<T: Copy>(x: T) -> u32;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_cttz", since = "1.40.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
@@ -2112,6 +2139,12 @@ extern "rust-intrinsic" {
     /// let num_trailing = unsafe { cttz_nonzero(x) };
     /// assert_eq!(num_trailing, 3);
     /// ```
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_cttz_nonzero", since = "1.53.0")]
+    #[rustc_nounwind]
+    pub fn cttz_nonzero<T: Copy>(x: T) -> u32;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_cttz_nonzero", since = "1.53.0")]
     #[rustc_nounwind]
     pub fn cttz_nonzero<T: Copy>(x: T) -> T;
@@ -2288,6 +2321,13 @@ extern "rust-intrinsic" {
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_left` method. For example,
     /// [`u32::rotate_left`]
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn rotate_left<T: Copy>(x: T, shift: u32) -> T;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
@@ -2303,6 +2343,13 @@ extern "rust-intrinsic" {
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_right` method. For example,
     /// [`u32::rotate_right`]
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn rotate_right<T: Copy>(x: T, shift: u32) -> T;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
