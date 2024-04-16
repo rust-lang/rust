@@ -64,7 +64,7 @@ impl<T> WaitVariable<T> {
 #[derive(Copy, Clone)]
 pub enum NotifiedTcs {
     Single(Tcs),
-    All { count: NonZero<usize> },
+    All { _count: NonZero<usize> },
 }
 
 /// An RAII guard that will notify a set of target threads as well as unlock
@@ -232,7 +232,10 @@ impl WaitQueue {
             }
 
             if let Some(count) = NonZero::new(count) {
-                Ok(WaitGuard { mutex_guard: Some(guard), notified_tcs: NotifiedTcs::All { count } })
+                Ok(WaitGuard {
+                    mutex_guard: Some(guard),
+                    notified_tcs: NotifiedTcs::All { _count: count },
+                })
             } else {
                 Err(guard)
             }
