@@ -10,8 +10,8 @@ use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::{self, CallSource};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self as middle_ty, suggest_constraining_type_param, Closure, FnDef, FnPtr, GenericArgKind,
-    GenericArgsRef, Param, TraitRef, Ty,
+    self, suggest_constraining_type_param, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef,
+    Param, TraitRef, Ty,
 };
 use rustc_middle::util::{call_kind, CallDesugaringKind, CallKind};
 use rustc_session::parse::feature_err;
@@ -124,7 +124,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         );
                     }
                 }
-                middle_ty::Adt(..) => {
+                ty::Adt(..) => {
                     let obligation =
                         Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
 
@@ -621,7 +621,7 @@ impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
 }
 
 /// Types that cannot appear in the signature or locals of a `const fn`.
-pub mod ty {
+pub mod mut_ref {
     use super::*;
 
     #[derive(Debug)]

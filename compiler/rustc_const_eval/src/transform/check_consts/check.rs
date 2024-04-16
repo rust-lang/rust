@@ -168,7 +168,7 @@ impl<'ck, 'mir, 'tcx> TypeVisitor<TyCtxt<'tcx>> for LocalReturnTyVisitor<'ck, 'm
         match t.kind() {
             ty::FnPtr(_) => {}
             ty::Ref(_, _, hir::Mutability::Mut) => {
-                self.checker.check_op(ops::ty::MutRef(self.kind));
+                self.checker.check_op(ops::mut_ref::MutRef(self.kind));
                 t.super_visit_with(self)
             }
             _ => t.super_visit_with(self),
