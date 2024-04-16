@@ -298,6 +298,7 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
                 || sdkroot.contains("WatchOS.platform")
                 || sdkroot.contains("WatchSimulator.platform")
                 || sdkroot.contains("XROS.platform")
+                || sdkroot.contains("XRSimulator.platform")
             {
                 env_remove.push("SDKROOT".into())
             }
