@@ -15,7 +15,7 @@
 
 use crate::ast::{AttrStyle, StmtKind};
 use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
-use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
+use crate::token::{self, Delimiter, InvisibleOrigin, Nonterminal, Token, TokenKind};
 use crate::AttrVec;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -490,13 +490,13 @@ impl TokenStream {
             token::NtLifetime(ident) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
                 DelimSpacing::new(Spacing::JointHidden, spacing),
-                Delimiter::Invisible,
+                Delimiter::Invisible(InvisibleOrigin::FlattenToken),
                 TokenStream::token_alone(token::Lifetime(ident.name), ident.span),
             ),
             token::Interpolated(ref nt) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
                 DelimSpacing::new(Spacing::JointHidden, spacing),
-                Delimiter::Invisible,
+                Delimiter::Invisible(InvisibleOrigin::FlattenToken),
                 TokenStream::from_nonterminal_ast(&nt).flattened(),
             ),
             _ => TokenTree::Token(token.clone(), spacing),

@@ -409,8 +409,8 @@ fn make_token_stream(
                     .unwrap_or_else(|| panic!("Token stack was empty for token: {token:?}"));
 
                 let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
-                assert_eq!(
-                    open_delim, delim,
+                assert!(
+                    open_delim.eq_ignoring_invisible_origin(&delim),
                     "Mismatched open/close delims: open={open_delim:?} close={span:?}"
                 );
                 let dspan = DelimSpan::from_pair(open_sp, span);
