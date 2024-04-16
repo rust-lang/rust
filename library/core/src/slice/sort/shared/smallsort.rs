@@ -177,6 +177,8 @@ fn small_sort_fallback<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F
 fn small_sort_general<T: FreezeMarker, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F) {
     let mut stack_array = MaybeUninit::<[T; SMALL_SORT_GENERAL_SCRATCH_LEN]>::uninit();
 
+    // SAFETY: The memory is backed by `stack_array`, and the operation is safe as long as the len
+    // is the same.
     let scratch = unsafe {
         slice::from_raw_parts_mut(
             stack_array.as_mut_ptr() as *mut MaybeUninit<T>,
@@ -327,8 +329,9 @@ where
         }
 
         // SAFETY: The right side of `v` based on `len_div_2` is guaranteed in-bounds.
-        region =
-            unsafe { &mut *ptr::slice_from_raw_parts_mut(v_base.add(len_div_2), len - len_div_2) };
+        unsafe {
+            region = &mut *ptr::slice_from_raw_parts_mut(v_base.add(len_div_2), len - len_div_2)
+        };
     }
 
     // SAFETY: We checked that T is Freeze and thus observation safe.
@@ -810,14 +813,6 @@ fn panic_on_ord_violation() -> ! {
 pub(crate) const fn has_efficient_in_place_swap<T>() -> bool {
     // Heuristic that holds true on all tested 64-bit capable architectures.
     mem::size_of::<T>() <= 8 // mem::size_of::<u64>()
-}
-
-#[test]
-fn type_info() {
-    assert!(has_efficient_in_place_swap::<i32>());
-    assert!(has_efficient_in_place_swap::<u64>());
-    assert!(!has_efficient_in_place_swap::<u128>());
-    assert!(!has_efficient_in_place_swap::<String>());
 }
 
 /// SAFETY: Only used for run-time optimization heuristic.

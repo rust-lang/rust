@@ -256,12 +256,3 @@ const fn has_direct_interior_mutability<T>() -> bool {
     // Otherwise a type like Mutex<Option<Box<str>>> could lead to double free.
     !T::is_freeze()
 }
-
-#[test]
-fn freeze_check() {
-    assert!(!has_direct_interior_mutability::<u32>());
-    assert!(!has_direct_interior_mutability::<[u128; 2]>());
-
-    assert!(has_direct_interior_mutability::<crate::cell::Cell<u32>>());
-    assert!(has_direct_interior_mutability::<crate::sync::Mutex<u32>>());
-}

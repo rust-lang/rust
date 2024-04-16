@@ -1803,7 +1803,6 @@ fn brute_force_rotate_test_1() {
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
 fn sort_unstable() {
-    // use core::cmp::Ordering::{Equal, Greater, Less};
     use rand::Rng;
 
     // Miri is too slow (but still need to `chain` to make the types match)

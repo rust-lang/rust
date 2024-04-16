@@ -325,6 +325,8 @@ struct GapGuard<T> {
 
 impl<T> Drop for GapGuard<T> {
     fn drop(&mut self) {
+        // SAFETY: `self` MUST be constructed in a way that makes copying the gap value into
+        // `self.pos` sound.
         unsafe {
             ptr::copy_nonoverlapping(&*self.value, self.pos, 1);
         }
@@ -340,6 +342,8 @@ struct GapGuardRaw<T> {
 
 impl<T> Drop for GapGuardRaw<T> {
     fn drop(&mut self) {
+        // SAFETY: `self` MUST be constructed in a way that makes copying the gap value into
+        // `self.pos` sound.
         unsafe {
             ptr::copy_nonoverlapping(self.value, self.pos, 1);
         }
