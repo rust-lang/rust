@@ -19,6 +19,10 @@ use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
 // Map from crate id to the name of the crate and path of the proc-macro. If the value is `None`,
 // then the crate for the proc-macro hasn't been build yet as the build data is missing.
 pub type ProcMacroPaths = FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf), String>>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct SourceRootId(pub u32);
+
 /// Files are grouped into source roots. A source root is a directory on the
 /// file systems which is watched for changes. Typically it corresponds to a
 /// Rust crate. Source roots *might* be nested: in this case, a file belongs to
@@ -26,9 +30,6 @@ pub type ProcMacroPaths = FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf)
 /// source root, and the analyzer does not know the root path of the source root at
 /// all. So, a file from one source root can't refer to a file in another source
 /// root by path.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct SourceRootId(pub u32);
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceRoot {
     /// Sysroot or crates.io library.

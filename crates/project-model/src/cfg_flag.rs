@@ -4,8 +4,9 @@
 use std::{fmt, str::FromStr};
 
 use cfg::CfgOptions;
+use serde::Serialize;
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize)]
 pub enum CfgFlag {
     Atom(String),
     KeyValue { key: String, value: String },

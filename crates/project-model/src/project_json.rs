@@ -52,7 +52,7 @@
 use base_db::{CrateDisplayName, CrateName};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
-use serde::{de, Deserialize};
+use serde::{de, Deserialize, Serialize};
 use span::Edition;
 
 use crate::cfg_flag::CfgFlag;
@@ -161,14 +161,14 @@ impl ProjectJson {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProjectJsonData {
     sysroot: Option<Utf8PathBuf>,
     sysroot_src: Option<Utf8PathBuf>,
     crates: Vec<CrateData>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct CrateData {
     display_name: Option<String>,
     root_module: Utf8PathBuf,
@@ -190,7 +190,7 @@ struct CrateData {
     repository: Option<String>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename = "edition")]
 enum EditionData {
     #[serde(rename = "2015")]
@@ -218,20 +218,21 @@ impl From<EditionData> for Edition {
 ///
 /// This will differ from `CrateId` when multiple `ProjectJson`
 /// workspaces are loaded.
-#[derive(Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
 #[serde(transparent)]
 pub struct CrateArrayIdx(pub usize);
 
-#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub(crate) struct Dep {
     /// Identifies a crate by position in the crates array.
     #[serde(rename = "crate")]
     pub(crate) krate: CrateArrayIdx,
+    #[serde(serialize_with = "serialize_crate_name")]
     #[serde(deserialize_with = "deserialize_crate_name")]
     pub(crate) name: CrateName,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct CrateSource {
     include_dirs: Vec<Utf8PathBuf>,
     exclude_dirs: Vec<Utf8PathBuf>,
@@ -243,4 +244,11 @@ where
 {
     let name = String::deserialize(de)?;
     CrateName::new(&name).map_err(|err| de::Error::custom(format!("invalid crate name: {err:?}")))
+}
+
+fn serialize_crate_name<S>(name: &CrateName, se: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    se.serialize_str(name)
 }

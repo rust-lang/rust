@@ -189,7 +189,7 @@ impl GlobalState {
         };
 
         let mut analysis_host = AnalysisHost::new(config.lru_parse_query_capacity());
-        if let Some(capacities) = config.lru_query_capacities() {
+        if let Some(capacities) = config.lru_query_capacities_config() {
             analysis_host.update_lru_capacities(capacities);
         }
         let (flycheck_sender, flycheck_receiver) = unbounded();
