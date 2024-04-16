@@ -1207,7 +1207,6 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(binary_heap_as_slice)]
     /// use std::collections::BinaryHeap;
     /// use std::io::{self, Write};
     ///
@@ -1216,7 +1215,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// io::sink().write(heap.as_slice()).unwrap();
     /// ```
     #[must_use]
-    #[unstable(feature = "binary_heap_as_slice", issue = "83659")]
+    #[stable(feature = "binary_heap_as_slice", since = "CURRENT_RUSTC_VERSION")]
     pub fn as_slice(&self) -> &[T] {
         self.data.as_slice()
     }
