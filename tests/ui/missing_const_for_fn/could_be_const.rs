@@ -141,3 +141,21 @@ mod msrv {
         let _ = unsafe { bar.val };
     }
 }
+
+mod issue12677 {
+    pub struct Wrapper {
+        pub strings: Vec<String>,
+    }
+
+    impl Wrapper {
+        #[must_use]
+        pub fn new(strings: Vec<String>) -> Self {
+            Self { strings }
+        }
+
+        #[must_use]
+        pub fn empty() -> Self {
+            Self { strings: Vec::new() }
+        }
+    }
+}

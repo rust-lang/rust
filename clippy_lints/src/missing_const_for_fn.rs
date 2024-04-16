@@ -1,7 +1,6 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
-use clippy_utils::ty::has_drop;
 use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, is_from_proc_macro, trait_ref_of_method};
 use rustc_hir as hir;
 use rustc_hir::def_id::CRATE_DEF_ID;
@@ -121,10 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
                 }
             },
             FnKind::Method(_, sig, ..) => {
-                if trait_ref_of_method(cx, def_id).is_some()
-                    || already_const(sig.header)
-                    || method_accepts_droppable(cx, def_id)
-                {
+                if trait_ref_of_method(cx, def_id).is_some() || already_const(sig.header) {
                     return;
                 }
             },
@@ -160,15 +156,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
         }
     }
     extract_msrv_attr!(LateContext);
-}
-
-/// Returns true if any of the method parameters is a type that implements `Drop`. The method
-/// can't be made const then, because `drop` can't be const-evaluated.
-fn method_accepts_droppable(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
-    let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
-
-    // If any of the params are droppable, return true
-    sig.inputs().iter().any(|&ty| has_drop(cx, ty))
 }
 
 // We don't have to lint on something that's already `const`
