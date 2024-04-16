@@ -1263,6 +1263,166 @@ pub(crate) trait Tester {
     fn register_header(&mut self, _name: &str, _level: u32) {}
 }
 
+/// If there are too many doctests than can be compiled at once, we need to limit the size
+/// of the generated test to prevent everything to break down.
+///
+/// We add all doctests one by one through [`DocTestRunner::add_test`] and when it reaches
+/// `TEST_BATCH_SIZE` size or is dropped, it runs all stored doctests at once.
+struct DocTestRunner<'a> {
+    nb_errors: &'a mut usize,
+    ran_edition_tests: &'a mut usize,
+    standalone: &'a mut Vec<TestDescAndFn>,
+    crate_attrs: FxHashSet<String>,
+    edition: Edition,
+    ids: String,
+    output: String,
+    supports_color: bool,
+    rustdoc_test_options: &'a Arc<IndividualTestOptions>,
+    outdir: &'a Arc<DirState>,
+    nb_tests: usize,
+    doctests: Vec<DocTest>,
+    opts: &'a GlobalTestOptions,
+    test_args: &'a [String],
+    unused_externs: &'a Arc<Mutex<Vec<UnusedExterns>>>,
+}
+
+impl<'a> DocTestRunner<'a> {
+    const TEST_BATCH_SIZE: usize = 250;
+
+    fn new(
+        nb_errors: &'a mut usize,
+        ran_edition_tests: &'a mut usize,
+        standalone: &'a mut Vec<TestDescAndFn>,
+        edition: Edition,
+        rustdoc_test_options: &'a Arc<IndividualTestOptions>,
+        outdir: &'a Arc<DirState>,
+        opts: &'a GlobalTestOptions,
+        test_args: &'a [String],
+        unused_externs: &'a Arc<Mutex<Vec<UnusedExterns>>>,
+    ) -> Self {
+        Self {
+            nb_errors,
+            ran_edition_tests,
+            standalone,
+            edition,
+            crate_attrs: FxHashSet::default(),
+            ids: String::new(),
+            output: String::new(),
+            supports_color: true,
+            rustdoc_test_options,
+            outdir,
+            nb_tests: 0,
+            doctests: Vec::with_capacity(Self::TEST_BATCH_SIZE),
+            opts,
+            test_args,
+            unused_externs,
+        }
+    }
+
+    fn add_test(&mut self, doctest: DocTest) {
+        for line in doctest.crate_attrs.split('\n') {
+            self.crate_attrs.insert(line.to_string());
+        }
+        if !self.ids.is_empty() {
+            self.ids.push(',');
+        }
+        self.ids.push_str(&format!(
+            "{}::TEST",
+            doctest.generate_test_desc(self.nb_tests, &mut self.output)
+        ));
+        self.supports_color &= doctest.supports_color;
+        self.nb_tests += 1;
+        self.doctests.push(doctest);
+
+        if self.nb_tests >= Self::TEST_BATCH_SIZE {
+            self.run_tests();
+        }
+    }
+
+    fn run_tests(&mut self) {
+        if self.nb_tests == 0 {
+            return;
+        }
+        let mut code = "\
+#![allow(unused_extern_crates)]
+#![allow(internal_features)]
+#![feature(test)]
+#![feature(rustc_attrs)]
+#![feature(coverage_attribute)]\n"
+            .to_string();
+
+        for crate_attr in &self.crate_attrs {
+            code.push_str(crate_attr);
+            code.push('\n');
+        }
+
+        DocTest::push_attrs(&mut code, &self.opts, &mut 0);
+        code.push_str("extern crate test;\n");
+
+        let test_args =
+            self.test_args.iter().map(|arg| format!("{arg:?}.to_string(),")).collect::<String>();
+        write!(
+            code,
+            "\
+{output}
+#[rustc_main]
+#[coverage(off)]
+fn main() {{
+test::test_main(&[{test_args}], vec![{ids}], None);
+}}",
+            output = self.output,
+            ids = self.ids,
+        )
+        .expect("failed to generate test code");
+        let ret = run_test(
+            code,
+            self.supports_color,
+            None,
+            Arc::clone(self.rustdoc_test_options),
+            true,
+            Arc::clone(self.outdir),
+            LangString::empty_for_test(),
+            self.edition,
+            |_: UnusedExterns| {},
+            false,
+        );
+        if let Err(TestFailure::CompileError) = ret {
+            // We failed to compile all compatible tests as one so we push them into the
+            // "standalone" doctests.
+            debug!(
+                "Failed to compile compatible doctests for edition {} all at once",
+                self.edition
+            );
+            for doctest in self.doctests.drain(..) {
+                self.standalone.push(doctest.generate_test_desc_and_fn(
+                    &self.opts,
+                    self.edition,
+                    Arc::clone(self.unused_externs),
+                ));
+            }
+        } else {
+            *self.ran_edition_tests += 1;
+            if ret.is_err() {
+                *self.nb_errors += 1;
+            }
+        }
+
+        // We reset values.
+        self.supports_color = true;
+        self.ids.clear();
+        self.output.clear();
+        self.crate_attrs.clear();
+        self.nb_tests = 0;
+        self.doctests.clear();
+    }
+}
+
+impl<'a> Drop for DocTestRunner<'a> {
+    fn drop(&mut self) {
+        self.run_tests();
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct DocTestKinds {
     /// Tests that cannot be run together with the rest (`compile_fail` and `test_harness`).
@@ -1313,73 +1473,24 @@ impl DocTestKinds {
 
         for (edition, mut doctests) in others {
             doctests.sort_by(|a, b| a.name.cmp(&b.name));
-            let mut ids = String::new();
-            let mut output = "\
-#![allow(unused_extern_crates)]
-#![allow(internal_features)]
-#![feature(test)]
-#![feature(rustc_attrs)]
-#![feature(coverage_attribute)]\n"
-                .to_string();
-
-            for doctest in &doctests {
-                output.push_str(&doctest.crate_attrs);
-            }
-
-            DocTest::push_attrs(&mut output, &opts, &mut 0);
-            output.push_str("extern crate test;\n");
-
             let rustdoc_test_options = Arc::clone(&doctests[0].rustdoc_test_options);
             let outdir = Arc::clone(&doctests[0].outdir);
 
-            let mut supports_color = true;
-            for (pos, doctest) in doctests.iter().enumerate() {
-                if !ids.is_empty() {
-                    ids.push(',');
-                }
-                ids.push_str(&format!("{}::TEST", doctest.generate_test_desc(pos, &mut output)));
-                supports_color &= doctest.supports_color;
-            }
-            let test_args =
-                test_args.iter().map(|arg| format!("{arg:?}.to_string(),")).collect::<String>();
-            write!(
-                output,
-                "\
-#[rustc_main]
-#[coverage(off)]
-fn main() {{
-    test::test_main(&[{test_args}], vec![{ids}], None);
-}}",
-            )
-            .unwrap();
-            let ret = run_test(
-                output,
-                supports_color,
-                None,
-                rustdoc_test_options,
-                true,
-                outdir,
-                LangString::empty_for_test(),
+            // When `DocTestRunner` is dropped, it'll run all pending doctests it didn't already
+            // run, so no need to worry about it.
+            let mut tests_runner = DocTestRunner::new(
+                &mut nb_errors,
+                &mut ran_edition_tests,
+                &mut standalone,
                 edition,
-                |_: UnusedExterns| {},
-                false,
+                &rustdoc_test_options,
+                &outdir,
+                &opts,
+                &test_args,
+                unused_externs,
             );
-            if let Err(TestFailure::CompileError) = ret {
-                // We failed to compile all compatible tests as one so we push them into the
-                // "standalone" doctests.
-                debug!("Failed to compile compatible doctests for edition {edition} all at once");
-                for doctest in doctests {
-                    standalone.push(doctest.generate_test_desc_and_fn(
-                        &opts,
-                        edition,
-                        Arc::clone(unused_externs),
-                    ));
-                }
-            } else {
-                ran_edition_tests += 1;
-                if ret.is_err() {
-                    nb_errors += 1;
-                }
+            for doctest in doctests {
+                tests_runner.add_test(doctest);
             }
         }
 
