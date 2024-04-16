@@ -427,6 +427,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         _prov: (AllocId, Self::ProvenanceExtra),
         _size: Size,
         _align: Align,
+        _kind: MemoryKind<Self::MemoryKind>,
     ) -> InterpResult<'tcx> {
         Ok(())
     }

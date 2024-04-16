@@ -34,7 +34,7 @@ impl<'tcx> Tree {
         id: AllocId,
         size: Size,
         state: &mut GlobalStateInner,
-        _kind: MemoryKind<machine::MiriMemoryKind>,
+        _kind: MemoryKind,
         machine: &MiriMachine<'_, 'tcx>,
     ) -> Self {
         let tag = state.base_ptr_tag(id, machine); // Fresh tag for the root

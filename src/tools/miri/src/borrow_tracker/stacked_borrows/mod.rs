@@ -509,7 +509,7 @@ impl Stacks {
         id: AllocId,
         size: Size,
         state: &mut GlobalStateInner,
-        kind: MemoryKind<MiriMemoryKind>,
+        kind: MemoryKind,
         machine: &MiriMachine<'_, '_>,
     ) -> Self {
         let (base_tag, perm) = match kind {
