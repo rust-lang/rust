@@ -753,43 +753,21 @@ jobs:
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
         if: success() && !env.SKIP_JOB
-  try-success:
+  try-outcome:
     needs:
       - try
-    if: "success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
-    steps:
-      - name: mark the job as a success
-        run: exit 0
-        shell: bash
+    if: "!cancelled() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
     name: bors build finished
     runs-on: ubuntu-latest
-  try-failure:
-    needs:
-      - try
-    if: "!success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
     steps:
-      - name: mark the job as a failure
-        run: exit 1
-        shell: bash
-    name: bors build finished
-    runs-on: ubuntu-latest
-  auto-success:
+      - name: set the correct exit status
+        run: "jq --exit-status 'all(.result == \"success\" or .result == \"skipped\")' <<< '${{ toJson(needs) }}'"
+  auto-outcome:
     needs:
       - auto
-    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
-    steps:
-      - name: mark the job as a success
-        run: exit 0
-        shell: bash
+    if: "!cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
     name: bors build finished
     runs-on: ubuntu-latest
-  auto-failure:
-    needs:
-      - auto
-    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
     steps:
-      - name: mark the job as a failure
-        run: exit 1
-        shell: bash
-    name: bors build finished
-    runs-on: ubuntu-latest
+      - name: set the correct exit status
+        run: "jq --exit-status 'all(.result == \"success\" or .result == \"skipped\")' <<< '${{ toJson(needs) }}'"

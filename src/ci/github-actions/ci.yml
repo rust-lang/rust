@@ -290,20 +290,11 @@ x--expand-yaml-anchors--remove:
   - &base-outcome-job
     name: bors build finished
     runs-on: ubuntu-latest
-
-  - &base-success-job
     steps:
-      - name: mark the job as a success
-        run: exit 0
-        shell: bash
-    <<: *base-outcome-job
-
-  - &base-failure-job
-    steps:
-      - name: mark the job as a failure
-        run: exit 1
-        shell: bash
-    <<: *base-outcome-job
+      # Set the exit status to 0 if all dependency jobs were either successful
+      # or skipped, otherwise set it to 1.
+      - name: set the correct exit status
+        run: jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'
 
 ###########################
 #   Builders definition   #
@@ -790,19 +781,13 @@ jobs:
   # These jobs don't actually test anything, but they're used to tell bors the
   # build completed, as there is no practical way to detect when a workflow is
   # successful listening to webhooks only.
-  try-success:
+  try-outcome:
     needs: [try]
-    if: "success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
-    <<: *base-success-job
-  try-failure:
-    needs: [try]
-    if: "!success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
-    <<: *base-failure-job
-  auto-success:
+    # !cancelled() executes the job regardless of whether it passed or failed
+    if: "!cancelled() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
+    <<: *base-outcome-job
+  auto-outcome:
     needs: [auto]
-    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
-    <<: *base-success-job
-  auto-failure:
-    needs: [auto]
-    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
-    <<: *base-failure-job
+    # !cancelled() executes the job regardless of whether it passed or failed
+    if: "!cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
+    <<: *base-outcome-job
