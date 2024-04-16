@@ -102,4 +102,10 @@ declare_hooks! {
     /// turn a deserialized `DefPathHash` into its current `DefId`.
     /// Will fetch a DefId from a DefPathHash for a foreign crate.
     hook def_path_hash_to_def_id_extern(hash: DefPathHash, stable_crate_id: StableCrateId) -> DefId;
+
+    /// Create a THIR tree for debugging.
+    hook thir_tree(key: LocalDefId) -> String;
+
+    /// Create a list-like THIR representation for debugging.
+    hook thir_flat(key: LocalDefId) -> String;
 }
