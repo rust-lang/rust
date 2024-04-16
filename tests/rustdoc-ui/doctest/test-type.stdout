@@ -1,7 +1,7 @@
 
 running 4 tests
 test $DIR/test-type.rs - f (line 12) ... ignored
-test $DIR/test-type.rs - f (line 15) ... ok
+test $DIR/test-type.rs - f (line 15) - compile ... ok
 test $DIR/test-type.rs - f (line 6) ... ok
 test $DIR/test-type.rs - f (line 9) - should panic ... ok
 
