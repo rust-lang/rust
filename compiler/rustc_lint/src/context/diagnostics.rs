@@ -179,10 +179,6 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiag::NamedAsmLabel(help) => {
-            diag.help(help);
-            diag.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
-        }
         BuiltinLintDiag::UnexpectedCfgName(name, value) => {
             check_cfg::unexpected_cfg_name(sess, diag, name, value)
         }

@@ -1947,3 +1947,9 @@ pub struct UnitBindingsDiag {
     #[label]
     pub label: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_asm_labels)]
+#[help]
+#[note]
+pub struct BuiltinNamedAsmLabel;

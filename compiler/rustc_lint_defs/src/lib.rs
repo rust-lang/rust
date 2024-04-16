@@ -592,7 +592,6 @@ pub enum BuiltinLintDiag {
     ReservedPrefix(Span),
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
-    NamedAsmLabel(String),
     UnicodeTextFlow(Span, String),
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),

@@ -30,6 +30,8 @@ lint_builtin_anonymous_params = anonymous parameters are deprecated and will be 
     .suggestion = try naming the parameter or explicitly ignoring it
 
 lint_builtin_asm_labels = avoid using named labels in inline assembly
+    .help = only local labels of the form `<number>:` should be used in inline asm
+    .note = see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
 lint_builtin_box_pointers = type uses owned (Box type) pointers: {$ty}
 
