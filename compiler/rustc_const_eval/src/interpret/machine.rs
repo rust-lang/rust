@@ -347,8 +347,6 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// allocation (because a copy had to be done to adjust things), machine memory will
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
-    ///
-    /// This must only fail if `alloc` contains provenance.
     fn adjust_allocation<'b>(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         id: AllocId,
