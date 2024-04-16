@@ -6,7 +6,8 @@ use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT
 use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::Span;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -62,6 +63,10 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         // Error already emitted, no need to delay another.
         return;
     };
+
+    if hidden_tys.items().any(|(_, &ty)| ty.skip_binder().references_error()) {
+        return;
+    }
 
     let mut collector = ImplTraitInTraitCollector { tcx, types: FxIndexSet::default() };
     trait_m_sig.visit_with(&mut collector);
