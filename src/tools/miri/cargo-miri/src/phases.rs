@@ -412,8 +412,11 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     // Arguments are treated very differently depending on whether this crate is
     // for interpretation by Miri, or for use by a build script / proc macro.
     if target_crate {
-        // Set the sysroot.
-        cmd.arg("--sysroot").arg(env::var_os("MIRI_SYSROOT").unwrap());
+        if phase != RustcPhase::Setup {
+            // Set the sysroot -- except during setup, where we don't have an existing sysroot yet
+            // and where the bootstrap wrapper adds its own `--sysroot` flag so we can't set ours.
+            cmd.arg("--sysroot").arg(env::var_os("MIRI_SYSROOT").unwrap());
+        }
 
         // Forward arguments, but patched.
         let emit_flag = "--emit";
@@ -578,9 +581,9 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     }
 
     if phase != RunnerPhase::Rustdoc {
-        // Set the sysroot. Not necessary in rustdoc, where we already set the sysroot when invoking
-        // rustdoc itself, which will forward that flag when invoking rustc (i.e., us), so the flag
-        // is present in `info.args`.
+        // Set the sysroot. Not necessary in rustdoc, where we already set the sysroot in
+        // `phase_rustdoc`. rustdoc will forward that flag when invoking rustc (i.e., us), so the
+        // flag is present in `info.args`.
         cmd.arg("--sysroot").arg(env::var_os("MIRI_SYSROOT").unwrap());
     }
     // Forward rustc arguments.
