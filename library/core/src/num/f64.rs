@@ -890,8 +890,9 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_to_degrees_and_to_radians", issue = "none")]
     #[inline]
-    pub fn to_degrees(self) -> f64 {
+    pub const fn to_degrees(self) -> f64 {
         // The division here is correctly rounded with respect to the true
         // value of 180/π. (This differs from f32, where a constant must be
         // used to ensure a correctly rounded result.)
@@ -910,8 +911,9 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_to_degrees_and_to_radians", issue = "none")]
     #[inline]
-    pub fn to_radians(self) -> f64 {
+    pub const fn to_radians(self) -> f64 {
         let value: f64 = consts::PI;
         self * (value / 180.0)
     }

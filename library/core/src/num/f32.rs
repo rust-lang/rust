@@ -880,8 +880,9 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
+    #[rustc_const_unstable(feature = "const_to_degrees_and_to_radians", issue = "none")]
     #[inline]
-    pub fn to_degrees(self) -> f32 {
+    pub const fn to_degrees(self) -> f32 {
         // Use a constant for better precision.
         const PIS_IN_180: f32 = 57.2957795130823208767981548141051703_f32;
         self * PIS_IN_180
@@ -899,8 +900,9 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
+    #[rustc_const_unstable(feature = "const_to_degrees_and_to_radians", issue = "none")]
     #[inline]
-    pub fn to_radians(self) -> f32 {
+    pub const fn to_radians(self) -> f32 {
         let value: f32 = consts::PI;
         self * (value / 180.0f32)
     }
