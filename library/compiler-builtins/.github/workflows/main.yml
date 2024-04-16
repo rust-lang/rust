@@ -9,6 +9,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
+        - target: aarch64-apple-darwin
+          os: macos-14
+          rust: nightly
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-latest
           rust: nightly
@@ -81,6 +84,8 @@ jobs:
           os: windows-latest
           rust: nightly-x86_64-gnu
     steps:
+    - name: Print runner information
+      run: uname -a
     - uses: actions/checkout@v4
       with:
         submodules: true
