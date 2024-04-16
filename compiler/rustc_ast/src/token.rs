@@ -290,7 +290,7 @@ pub enum TokenKind {
     /// `:`
     Colon,
     /// `::`
-    ModSep,
+    PathSep,
     /// `->`
     RArrow,
     /// `<-`
@@ -393,7 +393,7 @@ impl TokenKind {
             BinOpEq(Shr) => (Gt, Ge),
             DotDot => (Dot, Dot),
             DotDotDot => (Dot, DotDot),
-            ModSep => (Colon, Colon),
+            PathSep => (Colon, Colon),
             RArrow => (BinOp(Minus), Gt),
             LArrow => (Lt, BinOp(Minus)),
             FatArrow => (Eq, Gt),
@@ -454,7 +454,9 @@ impl Token {
         match self.kind {
             Eq | Lt | Le | EqEq | Ne | Ge | Gt | AndAnd | OrOr | Not | Tilde | BinOp(_)
             | BinOpEq(_) | At | Dot | DotDot | DotDotDot | DotDotEq | Comma | Semi | Colon
-            | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => true,
+            | PathSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => {
+                true
+            }
 
             OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
             | Lifetime(..) | Interpolated(..) | Eof => false,
@@ -481,7 +483,7 @@ impl Token {
             // DotDotDot is no longer supported, but we need some way to display the error
             DotDot | DotDotDot | DotDotEq     | // range notation
             Lt | BinOp(Shl)                   | // associated path
-            ModSep                            | // global path
+            PathSep                            | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
             Interpolated(ref nt) => matches!(&nt.0, NtLiteral(..) |
@@ -507,7 +509,7 @@ impl Token {
             // DotDotDot is no longer supported
             | DotDot | DotDotDot | DotDotEq      // ranges
             | Lt | BinOp(Shl)                    // associated path
-            | ModSep                    => true, // global path
+            | PathSep                    => true, // global path
             Interpolated(ref nt) => matches!(&nt.0, NtLiteral(..) |
                 NtPat(..)     |
                 NtBlock(..)   |
@@ -530,7 +532,7 @@ impl Token {
             Question                    | // maybe bound in trait object
             Lifetime(..)                | // lifetime bound in trait object
             Lt | BinOp(Shl)             | // associated path
-            ModSep                      => true, // global path
+            PathSep                      => true, // global path
             Interpolated(ref nt) => matches!(&nt.0, NtTy(..) | NtPath(..)),
             // For anonymous structs or unions, which only appear in specific positions
             // (type of struct fields or union fields), we don't consider them as regular types
@@ -708,7 +710,7 @@ impl Token {
     }
 
     pub fn is_path_start(&self) -> bool {
-        self == &ModSep
+        self == &PathSep
             || self.is_qpath_start()
             || self.is_whole_path()
             || self.is_path_segment_keyword()
@@ -821,7 +823,7 @@ impl Token {
                 _ => return None,
             },
             Colon => match joint.kind {
-                Colon => ModSep,
+                Colon => PathSep,
                 _ => return None,
             },
             SingleQuote => match joint.kind {
@@ -830,7 +832,7 @@ impl Token {
             },
 
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
-            | DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar
+            | DotDotEq | Comma | Semi | PathSep | RArrow | LArrow | FatArrow | Pound | Dollar
             | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..)
             | Lifetime(..) | Interpolated(..) | DocComment(..) | Eof => return None,
         };
