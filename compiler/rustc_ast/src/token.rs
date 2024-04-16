@@ -909,7 +909,7 @@ impl NonterminalKind {
             },
             sym::pat_param => NonterminalKind::PatParam { inferred: false },
             sym::expr => NonterminalKind::Expr,
-            sym::expr_2021 if edition() >= Edition::Edition2024 => NonterminalKind::Expr2021,
+            sym::expr_2021 if edition() >= Edition::Edition2021 => NonterminalKind::Expr2021,
             sym::ty => NonterminalKind::Ty,
             sym::ident => NonterminalKind::Ident,
             sym::lifetime => NonterminalKind::Lifetime,

@@ -1,4 +1,4 @@
-//@  compile-flags: --edition=2021
+//@  compile-flags: --edition=2018
 
 // This test ensures that expr_2021 is not allowed on pre-2024 editions
 
