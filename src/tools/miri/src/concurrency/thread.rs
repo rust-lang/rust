@@ -430,11 +430,10 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     ) -> &mut Vec<Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>> {
         &mut self.threads[self.active_thread].stack
     }
-
     pub fn all_stacks(
         &self,
-    ) -> impl Iterator<Item = &[Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>]> {
-        self.threads.iter().map(|t| &t.stack[..])
+    ) -> impl Iterator<Item = (ThreadId, &[Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>])> {
+        self.threads.iter_enumerated().map(|(id, t)| (id, &t.stack[..]))
     }
 
     /// Create a new thread and returns its id.
