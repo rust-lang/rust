@@ -98,6 +98,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ///
     /// If `truncate == true`, then in case `size` is not large enough it *will* write the first
     /// `size.saturating_sub(1)` many items, followed by a null terminator (if `size > 0`).
+    /// The return value is still `(false, length)` in that case.
     fn write_os_str_to_wide_str(
         &mut self,
         os_str: &OsStr,
@@ -315,9 +316,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // We also have to ensure that absolute paths remain absolute.
             match direction {
                 PathConversion::HostToTarget => {
-                    // If this start withs a `\`, we add `\\?` so it starts with `\\?\` which is
-                    // some magic path on Windows that *is* considered absolute.
-                    if converted.get(0).copied() == Some(b'\\') {
+                    // If the path is `/C:/`, the leading backslash was probably added by the below
+                    // driver letter handling and we should get rid of it again.
+                    if converted.get(0).copied() == Some(b'\\')
+                        && converted.get(2).copied() == Some(b':')
+                        && converted.get(3).copied() == Some(b'\\')
+                    {
+                        converted.remove(0);
+                    }
+                    // If this start withs a `\` but not a `\\`, then for Windows this is a relative
+                    // path. But the host path is absolute as it started with `/`. We add `\\?` so
+                    // it starts with `\\?\` which is some magic path on Windows that *is*
+                    // considered absolute.
+                    else if converted.get(0).copied() == Some(b'\\')
+                        && converted.get(1).copied() != Some(b'\\')
+                    {
                         converted.splice(0..0, b"\\\\?".iter().copied());
                     }
                 }
@@ -331,6 +344,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     {
                         // Remove first 3 characters
                         converted.splice(0..3, std::iter::empty());
+                    }
+                    // If it starts with a drive letter, convert it to an absolute Unix path.
+                    else if converted.get(1).copied() == Some(b':')
+                        && converted.get(2).copied() == Some(b'/')
+                    {
+                        converted.insert(0, b'/');
                     }
                 }
             }
