@@ -4592,7 +4592,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     .join(", "),
                 if tys.len() == 1 { "," } else { "" }
             ),
-            _ => "value".to_string(),
+            _ => "/* value */".to_string(),
         })
     }
 }
