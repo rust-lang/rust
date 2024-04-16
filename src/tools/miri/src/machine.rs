@@ -1090,7 +1090,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind>,
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra>>> {
-        let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
+        let kind = kind.expect("we set our GLOBAL_KIND so this cannot be None");
         if ecx.machine.tracked_alloc_ids.contains(&id) {
             ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedAlloc(
                 id,
@@ -1151,7 +1151,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     fn adjust_alloc_base_pointer(
         ecx: &MiriInterpCx<'mir, 'tcx>,
         ptr: Pointer<CtfeProvenance>,
+        kind: Option<MemoryKind>,
     ) -> InterpResult<'tcx, Pointer<Provenance>> {
+        let kind = kind.expect("we set our GLOBAL_KIND so this cannot be None");
         let alloc_id = ptr.provenance.alloc_id();
         if cfg!(debug_assertions) {
             // The machine promises to never call us on thread-local or extern statics.
@@ -1172,7 +1174,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             // Value does not matter, SB is disabled
             BorTag::default()
         };
-        ecx.ptr_from_rel_ptr(ptr, tag)
+        ecx.adjust_alloc_base_pointer(ptr, tag, kind)
     }
 
     /// Called on `usize as ptr` casts.

@@ -180,10 +180,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_foreign_item(def_id) => {
                 return M::extern_static_base_pointer(self, def_id);
             }
+            None => {
+                assert!(
+                    self.memory.extra_fn_ptr_map.contains_key(&alloc_id),
+                    "{alloc_id:?} is neither global nor a function pointer"
+                );
+            }
             _ => {}
         }
         // And we need to get the provenance.
-        M::adjust_alloc_base_pointer(self, ptr)
+        M::adjust_alloc_base_pointer(self, ptr, M::GLOBAL_KIND.map(MemoryKind::Machine))
     }
 
     pub fn fn_ptr(&mut self, fn_val: FnVal<'tcx, M::ExtraFnVal>) -> Pointer<M::Provenance> {
@@ -240,7 +246,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         );
         let alloc = M::adjust_allocation(self, id, Cow::Owned(alloc), Some(kind))?;
         self.memory.alloc_map.insert(id, (kind, alloc.into_owned()));
-        M::adjust_alloc_base_pointer(self, Pointer::from(id))
+        M::adjust_alloc_base_pointer(self, Pointer::from(id), Some(kind))
     }
 
     pub fn reallocate_ptr(
