@@ -27,10 +27,10 @@ rust_dbg_extern_identity_u8(char u) {
     return u;
 }
 
-typedef void *(*dbg_callback)(void*);
+typedef uint64_t (*dbg_callback)(uint64_t);
 
-void *
-rust_dbg_call(dbg_callback cb, void *data) {
+uint64_t
+rust_dbg_call(dbg_callback cb, uint64_t data) {
     return cb(data);
 }
 

@@ -1,29 +1,21 @@
 //@ run-pass
 
-#![feature(rustc_private)]
-
-extern crate libc;
-
-mod rustrt {
-    extern crate libc;
-
-    #[link(name = "rust_test_helpers", kind = "static")]
-    extern "C" {
-        pub fn rust_dbg_call(
-            cb: extern "C" fn(libc::uintptr_t) -> libc::uintptr_t,
-            data: libc::uintptr_t,
-        ) -> libc::uintptr_t;
-    }
+#[link(name = "rust_test_helpers", kind = "static")]
+extern "C" {
+    pub fn rust_dbg_call(
+        cb: extern "C" fn(u64) -> u64,
+        data: u64,
+    ) -> u64;
 }
 
-extern "C" fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
+extern "C" fn cb(data: u64) -> u64 {
     if data == 1 { data } else { fact(data - 1) * data }
 }
 
-fn fact(n: libc::uintptr_t) -> libc::uintptr_t {
+fn fact(n: u64) -> u64 {
     unsafe {
         println!("n = {}", n);
-        rustrt::rust_dbg_call(cb, n)
+        rust_dbg_call(cb, n)
     }
 }
 
