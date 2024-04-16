@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/72340
+
 #![crate_name = "foo"]
 
 pub struct Body;

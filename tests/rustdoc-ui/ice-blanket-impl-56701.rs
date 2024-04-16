@@ -1,4 +1,6 @@
+//@ check-pass
 // This shouldn't cause a stack overflow when rustdoc is run
+// https://github.com/rust-lang/rust/issues/56701
 
 use std::ops::Deref;
 use std::ops::DerefMut;

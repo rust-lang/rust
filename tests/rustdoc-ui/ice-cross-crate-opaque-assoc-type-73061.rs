@@ -1,5 +1,6 @@
-// Regression test for ICE #73061
+// Regression test for ICE https://github.com/rust-lang/rust/issues/73061
 
+//@ check-pass
 //@ aux-build:issue-73061.rs
 
 extern crate issue_73061;

@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/78673
 #![crate_name = "issue_78673"]
 
 pub trait Something {}
