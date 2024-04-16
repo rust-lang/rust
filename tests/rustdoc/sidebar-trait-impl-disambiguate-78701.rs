@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/78701
 #![crate_name = "foo"]
 
 // This test ensures that if a blanket impl has the same ID as another impl, it'll

@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust/issues/60726
+#![crate_name="foo"]
+
 use std::marker::PhantomData;
 
 pub struct True;
@@ -25,7 +28,7 @@ where
     I:InterfaceType<Send=True>
 {}
 
-// @has issue_60726/struct.IntoIter.html
+// @has foo/struct.IntoIter.html
 // @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<T> !Send for IntoIter<T>"
 // @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \

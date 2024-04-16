@@ -984,7 +984,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // Already reported in the query.
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(guar)) |
             // Already reported.
-            Overflow(OverflowError::Error(guar)) => return guar,
+            Overflow(OverflowError::Error(guar)) => {
+                self.set_tainted_by_errors(guar);
+                return guar
+            },
 
             Overflow(_) => {
                 bug!("overflow should be handled before the `report_selection_error` path");

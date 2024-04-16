@@ -1,5 +1,25 @@
-//! This module contains the "cleaned" pieces of the AST, and the functions
-//! that clean them.
+//! This module defines the primary IR[^1] used in rustdoc together with the procedures that
+//! transform rustc data types into it.
+//!
+//! This IR — commonly referred to as the *cleaned AST* — is modeled after the [AST][ast].
+//!
+//! There are two kinds of transformation — *cleaning* — procedures:
+//!
+//! 1. Cleans [HIR][hir] types. Used for user-written code and inlined local re-exports
+//!    both found in the local crate.
+//! 2. Cleans [`rustc_middle::ty`] types. Used for inlined cross-crate re-exports and anything
+//!    output by the trait solver (e.g., when synthesizing blanket and auto-trait impls).
+//!    They usually have `ty` or `middle` in their name.
+//!
+//! Their name is prefixed by `clean_`.
+//!
+//! Both the HIR and the `rustc_middle::ty` IR are quite removed from the source code.
+//! The cleaned AST on the other hand is closer to it which simplifies the rendering process.
+//! Furthermore, operating on a single IR instead of two avoids duplicating efforts down the line.
+//!
+//! This IR is consumed by both the HTML and the JSON backend.
+//!
+//! [^1]: Intermediate representation.
 
 mod auto_trait;
 mod blanket_impl;
