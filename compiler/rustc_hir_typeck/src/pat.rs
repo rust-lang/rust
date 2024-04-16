@@ -79,7 +79,7 @@ struct TopInfo<'tcx> {
 
 #[derive(Copy, Clone)]
 struct PatInfo<'tcx, 'a> {
-    binding_mode: BindingAnnotation,
+    binding_mode: ByRef,
     max_ref_mutbl: Mutability,
     top_info: TopInfo<'tcx>,
     decl_origin: Option<DeclOrigin<'a>>,
@@ -125,8 +125,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     }
 }
 
-const INITIAL_BM: BindingAnnotation = BindingAnnotation(ByRef::No, Mutability::Not);
-
 /// Mode for adjusting the expected type and binding mode.
 enum AdjustMode {
     /// Peel off all immediate reference types.
@@ -163,7 +161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let info = TopInfo { expected, origin_expr, span };
         let pat_info = PatInfo {
-            binding_mode: INITIAL_BM,
+            binding_mode: ByRef::No,
             max_ref_mutbl: Mutability::Mut,
             top_info: info,
             decl_origin,
@@ -296,43 +294,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
-        def_bm: BindingAnnotation,
+        def_br: ByRef,
         adjust_mode: AdjustMode,
         max_ref_mutbl: Mutability,
-    ) -> (Ty<'tcx>, BindingAnnotation, Mutability, bool) {
-        if let ByRef::Yes(mutbl) = def_bm.0 {
+    ) -> (Ty<'tcx>, ByRef, Mutability, bool) {
+        if let ByRef::Yes(mutbl) = def_br {
             debug_assert!(mutbl <= max_ref_mutbl);
         }
         match adjust_mode {
-            AdjustMode::Pass => (expected, def_bm, max_ref_mutbl, false),
-            AdjustMode::Reset => (expected, INITIAL_BM, Mutability::Mut, false),
+            AdjustMode::Pass => (expected, def_br, max_ref_mutbl, false),
+            AdjustMode::Reset => (expected, ByRef::No, Mutability::Mut, false),
             AdjustMode::ResetAndConsumeRef(ref_pat_mutbl) => {
-                let mutbls_match = def_bm.0 == ByRef::Yes(ref_pat_mutbl);
+                let mutbls_match = def_br == ByRef::Yes(ref_pat_mutbl);
                 if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
                     if mutbls_match {
                         debug!("consuming inherited reference");
-                        (expected, INITIAL_BM, cmp::min(max_ref_mutbl, ref_pat_mutbl), true)
+                        (expected, ByRef::No, cmp::min(max_ref_mutbl, ref_pat_mutbl), true)
                     } else {
                         let (new_ty, new_bm, max_ref_mutbl) = if ref_pat_mutbl == Mutability::Mut {
                             self.peel_off_references(
                                 pat,
                                 expected,
-                                def_bm,
+                                def_br,
                                 Mutability::Not,
                                 max_ref_mutbl,
                             )
                         } else {
-                            (expected, def_bm.cap_ref_mutability(Mutability::Not), Mutability::Not)
+                            (expected, def_br.cap_ref_mutability(Mutability::Not), Mutability::Not)
                         };
                         (new_ty, new_bm, max_ref_mutbl, false)
                     }
                 } else {
-                    (expected, INITIAL_BM, max_ref_mutbl, mutbls_match)
+                    (expected, ByRef::No, max_ref_mutbl, mutbls_match)
                 }
             }
             AdjustMode::Peel => {
                 let peeled =
-                    self.peel_off_references(pat, expected, def_bm, Mutability::Mut, max_ref_mutbl);
+                    self.peel_off_references(pat, expected, def_br, Mutability::Mut, max_ref_mutbl);
                 (peeled.0, peeled.1, peeled.2, false)
             }
         }
@@ -413,10 +411,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
-        mut def_bm: BindingAnnotation,
+        mut def_br: ByRef,
         max_peelable_mutability: Mutability,
         mut max_ref_mutability: Mutability,
-    ) -> (Ty<'tcx>, BindingAnnotation, Mutability) {
+    ) -> (Ty<'tcx>, ByRef, Mutability) {
         let mut expected = self.try_structurally_resolve_type(pat.span, expected);
         // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
         // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
@@ -437,7 +435,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pat_adjustments.push(expected);
 
             expected = self.try_structurally_resolve_type(pat.span, inner_ty);
-            def_bm.0 = ByRef::Yes(match def_bm.0 {
+            def_br = ByRef::Yes(match def_br {
                 // If default binding mode is by value, make it `ref` or `ref mut`
                 // (depending on whether we observe `&` or `&mut`).
                 ByRef::No |
@@ -450,21 +448,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
-            def_bm = def_bm.cap_ref_mutability(max_ref_mutability);
-            if def_bm.0 == ByRef::Yes(Mutability::Not) {
+            def_br = def_br.cap_ref_mutability(max_ref_mutability);
+            if def_br == ByRef::Yes(Mutability::Not) {
                 max_ref_mutability = Mutability::Not;
             }
         }
 
         if !pat_adjustments.is_empty() {
-            debug!("default binding mode is now {:?}", def_bm);
+            debug!("default binding mode is now {:?}", def_br);
             self.typeck_results
                 .borrow_mut()
                 .pat_adjustments_mut()
                 .insert(pat.hir_id, pat_adjustments);
         }
 
-        (expected, def_bm, max_ref_mutability)
+        (expected, def_br, max_ref_mutability)
     }
 
     fn check_pat_lit(
@@ -675,7 +673,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        let PatInfo { binding_mode: BindingAnnotation(def_br, _), top_info: ti, .. } = pat_info;
+        let PatInfo { binding_mode: def_br, top_info: ti, .. } = pat_info;
 
         // Determine the binding mode...
         let bm = match ba {
