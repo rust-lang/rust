@@ -163,7 +163,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             }
                         }
                         Op::Numeric(name) => {
-                            this.numeric_intrinsic(name, op.to_scalar(), op.layout)?
+                            this.numeric_intrinsic(name, op.to_scalar(), op.layout, op.layout)?
                         }
                     };
                     this.write_scalar(val, &dest)?;
