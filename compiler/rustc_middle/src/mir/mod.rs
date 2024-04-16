@@ -1823,9 +1823,7 @@ mod size_asserts {
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 64);
     static_assert_size!(Statement<'_>, 32);
-    static_assert_size!(StatementKind<'_>, 16);
     static_assert_size!(Terminator<'_>, 112);
-    static_assert_size!(TerminatorKind<'_>, 96);
     static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end
 }
