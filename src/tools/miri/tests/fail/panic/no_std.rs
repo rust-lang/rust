@@ -1,10 +1,6 @@
 #![feature(start, core_intrinsics)]
 #![no_std]
 //@compile-flags: -Cpanic=abort
-// windows tls dtors go through libstd right now, thus this test
-// cannot pass. When windows tls dtors go through the special magic
-// windows linker section, we can run this test on windows again.
-//@ignore-target-windows: no-std not supported on Windows
 
 // Plumbing to let us use `writeln!` to host stderr:
 
