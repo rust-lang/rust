@@ -36,6 +36,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
+use std::cmp;
 use std::fmt;
 use std::mem;
 use thin_vec::{thin_vec, ThinVec};
@@ -730,6 +731,13 @@ impl BindingAnnotation {
             Self::MUT_REF => "mut ref ",
             Self::MUT_REF_MUT => "mut ref mut ",
         }
+    }
+
+    pub fn cap_ref_mutability(mut self, mutbl: Mutability) -> Self {
+        if let ByRef::Yes(old_mutbl) = &mut self.0 {
+            *old_mutbl = cmp::min(*old_mutbl, mutbl);
+        }
+        self
     }
 }
 

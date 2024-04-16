@@ -17,7 +17,7 @@
 //!     rustc_log::init_logger(rustc_log::LoggerConfig::from_env("LOG")).unwrap();
 //!
 //!     let edition = rustc_span::edition::Edition::Edition2021;
-//!     rustc_span::create_session_globals_then(edition, || {
+//!     rustc_span::create_session_globals_then(edition, None, || {
 //!         /* ... */
 //!     });
 //! }

@@ -69,7 +69,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             hir::PatKind::Ref(inner, _)
                 if self.typeck_results.skipped_ref_pats().contains(pat.hir_id) =>
             {
-                self.lower_pattern_unadjusted(inner)
+                self.lower_pattern(inner)
             }
             _ => self.lower_pattern_unadjusted(pat),
         };

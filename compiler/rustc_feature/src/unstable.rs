@@ -575,6 +575,8 @@ declare_features! (
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
     (unstable, raw_ref_op, "1.41.0", Some(64490)),
+    /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
+    (incomplete, ref_pat_eat_one_layer_2024, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// Allows `&` and `&mut` patterns to consume match-ergonomics-inserted references.
     (incomplete, ref_pat_everywhere, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// Allows using the `#[register_tool]` attribute.
