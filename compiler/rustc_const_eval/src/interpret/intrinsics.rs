@@ -488,8 +488,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::ctlz | sym::ctlz_nonzero => u128::from(bits.leading_zeros()) - extra,
             sym::cttz | sym::cttz_nonzero => u128::from((bits << extra).trailing_zeros()) - extra,
-            sym::bswap => (bits << extra).swap_bytes(),
-            sym::bitreverse => (bits << extra).reverse_bits(),
+            sym::bswap => {
+                assert_eq!(layout, ret_layout);
+                (bits << extra).swap_bytes()
+            }
+            sym::bitreverse => {
+                assert_eq!(layout, ret_layout);
+                (bits << extra).reverse_bits()
+            }
             _ => bug!("not a numeric intrinsic: {}", name),
         };
         Ok(Scalar::from_uint(bits_out, ret_layout.size))
