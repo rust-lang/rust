@@ -18,3 +18,4 @@ rustc-hash = "1.1.0"
 [[bin]]
 name = "rust-tidy"
 path = "src/main.rs"
+test = false
