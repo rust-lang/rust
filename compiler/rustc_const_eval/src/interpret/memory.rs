@@ -227,7 +227,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.allocate_raw_ptr(alloc, kind)
     }
 
-    /// This can fail only if `alloc` contains provenance.
     pub fn allocate_raw_ptr(
         &mut self,
         alloc: Allocation,
