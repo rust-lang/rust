@@ -60,11 +60,8 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
     for cfg in &options.cfgs {
         content.push(format!("--cfg={cfg}"));
     }
-    if !options.check_cfgs.is_empty() {
-        content.push("-Zunstable-options".to_string());
-        for check_cfg in &options.check_cfgs {
-            content.push(format!("--check-cfg={check_cfg}"));
-        }
+    for check_cfg in &options.check_cfgs {
+        content.push(format!("--check-cfg={check_cfg}"));
     }
 
     for lib_str in &options.lib_strs {

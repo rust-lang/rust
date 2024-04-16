@@ -168,7 +168,7 @@ pub(super) fn unexpected_cfg_name(
         diag.note("see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration");
     } else {
         diag.help(format!("to expect this configuration use `--check-cfg={inst}`"));
-        diag.note("see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration");
+        diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration");
     }
 }
 
@@ -272,6 +272,6 @@ pub(super) fn unexpected_cfg_value(
         if !is_cfg_a_well_know_name {
             diag.help(format!("to expect this configuration use `--check-cfg={inst}`"));
         }
-        diag.note("see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration");
+        diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration");
     }
 }
