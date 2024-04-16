@@ -4545,7 +4545,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             self.type_implements_trait(default_trait, [ty], param_env).must_apply_modulo_regions()
         };
 
-        Some(match ty.kind() {
+        Some(match *ty.kind() {
             ty::Never | ty::Error(_) => return None,
             ty::Bool => "false".to_string(),
             ty::Char => "\'x\'".to_string(),
@@ -4572,12 +4572,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if let (ty::Str, hir::Mutability::Not) = (ty.kind(), mutability) {
                     "\"\"".to_string()
                 } else {
-                    let ty = self.ty_kind_suggestion(param_env, *ty)?;
+                    let ty = self.ty_kind_suggestion(param_env, ty)?;
                     format!("&{}{ty}", mutability.prefix_str())
                 }
             }
             ty::Array(ty, len) if let Some(len) = len.try_eval_target_usize(tcx, param_env) => {
-                format!("[{}; {}]", self.ty_kind_suggestion(param_env, *ty)?, len)
+                if len == 0 {
+                    "[]".to_string()
+                } else if self.type_is_copy_modulo_regions(param_env, ty) || len == 1 {
+                    // Can only suggest `[ty; 0]` if sz == 1 or copy
+                    format!("[{}; {}]", self.ty_kind_suggestion(param_env, ty)?, len)
+                } else {
+                    "/* value */".to_string()
+                }
             }
             ty::Tuple(tys) => format!(
                 "({}{})",
@@ -4587,7 +4594,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     .join(", "),
                 if tys.len() == 1 { "," } else { "" }
             ),
-            _ => "value".to_string(),
+            _ => "/* value */".to_string(),
         })
     }
 }
