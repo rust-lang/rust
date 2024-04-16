@@ -10,6 +10,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, BindingAnnotation, ByRef, HirId, Mutability, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
+use rustc_lint as lint;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Adt, Ty, TypeVisitableExt};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
@@ -629,12 +630,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        let PatInfo { binding_mode: def_bm, top_info: ti, .. } = pat_info;
+        let PatInfo { binding_mode: BindingAnnotation(def_br, _), top_info: ti, .. } = pat_info;
 
         // Determine the binding mode...
         let bm = match ba {
-            BindingAnnotation(ByRef::No, Mutability::Not) => def_bm,
-            _ => ba,
+            BindingAnnotation(ByRef::No, Mutability::Mut)
+                if !(pat.span.at_least_rust_2024()
+                    && self.tcx.features().mut_preserve_binding_mode_2024)
+                    && matches!(def_br, ByRef::Yes(_)) =>
+            {
+                // `mut x` resets the binding mode in edition <= 2021.
+                self.tcx.emit_node_span_lint(
+                    lint::builtin::DEREFERENCING_MUT_BINDING,
+                    pat.hir_id,
+                    pat.span,
+                    errors::DereferencingMutBinding { span: pat.span },
+                );
+                BindingAnnotation(ByRef::No, Mutability::Mut)
+            }
+            BindingAnnotation(ByRef::No, mutbl) => BindingAnnotation(def_br, mutbl),
+            BindingAnnotation(ByRef::Yes(_), _) => ba,
         };
         // ...and store it in a side table:
         self.typeck_results.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);
@@ -743,7 +758,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    // Precondition: pat is a Ref(_) pattern
+    /// Precondition: pat is a `Ref(_)` pattern
     fn borrow_pat_suggestion(&self, err: &mut Diag<'_>, pat: &Pat<'_>) {
         let tcx = self.tcx;
         if let PatKind::Ref(inner, mutbl) = pat.kind
