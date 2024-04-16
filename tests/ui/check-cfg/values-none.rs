@@ -1,7 +1,6 @@
 //@ check-pass
 //
 //@ revisions: explicit implicit
-//@ compile-flags: -Zunstable-options
 //@ [explicit]compile-flags: --check-cfg=cfg(foo,values(none()))
 //@ [implicit]compile-flags: --check-cfg=cfg(foo)
 //@ [simple]  compile-flags: --check-cfg=cfg(foo,values(none(),"too"))
