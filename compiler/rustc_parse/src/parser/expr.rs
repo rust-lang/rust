@@ -3591,11 +3591,19 @@ impl<'a> Parser<'a> {
                         && !self.token.is_reserved_ident()
                         && self.look_ahead(1, |t| {
                             AssocOp::from_token(t).is_some()
-                                || matches!(t.kind, token::OpenDelim(_))
+                                || matches!(
+                                    t.kind,
+                                    token::OpenDelim(
+                                        Delimiter::Parenthesis
+                                            | Delimiter::Bracket
+                                            | Delimiter::Brace
+                                    )
+                                )
                                 || *t == token::Dot
                         })
                     {
-                        // Looks like they tried to write a shorthand, complex expression.
+                        // Looks like they tried to write a shorthand, complex expression,
+                        // E.g.: `n + m`, `f(a)`, `a[i]`, `S { x: 3 }`, or `x.y`.
                         e.span_suggestion_verbose(
                             self.token.span.shrink_to_lo(),
                             "try naming a field",
