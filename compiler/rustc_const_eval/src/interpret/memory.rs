@@ -355,6 +355,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             (alloc_id, prov),
             size,
             alloc.align,
+            kind,
         )?;
 
         // Don't forget to remember size and align of this now-dead allocation

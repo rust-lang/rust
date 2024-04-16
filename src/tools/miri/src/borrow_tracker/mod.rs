@@ -260,7 +260,7 @@ impl GlobalStateInner {
         &mut self,
         id: AllocId,
         alloc_size: Size,
-        kind: MemoryKind<machine::MiriMemoryKind>,
+        kind: MemoryKind,
         machine: &MiriMachine<'_, '_>,
     ) -> AllocState {
         match self.borrow_tracker_method {

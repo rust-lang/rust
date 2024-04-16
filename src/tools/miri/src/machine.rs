@@ -135,9 +135,9 @@ pub enum MiriMemoryKind {
     Mmap,
 }
 
-impl From<MiriMemoryKind> for MemoryKind<MiriMemoryKind> {
+impl From<MiriMemoryKind> for MemoryKind {
     #[inline(always)]
-    fn from(kind: MiriMemoryKind) -> MemoryKind<MiriMemoryKind> {
+    fn from(kind: MiriMemoryKind) -> MemoryKind {
         MemoryKind::Machine(kind)
     }
 }
@@ -184,6 +184,8 @@ impl fmt::Display for MiriMemoryKind {
         }
     }
 }
+
+pub type MemoryKind = interpret::MemoryKind<MiriMemoryKind>;
 
 /// Pointer provenance.
 #[derive(Clone, Copy)]
@@ -863,10 +865,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     type ProvenanceExtra = ProvenanceExtra;
     type Bytes = Box<[u8]>;
 
-    type MemoryMap = MonoHashMap<
-        AllocId,
-        (MemoryKind<MiriMemoryKind>, Allocation<Provenance, Self::AllocExtra, Self::Bytes>),
-    >;
+    type MemoryMap =
+        MonoHashMap<AllocId, (MemoryKind, Allocation<Provenance, Self::AllocExtra, Self::Bytes>)>;
 
     const GLOBAL_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Global);
 
@@ -1088,7 +1088,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx: &MiriInterpCx<'mir, 'tcx>,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
-        kind: Option<MemoryKind<Self::MemoryKind>>,
+        kind: Option<MemoryKind>,
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra>>> {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         if ecx.machine.tracked_alloc_ids.contains(&id) {
@@ -1280,6 +1280,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         (alloc_id, prove_extra): (AllocId, Self::ProvenanceExtra),
         size: Size,
         align: Align,
+        _kind: MemoryKind,
     ) -> InterpResult<'tcx> {
         if machine.tracked_alloc_ids.contains(&alloc_id) {
             machine.emit_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));

@@ -136,7 +136,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn alloc_os_str_as_c_str(
         &mut self,
         os_str: &OsStr,
-        memkind: MemoryKind<MiriMemoryKind>,
+        memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0` terminator.
         let this = self.eval_context_mut();
@@ -152,7 +152,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn alloc_os_str_as_wide_str(
         &mut self,
         os_str: &OsStr,
-        memkind: MemoryKind<MiriMemoryKind>,
+        memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0x0000` terminator.
         let this = self.eval_context_mut();
@@ -229,7 +229,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn alloc_path_as_c_str(
         &mut self,
         path: &Path,
-        memkind: MemoryKind<MiriMemoryKind>,
+        memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
         let os_str =
@@ -242,7 +242,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn alloc_path_as_wide_str(
         &mut self,
         path: &Path,
-        memkind: MemoryKind<MiriMemoryKind>,
+        memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
         let os_str =
