@@ -87,6 +87,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if lang_items.sized_trait() == Some(def_id) {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
+
+                // FIXME: Consider moving this check to the top level as it
+                // may also be useful for predicates other than `Sized`
+                // Error type cannot possibly implement `Sized` (fixes #123154)
+                if let Err(e) = obligation.predicate.skip_binder().self_ty().error_reported() {
+                    return Err(SelectionError::Overflow(e.into()));
+                }
+
                 let sized_conditions = self.sized_conditions(obligation);
                 self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
             } else if lang_items.unsize_trait() == Some(def_id) {
