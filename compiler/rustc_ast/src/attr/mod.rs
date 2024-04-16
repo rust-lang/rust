@@ -457,7 +457,7 @@ impl MetaItemKind {
         tokens: &mut impl Iterator<Item = &'a TokenTree>,
     ) -> Option<MetaItemKind> {
         match tokens.next() {
-            Some(TokenTree::Delimited(.., Delimiter::Invisible, inner_tokens)) => {
+            Some(TokenTree::Delimited(.., Delimiter::Invisible(_), inner_tokens)) => {
                 MetaItemKind::name_value_from_tokens(&mut inner_tokens.trees())
             }
             Some(TokenTree::Token(token, _)) => {
@@ -605,7 +605,7 @@ impl MetaItemInner {
                 tokens.next();
                 return Some(MetaItemInner::Lit(lit));
             }
-            Some(TokenTree::Delimited(.., Delimiter::Invisible, inner_tokens)) => {
+            Some(TokenTree::Delimited(.., Delimiter::Invisible(_), inner_tokens)) => {
                 tokens.next();
                 return MetaItemInner::from_tokens(&mut inner_tokens.trees().peekable());
             }

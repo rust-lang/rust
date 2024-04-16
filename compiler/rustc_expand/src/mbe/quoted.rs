@@ -165,11 +165,12 @@ fn parse_tree<'a>(
             // during parsing.
             let mut next = outer_trees.next();
             let mut trees: Box<dyn Iterator<Item = &tokenstream::TokenTree>>;
-            if let Some(tokenstream::TokenTree::Delimited(.., Delimiter::Invisible, tts)) = next {
-                trees = Box::new(tts.trees());
-                next = trees.next();
-            } else {
-                trees = Box::new(outer_trees);
+            match next {
+                Some(tokenstream::TokenTree::Delimited(.., delim, tts)) if delim.skip() => {
+                    trees = Box::new(tts.trees());
+                    next = trees.next();
+                }
+                _ => trees = Box::new(outer_trees),
             }
 
             match next {
