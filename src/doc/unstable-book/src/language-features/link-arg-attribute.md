@@ -8,7 +8,7 @@ The `link_arg_attribute` feature allows passing arguments into the linker
 from inside of the source code. Order is preserved for link attributes as
 they were defined on a single extern block:
 
-```rust,no_run
+```rust,ignore (linking to "c" segfaults)
 #![feature(link_arg_attribute)]
 
 #[link(kind = "link-arg", name = "--start-group")]
