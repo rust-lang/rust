@@ -331,6 +331,11 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         if self.tcx.is_thread_local_static(def_id) {
             self.tcx.dcx().span_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
         }
+        if let Some(def_id) = def_id.as_local()
+            && let Err(guar) = self.tcx.at(span).check_well_formed(hir::OwnerId { def_id })
+        {
+            self.error_emitted = Some(guar);
+        }
         self.check_op_spanned(ops::StaticAccess, span)
     }
 
