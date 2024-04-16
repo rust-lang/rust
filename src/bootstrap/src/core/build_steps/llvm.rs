@@ -76,6 +76,9 @@ pub fn prebuilt_llvm_config(
     builder: &Builder<'_>,
     target: TargetSelection,
 ) -> Result<LlvmResult, Meta> {
+    // If we have llvm submodule initialized already, sync it.
+    builder.update_existing_submodule(&Path::new("src").join("llvm-project"));
+
     builder.config.maybe_download_ci_llvm();
 
     // If we're using a custom LLVM bail out here, but we can only use a
@@ -93,6 +96,9 @@ pub fn prebuilt_llvm_config(
             return Ok(LlvmResult { llvm_config, llvm_cmake_dir });
         }
     }
+
+    // Initialize the llvm submodule if not initialized already.
+    builder.update_submodule(&Path::new("src").join("llvm-project"));
 
     let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
@@ -280,7 +286,6 @@ impl Step for Llvm {
             Err(m) => m,
         };
 
-        builder.update_submodule(&Path::new("src").join("llvm-project"));
         if builder.llvm_link_shared() && target.is_windows() {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }

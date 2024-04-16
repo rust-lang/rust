@@ -115,7 +115,7 @@ pub enum NonHaltingDiagnostic {
     /// This `Item` was popped from the borrow stack. The string explains the reason.
     PoppedPointerTag(Item, String),
     CreatedCallId(CallId),
-    CreatedAlloc(AllocId, Size, Align, MemoryKind<MiriMemoryKind>),
+    CreatedAlloc(AllocId, Size, Align, MemoryKind),
     FreedAlloc(AllocId),
     AccessedAlloc(AllocId, AccessKind),
     RejectedIsolatedOp(String),
@@ -414,7 +414,7 @@ pub fn report_error<'tcx, 'mir>(
 
 pub fn report_leaks<'mir, 'tcx>(
     ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
-    leaks: Vec<(AllocId, MemoryKind<MiriMemoryKind>, Allocation<Provenance, AllocExtra<'tcx>>)>,
+    leaks: Vec<(AllocId, MemoryKind, Allocation<Provenance, AllocExtra<'tcx>>)>,
 ) {
     let mut any_pruned = false;
     for (id, kind, mut alloc) in leaks {

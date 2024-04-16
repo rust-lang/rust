@@ -13,6 +13,7 @@
 #![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(trait_upcasting)]
+#![feature(absolute_path)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -125,7 +126,7 @@ pub use crate::eval::{
 };
 pub use crate::helpers::{AccessKind, EvalContextExt as _};
 pub use crate::machine::{
-    AllocExtra, FrameExtra, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
+    AllocExtra, FrameExtra, MemoryKind, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
     PrimitiveLayouts, Provenance, ProvenanceExtra,
 };
 pub use crate::mono_hash_map::MonoHashMap;

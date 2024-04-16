@@ -46,6 +46,10 @@ hir_typeck_ctor_is_private = tuple struct constructor `{$def}` is private
 
 hir_typeck_deref_is_empty = this expression `Deref`s to `{$deref_ty}` which implements `is_empty`
 
+hir_typeck_dereferencing_mut_binding = dereferencing `mut` binding
+    .label = `mut` dereferences the type of this binding
+    .help = this will change in edition 2024
+
 hir_typeck_expected_default_return_type = expected `()` because of default return type
 
 hir_typeck_expected_return_type = expected `{$expected}` because of return type

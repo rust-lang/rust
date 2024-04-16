@@ -844,7 +844,7 @@ impl VClockAlloc {
         global: &GlobalState,
         thread_mgr: &ThreadManager<'_, '_>,
         len: Size,
-        kind: MemoryKind<MiriMemoryKind>,
+        kind: MemoryKind,
         current_span: Span,
     ) -> VClockAlloc {
         let (alloc_timestamp, alloc_index) = match kind {

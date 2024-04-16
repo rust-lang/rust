@@ -131,6 +131,20 @@ This flag accepts the same values as `rustc --cfg`, and uses it to configure
 compilation. The example above uses `feature`, but any of the `cfg` values
 are acceptable.
 
+## `--check-cfg`: check configuration flags
+
+This flag accepts the same values as `rustc --check-cfg`, and uses it to
+check configuration flags.
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs --check-cfg='cfg(my_cfg, values("foo", "bar"))'
+```
+
+The example above check every well known names and values (`target_os`, `doc`, `test`, ...)
+and check the values of `my_cfg`: `foo` and `bar`.
+
 ## `--extern`: specify a dependency's location
 
 Using this flag looks like this:
