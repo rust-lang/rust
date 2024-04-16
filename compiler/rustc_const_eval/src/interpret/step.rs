@@ -144,7 +144,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc_middle::mir::Rvalue::*;
         match *rvalue {
             ThreadLocalRef(did) => {
-                let ptr = M::thread_local_static_base_pointer(self, did)?;
+                let ptr = M::thread_local_static_pointer(self, did)?;
                 self.write_pointer(ptr, &dest)?;
             }
 

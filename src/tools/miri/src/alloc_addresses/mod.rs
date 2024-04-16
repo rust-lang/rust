@@ -287,7 +287,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Convert a relative (tcx) pointer to a Miri pointer.
-    fn adjust_alloc_base_pointer(
+    fn adjust_alloc_root_pointer(
         &self,
         ptr: Pointer<CtfeProvenance>,
         tag: BorTag,
@@ -319,7 +319,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             ecx.alloc_id_from_addr(addr.bytes())?
         };
 
-        // This cannot fail: since we already have a pointer with that provenance, adjust_alloc_base_pointer
+        // This cannot fail: since we already have a pointer with that provenance, adjust_alloc_root_pointer
         // must have been called in the past, so we can just look up the address in the map.
         let base_addr = *ecx.machine.alloc_addresses.borrow().base_addr.get(&alloc_id).unwrap();
 

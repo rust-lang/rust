@@ -288,15 +288,15 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     }
 
     /// Return the `AllocId` for the given thread-local static in the current thread.
-    fn thread_local_static_base_pointer(
+    fn thread_local_static_pointer(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         def_id: DefId,
     ) -> InterpResult<'tcx, Pointer<Self::Provenance>> {
         throw_unsup!(ThreadLocalStatic(def_id))
     }
 
-    /// Return the root pointer for the given `extern static`.
-    fn extern_static_base_pointer(
+    /// Return the `AllocId` for the given `extern static`.
+    fn extern_static_pointer(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         def_id: DefId,
     ) -> InterpResult<'tcx, Pointer<Self::Provenance>>;
@@ -354,7 +354,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     ///
     /// `kind` is the kind of the allocation the pointer points to; it can be `None` when
     /// it's a global and `GLOBAL_KIND` is `None`.
-    fn adjust_alloc_base_pointer(
+    fn adjust_alloc_root_pointer(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         ptr: Pointer,
         kind: Option<MemoryKind<Self::MemoryKind>>,
@@ -598,7 +598,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         Ok(alloc)
     }
 
-    fn extern_static_base_pointer(
+    fn extern_static_pointer(
         ecx: &InterpCx<$mir, $tcx, Self>,
         def_id: DefId,
     ) -> InterpResult<$tcx, Pointer> {
@@ -607,7 +607,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn adjust_alloc_base_pointer(
+    fn adjust_alloc_root_pointer(
         _ecx: &InterpCx<$mir, $tcx, Self>,
         ptr: Pointer<CtfeProvenance>,
         _kind: Option<MemoryKind<Self::MemoryKind>>,
