@@ -1696,7 +1696,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 if let ProbeResult::Match = result
                     && self
                         .at(&ObligationCause::dummy(), self.param_env)
-                        .sup(DefineOpaqueTypes::No, return_ty, xform_ret_ty)
+                        .sup(DefineOpaqueTypes::Yes, return_ty, xform_ret_ty)
                         .is_err()
                 {
                     result = ProbeResult::BadReturnType;
