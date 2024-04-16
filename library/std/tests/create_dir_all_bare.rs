@@ -31,6 +31,7 @@ impl Drop for CurrentDir {
 }
 
 #[test]
+#[cfg_attr(all(miri, windows), ignore)] // File system access on Windows not supported by Miri
 fn create_dir_all_bare() {
     let tmpdir = common::tmpdir();
     CurrentDir::with(tmpdir.path(), || {

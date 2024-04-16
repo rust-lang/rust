@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::graph::WithSuccessors;
+use rustc_data_structures::graph;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{
     self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
@@ -262,7 +262,7 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
 
         // We first handle the cases where the loan doesn't go out of scope, depending on the issuing
         // region's successors.
-        for successor in self.regioncx.region_graph().depth_first_search(issuing_region) {
+        for successor in graph::depth_first_search(&self.regioncx.region_graph(), issuing_region) {
             // 1. Via applied member constraints
             //
             // The issuing region can flow into the choice regions, and they are either:

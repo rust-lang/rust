@@ -65,7 +65,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "mode",
             "which sort of compile tests to run",
             "run-pass-valgrind | pretty | debug-info | codegen | rustdoc \
-            | rustdoc-json | codegen-units | incremental | run-make | ui | js-doc-test | mir-opt | assembly",
+            | rustdoc-json | codegen-units | incremental | run-make | ui \
+            | js-doc-test | mir-opt | assembly | crashes",
         )
         .reqopt(
             "",
@@ -82,7 +83,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "with-debug-assertions", "whether to run tests with `ignore-debug` header")
-        .optmulti("", "skip", "skip tests matching SUBSTRING. Can be passed multiple times", "SUBSTRING")
+        .optmulti(
+            "",
+            "skip",
+            "skip tests matching SUBSTRING. Can be passed multiple times",
+            "SUBSTRING",
+        )
         .optflag("", "exact", "filters match exactly")
         .optopt(
             "",
@@ -145,7 +151,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "profiler-support", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
-        .optflag("", "git-hash", "run tests which rely on commit version being compiled into the binaries")
+        .optflag(
+            "",
+            "git-hash",
+            "run tests which rely on commit version being compiled into the binaries",
+        )
         .optopt("", "edition", "default Rust edition", "EDITION")
         .reqopt("", "git-repository", "name of the git repository", "ORG/REPO")
         .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH");

@@ -45,7 +45,7 @@ pub fn run(name: &str) -> Output {
 
     let (cmd, output) = run_common(name);
     if !output.status.success() {
-        handle_failed_output(&format!("{:#?}", cmd), output, caller_line_number);
+        handle_failed_output(&cmd, output, caller_line_number);
     }
     output
 }
@@ -58,7 +58,7 @@ pub fn run_fail(name: &str) -> Output {
 
     let (cmd, output) = run_common(name);
     if output.status.success() {
-        handle_failed_output(&format!("{:#?}", cmd), output, caller_line_number);
+        handle_failed_output(&cmd, output, caller_line_number);
     }
     output
 }

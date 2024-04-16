@@ -852,15 +852,19 @@ impl Error {
         }
     }
 
-    /// Attempt to downcast the inner error to `E` if any.
+    /// Attempt to downcast the custom boxed error to `E`.
     ///
-    /// If this [`Error`] was constructed via [`new`] then this function will
-    /// attempt to perform downgrade on it, otherwise it will return [`Err`].
+    /// If this [`Error`] contains a custom boxed error,
+    /// then it would attempt downcasting on the boxed error,
+    /// otherwise it will return [`Err`].
     ///
-    /// If the downcast succeeds, it will return [`Ok`], otherwise it will also
-    /// return [`Err`].
+    /// If the custom boxed error has the same type as `E`, it will return [`Ok`],
+    /// otherwise it will also return [`Err`].
     ///
-    /// [`new`]: Error::new
+    /// This method is meant to be a convenience routine for calling
+    /// `Box<dyn Error + Sync + Send>::downcast` on the custom boxed error, returned by
+    /// [`Error::into_inner`].
+    ///
     ///
     /// # Examples
     ///

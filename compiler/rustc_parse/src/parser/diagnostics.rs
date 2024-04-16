@@ -279,7 +279,7 @@ impl<'a> Parser<'a> {
             TokenKind::Colon,
             TokenKind::Comma,
             TokenKind::Semi,
-            TokenKind::ModSep,
+            TokenKind::PathSep,
             TokenKind::OpenDelim(Delimiter::Brace),
             TokenKind::OpenDelim(Delimiter::Parenthesis),
             TokenKind::CloseDelim(Delimiter::Brace),
@@ -1169,7 +1169,7 @@ impl<'a> Parser<'a> {
             return;
         }
 
-        if token::ModSep == self.token.kind && segment.args.is_none() {
+        if token::PathSep == self.token.kind && segment.args.is_none() {
             let snapshot = self.create_snapshot_for_diagnostic();
             self.bump();
             let lo = self.token.span;
@@ -1420,7 +1420,7 @@ impl<'a> Parser<'a> {
                             [(token::Lt, 1), (token::Gt, -1), (token::BinOp(token::Shr), -2)];
                         self.consume_tts(1, &modifiers);
 
-                        if !&[token::OpenDelim(Delimiter::Parenthesis), token::ModSep]
+                        if !&[token::OpenDelim(Delimiter::Parenthesis), token::PathSep]
                             .contains(&self.token.kind)
                         {
                             // We don't have `foo< bar >(` or `foo< bar >::`, so we rewind the
@@ -1428,7 +1428,7 @@ impl<'a> Parser<'a> {
                             self.restore_snapshot(snapshot);
                         }
                     }
-                    return if token::ModSep == self.token.kind {
+                    return if token::PathSep == self.token.kind {
                         // We have some certainty that this was a bad turbofish at this point.
                         // `foo< bar >::`
                         if let ExprKind::Binary(o, ..) = inner_op.kind
@@ -1784,7 +1784,7 @@ impl<'a> Parser<'a> {
         }
 
         // Do not add `::` to expected tokens.
-        if self.token == token::ModSep {
+        if self.token == token::PathSep {
             if let Some(ty) = base.to_ty() {
                 return self.maybe_recover_from_bad_qpath_stage_2(ty.span, ty);
             }
@@ -1799,7 +1799,7 @@ impl<'a> Parser<'a> {
         ty_span: Span,
         ty: P<Ty>,
     ) -> PResult<'a, P<T>> {
-        self.expect(&token::ModSep)?;
+        self.expect(&token::PathSep)?;
 
         let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP, tokens: None };
         self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;

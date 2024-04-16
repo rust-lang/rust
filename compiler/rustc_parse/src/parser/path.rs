@@ -96,7 +96,7 @@ impl<'a> Parser<'a> {
         }
 
         if !self.recover_colon_before_qpath_proj() {
-            self.expect(&token::ModSep)?;
+            self.expect(&token::PathSep)?;
         }
 
         let qself = P(QSelf { ty, path_span, position: path.segments.len() });
@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let mut segments = ThinVec::new();
         let mod_sep_ctxt = self.token.span.ctxt();
-        if self.eat(&token::ModSep) {
+        if self.eat(&token::PathSep) {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, ty_generics)?;
@@ -232,11 +232,11 @@ impl<'a> Parser<'a> {
                 // `PathStyle::Expr` is only provided at the root invocation and never in
                 // `parse_path_segment` to recurse and therefore can be checked to maintain
                 // this invariant.
-                self.check_trailing_angle_brackets(&segment, &[&token::ModSep]);
+                self.check_trailing_angle_brackets(&segment, &[&token::PathSep]);
             }
             segments.push(segment);
 
-            if self.is_import_coupler() || !self.eat(&token::ModSep) {
+            if self.is_import_coupler() || !self.eat(&token::PathSep) {
                 if style == PathStyle::Expr
                     && self.may_recover()
                     && self.token == token::Colon
@@ -291,7 +291,7 @@ impl<'a> Parser<'a> {
         Ok(
             if style == PathStyle::Type && check_args_start(self)
                 || style != PathStyle::Mod
-                    && self.check(&token::ModSep)
+                    && self.check(&token::PathSep)
                     && self.look_ahead(1, |t| is_args_start(t))
             {
                 // We use `style == PathStyle::Expr` to check if this is in a recursion or not. If
@@ -303,7 +303,7 @@ impl<'a> Parser<'a> {
                 }
 
                 // Generic arguments are found - `<`, `(`, `::<` or `::(`.
-                self.eat(&token::ModSep);
+                self.eat(&token::PathSep);
                 let lo = self.token.span;
                 let args = if self.eat_lt() {
                     // `<'a, T, A = U>`
@@ -379,7 +379,7 @@ impl<'a> Parser<'a> {
                     let token_before_parsing = self.token.clone();
                     let mut snapshot = None;
                     if self.may_recover()
-                        && prev_token_before_parsing.kind == token::ModSep
+                        && prev_token_before_parsing.kind == token::PathSep
                         && (style == PathStyle::Expr && self.token.can_begin_expr()
                             || style == PathStyle::Pat && self.token.can_begin_pattern())
                     {
@@ -388,7 +388,7 @@ impl<'a> Parser<'a> {
 
                     let (inputs, _) = match self.parse_paren_comma_seq(|p| p.parse_ty()) {
                         Ok(output) => output,
-                        Err(mut error) if prev_token_before_parsing.kind == token::ModSep => {
+                        Err(mut error) if prev_token_before_parsing.kind == token::PathSep => {
                             error.span_label(
                                 prev_token_before_parsing.span.to(token_before_parsing.span),
                                 "while parsing this parenthesized list of type arguments starting here",
@@ -470,7 +470,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if let token::ModSep | token::RArrow = self.token.kind {
+        if let token::PathSep | token::RArrow = self.token.kind {
             return;
         }
 

@@ -5,7 +5,7 @@
 #![crate_name = "check_static_recursion_foreign_helper"]
 #![crate_type = "lib"]
 
-extern crate libc;
+use std::ffi::c_int;
 
 #[no_mangle]
-pub static test_static: libc::c_int = 0;
+pub static test_static: c_int = 0;

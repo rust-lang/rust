@@ -276,6 +276,7 @@ unsafe fn register_dtor(key: &'static StaticKey) {
 // the address of the symbol to ensure it sticks around.
 
 #[link_section = ".CRT$XLB"]
+#[cfg_attr(miri, used)] // Miri only considers explicitly `#[used]` statics for `lookup_link_section`
 pub static p_thread_callback: unsafe extern "system" fn(c::LPVOID, c::DWORD, c::LPVOID) =
     on_tls_callback;
 

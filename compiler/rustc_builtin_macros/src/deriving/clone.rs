@@ -181,8 +181,8 @@ fn cs_clone(
             all_fields = af;
             vdata = &variant.data;
         }
-        EnumTag(..) | AllFieldlessEnum(..) => {
-            cx.dcx().span_bug(trait_span, format!("enum tags in `derive({name})`",))
+        EnumDiscr(..) | AllFieldlessEnum(..) => {
+            cx.dcx().span_bug(trait_span, format!("enum discriminants in `derive({name})`",))
         }
         StaticEnum(..) | StaticStruct(..) => {
             cx.dcx().span_bug(trait_span, format!("associated function in `derive({name})`"))

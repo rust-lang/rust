@@ -4,7 +4,7 @@ use crate::common::{
     expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG,
 };
 use crate::common::{incremental_dir, output_base_dir, output_base_name, output_testname_unique};
-use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, RustdocJson, Ui};
+use crate::common::{Assembly, Crashes, Incremental, JsDocTest, MirOpt, RunMake, RustdocJson, Ui};
 use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
 use crate::common::{CompareMode, FailMode, PassMode};
 use crate::common::{Config, TestPaths};
@@ -244,7 +244,7 @@ impl<'test> TestCx<'test> {
     /// Code executed for each revision in turn (or, if there are no
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
-        if self.props.should_ice && self.config.mode != Incremental {
+        if self.props.should_ice && self.config.mode != Incremental && self.config.mode != Crashes {
             self.fatal("cannot use should-ice in a test that is not cfail");
         }
         match self.config.mode {
@@ -263,6 +263,7 @@ impl<'test> TestCx<'test> {
             JsDocTest => self.run_js_doc_test(),
             CoverageMap => self.run_coverage_map_test(),
             CoverageRun => self.run_coverage_run_test(),
+            Crashes => self.run_crash_test(),
         }
     }
 
@@ -295,6 +296,7 @@ impl<'test> TestCx<'test> {
         match self.config.mode {
             JsDocTest => true,
             Ui => pm.is_some() || self.props.fail_mode > Some(FailMode::Build),
+            Crashes => false,
             Incremental => {
                 let revision =
                     self.revision.expect("incremental tests require a list of revisions");
@@ -357,6 +359,27 @@ impl<'test> TestCx<'test> {
         }
 
         self.check_forbid_output(&output_to_check, &proc_res);
+    }
+
+    fn run_crash_test(&self) {
+        let pm = self.pass_mode();
+        let proc_res = self.compile_test(WillExecute::No, self.should_emit_metadata(pm));
+
+        if std::env::var("COMPILETEST_VERBOSE_CRASHES").is_ok() {
+            eprintln!("{}", proc_res.status);
+            eprintln!("{}", proc_res.stdout);
+            eprintln!("{}", proc_res.stderr);
+            eprintln!("{}", proc_res.cmdline);
+        }
+
+        // if a test does not crash, consider it an error
+        if proc_res.status.success() || matches!(proc_res.status.code(), Some(1 | 0)) {
+            self.fatal(&format!(
+                "test no longer crashes/triggers ICE! Please give it a mearningful name, \
+            add a doc-comment to the start of the test explaining why it exists and \
+            move it to tests/ui or wherever you see fit."
+            ));
+        }
     }
 
     fn run_rfail_test(&self) {
@@ -2517,7 +2540,7 @@ impl<'test> TestCx<'test> {
                 rustc.arg("-Cdebug-assertions=no");
             }
             RunPassValgrind | Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake
-            | CodegenUnits | JsDocTest => {
+            | CodegenUnits | JsDocTest | Crashes => {
                 // do not use JSON output
             }
         }

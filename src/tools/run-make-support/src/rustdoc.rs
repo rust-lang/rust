@@ -1,5 +1,4 @@
 use std::env;
-use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Command, Output};
 
@@ -19,6 +18,8 @@ pub fn rustdoc() -> Rustdoc {
 pub struct Rustdoc {
     cmd: Command,
 }
+
+crate::impl_common_helpers!(Rustdoc);
 
 fn setup_common() -> Command {
     let rustdoc = env::var("RUSTDOC").unwrap();
@@ -61,25 +62,6 @@ impl Rustdoc {
         self
     }
 
-    /// Generic command argument provider. Use `.arg("-Zname")` over `.arg("-Z").arg("arg")`.
-    pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.cmd.arg(arg);
-        self
-    }
-
-    /// Run the build `rustdoc` command and assert that the run is successful.
-    #[track_caller]
-    pub fn run(&mut self) -> Output {
-        let caller_location = std::panic::Location::caller();
-        let caller_line_number = caller_location.line();
-
-        let output = self.cmd.output().unwrap();
-        if !output.status.success() {
-            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
-        }
-        output
-    }
-
     #[track_caller]
     pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
         let caller_location = std::panic::Location::caller();
@@ -87,7 +69,7 @@ impl Rustdoc {
 
         let output = self.cmd.output().unwrap();
         if output.status.code().unwrap() != code {
-            handle_failed_output(&format!("{:#?}", self.cmd), output, caller_line_number);
+            handle_failed_output(&self.cmd, output, caller_line_number);
         }
         output
     }

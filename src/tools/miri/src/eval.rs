@@ -192,18 +192,18 @@ impl Default for MiriConfig {
 
 /// The state of the main thread. Implementation detail of `on_main_stack_empty`.
 #[derive(Default, Debug)]
-enum MainThreadState {
+enum MainThreadState<'tcx> {
     #[default]
     Running,
-    TlsDtors(tls::TlsDtorsState),
+    TlsDtors(tls::TlsDtorsState<'tcx>),
     Yield {
         remaining: u32,
     },
     Done,
 }
 
-impl MainThreadState {
-    fn on_main_stack_empty<'tcx>(
+impl<'tcx> MainThreadState<'tcx> {
+    fn on_main_stack_empty(
         &mut self,
         this: &mut MiriInterpCx<'_, 'tcx>,
     ) -> InterpResult<'tcx, Poll<()>> {

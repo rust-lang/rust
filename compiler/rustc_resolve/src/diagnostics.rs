@@ -6,8 +6,8 @@ use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    codes::*, pluralize, report_ambiguity_error, struct_span_code_err, Applicability, Diag,
-    DiagCtxt, ErrorGuaranteed, MultiSpan, SuggestionStyle,
+    codes::*, report_ambiguity_error, struct_span_code_err, Applicability, Diag, DiagCtxt,
+    ErrorGuaranteed, MultiSpan, SuggestionStyle,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
@@ -29,10 +29,9 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use thin_vec::{thin_vec, ThinVec};
 
-use crate::errors::{AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion};
 use crate::errors::{
-    ConsiderAddingADerive, ExplicitUnsafeTraits, MacroDefinedLater, MacroSuggMovePosition,
-    MaybeMissingMacroRulesName,
+    self, AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion, ConsiderAddingADerive,
+    ExplicitUnsafeTraits, MacroDefinedLater, MacroSuggMovePosition, MaybeMissingMacroRulesName,
 };
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
@@ -226,16 +225,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ModuleKind::Block => "block",
         };
 
-        let old_noun = match old_binding.is_import_user_facing() {
-            true => "import",
-            false => "definition",
-        };
-
-        let new_participle = match new_binding.is_import_user_facing() {
-            true => "imported",
-            false => "defined",
-        };
-
         let (name, span) =
             (ident.name, self.tcx.sess.source_map().guess_head_span(new_binding.span));
 
@@ -254,35 +243,51 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             (TypeNS, _) => "type",
         };
 
-        let msg = format!("the name `{name}` is defined multiple times");
-
-        let mut err = match (old_binding.is_extern_crate(), new_binding.is_extern_crate()) {
-            (true, true) => struct_span_code_err!(self.dcx(), span, E0259, "{}", msg),
+        let code = match (old_binding.is_extern_crate(), new_binding.is_extern_crate()) {
+            (true, true) => E0259,
             (true, _) | (_, true) => match new_binding.is_import() && old_binding.is_import() {
-                true => struct_span_code_err!(self.dcx(), span, E0254, "{}", msg),
-                false => struct_span_code_err!(self.dcx(), span, E0260, "{}", msg),
+                true => E0254,
+                false => E0260,
             },
             _ => match (old_binding.is_import_user_facing(), new_binding.is_import_user_facing()) {
-                (false, false) => struct_span_code_err!(self.dcx(), span, E0428, "{}", msg),
-                (true, true) => struct_span_code_err!(self.dcx(), span, E0252, "{}", msg),
-                _ => struct_span_code_err!(self.dcx(), span, E0255, "{}", msg),
+                (false, false) => E0428,
+                (true, true) => E0252,
+                _ => E0255,
             },
         };
 
-        err.note(format!(
-            "`{}` must be defined only once in the {} namespace of this {}",
-            name,
-            ns.descr(),
-            container
-        ));
+        let label = match new_binding.is_import_user_facing() {
+            true => errors::NameDefinedMultipleTimeLabel::Reimported { span, name },
+            false => errors::NameDefinedMultipleTimeLabel::Redefined { span, name },
+        };
 
-        err.span_label(span, format!("`{name}` re{new_participle} here"));
-        if !old_binding.span.is_dummy() && old_binding.span != span {
-            err.span_label(
-                self.tcx.sess.source_map().guess_head_span(old_binding.span),
-                format!("previous {old_noun} of the {old_kind} `{name}` here"),
-            );
-        }
+        let old_binding_label =
+            (!old_binding.span.is_dummy() && old_binding.span != span).then(|| {
+                let span = self.tcx.sess.source_map().guess_head_span(old_binding.span);
+                match old_binding.is_import_user_facing() {
+                    true => errors::NameDefinedMultipleTimeOldBindingLabel::Import {
+                        span,
+                        name,
+                        old_kind,
+                    },
+                    false => errors::NameDefinedMultipleTimeOldBindingLabel::Definition {
+                        span,
+                        name,
+                        old_kind,
+                    },
+                }
+            });
+
+        let mut err = self
+            .dcx()
+            .create_err(errors::NameDefinedMultipleTime {
+                span,
+                descr: ns.descr(),
+                container,
+                label,
+                old_binding_label,
+            })
+            .with_code(code);
 
         // See https://github.com/rust-lang/rust/issues/32354
         use NameBindingKind::Import;
@@ -330,20 +335,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         match import {
             Some((import, span, true)) if should_remove_import && import.is_nested() => {
-                self.add_suggestion_for_duplicate_nested_use(&mut err, import, span)
+                self.add_suggestion_for_duplicate_nested_use(&mut err, import, span);
             }
             Some((import, _, true)) if should_remove_import && !import.is_glob() => {
                 // Simple case - remove the entire import. Due to the above match arm, this can
                 // only be a single use so just remove it entirely.
-                err.tool_only_span_suggestion(
-                    import.use_span_with_attributes,
-                    "remove unnecessary import",
-                    "",
-                    Applicability::MaybeIncorrect,
+                err.subdiagnostic(
+                    self.tcx.dcx(),
+                    errors::ToolOnlyRemoveUnnecessaryImport {
+                        span: import.use_span_with_attributes,
+                    },
                 );
             }
             Some((import, span, _)) => {
-                self.add_suggestion_for_rename_of_use(&mut err, name, import, span)
+                self.add_suggestion_for_rename_of_use(&mut err, name, import, span);
             }
             _ => {}
         }
@@ -444,7 +449,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         binding_span: Span,
     ) {
         assert!(import.is_nested());
-        let message = "remove unnecessary import";
 
         // Two examples will be used to illustrate the span manipulations we're doing:
         //
@@ -460,22 +464,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // previous imports.
         if found_closing_brace {
             if let Some(span) = extend_span_to_previous_binding(self.tcx.sess, span) {
-                err.tool_only_span_suggestion(span, message, "", Applicability::MaybeIncorrect);
+                err.subdiagnostic(self.dcx(), errors::ToolOnlyRemoveUnnecessaryImport { span });
             } else {
                 // Remove the entire line if we cannot extend the span back, this indicates an
                 // `issue_52891::{self}` case.
-                err.span_suggestion(
-                    import.use_span_with_attributes,
-                    message,
-                    "",
-                    Applicability::MaybeIncorrect,
+                err.subdiagnostic(
+                    self.dcx(),
+                    errors::RemoveUnnecessaryImport { span: import.use_span_with_attributes },
                 );
             }
 
             return;
         }
 
-        err.span_suggestion(span, message, "", Applicability::MachineApplicable);
+        err.subdiagnostic(self.dcx(), errors::RemoveUnnecessaryImport { span });
     }
 
     pub(crate) fn lint_if_path_starts_with_module(
@@ -571,14 +573,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         resolution_error: ResolutionError<'a>,
     ) -> Diag<'_> {
         match resolution_error {
-            ResolutionError::GenericParamsFromOuterItem(outer_res, has_generic_params, def_kind) => {
+            ResolutionError::GenericParamsFromOuterItem(
+                outer_res,
+                has_generic_params,
+                def_kind,
+            ) => {
                 use errs::GenericParamsFromOuterItemLabel as Label;
                 let static_or_const = match def_kind {
-                    DefKind::Static{ .. } => Some(errs::GenericParamsFromOuterItemStaticOrConst::Static),
+                    DefKind::Static { .. } => {
+                        Some(errs::GenericParamsFromOuterItemStaticOrConst::Static)
+                    }
                     DefKind::Const => Some(errs::GenericParamsFromOuterItemStaticOrConst::Const),
                     _ => None,
                 };
-                let is_self = matches!(outer_res, Res::SelfTyParam { .. } | Res::SelfTyAlias { .. });
+                let is_self =
+                    matches!(outer_res, Res::SelfTyParam { .. } | Res::SelfTyAlias { .. });
                 let mut err = errs::GenericParamsFromOuterItem {
                     span,
                     label: None,
@@ -677,18 +686,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let origin_sp = origin.iter().copied().collect::<Vec<_>>();
 
                 let msp = MultiSpan::from_spans(target_sp.clone());
-                let mut err = struct_span_code_err!(
-                    self.dcx(),
-                    msp,
-                    E0408,
-                    "variable `{}` is not bound in all patterns",
-                    name,
-                );
+                let mut err = self
+                    .dcx()
+                    .create_err(errors::VariableIsNotBoundInAllPatterns { multispan: msp, name });
                 for sp in target_sp {
-                    err.span_label(sp, format!("pattern doesn't bind `{name}`"));
+                    err.subdiagnostic(self.dcx(), errors::PatternDoesntBindName { span: sp, name });
                 }
                 for sp in origin_sp {
-                    err.span_label(sp, "variable not in all patterns");
+                    err.subdiagnostic(self.dcx(), errors::VariableNotInAllPatterns { span: sp });
                 }
                 if could_be_path {
                     let import_suggestions = self.lookup_import_candidates(
@@ -961,17 +966,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 code,
                 trait_item_span,
                 trait_path,
-            } => {
-                self.dcx().struct_span_err(
+            } => self
+                .dcx()
+                .create_err(errors::TraitImplMismatch {
                     span,
-                    format!(
-                        "item `{name}` is an associated {kind}, which doesn't match its trait `{trait_path}`",
-                    ),
-                )
-                .with_code(code)
-                .with_span_label(span, "does not match trait")
-                .with_span_label(trait_item_span, "item in trait")
-            }
+                    name,
+                    kind,
+                    trait_path,
+                    trait_item_span,
+                })
+                .with_code(code),
             ResolutionError::TraitImplDuplicate { name, trait_item_span, old_span } => self
                 .dcx()
                 .create_err(errs::TraitImplDuplicate { span, name, trait_item_span, old_span }),
@@ -1005,7 +1009,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 ResolutionError::FailedToResolve { segment: None, label, suggestion, module: None },
             ),
             VisResolutionError::ExpectedFound(span, path_str, res) => {
-                self.dcx().create_err(errs::ExpectedFound { span, res, path_str })
+                self.dcx().create_err(errs::ExpectedModuleFound { span, res, path_str })
             }
             VisResolutionError::Indeterminate(span) => {
                 self.dcx().create_err(errs::Indeterminate(span))
@@ -1532,17 +1536,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 };
                 if let crate::NameBindingKind::Import { import, .. } = binding.kind {
                     if !import.span.is_dummy() {
-                        err.span_note(
-                            import.span,
-                            format!("`{ident}` is imported here, but it is {desc}"),
-                        );
+                        let note = errors::IdentImporterHereButItIsDesc {
+                            span: import.span,
+                            imported_ident: ident,
+                            imported_ident_desc: &desc,
+                        };
+                        err.subdiagnostic(self.tcx.dcx(), note);
                         // Silence the 'unused import' warning we might get,
                         // since this diagnostic already covers that import.
                         self.record_use(ident, binding, Used::Other);
                         return;
                     }
                 }
-                err.note(format!("`{ident}` is in scope, but it is {desc}"));
+                let note = errors::IdentInScopeButItIsDesc {
+                    imported_ident: ident,
+                    imported_ident_desc: &desc,
+                };
+                err.subdiagnostic(self.tcx.dcx(), note);
                 return;
             }
         }
@@ -1582,20 +1592,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 //    |              ^
                 return false;
             }
-            let prefix = match suggestion.target {
-                SuggestionTarget::SimilarlyNamed => "similarly named ",
-                SuggestionTarget::SingleItem => "",
+            let span = self.tcx.sess.source_map().guess_head_span(def_span);
+            let candidate_descr = suggestion.res.descr();
+            let candidate = suggestion.candidate;
+            let label = match suggestion.target {
+                SuggestionTarget::SimilarlyNamed => {
+                    errors::DefinedHere::SimilarlyNamed { span, candidate_descr, candidate }
+                }
+                SuggestionTarget::SingleItem => {
+                    errors::DefinedHere::SingleItem { span, candidate_descr, candidate }
+                }
             };
-
-            err.span_label(
-                self.tcx.sess.source_map().guess_head_span(def_span),
-                format!(
-                    "{}{} `{}` defined here",
-                    prefix,
-                    suggestion.res.descr(),
-                    suggestion.candidate,
-                ),
-            );
+            err.subdiagnostic(self.tcx.dcx(), label);
         }
 
         let (span, sugg, post) = if let SuggestionTarget::SimilarlyNamed = suggestion.target
@@ -1749,16 +1757,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             |b: NameBinding<'_>| if b.is_import() { &import_descr } else { &nonimport_descr };
 
         // Print the primary message.
-        let descr = get_descr(binding);
-        let mut err = struct_span_code_err!(
-            self.dcx(),
-            ident.span,
-            E0603,
-            "{} `{}` is private",
-            descr,
-            ident
-        );
-        err.span_label(ident.span, format!("private {descr}"));
+        let ident_descr = get_descr(binding);
+        let mut err =
+            self.dcx().create_err(errors::IsPrivate { span: ident.span, ident_descr, ident });
 
         let mut not_publicly_reexported = false;
         if let Some((this_res, outer_ident)) = outermost_res {
@@ -1782,10 +1783,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // If we suggest importing a public re-export, don't point at the definition.
             if point_to_def && ident.span != outer_ident.span {
                 not_publicly_reexported = true;
-                err.span_label(
-                    outer_ident.span,
-                    format!("{} `{outer_ident}` is not publicly re-exported", this_res.descr()),
-                );
+                let label = errors::OuterIdentIsNotPubliclyReexported {
+                    span: outer_ident.span,
+                    outer_ident_descr: this_res.descr(),
+                    outer_ident,
+                };
+                err.subdiagnostic(self.tcx.dcx(), label);
             }
         }
 
@@ -1799,18 +1802,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         {
             non_exhaustive = Some(attr.span);
         } else if let Some(span) = ctor_fields_span {
-            err.span_label(span, "a constructor is private if any of the fields is private");
+            let label = errors::ConstructorPrivateIfAnyFieldPrivate { span };
+            err.subdiagnostic(self.tcx.dcx(), label);
             if let Res::Def(_, d) = res
                 && let Some(fields) = self.field_visibility_spans.get(&d)
             {
-                err.multipart_suggestion_verbose(
-                    format!(
-                        "consider making the field{} publicly accessible",
-                        pluralize!(fields.len())
-                    ),
-                    fields.iter().map(|span| (*span, "pub ".to_string())).collect(),
-                    Applicability::MaybeIncorrect,
-                );
+                let spans = fields.iter().map(|span| *span).collect();
+                let sugg =
+                    errors::ConsiderMakingTheFieldPublic { spans, number_of_fields: fields.len() };
+                err.subdiagnostic(self.tcx.dcx(), sugg);
             }
         }
 
@@ -1893,13 +1893,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 NameBindingKind::Res(_) | NameBindingKind::Module(_) => {}
             }
             let first = binding == first_binding;
-            let msg = format!(
-                "{and_refers_to}the {item} `{name}`{which} is defined here{dots}",
-                and_refers_to = if first { "" } else { "...and refers to " },
-                item = get_descr(binding),
-                which = if first { "" } else { " which" },
-                dots = if next_binding.is_some() { "..." } else { "" },
-            );
             let def_span = self.tcx.sess.source_map().guess_head_span(binding.span);
             let mut note_span = MultiSpan::from_span(def_span);
             if !first && binding.vis.is_public() {
@@ -1919,7 +1912,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     "cannot be constructed because it is `#[non_exhaustive]`",
                 );
             }
-            err.span_note(note_span, msg);
+            let note = errors::NoteAndRefersToTheItemDefinedHere {
+                span: note_span,
+                binding_descr: get_descr(binding),
+                binding_name: name,
+                first,
+                dots: next_binding.is_some(),
+            };
+            err.subdiagnostic(self.tcx.dcx(), note);
         }
         // We prioritize shorter paths, non-core imports and direct imports over the alternatives.
         sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0] == "core", *reexport));
@@ -1933,15 +1933,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 continue;
             }
             let path = sugg.join("::");
-            err.span_suggestion_verbose(
-                dedup_span,
-                format!(
-                    "import `{ident}` {}",
-                    if reexport { "through the re-export" } else { "directly" }
-                ),
-                path,
-                Applicability::MachineApplicable,
-            );
+            let sugg = if reexport {
+                errors::ImportIdent::ThroughReExport { span: dedup_span, ident, path }
+            } else {
+                errors::ImportIdent::Directly { span: dedup_span, ident, path }
+            };
+            err.subdiagnostic(self.tcx.dcx(), sugg);
             break;
         }
 
@@ -2521,13 +2518,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 continue;
             }
 
-            err.span_note(name.span, "found an item that was configured out");
+            let note = errors::FoundItemConfigureOut { span: name.span };
+            err.subdiagnostic(self.tcx.dcx(), note);
 
             if let MetaItemKind::List(nested) = &cfg.kind
                 && let NestedMetaItem::MetaItem(meta_item) = &nested[0]
                 && let MetaItemKind::NameValue(feature_name) = &meta_item.kind
             {
-                err.note(format!("the item is gated behind the `{}` feature", feature_name.symbol));
+                let note = errors::ItemWasBehindFeature { feature: feature_name.symbol };
+                err.subdiagnostic(self.tcx.dcx(), note);
             }
         }
     }

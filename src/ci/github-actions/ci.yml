@@ -341,9 +341,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The job matrix for `calculate_matrix` is defined in src/ci/github-actions/jobs.yml.
+  calculate_matrix:
+    name: Calculate job matrix
+    runs-on: ubuntu-latest
+    outputs:
+      jobs: ${{ steps.jobs.outputs.jobs }}
+    steps:
+      - name: Checkout the source code
+        uses: actions/checkout@v4
+      - name: Calculate the CI job matrix
+        run: python3 src/ci/scripts/calculate-job-matrix.py >> $GITHUB_OUTPUT
+        id: jobs
   pr:
     <<: *base-ci-job
     name: PR - ${{ matrix.name }}
+    needs: [ calculate_matrix ]
     env:
       <<: [*shared-ci-variables, *public-variables]
       PR_CI_JOB: 1
@@ -351,20 +364,8 @@ jobs:
     continue-on-error: ${{ matrix.name == 'mingw-check-tidy' }}
     strategy:
       matrix:
-        include:
-          - name: mingw-check
-            <<: *job-linux-4c
-
-          - name: mingw-check-tidy
-            <<: *job-linux-4c
-
-          - name: x86_64-gnu-llvm-17
-            env:
-              ENABLE_GCC_CODEGEN: "1"
-            <<: *job-linux-16c
-
-          - name: x86_64-gnu-tools
-            <<: *job-linux-16c
+        # Check the `calculate_matrix` job to see how is the matrix defined.
+        include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
 
   auto:
     <<: *base-ci-job

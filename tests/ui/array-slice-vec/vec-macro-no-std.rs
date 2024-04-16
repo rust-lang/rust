@@ -7,8 +7,6 @@
 
 extern crate std as other;
 
-extern crate libc;
-
 #[macro_use]
 extern crate alloc;
 

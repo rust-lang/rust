@@ -424,25 +424,7 @@ impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: PolyTraitRefs(ExpectedFound::new(
-                a_is_expected,
-                ty::Binder::dummy(a),
-                ty::Binder::dummy(b),
-            )),
-        }
-    }
-}
-
-impl<'tcx> ToTrace<'tcx> for ty::PolyTraitRef<'tcx> {
-    fn to_trace(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Self,
-        b: Self,
-    ) -> TypeTrace<'tcx> {
-        TypeTrace {
-            cause: cause.clone(),
-            values: PolyTraitRefs(ExpectedFound::new(a_is_expected, a, b)),
+            values: TraitRefs(ExpectedFound::new(a_is_expected, a, b)),
         }
     }
 }

@@ -236,7 +236,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::FnDef(..) | ty::Coroutine(..) | ty::Closure(..) | ty::CoroutineClosure(..) => {
-                bug!("Unexpected coroutine/closure type in variance computation");
+                bug!("Unexpected unnameable type in variance computation: {ty}");
             }
 
             ty::Ref(region, ty, mutbl) => {

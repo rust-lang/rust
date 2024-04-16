@@ -31,7 +31,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::structured_errors::StructuredDiag;
 use rustc_index::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::TypeTrace;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::ObligationCauseCode::ExprBindingObligation;
@@ -297,22 +297,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // 3. Check if the formal type is a supertype of the checked one
             //    and register any such obligations for future type checks
             let supertype_error = self.at(&self.misc(provided_arg.span), self.param_env).sup(
-                DefineOpaqueTypes::No,
+                DefineOpaqueTypes::Yes,
                 formal_input_ty,
                 coerced_ty,
             );
-            let subtyping_error = match supertype_error {
-                Ok(InferOk { obligations, value: () }) => {
-                    self.register_predicates(obligations);
-                    None
-                }
-                Err(err) => Some(err),
-            };
 
             // If neither check failed, the types are compatible
-            match subtyping_error {
-                None => Compatibility::Compatible,
-                Some(_) => Compatibility::Incompatible(subtyping_error),
+            match supertype_error {
+                Ok(InferOk { obligations, value: () }) => {
+                    self.register_predicates(obligations);
+                    Compatibility::Compatible
+                }
+                Err(err) => Compatibility::Incompatible(Some(err)),
             }
         };
 
@@ -2188,7 +2184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             [
                                 callee_ty,
                                 self.next_ty_var(TypeVariableOrigin {
-                                    kind: TypeVariableOriginKind::MiscVariable,
+                                    param_def_id: None,
                                     span: rustc_span::DUMMY_SP,
                                 }),
                             ],

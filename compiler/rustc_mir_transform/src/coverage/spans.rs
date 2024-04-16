@@ -1,4 +1,4 @@
-use rustc_data_structures::graph::WithNumNodes;
+use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir;
 use rustc_span::{BytePos, Span};

@@ -2,7 +2,7 @@ use crate::FnCtxt;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_infer::{infer::type_variable::TypeVariableOriginKind, traits::ObligationCauseCode};
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::{symbol::kw, Span};
 use rustc_trait_selection::traits;
@@ -340,7 +340,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             type Result = ControlFlow<ty::GenericArg<'tcx>>;
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if let Some(origin) = self.0.type_var_origin(ty)
-                    && let TypeVariableOriginKind::TypeParameterDefinition(_, def_id) = origin.kind
+                    && let Some(def_id) = origin.param_def_id
                     && let generics = self.0.tcx.generics_of(self.1)
                     && let Some(index) = generics.param_def_id_to_index(self.0.tcx, def_id)
                     && let Some(arg) =
@@ -367,7 +367,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }),
         ) = error.code
             && let ty::Closure(def_id, _) | ty::Coroutine(def_id, ..) =
-                expected_trait_ref.skip_binder().self_ty().kind()
+                expected_trait_ref.self_ty().kind()
             && span.overlaps(self.tcx.def_span(*def_id))
         {
             true

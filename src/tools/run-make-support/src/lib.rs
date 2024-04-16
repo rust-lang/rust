@@ -1,3 +1,8 @@
+//! `run-make-support` is a support library for run-make tests. It provides command wrappers and
+//! convenience utility functions to help test writers reduce duplication. The support library
+//! notably is built via cargo: this means that if your test wants some non-trivial utility, such
+//! as `object` or `wasmparser`, they can be re-exported and be made available through this library.
+
 pub mod cc;
 pub mod run;
 pub mod rustc;
@@ -82,7 +87,7 @@ pub fn cygpath_windows<P: AsRef<Path>>(path: P) -> String {
     cygpath.arg(path.as_ref());
     let output = cygpath.output().unwrap();
     if !output.status.success() {
-        handle_failed_output(&format!("{:#?}", cygpath), output, caller_line_number);
+        handle_failed_output(&cygpath, output, caller_line_number);
     }
     let s = String::from_utf8(output.stdout).unwrap();
     // cygpath -w can attach a newline
@@ -98,18 +103,18 @@ pub fn uname() -> String {
     let mut uname = Command::new("uname");
     let output = uname.output().unwrap();
     if !output.status.success() {
-        handle_failed_output(&format!("{:#?}", uname), output, caller_line_number);
+        handle_failed_output(&uname, output, caller_line_number);
     }
     String::from_utf8(output.stdout).unwrap()
 }
 
-fn handle_failed_output(cmd: &str, output: Output, caller_line_number: u32) -> ! {
+fn handle_failed_output(cmd: &Command, output: Output, caller_line_number: u32) -> ! {
     if output.status.success() {
-        eprintln!("command incorrectly succeeded at line {caller_line_number}");
+        eprintln!("command unexpectedly succeeded at line {caller_line_number}");
     } else {
         eprintln!("command failed at line {caller_line_number}");
     }
-    eprintln!("{cmd}");
+    eprintln!("{cmd:?}");
     eprintln!("output status: `{}`", output.status);
     eprintln!("=== STDOUT ===\n{}\n\n", String::from_utf8(output.stdout).unwrap());
     eprintln!("=== STDERR ===\n{}\n\n", String::from_utf8(output.stderr).unwrap());
@@ -129,3 +134,127 @@ pub fn set_host_rpath(cmd: &mut Command) {
         env::join_paths(paths.iter()).unwrap()
     });
 }
+
+/// Implement common helpers for command wrappers. This assumes that the command wrapper is a struct
+/// containing a `cmd: Command` field. The provided helpers are:
+///
+/// 1. Generic argument acceptors: `arg` and `args` (delegated to [`Command`]). These are intended
+///    to be *fallback* argument acceptors, when specific helpers don't make sense. Prefer to add
+///    new specific helper methods over relying on these generic argument providers.
+/// 2. Environment manipulation methods: `env`, `env_remove` and `env_clear`: these delegate to
+///    methods of the same name on [`Command`].
+/// 3. Output and execution: `output`, `run` and `run_fail` are provided. `output` waits for the
+///    command to finish running and returns the process's [`Output`]. `run` and `run_fail` are
+///    higher-level convenience methods which waits for the command to finish running and assert
+///    that the command successfully ran or failed as expected. Prefer `run` and `run_fail` when
+///    possible.
+///
+/// Example usage:
+///
+/// ```ignore (illustrative)
+/// struct CommandWrapper { cmd: Command }
+///
+/// crate::impl_common_helpers!(CommandWrapper);
+///
+/// impl CommandWrapper {
+///     // ... additional specific helper methods
+/// }
+/// ```
+///
+/// [`Command`]: ::std::process::Command
+/// [`Output`]: ::std::process::Output
+macro_rules! impl_common_helpers {
+    ($wrapper: ident) => {
+        impl $wrapper {
+            /// Specify an environment variable.
+            pub fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
+            where
+                K: AsRef<::std::ffi::OsStr>,
+                V: AsRef<::std::ffi::OsStr>,
+            {
+                self.cmd.env(key, value);
+                self
+            }
+
+            /// Remove an environmental variable.
+            pub fn env_remove<K>(&mut self, key: K) -> &mut Self
+            where
+                K: AsRef<::std::ffi::OsStr>,
+            {
+                self.cmd.env_remove(key);
+                self
+            }
+
+            /// Clear all environmental variables.
+            pub fn env_var(&mut self) -> &mut Self {
+                self.cmd.env_clear();
+                self
+            }
+
+            /// Generic command argument provider. Prefer specific helper methods if possible.
+            /// Note that for some executables, arguments might be platform specific. For C/C++
+            /// compilers, arguments might be platform *and* compiler specific.
+            pub fn arg<S>(&mut self, arg: S) -> &mut Self
+            where
+                S: AsRef<::std::ffi::OsStr>,
+            {
+                self.cmd.arg(arg);
+                self
+            }
+
+            /// Generic command arguments provider. Prefer specific helper methods if possible.
+            /// Note that for some executables, arguments might be platform specific. For C/C++
+            /// compilers, arguments might be platform *and* compiler specific.
+            pub fn args<S>(&mut self, args: &[S]) -> &mut Self
+            where
+                S: AsRef<::std::ffi::OsStr>,
+            {
+                self.cmd.args(args);
+                self
+            }
+
+            /// Inspect what the underlying [`Command`][::std::process::Command] is up to the
+            /// current construction.
+            pub fn inspect<I>(&mut self, inspector: I) -> &mut Self
+            where
+                I: FnOnce(&::std::process::Command),
+            {
+                inspector(&self.cmd);
+                self
+            }
+
+            /// Get the [`Output`][::std::process::Output] of the finished process.
+            pub fn output(&mut self) -> ::std::process::Output {
+                self.cmd.output().expect("failed to get output of finished process")
+            }
+
+            /// Run the constructed command and assert that it is successfully run.
+            #[track_caller]
+            pub fn run(&mut self) -> ::std::process::Output {
+                let caller_location = ::std::panic::Location::caller();
+                let caller_line_number = caller_location.line();
+
+                let output = self.cmd.output().unwrap();
+                if !output.status.success() {
+                    handle_failed_output(&self.cmd, output, caller_line_number);
+                }
+                output
+            }
+
+            /// Run the constructed command and assert that it does not successfully run.
+            #[track_caller]
+            pub fn run_fail(&mut self) -> ::std::process::Output {
+                let caller_location = ::std::panic::Location::caller();
+                let caller_line_number = caller_location.line();
+
+                let output = self.cmd.output().unwrap();
+                if output.status.success() {
+                    handle_failed_output(&self.cmd, output, caller_line_number);
+                }
+                output
+            }
+        }
+    };
+}
+
+pub(crate) use impl_common_helpers;

@@ -308,11 +308,11 @@ impl MetaItem {
         // FIXME: Share code with `parse_path`.
         let path = match tokens.next().map(|tt| TokenTree::uninterpolate(tt)).as_deref() {
             Some(&TokenTree::Token(
-                Token { kind: ref kind @ (token::Ident(..) | token::ModSep), span },
+                Token { kind: ref kind @ (token::Ident(..) | token::PathSep), span },
                 _,
             )) => 'arm: {
                 let mut segments = if let &token::Ident(name, _) = kind {
-                    if let Some(TokenTree::Token(Token { kind: token::ModSep, .. }, _)) =
+                    if let Some(TokenTree::Token(Token { kind: token::PathSep, .. }, _)) =
                         tokens.peek()
                     {
                         tokens.next();
@@ -331,7 +331,7 @@ impl MetaItem {
                     } else {
                         return None;
                     }
-                    if let Some(TokenTree::Token(Token { kind: token::ModSep, .. }, _)) =
+                    if let Some(TokenTree::Token(Token { kind: token::PathSep, .. }, _)) =
                         tokens.peek()
                     {
                         tokens.next();

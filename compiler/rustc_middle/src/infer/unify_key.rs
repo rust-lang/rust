@@ -1,7 +1,6 @@
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_span::def_id::DefId;
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use std::cmp;
 use std::marker::PhantomData;
@@ -106,16 +105,11 @@ impl ToType for ty::FloatVarValue {
 
 #[derive(Copy, Clone, Debug)]
 pub struct ConstVariableOrigin {
-    pub kind: ConstVariableOriginKind,
     pub span: Span,
-}
-
-/// Reasons to create a const inference variable
-#[derive(Copy, Clone, Debug)]
-pub enum ConstVariableOriginKind {
-    MiscVariable,
-    ConstInference,
-    ConstParameterDefinition(Symbol, DefId),
+    /// `DefId` of the const parameter this was instantiated for, if any.
+    ///
+    /// This should only be used for diagnostics.
+    pub param_def_id: Option<DefId>,
 }
 
 #[derive(Copy, Clone, Debug)]

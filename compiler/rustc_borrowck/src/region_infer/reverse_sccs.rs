@@ -1,8 +1,8 @@
 use crate::constraints::ConstraintSccIndex;
 use crate::RegionInferenceContext;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::graph;
 use rustc_data_structures::graph::vec_graph::VecGraph;
-use rustc_data_structures::graph::WithSuccessors;
 use rustc_middle::ty::RegionVid;
 use std::ops::Range;
 
@@ -23,8 +23,7 @@ impl ReverseSccGraph {
         scc0: ConstraintSccIndex,
     ) -> impl Iterator<Item = RegionVid> + 'a {
         let mut duplicates = FxIndexSet::default();
-        self.graph
-            .depth_first_search(scc0)
+        graph::depth_first_search(&self.graph, scc0)
             .flat_map(move |scc1| {
                 self.scc_regions
                     .get(&scc1)

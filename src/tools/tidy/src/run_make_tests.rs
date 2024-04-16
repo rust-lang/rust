@@ -6,10 +6,26 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
+    let mut is_sorted = true;
+
     let allowed_makefiles = {
-        let allowed_makefiles = include_str!("allowed_run_make_makefiles.txt");
-        let allowed_makefiles = allowed_makefiles.lines().collect::<Vec<_>>();
-        let is_sorted = allowed_makefiles.windows(2).all(|w| w[0] < w[1]);
+        let mut total_lines = 0;
+        let mut prev_line = "";
+        let allowed_makefiles: BTreeSet<&str> = include_str!("allowed_run_make_makefiles.txt")
+            .lines()
+            .map(|line| {
+                total_lines += 1;
+
+                if prev_line > line {
+                    is_sorted = false;
+                }
+
+                prev_line = line;
+
+                line
+            })
+            .collect();
+
         if !is_sorted && !bless {
             tidy_error!(
                 bad,
@@ -18,9 +34,7 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
                 `x test tidy --bless`"
             );
         }
-        let allowed_makefiles_unique =
-            allowed_makefiles.iter().map(ToString::to_string).collect::<BTreeSet<String>>();
-        if allowed_makefiles_unique.len() != allowed_makefiles.len() {
+        if allowed_makefiles.len() != total_lines {
             tidy_error!(
                 bad,
                 "`src/tools/tidy/src/allowed_run_make_makefiles.txt` contains duplicate entries, \
@@ -28,7 +42,8 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
                 `x test tidy --bless`"
             );
         }
-        allowed_makefiles_unique
+
+        allowed_makefiles
     };
 
     let mut remaining_makefiles = allowed_makefiles.clone();
@@ -48,7 +63,7 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
             let makefile_path = entry.path().strip_prefix(&tests_path).unwrap();
             let makefile_path = makefile_path.to_str().unwrap().replace('\\', "/");
 
-            if !remaining_makefiles.remove(&makefile_path) {
+            if !remaining_makefiles.remove(makefile_path.as_str()) {
                 tidy_error!(
                     bad,
                     "found run-make Makefile not permitted in \
@@ -64,7 +79,7 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
     // Our data must remain up to date, so they must be removed from
     // `src/tools/tidy/src/allowed_run_make_makefiles.txt`.
     // This can be done automatically on --bless, or else a tidy error will be issued.
-    if bless && !remaining_makefiles.is_empty() {
+    if bless && (!remaining_makefiles.is_empty() || !is_sorted) {
         let tidy_src = src_path.join("tools").join("tidy").join("src");
         let org_file_path = tidy_src.join("allowed_run_make_makefiles.txt");
         let temp_file_path = tidy_src.join("blessed_allowed_run_make_makefiles.txt");

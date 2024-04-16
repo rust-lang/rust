@@ -1,3 +1,5 @@
+use crate::graph;
+
 use super::*;
 
 fn create_graph() -> VecGraph<usize> {
@@ -37,6 +39,6 @@ fn successors() {
 #[test]
 fn dfs() {
     let graph = create_graph();
-    let dfs: Vec<_> = graph.depth_first_search(0).collect();
+    let dfs: Vec<_> = graph::depth_first_search(&graph, 0).collect();
     assert_eq!(dfs, vec![0, 1, 3, 4, 2]);
 }

@@ -1,7 +1,6 @@
 use crate::FnCtxt;
 use rustc_data_structures::{
-    graph::WithSuccessors,
-    graph::{iterate::DepthFirstSearch, vec_graph::VecGraph},
+    graph::{self, iterate::DepthFirstSearch, vec_graph::VecGraph},
     unord::{UnordBag, UnordMap, UnordSet},
 };
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
@@ -300,7 +299,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 debug!(
                     "calculate_diverging_fallback: root_vid={:?} reaches {:?}",
                     root_vid,
-                    coercion_graph.depth_first_search(root_vid).collect::<Vec<_>>()
+                    graph::depth_first_search(&coercion_graph, root_vid).collect::<Vec<_>>()
                 );
 
                 // drain the iterator to visit all nodes reachable from this node
@@ -342,8 +341,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         for &diverging_vid in &diverging_vids {
             let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
             let root_vid = self.root_var(diverging_vid);
-            let can_reach_non_diverging = coercion_graph
-                .depth_first_search(root_vid)
+            let can_reach_non_diverging = graph::depth_first_search(&coercion_graph, root_vid)
                 .any(|n| roots_reachable_from_non_diverging.visited(n));
 
             let infer_var_infos: UnordBag<_> = self

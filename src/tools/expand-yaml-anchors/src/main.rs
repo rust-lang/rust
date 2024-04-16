@@ -2,11 +2,11 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 use yaml_rust::{Yaml, YamlEmitter, YamlLoader};
 
-/// List of directories containing files to expand. The first tuple element is the source
-/// directory, while the second tuple element is the destination directory.
+/// List of files to expand. The first tuple element is the source
+/// file, while the second tuple element is the destination file.
 #[rustfmt::skip]
 static TO_EXPAND: &[(&str, &str)] = &[
-    ("src/ci/github-actions", ".github/workflows"),
+    ("src/ci/github-actions/ci.yml", ".github/workflows/ci.yml"),
 ];
 
 /// Name of a special key that will be removed from all the maps in expanded configuration files.
@@ -62,27 +62,20 @@ impl App {
     fn run(&self) -> Result<(), Box<dyn Error>> {
         for (source, dest) in TO_EXPAND {
             let source = self.base.join(source);
-            let dest = self.base.join(dest);
-            for entry in std::fs::read_dir(&source)? {
-                let path = entry?.path();
-                if !path.is_file() || path.extension().and_then(|e| e.to_str()) != Some("yml") {
-                    continue;
-                }
+            let dest_path = self.base.join(dest);
 
-                let dest_path = dest.join(path.file_name().unwrap());
-                self.expand(&path, &dest_path).with_context(|| match self.mode {
-                    Mode::Generate => format!(
-                        "failed to expand {} into {}",
-                        self.path(&path),
-                        self.path(&dest_path)
-                    ),
-                    Mode::Check => format!(
-                        "{} is not up to date; please run \
+            self.expand(&source, &dest_path).with_context(|| match self.mode {
+                Mode::Generate => format!(
+                    "failed to expand {} into {}",
+                    self.path(&source),
+                    self.path(&dest_path)
+                ),
+                Mode::Check => format!(
+                    "{} is not up to date; please run \
                         `x.py run src/tools/expand-yaml-anchors`.",
-                        self.path(&dest_path)
-                    ),
-                })?;
-            }
+                    self.path(&dest_path)
+                ),
+            })?;
         }
         Ok(())
     }

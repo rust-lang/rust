@@ -671,68 +671,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err
     }
 
-    fn ty_kind_suggestion(&self, ty: Ty<'tcx>) -> Option<String> {
-        // Keep in sync with `rustc_hir_analysis/src/check/mod.rs:ty_kind_suggestion`.
-        // FIXME: deduplicate the above.
-        let tcx = self.infcx.tcx;
-        let implements_default = |ty| {
-            let Some(default_trait) = tcx.get_diagnostic_item(sym::Default) else {
-                return false;
-            };
-            self.infcx
-                .type_implements_trait(default_trait, [ty], self.param_env)
-                .must_apply_modulo_regions()
-        };
-
-        Some(match ty.kind() {
-            ty::Never | ty::Error(_) => return None,
-            ty::Bool => "false".to_string(),
-            ty::Char => "\'x\'".to_string(),
-            ty::Int(_) | ty::Uint(_) => "42".into(),
-            ty::Float(_) => "3.14159".into(),
-            ty::Slice(_) => "[]".to_string(),
-            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => {
-                "vec![]".to_string()
-            }
-            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::String) => {
-                "String::new()".to_string()
-            }
-            ty::Adt(def, args) if def.is_box() => {
-                format!("Box::new({})", self.ty_kind_suggestion(args[0].expect_ty())?)
-            }
-            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Option) => {
-                "None".to_string()
-            }
-            ty::Adt(def, args) if Some(def.did()) == tcx.get_diagnostic_item(sym::Result) => {
-                format!("Ok({})", self.ty_kind_suggestion(args[0].expect_ty())?)
-            }
-            ty::Adt(_, _) if implements_default(ty) => "Default::default()".to_string(),
-            ty::Ref(_, ty, mutability) => {
-                if let (ty::Str, hir::Mutability::Not) = (ty.kind(), mutability) {
-                    "\"\"".to_string()
-                } else {
-                    let Some(ty) = self.ty_kind_suggestion(*ty) else {
-                        return None;
-                    };
-                    format!("&{}{ty}", mutability.prefix_str())
-                }
-            }
-            ty::Array(ty, len) => format!(
-                "[{}; {}]",
-                self.ty_kind_suggestion(*ty)?,
-                len.eval_target_usize(tcx, ty::ParamEnv::reveal_all()),
-            ),
-            ty::Tuple(tys) => format!(
-                "({})",
-                tys.iter()
-                    .map(|ty| self.ty_kind_suggestion(ty))
-                    .collect::<Option<Vec<String>>>()?
-                    .join(", ")
-            ),
-            _ => "value".to_string(),
-        })
-    }
-
     fn suggest_assign_value(
         &self,
         err: &mut Diag<'_>,
@@ -742,7 +680,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
         debug!("ty: {:?}, kind: {:?}", ty, ty.kind());
 
-        let Some(assign_value) = self.ty_kind_suggestion(ty) else {
+        let Some(assign_value) = self.infcx.err_ctxt().ty_kind_suggestion(self.param_env, ty)
+        else {
             return;
         };
 
@@ -1813,32 +1752,31 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
         let hir = tcx.hir();
         let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
-        struct FindUselessClone<'hir> {
-            tcx: TyCtxt<'hir>,
-            def_id: DefId,
-            pub clones: Vec<&'hir hir::Expr<'hir>>,
+
+        struct FindUselessClone<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            typeck_results: &'tcx ty::TypeckResults<'tcx>,
+            pub clones: Vec<&'tcx hir::Expr<'tcx>>,
         }
-        impl<'hir> FindUselessClone<'hir> {
-            pub fn new(tcx: TyCtxt<'hir>, def_id: DefId) -> Self {
-                Self { tcx, def_id, clones: vec![] }
+        impl<'tcx> FindUselessClone<'tcx> {
+            pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+                Self { tcx, typeck_results: tcx.typeck(def_id), clones: vec![] }
             }
         }
-
-        impl<'v> Visitor<'v> for FindUselessClone<'v> {
-            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-                if let hir::ExprKind::MethodCall(segment, _rcvr, args, _span) = ex.kind
-                    && segment.ident.name == sym::clone
-                    && args.len() == 0
-                    && let Some(def_id) = self.def_id.as_local()
-                    && let Some(method) = self.tcx.lookup_method_for_diagnostic((def_id, ex.hir_id))
-                    && Some(self.tcx.parent(method)) == self.tcx.lang_items().clone_trait()
+        impl<'tcx> Visitor<'tcx> for FindUselessClone<'tcx> {
+            fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
+                if let hir::ExprKind::MethodCall(..) = ex.kind
+                    && let Some(method_def_id) =
+                        self.typeck_results.type_dependent_def_id(ex.hir_id)
+                    && self.tcx.lang_items().clone_trait() == Some(self.tcx.parent(method_def_id))
                 {
                     self.clones.push(ex);
                 }
                 hir::intravisit::walk_expr(self, ex);
             }
         }
-        let mut expr_finder = FindUselessClone::new(tcx, self.mir_def_id().into());
+
+        let mut expr_finder = FindUselessClone::new(tcx, self.mir_def_id());
 
         let body = hir.body(body_id).value;
         expr_finder.visit_expr(body);

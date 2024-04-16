@@ -1684,10 +1684,15 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         .any(|items| items.iter().any(|item| item.has_name(sym::notable_trait)))
 }
 
-/// Determines whether an item is an intrinsic (which may be via Abi or via the `rustc_intrinsic` attribute)
+/// Determines whether an item is an intrinsic (which may be via Abi or via the `rustc_intrinsic` attribute).
+///
+/// We double check the feature gate here because whether a function may be defined as an intrinsic causes
+/// the compiler to make some assumptions about its shape; if the user doesn't use a feature gate, they may
+/// cause an ICE that we otherwise may want to prevent.
 pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
-    if matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic)
-        || tcx.has_attr(def_id, sym::rustc_intrinsic)
+    if (matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic)
+        && tcx.features().intrinsics)
+        || (tcx.has_attr(def_id, sym::rustc_intrinsic) && tcx.features().rustc_attrs)
     {
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id.into()),

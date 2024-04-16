@@ -2,7 +2,7 @@ use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::build::matches::{Binding, Candidate, FlatPat, MatchPair, TestCase};
 use crate::build::Builder;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty;
@@ -178,10 +178,9 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                         cx.tcx,
                         ty::InlineConstArgsParts {
                             parent_args: ty::GenericArgs::identity_for_item(cx.tcx, parent_id),
-                            ty: cx.infcx.next_ty_var(TypeVariableOrigin {
-                                kind: TypeVariableOriginKind::MiscVariable,
-                                span,
-                            }),
+                            ty: cx
+                                .infcx
+                                .next_ty_var(TypeVariableOrigin { param_def_id: None, span }),
                         },
                     )
                     .args;

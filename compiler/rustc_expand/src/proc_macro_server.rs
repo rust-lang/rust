@@ -208,7 +208,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 Comma => op(","),
                 Semi => op(";"),
                 Colon => op(":"),
-                ModSep => op("::"),
+                PathSep => op("::"),
                 RArrow => op("->"),
                 LArrow => op("<-"),
                 FatArrow => op("=>"),

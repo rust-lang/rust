@@ -195,13 +195,13 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         value_pairs: &ValuePairs<'tcx>,
     ) -> Option<Diag<'tcx>> {
         let (expected_args, found_args, trait_def_id) = match value_pairs {
-            ValuePairs::PolyTraitRefs(ExpectedFound { expected, found })
-                if expected.def_id() == found.def_id() =>
+            ValuePairs::TraitRefs(ExpectedFound { expected, found })
+                if expected.def_id == found.def_id =>
             {
                 // It's possible that the placeholders come from a binder
                 // outside of this value pair. Use `no_bound_vars` as a
                 // simple heuristic for that.
-                (expected.no_bound_vars()?.args, found.no_bound_vars()?.args, expected.def_id())
+                (expected.args, found.args, expected.def_id)
             }
             _ => return None,
         };

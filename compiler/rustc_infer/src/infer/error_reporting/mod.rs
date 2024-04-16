@@ -1653,7 +1653,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             .report(diag);
                         (false, Mismatch::Fixed("signature"))
                     }
-                    ValuePairs::PolyTraitRefs(_) => (false, Mismatch::Fixed("trait")),
+                    ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
                     ValuePairs::Aliases(infer::ExpectedFound { expected, .. }) => {
                         (false, Mismatch::Fixed(self.tcx.def_descr(expected.def_id)))
                     }
@@ -1969,8 +1969,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             self.note_and_explain_type_err(diag, exp_found, cause, span, cause.body_id.to_def_id());
         }
 
-        if let Some(ValuePairs::PolyTraitRefs(exp_found)) = values
-            && let ty::Closure(def_id, _) = exp_found.expected.skip_binder().self_ty().kind()
+        if let Some(ValuePairs::TraitRefs(exp_found)) = values
+            && let ty::Closure(def_id, _) = exp_found.expected.self_ty().kind()
             && let Some(def_id) = def_id.as_local()
             && terr.involves_regions()
         {
@@ -2188,7 +2188,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             infer::Aliases(exp_found) => self.expected_found_str(exp_found),
             infer::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
             infer::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
-            infer::PolyTraitRefs(exp_found) => {
+            infer::TraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
                     expected: exp_found.expected.print_trait_sugared(),
                     found: exp_found.found.print_trait_sugared(),

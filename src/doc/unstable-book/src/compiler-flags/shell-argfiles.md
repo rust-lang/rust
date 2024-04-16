@@ -8,4 +8,4 @@ arguments from argfiles specified with `@shell:<path>`.
 
 Because this feature controls the parsing of input arguments, the
 `-Zshell-argfiles` flag must be present before the argument specifying the
-shell-style arguemnt file.
+shell-style argument file.

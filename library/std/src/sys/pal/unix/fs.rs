@@ -198,20 +198,17 @@ cfg_has_statx! {{
                 return Some(Err(err));
             }
 
-            // Availability not checked yet.
+            // `ENOSYS` might come from a faulty FUSE driver.
             //
-            // First try the cheap way.
-            if err.raw_os_error() == Some(libc::ENOSYS) {
-                STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
-                return None;
-            }
-
-            // Error other than `ENOSYS` is not a good enough indicator -- it is
+            // Other errors are not a good enough indicator either -- it is
             // known that `EPERM` can be returned as a result of using seccomp to
             // block the syscall.
+            //
             // Availability is checked by performing a call which expects `EFAULT`
             // if the syscall is usable.
+            //
             // See: https://github.com/rust-lang/rust/issues/65662
+            //
             // FIXME this can probably just do the call if `EPERM` was received, but
             // previous iteration of the code checked it for all errors and for now
             // this is retained.

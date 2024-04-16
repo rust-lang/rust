@@ -13,6 +13,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
+use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -996,6 +997,12 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
 
     fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
         (*self).foreign_item(id)
+    }
+}
+
+impl<'tcx> pprust_hir::PpAnn for TyCtxt<'tcx> {
+    fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
+        pprust_hir::PpAnn::nested(&(&self.hir() as &dyn intravisit::Map<'_>), state, nested)
     }
 }
 

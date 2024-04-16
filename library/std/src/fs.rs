@@ -993,7 +993,7 @@ impl OpenOptions {
     /// If a file is opened with both read and append access, beware that after
     /// opening, and after every write, the position for reading may be set at the
     /// end of the file. So, before writing, save the current position (using
-    /// <code>[seek]\([SeekFrom]::[Current]\(0))</code>), and restore it before the next read.
+    /// <code>[Seek]::[stream_position]</code>), and restore it before the next read.
     ///
     /// ## Note
     ///
@@ -1002,8 +1002,7 @@ impl OpenOptions {
     ///
     /// [`write()`]: Write::write "io::Write::write"
     /// [`flush()`]: Write::flush "io::Write::flush"
-    /// [seek]: Seek::seek "io::Seek::seek"
-    /// [Current]: SeekFrom::Current "io::SeekFrom::Current"
+    /// [stream_position]: Seek::stream_position "io::Seek::stream_position"
     ///
     /// # Examples
     ///

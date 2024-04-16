@@ -1548,6 +1548,7 @@ impl Step for Extended {
             compiler: builder.compiler(stage, target),
             backend: "cranelift".to_string(),
         });
+        add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {compiler, target});
 
         let etc = builder.src.join("src/etc/installer");
 
@@ -2219,6 +2220,53 @@ impl Step for LlvmTools {
         // of `rustc-dev` to support the inherited `-lLLVM` when using the
         // compiler libraries.
         maybe_install_llvm_target(builder, target, tarball.image_dir());
+
+        Some(tarball.generate())
+    }
+}
+
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+pub struct LlvmBitcodeLinker {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for LlvmBitcodeLinker {
+    type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let default = should_build_extended_tool(run.builder, "llvm-bitcode-linker");
+        run.alias("llvm-bitcode-linker").default_condition(default)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(LlvmBitcodeLinker {
+            compiler: run.builder.compiler_for(
+                run.builder.top_stage,
+                run.builder.config.build,
+                run.target,
+            ),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        let compiler = self.compiler;
+        let target = self.target;
+
+        let llbc_linker =
+            builder.ensure(tool::LlvmBitcodeLinker { compiler, target, extra_features: vec![] });
+
+        let self_contained_bin_dir = format!("lib/rustlib/{}/bin/self-contained", target.triple);
+
+        // Prepare the image directory
+        let mut tarball = Tarball::new(builder, "llvm-bitcode-linker", &target.triple);
+        tarball.set_overlay(OverlayKind::LlvmBitcodeLinker);
+        tarball.is_preview(true);
+
+        tarball.add_file(llbc_linker, self_contained_bin_dir, 0o755);
 
         Some(tarball.generate())
     }

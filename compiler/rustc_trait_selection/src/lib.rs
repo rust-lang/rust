@@ -22,6 +22,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(extract_if)]
+#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(option_take_if)]
 #![feature(never_type)]

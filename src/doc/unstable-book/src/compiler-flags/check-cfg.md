@@ -37,7 +37,7 @@ present in the list of expected values. If `"value"` is not in it, then `rustc` 
 the future.*
 
 To check for the _none_ value (ie `#[cfg(foo)]`) one can use the `none()` predicate inside
-`values()`: `values(none())`. It can be followed or precessed by any number of `"value"`.
+`values()`: `values(none())`. It can be followed or preceded by any number of `"value"`.
 
 To enable checking of values, but to provide an *none*/empty set of expected values
 (ie. expect `#[cfg(name)]`), use these forms:
@@ -163,7 +163,7 @@ fn poke_platypus() {}
 fn tame_lion() {}
 
 #[cfg(windows = "unix")]     // This condition is UNEXPECTED, as while 'windows' is a well known
-                             // condition name, it doens't expect any values
+                             // condition name, it doesn't expect any values
 fn tame_windows() {}
 ```
 

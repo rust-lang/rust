@@ -1,9 +1,8 @@
 use rustc_hir::{def::DefKind, Body, Item, ItemKind, Node, TyKind};
 use rustc_hir::{Path, QPath};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::{Obligation, ObligationCause};
-use rustc_middle::query::Key;
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_middle::ty::{EarlyBinder, TraitRef, TypeSuperFoldable};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
@@ -313,13 +312,10 @@ impl<'a, 'tcx, F: FnMut(DefId) -> bool> TypeFolder<TyCtxt<'tcx>>
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if let Some(ty_did) = t.ty_def_id()
-            && (self.did_has_local_parent)(ty_did)
+        if let Some(def) = t.ty_adt_def()
+            && (self.did_has_local_parent)(def.did())
         {
-            self.infcx.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::TypeInference,
-                span: self.infer_span,
-            })
+            self.infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span: self.infer_span })
         } else {
             t.super_fold_with(self)
         }

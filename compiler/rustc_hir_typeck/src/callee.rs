@@ -13,10 +13,7 @@ use rustc_infer::{
     infer,
     traits::{self, Obligation},
 };
-use rustc_infer::{
-    infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
-    traits::ObligationCause,
-};
+use rustc_infer::{infer::type_variable::TypeVariableOrigin, traits::ObligationCause};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
@@ -180,18 +177,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     infer::FnCall,
                     closure_args.coroutine_closure_sig(),
                 );
-                let tupled_upvars_ty = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span: callee_expr.span,
-                });
+                let tupled_upvars_ty = self
+                    .next_ty_var(TypeVariableOrigin { param_def_id: None, span: callee_expr.span });
                 // We may actually receive a coroutine back whose kind is different
                 // from the closure that this dispatched from. This is because when
                 // we have no captures, we automatically implement `FnOnce`. This
                 // impl forces the closure kind to `FnOnce` i.e. `u8`.
-                let kind_ty = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span: callee_expr.span,
-                });
+                let kind_ty = self
+                    .next_ty_var(TypeVariableOrigin { param_def_id: None, span: callee_expr.span });
                 let call_sig = self.tcx.mk_fn_sig(
                     [coroutine_closure_sig.tupled_inputs_ty],
                     coroutine_closure_sig.to_coroutine(
@@ -305,10 +298,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_tup_from_iter(
                     self.tcx,
                     arg_exprs.iter().map(|e| {
-                        self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
-                            span: e.span,
-                        })
+                        self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: e.span })
                     }),
                 )
             });
@@ -724,7 +714,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 def::CtorOf::Variant => "enum variant",
             };
             let removal_span = callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
-            unit_variant = Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(qpath)));
+            unit_variant =
+                Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(&self.tcx, qpath)));
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);

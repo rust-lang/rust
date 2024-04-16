@@ -599,7 +599,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         span: Span,
         hir: hir::Node<'_>,
-        exp_found: &ty::error::ExpectedFound<ty::PolyTraitRef<'tcx>>,
+        exp_found: &ty::error::ExpectedFound<ty::TraitRef<'tcx>>,
         diag: &mut Diag<'_>,
     ) {
         // 0. Extract fn_decl from hir
@@ -614,10 +614,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         // 1. Get the args of the closure.
         // 2. Assume exp_found is FnOnce / FnMut / Fn, we can extract function parameters from [1].
-        let Some(expected) = exp_found.expected.skip_binder().args.get(1) else {
+        let Some(expected) = exp_found.expected.args.get(1) else {
             return;
         };
-        let Some(found) = exp_found.found.skip_binder().args.get(1) else {
+        let Some(found) = exp_found.found.args.get(1) else {
             return;
         };
         let expected = expected.unpack();

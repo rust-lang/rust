@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                         cx,
                         arguments.iter().collect(),
                         cx.typeck_results().expr_ty(fn_expr),
-                        &rustc_hir_pretty::qpath_to_string(path),
+                        &rustc_hir_pretty::qpath_to_string(&cx.tcx, path),
                         "function",
                     );
                 }

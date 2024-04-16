@@ -36,8 +36,21 @@ concurrency:
   group: "${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}"
   cancel-in-progress: true
 jobs:
+  calculate_matrix:
+    name: Calculate job matrix
+    runs-on: ubuntu-latest
+    outputs:
+      jobs: "${{ steps.jobs.outputs.jobs }}"
+    steps:
+      - name: Checkout the source code
+        uses: actions/checkout@v4
+      - name: Calculate the CI job matrix
+        run: python3 src/ci/scripts/calculate-job-matrix.py >> $GITHUB_OUTPUT
+        id: jobs
   pr:
     name: "PR - ${{ matrix.name }}"
+    needs:
+      - calculate_matrix
     env:
       PR_CI_JOB: 1
       CI_JOB_NAME: "${{ matrix.name }}"
@@ -51,20 +64,7 @@ jobs:
     continue-on-error: "${{ matrix.name == 'mingw-check-tidy' }}"
     strategy:
       matrix:
-        include:
-          - name: mingw-check
-            os: ubuntu-20.04-4core-16gb
-            env: {}
-          - name: mingw-check-tidy
-            os: ubuntu-20.04-4core-16gb
-            env: {}
-          - name: x86_64-gnu-llvm-17
-            env:
-              ENABLE_GCC_CODEGEN: "1"
-            os: ubuntu-20.04-16core-64gb
-          - name: x86_64-gnu-tools
-            os: ubuntu-20.04-16core-64gb
-            env: {}
+        include: "${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}"
     defaults:
       run:
         shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"

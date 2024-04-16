@@ -3,7 +3,7 @@ use crate::errors::{
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
 use crate::infer::error_reporting::TypeErrCtxt;
-use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::type_variable::TypeVariableOrigin;
 use crate::infer::InferCtxt;
 use rustc_errors::{codes::*, Diag, IntoDiagArg};
 use rustc_hir as hir;
@@ -13,16 +13,14 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::infer::unify_key::{
-    ConstVariableOrigin, ConstVariableOriginKind, ConstVariableValue,
-};
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableValue};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Ty, TyCtxt,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
 };
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::iter;
@@ -188,8 +186,11 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         let mut infcx_inner = infcx.inner.borrow_mut();
         let ty_vars = infcx_inner.type_variables();
         let var_origin = ty_vars.var_origin(ty_vid);
-        if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) = var_origin.kind
-            && name != kw::SelfUpper
+        if let Some(def_id) = var_origin.param_def_id
+            // The `Self` param of a trait has the def-id of the trait,
+            // since it's a synthetic parameter.
+            && infcx.tcx.def_kind(def_id) == DefKind::TyParam
+            && let name = infcx.tcx.item_name(def_id)
             && !var_origin.span.from_expansion()
         {
             let generics = infcx.tcx.generics_of(infcx.tcx.parent(def_id));
@@ -216,8 +217,8 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
             None
         }
         ConstVariableValue::Unknown { origin, universe: _ } => {
-            if let ConstVariableOriginKind::ConstParameterDefinition(name, _) = origin.kind {
-                return Some(name);
+            if let Some(def_id) = origin.param_def_id {
+                Some(infcx.tcx.item_name(def_id))
             } else {
                 None
             }
@@ -302,21 +303,18 @@ impl<'tcx> InferCtxt<'tcx> {
                     let mut inner = self.inner.borrow_mut();
                     let ty_vars = &inner.type_variables();
                     let var_origin = ty_vars.var_origin(ty_vid);
-                    if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) =
-                        var_origin.kind
+                    if let Some(def_id) = var_origin.param_def_id
+                        // The `Self` param of a trait has the def-id of the trait,
+                        // since it's a synthetic parameter.
+                        && self.tcx.def_kind(def_id) == DefKind::TyParam
+                        && !var_origin.span.from_expansion()
                     {
-                        if name != kw::SelfUpper && !var_origin.span.from_expansion() {
-                            return InferenceDiagnosticsData {
-                                name: name.to_string(),
-                                span: Some(var_origin.span),
-                                kind: UnderspecifiedArgKind::Type {
-                                    prefix: "type parameter".into(),
-                                },
-                                parent: InferenceDiagnosticsParentData::for_def_id(
-                                    self.tcx, def_id,
-                                ),
-                            };
-                        }
+                        return InferenceDiagnosticsData {
+                            name: self.tcx.item_name(def_id).to_string(),
+                            span: Some(var_origin.span),
+                            kind: UnderspecifiedArgKind::Type { prefix: "type parameter".into() },
+                            parent: InferenceDiagnosticsParentData::for_def_id(self.tcx, def_id),
+                        };
                     }
                 }
 
@@ -341,11 +339,9 @@ impl<'tcx> InferCtxt<'tcx> {
                             }
                             ConstVariableValue::Unknown { origin, universe: _ } => origin,
                         };
-                    if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
-                        origin.kind
-                    {
+                    if let Some(def_id) = origin.param_def_id {
                         return InferenceDiagnosticsData {
-                            name: name.to_string(),
+                            name: self.tcx.item_name(def_id).to_string(),
                             span: Some(origin.span),
                             kind: UnderspecifiedArgKind::Const { is_parameter: true },
                             parent: InferenceDiagnosticsParentData::for_def_id(self.tcx, def_id),
@@ -549,16 +545,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 GenericArgKind::Type(_) => self
                                     .next_ty_var(TypeVariableOrigin {
                                         span: DUMMY_SP,
-                                        kind: TypeVariableOriginKind::MiscVariable,
+                                        param_def_id: None,
                                     })
                                     .into(),
                                 GenericArgKind::Const(arg) => self
                                     .next_const_var(
                                         arg.ty(),
-                                        ConstVariableOrigin {
-                                            span: DUMMY_SP,
-                                            kind: ConstVariableOriginKind::MiscVariable,
-                                        },
+                                        ConstVariableOrigin { span: DUMMY_SP, param_def_id: None },
                                     )
                                     .into(),
                             }
@@ -576,10 +569,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             }
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {
-                let placeholder = Some(self.next_ty_var(TypeVariableOrigin {
-                    span: DUMMY_SP,
-                    kind: TypeVariableOriginKind::MiscVariable,
-                }));
+                let placeholder = Some(
+                    self.next_ty_var(TypeVariableOrigin { span: DUMMY_SP, param_def_id: None }),
+                );
                 if let Some(args) = args.make_suggestable(self.infcx.tcx, true, placeholder) {
                     let mut printer = fmt_printer(self, Namespace::ValueNS);
                     printer.print_def_path(def_id, args).unwrap();
@@ -613,10 +605,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             }
             InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
-                let placeholder = Some(self.next_ty_var(TypeVariableOrigin {
-                    span: DUMMY_SP,
-                    kind: TypeVariableOriginKind::MiscVariable,
-                }));
+                let placeholder = Some(
+                    self.next_ty_var(TypeVariableOrigin { span: DUMMY_SP, param_def_id: None }),
+                );
                 if let Some(ty) = ty.make_suggestable(self.infcx.tcx, true, placeholder) {
                     let ty_info = ty_to_string(self, ty, None);
                     multi_suggestions.push(SourceKindMultiSuggestion::new_closure_return(

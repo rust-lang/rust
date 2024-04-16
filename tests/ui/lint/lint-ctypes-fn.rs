@@ -1,12 +1,9 @@
-#![feature(rustc_private)]
-
 #![allow(private_interfaces)]
 #![deny(improper_ctypes_definitions)]
 
-extern crate libc;
-
 use std::default::Default;
 use std::marker::PhantomData;
+use std::ffi::{c_int, c_uint};
 
 trait Trait {}
 
@@ -165,10 +162,10 @@ pub extern "C" fn good17(p: TransparentCustomZst) { }
 pub extern "C" fn good18(_: &String) { }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub extern "C" fn good1(size: *const libc::c_int) { }
+pub extern "C" fn good1(size: *const c_int) { }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub extern "C" fn good2(size: *const libc::c_uint) { }
+pub extern "C" fn good2(size: *const c_uint) { }
 
 pub extern "C" fn unused_generic1<T>(size: *const Foo) { }
 

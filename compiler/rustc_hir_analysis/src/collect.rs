@@ -1373,16 +1373,16 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             // Don't leak types into signatures unless they're nameable!
             // For example, if a function returns itself, we don't want that
             // recursive function definition to leak out into the fn sig.
-            let mut should_recover = false;
+            let mut recovered_ret_ty = None;
 
-            if let Some(ret_ty) = ret_ty.make_suggestable(tcx, false, None) {
+            if let Some(suggestable_ret_ty) = ret_ty.make_suggestable(tcx, false, None) {
                 diag.span_suggestion(
                     ty.span,
                     "replace with the correct return type",
-                    ret_ty,
+                    suggestable_ret_ty,
                     Applicability::MachineApplicable,
                 );
-                should_recover = true;
+                recovered_ret_ty = Some(suggestable_ret_ty);
             } else if let Some(sugg) =
                 suggest_impl_trait(&tcx.infer_ctxt().build(), tcx.param_env(def_id), ret_ty)
             {
@@ -1404,18 +1404,13 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             }
 
             let guar = diag.emit();
-
-            if should_recover {
-                ty::Binder::dummy(fn_sig)
-            } else {
-                ty::Binder::dummy(tcx.mk_fn_sig(
-                    fn_sig.inputs().iter().copied(),
-                    Ty::new_error(tcx, guar),
-                    fn_sig.c_variadic,
-                    fn_sig.unsafety,
-                    fn_sig.abi,
-                ))
-            }
+            ty::Binder::dummy(tcx.mk_fn_sig(
+                fn_sig.inputs().iter().copied(),
+                recovered_ret_ty.unwrap_or_else(|| Ty::new_error(tcx, guar)),
+                fn_sig.c_variadic,
+                fn_sig.unsafety,
+                fn_sig.abi,
+            ))
         }
         None => icx.lowerer().lower_fn_ty(
             hir_id,

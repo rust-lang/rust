@@ -1,5 +1,5 @@
 error[E0277]: expected a `Fn()` closure, found `()`
-  --> $DIR/issue-22034.rs:8:16
+  --> $DIR/issue-22034.rs:4:16
    |
 LL |         &mut *(ptr as *mut dyn Fn())
    |                ^^^ expected an `Fn()` closure, found `()`

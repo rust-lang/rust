@@ -736,7 +736,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
 /// <https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html>).
 fn to_disambiguator(num: u64) -> String {
     if let Some(num) = num.checked_sub(1) {
-        format!("s{}_", base_n::encode(num as u128, 62))
+        format!("s{}_", base_n::encode(num as u128, base_n::ALPHANUMERIC_ONLY))
     } else {
         "s_".to_string()
     }
@@ -746,7 +746,7 @@ fn to_disambiguator(num: u64) -> String {
 /// <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangle.seq-id>).
 fn to_seq_id(num: usize) -> String {
     if let Some(num) = num.checked_sub(1) {
-        base_n::encode(num as u128, 36).to_uppercase()
+        base_n::encode(num as u128, base_n::CASE_INSENSITIVE).to_uppercase()
     } else {
         "".to_string()
     }

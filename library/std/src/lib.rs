@@ -431,6 +431,9 @@ extern crate test;
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
 extern crate alloc as alloc_crate;
+
+// Many compiler tests depend on libc being pulled in by std
+// so include it here even if it's unused.
 #[doc(masked)]
 #[allow(unused_extern_crates)]
 extern crate libc;

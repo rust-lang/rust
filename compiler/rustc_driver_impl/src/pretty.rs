@@ -24,20 +24,6 @@ struct AstNoAnn;
 
 impl pprust_ast::PpAnn for AstNoAnn {}
 
-struct HirNoAnn<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
-impl<'tcx> pprust_hir::PpAnn for HirNoAnn<'tcx> {
-    fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
-        pprust_hir::PpAnn::nested(
-            &(&self.tcx.hir() as &dyn hir::intravisit::Map<'_>),
-            state,
-            nested,
-        )
-    }
-}
-
 struct AstIdentifiedAnn;
 
 impl pprust_ast::PpAnn for AstIdentifiedAnn {
@@ -300,10 +286,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
                 )
             };
             match s {
-                PpHirMode::Normal => {
-                    let annotation = HirNoAnn { tcx };
-                    f(&annotation)
-                }
+                PpHirMode::Normal => f(&tcx),
                 PpHirMode::Identified => {
                     let annotation = HirIdentifiedAnn { tcx };
                     f(&annotation)

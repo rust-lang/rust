@@ -1,6 +1,7 @@
 use super::{abi, WORD_SIZE};
 use crate::ffi::OsString;
 use crate::fmt;
+use crate::sys::os_str;
 use crate::sys_common::FromInner;
 
 pub struct Args {
@@ -33,7 +34,7 @@ impl Args {
         // "os_str".
         let arg_bytes: &[u8] =
             unsafe { crate::slice::from_raw_parts(words.cast() as *const u8, arg_len) };
-        OsString::from_inner(super::os_str::Buf { inner: arg_bytes.to_vec() })
+        OsString::from_inner(os_str::Buf { inner: arg_bytes.to_vec() })
     }
 }
 
