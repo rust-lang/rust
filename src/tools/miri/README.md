@@ -451,36 +451,32 @@ Some native rustc `-Z` flags are also very relevant for Miri:
 * `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
   enables this per default because it is needed for [Stacked Borrows] and [Tree Borrows].
 
-Moreover, Miri recognizes some environment variables:
+Moreover, Miri recognizes some environment variables (unless noted otherwise, these are supported
+by all intended entry points, i.e. `cargo miri` and `./miri {test,run}`):
 
 * `MIRI_AUTO_OPS` indicates whether the automatic execution of rustfmt, clippy and toolchain setup
   should be skipped. If it is set to `no`, they are skipped. This is used to allow automated IDE
   actions to avoid the auto ops.
 * `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during
   Miri executions, also [see "Testing the Miri driver" in `CONTRIBUTING.md`][testing-miri].
-* `MIRIFLAGS` (recognized by `cargo miri` and the test suite) defines extra
-  flags to be passed to Miri.
-* `MIRI_LIB_SRC` defines the directory where Miri expects the sources of the
-  standard library that it will build and use for interpretation. This directory
-  must point to the `library` subdirectory of a `rust-lang/rust` repository
-  checkout.
-* `MIRI_SYSROOT` (recognized by `cargo miri` and the Miri driver) indicates the sysroot to use. When
-  using `cargo miri`, this skips the automatic setup -- only set this if you do not want to use the
-  automatically created sysroot. For directly invoking the Miri driver, this variable (or a
-  `--sysroot` flag) is mandatory. When invoking `cargo miri setup`, this indicates where the sysroot
-  will be put.
-* `MIRI_TEST_TARGET` (recognized by the test suite and the `./miri` script) indicates which target
+* `MIRIFLAGS` defines extra flags to be passed to Miri.
+* `MIRI_LIB_SRC` defines the directory where Miri expects the sources of the standard library that
+  it will build and use for interpretation. This directory must point to the `library` subdirectory
+  of a `rust-lang/rust` repository checkout.
+* `MIRI_SYSROOT` indicates the sysroot to use. When using `cargo miri`, this skips the automatic
+  setup -- only set this if you do not want to use the automatically created sysroot. When invoking
+  `cargo miri setup`, this indicates where the sysroot will be put.
+* `MIRI_TEST_TARGET` (recognized by `./miri {test,run}`) indicates which target
   architecture to test against.  `miri` and `cargo miri` accept the `--target` flag for the same
   purpose.
-* `MIRI_TEST_THREADS` (recognized by the test suite): set the number of threads to use for running tests.
-  By default the number of cores is used.
-* `MIRI_NO_STD` (recognized by `cargo miri`) makes sure that the target's sysroot is built without
-  libstd. This allows testing and running no_std programs.
-  (Miri has a heuristic to detect no-std targets based on the target name; this environment variable
-  is only needed when that heuristic fails.)
-* `RUSTC_BLESS` (recognized by the test suite and `cargo-miri-test/run-test.py`): overwrite all
+* `MIRI_TEST_THREADS` (recognized by `./miri test`): set the number of threads to use for running tests.
+  By default, the number of cores is used.
+* `MIRI_NO_STD` makes sure that the target's sysroot is built without libstd. This allows testing
+  and running no_std programs. (Miri has a heuristic to detect no-std targets based on the target
+  name; this environment variable is only needed when that heuristic fails.)
+* `RUSTC_BLESS` (recognized by `./miri test` and `cargo-miri-test/run-test.py`): overwrite all
   `stderr` and `stdout` files instead of checking whether the output matches.
-* `MIRI_SKIP_UI_CHECKS` (recognized by the test suite): don't check whether the
+* `MIRI_SKIP_UI_CHECKS` (recognized by `./miri test`): don't check whether the
   `stderr` or `stdout` files match the actual output.
 
 The following environment variables are *internal* and must not be used by

@@ -282,25 +282,6 @@ fn run_compiler(
     callbacks: &mut (dyn rustc_driver::Callbacks + Send),
     using_internal_features: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> ! {
-    if target_crate {
-        // Miri needs a custom sysroot for target crates.
-        // If no `--sysroot` is given, the `MIRI_SYSROOT` env var is consulted to find where
-        // that sysroot lives, and that is passed to rustc.
-        let sysroot_flag = "--sysroot";
-        if !args.iter().any(|e| e.starts_with(sysroot_flag)) {
-            // Using the built-in default here would be plain wrong, so we *require*
-            // the env var to make sure things make sense.
-            let miri_sysroot = env::var("MIRI_SYSROOT").unwrap_or_else(|_| {
-                show_error!(
-                    "Miri was invoked in 'target' mode without `MIRI_SYSROOT` or `--sysroot` being set"
-                    )
-            });
-
-            args.push(sysroot_flag.to_owned());
-            args.push(miri_sysroot);
-        }
-    }
-
     // Don't insert `MIRI_DEFAULT_ARGS`, in particular, `--cfg=miri`, if we are building
     // a "host" crate. That may cause procedural macros (and probably build scripts) to
     // depend on Miri-only symbols, such as `miri_resolve_frame`:
