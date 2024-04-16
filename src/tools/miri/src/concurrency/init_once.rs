@@ -77,7 +77,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let current_thread = this.get_active_thread();
 
-        this.unblock_thread(waiter.thread);
+        this.unblock_thread(waiter.thread, BlockReason::InitOnce(id));
 
         // Call callback, with the woken-up thread as `current`.
         this.set_active_thread(waiter.thread);
@@ -142,7 +142,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let init_once = &mut this.machine.threads.sync.init_onces[id];
         assert_ne!(init_once.status, InitOnceStatus::Complete, "queueing on complete init once");
         init_once.waiters.push_back(InitOnceWaiter { thread, callback });
-        this.block_thread(thread);
+        this.block_thread(thread, BlockReason::InitOnce(id));
     }
 
     /// Begin initializing this InitOnce. Must only be called after checking that it is currently
