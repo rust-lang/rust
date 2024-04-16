@@ -1,7 +1,7 @@
 use std::{collections::hash_map::Entry, io::Write, iter, path::Path};
 
 use rustc_apfloat::Float;
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::allocator::{alloc_error_handler_name, AllocatorKind};
 use rustc_hir::{def::DefKind, def_id::CrateNum};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
@@ -79,6 +79,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             this.load_mir(panic_impl_instance.def, None)?,
                             panic_impl_instance,
                         )));
+                    }
+                    "__rust_alloc_error_handler" => {
+                        // Forward to the right symbol that implements this function.
+                        let Some(handler_kind) = this.tcx.alloc_error_handler_kind(()) else {
+                            // in real code, this symbol does not exist without an allocator
+                            throw_unsup_format!(
+                                "`__rust_alloc_error_handler` cannot be called when no alloc error handler is set"
+                            );
+                        };
+                        let name = alloc_error_handler_name(handler_kind);
+                        let handler = this
+                            .lookup_exported_symbol(Symbol::intern(name))?
+                            .expect("missing alloc error handler symbol");
+                        return Ok(Some(handler));
                     }
                     #[rustfmt::skip]
                     | "exit"
