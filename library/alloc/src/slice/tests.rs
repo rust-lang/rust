@@ -34,7 +34,7 @@ macro_rules! do_test {
             }
 
             let v = $input.to_owned();
-            let _ = std::panic::catch_unwind(move || {
+            let _ = panic::catch_unwind(move || {
                 let mut v = v;
                 let mut panic_countdown = panic_countdown;
                 v.$func(|a, b| {
@@ -197,8 +197,7 @@ fn panic_safe() {
 
     let mut rng = test_rng();
 
-    // Miri is too slow (but still need to `chain` to make the types match)
-    let lens = if cfg!(miri) { (1..10).chain(0..0) } else { (1..20).chain(70..MAX_LEN) };
+    let lens = if cfg!(miri) { (1..10).chain(30..36) } else { (1..20).chain(70..MAX_LEN) };
     let moduli: &[u32] = if cfg!(miri) { &[5] } else { &[5, 20, 50] };
 
     for len in lens {
@@ -294,15 +293,20 @@ fn test_sort() {
         }
     }
 
-    // Sort using a completely random comparison function.
-    // This will reorder the elements *somehow*, but won't panic.
-    let mut v = [0; 500];
-    for i in 0..v.len() {
+    const ORD_VIOLATION_MAX_LEN: usize = 500;
+    let mut v = [0; ORD_VIOLATION_MAX_LEN];
+    for i in 0..ORD_VIOLATION_MAX_LEN {
         v[i] = i as i32;
     }
-    v.sort_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
+
+    // Sort using a completely random comparison function. This will reorder the elements *somehow*,
+    // it may panic but the original elements must still be present.
+    let _ = panic::catch_unwind(move || {
+        v.sort_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
+    });
+
     v.sort();
-    for i in 0..v.len() {
+    for i in 0..ORD_VIOLATION_MAX_LEN {
         assert_eq!(v[i], i as i32);
     }
 

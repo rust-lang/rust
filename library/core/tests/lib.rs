@@ -49,7 +49,6 @@
 #![feature(is_sorted)]
 #![feature(layout_for_ptr)]
 #![feature(pattern)]
-#![feature(sort_internals)]
 #![feature(slice_take)]
 #![feature(slice_from_ptr_range)]
 #![feature(slice_split_once)]

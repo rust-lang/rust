@@ -1,45 +1,78 @@
-//! Slice selection
-//!
 //! This module contains the implementation for `slice::select_nth_unstable`.
-//! It uses an introselect algorithm based on Orson Peters' pattern-defeating quicksort,
-//! published at: <https://github.com/orlp/pdqsort>
+//! It uses an introselect algorithm based on ipnsort by Lukas Bergdoll and Orson Peters,
+//! published at: <https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort>
 //!
 //! The fallback algorithm used for introselect is Median of Medians using Tukey's Ninther
 //! for pivot selection. Using this as a fallback ensures O(n) worst case running time with
 //! better performance than one would get using heapsort as fallback.
 
-use crate::cmp;
 use crate::mem::{self, SizedTypeProperties};
-use crate::slice::sort::{
-    break_patterns, choose_pivot, insertion_sort_shift_left, partition, partition_equal,
-};
 
-// For slices of up to this length it's probably faster to simply sort them.
-// Defined at the module scope because it's used in multiple functions.
-const MAX_INSERTION: usize = 10;
+use crate::slice::sort::shared::pivot::choose_pivot;
+use crate::slice::sort::shared::smallsort::insertion_sort_shift_left;
+use crate::slice::sort::unstable::quicksort::partition;
+
+/// Reorder the slice such that the element at `index` is at its final sorted position.
+pub(crate) fn partition_at_index<T, F>(
+    v: &mut [T],
+    index: usize,
+    mut is_less: F,
+) -> (&mut [T], &mut T, &mut [T])
+where
+    F: FnMut(&T, &T) -> bool,
+{
+    let len = v.len();
+
+    // Puts a lower limit of 1 on `len`.
+    if index >= len {
+        panic!("partition_at_index index {} greater than length of slice {}", index, len);
+    }
+
+    if T::IS_ZST {
+        // Sorting has no meaningful behavior on zero-sized types. Do nothing.
+    } else if index == len - 1 {
+        // Find max element and place it in the last position of the array. We're free to use
+        // `unwrap()` here because we checked that `v` is not empty.
+        let max_idx = max_index(v, &mut is_less).unwrap();
+        v.swap(max_idx, index);
+    } else if index == 0 {
+        // Find min element and place it in the first position of the array. We're free to use
+        // `unwrap()` here because we checked that `v` is not empty.
+        let min_idx = min_index(v, &mut is_less).unwrap();
+        v.swap(min_idx, index);
+    } else {
+        partition_at_index_loop(v, index, None, &mut is_less);
+    }
+
+    let (left, right) = v.split_at_mut(index);
+    let (pivot, right) = right.split_at_mut(1);
+    let pivot = &mut pivot[0];
+    (left, pivot, right)
+}
+
+// For small sub-slices it's faster to use a dedicated small-sort, but because it is only called at
+// most once, it doesn't make sense to use something more sophisticated than insertion-sort.
+const INSERTION_SORT_THRESHOLD: usize = 16;
 
 fn partition_at_index_loop<'a, T, F>(
     mut v: &'a mut [T],
     mut index: usize,
+    mut ancestor_pivot: Option<&'a T>,
     is_less: &mut F,
-    mut pred: Option<&'a T>,
 ) where
     F: FnMut(&T, &T) -> bool,
 {
-    // Limit the amount of iterations and fall back to fast deterministic selection
-    // to ensure O(n) worst case running time. This limit needs to be constant, because
-    // using `ilog2(len)` like in `sort` would result in O(n log n) time complexity.
-    // The exact value of the limit is chosen somewhat arbitrarily, but for most inputs bad pivot
-    // selections should be relatively rare, so the limit usually shouldn't be reached
-    // anyways.
+    // Limit the amount of iterations and fall back to fast deterministic selection to ensure O(n)
+    // worst case running time. This limit needs to be constant, because using `ilog2(len)` like in
+    // `sort` would result in O(n log n) time complexity. The exact value of the limit is chosen
+    // somewhat arbitrarily, but for most inputs bad pivot selections should be relatively rare, so
+    // the limit is reached for sub-slices len / (2^limit or less). Which makes the remaining work
+    // with the fallback minimal in relative terms.
     let mut limit = 16;
 
-    // True if the last partitioning was reasonably balanced.
-    let mut was_balanced = true;
-
     loop {
-        if v.len() <= MAX_INSERTION {
-            if v.len() > 1 {
+        if v.len() <= INSERTION_SORT_THRESHOLD {
+            if v.len() >= 2 {
                 insertion_sort_shift_left(v, 1, is_less);
             }
             return;
@@ -50,38 +83,35 @@ fn partition_at_index_loop<'a, T, F>(
             return;
         }
 
-        // If the last partitioning was imbalanced, try breaking patterns in the slice by shuffling
-        // some elements around. Hopefully we'll choose a better pivot this time.
-        if !was_balanced {
-            break_patterns(v);
-            limit -= 1;
-        }
+        limit -= 1;
 
         // Choose a pivot
-        let (pivot, _) = choose_pivot(v, is_less);
+        let pivot_pos = choose_pivot(v, is_less);
 
         // If the chosen pivot is equal to the predecessor, then it's the smallest element in the
         // slice. Partition the slice into elements equal to and elements greater than the pivot.
         // This case is usually hit when the slice contains many duplicate elements.
-        if let Some(p) = pred {
-            if !is_less(p, &v[pivot]) {
-                let mid = partition_equal(v, pivot, is_less);
+        if let Some(p) = ancestor_pivot {
+            if !is_less(p, unsafe { v.get_unchecked(pivot_pos) }) {
+                let num_lt = partition(v, pivot_pos, &mut |a, b| !is_less(b, a));
+
+                // Continue sorting elements greater than the pivot. We know that `mid` contains
+                // the pivot. So we can continue after `mid`.
+                let mid = num_lt + 1;
 
                 // If we've passed our index, then we're good.
                 if mid > index {
                     return;
                 }
 
-                // Otherwise, continue sorting elements greater than the pivot.
                 v = &mut v[mid..];
                 index = index - mid;
-                pred = None;
+                ancestor_pivot = None;
                 continue;
             }
         }
 
-        let (mid, _) = partition(v, pivot, is_less);
-        was_balanced = cmp::min(mid, v.len() - mid) >= v.len() / 8;
+        let mid = partition(v, pivot_pos, is_less);
 
         // Split the slice into `left`, `pivot`, and `right`.
         let (left, right) = v.split_at_mut(mid);
@@ -91,7 +121,7 @@ fn partition_at_index_loop<'a, T, F>(
         if mid < index {
             v = right;
             index = index - mid - 1;
-            pred = Some(pivot);
+            ancestor_pivot = Some(pivot);
         } else if mid > index {
             v = left;
         } else {
@@ -122,41 +152,6 @@ fn max_index<T, F: FnMut(&T, &T) -> bool>(slice: &[T], is_less: &mut F) -> Optio
         .map(|(i, _)| i)
 }
 
-/// Reorder the slice such that the element at `index` is at its final sorted position.
-pub fn partition_at_index<T, F>(
-    v: &mut [T],
-    index: usize,
-    mut is_less: F,
-) -> (&mut [T], &mut T, &mut [T])
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    if index >= v.len() {
-        panic!("partition_at_index index {} greater than length of slice {}", index, v.len());
-    }
-
-    if T::IS_ZST {
-        // Sorting has no meaningful behavior on zero-sized types. Do nothing.
-    } else if index == v.len() - 1 {
-        // Find max element and place it in the last position of the array. We're free to use
-        // `unwrap()` here because we know v must not be empty.
-        let max_idx = max_index(v, &mut is_less).unwrap();
-        v.swap(max_idx, index);
-    } else if index == 0 {
-        // Find min element and place it in the first position of the array. We're free to use
-        // `unwrap()` here because we know v must not be empty.
-        let min_idx = min_index(v, &mut is_less).unwrap();
-        v.swap(min_idx, index);
-    } else {
-        partition_at_index_loop(v, index, &mut is_less, None);
-    }
-
-    let (left, right) = v.split_at_mut(index);
-    let (pivot, right) = right.split_at_mut(1);
-    let pivot = &mut pivot[0];
-    (left, pivot, right)
-}
-
 /// Selection algorithm to select the k-th element from the slice in guaranteed O(n) time.
 /// This is essentially a quickselect that uses Tukey's Ninther for pivot selection
 fn median_of_medians<T, F: FnMut(&T, &T) -> bool>(mut v: &mut [T], is_less: &mut F, mut k: usize) {
@@ -168,8 +163,8 @@ fn median_of_medians<T, F: FnMut(&T, &T) -> bool>(mut v: &mut [T], is_less: &mut
 
     // We now know that `k < v.len() <= isize::MAX`
     loop {
-        if v.len() <= MAX_INSERTION {
-            if v.len() > 1 {
+        if v.len() <= INSERTION_SORT_THRESHOLD {
+            if v.len() >= 2 {
                 insertion_sort_shift_left(v, 1, is_less);
             }
             return;
@@ -232,7 +227,8 @@ fn median_of_ninthers<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F)
     }
 
     median_of_medians(&mut v[lo..lo + frac], is_less, pivot);
-    partition(v, lo + pivot, is_less).0
+
+    partition(v, lo + pivot, is_less)
 }
 
 /// Moves around the 9 elements at the indices a..i, such that
