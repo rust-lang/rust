@@ -1620,4 +1620,50 @@ mod foo {
 "#,
         );
     }
+
+    #[test]
+    fn preserve_raw_identifiers_strict() {
+        check_assist(
+            auto_import,
+            r"
+            r#as$0
+
+            pub mod ffi_mod {
+                pub fn r#as() {};
+            }
+            ",
+            r"
+            use ffi_mod::r#as;
+
+            r#as
+
+            pub mod ffi_mod {
+                pub fn r#as() {};
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn preserve_raw_identifiers_reserved() {
+        check_assist(
+            auto_import,
+            r"
+            r#abstract$0
+
+            pub mod ffi_mod {
+                pub fn r#abstract() {};
+            }
+            ",
+            r"
+            use ffi_mod::r#abstract;
+
+            r#abstract
+
+            pub mod ffi_mod {
+                pub fn r#abstract() {};
+            }
+            ",
+        );
+    }
 }
