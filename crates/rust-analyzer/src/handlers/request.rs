@@ -1164,8 +1164,8 @@ pub(crate) fn handle_references(
                 .flat_map(|(file_id, refs)| {
                     refs.into_iter()
                         .filter(|&(_, category)| {
-                            (!exclude_imports || category != Some(ReferenceCategory::Import))
-                                && (!exclude_tests || category != Some(ReferenceCategory::Test))
+                            (!exclude_imports || !category.contains(ReferenceCategory::IMPORT))
+                                && (!exclude_tests || !category.contains(ReferenceCategory::TEST))
                         })
                         .map(move |(range, _)| FileRange { file_id, range })
                 })
@@ -1452,7 +1452,7 @@ pub(crate) fn handle_document_highlight(
         .into_iter()
         .map(|ide::HighlightedRange { range, category }| lsp_types::DocumentHighlight {
             range: to_proto::range(&line_index, range),
-            kind: category.and_then(to_proto::document_highlight_kind),
+            kind: to_proto::document_highlight_kind(category),
         })
         .collect();
     Ok(Some(res))
