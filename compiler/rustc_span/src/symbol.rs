@@ -1194,6 +1194,7 @@ symbols! {
         multiple_supertrait_upcastable,
         must_not_suspend,
         must_use,
+        mut_preserve_binding_mode_2024,
         mut_ref,
         naked,
         naked_functions,
