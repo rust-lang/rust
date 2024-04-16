@@ -462,6 +462,7 @@ function preLoadCss(cssUrl) {
 
             case "s":
             case "S":
+            case "/":
                 ev.preventDefault();
                 searchState.focus();
                 break;
@@ -1334,7 +1335,7 @@ function preLoadCss(cssUrl) {
 
         const shortcuts = [
             ["?", "Show this help dialog"],
-            ["S", "Focus the search field"],
+            ["S / /", "Focus the search field"],
             ["↑", "Move up in search results"],
             ["↓", "Move down in search results"],
             ["← / →", "Switch result tab (when results focused)"],
