@@ -126,7 +126,7 @@ pub use crate::eval::{
 };
 pub use crate::helpers::{AccessKind, EvalContextExt as _};
 pub use crate::machine::{
-    AllocExtra, FrameExtra, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
+    AllocExtra, FrameExtra, MemoryKind, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
     PrimitiveLayouts, Provenance, ProvenanceExtra,
 };
 pub use crate::mono_hash_map::MonoHashMap;
