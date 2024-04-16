@@ -92,12 +92,13 @@ pub(crate) fn structure_node_kind(kind: StructureNodeKind) -> lsp_types::SymbolK
 pub(crate) fn document_highlight_kind(
     category: ReferenceCategory,
 ) -> Option<lsp_types::DocumentHighlightKind> {
-    match category {
-        ReferenceCategory::Read => Some(lsp_types::DocumentHighlightKind::READ),
-        ReferenceCategory::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
-        ReferenceCategory::Import => None,
-        ReferenceCategory::Test => None,
+    if category.contains(ReferenceCategory::WRITE) {
+        return Some(lsp_types::DocumentHighlightKind::WRITE);
     }
+    if category.contains(ReferenceCategory::READ) {
+        return Some(lsp_types::DocumentHighlightKind::READ);
+    }
+    None
 }
 
 pub(crate) fn diagnostic_severity(severity: Severity) -> lsp_types::DiagnosticSeverity {
