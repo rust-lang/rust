@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for `[usize; N]`
+error[E0282]: type annotations needed for `[usize; _]`
   --> $DIR/issue-83606.rs:8:9
    |
 LL |     let _ = foo("foo");

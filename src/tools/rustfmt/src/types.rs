@@ -867,6 +867,11 @@ impl Rewrite for ast::Ty {
                 self.span,
                 shape,
             ),
+            ast::TyKind::Pat(ref ty, ref pat) => {
+                let ty = ty.rewrite(context, shape)?;
+                let pat = pat.rewrite(context, shape)?;
+                Some(format!("{ty} is {pat}"))
+            }
         }
     }
 }

@@ -9,6 +9,7 @@ define-function: (
     [theme, toggle_line_color, toggle_line_hover_color],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
+        reload:
 
         // Clicking "More examples..." will open additional examples
         assert-attribute-false: (".more-examples-toggle", {"open": ""})
@@ -21,6 +22,8 @@ define-function: (
             ".toggle-line:hover .toggle-line-inner",
             {"background-color": |toggle_line_hover_color|},
         )
+        // We put the toggle in the original state.
+        click: ".more-examples-toggle"
         // Moving cursor away from the toggle line to prevent disrupting next test.
         move-cursor-to: ".search-input"
     },

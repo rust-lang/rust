@@ -1,5 +1,5 @@
 //@ run-fail
-//@ compile-flags: -Copt-level=3 -Cdebug-assertions=yes
+//@ compile-flags: -Copt-level=3 -Cdebug-assertions=no -Zub-checks=yes
 //@ error-pattern: unsafe precondition(s) violated: slice::from_raw_parts
 //@ ignore-debug
 

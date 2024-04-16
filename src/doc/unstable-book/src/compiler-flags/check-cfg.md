@@ -37,7 +37,7 @@ present in the list of expected values. If `"value"` is not in it, then `rustc` 
 the future.*
 
 To check for the _none_ value (ie `#[cfg(foo)]`) one can use the `none()` predicate inside
-`values()`: `values(none())`. It can be followed or precessed by any number of `"value"`.
+`values()`: `values(none())`. It can be followed or preceded by any number of `"value"`.
 
 To enable checking of values, but to provide an *none*/empty set of expected values
 (ie. expect `#[cfg(name)]`), use these forms:
@@ -77,7 +77,7 @@ Those well known names and values follows the same stability as what they refer 
 Well known names and values checking is always enabled as long as at least one
 `--check-cfg` argument is present.
 
-As of `2024-02-15T`, the list of known names is as follows:
+As of `2024-04-06T`, the list of known names is as follows:
 
 <!--- See CheckCfg::fill_well_known in compiler/rustc_session/src/config.rs -->
 
@@ -107,6 +107,7 @@ As of `2024-02-15T`, the list of known names is as follows:
  - `target_thread_local`
  - `target_vendor`
  - `test`
+ - `ub_checks`
  - `unix`
  - `windows`
 
@@ -162,7 +163,7 @@ fn poke_platypus() {}
 fn tame_lion() {}
 
 #[cfg(windows = "unix")]     // This condition is UNEXPECTED, as while 'windows' is a well known
-                             // condition name, it doens't expect any values
+                             // condition name, it doesn't expect any values
 fn tame_windows() {}
 ```
 

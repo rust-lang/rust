@@ -1,6 +1,7 @@
 //! Trait implementations for `str`.
 
 use crate::cmp::Ordering;
+use crate::intrinsics::unchecked_sub;
 use crate::ops;
 use crate::ptr;
 use crate::slice::SliceIndex;
@@ -210,9 +211,10 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
 
         // SAFETY: the caller guarantees that `self` is in bounds of `slice`
         // which satisfies all the conditions for `add`.
-        let ptr = unsafe { slice.as_ptr().add(self.start) };
-        let len = self.end - self.start;
-        ptr::slice_from_raw_parts(ptr, len) as *const str
+        unsafe {
+            let new_len = unchecked_sub(self.end, self.start);
+            ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), new_len) as *const str
+        }
     }
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
@@ -229,9 +231,10 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
         );
 
         // SAFETY: see comments for `get_unchecked`.
-        let ptr = unsafe { slice.as_mut_ptr().add(self.start) };
-        let len = self.end - self.start;
-        ptr::slice_from_raw_parts_mut(ptr, len) as *mut str
+        unsafe {
+            let new_len = unchecked_sub(self.end, self.start);
+            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), new_len) as *mut str
+        }
     }
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {

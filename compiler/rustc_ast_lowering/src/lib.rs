@@ -1463,7 +1463,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 }
             }
-            TyKind::MacCall(_) => panic!("`TyKind::MacCall` should have been expanded by now"),
+            TyKind::Pat(ty, pat) => hir::TyKind::Pat(self.lower_ty(ty, itctx), self.lower_pat(pat)),
+            TyKind::MacCall(_) => {
+                span_bug!(t.span, "`TyKind::MacCall` should have been expanded by now")
+            }
             TyKind::CVarArgs => {
                 let guar = self.dcx().span_delayed_bug(
                     t.span,

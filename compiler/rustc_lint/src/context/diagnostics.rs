@@ -105,7 +105,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
         BuiltinLintDiag::RedundantImport(spans, ident) => {
             for (span, is_imported) in spans {
                 let introduced = if is_imported { "imported" } else { "defined" };
-                let span_msg = if span.is_dummy() { "by prelude" } else { "here" };
+                let span_msg = if span.is_dummy() { "by the extern prelude" } else { "here" };
                 diag.span_label(
                     span,
                     format!("the item `{ident}` is already {introduced} {span_msg}"),
@@ -215,10 +215,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
             if let Some(deletion_span) = deletion_span {
                 let msg = "elide the single-use lifetime";
                 let (use_span, replace_lt) = if elide {
-                    let use_span = sess
-                        .source_map()
-                        .span_extend_while(use_span, char::is_whitespace)
-                        .unwrap_or(use_span);
+                    let use_span = sess.source_map().span_extend_while_whitespace(use_span);
                     (use_span, String::new())
                 } else {
                     (use_span, "'_".to_owned())

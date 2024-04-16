@@ -1071,6 +1071,10 @@ fn fmt_type<'cx>(
                 write!(f, "]")
             }
         },
+        clean::Type::Pat(ref t, ref pat) => {
+            fmt::Display::fmt(&t.print(cx), f)?;
+            write!(f, " is {pat}")
+        }
         clean::Array(ref t, ref n) => match **t {
             clean::Generic(name) if !f.alternate() => primitive_link(
                 f,

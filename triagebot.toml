@@ -536,7 +536,12 @@ cc = ["@Nadrieril"]
 message = "Some changes occurred in exhaustiveness checking"
 cc = ["@Nadrieril"]
 
+[mentions."compiler/rustc_session/src/config/cfg.rs"]
+message = "Some changes occurred in cfg and check-cfg configuration"
+cc = ["@Urgau"]
+
 [mentions."compiler/rustc_lint/src/context/diagnostics/check_cfg.rs"]
+message = "Some changes occurred in check-cfg diagnostics"
 cc = ["@Urgau"]
 
 [mentions."library/core/src/intrinsics/simd.rs"]

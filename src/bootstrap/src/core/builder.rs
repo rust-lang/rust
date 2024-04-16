@@ -645,27 +645,6 @@ pub enum Kind {
 }
 
 impl Kind {
-    pub fn parse(string: &str) -> Option<Kind> {
-        // these strings, including the one-letter aliases, must match the x.py help text
-        Some(match string {
-            "build" | "b" => Kind::Build,
-            "check" | "c" => Kind::Check,
-            "clippy" => Kind::Clippy,
-            "fix" => Kind::Fix,
-            "fmt" => Kind::Format,
-            "test" | "t" => Kind::Test,
-            "bench" => Kind::Bench,
-            "doc" | "d" => Kind::Doc,
-            "clean" => Kind::Clean,
-            "dist" => Kind::Dist,
-            "install" => Kind::Install,
-            "run" | "r" => Kind::Run,
-            "setup" => Kind::Setup,
-            "suggest" => Kind::Suggest,
-            _ => return None,
-        })
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             Kind::Build => "build",
@@ -766,6 +745,7 @@ impl<'a> Builder<'a> {
                 test::ExpandYamlAnchors,
                 test::Tidy,
                 test::Ui,
+                test::Crashes,
                 test::RunPassValgrind,
                 test::Coverage,
                 test::CoverageMap,
@@ -808,6 +788,7 @@ impl<'a> Builder<'a> {
                 test::EditionGuide,
                 test::Rustfmt,
                 test::Miri,
+                test::CargoMiri,
                 test::Clippy,
                 test::RustDemangler,
                 test::CompiletestTest,
@@ -872,6 +853,7 @@ impl<'a> Builder<'a> {
                 dist::Clippy,
                 dist::Miri,
                 dist::LlvmTools,
+                dist::LlvmBitcodeLinker,
                 dist::RustDev,
                 dist::Bootstrap,
                 dist::Extended,

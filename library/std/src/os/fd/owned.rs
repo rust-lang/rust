@@ -117,10 +117,7 @@ impl BorrowedFd<'_> {
     #[cfg(any(target_arch = "wasm32", target_os = "hermit"))]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {
-        Err(crate::io::const_io_error!(
-            crate::io::ErrorKind::Unsupported,
-            "operation not supported on this platform",
-        ))
+        Err(crate::io::Error::UNSUPPORTED_PLATFORM)
     }
 }
 

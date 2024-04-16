@@ -96,6 +96,7 @@ adler.debug = 0
 gimli.debug = 0
 miniz_oxide.debug = 0
 object.debug = 0
+rustc-demangle.debug = 0
 
 # These are very thin wrappers around executing lld with the right binary name.
 # Basically nothing within them can go wrong without having been explicitly logged anyway.

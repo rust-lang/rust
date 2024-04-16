@@ -1,6 +1,6 @@
 #![feature(alloc_layout_extra)]
 #![feature(never_type)]
-#![allow(dead_code, unused_variables)]
+#![allow(unused_variables)]
 
 #[macro_use]
 extern crate tracing;
@@ -49,6 +49,8 @@ pub enum Reason<T> {
     DstIsNotYetSupported,
     /// The layout of the destination type is bit-incompatible with the source type.
     DstIsBitIncompatible,
+    /// The destination type is uninhabited.
+    DstUninhabited,
     /// The destination type may carry safety invariants.
     DstMayHaveSafetyInvariants,
     /// `Dst` is larger than `Src`, and the excess bytes were not exclusively uninitialized.

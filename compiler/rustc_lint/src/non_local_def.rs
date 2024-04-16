@@ -157,6 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     | TyKind::Never
                     | TyKind::Tup(_)
                     | TyKind::Path(_)
+                    | TyKind::Pat(..)
                     | TyKind::AnonAdt(_)
                     | TyKind::OpaqueDef(_, _, _)
                     | TyKind::Typeof(_)

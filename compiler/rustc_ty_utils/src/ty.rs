@@ -36,6 +36,8 @@ fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'
         // these are never sized
         Str | Slice(..) | Dynamic(_, _, ty::Dyn) | Foreign(..) => Some(ty),
 
+        Pat(ty, _) => sized_constraint_for_ty(tcx, *ty),
+
         Tuple(tys) => tys.last().and_then(|&ty| sized_constraint_for_ty(tcx, ty)),
 
         // recursive case

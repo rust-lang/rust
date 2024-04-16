@@ -91,17 +91,18 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{self, def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::{def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
+use rustc_trait_selection::traits::error_reporting::suggestions::{
+    ReturnsVisitor, TypeErrCtxtExt as _,
+};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::errors;
 use crate::require_c_abi_if_c_variadic;
-use crate::util::common::indenter;
 
 use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
@@ -466,17 +467,6 @@ fn fn_sig_suggestion<'tcx>(
     )
 }
 
-pub fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
-    Some(match ty.kind() {
-        ty::Bool => "true",
-        ty::Char => "'a'",
-        ty::Int(_) | ty::Uint(_) => "42",
-        ty::Float(_) => "3.14159",
-        ty::Error(_) | ty::Never => return None,
-        _ => "value",
-    })
-}
-
 /// Return placeholder code for the given associated item.
 /// Similar to `ty::AssocItem::suggestion`, but appropriate for use as the code snippet of a
 /// structured suggestion.
@@ -511,7 +501,12 @@ fn suggestion_signature<'tcx>(
         }
         ty::AssocKind::Const => {
             let ty = tcx.type_of(assoc.def_id).instantiate_identity();
-            let val = ty_kind_suggestion(ty).unwrap_or("todo!()");
+            let val = tcx
+                .infer_ctxt()
+                .build()
+                .err_ctxt()
+                .ty_kind_suggestion(tcx.param_env(assoc.def_id), ty)
+                .unwrap_or_else(|| "value".to_string());
             format!("const {}: {} = {};", assoc.name, ty, val)
         }
     }

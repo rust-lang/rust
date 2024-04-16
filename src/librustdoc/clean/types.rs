@@ -23,6 +23,7 @@ use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
+use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
@@ -266,8 +267,15 @@ impl ExternalCrate {
         let as_primitive = |res: Res<!>| {
             let Res::Def(DefKind::Mod, def_id) = res else { return None };
             tcx.get_attrs(def_id, sym::rustc_doc_primitive).find_map(|attr| {
-                // FIXME: should warn on unknown primitives?
-                Some((def_id, PrimitiveType::from_symbol(attr.value_str()?)?))
+                let attr_value = attr.value_str().expect("syntax should already be validated");
+                let Some(prim) = PrimitiveType::from_symbol(attr_value) else {
+                    span_bug!(
+                        attr.span,
+                        "primitive `{attr_value}` is not a member of `PrimitiveType`"
+                    );
+                };
+
+                Some((def_id, prim))
             })
         };
 
@@ -1475,7 +1483,9 @@ pub(crate) enum Type {
     ///
     /// This is mostly Rustdoc's version of [`hir::Path`].
     /// It has to be different because Rustdoc's [`PathSegment`] can contain cleaned generics.
-    Path { path: Path },
+    Path {
+        path: Path,
+    },
     /// A `dyn Trait` object: `dyn for<'a> Trait<'a> + Send + 'static`
     DynTrait(Vec<PolyTrait>, Option<Lifetime>),
     /// A type parameter.
@@ -1492,10 +1502,15 @@ pub(crate) enum Type {
     ///
     /// The `String` field is a stringified version of the array's length parameter.
     Array(Box<Type>, Box<str>),
+    Pat(Box<Type>, Box<str>),
     /// A raw pointer type: `*const i32`, `*mut i32`
     RawPointer(Mutability, Box<Type>),
     /// A reference type: `&i32`, `&'a mut Foo`
-    BorrowedRef { lifetime: Option<Lifetime>, mutability: Mutability, type_: Box<Type> },
+    BorrowedRef {
+        lifetime: Option<Lifetime>,
+        mutability: Mutability,
+        type_: Box<Type>,
+    },
 
     /// A qualified path to an associated item: `<Type as Trait>::Name`
     QPath(Box<QPathData>),
@@ -1692,6 +1707,7 @@ impl Type {
             BareFunction(..) => PrimitiveType::Fn,
             Slice(..) => PrimitiveType::Slice,
             Array(..) => PrimitiveType::Array,
+            Type::Pat(..) => PrimitiveType::Pat,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(box QPathData { ref self_type, .. }) => return self_type.inner_def_id(cache),
             Generic(_) | Infer | ImplTrait(_) => return None,
@@ -1745,6 +1761,7 @@ pub(crate) enum PrimitiveType {
     Str,
     Slice,
     Array,
+    Pat,
     Tuple,
     Unit,
     RawPointer,
@@ -1797,8 +1814,10 @@ impl PrimitiveType {
             sym::bool => Some(PrimitiveType::Bool),
             sym::char => Some(PrimitiveType::Char),
             sym::str => Some(PrimitiveType::Str),
+            sym::f16 => Some(PrimitiveType::F16),
             sym::f32 => Some(PrimitiveType::F32),
             sym::f64 => Some(PrimitiveType::F64),
+            sym::f128 => Some(PrimitiveType::F128),
             sym::array => Some(PrimitiveType::Array),
             sym::slice => Some(PrimitiveType::Slice),
             sym::tuple => Some(PrimitiveType::Tuple),
@@ -1831,8 +1850,10 @@ impl PrimitiveType {
                 U32 => single(SimplifiedType::Uint(UintTy::U32)),
                 U64 => single(SimplifiedType::Uint(UintTy::U64)),
                 U128 => single(SimplifiedType::Uint(UintTy::U128)),
+                F16 => single(SimplifiedType::Float(FloatTy::F16)),
                 F32 => single(SimplifiedType::Float(FloatTy::F32)),
                 F64 => single(SimplifiedType::Float(FloatTy::F64)),
+                F128 => single(SimplifiedType::Float(FloatTy::F128)),
                 Str => single(SimplifiedType::Str),
                 Bool => single(SimplifiedType::Bool),
                 Char => single(SimplifiedType::Char),
@@ -1895,6 +1916,7 @@ impl PrimitiveType {
             Bool => sym::bool,
             Char => sym::char,
             Array => sym::array,
+            Pat => sym::pat,
             Slice => sym::slice,
             Tuple => sym::tuple,
             Unit => sym::unit,

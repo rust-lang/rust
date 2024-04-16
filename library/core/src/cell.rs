@@ -2071,6 +2071,7 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
+    // When this is const stabilized, please remove `primitive_into_inner` below.
     #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
     pub const fn into_inner(self) -> T {
         self.value
@@ -2216,6 +2217,47 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 // `self: UnsafeCellWrapper<Self>` becomes possible
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafeCell<U>> for UnsafeCell<T> {}
+
+// Special cases of UnsafeCell::into_inner where T is a primitive. These are
+// used by Atomic*::into_inner.
+//
+// The real UnsafeCell::into_inner cannot be used yet in a stable const function.
+// That is blocked on a "precise drop analysis" unstable const feature.
+// https://github.com/rust-lang/rust/issues/73255
+macro_rules! unsafe_cell_primitive_into_inner {
+    ($($primitive:ident $atomic:literal)*) => {
+        $(
+            #[cfg(target_has_atomic_load_store = $atomic)]
+            impl UnsafeCell<$primitive> {
+                pub(crate) const fn primitive_into_inner(self) -> $primitive {
+                    self.value
+                }
+            }
+        )*
+    };
+}
+
+unsafe_cell_primitive_into_inner! {
+    i8 "8"
+    u8 "8"
+    i16 "16"
+    u16 "16"
+    i32 "32"
+    u32 "32"
+    i64 "64"
+    u64 "64"
+    i128 "128"
+    u128 "128"
+    isize "ptr"
+    usize "ptr"
+}
+
+#[cfg(target_has_atomic_load_store = "ptr")]
+impl<T> UnsafeCell<*mut T> {
+    pub(crate) const fn primitive_into_inner(self) -> *mut T {
+        self.value
+    }
+}
 
 /// [`UnsafeCell`], but [`Sync`].
 ///

@@ -1,4 +1,4 @@
-//! OS-based thread local storage
+//! OS-based thread local storage for non-Windows systems
 //!
 //! This module provides an implementation of OS-based thread local storage,
 //! using the native OS-provided facilities (think `TlsAlloc` or
@@ -10,6 +10,9 @@
 //! initialization, and does not contain a `Drop` implementation to deallocate
 //! the OS-TLS key. The other is a type which does implement `Drop` and hence
 //! has a safe interface.
+//!
+//! Windows doesn't use this module at all; `sys::pal::windows::thread_local_key`
+//! gets imported in its stead.
 //!
 //! # Usage
 //!

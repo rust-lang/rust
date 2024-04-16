@@ -541,12 +541,7 @@ impl<D: Deps> EncoderState<D> {
         record_graph: &Option<Lock<DepGraphQuery>>,
     ) -> DepNodeIndex {
         node.encode::<D>(&mut self.encoder);
-        self.record(
-            node.node,
-            node.edges.len(),
-            |_| node.edges[..].iter().copied().collect(),
-            record_graph,
-        )
+        self.record(node.node, node.edges.len(), |_| node.edges[..].to_vec(), record_graph)
     }
 
     /// Encodes a node that was promoted from the previous graph. It reads the information directly from

@@ -11,7 +11,7 @@ use crate::{fmt, io, mem, ptr};
 #[cfg(not(unix))]
 #[allow(non_camel_case_types)]
 mod libc {
-    pub use libc::c_int;
+    pub use core::ffi::c_int;
     pub type socklen_t = u32;
     pub struct sockaddr;
     #[derive(Clone)]
@@ -107,6 +107,16 @@ impl SocketAddr {
         addr: libc::sockaddr_un,
         mut len: libc::socklen_t,
     ) -> io::Result<SocketAddr> {
+        if cfg!(target_os = "openbsd") {
+            // on OpenBSD, getsockname(2) returns the actual size of the socket address,
+            // and not the len of the content. Figure out the length for ourselves.
+            // https://marc.info/?l=openbsd-bugs&m=170105481926736&w=2
+            let sun_path: &[u8] =
+                unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&addr.sun_path) };
+            len = core::slice::memchr::memchr(0, sun_path)
+                .map_or(len, |new_len| (new_len + sun_path_offset(&addr)) as libc::socklen_t);
+        }
+
         if len == 0 {
             // When there is a datagram from unnamed unix socket
             // linux returns zero bytes of address

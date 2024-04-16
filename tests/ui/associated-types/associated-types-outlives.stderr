@@ -10,6 +10,11 @@ LL |         drop(x);
    |              ^ move out of `x` occurs here
 LL |         return f(y);
    |                  - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         's: loop { y = denormalise(&x).clone(); break }
+   |                                       ++++++++
 
 error: aborting due to 1 previous error
 

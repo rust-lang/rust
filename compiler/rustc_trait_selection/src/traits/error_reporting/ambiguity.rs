@@ -5,6 +5,7 @@ use rustc_infer::traits::{Obligation, ObligationCause, PolyTraitObligation};
 use rustc_middle::ty;
 use rustc_span::{Span, DUMMY_SP};
 
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::ObligationCtxt;
 
 #[derive(Debug)]
@@ -52,10 +53,21 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
                 _ => return false,
             }
 
-            let impl_predicates = tcx.predicates_of(impl_def_id).instantiate(tcx, impl_args);
-            ocx.register_obligations(impl_predicates.predicates.iter().map(|&predicate| {
-                Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
-            }));
+            let obligations = tcx
+                .predicates_of(impl_def_id)
+                .instantiate(tcx, impl_args)
+                .into_iter()
+                .map(|(predicate, _)| {
+                    Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
+                })
+                // Kinda hacky, but let's just throw away obligations that overflow.
+                // This may reduce the accuracy of this check (if the obligation guides
+                // inference or it actually resulted in error after others are processed)
+                // ... but this is diagnostics code.
+                .filter(|obligation| {
+                    infcx.next_trait_solver() || infcx.evaluate_obligation(obligation).is_ok()
+                });
+            ocx.register_obligations(obligations);
 
             ocx.select_where_possible().is_empty()
         })

@@ -597,7 +597,7 @@ impl Step for Miri {
         builder.ensure(compile::Std::new(target_compiler, host));
         let host_sysroot = builder.sysroot(target_compiler);
 
-        // # Run `cargo test`.
+        // Run `cargo test`.
         // This is with the Miri crate, so it uses the host compiler.
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -652,15 +652,46 @@ impl Step for Miri {
                 builder.run(&mut cargo);
             }
         }
+    }
+}
 
-        // # Run `cargo miri test`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CargoMiri {
+    target: TargetSelection,
+}
+
+impl Step for CargoMiri {
+    type Output = ();
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/miri/cargo-miri")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CargoMiri { target: run.target });
+    }
+
+    /// Tests `cargo miri test`.
+    fn run(self, builder: &Builder<'_>) {
+        let host = builder.build.build;
+        let target = self.target;
+        let stage = builder.top_stage;
+        if stage == 0 {
+            eprintln!("cargo-miri cannot be tested at stage 0");
+            std::process::exit(1);
+        }
+
+        // This compiler runs on the host, we'll just use it for the target.
+        let compiler = builder.compiler(stage, host);
+
+        // Run `cargo miri test`.
         // This is just a smoke test (Miri's own CI invokes this in a bunch of different ways and ensures
         // that we get the desired output), but that is sufficient to make sure that the libtest harness
         // itself executes properly under Miri, and that all the logic in `cargo-miri` does not explode.
-        // This is running the build `cargo-miri` for the given target, so we need the target compiler.
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            target_compiler,
+            compiler,
             Mode::ToolStd, // it's unclear what to use here, we're not building anything just doing a smoke test!
             target,
             "miri-test",
@@ -1368,6 +1399,8 @@ impl Step for RunMakeSupport {
 }
 
 default_test!(Ui { path: "tests/ui", mode: "ui", suite: "ui" });
+
+default_test!(Crashes { path: "tests/crashes", mode: "crashes", suite: "crashes" });
 
 default_test!(RunPassValgrind {
     path: "tests/run-pass-valgrind",
@@ -2658,20 +2691,31 @@ impl Step for Crate {
 
         match mode {
             Mode::Std => {
-                compile::std_cargo(builder, target, compiler.stage, &mut cargo);
-                // `std_cargo` actually does the wrong thing: it passes `--sysroot build/host/stage2`,
-                // but we want to use the force-recompile std we just built in `build/host/stage2-test-sysroot`.
-                // Override it.
-                if builder.download_rustc() && compiler.stage > 0 {
-                    let sysroot = builder
-                        .out
-                        .join(compiler.host.triple)
-                        .join(format!("stage{}-test-sysroot", compiler.stage));
-                    cargo.env("RUSTC_SYSROOT", sysroot);
+                if builder.kind == Kind::Miri {
+                    // We can't use `std_cargo` as that uses `optimized-compiler-builtins` which
+                    // needs host tools for the given target. This is similar to what `compile::Std`
+                    // does when `is_for_mir_opt_tests` is true. There's probably a chance for
+                    // de-duplication here... `std_cargo` should support a mode that avoids needing
+                    // host tools.
+                    cargo
+                        .arg("--manifest-path")
+                        .arg(builder.src.join("library/sysroot/Cargo.toml"));
+                } else {
+                    compile::std_cargo(builder, target, compiler.stage, &mut cargo);
+                    // `std_cargo` actually does the wrong thing: it passes `--sysroot build/host/stage2`,
+                    // but we want to use the force-recompile std we just built in `build/host/stage2-test-sysroot`.
+                    // Override it.
+                    if builder.download_rustc() && compiler.stage > 0 {
+                        let sysroot = builder
+                            .out
+                            .join(compiler.host.triple)
+                            .join(format!("stage{}-test-sysroot", compiler.stage));
+                        cargo.env("RUSTC_SYSROOT", sysroot);
+                    }
                 }
             }
             Mode::Rustc => {
-                compile::rustc_cargo(builder, &mut cargo, target, compiler.stage);
+                compile::rustc_cargo(builder, &mut cargo, target, &compiler);
             }
             _ => panic!("can only test libraries"),
         };
@@ -3258,6 +3302,11 @@ impl Step for CodegenCranelift {
             return;
         }
 
+        if builder.download_rustc() {
+            builder.info("CI rustc uses the default codegen backend. skipping");
+            return;
+        }
+
         if !target_supports_cranelift_backend(run.target) {
             builder.info("target not supported by rustc_codegen_cranelift. skipping");
             return;
@@ -3376,6 +3425,11 @@ impl Step for CodegenGCC {
         let compiler = run.builder.compiler_for(run.builder.top_stage, host, host);
 
         if builder.doc_tests == DocTests::Only {
+            return;
+        }
+
+        if builder.download_rustc() {
+            builder.info("CI rustc uses the default codegen backend. skipping");
             return;
         }
 

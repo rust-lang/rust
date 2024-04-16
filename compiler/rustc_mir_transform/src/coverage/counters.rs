@@ -2,7 +2,7 @@ use std::fmt::{self, Debug};
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::graph::WithNumNodes;
+use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{CounterId, CovTerm, Expression, ExpressionId, Op};
 

@@ -1060,6 +1060,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 ty::Tuple(tys) => tys.last().iter().all(|ty| is_very_trivially_sized(**ty)),
 
+                ty::Pat(ty, ..) => is_very_trivially_sized(*ty),
+
                 // We don't want to do any queries, so there is not much we can do with ADTs.
                 ty::Adt(..) => false,
 

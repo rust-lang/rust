@@ -945,55 +945,10 @@ impl Step for Rustc {
             "build",
         );
 
-        rustc_cargo(builder, &mut cargo, target, compiler.stage);
+        rustc_cargo(builder, &mut cargo, target, &compiler);
 
-        if builder.config.rust_profile_use.is_some()
-            && builder.config.rust_profile_generate.is_some()
-        {
-            panic!("Cannot use and generate PGO profiles at the same time");
-        }
-
-        // With LLD, we can use ICF (identical code folding) to reduce the executable size
-        // of librustc_driver/rustc and to improve i-cache utilization.
-        //
-        // -Wl,[link options] doesn't work on MSVC. However, /OPT:ICF (technically /OPT:REF,ICF)
-        // is already on by default in MSVC optimized builds, which is interpreted as --icf=all:
-        // https://github.com/llvm/llvm-project/blob/3329cec2f79185bafd678f310fafadba2a8c76d2/lld/COFF/Driver.cpp#L1746
-        // https://github.com/rust-lang/rust/blob/f22819bcce4abaff7d1246a56eec493418f9f4ee/compiler/rustc_codegen_ssa/src/back/linker.rs#L827
-        if builder.config.lld_mode.is_used() && !compiler.host.is_msvc() {
-            cargo.rustflag("-Clink-args=-Wl,--icf=all");
-        }
-
-        let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
-            if compiler.stage == 1 {
-                cargo.rustflag(&format!("-Cprofile-generate={path}"));
-                // Apparently necessary to avoid overflowing the counters during
-                // a Cargo build profile
-                cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
-                true
-            } else {
-                false
-            }
-        } else if let Some(path) = &builder.config.rust_profile_use {
-            if compiler.stage == 1 {
-                cargo.rustflag(&format!("-Cprofile-use={path}"));
-                if builder.is_verbose() {
-                    cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
-                }
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        };
-        if is_collecting {
-            // Ensure paths to Rust sources are relative, not absolute.
-            cargo.rustflag(&format!(
-                "-Cllvm-args=-static-func-strip-dirname-prefix={}",
-                builder.config.src.components().count()
-            ));
-        }
+        // NB: all RUSTFLAGS should be added to `rustc_cargo()` so they will be
+        // consistently applied by check/doc/test modes too.
 
         for krate in &*self.crates {
             cargo.arg("-p").arg(krate);
@@ -1044,7 +999,12 @@ impl Step for Rustc {
     }
 }
 
-pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection, stage: u32) {
+pub fn rustc_cargo(
+    builder: &Builder<'_>,
+    cargo: &mut Cargo,
+    target: TargetSelection,
+    compiler: &Compiler,
+) {
     cargo
         .arg("--features")
         .arg(builder.rustc_features(builder.kind, target))
@@ -1055,7 +1015,7 @@ pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
 
     // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
     // and may just be a time sink.
-    if stage != 0 {
+    if compiler.stage != 0 {
         match builder.config.rust_lto {
             RustcLto::Thin | RustcLto::Fat => {
                 // Since using LTO for optimizing dylibs is currently experimental,
@@ -1081,7 +1041,52 @@ pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
         cargo.rustflag("-Clto=off");
     }
 
-    rustc_cargo_env(builder, cargo, target, stage);
+    // With LLD, we can use ICF (identical code folding) to reduce the executable size
+    // of librustc_driver/rustc and to improve i-cache utilization.
+    //
+    // -Wl,[link options] doesn't work on MSVC. However, /OPT:ICF (technically /OPT:REF,ICF)
+    // is already on by default in MSVC optimized builds, which is interpreted as --icf=all:
+    // https://github.com/llvm/llvm-project/blob/3329cec2f79185bafd678f310fafadba2a8c76d2/lld/COFF/Driver.cpp#L1746
+    // https://github.com/rust-lang/rust/blob/f22819bcce4abaff7d1246a56eec493418f9f4ee/compiler/rustc_codegen_ssa/src/back/linker.rs#L827
+    if builder.config.lld_mode.is_used() && !compiler.host.is_msvc() {
+        cargo.rustflag("-Clink-args=-Wl,--icf=all");
+    }
+
+    if builder.config.rust_profile_use.is_some() && builder.config.rust_profile_generate.is_some() {
+        panic!("Cannot use and generate PGO profiles at the same time");
+    }
+    let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
+        if compiler.stage == 1 {
+            cargo.rustflag(&format!("-Cprofile-generate={path}"));
+            // Apparently necessary to avoid overflowing the counters during
+            // a Cargo build profile
+            cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
+            true
+        } else {
+            false
+        }
+    } else if let Some(path) = &builder.config.rust_profile_use {
+        if compiler.stage == 1 {
+            cargo.rustflag(&format!("-Cprofile-use={path}"));
+            if builder.is_verbose() {
+                cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
+            }
+            true
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+    if is_collecting {
+        // Ensure paths to Rust sources are relative, not absolute.
+        cargo.rustflag(&format!(
+            "-Cllvm-args=-static-func-strip-dirname-prefix={}",
+            builder.config.src.components().count()
+        ));
+    }
+
+    rustc_cargo_env(builder, cargo, target, compiler.stage);
 }
 
 pub fn rustc_cargo_env(

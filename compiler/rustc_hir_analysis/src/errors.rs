@@ -7,6 +7,8 @@ use rustc_errors::{
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
+mod pattern_types;
+pub use pattern_types::*;
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_ambiguous_assoc_item)]
@@ -1628,4 +1630,11 @@ pub struct OpaqueCapturesHigherRankedLifetime {
     #[note]
     pub decl_span: Span,
     pub bad_place: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_pattern_type_non_const_range)]
+pub struct NonConstRange {
+    #[primary_span]
+    pub span: Span,
 }

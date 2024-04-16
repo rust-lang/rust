@@ -17,6 +17,11 @@ LL |     {src};
    |      --- value moved here
 LL |     src.0 = 66;
    |     ^^^^^^^^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     {src.clone()};
+   |         ++++++++
 
 error: aborting due to 2 previous errors
 

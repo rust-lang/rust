@@ -520,7 +520,10 @@ impl<'tcx> Instance<'tcx> {
                 // Reify `Trait::method` implementations if KCFI is enabled
                 // FIXME(maurer) only reify it if it is a vtable-safe function
                 _ if tcx.sess.is_sanitizer_kcfi_enabled()
-                    && tcx.associated_item(def_id).trait_item_def_id.is_some() =>
+                    && tcx
+                        .opt_associated_item(def_id)
+                        .and_then(|assoc| assoc.trait_item_def_id)
+                        .is_some() =>
                 {
                     // If this function could also go in a vtable, we need to `ReifyShim` it with
                     // KCFI because it can only attach one type per function.

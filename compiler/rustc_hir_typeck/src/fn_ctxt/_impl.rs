@@ -561,9 +561,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Unify `interior` with `witness` and collect all the resulting obligations.
             let span = self.tcx.hir().body(body_id).value.span;
+            let ty::Infer(ty::InferTy::TyVar(_)) = interior.kind() else {
+                span_bug!(span, "coroutine interior witness not infer: {:?}", interior.kind())
+            };
             let ok = self
                 .at(&self.misc(span), self.param_env)
-                .eq(DefineOpaqueTypes::No, interior, witness)
+                // Will never define opaque types, as all we do is instantiate a type variable.
+                .eq(DefineOpaqueTypes::Yes, interior, witness)
                 .expect("Failed to unify coroutine interior type");
             let mut obligations = ok.obligations;
 
@@ -710,33 +714,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<Vec<Ty<'tcx>>> {
         let formal_ret = self.resolve_vars_with_obligations(formal_ret);
         let ret_ty = expected_ret.only_has_type(self)?;
-
-        // HACK(oli-obk): This is a hack to keep RPIT and TAIT in sync wrt their behaviour.
-        // Without it, the inference
-        // variable will get instantiated with the opaque type. The inference variable often
-        // has various helpful obligations registered for it that help closures figure out their
-        // signature. If we infer the inference var to the opaque type, the closure won't be able
-        // to find those obligations anymore, and it can't necessarily find them from the opaque
-        // type itself. We could be more powerful with inference if we *combined* the obligations
-        // so that we got both the obligations from the opaque type and the ones from the inference
-        // variable. That will accept more code than we do right now, so we need to carefully consider
-        // the implications.
-        // Note: this check is pessimistic, as the inference type could be matched with something other
-        // than the opaque type, but then we need a new `TypeRelation` just for this specific case and
-        // can't re-use `sup` below.
-        // See tests/ui/impl-trait/hidden-type-is-opaque.rs and
-        // tests/ui/impl-trait/hidden-type-is-opaque-2.rs for examples that hit this path.
-        if formal_ret.has_infer_types() {
-            for ty in ret_ty.walk() {
-                if let ty::GenericArgKind::Type(ty) = ty.unpack()
-                    && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *ty.kind()
-                    && let Some(def_id) = def_id.as_local()
-                    && self.opaque_type_origin(def_id).is_some()
-                {
-                    return None;
-                }
-            }
-        }
 
         let expect_args = self
             .fudge_inference_if_ok(|| {
@@ -943,7 +920,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn get_node_fn_decl(
         &self,
         node: Node<'tcx>,
-    ) -> Option<(hir::HirId, &'tcx hir::FnDecl<'tcx>, Ident, bool)> {
+    ) -> Option<(LocalDefId, &'tcx hir::FnDecl<'tcx>, Ident, bool)> {
         match node {
             Node::Item(&hir::Item {
                 ident,
@@ -954,25 +931,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // This is less than ideal, it will not suggest a return type span on any
                 // method called `main`, regardless of whether it is actually the entry point,
                 // but it will still present it as the reason for the expected type.
-                Some((
-                    hir::HirId::make_owner(owner_id.def_id),
-                    &sig.decl,
-                    ident,
-                    ident.name != sym::main,
-                ))
+                Some((owner_id.def_id, &sig.decl, ident, ident.name != sym::main))
             }
             Node::TraitItem(&hir::TraitItem {
                 ident,
                 kind: hir::TraitItemKind::Fn(ref sig, ..),
                 owner_id,
                 ..
-            }) => Some((hir::HirId::make_owner(owner_id.def_id), &sig.decl, ident, true)),
+            }) => Some((owner_id.def_id, &sig.decl, ident, true)),
             Node::ImplItem(&hir::ImplItem {
                 ident,
                 kind: hir::ImplItemKind::Fn(ref sig, ..),
                 owner_id,
                 ..
-            }) => Some((hir::HirId::make_owner(owner_id.def_id), &sig.decl, ident, false)),
+            }) => Some((owner_id.def_id, &sig.decl, ident, false)),
             Node::Expr(&hir::Expr {
                 hir_id,
                 kind:
@@ -1002,12 +974,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }) => (ident, sig, owner_id),
                     _ => return None,
                 };
-                Some((
-                    hir::HirId::make_owner(owner_id.def_id),
-                    &sig.decl,
-                    ident,
-                    ident.name != sym::main,
-                ))
+                Some((owner_id.def_id, &sig.decl, ident, ident.name != sym::main))
             }
             _ => None,
         }
@@ -1018,7 +985,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn get_fn_decl(
         &self,
         blk_id: hir::HirId,
-    ) -> Option<(hir::HirId, &'tcx hir::FnDecl<'tcx>, bool)> {
+    ) -> Option<(LocalDefId, &'tcx hir::FnDecl<'tcx>, bool)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
         self.tcx.hir().get_return_block(blk_id).and_then(|blk_id| {

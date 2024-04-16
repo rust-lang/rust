@@ -14,7 +14,7 @@ use rustc_span::{BytePos, Span};
 use rustc_target::abi::{Abi, FieldIdx, FieldsShape, Size, VariantIdx};
 
 use super::operand::{OperandRef, OperandValue};
-use super::place::PlaceRef;
+use super::place::{PlaceRef, PlaceValue};
 use super::{FunctionCx, LocalRef};
 
 use std::ops::Range;
@@ -252,7 +252,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // at least for the cases which LLVM handles correctly.
         let spill_slot = PlaceRef::alloca(bx, operand.layout);
         if let Some(name) = name {
-            bx.set_var_name(spill_slot.llval, &(name + ".dbg.spill"));
+            bx.set_var_name(spill_slot.val.llval, &(name + ".dbg.spill"));
         }
         operand.val.store(bx, spill_slot);
         spill_slot
@@ -331,10 +331,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(name) = &name {
             match local_ref {
                 LocalRef::Place(place) | LocalRef::UnsizedPlace(place) => {
-                    bx.set_var_name(place.llval, name);
+                    bx.set_var_name(place.val.llval, name);
                 }
                 LocalRef::Operand(operand) => match operand.val {
-                    OperandValue::Ref(x, ..) | OperandValue::Immediate(x) => {
+                    OperandValue::Ref(PlaceValue { llval: x, .. }) | OperandValue::Immediate(x) => {
                         bx.set_var_name(x, name);
                     }
                     OperandValue::Pair(a, b) => {
@@ -417,16 +417,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let ptr_ty = Ty::new_mut_ptr(bx.tcx(), place.layout.ty);
             let ptr_layout = bx.layout_of(ptr_ty);
             let alloca = PlaceRef::alloca(bx, ptr_layout);
-            bx.set_var_name(alloca.llval, &(var.name.to_string() + ".dbg.spill"));
+            bx.set_var_name(alloca.val.llval, &(var.name.to_string() + ".dbg.spill"));
 
             // Write the pointer to the variable
-            bx.store(place.llval, alloca.llval, alloca.align);
+            bx.store_to_place(place.val.llval, alloca.val);
 
             // Point the debug info to `*alloca` for the current variable
             bx.dbg_var_addr(
                 dbg_var,
                 dbg_loc,
-                alloca.llval,
+                alloca.val.llval,
                 Size::ZERO,
                 &[Size::ZERO],
                 var.fragment,
@@ -435,7 +435,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.dbg_var_addr(
                 dbg_var,
                 dbg_loc,
-                base.llval,
+                base.val.llval,
                 direct_offset,
                 &indirect_offsets,
                 var.fragment,
@@ -553,7 +553,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let base =
                             Self::spill_operand_to_stack(operand, Some(var.name.to_string()), bx);
 
-                        bx.dbg_var_addr(dbg_var, dbg_loc, base.llval, Size::ZERO, &[], fragment);
+                        bx.dbg_var_addr(
+                            dbg_var,
+                            dbg_loc,
+                            base.val.llval,
+                            Size::ZERO,
+                            &[],
+                            fragment,
+                        );
                     }
                 }
             }

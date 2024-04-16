@@ -90,12 +90,13 @@ LL | | /// ```
    = note: error from rustc: unknown start of token: \
 
 warning: could not parse code block as Rust code
-  --> $DIR/invalid-syntax.rs:70:1
+  --> $DIR/invalid-syntax.rs:70:9
    |
-LL | / #[doc = "```"]
+LL |   #[doc = "```"]
+   |  _________^
 LL | | /// \_
 LL | | #[doc = "```"]
-   | |______________^
+   | |_____________^
    |
    = help: mark blocks that do not contain Rust code as text: ```text
    = note: error from rustc: unknown start of token: \

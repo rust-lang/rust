@@ -29,15 +29,13 @@ LL |     f(1, 2);
 LL |     f(1, 2);
    |     ^ value used here after move
    |
-note: this value implements `FnOnce`, which causes it to be moved when called
-  --> $DIR/borrowck-unboxed-closures.rs:11:5
+note: `FnOnce` closures can only be called once
+  --> $DIR/borrowck-unboxed-closures.rs:10:8
    |
+LL | fn c<F:FnOnce(isize, isize) -> isize>(f: F) {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` is made to be an `FnOnce` closure here
 LL |     f(1, 2);
-   |     ^
-help: consider further restricting this bound
-   |
-LL | fn c<F:FnOnce(isize, isize) -> isize + Copy>(f: F) {
-   |                                      ++++++
+   |     ------- this value implements `FnOnce`, which causes it to be moved when called
 
 error: aborting due to 3 previous errors
 

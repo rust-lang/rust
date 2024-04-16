@@ -379,11 +379,11 @@
 //!
 //! Exposing access to the inner field which you want to remain pinned must then be carefully
 //! considered as well! Remember, exposing a method that gives access to a
-//! <code>[Pin]<[&mut] InnerT>></code> where `InnerT: [Unpin]` would allow safe code to trivially
-//! move the inner value out of that pinning pointer, which is precisely what you're seeking to
-//! prevent! Exposing a field of a pinned value through a pinning pointer is called "projecting"
-//! a pin, and the more general case of deciding in which cases a pin should be able to be
-//! projected or not is called "structural pinning." We will go into more detail about this
+//! <code>[Pin]<[&mut] InnerT>></code> where <code>InnerT: [Unpin]</code> would allow safe code to
+//! trivially move the inner value out of that pinning pointer, which is precisely what you're
+//! seeking to prevent! Exposing a field of a pinned value through a pinning pointer is called
+//! "projecting" a pin, and the more general case of deciding in which cases a pin should be able
+//! to be projected or not is called "structural pinning." We will go into more detail about this
 //! [below][structural-pinning].
 //!
 //! # Examples of address-sensitive types
@@ -1198,7 +1198,7 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// Unwraps this `Pin<Ptr>`, returning the underlying pointer.
     ///
     /// Doing this operation safely requires that the data pointed at by this pinning pointer
-    /// implemts [`Unpin`] so that we can ignore the pinning invariants when unwrapping it.
+    /// implements [`Unpin`] so that we can ignore the pinning invariants when unwrapping it.
     ///
     /// # Examples
     ///
