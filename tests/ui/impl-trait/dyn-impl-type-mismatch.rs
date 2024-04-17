@@ -10,7 +10,7 @@ fn main() {
     } else {
         foo() //~ ERROR E0308
     };
-    let a: dyn Trait = if true {
+    let a: dyn Trait = if true { //~ ERROR E0277
         Struct //~ ERROR E0308
     } else {
         foo() //~ ERROR E0308

@@ -94,6 +94,66 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             predicate: ty::Predicate<'tcx>,
             index: Option<usize>, // None if this is an old error
         }
+        let dedup_span = |obligation: &Obligation<'_, ty::Predicate<'_>>| {
+            // We want to ignore desugarings here: spans are equivalent even
+            // if one is the result of a desugaring and the other is not.
+            let mut span = obligation.cause.span;
+            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
+                obligation.predicate.kind().skip_binder()
+                && Some(pred.def_id()) == self.tcx.lang_items().sized_trait()
+            {
+                // For `Sized` bounds exclusively, we deduplicate based on `let` binding origin.
+                // We could do this for other traits, but in cases like the tests at
+                // `tests/ui/coroutine/clone-impl-async.rs` we'd end up with fewer errors than we do
+                // now, because different `fn` calls might have different sources of the obligation,
+                // which are unrelated between calls. FIXME: We could rework the dedup logic below
+                // to go further from evaluating only a single span, instead grouping multiple
+                // errors associated to the same binding and emitting a single error with *all* the
+                // appropriate context.
+                match obligation.cause.code() {
+                    ObligationCauseCode::VariableType(hir_id) => {
+                        if let hir::Node::Pat(pat) = self.tcx.hir_node(*hir_id) {
+                            // `let` binding obligations will not necessarily point at the
+                            // identifier, so point at it.
+                            span = pat.span;
+                        }
+                    }
+                    ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } => {
+                        if let hir::Node::Expr(expr) = self.tcx.hir_node(*arg_hir_id)
+                            && let hir::ExprKind::Path(hir::QPath::Resolved(
+                                None,
+                                hir::Path { res: hir::def::Res::Local(hir_id), .. },
+                            )) = expr.peel_borrows().kind
+                            && let hir::Node::Pat(pat) = self.tcx.hir_node(*hir_id)
+                        {
+                            // When we have a call argument that is a `!Sized` `let` binding,
+                            // deduplicate all the `!Sized` errors referencing that binding.
+                            span = pat.span;
+                        }
+                    }
+                    ObligationCauseCode::SizedCallReturnType(Some(hir_id)) => {
+                        // This is a special case: when `fn foo() -> dyn Trait` and we call `foo()`
+                        // in the init of a `let` binding, we will already emit an unsized local
+                        // error, so we check for this case and unify the errors.
+                        if let hir::Node::LetStmt(local) = self.tcx.parent_hir_node(*hir_id) {
+                            span = local.pat.span;
+                        }
+                    }
+                    ObligationCauseCode::ExprBindingObligation(_, _, hir_id, _) => {
+                        // For method calls like `let x = y.foo();` that are `?Sized`, we also dedup
+                        if let hir::Node::LetStmt(local) = self.tcx.parent_hir_node(*hir_id) {
+                            span = local.pat.span;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            let expn_data = span.ctxt().outer_expn_data();
+            if let ExpnKind::Desugaring(_) = expn_data.kind {
+                span = expn_data.call_site;
+            }
+            span
+        };
 
         let mut error_map: FxIndexMap<_, Vec<_>> = self
             .reported_trait_errors
@@ -125,15 +185,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         });
 
         for (index, error) in errors.iter().enumerate() {
-            // We want to ignore desugarings here: spans are equivalent even
-            // if one is the result of a desugaring and the other is not.
-            let mut span = error.obligation.cause.span;
-            let expn_data = span.ctxt().outer_expn_data();
-            if let ExpnKind::Desugaring(_) = expn_data.kind {
-                span = expn_data.call_site;
-            }
-
-            error_map.entry(span).or_default().push(ErrorDescriptor {
+            error_map.entry(dedup_span(&error.obligation)).or_default().push(ErrorDescriptor {
                 predicate: error.obligation.predicate,
                 index: Some(index),
             });
@@ -177,16 +229,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
                     let guar = self.report_fulfillment_error(error);
                     reported = Some(guar);
-                    // We want to ignore desugarings here: spans are equivalent even
-                    // if one is the result of a desugaring and the other is not.
-                    let mut span = error.obligation.cause.span;
-                    let expn_data = span.ctxt().outer_expn_data();
-                    if let ExpnKind::Desugaring(_) = expn_data.kind {
-                        span = expn_data.call_site;
-                    }
                     self.reported_trait_errors
                         .borrow_mut()
-                        .entry(span)
+                        .entry(dedup_span(&error.obligation))
                         .or_insert_with(|| (vec![], guar))
                         .0
                         .push(error.obligation.predicate);
@@ -365,14 +410,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         error: &SelectionError<'tcx>,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx;
+        let mut span = obligation.cause.span;
 
         if tcx.sess.opts.unstable_opts.next_solver.map(|c| c.dump_tree).unwrap_or_default()
             == DumpSolverProofTree::OnError
         {
             dump_proof_tree(root_obligation, self.infcx);
         }
-
-        let mut span = obligation.cause.span;
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
@@ -644,15 +688,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                         if let ObligationCauseCode::Coercion { source, target } =
                             *obligation.cause.code().peel_derives()
+                            && Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait()
                         {
-                            if Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {
-                                self.suggest_borrowing_for_object_cast(
-                                    &mut err,
-                                    root_obligation,
-                                    source,
-                                    target,
-                                );
-                            }
+                            self.suggest_borrowing_for_object_cast(
+                                &mut err,
+                                root_obligation,
+                                source,
+                                target,
+                            );
                         }
 
                         let UnsatisfiedConst(unsatisfied_const) = self

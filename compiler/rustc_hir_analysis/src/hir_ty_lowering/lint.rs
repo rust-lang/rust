@@ -204,15 +204,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             diag.multipart_suggestion_verbose(msg, impl_sugg, Applicability::MachineApplicable);
             if is_object_safe {
                 diag.multipart_suggestion_verbose(
-                    "alternatively, you can return an owned trait object",
+                    "alternatively, you can return a boxed trait object",
                     vec![
                         (ty.span.shrink_to_lo(), "Box<dyn ".to_string()),
                         (ty.span.shrink_to_hi(), ">".to_string()),
                     ],
                     Applicability::MachineApplicable,
                 );
-            } else if is_downgradable {
-                // We'll emit the object safety error already, with a structured suggestion.
+            }
+            if is_downgradable
+                && (matches!(self_ty.kind, hir::TyKind::TraitObject(_, _, TraitObjectSyntax::None))
+                    || !is_object_safe)
+            {
+                // We'll emit the object safety or `!Sized` error already, with a structured
+                // suggestion.
                 diag.downgrade_to_delayed_bug();
             }
             return true;
@@ -242,6 +247,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     diag.downgrade_to_delayed_bug();
                 }
             } else {
+                if let hir::TyKind::TraitObject(.., TraitObjectSyntax::None) = self_ty.kind
+                    && is_downgradable
+                {
+                    // We'll emit a `Sized` error already, with a structured suggestion.
+                    diag.downgrade_to_delayed_bug();
+                }
                 let sugg = if let hir::TyKind::TraitObject([_, _, ..], _, _) = self_ty.kind {
                     // There are more than one trait bound, we need surrounding parentheses.
                     vec![

@@ -1984,6 +1984,14 @@ impl<'hir> QPath<'hir> {
             QPath::LangItem(_, span) => span,
         }
     }
+
+    pub fn res(&self) -> Option<Res> {
+        match self {
+            QPath::LangItem(..) => None,
+            QPath::Resolved(_, path) => Some(path.res),
+            QPath::TypeRelative(_, path_segment) => Some(path_segment.res),
+        }
+    }
 }
 
 /// Hints at the original code for a let statement.

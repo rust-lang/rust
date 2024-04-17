@@ -1,11 +1,11 @@
 error[E0277]: the size for values of type `(dyn I + 'static)` cannot be known at compilation time
-  --> $DIR/issue-5035-2.rs:4:8
+  --> $DIR/issue-5035-2.rs:4:12
    |
 LL | fn foo(_x: K) {}
-   |        ^^ doesn't have a size known at compile-time
+   |            ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn I + 'static)`
-   = help: unsized fn params are gated as an unstable feature
+   = help: unsized fn params are gated as unstable feature `#[feature(unsized_fn_params)]`
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn foo(_x: &K) {}

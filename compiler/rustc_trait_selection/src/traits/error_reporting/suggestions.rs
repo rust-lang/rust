@@ -10,6 +10,7 @@ use crate::infer::InferCtxt;
 use crate::traits::{ImplDerivedObligationCause, NormalizeExt, ObligationCtxt};
 
 use hir::def::CtorOf;
+use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
@@ -1790,27 +1791,123 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         err.primary_message("return type cannot have an unboxed trait object");
         err.children.clear();
 
-        let span = obligation.cause.span;
-        if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span)
-            && snip.starts_with("dyn ")
-        {
-            err.span_suggestion(
-                span.with_hi(span.lo() + BytePos(4)),
-                "return an `impl Trait` instead of a `dyn Trait`, \
-                if all returned values are the same type",
-                "impl ",
-                Applicability::MaybeIncorrect,
-            );
-        }
-
         let body = self.tcx.hir().body(self.tcx.hir().body_owned_by(obligation.cause.body_id));
 
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(body);
 
-        let mut sugg =
-            vec![(span.shrink_to_lo(), "Box<".to_string()), (span.shrink_to_hi(), ">".to_string())];
-        sugg.extend(visitor.returns.into_iter().flat_map(|expr| {
+        let fn_id = self.tcx.hir().body_owner(body.id());
+        let Some(fn_decl) = self.tcx.hir_node(fn_id).fn_decl() else {
+            return false;
+        };
+        let (traits, tr, syn, span, can_be_impl) = match fn_decl.output {
+            hir::FnRetTy::Return(hir::Ty {
+                kind: hir::TyKind::TraitObject(traits @ [tr, ..], _lt, syn),
+                span,
+                ..
+            }) => (traits, tr, syn, span, true),
+            hir::FnRetTy::Return(hir::Ty {
+                kind:
+                    hir::TyKind::Path(hir::QPath::Resolved(
+                        None,
+                        hir::Path { res: hir::def::Res::Def(DefKind::TyAlias, def_id), .. },
+                    )),
+                span,
+                ..
+            }) => {
+                if let ty::Dynamic(..) = self.tcx.type_of(def_id).instantiate_identity().kind() {
+                    // We have a `type Alias = dyn Trait;` and a return type `-> Alias`.
+                    if let Some(def_id) = def_id.as_local()
+                        && let node = self.tcx.hir_node_by_def_id(def_id)
+                        && let Some(hir::Ty {
+                            kind: hir::TyKind::TraitObject(traits @ [tr, ..], _lt, syn),
+                            ..
+                        }) = node.ty()
+                    {
+                        (traits, tr, syn, span, false)
+                    } else {
+                        let mut span: MultiSpan = (*span).into();
+                        span.push_span_label(self.tcx.def_span(def_id), "defined here");
+                        err.span_note(span, "the return type is a type alias to a trait object");
+                        err.help("consider boxing or borrowing it");
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+            _ => return false,
+        };
+
+        // Suggest `-> impl Trait`
+        let ret_tys = if let Some(typeck) = &self.typeck_results {
+            visitor
+                .returns
+                .iter()
+                .filter_map(|expr| typeck.node_type_opt(expr.hir_id).map(|ty| (expr, ty)))
+                .collect()
+        } else {
+            vec![]
+        };
+
+        // FIXME: account for `impl` assoc `fn`, where suggesting `Box<dyn Trait>` if `impl Trait`
+        // is expected is ok, but suggesting `impl Trait` where `Box<dyn Trait>` is expected is not.
+        // FIXME: account for the case where `-> dyn Trait` but the returned value is
+        // `Box<dyn Trait>`, like in `tests/ui/unsized/issue-91801.rs`.
+
+        let mut all_same_ty = true;
+        let mut prev_ty = None;
+        for (_, ty) in &ret_tys {
+            if let Some(prev_ty) = prev_ty {
+                if prev_ty != ty {
+                    all_same_ty = false;
+                    break;
+                }
+            } else {
+                prev_ty = Some(ty);
+            }
+        }
+        let mut alternatively = "";
+        if all_same_ty || visitor.returns.len() == 1 {
+            // We're certain that `impl Trait` will work.
+            if can_be_impl {
+                // We know it's not a `type Alias = dyn Trait;`.
+                err.span_suggestion_verbose(
+                    // This will work for both `Dyn` and `None` object syntax.
+                    span.until(tr.span),
+                    "return an `impl Trait` instead of a `dyn Trait`",
+                    "impl ",
+                    Applicability::MachineApplicable,
+                );
+                alternatively = "alternatively, ";
+            }
+        } else {
+            let mut span: MultiSpan =
+                ret_tys.iter().map(|(expr, _)| expr.span).collect::<Vec<Span>>().into();
+            for (expr, ty) in &ret_tys {
+                span.push_span_label(expr.span, format!("this returned value has type `{ty}`"));
+            }
+
+            err.span_help(
+                span,
+                format!(
+                    "the returned values do not all have the same type, so `impl Trait` can't be \
+                     used",
+                ),
+            );
+        }
+
+        // Suggest `-> Box<dyn Trait>`
+        let pre = match syn {
+            TraitObjectSyntax::None => "dyn ",
+            _ => "",
+        };
+        let mut sugg = vec![
+            (span.shrink_to_lo(), format!("Box<{pre}")),
+            (span.shrink_to_hi(), ">".to_string()),
+        ];
+
+        sugg.extend(visitor.returns.iter().flat_map(|expr| {
             let span =
                 expr.span.find_ancestor_in_same_ctxt(obligation.cause.span).unwrap_or(expr.span);
             if !span.can_be_used_for_suggestions() {
@@ -1834,11 +1931,82 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }));
 
-        err.multipart_suggestion(
-            "box the return type, and wrap all of the returned values in `Box::new`",
-            sugg,
-            Applicability::MaybeIncorrect,
-        );
+        let object_unsafe: Vec<_> = traits
+            .iter()
+            .filter_map(|tr| {
+                tr.trait_ref
+                    .path
+                    .res
+                    .opt_def_id()
+                    .filter(|def_id| !self.tcx.object_safety_violations(def_id).is_empty())
+                    .map(|def_id| (def_id, tr.span))
+            })
+            .collect();
+        if !object_unsafe.is_empty() {
+            let span: MultiSpan =
+                object_unsafe.iter().map(|(_, sp)| *sp).collect::<Vec<Span>>().into();
+            err.span_help(
+                span,
+                format!(
+                    "{} not object safe, so you can't return a boxed trait object `{}`",
+                    if let [(def_id, _)] = &object_unsafe[..] {
+                        format!("trait `{}` is", self.tcx.def_path_str(*def_id))
+                    } else {
+                        "the following traits are".to_string()
+                    },
+                    format!(
+                        "Box<dyn {}>",
+                        object_unsafe
+                            .iter()
+                            .map(|(def_id, _)| self.tcx.def_path_str(*def_id))
+                            .collect::<Vec<_>>()
+                            .join(" + ")
+                    ),
+                ),
+            );
+        } else {
+            err.multipart_suggestion(
+                format!(
+                    "{alternatively}box the return type to make a boxed trait object, and wrap \
+                     all of the returned values in `Box::new`",
+                ),
+                sugg,
+                Applicability::MaybeIncorrect,
+            );
+            alternatively = if alternatively.is_empty() { "alternatively, " } else { "finally, " };
+        }
+
+        // Suggest `-> &dyn Trait`
+        let borrow_input_tys: Vec<_> = fn_decl
+            .inputs
+            .iter()
+            .filter(|hir_ty| matches!(hir_ty.kind, hir::TyKind::Ref(..)))
+            .collect();
+        if !borrow_input_tys.is_empty() {
+            // Maybe returning a `&dyn Trait` borrowing from an argument might be ok?
+            err.span_suggestion_verbose(
+                // This will work for both `Dyn` and `None` object syntax.
+                span.shrink_to_lo(),
+                format!(
+                    "{alternatively}you might be able to borrow from {}",
+                    if borrow_input_tys.len() == 1 {
+                        "the function's argument"
+                    } else {
+                        "one of the function's arguments"
+                    },
+                ),
+                match syn {
+                    TraitObjectSyntax::None => "&dyn ",
+                    _ => "&",
+                },
+                Applicability::MachineApplicable,
+            );
+        } else {
+            err.help(
+                "if the returned value came from a borrowed argument that implements the trait, \
+                 then you could return `&dyn Trait`",
+            );
+        }
 
         true
     }
@@ -2963,11 +3131,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }) => {
                         err.span_suggestion_verbose(
                             ty.span.shrink_to_lo(),
-                            "consider borrowing here",
+                            "borrowed types have a statically known size",
                             "&",
                             Applicability::MachineApplicable,
                         );
-                        err.note("all local variables must have a statically known size");
                     }
                     Node::LetStmt(hir::LetStmt {
                         init: Some(hir::Expr { kind: hir::ExprKind::Index(..), span, .. }),
@@ -2978,11 +3145,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // order to use have a slice instead.
                         err.span_suggestion_verbose(
                             span.shrink_to_lo(),
-                            "consider borrowing here",
+                            "borrowed values have a statically known size",
                             "&",
                             Applicability::MachineApplicable,
                         );
-                        err.note("all local variables must have a statically known size");
                     }
                     Node::Param(param) => {
                         err.span_suggestion_verbose(
@@ -2994,11 +3160,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         );
                     }
                     _ => {
-                        err.note("all local variables must have a statically known size");
+                        if !tcx.sess.opts.unstable_features.is_nightly_build()
+                            && !tcx.features().unsized_locals
+                        {
+                            err.note("all bindings must have a statically known size");
+                        }
                     }
                 }
-                if !tcx.features().unsized_locals {
-                    err.help("unsized locals are gated as an unstable feature");
+                if tcx.sess.opts.unstable_features.is_nightly_build()
+                    && !tcx.features().unsized_locals
+                {
+                    err.help(
+                        "unsized locals are gated as unstable feature \
+                         `#[feature(unsized_locals)]`",
+                    );
                 }
             }
             ObligationCauseCode::SizedArgumentType(hir_id) => {
@@ -3023,67 +3198,72 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 {
                     ty = Some(t);
                 }
-                if let Some(ty) = ty {
-                    match ty.kind {
-                        hir::TyKind::TraitObject(traits, _, _) => {
-                            let (span, kw) = match traits {
-                                [first, ..] if first.span.lo() == ty.span.lo() => {
-                                    // Missing `dyn` in front of trait object.
-                                    (ty.span.shrink_to_lo(), "dyn ")
-                                }
-                                [first, ..] => (ty.span.until(first.span), ""),
-                                [] => span_bug!(ty.span, "trait object with no traits: {ty:?}"),
-                            };
-                            let needs_parens = traits.len() != 1;
-                            err.span_suggestion_verbose(
-                                span,
-                                "you can use `impl Trait` as the argument type",
-                                "impl ",
-                                Applicability::MaybeIncorrect,
-                            );
-                            let sugg = if !needs_parens {
-                                vec![(span.shrink_to_lo(), format!("&{kw}"))]
-                            } else {
-                                vec![
-                                    (span.shrink_to_lo(), format!("&({kw}")),
-                                    (ty.span.shrink_to_hi(), ")".to_string()),
-                                ]
-                            };
-                            err.multipart_suggestion_verbose(
-                                borrowed_msg,
-                                sugg,
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        hir::TyKind::Slice(_ty) => {
-                            err.span_suggestion_verbose(
-                                ty.span.shrink_to_lo(),
-                                "function arguments must have a statically known size, borrowed \
-                                 slices always have a known size",
-                                "&",
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        hir::TyKind::Path(_) => {
-                            err.span_suggestion_verbose(
-                                ty.span.shrink_to_lo(),
-                                borrowed_msg,
-                                "&",
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        _ => {}
+                match ty.map(|ty| (ty.kind, ty.span)) {
+                    Some((hir::TyKind::TraitObject(traits, _, _), sp)) => {
+                        let (span, kw) = match traits {
+                            [first, ..] if first.span.lo() == sp.lo() => {
+                                // Missing `dyn` in front of trait object.
+                                (sp.shrink_to_lo(), "dyn ")
+                            }
+                            [first, ..] => (sp.until(first.span), ""),
+                            [] => span_bug!(sp, "trait object with no traits: {ty:?}"),
+                        };
+                        let needs_parens = traits.len() != 1;
+                        err.span_suggestion_verbose(
+                            span,
+                            "you can use `impl Trait` as the argument type",
+                            "impl ",
+                            Applicability::MaybeIncorrect,
+                        );
+                        let sugg = if !needs_parens {
+                            vec![(span.shrink_to_lo(), format!("&{kw}"))]
+                        } else {
+                            vec![
+                                (span.shrink_to_lo(), format!("&({kw}")),
+                                (sp.shrink_to_hi(), ")".to_string()),
+                            ]
+                        };
+                        err.multipart_suggestion_verbose(
+                            borrowed_msg,
+                            sugg,
+                            Applicability::MachineApplicable,
+                        );
                     }
-                } else {
-                    err.note("all function arguments must have a statically known size");
+                    Some((hir::TyKind::Slice(_ty), span)) => {
+                        err.span_suggestion_verbose(
+                            span.shrink_to_lo(),
+                            "function arguments must have a statically known size, borrowed \
+                                slices always have a known size",
+                            "&",
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    Some((hir::TyKind::Path(_), span)) => {
+                        err.span_suggestion_verbose(
+                            span.shrink_to_lo(),
+                            borrowed_msg,
+                            "&",
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    _ => {
+                        if !tcx.sess.opts.unstable_features.is_nightly_build()
+                            && !tcx.features().unsized_fn_params
+                        {
+                            err.note("all bindings must have a statically known size");
+                        }
+                    }
                 }
                 if tcx.sess.opts.unstable_features.is_nightly_build()
                     && !tcx.features().unsized_fn_params
                 {
-                    err.help("unsized fn params are gated as an unstable feature");
+                    err.help(
+                        "unsized fn params are gated as unstable feature \
+                         `#[feature(unsized_fn_params)]`",
+                    );
                 }
             }
-            ObligationCauseCode::SizedReturnType | ObligationCauseCode::SizedCallReturnType => {
+            ObligationCauseCode::SizedReturnType | ObligationCauseCode::SizedCallReturnType(_) => {
                 err.note("the return type of a function must have a statically known size");
             }
             ObligationCauseCode::SizedYieldType => {

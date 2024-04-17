@@ -5,8 +5,7 @@ LL |     udrop as fn([u8]);
    |     ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
-   = note: all function arguments must have a statically known size
-   = help: unsized fn params are gated as an unstable feature
+   = help: unsized fn params are gated as unstable feature `#[feature(unsized_fn_params)]`
 
 error: aborting due to 1 previous error
 
