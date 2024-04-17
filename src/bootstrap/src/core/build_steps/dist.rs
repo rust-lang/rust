@@ -107,7 +107,7 @@ impl Step for JsonDocs {
             builder.top_stage,
             host,
             builder,
-            DocumentationFormat::JSON,
+            DocumentationFormat::Json,
         ));
 
         let dest = "share/doc/rust/json";
@@ -1131,7 +1131,7 @@ impl Step for Rls {
         let rls = builder.ensure(tool::Rls { compiler, target, extra_features: Vec::new() });
 
         let mut tarball = Tarball::new(builder, "rls", &target.triple);
-        tarball.set_overlay(OverlayKind::RLS);
+        tarball.set_overlay(OverlayKind::Rls);
         tarball.is_preview(true);
         tarball.add_file(rls, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rls");
@@ -2059,7 +2059,7 @@ fn install_llvm_file(
         if install_symlink {
             // For download-ci-llvm, also install the symlink, to match what LLVM does. Using a
             // symlink is fine here, as this is not a rustup component.
-            builder.copy_link(&source, &full_dest);
+            builder.copy_link(source, &full_dest);
         } else {
             // Otherwise, replace the symlink with an equivalent linker script. This is used when
             // projects like miri link against librustc_driver.so. We don't use a symlink, as
@@ -2076,7 +2076,7 @@ fn install_llvm_file(
             }
         }
     } else {
-        builder.install(&source, destination, 0o644);
+        builder.install(source, destination, 0o644);
     }
 }
 
@@ -2121,7 +2121,7 @@ fn maybe_install_llvm(
             builder.install(&llvm_dylib_path, dst_libdir, 0o644);
         }
         !builder.config.dry_run()
-    } else if let Ok(llvm::LlvmResult { llvm_config, .. }) =
+    } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmResult { llvm_config, .. }) =
         llvm::prebuilt_llvm_config(builder, target)
     {
         let mut cmd = Command::new(llvm_config);
@@ -2202,7 +2202,7 @@ impl Step for LlvmTools {
         builder.ensure(crate::core::build_steps::llvm::Llvm { target });
 
         let mut tarball = Tarball::new(builder, "llvm-tools", &target.triple);
-        tarball.set_overlay(OverlayKind::LLVM);
+        tarball.set_overlay(OverlayKind::Llvm);
         tarball.is_preview(true);
 
         if builder.config.llvm_tools_enabled {
@@ -2305,7 +2305,7 @@ impl Step for RustDev {
         }
 
         let mut tarball = Tarball::new(builder, "rust-dev", &target.triple);
-        tarball.set_overlay(OverlayKind::LLVM);
+        tarball.set_overlay(OverlayKind::Llvm);
         // LLVM requires a shared object symlink to exist on some platforms.
         tarball.permit_symlinks(true);
 

@@ -239,7 +239,7 @@ impl<'a> Renderer<'a> {
             suite.filtered_out,
             time = match suite.exec_time {
                 Some(t) => format!("; finished in {:.2?}", Duration::from_secs_f64(t)),
-                None => format!(""),
+                None => String::new(),
             }
         );
     }
