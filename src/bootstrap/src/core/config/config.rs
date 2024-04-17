@@ -55,6 +55,7 @@ pub enum DryRun {
 pub enum DebuginfoLevel {
     #[default]
     None,
+    LineDirectivesOnly,
     LineTablesOnly,
     Limited,
     Full,
@@ -72,6 +73,9 @@ impl<'de> Deserialize<'de> for DebuginfoLevel {
         Ok(match Deserialize::deserialize(deserializer)? {
             StringOrInt::String(s) if s == "none" => DebuginfoLevel::None,
             StringOrInt::Int(0) => DebuginfoLevel::None,
+            StringOrInt::String(s) if s == "line-directives-only" => {
+                DebuginfoLevel::LineDirectivesOnly
+            }
             StringOrInt::String(s) if s == "line-tables-only" => DebuginfoLevel::LineTablesOnly,
             StringOrInt::String(s) if s == "limited" => DebuginfoLevel::Limited,
             StringOrInt::Int(1) => DebuginfoLevel::Limited,
@@ -98,6 +102,7 @@ impl Display for DebuginfoLevel {
         use DebuginfoLevel::*;
         f.write_str(match self {
             None => "0",
+            LineDirectivesOnly => "line-directives-only",
             LineTablesOnly => "line-tables-only",
             Limited => "1",
             Full => "2",
