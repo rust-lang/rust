@@ -6,14 +6,15 @@
 
 use crate::io::Result;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::process;
+use crate::process::{self, ExitStatus};
 use crate::sealed::Sealed;
-#[cfg(not(doc))]
 use crate::sys::fd::FileDesc;
+#[cfg(not(doc))]
+use crate::sys::linux::pidfd::PidFd as InnerPidFd;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 #[cfg(doc)]
-struct FileDesc;
+struct InnerPidFd;
 
 /// This type represents a file descriptor that refers to a process.
 ///
@@ -47,25 +48,60 @@ struct FileDesc;
 /// [`take_pidfd`]: ChildExt::take_pidfd
 /// [`pidfd_open(2)`]: https://man7.org/linux/man-pages/man2/pidfd_open.2.html
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct PidFd {
-    inner: FileDesc,
+    inner: InnerPidFd,
 }
 
-impl AsInner<FileDesc> for PidFd {
+impl PidFd {
+    /// Forces the child process to exit.
+    ///
+    /// Unlike [`Child::kill`] it is possible to attempt to kill
+    /// reaped children since PidFd does not suffer from pid recycling
+    /// races. But doing so will return an Error.
+    ///
+    /// [`Child::kill`]: process::Child::kill
+    pub fn kill(&self) -> Result<()> {
+        self.inner.kill()
+    }
+
+    /// Waits for the child to exit completely, returning the status that it exited with.
+    ///
+    /// Unlike [`Child::wait`] it does not ensure that the stdin handle is closed.
+    /// Additionally it will not return an `ExitStatus` if the child
+    /// has already been reaped. Instead an error will be returned.
+    ///
+    /// [`Child::wait`]: process::Child::wait
+    pub fn wait(&self) -> Result<ExitStatus> {
+        self.inner.wait().map(FromInner::from_inner)
+    }
+
+    /// Attempts to collect the exit status of the child if it has already exited.
+    ///
+    /// Unlike [`Child::try_wait`] this method will return an Error
+    /// if the child has already been reaped.
+    ///
+    /// [`Child::try_wait`]: process::Child::try_wait
+    pub fn try_wait(&self) -> Result<Option<ExitStatus>> {
+        Ok(self.inner.try_wait()?.map(FromInner::from_inner))
+    }
+}
+
+impl AsInner<InnerPidFd> for PidFd {
     #[inline]
-    fn as_inner(&self) -> &FileDesc {
+    fn as_inner(&self) -> &InnerPidFd {
         &self.inner
     }
 }
 
-impl FromInner<FileDesc> for PidFd {
-    fn from_inner(inner: FileDesc) -> PidFd {
+impl FromInner<InnerPidFd> for PidFd {
+    fn from_inner(inner: InnerPidFd) -> PidFd {
         PidFd { inner }
     }
 }
 
-impl IntoInner<FileDesc> for PidFd {
-    fn into_inner(self) -> FileDesc {
+impl IntoInner<InnerPidFd> for PidFd {
+    fn into_inner(self) -> InnerPidFd {
         self.inner
     }
 }
@@ -73,37 +109,37 @@ impl IntoInner<FileDesc> for PidFd {
 impl AsRawFd for PidFd {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.as_inner().as_raw_fd()
+        self.as_inner().as_inner().as_raw_fd()
     }
 }
 
 impl FromRawFd for PidFd {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
-        Self::from_inner(FileDesc::from_raw_fd(fd))
+        Self::from_inner(InnerPidFd::from_raw_fd(fd))
     }
 }
 
 impl IntoRawFd for PidFd {
     fn into_raw_fd(self) -> RawFd {
-        self.into_inner().into_raw_fd()
+        self.into_inner().into_inner().into_raw_fd()
     }
 }
 
 impl AsFd for PidFd {
     fn as_fd(&self) -> BorrowedFd<'_> {
-        self.as_inner().as_fd()
+        self.as_inner().as_inner().as_fd()
     }
 }
 
 impl From<OwnedFd> for PidFd {
     fn from(fd: OwnedFd) -> Self {
-        Self::from_inner(FileDesc::from_inner(fd))
+        Self::from_inner(InnerPidFd::from_inner(FileDesc::from_inner(fd)))
     }
 }
 
 impl From<PidFd> for OwnedFd {
     fn from(pid_fd: PidFd) -> Self {
-        pid_fd.into_inner().into_inner()
+        pid_fd.into_inner().into_inner().into_inner()
     }
 }
 
