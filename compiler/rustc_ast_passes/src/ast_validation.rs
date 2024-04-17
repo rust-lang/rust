@@ -2,8 +2,15 @@
 //!
 //! This pass intends to check that the constructed AST is *syntactically valid* to allow the rest
 //! of the compiler to assume that the AST is valid. These checks cannot be performed during parsing
-//! because attribute macros are allowed to accept certain pieces of invalid syntax such as `async
-//! fn` within a trait (before async-fn-in-trait was introduced).
+//! because attribute macros are allowed to accept certain pieces of invalid syntax such as a
+//! function without body outside of a trait definition:
+//!
+//! ```ignore (illustrative)
+//! #[my_attribute]
+//! mod foo {
+//!     fn missing_body();
+//! }
+//! ```
 //!
 //! These checks are run post-expansion, after AST is frozen, to be able to check for erroneous
 //! constructions produced by proc macros. This pass is only intended for simple checks that do not
