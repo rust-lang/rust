@@ -24,7 +24,7 @@ use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_middle::hir::map;
 use rustc_middle::traits::IsConstable;
@@ -1894,10 +1894,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id) => {
                     infcx.tcx.mk_fn_sig(
                         *inputs,
-                        infcx.next_ty_var(TypeVariableOrigin {
-                            span: DUMMY_SP,
-                            kind: TypeVariableOriginKind::MiscVariable,
-                        }),
+                        infcx
+                            .next_ty_var(TypeVariableOrigin { span: DUMMY_SP, param_def_id: None }),
                         false,
                         hir::Unsafety::Normal,
                         abi::Abi::Rust,
@@ -1905,10 +1903,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
                 _ => infcx.tcx.mk_fn_sig(
                     [inputs],
-                    infcx.next_ty_var(TypeVariableOrigin {
-                        span: DUMMY_SP,
-                        kind: TypeVariableOriginKind::MiscVariable,
-                    }),
+                    infcx.next_ty_var(TypeVariableOrigin { span: DUMMY_SP, param_def_id: None }),
                     false,
                     hir::Unsafety::Normal,
                     abi::Abi::Rust,
@@ -4256,7 +4251,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         type_diffs: &[TypeError<'tcx>],
         span: Span,
         prev_ty: Ty<'tcx>,
-        body_id: hir::HirId,
+        body_id: HirId,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Vec<Option<(Span, (DefId, Ty<'tcx>))>> {
         let ocx = ObligationCtxt::new(self.infcx);
@@ -4269,7 +4264,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 continue;
             };
 
-            let origin = TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span };
+            let origin = TypeVariableOrigin { param_def_id: None, span };
             // Make `Self` be equivalent to the type of the call chain
             // expression we're looking at now, so that we can tell what
             // for example `Iterator::Item` is at this point in the chain.
@@ -4550,7 +4545,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             self.type_implements_trait(default_trait, [ty], param_env).must_apply_modulo_regions()
         };
 
-        Some(match ty.kind() {
+        Some(match *ty.kind() {
             ty::Never | ty::Error(_) => return None,
             ty::Bool => "false".to_string(),
             ty::Char => "\'x\'".to_string(),
@@ -4577,12 +4572,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if let (ty::Str, hir::Mutability::Not) = (ty.kind(), mutability) {
                     "\"\"".to_string()
                 } else {
-                    let ty = self.ty_kind_suggestion(param_env, *ty)?;
+                    let ty = self.ty_kind_suggestion(param_env, ty)?;
                     format!("&{}{ty}", mutability.prefix_str())
                 }
             }
             ty::Array(ty, len) if let Some(len) = len.try_eval_target_usize(tcx, param_env) => {
-                format!("[{}; {}]", self.ty_kind_suggestion(param_env, *ty)?, len)
+                if len == 0 {
+                    "[]".to_string()
+                } else if self.type_is_copy_modulo_regions(param_env, ty) || len == 1 {
+                    // Can only suggest `[ty; 0]` if sz == 1 or copy
+                    format!("[{}; {}]", self.ty_kind_suggestion(param_env, ty)?, len)
+                } else {
+                    "/* value */".to_string()
+                }
             }
             ty::Tuple(tys) => format!(
                 "({}{})",
@@ -4592,7 +4594,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     .join(", "),
                 if tys.len() == 1 { "," } else { "" }
             ),
-            _ => "value".to_string(),
+            _ => "/* value */".to_string(),
         })
     }
 }
@@ -4762,7 +4764,7 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
 /// Collect all the awaited expressions within the input expression.
 #[derive(Default)]
 struct AwaitsVisitor {
-    awaits: Vec<hir::HirId>,
+    awaits: Vec<HirId>,
 }
 
 impl<'v> Visitor<'v> for AwaitsVisitor {

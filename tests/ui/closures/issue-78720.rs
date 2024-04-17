@@ -1,6 +1,5 @@
 fn server() -> impl {
     //~^ ERROR at least one trait must be specified
-    //~| ERROR type annotations needed
     ().map2(|| "")
 }
 

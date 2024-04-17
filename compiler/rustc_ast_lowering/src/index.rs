@@ -385,4 +385,21 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_pattern_type_pattern(&mut self, p: &'hir hir::Pat<'hir>) {
         self.visit_pat(p)
     }
+
+    fn visit_precise_capturing_arg(
+        &mut self,
+        arg: &'hir PreciseCapturingArg<'hir>,
+    ) -> Self::Result {
+        match arg {
+            PreciseCapturingArg::Lifetime(_) => {
+                // This is represented as a `Node::Lifetime`, intravisit will get to it below.
+            }
+            PreciseCapturingArg::Param(param) => self.insert(
+                param.ident.span,
+                param.hir_id,
+                Node::PreciseCapturingNonLifetimeArg(param),
+            ),
+        }
+        intravisit::walk_precise_capturing_arg(self, arg);
+    }
 }

@@ -131,10 +131,6 @@ fn main() {
 fn check_version(config: &Config) -> Option<String> {
     let mut msg = String::new();
 
-    if config.changelog_seen.is_some() {
-        msg.push_str("WARNING: The use of `changelog-seen` is deprecated. Please refer to `change-id` option in `config.example.toml` instead.\n");
-    }
-
     let latest_change_id = CONFIG_CHANGE_HISTORY.last().unwrap().change_id;
     let warned_id_path = config.out.join("bootstrap").join(".last-warned-change-id");
 

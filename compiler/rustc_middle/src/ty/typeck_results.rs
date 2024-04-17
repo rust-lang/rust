@@ -192,7 +192,7 @@ pub struct TypeckResults<'tcx> {
     /// we never capture `t`. This becomes an issue when we build MIR as we require
     /// information on `t` in order to create place `t.0` and `t.1`. We can solve this
     /// issue by fake reading `t`.
-    pub closure_fake_reads: LocalDefIdMap<Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>>,
+    pub closure_fake_reads: LocalDefIdMap<Vec<(HirPlace<'tcx>, FakeReadCause, HirId)>>,
 
     /// Tracks the rvalue scoping rules which defines finer scoping for rvalue expressions
     /// by applying extended parameter rules.
@@ -251,7 +251,7 @@ impl<'tcx> TypeckResults<'tcx> {
     }
 
     /// Returns the final resolution of a `QPath` in an `Expr` or `Pat` node.
-    pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
+    pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: HirId) -> Res {
         match *qpath {
             hir::QPath::Resolved(_, path) => path.res,
             hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
@@ -289,11 +289,11 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.field_indices }
     }
 
-    pub fn field_index(&self, id: hir::HirId) -> FieldIdx {
+    pub fn field_index(&self, id: HirId) -> FieldIdx {
         self.field_indices().get(id).cloned().expect("no index for a field")
     }
 
-    pub fn opt_field_index(&self, id: hir::HirId) -> Option<FieldIdx> {
+    pub fn opt_field_index(&self, id: HirId) -> Option<FieldIdx> {
         self.field_indices().get(id).cloned()
     }
 
@@ -305,7 +305,7 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.nested_fields }
     }
 
-    pub fn nested_field_tys_and_indices(&self, id: hir::HirId) -> &[(Ty<'tcx>, FieldIdx)] {
+    pub fn nested_field_tys_and_indices(&self, id: HirId) -> &[(Ty<'tcx>, FieldIdx)] {
         self.nested_fields().get(id).map_or(&[], Vec::as_slice)
     }
 
@@ -327,13 +327,13 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.node_types }
     }
 
-    pub fn node_type(&self, id: hir::HirId) -> Ty<'tcx> {
+    pub fn node_type(&self, id: HirId) -> Ty<'tcx> {
         self.node_type_opt(id).unwrap_or_else(|| {
             bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir().node_to_string(id)))
         })
     }
 
-    pub fn node_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
+    pub fn node_type_opt(&self, id: HirId) -> Option<Ty<'tcx>> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.node_types.get(&id.local_id).cloned()
     }
@@ -342,12 +342,12 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.node_args }
     }
 
-    pub fn node_args(&self, id: hir::HirId) -> GenericArgsRef<'tcx> {
+    pub fn node_args(&self, id: HirId) -> GenericArgsRef<'tcx> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.node_args.get(&id.local_id).cloned().unwrap_or_else(|| GenericArgs::empty())
     }
 
-    pub fn node_args_opt(&self, id: hir::HirId) -> Option<GenericArgsRef<'tcx>> {
+    pub fn node_args_opt(&self, id: HirId) -> Option<GenericArgsRef<'tcx>> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.node_args.get(&id.local_id).cloned()
     }
@@ -512,7 +512,7 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.fru_field_types }
     }
 
-    pub fn is_coercion_cast(&self, hir_id: hir::HirId) -> bool {
+    pub fn is_coercion_cast(&self, hir_id: HirId) -> bool {
         validate_hir_id_for_typeck_results(self.hir_owner, hir_id);
         self.coercion_casts.contains(&hir_id.local_id)
     }
@@ -546,7 +546,7 @@ impl<'tcx> TypeckResults<'tcx> {
 /// would result in lookup errors, or worse, in silently wrong data being
 /// stored/returned.
 #[inline]
-fn validate_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: hir::HirId) {
+fn validate_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
     if hir_id.owner != hir_owner {
         invalid_hir_id_for_typeck_results(hir_owner, hir_id);
     }
@@ -554,7 +554,7 @@ fn validate_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: hir::HirId) {
 
 #[cold]
 #[inline(never)]
-fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: hir::HirId) {
+fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
     ty::tls::with(|tcx| {
         bug!(
             "node {} cannot be placed in TypeckResults with hir_owner {:?}",
@@ -570,12 +570,12 @@ pub struct LocalTableInContext<'a, V> {
 }
 
 impl<'a, V> LocalTableInContext<'a, V> {
-    pub fn contains_key(&self, id: hir::HirId) -> bool {
+    pub fn contains_key(&self, id: HirId) -> bool {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.contains_key(&id.local_id)
     }
 
-    pub fn get(&self, id: hir::HirId) -> Option<&'a V> {
+    pub fn get(&self, id: HirId) -> Option<&'a V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.get(&id.local_id)
     }
@@ -592,10 +592,10 @@ impl<'a, V> LocalTableInContext<'a, V> {
     }
 }
 
-impl<'a, V> ::std::ops::Index<hir::HirId> for LocalTableInContext<'a, V> {
+impl<'a, V> ::std::ops::Index<HirId> for LocalTableInContext<'a, V> {
     type Output = V;
 
-    fn index(&self, key: hir::HirId) -> &V {
+    fn index(&self, key: HirId) -> &V {
         self.get(key).expect("LocalTableInContext: key not found")
     }
 }
@@ -606,35 +606,32 @@ pub struct LocalTableInContextMut<'a, V> {
 }
 
 impl<'a, V> LocalTableInContextMut<'a, V> {
-    pub fn get_mut(&mut self, id: hir::HirId) -> Option<&mut V> {
+    pub fn get_mut(&mut self, id: HirId) -> Option<&mut V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.get_mut(&id.local_id)
     }
 
-    pub fn get(&mut self, id: hir::HirId) -> Option<&V> {
+    pub fn get(&mut self, id: HirId) -> Option<&V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.get(&id.local_id)
     }
 
-    pub fn entry(&mut self, id: hir::HirId) -> Entry<'_, hir::ItemLocalId, V> {
+    pub fn entry(&mut self, id: HirId) -> Entry<'_, hir::ItemLocalId, V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.entry(id.local_id)
     }
 
-    pub fn insert(&mut self, id: hir::HirId, val: V) -> Option<V> {
+    pub fn insert(&mut self, id: HirId, val: V) -> Option<V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.insert(id.local_id, val)
     }
 
-    pub fn remove(&mut self, id: hir::HirId) -> Option<V> {
+    pub fn remove(&mut self, id: HirId) -> Option<V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.remove(&id.local_id)
     }
 
-    pub fn extend(
-        &mut self,
-        items: UnordItems<(hir::HirId, V), impl Iterator<Item = (hir::HirId, V)>>,
-    ) {
+    pub fn extend(&mut self, items: UnordItems<(HirId, V), impl Iterator<Item = (HirId, V)>>) {
         self.data.extend_unord(items.map(|(id, value)| {
             validate_hir_id_for_typeck_results(self.hir_owner, id);
             (id.local_id, value)

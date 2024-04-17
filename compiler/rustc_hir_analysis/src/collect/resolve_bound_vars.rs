@@ -13,7 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{GenericArg, GenericParam, GenericParamKind, HirIdMap, LifetimeName, Node};
+use rustc_hir::{GenericArg, GenericParam, GenericParamKind, HirId, HirIdMap, LifetimeName, Node};
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
@@ -107,7 +107,7 @@ enum Scope<'a> {
         /// queried later. However, if we enter an elision scope, we have to
         /// later append the elided bound vars to the list and need to know what
         /// to append to.
-        hir_id: hir::HirId,
+        hir_id: HirId,
 
         s: ScopeRef<'a>,
 
@@ -557,6 +557,50 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         }
     }
 
+    fn visit_precise_capturing_arg(
+        &mut self,
+        arg: &'tcx hir::PreciseCapturingArg<'tcx>,
+    ) -> Self::Result {
+        match *arg {
+            hir::PreciseCapturingArg::Lifetime(lt) => match lt.res {
+                LifetimeName::Param(def_id) => {
+                    self.resolve_lifetime_ref(def_id, lt);
+                }
+                LifetimeName::Error => {}
+                LifetimeName::ImplicitObjectLifetimeDefault
+                | LifetimeName::Infer
+                | LifetimeName::Static => {
+                    self.tcx.dcx().emit_err(errors::BadPreciseCapture {
+                        span: lt.ident.span,
+                        kind: "lifetime",
+                        found: format!("`{}`", lt.ident.name),
+                    });
+                }
+            },
+            hir::PreciseCapturingArg::Param(param) => match param.res {
+                Res::Def(DefKind::TyParam | DefKind::ConstParam, def_id)
+                | Res::SelfTyParam { trait_: def_id } => {
+                    self.resolve_type_ref(def_id.expect_local(), param.hir_id);
+                }
+                Res::Err => {}
+                Res::SelfTyAlias { alias_to, .. } => {
+                    self.tcx.dcx().emit_err(errors::PreciseCaptureSelfAlias {
+                        span: param.ident.span,
+                        self_span: self.tcx.def_span(alias_to),
+                        what: self.tcx.def_descr(alias_to),
+                    });
+                }
+                res => {
+                    self.tcx.dcx().emit_err(errors::BadPreciseCapture {
+                        span: param.ident.span,
+                        kind: "type or const",
+                        found: res.descr().to_string(),
+                    });
+                }
+            },
+        }
+    }
+
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
         match item.kind {
             hir::ForeignItemKind::Fn(_, _, generics) => {
@@ -781,7 +825,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         }
     }
 
-    fn visit_path(&mut self, path: &hir::Path<'tcx>, hir_id: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, hir_id: HirId) {
         for (i, segment) in path.segments.iter().enumerate() {
             let depth = path.segments.len() - i - 1;
             if let Some(args) = segment.args {
@@ -983,7 +1027,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         }
     }
 
-    fn record_late_bound_vars(&mut self, hir_id: hir::HirId, binder: Vec<ty::BoundVariableKind>) {
+    fn record_late_bound_vars(&mut self, hir_id: HirId, binder: Vec<ty::BoundVariableKind>) {
         if let Some(old) = self.map.late_bound_vars.insert(hir_id, binder) {
             bug!(
                 "overwrote bound vars for {hir_id:?}:\nold={old:?}\nnew={:?}",
@@ -1010,12 +1054,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     /// already in scope (for a fn item, that will be 0, but for a method it might not be). Late
     /// bound lifetimes are resolved by name and associated with a binder ID (`binder_id`), so the
     /// ordering is not important there.
-    fn visit_early_late<F>(
-        &mut self,
-        hir_id: hir::HirId,
-        generics: &'tcx hir::Generics<'tcx>,
-        walk: F,
-    ) where
+    fn visit_early_late<F>(&mut self, hir_id: HirId, generics: &'tcx hir::Generics<'tcx>, walk: F)
+    where
         F: for<'b, 'c> FnOnce(&'b mut BoundVarContext<'c, 'tcx>),
     {
         let mut named_late_bound_vars = 0;
@@ -1062,7 +1102,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         self.with(scope, walk);
     }
 
-    fn visit_early<F>(&mut self, hir_id: hir::HirId, generics: &'tcx hir::Generics<'tcx>, walk: F)
+    fn visit_early<F>(&mut self, hir_id: HirId, generics: &'tcx hir::Generics<'tcx>, walk: F)
     where
         F: for<'b, 'c> FnOnce(&'b mut BoundVarContext<'c, 'tcx>),
     {
@@ -1288,7 +1328,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         );
     }
 
-    fn resolve_type_ref(&mut self, param_def_id: LocalDefId, hir_id: hir::HirId) {
+    fn resolve_type_ref(&mut self, param_def_id: LocalDefId, hir_id: HirId) {
         // Walk up the scope chain, tracking the number of fn scopes
         // that we pass through, until we find a lifetime with the
         // given name or we run out of scopes.

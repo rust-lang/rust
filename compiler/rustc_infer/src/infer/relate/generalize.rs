@@ -1,7 +1,7 @@
 use std::mem;
 
 use super::StructurallyRelateAliases;
-use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind, TypeVariableValue};
+use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableValue};
 use crate::infer::{InferCtxt, ObligationEmittingRelation, RegionVariableOrigin};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -352,7 +352,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
     ) -> Result<Ty<'tcx>, TypeError<'tcx>> {
         if self.infcx.next_trait_solver() && !alias.has_escaping_bound_vars() {
             return Ok(self.infcx.next_ty_var_in_universe(
-                TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span: self.span },
+                TypeVariableOrigin { param_def_id: None, span: self.span },
                 self.for_universe,
             ));
         }
@@ -375,10 +375,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
 
                     debug!("generalization failure in alias");
                     Ok(self.infcx.next_ty_var_in_universe(
-                        TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::MiscVariable,
-                            span: self.span,
-                        },
+                        TypeVariableOrigin { param_def_id: None, span: self.span },
                         self.for_universe,
                     ))
                 }

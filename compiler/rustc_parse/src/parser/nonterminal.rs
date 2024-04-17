@@ -62,7 +62,7 @@ impl<'a> Parser<'a> {
                 _ => false,
             },
             NonterminalKind::Path | NonterminalKind::Meta => match &token.kind {
-                token::ModSep | token::Ident(..) => true,
+                token::PathSep | token::Ident(..) => true,
                 token::Interpolated(nt) => may_be_ident(&nt.0),
                 _ => false,
             },
@@ -76,7 +76,7 @@ impl<'a> Parser<'a> {
                 token::Literal(_) |                         // literal
                 token::DotDot |                             // range pattern (future compat)
                 token::DotDotDot |                          // range pattern (future compat)
-                token::ModSep |                             // path
+                token::PathSep |                             // path
                 token::Lt |                                 // path (UFCS constant)
                 token::BinOp(token::Shl) => true,           // path (double UFCS)
                 // leading vert `|` or-pattern

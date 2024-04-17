@@ -1016,7 +1016,7 @@ impl<'a> Parser<'a> {
         && self.look_ahead(1, |t| !matches!(t.kind, token::OpenDelim(Delimiter::Parenthesis) // A tuple struct pattern.
             | token::OpenDelim(Delimiter::Brace) // A struct pattern.
             | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
-            | token::ModSep // A tuple / struct variant pattern.
+            | token::PathSep // A tuple / struct variant pattern.
             | token::Not)) // A macro expanding to a pattern.
     }
 

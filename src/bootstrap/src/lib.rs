@@ -630,6 +630,18 @@ impl Build {
         }
     }
 
+    /// Updates the given submodule only if it's initialized already; nothing happens otherwise.
+    pub fn update_existing_submodule(&self, submodule: &Path) {
+        // Avoid running git when there isn't a git checkout.
+        if !self.config.submodules(self.rust_info()) {
+            return;
+        }
+
+        if GitInfo::new(false, submodule).is_managed_git_subrepository() {
+            self.update_submodule(submodule);
+        }
+    }
+
     /// Executes the entire build, as configured by the flags and configuration.
     pub fn build(&mut self) {
         unsafe {
@@ -1076,6 +1088,16 @@ impl Build {
                 println!("{msg}");
             }
         }
+    }
+
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
+    fn msg_clippy(
+        &self,
+        what: impl Display,
+        target: impl Into<Option<TargetSelection>>,
+    ) -> Option<gha::Group> {
+        self.msg(Kind::Clippy, self.config.stage, what, self.config.build, target)
     }
 
     #[must_use = "Groups should not be dropped until the Step finishes running"]

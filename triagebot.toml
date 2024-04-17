@@ -384,7 +384,7 @@ trigger_files = [
 
 [autolabel."PG-exploit-mitigations"]
 trigger_files = [
-    "compiler/rustc_symbol_mangling/src/typeid",
+    "compiler/rustc_sanitizers",
     "src/doc/rustc/src/exploit-mitigations.md",
     "src/doc/unstable-book/src/compiler-flags/branch-protection.md",
     "src/doc/unstable-book/src/compiler-flags/cf-protection.md",
@@ -701,7 +701,7 @@ cc = ["@nnethercote"]
 message = "Changes to the size of AST and/or HIR nodes."
 cc = ["@nnethercote"]
 
-[mentions."compiler/rustc_symbol_mangling/src/typeid"]
+[mentions."compiler/rustc_sanitizers"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."src/doc/rustc/src/exploit-mitigations.md"]
@@ -728,7 +728,7 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 [mentions."src/doc/unstable-book/src/language-features/no-sanitize.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
-[mentions."src/doc/unstable-book/src/compiler-flags/check-cfg.md"]
+[mentions."src/doc/rustc/src/check-cfg.md"]
 cc = ["@Urgau"]
 
 [mentions."src/doc/rustc/src/platform-support"]
@@ -800,6 +800,7 @@ compiler-team = [
 compiler-team-contributors = [
     "@TaKO8Ki",
     "@Nadrieril",
+    "@nnethercote",
     "@fmease",
     "@fee1-dead",
     "@BoxyUwU",
@@ -857,14 +858,17 @@ parser = [
     "@compiler-errors",
     "@davidtwco",
     "@estebank",
+    "@nnethercote",
     "@petrochenkov",
     "@spastorino",
 ]
 lexer = [
+    "@nnethercote",
     "@petrochenkov",
     "@estebank",
 ]
 arena = [
+    "@nnethercote",
     "@spastorino",
 ]
 mir = [

@@ -87,6 +87,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if lang_items.sized_trait() == Some(def_id) {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
+
+                // FIXME: Consider moving this check to the top level as it
+                // may also be useful for predicates other than `Sized`
+                // Error type cannot possibly implement `Sized` (fixes #123154)
+                if let Err(e) = obligation.predicate.skip_binder().self_ty().error_reported() {
+                    return Err(SelectionError::Overflow(e.into()));
+                }
+
                 let sized_conditions = self.sized_conditions(obligation);
                 self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
             } else if lang_items.unsize_trait() == Some(def_id) {
@@ -1165,8 +1173,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
-        match self_ty.skip_binder().kind() {
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        match self_ty.kind() {
             ty::Alias(..)
             | ty::Dynamic(..)
             | ty::Error(_)
@@ -1317,7 +1325,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
+        let self_ty = self.infcx.resolve_vars_if_possible(obligation.self_ty());
 
         match self_ty.skip_binder().kind() {
             ty::FnPtr(_) => candidates.vec.push(BuiltinCandidate { has_nested: false }),

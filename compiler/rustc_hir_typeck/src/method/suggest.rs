@@ -22,12 +22,8 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::PatKind::Binding;
 use rustc_hir::PathSegment;
 use rustc_hir::{ExprKind, Node, QPath};
-use rustc_infer::infer::{
-    self,
-    type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
-    RegionVariableOrigin,
-};
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_infer::infer::{self, type_variable::TypeVariableOrigin, RegionVariableOrigin};
+use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
@@ -82,13 +78,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let trait_ref = ty::TraitRef::new(
                             tcx,
                             fn_once,
-                            [
-                                ty,
-                                self.next_ty_var(TypeVariableOrigin {
-                                    kind: TypeVariableOriginKind::MiscVariable,
-                                    span,
-                                }),
-                            ],
+                            [ty, self.next_ty_var(TypeVariableOrigin { param_def_id: None, span })],
                         );
                         let poly_trait_ref = ty::Binder::dummy(trait_ref);
                         let obligation = Obligation::misc(
@@ -1271,7 +1261,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .map(|expr| {
                         self.node_ty_opt(expr.hir_id).unwrap_or_else(|| {
                             self.next_ty_var(TypeVariableOrigin {
-                                kind: TypeVariableOriginKind::MiscVariable,
+                                param_def_id: None,
                                 span: expr.span,
                             })
                         })
@@ -1854,23 +1844,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         has_unsuggestable_args = true;
                         match arg.unpack() {
                             GenericArgKind::Lifetime(_) => self
-                                .next_region_var(RegionVariableOrigin::MiscVariable(
-                                    rustc_span::DUMMY_SP,
-                                ))
+                                .next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
                                 .into(),
                             GenericArgKind::Type(_) => self
                                 .next_ty_var(TypeVariableOrigin {
-                                    span: rustc_span::DUMMY_SP,
-                                    kind: TypeVariableOriginKind::MiscVariable,
+                                    span: DUMMY_SP,
+                                    param_def_id: None,
                                 })
                                 .into(),
                             GenericArgKind::Const(arg) => self
                                 .next_const_var(
                                     arg.ty(),
-                                    ConstVariableOrigin {
-                                        span: rustc_span::DUMMY_SP,
-                                        kind: ConstVariableOriginKind::MiscVariable,
-                                    },
+                                    ConstVariableOrigin { span: DUMMY_SP, param_def_id: None },
                                 )
                                 .into(),
                         }
@@ -2768,7 +2753,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let SelfSource::QPath(ty) = self_source else {
             return;
         };
-        for (deref_ty, _) in self.autoderef(rustc_span::DUMMY_SP, rcvr_ty).skip(1) {
+        for (deref_ty, _) in self.autoderef(DUMMY_SP, rcvr_ty).skip(1) {
             if let Ok(pick) = self.probe_for_name(
                 Mode::Path,
                 item_name,

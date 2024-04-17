@@ -9,7 +9,6 @@
 //@ revisions: mixed_values_any mixed_any any_values giberich unterminated
 //@ revisions: none_not_empty cfg_none
 //
-//@ compile-flags: -Z unstable-options
 //@ [anything_else]compile-flags: --check-cfg=anything_else(...)
 //@ [string_for_name_1]compile-flags: --check-cfg=cfg("NOT_IDENT")
 //@ [string_for_name_2]compile-flags: --check-cfg=cfg(foo,"NOT_IDENT",bar)

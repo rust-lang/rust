@@ -2173,8 +2173,8 @@ impl<'test> TestCx<'test> {
         let aux_dir = self.aux_output_dir();
         self.build_all_auxiliary(&self.testpaths, &aux_dir, &mut rustc);
 
-        self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
         rustc.envs(self.props.rustc_env.clone());
+        self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
         self.compose_and_run(
             rustc,
             self.config.compile_lib_path.to_str().unwrap(),
@@ -2220,10 +2220,10 @@ impl<'test> TestCx<'test> {
         );
         aux_cx.build_all_auxiliary(of, &aux_dir, &mut aux_rustc);
 
+        aux_rustc.envs(aux_props.rustc_env.clone());
         for key in &aux_props.unset_rustc_env {
             aux_rustc.env_remove(key);
         }
-        aux_rustc.envs(aux_props.rustc_env.clone());
 
         let (aux_type, crate_type) = if is_bin {
             (AuxType::Bin, Some("bin"))
