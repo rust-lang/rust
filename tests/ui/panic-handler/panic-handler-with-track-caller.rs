@@ -1,15 +1,14 @@
 //@ compile-flags:-C panic=abort
 //@ only-x86_64
 
-#![feature(target_feature_11)]
 #![no_std]
 #![no_main]
 
 use core::panic::PanicInfo;
 
 #[panic_handler]
-#[target_feature(enable = "avx2")]
-//~^ ERROR `#[panic_handler]` function is not allowed to have `#[target_feature]`
+#[track_caller]
+//~^ ERROR `#[panic_handler]` function is not allowed to have `#[track_caller]`
 fn panic(info: &PanicInfo) -> ! {
     unimplemented!();
 }
