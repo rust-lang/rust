@@ -1303,6 +1303,97 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Checks whether values of this type `T` implements the `AsyncDrop`
+    /// trait.
+    pub fn has_surface_async_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        self.trivially_has_surface_async_drop()
+            && tcx.has_surface_async_drop_raw(param_env.and(self))
+    }
+
+    /// Fast path helper for testing if a type has `AsyncDrop`
+    /// implementation.
+    ///
+    /// Returning `false` means the type is known to not have `AsyncDrop`
+    /// implementation. Returning `true` means nothing -- could be
+    /// `AsyncDrop`, might not be.
+    fn trivially_has_surface_async_drop(self) -> bool {
+        match self.kind() {
+            ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Bool
+            | ty::Char
+            | ty::Str
+            | ty::Never
+            | ty::Ref(..)
+            | ty::RawPtr(_, _)
+            | ty::FnDef(..)
+            | ty::FnPtr(_)
+            | ty::Error(_)
+            | ty::Tuple(_)
+            | ty::Slice(_)
+            | ty::Array(_, _)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Pat(..) => false,
+            ty::Adt(..)
+            | ty::Bound(..)
+            | ty::Dynamic(..)
+            | ty::Foreign(_)
+            | ty::Infer(_)
+            | ty::Alias(..)
+            | ty::Param(_)
+            | ty::Placeholder(_) => true,
+        }
+    }
+
+    /// Checks whether values of this type `T` implements the `AsyncDrop`
+    /// trait.
+    pub fn has_surface_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        self.trivially_has_surface_drop() && tcx.has_surface_drop_raw(param_env.and(self))
+    }
+
+    /// Fast path helper for testing if a type has `AsyncDrop`
+    /// implementation.
+    ///
+    /// Returning `false` means the type is known to not have `AsyncDrop`
+    /// implementation. Returning `true` means nothing -- could be
+    /// `AsyncDrop`, might not be.
+    fn trivially_has_surface_drop(self) -> bool {
+        match self.kind() {
+            ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Bool
+            | ty::Char
+            | ty::Str
+            | ty::Never
+            | ty::Ref(..)
+            | ty::RawPtr(_, _)
+            | ty::FnDef(..)
+            | ty::FnPtr(_)
+            | ty::Error(_)
+            | ty::Tuple(_)
+            | ty::Slice(_)
+            | ty::Array(_, _)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Pat(..) => false,
+            ty::Adt(..)
+            | ty::Bound(..)
+            | ty::Dynamic(..)
+            | ty::Foreign(_)
+            | ty::Infer(_)
+            | ty::Alias(..)
+            | ty::Param(_)
+            | ty::Placeholder(_) => true,
+        }
+    }
+
     /// If `ty.needs_drop(...)` returns `true`, then `ty` is definitely
     /// non-copy and *might* have a destructor attached; if it returns
     /// `false`, then `ty` definitely has no destructor (i.e., no drop glue).

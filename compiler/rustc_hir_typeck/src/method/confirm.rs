@@ -628,6 +628,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 Some(self.self_expr.span),
                 self.call_expr.span,
                 trait_def_id,
+                self.body_id.to_def_id(),
             ) {
                 self.set_tainted_by_errors(e);
             }
