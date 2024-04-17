@@ -2594,7 +2594,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                         self.infcx
                             .at(&obligation.cause, obligation.param_env)
                             .eq(
-                                DefineOpaqueTypes::No,
+                                DefineOpaqueTypes::Yes,
                                 upcast_principal.map_bound(|trait_ref| {
                                     ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
                                 }),

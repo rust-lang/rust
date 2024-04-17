@@ -1,5 +1,7 @@
 #![feature(trait_upcasting, type_alias_impl_trait)]
 
+//@ check-pass
+
 type Tait = impl Sized;
 
 trait Foo<'a>: Bar<'a, 'a, Tait> {}
@@ -15,7 +17,6 @@ fn test_correct2<'a>(x: &dyn Foo<'a>) {
 
 fn test_correct3<'a>(x: &dyn Foo<'a>, _: Tait) {
     let _ = x as &dyn Bar<'_, '_, ()>;
-    //~^ ERROR: non-primitive cast
 }
 
 fn main() {}
