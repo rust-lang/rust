@@ -125,9 +125,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                             .filter(|arg| arg.is_ty_or_const())
                             .position(|arg| arg.hir_id() == hir_id)
                     })
-                    .unwrap_or_else(|| {
-                        bug!("no arg matching AnonConst in segment");
-                    });
+                    .unwrap_or_else(|| bug!("no arg matching AnonConst in segment"));
 
                 (generics, arg_index)
             } else {
@@ -164,9 +162,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                         .filter(|arg| arg.is_ty_or_const())
                         .position(|arg| arg.hir_id() == hir_id)
                 })
-                .unwrap_or_else(|| {
-                    bug!("no arg matching AnonConst in segment");
-                });
+                .unwrap_or_else(|| bug!("no arg matching AnonConst in segment"));
 
             (tcx.generics_of(type_dependent_def), idx)
         }

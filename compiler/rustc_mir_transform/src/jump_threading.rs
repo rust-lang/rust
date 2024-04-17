@@ -546,7 +546,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                 };
                 if writes_discriminant {
                     let discr = self.ecx.discriminant_for_variant(enum_ty, *variant_index).ok()?;
-                    self.process_immediate(bb, discr_target, discr, state)?;
+                    self.process_immediate(bb, discr_target, discr, state)?
                 }
             }
             // If we expect `lhs ?= true`, we have an opportunity if we assume `lhs == true`.
@@ -557,7 +557,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                 conditions.iter_matches(ScalarInt::TRUE).for_each(register_opportunity);
             }
             StatementKind::Assign(box (lhs_place, rhs)) => {
-                self.process_assign(bb, lhs_place, rhs, state)?;
+                self.process_assign(bb, lhs_place, rhs, state)?
             }
             _ => {}
         }
