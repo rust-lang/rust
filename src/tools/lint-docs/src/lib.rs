@@ -270,7 +270,6 @@ impl<'a> LintExtractor<'a> {
         if matches!(
             lint.name.as_str(),
             "unused_features" // broken lint
-            | "unstable_features" // deprecated
         ) {
             return Ok(());
         }

@@ -128,9 +128,8 @@ impl Rustc {
         self
     }
 
-    /// Specify target triple.
+    /// Specify the target triple, or a path to a custom target json spec file.
     pub fn target(&mut self, target: &str) -> &mut Self {
-        assert!(!target.contains(char::is_whitespace), "target triple cannot contain spaces");
         self.cmd.arg(format!("--target={target}"));
         self
     }
@@ -146,6 +145,12 @@ impl Rustc {
     pub fn edition(&mut self, edition: &str) -> &mut Self {
         self.cmd.arg("--edition");
         self.cmd.arg(edition);
+        self
+    }
+
+    /// Add an extra argument to the linker invocation, via `-Clink-arg`.
+    pub fn link_arg(&mut self, link_arg: &str) -> &mut Self {
+        self.cmd.arg(format!("-Clink-arg={link_arg}"));
         self
     }
 

@@ -5,7 +5,7 @@
 // values since the suggestion shows them.
 //
 //@ check-pass
-//@ compile-flags: --check-cfg=cfg() -Z unstable-options
+//@ compile-flags: --check-cfg=cfg()
 //@ compile-flags: -Zcheck-cfg-all-expected
 
 #![feature(cfg_overflow_checks)]

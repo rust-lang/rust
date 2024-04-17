@@ -13,9 +13,9 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
-use crate::core::build_steps::llvm;
 use crate::core::build_steps::tool::{self, SourceType};
 use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, setup, test};
+use crate::core::build_steps::{clippy, llvm};
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::prepare_behaviour_dump_dir;
@@ -672,6 +672,7 @@ impl Kind {
             Kind::Doc => "Documenting",
             Kind::Run => "Running",
             Kind::Suggest => "Suggesting",
+            Kind::Clippy => "Linting",
             _ => {
                 let title_letter = self.as_str()[0..1].to_ascii_uppercase();
                 return format!("{title_letter}{}ing", &self.as_str()[1..]);
@@ -726,7 +727,35 @@ impl<'a> Builder<'a> {
                 tool::CoverageDump,
                 tool::LlvmBitcodeLinker
             ),
-            Kind::Check | Kind::Clippy | Kind::Fix => describe!(
+            Kind::Clippy => describe!(
+                clippy::Std,
+                clippy::Rustc,
+                clippy::Bootstrap,
+                clippy::BuildHelper,
+                clippy::BuildManifest,
+                clippy::CargoMiri,
+                clippy::Clippy,
+                clippy::CollectLicenseMetadata,
+                clippy::Compiletest,
+                clippy::CoverageDump,
+                clippy::Jsondocck,
+                clippy::Jsondoclint,
+                clippy::LintDocs,
+                clippy::LlvmBitcodeLinker,
+                clippy::Miri,
+                clippy::MiroptTestTools,
+                clippy::OptDist,
+                clippy::RemoteTestClient,
+                clippy::RemoteTestServer,
+                clippy::Rls,
+                clippy::RustAnalyzer,
+                clippy::RustDemangler,
+                clippy::Rustdoc,
+                clippy::Rustfmt,
+                clippy::RustInstaller,
+                clippy::Tidy,
+            ),
+            Kind::Check | Kind::Fix => describe!(
                 check::Std,
                 check::Rustc,
                 check::Rustdoc,

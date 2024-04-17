@@ -50,8 +50,8 @@ LL |     println!("demo_no: {:?}", demo_no);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider assigning a value
    |
-LL |     let demo_no: DemoNoDef = value;
-   |                            +++++++
+LL |     let demo_no: DemoNoDef = /* value */;
+   |                            +++++++++++++
 
 error[E0381]: used binding `arr` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:34:27

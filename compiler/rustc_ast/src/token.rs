@@ -51,7 +51,7 @@ pub enum Delimiter {
     Brace,
     /// `[ ... ]`
     Bracket,
-    /// `Ø ... Ø`
+    /// `∅ ... ∅`
     /// An invisible delimiter, that may, for example, appear around tokens coming from a
     /// "macro variable" `$var`. It is important to preserve operator priorities in cases like
     /// `$var * 3` where `$var` is `1 + 2`.

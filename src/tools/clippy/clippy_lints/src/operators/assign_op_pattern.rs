@@ -6,6 +6,7 @@ use clippy_utils::{binop_traits, eq_expr_value, trait_ref_of_method};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::{HirId, HirIdSet};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::LateContext;
 use rustc_middle::mir::FakeReadCause;
@@ -98,10 +99,10 @@ pub(super) fn check<'tcx>(
     }
 }
 
-fn imm_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> hir::HirIdSet {
-    struct S(hir::HirIdSet);
+fn imm_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
+    struct S(HirIdSet);
     impl Delegate<'_> for S {
-        fn borrow(&mut self, place: &PlaceWithHirId<'_>, _: hir::HirId, kind: BorrowKind) {
+        fn borrow(&mut self, place: &PlaceWithHirId<'_>, _: HirId, kind: BorrowKind) {
             if matches!(kind, BorrowKind::ImmBorrow | BorrowKind::UniqueImmBorrow) {
                 self.0.insert(match place.place.base {
                     PlaceBase::Local(id) => id,
@@ -111,13 +112,13 @@ fn imm_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> hir::HirIdSet
             }
         }
 
-        fn consume(&mut self, _: &PlaceWithHirId<'_>, _: hir::HirId) {}
-        fn mutate(&mut self, _: &PlaceWithHirId<'_>, _: hir::HirId) {}
-        fn fake_read(&mut self, _: &PlaceWithHirId<'_>, _: FakeReadCause, _: hir::HirId) {}
-        fn copy(&mut self, _: &PlaceWithHirId<'_>, _: hir::HirId) {}
+        fn consume(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
+        fn mutate(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
+        fn fake_read(&mut self, _: &PlaceWithHirId<'_>, _: FakeReadCause, _: HirId) {}
+        fn copy(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
     }
 
-    let mut s = S(hir::HirIdSet::default());
+    let mut s = S(HirIdSet::default());
     let infcx = cx.tcx.infer_ctxt().build();
     let mut v = ExprUseVisitor::new(
         &mut s,
@@ -130,10 +131,10 @@ fn imm_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> hir::HirIdSet
     s.0
 }
 
-fn mut_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> hir::HirIdSet {
-    struct S(hir::HirIdSet);
+fn mut_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
+    struct S(HirIdSet);
     impl Delegate<'_> for S {
-        fn borrow(&mut self, place: &PlaceWithHirId<'_>, _: hir::HirId, kind: BorrowKind) {
+        fn borrow(&mut self, place: &PlaceWithHirId<'_>, _: HirId, kind: BorrowKind) {
             if matches!(kind, BorrowKind::MutBorrow) {
                 self.0.insert(match place.place.base {
                     PlaceBase::Local(id) => id,
@@ -143,13 +144,13 @@ fn mut_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> hir::HirIdSet
             }
         }
 
-        fn consume(&mut self, _: &PlaceWithHirId<'_>, _: hir::HirId) {}
-        fn mutate(&mut self, _: &PlaceWithHirId<'_>, _: hir::HirId) {}
-        fn fake_read(&mut self, _: &PlaceWithHirId<'_>, _: FakeReadCause, _: hir::HirId) {}
-        fn copy(&mut self, _: &PlaceWithHirId<'_>, _: hir::HirId) {}
+        fn consume(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
+        fn mutate(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
+        fn fake_read(&mut self, _: &PlaceWithHirId<'_>, _: FakeReadCause, _: HirId) {}
+        fn copy(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
     }
 
-    let mut s = S(hir::HirIdSet::default());
+    let mut s = S(HirIdSet::default());
     let infcx = cx.tcx.infer_ctxt().build();
     let mut v = ExprUseVisitor::new(
         &mut s,

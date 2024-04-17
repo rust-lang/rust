@@ -14,7 +14,7 @@ for example:
 ./src/ci/docker/run.sh x86_64-gnu
 ```
 
-Images will output artifacts in an `obj` dir at the root of a repository. Note
+Images will output artifacts in an `obj/$image_name` dir at the root of a repository. Note
 that the script will overwrite the contents of this directory.
 
 To match conditions in rusts CI, also set the environment variable `DEPLOY=1`, e.g.:
@@ -22,12 +22,9 @@ To match conditions in rusts CI, also set the environment variable `DEPLOY=1`, e
 DEPLOY=1 ./src/ci/docker/run.sh x86_64-gnu
 ```
 
-**NOTE**: Re-using the same `obj` dir with different docker images with
-the same target triple (e.g. `dist-x86_64-linux` and `dist-various-1`)
-may result in strange linker errors, due shared library versions differing between platforms.
-
-If you encounter any issues when using multiple Docker images, try deleting your `obj` directory
-before running your command.
+**NOTE**: In CI, the script outputs the artifacts to the `obj` directory,
+while locally, to the `obj/$image_name` directory. This is primarily to prevent
+strange linker errors when using multiple Docker images.
 
 ## Filesystem layout
 

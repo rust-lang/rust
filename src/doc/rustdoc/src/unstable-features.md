@@ -618,22 +618,6 @@ crate being documented (`foobar`) and a path to output the calls
 To scrape examples from test code, e.g. functions marked `#[test]`, then
 add the `--scrape-tests` flag.
 
-### `--check-cfg`: check configuration flags
-
- * Tracking issue: [#82450](https://github.com/rust-lang/rust/issues/82450)
-
-This flag accepts the same values as `rustc --check-cfg`, and uses it to check configuration flags.
-
-Using this flag looks like this:
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options \
-    --check-cfg='cfg(feature, values("foo", "bar"))'
-```
-
-The example above check every well known names and values (`target_os`, `doc`, `test`, ...)
-and check the values of `feature`: `foo` and `bar`.
-
 ### `--generate-link-to-definition`: Generate links on types in source code
 
  * Tracking issue: [#89095](https://github.com/rust-lang/rust/issues/89095)

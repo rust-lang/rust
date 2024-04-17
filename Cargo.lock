@@ -210,9 +210,9 @@ dependencies = [
 
 [[package]]
 name = "ar_archive_writer"
-version = "0.1.5"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9792d37ca5173d7e7f4fe453739a0671d0557915a030a383d6b866476bbc3e71"
+checksum = "f0c269894b6fe5e9d7ada0cf69b5bf847ff35bc25fc271f08e1d080fce80339a"
 dependencies = [
  "object 0.32.2",
 ]
@@ -3342,6 +3342,7 @@ name = "run_make_support"
 version = "0.0.0"
 dependencies = [
  "object 0.34.0",
+ "regex",
  "wasmparser",
 ]
 
@@ -3364,9 +3365,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-build-sysroot"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a26170e1d79ea32f7ccec3188dd13cfc1f18c82764a9cbc1071667c0f865a4ea"
+checksum = "a9bf37423495cd3a6a9ef8c75fc4566de0d26de0ab75f36f67a426e58df5768c"
 dependencies = [
  "anyhow",
  "rustc_version",

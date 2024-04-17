@@ -162,7 +162,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
             let errors = ocx.select_all_or_error();
             match errors.as_slice() {
                 // Only known to hold if we did no inference.
-                [] => infcx.shallow_resolve(goal) == goal,
+                [] => infcx.resolve_vars_if_possible(goal) == goal,
 
                 errors => {
                     debug!(?errors);

@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{self as hir};
+use rustc_hir::{self as hir, HirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{GenericArgKind, Ty};
 use rustc_session::impl_lint_pass;
@@ -55,7 +55,7 @@ impl_lint_pass!(SignificantDropTightening<'_> => [SIGNIFICANT_DROP_TIGHTENING]);
 
 #[derive(Default)]
 pub struct SignificantDropTightening<'tcx> {
-    apas: FxIndexMap<hir::HirId, AuxParamsAttr>,
+    apas: FxIndexMap<HirId, AuxParamsAttr>,
     /// Auxiliary structure used to avoid having to verify the same type multiple times.
     seen_types: FxHashSet<Ty<'tcx>>,
     type_cache: FxHashMap<Ty<'tcx>, bool>,
@@ -359,9 +359,9 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> Visitor<'tcx> for StmtsChecker<'ap, 'lc, 'o
 /// Auxiliary parameters used on each block check of an item
 struct AuxParams<'others, 'stmt, 'tcx> {
     //// See [AuxParamsAttr].
-    apas: &'others mut FxIndexMap<hir::HirId, AuxParamsAttr>,
+    apas: &'others mut FxIndexMap<HirId, AuxParamsAttr>,
     /// The current block identifier that is being visited.
-    curr_block_hir_id: hir::HirId,
+    curr_block_hir_id: HirId,
     /// The current block span that is being visited.
     curr_block_span: Span,
     /// The current statement that is being visited.
@@ -369,10 +369,10 @@ struct AuxParams<'others, 'stmt, 'tcx> {
 }
 
 impl<'others, 'stmt, 'tcx> AuxParams<'others, 'stmt, 'tcx> {
-    fn new(apas: &'others mut FxIndexMap<hir::HirId, AuxParamsAttr>, curr_stmt: &'stmt hir::Stmt<'tcx>) -> Self {
+    fn new(apas: &'others mut FxIndexMap<HirId, AuxParamsAttr>, curr_stmt: &'stmt hir::Stmt<'tcx>) -> Self {
         Self {
             apas,
-            curr_block_hir_id: hir::HirId::INVALID,
+            curr_block_hir_id: HirId::INVALID,
             curr_block_span: DUMMY_SP,
             curr_stmt: Cow::Borrowed(curr_stmt),
         }
@@ -389,7 +389,7 @@ struct AuxParamsAttr {
     has_expensive_expr_after_last_attr: bool,
 
     /// The identifier of the block that involves the first `#[has_significant_drop]`.
-    first_block_hir_id: hir::HirId,
+    first_block_hir_id: HirId,
     /// The span of the block that involves the first `#[has_significant_drop]`.
     first_block_span: Span,
     /// The binding or variable that references the initial construction of the type marked with
@@ -414,7 +414,7 @@ impl Default for AuxParamsAttr {
         Self {
             counter: 0,
             has_expensive_expr_after_last_attr: false,
-            first_block_hir_id: hir::HirId::INVALID,
+            first_block_hir_id: HirId::INVALID,
             first_bind_ident: Ident::empty(),
             first_block_span: DUMMY_SP,
             first_method_span: DUMMY_SP,
@@ -428,7 +428,7 @@ impl Default for AuxParamsAttr {
 
 fn dummy_stmt_expr<'any>(expr: &'any hir::Expr<'any>) -> hir::Stmt<'any> {
     hir::Stmt {
-        hir_id: hir::HirId::INVALID,
+        hir_id: HirId::INVALID,
         kind: hir::StmtKind::Expr(expr),
         span: DUMMY_SP,
     }

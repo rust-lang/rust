@@ -1125,7 +1125,7 @@ impl Options {
             || self.unstable_opts.query_dep_graph
     }
 
-    pub(crate) fn file_path_mapping(&self) -> FilePathMapping {
+    pub fn file_path_mapping(&self) -> FilePathMapping {
         file_path_mapping(self.remap_path_prefix.clone(), &self.unstable_opts)
     }
 
@@ -1161,6 +1161,16 @@ impl UnstableOptions {
             deduplicate_diagnostics: self.deduplicate_diagnostics,
             track_diagnostics: self.track_diagnostics,
         }
+    }
+
+    pub fn src_hash_algorithm(&self, target: &Target) -> SourceFileHashAlgorithm {
+        self.src_hash_algorithm.unwrap_or_else(|| {
+            if target.is_like_msvc {
+                SourceFileHashAlgorithm::Sha256
+            } else {
+                SourceFileHashAlgorithm::Md5
+            }
+        })
     }
 }
 
@@ -1373,7 +1383,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt::flag_s("h", "help", "Display this message"),
         opt::multi_s("", "cfg", "Configure the compilation environment.
                              SPEC supports the syntax `NAME[=\"VALUE\"]`.", "SPEC"),
-        opt::multi("", "check-cfg", "Provide list of valid cfg options for checking", "SPEC"),
+        opt::multi_s("", "check-cfg", "Provide list of expected cfgs for checking", "SPEC"),
         opt::multi_s(
             "L",
             "",

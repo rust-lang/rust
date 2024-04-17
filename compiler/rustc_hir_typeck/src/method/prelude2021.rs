@@ -8,7 +8,7 @@ use hir::ItemKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
-use rustc_middle::ty::{Adt, Array, Ref, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::builtin::RUST_2021_PRELUDE_COLLISIONS;
 use rustc_span::symbol::kw::{Empty, Underscore};
 use rustc_span::symbol::{sym, Ident};
@@ -44,7 +44,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // but `[T; N].into_iter()` doesn't resolve to IntoIterator::into_iter
             // before Rust 2021, which results in the same problem.
             // It is only a problem for arrays.
-            sym::into_iter if let Array(..) = self_ty.kind() => {
+            sym::into_iter if let ty::Array(..) = self_ty.kind() => {
                 // In this case, it wasn't really a prelude addition that was the problem.
                 // Instead, the problem is that the array-into_iter hack will no longer apply in Rust 2021.
                 rustc_lint::ARRAY_INTO_ITER
@@ -64,7 +64,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     pick.autoref_or_ptr_adjustment,
                     Some(probe::AutorefOrPtrAdjustment::Autoref { .. })
                 )
-                && matches!(self_ty.kind(), Ref(..))
+                && matches!(self_ty.kind(), ty::Ref(..))
             {
                 return;
             }
@@ -278,7 +278,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // the user has written the self type with generics already which we (naively) do by looking
                 // for a "<" in `self_ty_name`.
                 if !self_ty_name.contains('<') {
-                    if let Adt(def, _) = self_ty.kind() {
+                    if let ty::Adt(def, _) = self_ty.kind() {
                         let generics = self.tcx.generics_of(def.did());
                         if !generics.params.is_empty() {
                             let counts = generics.own_counts();

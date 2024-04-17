@@ -3,7 +3,6 @@
 // suggest to use `#[cfg(target_os = "linux")]` instead of `#[cfg(linux)]`
 //
 //@ check-pass
-//@ compile-flags: -Z unstable-options
 //@ compile-flags: --check-cfg=cfg()
 
 #[cfg(linux)]

@@ -10,6 +10,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::HirId;
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
@@ -25,7 +26,7 @@ pub const CAPTURE_STRUCT_LOCAL: mir::Local = mir::Local::from_u32(1);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct UpvarPath {
-    pub hir_id: hir::HirId,
+    pub hir_id: HirId,
 }
 
 /// Upvars do not get their own `NodeId`. Instead, we use the pair of
@@ -39,7 +40,7 @@ pub struct UpvarId {
 }
 
 impl UpvarId {
-    pub fn new(var_hir_id: hir::HirId, closure_def_id: LocalDefId) -> UpvarId {
+    pub fn new(var_hir_id: HirId, closure_def_id: LocalDefId) -> UpvarId {
         UpvarId { var_path: UpvarPath { hir_id: var_hir_id }, closure_expr_id: closure_def_id }
     }
 }
@@ -68,7 +69,7 @@ pub type MinCaptureInformationMap<'tcx> = LocalDefIdMap<RootVariableMinCaptureLi
 ///
 /// This provides a convenient and quick way of checking if a variable being used within
 /// a closure is a capture of a local variable.
-pub type RootVariableMinCaptureList<'tcx> = FxIndexMap<hir::HirId, MinCaptureList<'tcx>>;
+pub type RootVariableMinCaptureList<'tcx> = FxIndexMap<HirId, MinCaptureList<'tcx>>;
 
 /// Part of `MinCaptureInformationMap`; List of `CapturePlace`s.
 pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
@@ -135,7 +136,7 @@ impl<'tcx> CapturedPlace<'tcx> {
 
     /// Returns the hir-id of the root variable for the captured place.
     /// e.g., if `a.b.c` was captured, would return the hir-id for `a`.
-    pub fn get_root_variable(&self) -> hir::HirId {
+    pub fn get_root_variable(&self) -> HirId {
         match self.place.base {
             HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
             base => bug!("Expected upvar, found={:?}", base),
@@ -286,12 +287,12 @@ pub struct CaptureInfo {
     ///
     /// In this example, if `capture_disjoint_fields` is **not** set, then x will be captured,
     /// but we won't see it being used during capture analysis, since it's essentially a discard.
-    pub capture_kind_expr_id: Option<hir::HirId>,
+    pub capture_kind_expr_id: Option<HirId>,
     /// Expr Id pointing to use that resulted the corresponding place being captured
     ///
     /// See `capture_kind_expr_id` for example.
     ///
-    pub path_expr_id: Option<hir::HirId>,
+    pub path_expr_id: Option<HirId>,
 
     /// Capture mode that was selected
     pub capture_kind: UpvarCapture,

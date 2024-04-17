@@ -24,7 +24,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ExprKind, Node, QPath};
+use rustc_hir::{ExprKind, HirId, Node, QPath};
 use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
@@ -1489,7 +1489,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_struct_path(
         &self,
         qpath: &QPath<'tcx>,
-        hir_id: hir::HirId,
+        hir_id: HirId,
     ) -> Result<(&'tcx ty::VariantDef, Ty<'tcx>), ErrorGuaranteed> {
         let path_span = qpath.span();
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
@@ -1554,7 +1554,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_decl_initializer(
         &self,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         pat: &'tcx hir::Pat<'tcx>,
         init: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
@@ -1879,7 +1879,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    fn parent_item_span(&self, id: hir::HirId) -> Option<Span> {
+    fn parent_item_span(&self, id: HirId) -> Option<Span> {
         let node = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(id).def_id);
         match node {
             Node::Item(&hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })
@@ -1897,7 +1897,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Given a function block's `HirId`, returns its `FnDecl` if it exists, or `None` otherwise.
     pub(crate) fn get_parent_fn_decl(
         &self,
-        blk_id: hir::HirId,
+        blk_id: HirId,
     ) -> Option<(&'tcx hir::FnDecl<'tcx>, Ident)> {
         let parent = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(blk_id).def_id);
         self.get_node_fn_decl(parent).map(|(_, fn_decl, ident, _)| (fn_decl, ident))
@@ -1939,12 +1939,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr.span
     }
 
-    fn overwrite_local_ty_if_err(
-        &self,
-        hir_id: hir::HirId,
-        pat: &'tcx hir::Pat<'tcx>,
-        ty: Ty<'tcx>,
-    ) {
+    fn overwrite_local_ty_if_err(&self, hir_id: HirId, pat: &'tcx hir::Pat<'tcx>, ty: Ty<'tcx>) {
         if let Err(guar) = ty.error_reported() {
             struct OverwritePatternsWithError {
                 pat_hir_ids: Vec<hir::HirId>,
@@ -1977,7 +1972,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         qpath: &QPath<'tcx>,
         path_span: Span,
-        hir_id: hir::HirId,
+        hir_id: HirId,
     ) -> (Res, LoweredTy<'tcx>) {
         match *qpath {
             QPath::Resolved(ref maybe_qself, path) => {

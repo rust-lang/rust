@@ -1058,7 +1058,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Self) -> *mut T {
-        Self::into_raw_with_allocator(b).0
+        // Make sure Miri realizes that we transition from a noalias pointer to a raw pointer here.
+        unsafe { addr_of_mut!(*&mut *Self::into_raw_with_allocator(b).0) }
     }
 
     /// Consumes the `Box`, returning a wrapped raw pointer and the allocator.
@@ -1112,7 +1113,10 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     pub fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
         let mut b = mem::ManuallyDrop::new(b);
         // We carefully get the raw pointer out in a way that Miri's aliasing model understands what
-        // is happening: using the primitive "deref" of `Box`.
+        // is happening: using the primitive "deref" of `Box`. In case `A` is *not* `Global`, we
+        // want *no* aliasing requirements here!
+        // In case `A` *is* `Global`, this does not quite have the right behavior; `into_raw`
+        // works around that.
         let ptr = addr_of_mut!(**b);
         let alloc = unsafe { ptr::read(&b.1) };
         (ptr, alloc)

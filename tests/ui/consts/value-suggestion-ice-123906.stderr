@@ -10,8 +10,8 @@ LL |         break;
    |
 help: give the `break` a value of the expected type
    |
-LL |         break value;
-   |               +++++
+LL |         break /* value */;
+   |               +++++++++++
 
 error: aborting due to 1 previous error
 

@@ -3121,7 +3121,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 .inputs
                                 .iter()
                                 .filter_map(|param| match &param.ty.kind {
-                                    TyKind::ImplTrait(_, bounds) => Some(bounds),
+                                    TyKind::ImplTrait(_, bounds, _) => Some(bounds),
                                     _ => None,
                                 })
                                 .flat_map(|bounds| bounds.into_iter())

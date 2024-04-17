@@ -632,3 +632,11 @@ pub enum SuggestBoxingForReturnImplTrait {
         ends: Vec<Span>,
     },
 }
+
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_dereferencing_mut_binding)]
+pub struct DereferencingMutBinding {
+    #[label]
+    #[help]
+    pub span: Span,
+}

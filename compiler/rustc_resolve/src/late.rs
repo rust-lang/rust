@@ -793,7 +793,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                 self.r.record_partial_res(ty.id, PartialRes::new(res));
                 visit::walk_ty(self, ty)
             }
-            TyKind::ImplTrait(node_id, _) => {
+            TyKind::ImplTrait(node_id, _, _) => {
                 let candidates = self.lifetime_elision_candidates.take();
                 visit::walk_ty(self, ty);
                 self.record_lifetime_params_for_impl_trait(*node_id);
@@ -1047,8 +1047,37 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
         });
         self.diag_metadata.current_function = previous_value;
     }
+
     fn visit_lifetime(&mut self, lifetime: &'ast Lifetime, use_ctxt: visit::LifetimeCtxt) {
         self.resolve_lifetime(lifetime, use_ctxt)
+    }
+
+    fn visit_precise_capturing_arg(&mut self, arg: &'ast PreciseCapturingArg) {
+        match arg {
+            // Lower the lifetime regularly; we'll resolve the lifetime and check
+            // it's a parameter later on in HIR lowering.
+            PreciseCapturingArg::Lifetime(_) => {}
+
+            PreciseCapturingArg::Arg(path, id) => {
+                // we want `impl use<C>` to try to resolve `C` as both a type parameter or
+                // a const parameter. Since the resolver specifically doesn't allow having
+                // two generic params with the same name, even if they're a different namespace,
+                // it doesn't really matter which we try resolving first, but just like
+                // `Ty::Param` we just fall back to the value namespace only if it's missing
+                // from the type namespace.
+                let mut check_ns = |ns| {
+                    self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns).is_some()
+                };
+                // Like `Ty::Param`, we try resolving this as both a const and a type.
+                if !check_ns(TypeNS) && check_ns(ValueNS) {
+                    self.smart_resolve_path(*id, &None, path, PathSource::Expr(None));
+                } else {
+                    self.smart_resolve_path(*id, &None, path, PathSource::Type);
+                }
+            }
+        }
+
+        visit::walk_precise_capturing_arg(self, arg)
     }
 
     fn visit_generics(&mut self, generics: &'ast Generics) {

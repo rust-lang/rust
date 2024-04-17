@@ -984,7 +984,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // Already reported in the query.
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(guar)) |
             // Already reported.
-            Overflow(OverflowError::Error(guar)) => return guar,
+            Overflow(OverflowError::Error(guar)) => {
+                self.set_tainted_by_errors(guar);
+                return guar
+            },
 
             Overflow(_) => {
                 bug!("overflow should be handled before the `report_selection_error` path");
@@ -1974,6 +1977,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     for (obligation_arg, impl_arg) in
                         std::iter::zip(obligation_trait_ref.args, impl_trait_ref.args)
                     {
+                        if (obligation_arg, impl_arg).references_error() {
+                            return false;
+                        }
                         if let Err(terr) =
                             ocx.eq(&ObligationCause::dummy(), param_env, impl_arg, obligation_arg)
                         {

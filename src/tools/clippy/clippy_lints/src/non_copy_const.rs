@@ -18,7 +18,7 @@ use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, InnerSpan, Span};
+use rustc_span::{sym, DUMMY_SP, InnerSpan, Span};
 use rustc_target::abi::VariantIdx;
 
 // FIXME: this is a correctness problem but there's no suitable
@@ -290,9 +290,7 @@ impl NonCopyConst {
             promoted: None,
         };
         let param_env = cx.tcx.param_env(def_id).with_reveal_all_normalized(cx.tcx);
-        let result = cx
-            .tcx
-            .const_eval_global_id_for_typeck(param_env, cid, rustc_span::DUMMY_SP);
+        let result = cx.tcx.const_eval_global_id_for_typeck(param_env, cid, DUMMY_SP);
         self.is_value_unfrozen_raw(cx, result, ty)
     }
 
@@ -303,7 +301,7 @@ impl NonCopyConst {
             cx.tcx,
             cx.param_env,
             ty::UnevaluatedConst::new(def_id, args),
-            rustc_span::DUMMY_SP,
+            DUMMY_SP,
         );
         self.is_value_unfrozen_raw(cx, result, ty)
     }

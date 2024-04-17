@@ -19,6 +19,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::HirId;
 use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
@@ -262,10 +263,10 @@ pub enum ObligationCauseCode<'tcx> {
     /// expression that caused the obligation, and the `usize`
     /// indicates exactly which predicate it is in the list of
     /// instantiated predicates.
-    ExprItemObligation(DefId, rustc_hir::HirId, usize),
+    ExprItemObligation(DefId, HirId, usize),
 
     /// Combines `ExprItemObligation` and `BindingObligation`.
-    ExprBindingObligation(DefId, Span, rustc_hir::HirId, usize),
+    ExprBindingObligation(DefId, Span, HirId, usize),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),
@@ -287,9 +288,9 @@ pub enum ObligationCauseCode<'tcx> {
     /// `S { ... }` must be `Sized`.
     StructInitializerSized,
     /// Type of each variable must be `Sized`.
-    VariableType(hir::HirId),
+    VariableType(HirId),
     /// Argument type must be `Sized`.
-    SizedArgumentType(Option<hir::HirId>),
+    SizedArgumentType(Option<HirId>),
     /// Return type must be `Sized`.
     SizedReturnType,
     /// Return type of a call expression must be `Sized`.
@@ -335,9 +336,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     FunctionArgumentObligation {
         /// The node of the relevant argument in the function call.
-        arg_hir_id: hir::HirId,
+        arg_hir_id: HirId,
         /// The node of the function call.
-        call_hir_id: hir::HirId,
+        call_hir_id: HirId,
         /// The obligation introduced by this argument.
         parent_code: InternedObligationCauseCode<'tcx>,
     },
@@ -402,18 +403,18 @@ pub enum ObligationCauseCode<'tcx> {
     ReturnNoExpression,
 
     /// `return` with an expression
-    ReturnValue(hir::HirId),
+    ReturnValue(HirId),
 
     /// Opaque return type of this function
     OpaqueReturnType(Option<(Ty<'tcx>, Span)>),
 
     /// Block implicit return
-    BlockTailExpression(hir::HirId, hir::MatchSource),
+    BlockTailExpression(HirId, hir::MatchSource),
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
 
-    AwaitableExpr(hir::HirId),
+    AwaitableExpr(HirId),
 
     ForLoopIterator,
 
@@ -431,8 +432,8 @@ pub enum ObligationCauseCode<'tcx> {
     MatchImpl(ObligationCause<'tcx>, DefId),
 
     BinOp {
-        lhs_hir_id: hir::HirId,
-        rhs_hir_id: Option<hir::HirId>,
+        lhs_hir_id: HirId,
+        rhs_hir_id: Option<HirId>,
         rhs_span: Option<Span>,
         rhs_is_lit: bool,
         output_ty: Option<Ty<'tcx>>,
@@ -562,10 +563,10 @@ pub enum StatementAsExpression {
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct MatchExpressionArmCause<'tcx> {
-    pub arm_block_id: Option<hir::HirId>,
+    pub arm_block_id: Option<HirId>,
     pub arm_ty: Ty<'tcx>,
     pub arm_span: Span,
-    pub prior_arm_block_id: Option<hir::HirId>,
+    pub prior_arm_block_id: Option<HirId>,
     pub prior_arm_ty: Ty<'tcx>,
     pub prior_arm_span: Span,
     pub scrut_span: Span,
@@ -578,8 +579,8 @@ pub struct MatchExpressionArmCause<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
 pub struct IfExpressionCause<'tcx> {
-    pub then_id: hir::HirId,
-    pub else_id: hir::HirId,
+    pub then_id: HirId,
+    pub else_id: HirId,
     pub then_ty: Ty<'tcx>,
     pub else_ty: Ty<'tcx>,
     pub outer_span: Option<Span>,

@@ -408,7 +408,7 @@ impl Item {
 
     pub(crate) fn attr_span(&self, tcx: TyCtxt<'_>) -> rustc_span::Span {
         span_of_fragments(&self.attrs.doc_strings)
-            .unwrap_or_else(|| self.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner()))
+            .unwrap_or_else(|| self.span(tcx).map_or(DUMMY_SP, |span| span.inner()))
     }
 
     /// Combine all doc strings into a single value handling indentation and newlines as needed.

@@ -12,24 +12,20 @@ cfg_if::cfg_if! {
     ))] {
         mod futex;
         pub use futex::RwLock;
-    } else if #[cfg(target_family = "unix")] {
+    } else if #[cfg(any(
+        target_family = "unix",
+        all(target_os = "windows", target_vendor = "win7"),
+        all(target_vendor = "fortanix", target_env = "sgx"),
+        target_os = "xous",
+    ))] {
         mod queue;
         pub use queue::RwLock;
-    } else if #[cfg(all(target_os = "windows", target_vendor = "win7"))] {
-        mod windows7;
-        pub use windows7::RwLock;
-    } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
-        mod sgx;
-        pub use sgx::RwLock;
     } else if #[cfg(target_os = "solid_asp3")] {
         mod solid;
         pub use solid::RwLock;
     } else if #[cfg(target_os = "teeos")] {
         mod teeos;
         pub use teeos::RwLock;
-    } else if #[cfg(target_os = "xous")] {
-        mod xous;
-        pub use xous::RwLock;
     } else {
         mod no_threads;
         pub use no_threads::RwLock;

@@ -1562,7 +1562,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Because this free region must be in the ROOT universe, we
         // know it cannot contain any bound universes.
-        assert!(self.scc_universes[longer_fr_scc] == ty::UniverseIndex::ROOT);
+        assert!(self.scc_universes[longer_fr_scc].is_root());
         debug_assert!(self.scc_values.placeholders_contained_in(longer_fr_scc).next().is_none());
 
         // Only check all of the relations for the main representative of each

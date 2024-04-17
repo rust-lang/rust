@@ -26,7 +26,6 @@ use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_middle::ty::{Region, TyCtxt};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
-use rustc_trait_selection::infer::type_variable::TypeVariableOrigin;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 
@@ -813,7 +812,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         self.add_static_impl_trait_suggestion(&mut diag, *fr, fr_name, *outlived_fr);
         self.suggest_adding_lifetime_params(&mut diag, *fr, *outlived_fr);
         self.suggest_move_on_borrowing_closure(&mut diag);
-        self.suggest_deref_closure_value(&mut diag);
+        self.suggest_deref_closure_return(&mut diag);
 
         diag
     }
@@ -1048,115 +1047,107 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// When encountering a lifetime error caused by the return type of a closure, check the
     /// corresponding trait bound and see if dereferencing the closure return value would satisfy
     /// them. If so, we produce a structured suggestion.
-    fn suggest_deref_closure_value(&self, diag: &mut Diag<'_>) {
+    fn suggest_deref_closure_return(&self, diag: &mut Diag<'_>) {
         let tcx = self.infcx.tcx;
-        let map = tcx.hir();
 
         // Get the closure return value and type.
-        let body_id = map.body_owned_by(self.mir_def_id());
-        let body = &map.body(body_id);
-        let value = &body.value.peel_blocks();
-        let hir::Node::Expr(closure_expr) = tcx.hir_node_by_def_id(self.mir_def_id()) else {
+        let closure_def_id = self.mir_def_id();
+        let hir::Node::Expr(
+            closure_expr @ hir::Expr {
+                kind: hir::ExprKind::Closure(hir::Closure { body, .. }), ..
+            },
+        ) = tcx.hir_node_by_def_id(closure_def_id)
+        else {
             return;
         };
-        let fn_call_id = tcx.parent_hir_id(self.mir_hir_id());
-        let hir::Node::Expr(expr) = tcx.hir_node(fn_call_id) else { return };
-        let def_id = map.enclosing_body_owner(fn_call_id);
-        let tables = tcx.typeck(def_id);
-        let Some(return_value_ty) = tables.node_type_opt(value.hir_id) else { return };
-        let return_value_ty = self.infcx.resolve_vars_if_possible(return_value_ty);
+        let ty::Closure(_, args) = *tcx.type_of(closure_def_id).instantiate_identity().kind()
+        else {
+            return;
+        };
+        let args = args.as_closure();
+
+        // Make sure that the parent expression is a method call.
+        let parent_expr_id = tcx.parent_hir_id(self.mir_hir_id());
+        let hir::Node::Expr(
+            parent_expr @ hir::Expr {
+                kind: hir::ExprKind::MethodCall(_, rcvr, call_args, _), ..
+            },
+        ) = tcx.hir_node(parent_expr_id)
+        else {
+            return;
+        };
+        let typeck_results = tcx.typeck(self.mir_def_id());
 
         // We don't use `ty.peel_refs()` to get the number of `*`s needed to get the root type.
-        let mut ty = return_value_ty;
+        let liberated_sig = tcx.liberate_late_bound_regions(closure_def_id.to_def_id(), args.sig());
+        let mut peeled_ty = liberated_sig.output();
         let mut count = 0;
-        while let ty::Ref(_, t, _) = ty.kind() {
-            ty = *t;
+        while let ty::Ref(_, ref_ty, _) = *peeled_ty.kind() {
+            peeled_ty = ref_ty;
             count += 1;
         }
-        if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty) {
+        if !self.infcx.type_is_copy_modulo_regions(self.param_env, peeled_ty) {
             return;
         }
 
         // Build a new closure where the return type is an owned value, instead of a ref.
-        let Some(ty::Closure(did, args)) =
-            tables.node_type_opt(closure_expr.hir_id).as_ref().map(|ty| ty.kind())
-        else {
-            return;
-        };
-        let sig = args.as_closure().sig();
         let closure_sig_as_fn_ptr_ty = Ty::new_fn_ptr(
             tcx,
-            sig.map_bound(|s| {
-                let unsafety = hir::Unsafety::Normal;
-                use rustc_target::spec::abi;
-                tcx.mk_fn_sig(
-                    [s.inputs()[0]],
-                    s.output().peel_refs(),
-                    s.c_variadic,
-                    unsafety,
-                    abi::Abi::Rust,
-                )
-            }),
+            ty::Binder::dummy(tcx.mk_fn_sig(
+                liberated_sig.inputs().iter().copied(),
+                peeled_ty,
+                liberated_sig.c_variadic,
+                hir::Unsafety::Normal,
+                rustc_target::spec::abi::Abi::Rust,
+            )),
         );
-        let parent_args = GenericArgs::identity_for_item(
+        let closure_ty = Ty::new_closure(
             tcx,
-            tcx.typeck_root_def_id(self.mir_def_id().to_def_id()),
+            closure_def_id.to_def_id(),
+            ty::ClosureArgs::new(
+                tcx,
+                ty::ClosureArgsParts {
+                    parent_args: args.parent_args(),
+                    closure_kind_ty: args.kind_ty(),
+                    tupled_upvars_ty: args.tupled_upvars_ty(),
+                    closure_sig_as_fn_ptr_ty,
+                },
+            )
+            .args,
         );
-        let closure_kind = args.as_closure().kind();
-        let closure_kind_ty = Ty::from_closure_kind(tcx, closure_kind);
-        let tupled_upvars_ty = self
-            .infcx
-            .next_ty_var(TypeVariableOrigin { param_def_id: None, span: closure_expr.span });
-        let closure_args = ty::ClosureArgs::new(
-            tcx,
-            ty::ClosureArgsParts {
-                parent_args,
-                closure_kind_ty,
-                closure_sig_as_fn_ptr_ty,
-                tupled_upvars_ty,
-            },
-        );
-        let closure_ty = Ty::new_closure(tcx, *did, closure_args.args);
-        let closure_ty = tcx.erase_regions(closure_ty);
 
-        let hir::ExprKind::MethodCall(_, rcvr, args, _) = expr.kind else { return };
-        let Some(pos) = args
-            .iter()
-            .enumerate()
-            .find(|(_, arg)| arg.hir_id == closure_expr.hir_id)
-            .map(|(i, _)| i)
+        let Some((closure_arg_pos, _)) =
+            call_args.iter().enumerate().find(|(_, arg)| arg.hir_id == closure_expr.hir_id)
         else {
             return;
         };
-        // The found `Self` type of the method call.
-        let Some(possible_rcvr_ty) = tables.node_type_opt(rcvr.hir_id) else { return };
-        let Some(method_def_id) = tables.type_dependent_def_id(expr.hir_id) else { return };
-
         // Get the type for the parameter corresponding to the argument the closure with the
         // lifetime error we had.
-        let Some(input) = tcx
+        let Some(method_def_id) = typeck_results.type_dependent_def_id(parent_expr.hir_id) else {
+            return;
+        };
+        let Some(input_arg) = tcx
             .fn_sig(method_def_id)
-            .instantiate_identity()
+            .skip_binder()
             .inputs()
             .skip_binder()
             // Methods have a `self` arg, so `pos` is actually `+ 1` to match the method call arg.
-            .get(pos + 1)
+            .get(closure_arg_pos + 1)
         else {
             return;
         };
-
-        trace!(?input);
-
-        let ty::Param(closure_param) = input.kind() else { return };
+        // If this isn't a param, then we can't substitute a new closure.
+        let ty::Param(closure_param) = input_arg.kind() else { return };
 
         // Get the arguments for the found method, only specifying that `Self` is the receiver type.
+        let Some(possible_rcvr_ty) = typeck_results.node_type_opt(rcvr.hir_id) else { return };
         let args = GenericArgs::for_item(tcx, method_def_id, |param, _| {
             if param.index == 0 {
                 possible_rcvr_ty.into()
             } else if param.index == closure_param.index {
                 closure_ty.into()
             } else {
-                self.infcx.var_for_def(expr.span, param)
+                self.infcx.var_for_def(parent_expr.span, param)
             }
         });
 
@@ -1170,7 +1161,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         if ocx.select_all_or_error().is_empty() {
             diag.span_suggestion_verbose(
-                value.span.shrink_to_lo(),
+                tcx.hir().body(*body).value.peel_blocks().span.shrink_to_lo(),
                 "dereference the return value",
                 "*".repeat(count),
                 Applicability::MachineApplicable,

@@ -167,9 +167,17 @@ struct SourceMapFiles {
     stable_id_to_source_file: UnhashMap<StableSourceFileId, Lrc<SourceFile>>,
 }
 
+/// Used to construct a `SourceMap` with `SourceMap::with_inputs`.
+pub struct SourceMapInputs {
+    pub file_loader: Box<dyn FileLoader + Send + Sync>,
+    pub path_mapping: FilePathMapping,
+    pub hash_kind: SourceFileHashAlgorithm,
+}
+
 pub struct SourceMap {
     files: RwLock<SourceMapFiles>,
     file_loader: IntoDynSyncSend<Box<dyn FileLoader + Sync + Send>>,
+
     // This is used to apply the file path remapping as specified via
     // `--remap-path-prefix` to all `SourceFile`s allocated within this `SourceMap`.
     path_mapping: FilePathMapping,
@@ -180,17 +188,15 @@ pub struct SourceMap {
 
 impl SourceMap {
     pub fn new(path_mapping: FilePathMapping) -> SourceMap {
-        Self::with_file_loader_and_hash_kind(
-            Box::new(RealFileLoader),
+        Self::with_inputs(SourceMapInputs {
+            file_loader: Box::new(RealFileLoader),
             path_mapping,
-            SourceFileHashAlgorithm::Md5,
-        )
+            hash_kind: SourceFileHashAlgorithm::Md5,
+        })
     }
 
-    pub fn with_file_loader_and_hash_kind(
-        file_loader: Box<dyn FileLoader + Sync + Send>,
-        path_mapping: FilePathMapping,
-        hash_kind: SourceFileHashAlgorithm,
+    pub fn with_inputs(
+        SourceMapInputs { file_loader, path_mapping, hash_kind }: SourceMapInputs,
     ) -> SourceMap {
         SourceMap {
             files: Default::default(),
@@ -1052,6 +1058,10 @@ impl SourceMap {
         let span = self.next_point(span);
         if self.span_to_snippet(span).as_deref() == Ok(";") { Some(span) } else { None }
     }
+}
+
+pub fn get_source_map() -> Option<Lrc<SourceMap>> {
+    with_session_globals(|session_globals| session_globals.source_map.clone())
 }
 
 #[derive(Clone)]

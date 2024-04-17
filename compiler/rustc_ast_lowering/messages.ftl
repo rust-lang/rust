@@ -127,6 +127,8 @@ ast_lowering_never_pattern_with_guard =
     a guard on a never pattern will never be run
     .suggestion = remove this guard
 
+ast_lowering_no_precise_captures_on_apit = `use<...>` precise capturing syntax not allowed on argument-position `impl Trait`
+
 ast_lowering_previously_used_here = previously used here
 
 ast_lowering_register1 = register `{$reg1_name}`

@@ -12,21 +12,19 @@ use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
 /// useful for printing messages etc but also required at various
 /// points for correctness.
 pub struct OpportunisticVarResolver<'a, 'tcx> {
-    // The shallow resolver is used to resolve inference variables at every
-    // level of the type.
-    shallow_resolver: crate::infer::ShallowResolver<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> OpportunisticVarResolver<'a, 'tcx> {
     #[inline]
     pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
-        OpportunisticVarResolver { shallow_resolver: crate::infer::ShallowResolver { infcx } }
+        OpportunisticVarResolver { infcx }
     }
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
     fn interner(&self) -> TyCtxt<'tcx> {
-        TypeFolder::interner(&self.shallow_resolver)
+        self.infcx.tcx
     }
 
     #[inline]
@@ -34,7 +32,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
         if !t.has_non_region_infer() {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
-            let t = self.shallow_resolver.fold_ty(t);
+            let t = self.infcx.shallow_resolve(t);
             t.super_fold_with(self)
         }
     }
@@ -43,7 +41,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
         if !ct.has_non_region_infer() {
             ct // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
-            let ct = self.shallow_resolver.fold_const(ct);
+            let ct = self.infcx.shallow_resolve_const(ct);
             ct.super_fold_with(self)
         }
     }
@@ -160,7 +158,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
         if !c.has_infer() {
             Ok(c) // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
-            let c = self.infcx.shallow_resolve(c);
+            let c = self.infcx.shallow_resolve_const(c);
             match c.kind() {
                 ty::ConstKind::Infer(InferConst::Var(vid)) => {
                     return Err(FixupError::UnresolvedConst(vid));

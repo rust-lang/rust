@@ -21,8 +21,8 @@ LL |     let _y = &**x;
    |
 help: consider assigning a value
    |
-LL |     let x: &&S<i32, i32> = &&value;
-   |                          +++++++++
+LL |     let x: &&S<i32, i32> = &&/* value */;
+   |                          +++++++++++++++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-ref-chain.rs:14:14

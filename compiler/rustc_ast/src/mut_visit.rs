@@ -259,6 +259,10 @@ pub trait MutVisitor: Sized {
         noop_visit_param_bound(tpb, self);
     }
 
+    fn visit_precise_capturing_arg(&mut self, arg: &mut PreciseCapturingArg) {
+        noop_visit_precise_capturing_arg(arg, self);
+    }
+
     fn visit_mt(&mut self, mt: &mut MutTy) {
         noop_visit_mt(mt, self);
     }
@@ -518,9 +522,14 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
         TyKind::TraitObject(bounds, _syntax) => {
             visit_vec(bounds, |bound| vis.visit_param_bound(bound))
         }
-        TyKind::ImplTrait(id, bounds) => {
+        TyKind::ImplTrait(id, bounds, precise_capturing) => {
             vis.visit_id(id);
             visit_vec(bounds, |bound| vis.visit_param_bound(bound));
+            if let Some((precise_capturing, _span)) = precise_capturing.as_deref_mut() {
+                for arg in precise_capturing {
+                    vis.visit_precise_capturing_arg(arg);
+                }
+            }
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
         TyKind::AnonStruct(id, fields) | TyKind::AnonUnion(id, fields) => {
@@ -911,6 +920,18 @@ pub fn noop_visit_param_bound<T: MutVisitor>(pb: &mut GenericBound, vis: &mut T)
     match pb {
         GenericBound::Trait(ty, _modifier) => vis.visit_poly_trait_ref(ty),
         GenericBound::Outlives(lifetime) => noop_visit_lifetime(lifetime, vis),
+    }
+}
+
+pub fn noop_visit_precise_capturing_arg<T: MutVisitor>(arg: &mut PreciseCapturingArg, vis: &mut T) {
+    match arg {
+        PreciseCapturingArg::Lifetime(lt) => {
+            vis.visit_lifetime(lt);
+        }
+        PreciseCapturingArg::Arg(path, id) => {
+            vis.visit_path(path);
+            vis.visit_id(id);
+        }
     }
 }
 

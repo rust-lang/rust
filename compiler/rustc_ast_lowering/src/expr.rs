@@ -14,6 +14,7 @@ use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::HirId;
 use rustc_middle::span_bug;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, Spanned};
@@ -701,8 +702,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn maybe_forward_track_caller(
         &mut self,
         span: Span,
-        outer_hir_id: hir::HirId,
-        inner_hir_id: hir::HirId,
+        outer_hir_id: HirId,
+        inner_hir_id: HirId,
     ) {
         if self.tcx.features().async_fn_track_caller
             && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
@@ -1048,7 +1049,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
-        closure_hir_id: hir::HirId,
+        closure_hir_id: HirId,
         coroutine_kind: CoroutineKind,
         decl: &FnDecl,
         body: &Expr,
@@ -2036,7 +2037,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         sp: Span,
         ident: Ident,
-        binding: hir::HirId,
+        binding: HirId,
     ) -> &'hir hir::Expr<'hir> {
         self.arena.alloc(self.expr_ident_mut(sp, ident, binding))
     }
@@ -2045,7 +2046,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         span: Span,
         ident: Ident,
-        binding: hir::HirId,
+        binding: HirId,
     ) -> hir::Expr<'hir> {
         let hir_id = self.next_id();
         let res = Res::Local(binding);

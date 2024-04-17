@@ -112,6 +112,13 @@ fn run_tests(
     config.program.envs.push(("RUST_BACKTRACE".into(), Some("1".into())));
 
     // Add some flags we always want.
+    config.program.args.push(
+        format!(
+            "--sysroot={}",
+            env::var("MIRI_SYSROOT").expect("MIRI_SYSROOT must be set to run the ui test suite")
+        )
+        .into(),
+    );
     config.program.args.push("-Dwarnings".into());
     config.program.args.push("-Dunused".into());
     config.program.args.push("-Ainternal_features".into());
@@ -296,12 +303,13 @@ fn main() -> Result<()> {
 
 fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Result<()> {
     let path = args.next().expect("./miri run-dep must be followed by a file name");
-    let config = miri_config(
+    let mut config = miri_config(
         &target,
         "",
         Mode::Yolo { rustfix: RustfixMode::Disabled },
         /* with dependencies */ true,
     );
+    config.program.args.clear(); // remove the `--error-format` that ui_test adds by default
     let dep_args = config.build_dependencies()?;
 
     let mut cmd = config.program.build(&config.out_dir);

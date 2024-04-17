@@ -346,6 +346,11 @@ impl UniverseIndex {
     pub fn cannot_name(self, other: UniverseIndex) -> bool {
         self < other
     }
+
+    /// Returns `true` if `self` is the root universe, otherwise false.
+    pub fn is_root(self) -> bool {
+        self == Self::ROOT
+    }
 }
 
 impl Default for UniverseIndex {

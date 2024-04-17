@@ -571,7 +571,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             )?;
             // If the predicate has done any inference, then downgrade the
             // result to ambiguous.
-            if this.infcx.shallow_resolve(goal) != goal {
+            if this.infcx.resolve_vars_if_possible(goal) != goal {
                 result = result.max(EvaluatedToAmbig);
             }
             Ok(result)
@@ -1774,9 +1774,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // that means that we must have newly inferred something about the GAT.
             // We should give up in that case.
             if !generics.params.is_empty()
-                && obligation.predicate.args[generics.parent_count..]
-                    .iter()
-                    .any(|&p| p.has_non_region_infer() && self.infcx.shallow_resolve(p) != p)
+                && obligation.predicate.args[generics.parent_count..].iter().any(|&p| {
+                    p.has_non_region_infer() && self.infcx.resolve_vars_if_possible(p) != p
+                })
             {
                 ProjectionMatchesProjection::Ambiguous
             } else {

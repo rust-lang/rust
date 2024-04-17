@@ -145,7 +145,6 @@ impl LldMode {
 /// `config.example.toml`.
 #[derive(Default, Clone)]
 pub struct Config {
-    pub changelog_seen: Option<usize>, // FIXME: Deprecated field. Remove it at 2024.
     pub change_id: Option<usize>,
     pub bypass_bootstrap_lock: bool,
     pub ccache: Option<String>,
@@ -605,7 +604,6 @@ impl Target {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub(crate) struct TomlConfig {
-    changelog_seen: Option<usize>, // FIXME: Deprecated field. Remove it at 2024.
     #[serde(flatten)]
     change_id: ChangeIdWrapper,
     build: Option<Build>,
@@ -645,17 +643,7 @@ trait Merge {
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
-        TomlConfig {
-            build,
-            install,
-            llvm,
-            rust,
-            dist,
-            target,
-            profile: _,
-            changelog_seen,
-            change_id,
-        }: Self,
+        TomlConfig { build, install, llvm, rust, dist, target, profile: _, change_id }: Self,
         replace: ReplaceOpt,
     ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
@@ -667,7 +655,6 @@ impl Merge for TomlConfig {
                 }
             }
         }
-        self.changelog_seen.merge(changelog_seen, replace);
         self.change_id.inner.merge(change_id.inner, replace);
         do_merge(&mut self.build, build, replace);
         do_merge(&mut self.install, install, replace);
@@ -1400,7 +1387,6 @@ impl Config {
         }
         toml.merge(override_toml, ReplaceOpt::Override);
 
-        config.changelog_seen = toml.changelog_seen;
         config.change_id = toml.change_id.inner;
 
         let Build {

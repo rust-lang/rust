@@ -479,6 +479,26 @@ then `-C target-feature=+crt-static` "wins" over `-C relocation-model=pic`,
 and the linker is instructed (`-static`) to produce a statically linked
 but not position-independent executable.
 
+## relro-level
+
+This flag controls what level of RELRO (Relocation Read-Only) is enabled. RELRO is an exploit
+mitigation which makes the Global Offset Table (GOT) read-only.
+
+Supported values for this option are:
+
+- `off`: Dynamically linked functions are resolved lazily and the GOT is writable.
+- `partial`: Dynamically linked functions are resolved lazily and written into the Procedure
+  Linking Table (PLT) part of the GOT (`.got.plt`). The non-PLT part of the GOT (`.got`) is made
+  read-only and both are moved to prevent writing from buffer overflows.
+- `full`: Dynamically linked functions are resolved at the start of program execution and the
+  Global Offset Table (`.got`/`.got.plt`) is populated eagerly and then made read-only. The GOT is
+  also moved to prevent writing from buffer overflows. Full RELRO uses more memory and increases
+  process startup time.
+
+This flag is ignored on platforms where RELRO is not supported (targets which do not use the ELF
+binary format), such as Windows or macOS. Each rustc target has its own default for RELRO. rustc
+enables Full RELRO by default on platforms where it is supported.
+
 ## remark
 
 This flag lets you print remarks for optimization passes.

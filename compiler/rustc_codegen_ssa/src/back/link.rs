@@ -2059,7 +2059,7 @@ fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session, self_contained:
 /// Add options making relocation sections in the produced ELF files read-only
 /// and suppressing lazy binding.
 fn add_relro_args(cmd: &mut dyn Linker, sess: &Session) {
-    match sess.opts.unstable_opts.relro_level.unwrap_or(sess.target.relro_level) {
+    match sess.opts.cg.relro_level.unwrap_or(sess.target.relro_level) {
         RelroLevel::Full => cmd.full_relro(),
         RelroLevel::Partial => cmd.partial_relro(),
         RelroLevel::Off => cmd.no_relro(),
@@ -3038,9 +3038,10 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootErro
                     || sdkroot.contains("MacOSX.platform") => {}
             "watchsimulator"
                 if sdkroot.contains("WatchOS.platform") || sdkroot.contains("MacOSX.platform") => {}
-            "visionos"
-                if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {}
-            "visionossimulator"
+            "xros"
+                if sdkroot.contains("XRSimulator.platform")
+                    || sdkroot.contains("MacOSX.platform") => {}
+            "xrsimulator"
                 if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {}
             // Ignore `SDKROOT` if it's not a valid path.
             _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}

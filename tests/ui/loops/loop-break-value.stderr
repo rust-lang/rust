@@ -246,8 +246,8 @@ LL |         break;
    |
 help: give the `break` a value of the expected type
    |
-LL |         break value;
-   |               +++++
+LL |         break /* value */;
+   |               +++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:112:9
@@ -260,8 +260,8 @@ LL |         break;
    |
 help: give the `break` a value of the expected type
    |
-LL |         break value;
-   |               +++++
+LL |         break /* value */;
+   |               +++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:124:9
@@ -274,8 +274,8 @@ LL |         break 'a;
    |
 help: give the `break` a value of the expected type
    |
-LL |         break 'a value;
-   |                  +++++
+LL |         break 'a /* value */;
+   |                  +++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:135:15
@@ -297,8 +297,8 @@ LL |                 break 'a;
    |
 help: give the `break` a value of the expected type
    |
-LL |                 break 'a value;
-   |                          +++++
+LL |                 break 'a /* value */;
+   |                          +++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:147:15
@@ -320,8 +320,8 @@ LL |                 break 'a;
    |
 help: give the `break` a value of the expected type
    |
-LL |                 break 'a value;
-   |                          +++++
+LL |                 break 'a /* value */;
+   |                          +++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:159:15

@@ -71,7 +71,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-        blk_id: hir::HirId,
+        blk_id: HirId,
     ) -> bool {
         let expr = expr.peel_drop_temps();
         let mut pointing_at_return_type = false;
@@ -1031,7 +1031,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_decl: &hir::FnDecl<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-        id: hir::HirId,
+        id: HirId,
         fn_id: LocalDefId,
     ) {
         if !expected.is_unit() {
@@ -1600,12 +1600,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_loop(&self, id: hir::HirId) -> bool {
+    fn is_loop(&self, id: HirId) -> bool {
         let node = self.tcx.hir_node(id);
         matches!(node, Node::Expr(Expr { kind: ExprKind::Loop(..), .. }))
     }
 
-    fn is_local_statement(&self, id: hir::HirId) -> bool {
+    fn is_local_statement(&self, id: HirId) -> bool {
         let node = self.tcx.hir_node(id);
         matches!(node, Node::Stmt(Stmt { kind: StmtKind::Let(..), .. }))
     }

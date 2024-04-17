@@ -213,7 +213,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let scc = self.constraint_sccs.scc(vid);
 
                 // Special handling of higher-ranked regions.
-                if self.scc_universes[scc] != ty::UniverseIndex::ROOT {
+                if !self.scc_universes[scc].is_root() {
                     match self.scc_values.placeholders_contained_in(scc).enumerate().last() {
                         // If the region contains a single placeholder then they're equal.
                         Some((0, placeholder)) => {

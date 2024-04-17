@@ -2,7 +2,6 @@
 //
 //@ check-pass
 //@ revisions: simple mixed empty
-//@ compile-flags: -Z unstable-options
 //@ compile-flags: --check-cfg=cfg(values,simple,mixed,empty)
 //@ [simple]compile-flags: --check-cfg=cfg(test) --check-cfg=cfg(feature)
 //@ [mixed]compile-flags: --check-cfg=cfg(test,feature)

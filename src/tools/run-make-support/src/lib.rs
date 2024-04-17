@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 pub use object;
+pub use regex;
 pub use wasmparser;
 
 pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};

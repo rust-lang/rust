@@ -37,6 +37,8 @@ hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit wh
     .label = deref recursion limit reached
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
 
+hir_analysis_bad_precise_capture = expected {$kind} parameter in `use<...>` precise captures list, found {$found}
+
 hir_analysis_cannot_capture_late_bound_const =
     cannot capture late-bound const parameter in {$what}
     .label = parameter defined here
@@ -110,6 +112,9 @@ hir_analysis_drop_impl_on_wrong_item =
     .label = must be a struct, enum, or union in the current crate
 
 hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported
+
+hir_analysis_duplicate_precise_capture = cannot capture parameter `{$name}` twice
+    .label = parameter captured again here
 
 hir_analysis_empty_specialization = specialization impl does not specialize any associated items
     .note = impl is a specialization of this impl
@@ -213,6 +218,13 @@ hir_analysis_late_bound_lifetime_in_apit = `impl Trait` can only mention lifetim
 
 hir_analysis_late_bound_type_in_apit = `impl Trait` can only mention type parameters from an fn or impl
     .label = type parameter declared here
+
+hir_analysis_lifetime_must_be_first = lifetime parameter `{$name}` must be listed before non-lifetime parameters
+    .label = move the lifetime before this parameter
+
+hir_analysis_lifetime_not_captured = `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
+    .label = lifetime captured due to being mentioned in the bounds of the `impl Trait`
+    .param_label = this lifetime parameter is captured
 
 hir_analysis_lifetimes_or_bounds_mismatch_on_trait =
     lifetime parameters or bounds on {$item_kind} `{$ident}` do not match the trait declaration
@@ -339,6 +351,10 @@ hir_analysis_param_in_ty_of_assoc_const_binding =
         *[normal] the {$param_def_kind} `{$param_name}` is defined here
     }
 
+hir_analysis_param_not_captured = `impl Trait` must mention all {$kind} parameters in scope
+    .label = {$kind} parameter is implicitly captured by this `impl Trait`
+    .note = currently, all {$kind} parameters are required to be mentioned in the precise captures list
+
 hir_analysis_paren_sugar_attribute = the `#[rustc_paren_sugar]` attribute is a temporary means of controlling which traits can use parenthetical notation
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to use it
 
@@ -354,6 +370,9 @@ hir_analysis_pattern_type_wild_pat = "wildcard patterns are not permitted for pa
     .label = "this type is the same as the inner type without a pattern"
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
+
+hir_analysis_precise_capture_self_alias = `Self` can't be captured in `use<...>` precise captures list, since it is an alias
+    .label = `Self` is not a generic argument, but an alias to the type of the {$what}
 
 hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
     .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`

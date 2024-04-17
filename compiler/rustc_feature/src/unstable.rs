@@ -533,6 +533,8 @@ declare_features! (
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// Allows the `#[must_not_suspend]` attribute.
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
+    /// Make `mut` not reset the binding mode on edition >= 2024.
+    (incomplete, mut_preserve_binding_mode_2024, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// Allows using `#[naked]` on functions.
@@ -567,10 +569,14 @@ declare_features! (
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "CURRENT_RUSTC_VERSION", Some(121618)),
+    /// Allows `use<'a, 'b, A, B>` in `impl use<...> Trait` for precise capture of generic args.
+    (incomplete, precise_capturing, "CURRENT_RUSTC_VERSION", Some(123432)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
     (unstable, raw_ref_op, "1.41.0", Some(64490)),
+    /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
+    (incomplete, ref_pat_eat_one_layer_2024, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// Allows `&` and `&mut` patterns to consume match-ergonomics-inserted references.
     (incomplete, ref_pat_everywhere, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// Allows using the `#[register_tool]` attribute.

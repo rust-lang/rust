@@ -257,7 +257,7 @@ impl CheckCfg {
         // `tests/ui/check-cfg/well-known-values.rs` (in order to test the
         // expected values of the new config) and bless the all directory.
         //
-        // Don't forget to update `src/doc/unstable-book/src/compiler-flags/check-cfg.md`
+        // Don't forget to update `src/doc/rustc/src/check-cfg.md`
         // in the unstable book as well!
 
         ins!(sym::debug_assertions, no_values);

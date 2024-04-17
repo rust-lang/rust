@@ -9,7 +9,7 @@ use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, BindingAnnotation, ByRef, Node};
+use rustc_hir::{self as hir, BindingAnnotation, ByRef, HirId, Node};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -158,7 +158,7 @@ struct Builder<'a, 'tcx> {
     cfg: CFG<'tcx>,
 
     def_id: LocalDefId,
-    hir_id: hir::HirId,
+    hir_id: HirId,
     parent_module: DefId,
     check_overflow: bool,
     fn_span: Span,
@@ -222,7 +222,7 @@ struct Builder<'a, 'tcx> {
     coverage_branch_info: Option<coverageinfo::BranchInfoBuilder>,
 }
 
-type CaptureMap<'tcx> = SortedIndexMultiMap<usize, hir::HirId, Capture<'tcx>>;
+type CaptureMap<'tcx> = SortedIndexMultiMap<usize, HirId, Capture<'tcx>>;
 
 #[derive(Debug)]
 struct Capture<'tcx> {
@@ -721,7 +721,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         thir: &'a Thir<'tcx>,
         infcx: InferCtxt<'tcx>,
         def: LocalDefId,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         span: Span,
         arg_count: usize,
         return_ty: Ty<'tcx>,
@@ -981,7 +981,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn set_correct_source_scope_for_arg(
         &mut self,
-        arg_hir_id: hir::HirId,
+        arg_hir_id: HirId,
         original_source_scope: SourceScope,
         pattern_span: Span,
     ) {

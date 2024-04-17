@@ -20,6 +20,7 @@ fn main() {
     wide_raw_ptr_in_tuple();
     not_unpin_not_protected();
     write_does_not_invalidate_all_aliases();
+    box_into_raw_allows_interior_mutable_alias();
 }
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
@@ -263,3 +264,14 @@ fn write_does_not_invalidate_all_aliases() {
     other::lib2();
     assert_eq!(*x, 1337); // oops, the value changed! I guess not all pointers were invalidated
 }
+
+fn box_into_raw_allows_interior_mutable_alias() { unsafe {
+    let b = Box::new(std::cell::Cell::new(42));
+    let raw = Box::into_raw(b);
+    let c = &*raw;
+    let d = raw.cast::<i32>(); // bypassing `Cell` -- only okay in Miri tests
+    // `c` and `d` should permit arbitrary aliasing with each other now.
+    *d = 1;
+    c.set(2);
+    drop(Box::from_raw(raw));
+} }
