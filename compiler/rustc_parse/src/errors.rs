@@ -1024,6 +1024,8 @@ pub(crate) enum ExpectedIdentifierFound {
     ReservedKeyword(#[primary_span] Span),
     #[label(parse_expected_identifier_found_doc_comment)]
     DocComment(#[primary_span] Span),
+    #[label(parse_expected_identifier_found_metavar)]
+    MetaVar(#[primary_span] Span),
     #[label(parse_expected_identifier)]
     Other(#[primary_span] Span),
 }
@@ -1037,6 +1039,7 @@ impl ExpectedIdentifierFound {
             Some(TokenDescription::Keyword) => ExpectedIdentifierFound::Keyword,
             Some(TokenDescription::ReservedKeyword) => ExpectedIdentifierFound::ReservedKeyword,
             Some(TokenDescription::DocComment) => ExpectedIdentifierFound::DocComment,
+            Some(TokenDescription::MetaVar(_)) => ExpectedIdentifierFound::MetaVar,
             None => ExpectedIdentifierFound::Other,
         })(span)
     }
@@ -1055,6 +1058,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedIdentifier {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
+        let mut add_token = true;
         let mut diag = Diag::new(
             dcx,
             level,
@@ -1071,11 +1075,17 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedIdentifier {
                 Some(TokenDescription::DocComment) => {
                     fluent::parse_expected_identifier_found_doc_comment_str
                 }
+                Some(TokenDescription::MetaVar(_)) => {
+                    add_token = false;
+                    fluent::parse_expected_identifier_found_metavar_str
+                }
                 None => fluent::parse_expected_identifier_found_str,
             },
         );
         diag.span(self.span);
-        diag.arg("token", self.token);
+        if add_token {
+            diag.arg("token", self.token);
+        }
 
         if let Some(sugg) = self.suggest_raw {
             sugg.add_to_diag(&mut diag);
@@ -1115,6 +1125,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedSemi {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
+        let mut add_token = true;
         let mut diag = Diag::new(
             dcx,
             level,
@@ -1129,11 +1140,17 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedSemi {
                 Some(TokenDescription::DocComment) => {
                     fluent::parse_expected_semi_found_doc_comment_str
                 }
+                Some(TokenDescription::MetaVar(_)) => {
+                    add_token = false;
+                    fluent::parse_expected_semi_found_metavar_str
+                }
                 None => fluent::parse_expected_semi_found_str,
             },
         );
         diag.span(self.span);
-        diag.arg("token", self.token);
+        if add_token {
+            diag.arg("token", self.token);
+        }
 
         if let Some(unexpected_token_label) = self.unexpected_token_label {
             diag.span_label(unexpected_token_label, fluent::parse_label_unexpected_token);
@@ -1813,6 +1830,12 @@ pub(crate) enum UnexpectedTokenAfterStructName {
         span: Span,
         token: Token,
     },
+    #[diag(parse_unexpected_token_after_struct_name_found_metavar)]
+    MetaVar {
+        #[primary_span]
+        #[label(parse_unexpected_token_after_struct_name)]
+        span: Span,
+    },
     #[diag(parse_unexpected_token_after_struct_name_found_other)]
     Other {
         #[primary_span]
@@ -1829,6 +1852,7 @@ impl UnexpectedTokenAfterStructName {
             Some(TokenDescription::Keyword) => Self::Keyword { span, token },
             Some(TokenDescription::ReservedKeyword) => Self::ReservedKeyword { span, token },
             Some(TokenDescription::DocComment) => Self::DocComment { span, token },
+            Some(TokenDescription::MetaVar(_)) => Self::MetaVar { span },
             None => Self::Other { span, token },
         }
     }
