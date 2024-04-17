@@ -932,6 +932,11 @@ range_exact_iter_impl! {
     i32
 }
 
+#[cfg(target_pointer_width = "64")]
+range_exact_iter_impl! {
+    u64 i64
+}
+
 unsafe_range_trusted_random_access_impl! {
     usize u8 u16
     isize i8 i16
@@ -958,6 +963,11 @@ range_incl_exact_iter_impl! {
     // on 16-bit platforms, but continue to give a wrong result.
     u16
     i16
+}
+
+#[cfg(target_pointer_width = "64")]
+range_incl_exact_iter_impl! {
+    u32 i32
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
