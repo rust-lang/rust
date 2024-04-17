@@ -141,7 +141,11 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn addr_from_alloc_id(&self, alloc_id: AllocId) -> InterpResult<'tcx, u64> {
+    fn addr_from_alloc_id(
+        &self,
+        alloc_id: AllocId,
+        _kind: MemoryKind,
+    ) -> InterpResult<'tcx, u64> {
         let ecx = self.eval_context_ref();
         let mut global_state = ecx.machine.alloc_addresses.borrow_mut();
         let global_state = &mut *global_state;
@@ -283,16 +287,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Convert a relative (tcx) pointer to a Miri pointer.
-    fn ptr_from_rel_ptr(
+    fn adjust_alloc_root_pointer(
         &self,
         ptr: Pointer<CtfeProvenance>,
         tag: BorTag,
+        kind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer<Provenance>> {
         let ecx = self.eval_context_ref();
 
         let (prov, offset) = ptr.into_parts(); // offset is relative (AllocId provenance)
         let alloc_id = prov.alloc_id();
-        let base_addr = ecx.addr_from_alloc_id(alloc_id)?;
+        let base_addr = ecx.addr_from_alloc_id(alloc_id, kind)?;
 
         // Add offset with the right kind of pointer-overflowing arithmetic.
         let dl = ecx.data_layout();
@@ -314,9 +319,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             ecx.alloc_id_from_addr(addr.bytes())?
         };
 
-        // This cannot fail: since we already have a pointer with that provenance, rel_ptr_to_addr
+        // This cannot fail: since we already have a pointer with that provenance, adjust_alloc_root_pointer
         // must have been called in the past, so we can just look up the address in the map.
-        let base_addr = ecx.addr_from_alloc_id(alloc_id).unwrap();
+        let base_addr = *ecx.machine.alloc_addresses.borrow().base_addr.get(&alloc_id).unwrap();
 
         // Wrapping "addr - base_addr"
         #[allow(clippy::cast_possible_wrap)] // we want to wrap here
