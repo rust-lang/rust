@@ -303,6 +303,9 @@ pub(super) fn transcribe<'a>(
                             let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
+                        MatchedSingle(ParseNtResult::Ty(ty)) => {
+                            mk_delimited(MetaVarKind::Ty, TokenStream::from_ast(ty))
+                        }
                         MatchedSingle(ParseNtResult::Vis(vis)) => {
                             mk_delimited(MetaVarKind::Vis, TokenStream::from_ast(vis))
                         }

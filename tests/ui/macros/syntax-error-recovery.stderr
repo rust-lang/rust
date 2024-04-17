@@ -1,4 +1,4 @@
-error: expected one of `(`, `,`, `=`, `{`, or `}`, found type `(String)`
+error: expected one of `(`, `,`, `=`, `{`, or `}`, found `ty` metavariable
   --> $DIR/syntax-error-recovery.rs:7:26
    |
 LL |                 $token $($inner)? = $value,
@@ -10,7 +10,7 @@ LL | values!(STRING(1) as (String) => cfg(test),);
    = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
    = note: this error originates in the macro `values` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: macro expansion ignores type `(String)` and any tokens following
+error: macro expansion ignores `ty` metavariable and any tokens following
   --> $DIR/syntax-error-recovery.rs:7:26
    |
 LL |                 $token $($inner)? = $value,

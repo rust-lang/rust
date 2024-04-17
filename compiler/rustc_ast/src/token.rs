@@ -654,7 +654,6 @@ impl Token {
                     | NtMeta(..)
                     | NtPat(..)
                     | NtPath(..)
-                    | NtTy(..)
                 ),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Expr { .. } |
@@ -683,7 +682,7 @@ impl Token {
             Lifetime(..)                | // lifetime bound in trait object
             Lt | BinOp(Shl)             | // associated path
             PathSep                      => true, // global path
-            Interpolated(ref nt) => matches!(&**nt, NtTy(..) | NtPath(..)),
+            Interpolated(ref nt) => matches!(&**nt, NtPath(..)),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Ty |
                 MetaVarKind::Path
@@ -1064,7 +1063,6 @@ pub enum Nonterminal {
     NtStmt(P<ast::Stmt>),
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
-    NtTy(P<ast::Ty>),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::AttrItem>),
@@ -1162,7 +1160,6 @@ impl Nonterminal {
             NtStmt(stmt) => stmt.span,
             NtPat(pat) => pat.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
-            NtTy(ty) => ty.span,
             NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
         }
@@ -1176,7 +1173,6 @@ impl Nonterminal {
             NtPat(..) => "pattern",
             NtExpr(..) => "expression",
             NtLiteral(..) => "literal",
-            NtTy(..) => "type",
             NtMeta(..) => "attribute",
             NtPath(..) => "path",
         }
@@ -1201,7 +1197,6 @@ impl fmt::Debug for Nonterminal {
             NtStmt(..) => f.pad("NtStmt(..)"),
             NtPat(..) => f.pad("NtPat(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
-            NtTy(..) => f.pad("NtTy(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),

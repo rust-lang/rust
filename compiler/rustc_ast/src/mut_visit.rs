@@ -815,7 +815,6 @@ fn visit_nonterminal<T: MutVisitor>(vis: &mut T, nt: &mut token::Nonterminal) {
         }),
         token::NtPat(pat) => vis.visit_pat(pat),
         token::NtExpr(expr) => vis.visit_expr(expr),
-        token::NtTy(ty) => vis.visit_ty(ty),
         token::NtLiteral(expr) => vis.visit_expr(expr),
         token::NtMeta(item) => {
             let AttrItem { unsafety: _, path, args, tokens } = item.deref_mut();
