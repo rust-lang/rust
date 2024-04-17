@@ -869,8 +869,6 @@ impl Error {
     /// # Examples
     ///
     /// ```
-    /// #![feature(io_error_downcast)]
-    ///
     /// use std::fmt;
     /// use std::io;
     /// use std::error::Error;
@@ -923,7 +921,7 @@ impl Error {
     /// assert!(io_error.raw_os_error().is_none());
     /// # }
     /// ```
-    #[unstable(feature = "io_error_downcast", issue = "99262")]
+    #[stable(feature = "io_error_downcast", since = "CURRENT_RUSTC_VERSION")]
     pub fn downcast<E>(self) -> result::Result<E, Self>
     where
         E: error::Error + Send + Sync + 'static,
