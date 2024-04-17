@@ -107,6 +107,16 @@ const ROOT_PROBLEMATIC_CONSTS: &[u32] = &[
     173390526,
 ];
 
+fn generate_problematic_regex(
+    consts: &[u32],
+    letter_digit: &FxHashMap<char, char>,
+) -> RegexSet {
+    RegexSet::new(
+        generate_problems(consts, letter_digit)
+            .flat_map(|v| vec![v.to_string(), format!("{:x}", v), format!("{:X}", v)])
+    ).unwrap()
+}
+
 const INTERNAL_COMPILER_DOCS_LINE: &str = "#### This error code is internal to the compiler and will not be emitted with normal Rust code.";
 
 /// Parser states for `line_is_url`.
@@ -303,16 +313,10 @@ pub fn check(path: &Path, bad: &mut bool) {
         // We only check CSS files in rustdoc.
         path.extension().map_or(false, |e| e == "css") && !is_in(path, "src", "librustdoc")
     }
-    let problematic_consts = generate_problems(
+    let problematic_regex = generate_problematic_regex(
         ROOT_PROBLEMATIC_CONSTS,
         &[('A', '4'), ('B', '8'), ('E', '3')].iter().cloned().collect(),
-    )
-    .collect::<Vec<u32>>();
-    let problematic_consts_strings: Vec<String> = (problematic_consts.iter().map(u32::to_string))
-        .chain(problematic_consts.iter().map(|v| format!("{:x}", v)))
-        .chain(problematic_consts.iter().map(|v| format!("{:X}", v)))
-        .collect();
-    let problematic_regex = RegexSet::new(problematic_consts_strings.as_slice()).unwrap();
+    );
 
     walk(path, skip, &mut |entry, contents| {
         let file = entry.path();
