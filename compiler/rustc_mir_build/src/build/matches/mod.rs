@@ -2452,6 +2452,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 None,
                 true,
             );
+
+            // If branch coverage is enabled, record this branch.
+            this.visit_coverage_conditional_let(pattern, matching, failure);
+
             this.break_for_else(failure, this.source_info(initializer_span));
             matching.unit()
         });
