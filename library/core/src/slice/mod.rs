@@ -2893,7 +2893,7 @@ impl<T> [T] {
     /// The current implementation is based on [ipnsort] by Lukas Bergdoll and Orson Peters, which
     /// combines the fast average case of quicksort with the fast worst case of heapsort, achieving
     /// linear time on fully sorted and reversed inputs. On inputs with k distinct elements, the
-    /// expected time to sort the data is *O(*n* log(*k*))*.
+    /// expected time to sort the data is *O(*n* \* log(*k*))*.
     ///
     /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
     /// slice is partially sorted.
@@ -2950,7 +2950,7 @@ impl<T> [T] {
     /// The current implementation is based on [ipnsort] by Lukas Bergdoll and Orson Peters, which
     /// combines the fast average case of quicksort with the fast worst case of heapsort, achieving
     /// linear time on fully sorted and reversed inputs. On inputs with k distinct elements, the
-    /// expected time to sort the data is *O(*n* log(*k*))*.
+    /// expected time to sort the data is *O(*n* \* log(*k*))*.
     ///
     /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
     /// slice is partially sorted.
@@ -2994,7 +2994,7 @@ impl<T> [T] {
     /// The current implementation is based on [ipnsort] by Lukas Bergdoll and Orson Peters, which
     /// combines the fast average case of quicksort with the fast worst case of heapsort, achieving
     /// linear time on fully sorted and reversed inputs. On inputs with k distinct elements, the
-    /// expected time to sort the data is *O(*n* log(*k*))*.
+    /// expected time to sort the data is *O(*n* \* log(*k*))*.
     ///
     /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
     /// slice is partially sorted.
@@ -3042,8 +3042,8 @@ impl<T> [T] {
     /// Median of Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime
     /// for all inputs.
     ///
-    /// It is typically faster than sorting, except in a few special cases, e.g., when the slice is
-    /// nearly fully sorted, where [`slice::sort`] may be faster.
+    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
+    /// slice is nearly fully sorted, where `slice::sort` may be faster.
     ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
@@ -3103,8 +3103,8 @@ impl<T> [T] {
     /// Median of Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime
     /// for all inputs.
     ///
-    /// It is typically faster than sorting, except in a few special cases, e.g., when the slice is
-    /// nearly fully sorted, where [`slice::sort`] may be faster.
+    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
+    /// slice is nearly fully sorted, where `slice::sort` may be faster.
     ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
@@ -3168,8 +3168,8 @@ impl<T> [T] {
     /// Median of Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime
     /// for all inputs.
     ///
-    /// It is typically faster than sorting, except in a few special cases, e.g., when the slice is
-    /// nearly fully sorted, where [`slice::sort`] may be faster.
+    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
+    /// slice is nearly fully sorted, where `slice::sort` may be faster.
     ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
