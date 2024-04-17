@@ -103,9 +103,15 @@ pub(crate) fn rewrite_match(
     let inner_attrs_str = if inner_attrs.is_empty() {
         String::new()
     } else {
-        inner_attrs
-            .rewrite(context, shape.block_indent(context.config.tab_spaces()))
-            .map(|s| format!("{}{}\n", nested_indent_str, s))?
+        if context.config.version() == Version::One {
+            inner_attrs
+                .rewrite(context, shape)
+                .map(|s| format!("{}{}\n", nested_indent_str, s))?
+        } else {
+            inner_attrs
+                .rewrite(context, shape.block_indent(context.config.tab_spaces()))
+                .map(|s| format!("{}{}\n", nested_indent_str, s))?
+        }
     };
 
     let open_brace_pos = if inner_attrs.is_empty() {

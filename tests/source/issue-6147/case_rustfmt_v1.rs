@@ -1,3 +1,5 @@
+// rustfmt-version: One
+
 pub fn main() {
 let a = Some(12);
 match a {
