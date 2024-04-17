@@ -4,7 +4,7 @@ use clippy_utils::{def_path_def_ids, trait_ref_of_method};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{Adt, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
@@ -153,7 +153,7 @@ impl MutableKeyType {
     // generics (because the compiler cannot ensure immutability for unknown types).
     fn check_ty_<'tcx>(&self, cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
         let ty = ty.peel_refs();
-        if let Adt(def, args) = ty.kind() {
+        if let ty::Adt(def, args) = ty.kind() {
             let is_keyed_type = [sym::HashMap, sym::BTreeMap, sym::HashSet, sym::BTreeSet]
                 .iter()
                 .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def.did()));

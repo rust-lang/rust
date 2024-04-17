@@ -4,7 +4,7 @@ use rustc_hir::{self as hir, HirId, ItemKind, Node};
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf as _;
-use rustc_middle::ty::{Adt, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -49,7 +49,7 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
             && !in_trait_impl(cx, hir_ty.hir_id)
             && let ty = ty_from_hir_ty(cx, hir_ty)
             && (is_type_diagnostic_item(cx, ty, sym::HashMap) || is_type_diagnostic_item(cx, ty, sym::BTreeMap))
-            && let Adt(_, args) = ty.kind()
+            && let ty::Adt(_, args) = ty.kind()
             && let ty = args.type_at(1)
             // Fixes https://github.com/rust-lang/rust-clippy/issues/7447 because of
             // https://github.com/rust-lang/rust/blob/master/compiler/rustc_middle/src/ty/sty.rs#L968

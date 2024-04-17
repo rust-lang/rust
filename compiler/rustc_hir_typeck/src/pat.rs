@@ -12,7 +12,7 @@ use rustc_infer::infer;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_lint as lint;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::ty::{self, Adt, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
@@ -1106,7 +1106,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     _ => {
                         let (type_def_id, item_def_id) = match pat_ty.kind() {
-                            Adt(def, _) => match res {
+                            ty::Adt(def, _) => match res {
                                 Res::Def(DefKind::Const, def_id) => (Some(def.did()), Some(def_id)),
                                 _ => (None, None),
                             },
