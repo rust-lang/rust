@@ -22,6 +22,9 @@ use regex::{Regex, RegexSet};
 use rustc_hash::FxHashMap;
 use std::{ffi::OsStr, path::Path};
 
+#[cfg(test)]
+mod tests;
+
 /// Error code markdown is restricted to 80 columns because they can be
 /// displayed on the console with --example.
 const ERROR_CODE_COLS: usize = 80;
@@ -104,7 +107,7 @@ fn generate_problems<'a>(
 const ROOT_PROBLEMATIC_CONSTS: &[u32] = &[
     184594741, 2880289470, 2881141438, 2965027518, 2976579765, 3203381950, 3405691582, 3405697037,
     3735927486, 3735932941, 4027431614, 4276992702, 195934910, 252707358, 762133, 179681982,
-    173390526,
+    173390526, 524421,
 ];
 
 fn generate_problematic_strings(
