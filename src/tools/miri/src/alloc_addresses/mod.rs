@@ -141,11 +141,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn addr_from_alloc_id(
-        &self,
-        alloc_id: AllocId,
-        _kind: MemoryKind,
-    ) -> InterpResult<'tcx, u64> {
+    fn addr_from_alloc_id(&self, alloc_id: AllocId, _kind: MemoryKind) -> InterpResult<'tcx, u64> {
         let ecx = self.eval_context_ref();
         let mut global_state = ecx.machine.alloc_addresses.borrow_mut();
         let global_state = &mut *global_state;
