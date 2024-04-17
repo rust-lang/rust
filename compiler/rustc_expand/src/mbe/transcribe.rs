@@ -1,7 +1,10 @@
 use std::mem;
 
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, LitKind, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{
+    self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Nonterminal, Token,
+    TokenKind,
+};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::ExprKind;
 use rustc_data_structures::fx::FxHashMap;
@@ -252,7 +255,6 @@ pub(super) fn transcribe<'a>(
                 }
             }
 
-            // Replace the meta-var with the matched token tree from the invocation.
             mbe::TokenTree::MetaVar(mut sp, mut original_ident) => {
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
@@ -272,6 +274,19 @@ pub(super) fn transcribe<'a>(
                 // some of the unnecessary whitespace.
                 let ident = MacroRulesNormalizedIdent::new(original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
+                    let mut mk_delimited = |mv_kind, stream| {
+                        // Emit as a token stream within `Delimiter::Invisible` to maintain parsing
+                        // priorities.
+                        marker.visit_span(&mut sp);
+                        // Both the open delim and close delim get the same span, which covers the
+                        // `$foo` in the decl macro RHS.
+                        TokenTree::Delimited(
+                            DelimSpan::from_single(sp),
+                            DelimSpacing::new(Spacing::Alone, Spacing::Alone),
+                            Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)),
+                            stream,
+                        )
+                    };
                     let tt = match cur_matched {
                         MatchedSingle(ParseNtResult::Tt(tt)) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
@@ -287,6 +302,9 @@ pub(super) fn transcribe<'a>(
                             marker.visit_span(&mut sp);
                             let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
+                        }
+                        MatchedSingle(ParseNtResult::Vis(vis)) => {
+                            mk_delimited(MetaVarKind::Vis, TokenStream::from_ast(vis))
                         }
                         MatchedSingle(ParseNtResult::Nt(nt)) => {
                             // Other variables are emitted into the output stream as groups with
