@@ -717,8 +717,10 @@ impl ByRef {
 }
 
 /// The mode of a binding (`mut`, `ref mut`, etc).
-/// Used for both the wxplicit binding annotations given in the HIR for a binding
-/// and the final binding *mode* that we infer after type inference.
+/// Used for both the explicit binding annotations given in the HIR for a binding
+/// and the final binding mode that we infer after type inference/match ergonomics.
+/// `.0` is the by-reference mode (`ref`, `ref mut`, or by value),
+/// `.1` is the mutability of the binding.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub struct BindingMode(pub ByRef, pub Mutability);
