@@ -1,0 +1,4 @@
+thread 'main' panicked at $DIR/alloc_error_handler_hook.rs:LL:CC:
+alloc error hook called
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+yes we are unwinding!
