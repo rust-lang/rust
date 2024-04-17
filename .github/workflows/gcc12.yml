@@ -67,7 +67,7 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore --libgccjit12-patches
-        ./y.sh build --no-default-features --sysroot-panic-abort
+        ./y.sh build --sysroot --no-default-features --sysroot-panic-abort
         cargo test --no-default-features
         ./y.sh clean all
 

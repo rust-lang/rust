@@ -11,6 +11,7 @@ use std::path::Path;
 struct BuildArg {
     flags: Vec<String>,
     config_info: ConfigInfo,
+    build_sysroot: bool,
 }
 
 impl BuildArg {
@@ -32,6 +33,9 @@ impl BuildArg {
                         );
                     }
                 }
+                "--sysroot" => {
+                    build_arg.build_sysroot = true;
+                }
                 "--help" => {
                     Self::usage();
                     return Ok(None);
@@ -51,7 +55,8 @@ impl BuildArg {
             r#"
 `build` command help:
 
-    --features [arg]       : Add a new feature [arg]"#
+    --features [arg]       : Add a new feature [arg]
+    --sysroot              : Build with sysroot"#
         );
         ConfigInfo::show_usage();
         println!("    --help                 : Show this help");
@@ -206,9 +211,10 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     let _ = fs::remove_dir_all("target/out");
     let gccjit_target = "target/out/gccjit";
     create_dir(gccjit_target)?;
-
-    println!("[BUILD] sysroot");
-    build_sysroot(&env, &args.config_info)?;
+    if args.build_sysroot {
+        println!("[BUILD] sysroot");
+        build_sysroot(&env, &args.config_info)?;
+    }
     Ok(())
 }
 

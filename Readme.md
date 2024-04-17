@@ -80,7 +80,7 @@ Then you can run commands like this:
 
 ```bash
 $ ./y.sh prepare # download and patch sysroot src and install hyperfine for benchmarking
-$ ./y.sh build --release
+$ ./y.sh build --sysroot --release
 ```
 
 To run the tests:
