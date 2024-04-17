@@ -81,7 +81,7 @@ mod types;
 mod unit_bindings;
 mod unused;
 
-pub use shadowed_into_iter::ARRAY_INTO_ITER;
+pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 
 use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;

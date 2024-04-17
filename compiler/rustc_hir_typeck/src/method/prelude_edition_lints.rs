@@ -1,12 +1,12 @@
-use crate::{
-    method::probe::{self, Pick},
-    FnCtxt,
-};
+use crate::method::probe::{self, Pick};
+use crate::FnCtxt;
+
 use hir::def_id::DefId;
 use hir::HirId;
 use hir::ItemKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::builtin::RUST_2021_PRELUDE_COLLISIONS;
@@ -17,7 +17,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use std::fmt::Write;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(super) fn lint_dot_call_from_2018(
+    pub(super) fn lint_edition_dependent_dot_call(
         &self,
         self_ty: Ty<'tcx>,
         segment: &hir::PathSegment<'_>,
@@ -32,22 +32,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             segment.ident, self_ty, call_expr, self_expr
         );
 
-        // Rust 2021 and later is already using the new prelude
-        if span.at_least_rust_2021() {
-            return;
-        }
-
-        let prelude_or_array_lint = match segment.ident.name {
+        let (prelude_or_array_lint, edition) = match segment.ident.name {
             // `try_into` was added to the prelude in Rust 2021.
-            sym::try_into => RUST_2021_PRELUDE_COLLISIONS,
+            sym::try_into if !span.at_least_rust_2021() => (RUST_2021_PRELUDE_COLLISIONS, "2021"),
             // `into_iter` wasn't added to the prelude,
             // but `[T; N].into_iter()` doesn't resolve to IntoIterator::into_iter
             // before Rust 2021, which results in the same problem.
             // It is only a problem for arrays.
-            sym::into_iter if let ty::Array(..) = self_ty.kind() => {
-                // In this case, it wasn't really a prelude addition that was the problem.
-                // Instead, the problem is that the array-into_iter hack will no longer apply in Rust 2021.
-                rustc_lint::ARRAY_INTO_ITER
+            sym::into_iter => {
+                if let ty::Array(..) = self_ty.kind()
+                    && !span.at_least_rust_2021()
+                {
+                    // In this case, it wasn't really a prelude addition that was the problem.
+                    // Instead, the problem is that the array-into_iter hack will no longer
+                    // apply in Rust 2021.
+                    (ARRAY_INTO_ITER, "2021")
+                } else if self_ty.is_box()
+                    && self_ty.boxed_ty().is_slice()
+                    && !span.at_least_rust_2024()
+                {
+                    // In this case, it wasn't really a prelude addition that was the problem.
+                    // Instead, the problem is that the boxed-slice-into_iter hack will no
+                    // longer apply in Rust 2024.
+                    (BOXED_SLICE_INTO_ITER, "2024")
+                } else {
+                    return;
+                }
             }
             _ => return,
         };
@@ -81,7 +91,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 prelude_or_array_lint,
                 self_expr.hir_id,
                 self_expr.span,
-                format!("trait method `{}` will become ambiguous in Rust 2021", segment.ident.name),
+                format!(
+                    "trait method `{}` will become ambiguous in Rust {edition}",
+                    segment.ident.name
+                ),
                 |lint| {
                     let sp = self_expr.span;
 
@@ -131,7 +144,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 prelude_or_array_lint,
                 call_expr.hir_id,
                 call_expr.span,
-                format!("trait method `{}` will become ambiguous in Rust 2021", segment.ident.name),
+                format!(
+                    "trait method `{}` will become ambiguous in Rust {edition}",
+                    segment.ident.name
+                ),
                 |lint| {
                     let sp = call_expr.span;
                     let trait_name = self.trait_path_or_bare_name(
