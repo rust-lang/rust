@@ -1866,6 +1866,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.set_tainted_by_errors(e);
                 Ty::new_error(self.tcx(), e)
             }
+            Res::Def(..) => {
+                assert_eq!(
+                    path.segments.get(0).map(|seg| seg.ident.name),
+                    Some(kw::SelfUpper),
+                    "only expected incorrect resolution for `Self`"
+                );
+                Ty::new_error(
+                    self.tcx(),
+                    self.tcx().dcx().span_delayed_bug(span, "incorrect resolution for `Self`"),
+                )
+            }
             _ => span_bug!(span, "unexpected resolution: {:?}", path.res),
         }
     }
