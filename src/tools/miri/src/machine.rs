@@ -503,7 +503,7 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// Crates which are considered local for the purposes of error reporting.
     pub(crate) local_crates: Vec<CrateNum>,
 
-    /// Mapping extern static names to their base pointer.
+    /// Mapping extern static names to their pointer.
     extern_statics: FxHashMap<Symbol, Pointer<Provenance>>,
 
     /// The random number generator used for resolving non-determinism.
@@ -1042,14 +1042,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx.generate_nan(inputs)
     }
 
-    fn thread_local_static_base_pointer(
+    fn thread_local_static_pointer(
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
         def_id: DefId,
     ) -> InterpResult<'tcx, Pointer<Provenance>> {
         ecx.get_or_create_thread_local_alloc(def_id)
     }
 
-    fn extern_static_base_pointer(
+    fn extern_static_pointer(
         ecx: &MiriInterpCx<'mir, 'tcx>,
         def_id: DefId,
     ) -> InterpResult<'tcx, Pointer<Provenance>> {
@@ -1090,7 +1090,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind>,
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra>>> {
-        let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
+        let kind = kind.expect("we set our GLOBAL_KIND so this cannot be None");
         if ecx.machine.tracked_alloc_ids.contains(&id) {
             ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedAlloc(
                 id,
@@ -1135,7 +1135,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 weak_memory: buffer_alloc,
                 backtrace,
             },
-            |ptr| ecx.global_base_pointer(ptr),
+            |ptr| ecx.global_root_pointer(ptr),
         )?;
 
         if matches!(kind, MemoryKind::Machine(kind) if kind.should_save_allocation_span()) {
@@ -1148,31 +1148,33 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         Ok(Cow::Owned(alloc))
     }
 
-    fn adjust_alloc_base_pointer(
+    fn adjust_alloc_root_pointer(
         ecx: &MiriInterpCx<'mir, 'tcx>,
         ptr: Pointer<CtfeProvenance>,
+        kind: Option<MemoryKind>,
     ) -> InterpResult<'tcx, Pointer<Provenance>> {
+        let kind = kind.expect("we set our GLOBAL_KIND so this cannot be None");
         let alloc_id = ptr.provenance.alloc_id();
         if cfg!(debug_assertions) {
             // The machine promises to never call us on thread-local or extern statics.
             match ecx.tcx.try_get_global_alloc(alloc_id) {
                 Some(GlobalAlloc::Static(def_id)) if ecx.tcx.is_thread_local_static(def_id) => {
-                    panic!("adjust_alloc_base_pointer called on thread-local static")
+                    panic!("adjust_alloc_root_pointer called on thread-local static")
                 }
                 Some(GlobalAlloc::Static(def_id)) if ecx.tcx.is_foreign_item(def_id) => {
-                    panic!("adjust_alloc_base_pointer called on extern static")
+                    panic!("adjust_alloc_root_pointer called on extern static")
                 }
                 _ => {}
             }
         }
         // FIXME: can we somehow preserve the immutability of `ptr`?
         let tag = if let Some(borrow_tracker) = &ecx.machine.borrow_tracker {
-            borrow_tracker.borrow_mut().base_ptr_tag(alloc_id, &ecx.machine)
+            borrow_tracker.borrow_mut().root_ptr_tag(alloc_id, &ecx.machine)
         } else {
             // Value does not matter, SB is disabled
             BorTag::default()
         };
-        ecx.ptr_from_rel_ptr(ptr, tag)
+        ecx.adjust_alloc_root_pointer(ptr, tag, kind)
     }
 
     /// Called on `usize as ptr` casts.
