@@ -167,8 +167,11 @@ impl<D: Decoder> Decodable<D> for ScalarInt {
 
 impl ScalarInt {
     pub const TRUE: ScalarInt = ScalarInt { data: 1_u128, size: NonZero::new(1).unwrap() };
-
     pub const FALSE: ScalarInt = ScalarInt { data: 0_u128, size: NonZero::new(1).unwrap() };
+
+    fn raw(data: u128, size: Size) -> Self {
+        Self { data, size: NonZero::new(size.bytes() as u8).unwrap() }
+    }
 
     #[inline]
     pub fn size(self) -> Size {
@@ -196,7 +199,7 @@ impl ScalarInt {
 
     #[inline]
     pub fn null(size: Size) -> Self {
-        Self { data: 0, size: NonZero::new(size.bytes() as u8).unwrap() }
+        Self::raw(0, size)
     }
 
     #[inline]
@@ -207,11 +210,15 @@ impl ScalarInt {
     #[inline]
     pub fn try_from_uint(i: impl Into<u128>, size: Size) -> Option<Self> {
         let data = i.into();
-        if size.truncate(data) == data {
-            Some(Self { data, size: NonZero::new(size.bytes() as u8).unwrap() })
-        } else {
-            None
-        }
+        if size.truncate(data) == data { Some(Self::raw(data, size)) } else { None }
+    }
+
+    /// Returns the truncated result, and whether truncation changed the value.
+    #[inline]
+    pub fn truncate_from_uint(i: impl Into<u128>, size: Size) -> (Self, bool) {
+        let data = i.into();
+        let r = Self::raw(size.truncate(data), size);
+        (r, r.data != data)
     }
 
     #[inline]
@@ -220,10 +227,18 @@ impl ScalarInt {
         // `into` performed sign extension, we have to truncate
         let truncated = size.truncate(i as u128);
         if size.sign_extend(truncated) as i128 == i {
-            Some(Self { data: truncated, size: NonZero::new(size.bytes() as u8).unwrap() })
+            Some(Self::raw(truncated, size))
         } else {
             None
         }
+    }
+
+    /// Returns the truncated result, and whether truncation changed the value.
+    #[inline]
+    pub fn truncate_from_int(i: impl Into<i128>, size: Size) -> (Self, bool) {
+        let data = i.into();
+        let r = Self::raw(size.truncate(data as u128), size);
+        (r, size.sign_extend(r.data) as i128 != data)
     }
 
     #[inline]
