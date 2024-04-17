@@ -135,6 +135,45 @@
 //! is not allowed. For more guidance on working with box from unsafe code, see
 //! [rust-lang/unsafe-code-guidelines#326][ucg#326].
 //!
+//! # Editions
+//!
+//! A special case exists for the implementation of `IntoIterator` for arrays on the Rust 2021
+//! edition, as documented [here][array]. Unfortunately, it was later found that a similar
+//! workaround should be added for boxed slices, and this was applied in the 2024 edition.
+//!
+//! Specifically, `IntoIterator` is implemented for `Box<[T]>` on all editions, but specific calls
+//! to `into_iter()` for boxed slices will defer to the slice implementation on editions before
+//! 2024:
+//!
+#![cfg_attr(bootstrap, doc = "```rust,edition2021,ignore")]
+#![cfg_attr(not(bootstrap), doc = "```rust,edition2021")]
+//! // Rust 2015, 2018, and 2021:
+//!
+//! # #![allow(boxed_slice_into_iter)] // override our `deny(warnings)`
+//! let boxed_slice: Box<[i32]> = vec![0; 3].into_boxed_slice();
+//!
+//! // This creates a slice iterator, producing references to each value.
+//! for item in boxed_slice.into_iter().enumerate() {
+//!     let (i, x): (usize, &i32) = item;
+//!     println!("boxed_slice[{i}] = {x}");
+//! }
+//!
+//! // The `boxed_slice_into_iter` lint suggests this change for future compatibility:
+//! for item in boxed_slice.iter().enumerate() {
+//!     let (i, x): (usize, &i32) = item;
+//!     println!("boxed_slice[{i}] = {x}");
+//! }
+//!
+//! // You can explicitly iterate a boxed slice by value using `IntoIterator::into_iter`
+//! for item in IntoIterator::into_iter(boxed_slice).enumerate() {
+//!     let (i, x): (usize, i32) = item;
+//!     println!("boxed_slice[{i}] = {x}");
+//! }
+//! ```
+//!
+//! Similar to the array implementation, this may be modified in the future to remove this override,
+//! and it's best to avoid relying on this edition-dependent behavior if you wish to preserve
+//! compatibility with future versions of the compiler.
 //!
 //! [ucg#198]: https://github.com/rust-lang/unsafe-code-guidelines/issues/198
 //! [ucg#326]: https://github.com/rust-lang/unsafe-code-guidelines/issues/326
@@ -165,6 +204,7 @@ use core::ops::{
 };
 use core::pin::Pin;
 use core::ptr::{self, addr_of_mut, NonNull, Unique};
+use core::slice;
 use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
@@ -177,6 +217,7 @@ use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
+use crate::vec;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
 
@@ -2077,6 +2118,51 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T, Global
 impl<I> FromIterator<I> for Box<[I]> {
     fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
         iter.into_iter().collect::<Vec<_>>().into_boxed_slice()
+    }
+}
+
+/// This implementation is required to make sure that the `Box<[I]>: IntoIterator`
+/// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<I, A: Allocator> !Iterator for Box<[I], A> {}
+
+/// This implementation is required to make sure that the `&Box<[I]>: IntoIterator`
+/// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, A: Allocator> !Iterator for &'a Box<[I], A> {}
+
+/// This implementation is required to make sure that the `&mut Box<[I]>: IntoIterator`
+/// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, A: Allocator> !Iterator for &'a mut Box<[I], A> {}
+
+// Note: the `#[rustc_skip_during_method_dispatch(boxed_slice)]` on `trait IntoIterator`
+// hides this implementation from explicit `.into_iter()` calls on editions < 2024,
+// so those calls will still resolve to the slice implementation, by reference.
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<I, A: Allocator> IntoIterator for Box<[I], A> {
+    type IntoIter = vec::IntoIter<I, A>;
+    type Item = I;
+    fn into_iter(self) -> vec::IntoIter<I, A> {
+        self.into_vec().into_iter()
+    }
+}
+
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, A: Allocator> IntoIterator for &'a Box<[I], A> {
+    type IntoIter = slice::Iter<'a, I>;
+    type Item = &'a I;
+    fn into_iter(self) -> slice::Iter<'a, I> {
+        self.iter()
+    }
+}
+
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, A: Allocator> IntoIterator for &'a mut Box<[I], A> {
+    type IntoIter = slice::IterMut<'a, I>;
+    type Item = &'a mut I;
+    fn into_iter(self) -> slice::IterMut<'a, I> {
+        self.iter_mut()
     }
 }
 
