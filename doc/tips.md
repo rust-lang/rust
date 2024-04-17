@@ -35,6 +35,14 @@ COLLECT_NO_DEMANGLE=1
  * Build the stage2 compiler (`rustup toolchain link debug-current build/x86_64-unknown-linux-gnu/stage2`).
  * Clean and rebuild the codegen with `debug-current` in the file `rust-toolchain`.
 
+### How to use a custom sysroot source path
+
+If you wish to build a custom sysroot, pass the path of your sysroot source to `--sysroot-source` during the `prepare` step, like so:
+
+```
+./y.sh prepare --sysroot-source /path/to/custom/source
+```
+
 ### How to use [mem-trace](https://github.com/antoyo/mem-trace)
 
 `rustc` needs to be built without `jemalloc` so that `mem-trace` can overload `malloc` since `jemalloc` is linked statically, so a `LD_PRELOAD`-ed library won't a chance to intercept the calls to `malloc`.

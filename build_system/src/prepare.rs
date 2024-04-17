@@ -5,29 +5,41 @@ use crate::utils::{
 };
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 fn prepare_libcore(
     sysroot_path: &Path,
     libgccjit12_patches: bool,
     cross_compile: bool,
+    sysroot_source: Option<String>,
 ) -> Result<(), String> {
-    let rustc_path = match get_rustc_path() {
-        Some(path) => path,
-        None => return Err("`rustc` path not found".to_string()),
-    };
+    let rustlib_dir: PathBuf;
 
-    let parent = match rustc_path.parent() {
-        Some(path) => path,
-        None => return Err(format!("No parent for `{}`", rustc_path.display())),
-    };
+    if let Some(path) = sysroot_source {
+        rustlib_dir = Path::new(&path)
+            .canonicalize()
+            .map_err(|error| format!("Failed to canonicalize path: {:?}", error))?;
+        if !rustlib_dir.is_dir() {
+            return Err(format!("Custom sysroot path {:?} not found", rustlib_dir));
+        }
+    } else {
+        let rustc_path = match get_rustc_path() {
+            Some(path) => path,
+            None => return Err("`rustc` path not found".to_string()),
+        };
 
-    let rustlib_dir = parent
-        .join("../lib/rustlib/src/rust")
-        .canonicalize()
-        .map_err(|error| format!("Failed to canonicalize path: {:?}", error))?;
-    if !rustlib_dir.is_dir() {
-        return Err("Please install `rust-src` component".to_string());
+        let parent = match rustc_path.parent() {
+            Some(path) => path,
+            None => return Err(format!("No parent for `{}`", rustc_path.display())),
+        };
+
+        rustlib_dir = parent
+            .join("../lib/rustlib/src/rust")
+            .canonicalize()
+            .map_err(|error| format!("Failed to canonicalize path: {:?}", error))?;
+        if !rustlib_dir.is_dir() {
+            return Err("Please install `rust-src` component".to_string());
+        }
     }
 
     let sysroot_dir = sysroot_path.join("sysroot_src");
@@ -151,6 +163,7 @@ struct PrepareArg {
     cross_compile: bool,
     only_libcore: bool,
     libgccjit12_patches: bool,
+    sysroot_source: Option<String>,
 }
 
 impl PrepareArg {
@@ -158,12 +171,23 @@ impl PrepareArg {
         let mut only_libcore = false;
         let mut cross_compile = false;
         let mut libgccjit12_patches = false;
+        let mut sysroot_source = None;
 
-        for arg in std::env::args().skip(2) {
+        let mut args = std::env::args().skip(2);
+        while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--only-libcore" => only_libcore = true,
                 "--cross" => cross_compile = true,
                 "--libgccjit12-patches" => libgccjit12_patches = true,
+                "--sysroot-source" => {
+                    if let Some(path) = args.next() {
+                        sysroot_source = Some(path);
+                    } else {
+                        return Err(
+                            "Expected a value after `--sysroot-source`, found nothing".to_string()
+                        );
+                    }
+                }
                 "--help" => {
                     Self::usage();
                     return Ok(None);
@@ -171,7 +195,7 @@ impl PrepareArg {
                 a => return Err(format!("Unknown argument `{a}`")),
             }
         }
-        Ok(Some(Self { cross_compile, only_libcore, libgccjit12_patches }))
+        Ok(Some(Self { cross_compile, only_libcore, libgccjit12_patches, sysroot_source }))
     }
 
     fn usage() {
@@ -182,6 +206,7 @@ impl PrepareArg {
     --only-libcore           : Only setup libcore and don't clone other repositories
     --cross                  : Apply the patches needed to do cross-compilation
     --libgccjit12-patches    : Apply patches needed for libgccjit12
+    --sysroot-source         : Specify custom path for sysroot source
     --help                   : Show this help"#
         )
     }
@@ -193,7 +218,12 @@ pub fn run() -> Result<(), String> {
         None => return Ok(()),
     };
     let sysroot_path = get_sysroot_dir();
-    prepare_libcore(&sysroot_path, args.libgccjit12_patches, args.cross_compile)?;
+    prepare_libcore(
+        &sysroot_path,
+        args.libgccjit12_patches,
+        args.cross_compile,
+        args.sysroot_source,
+    )?;
 
     if !args.only_libcore {
         cargo_install("hyperfine")?;
