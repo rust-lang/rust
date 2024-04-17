@@ -6,6 +6,7 @@ use ide_db::{
     source_change::SourceChange,
     RootDatabase,
 };
+use syntax::TextRange;
 use text_edit::TextEdit;
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
@@ -23,6 +24,16 @@ pub(crate) fn unused_variables(
         return None;
     }
     let diagnostic_range = ctx.sema.diagnostics_display_range(ast);
+    // The range for the Actual Name. We don't want to replace the entire declarition. Using the diagnostic range causes issues within in Array Destructuring.
+    let name_range = d
+        .local
+        .primary_source(ctx.sema.db)
+        .name()
+        .map(|v| v.syntax().original_file_range_rooted(ctx.sema.db))
+        .filter(|it| {
+            Some(it.file_id) == ast.file_id.file_id()
+                && diagnostic_range.range.contains_range(it.range)
+        });
     let var_name = d.local.name(ctx.sema.db);
     Some(
         Diagnostic::new_with_syntax_node_ptr(
@@ -31,7 +42,9 @@ pub(crate) fn unused_variables(
             "unused variable",
             ast,
         )
-        .with_fixes(fixes(ctx.sema.db, var_name, diagnostic_range, ast.file_id.is_macro()))
+        .with_fixes(name_range.and_then(|it| {
+            fixes(ctx.sema.db, var_name, it.range, diagnostic_range, ast.file_id.is_macro())
+        }))
         .experimental(),
     )
 }
@@ -39,12 +52,14 @@ pub(crate) fn unused_variables(
 fn fixes(
     db: &RootDatabase,
     var_name: Name,
+    name_range: TextRange,
     diagnostic_range: FileRange,
     is_in_marco: bool,
 ) -> Option<Vec<Assist>> {
     if is_in_marco {
         return None;
     }
+
     Some(vec![Assist {
         id: AssistId("unscore_unused_variable_name", AssistKind::QuickFix),
         label: Label::new(format!(
@@ -56,7 +71,7 @@ fn fixes(
         target: diagnostic_range.range,
         source_change: Some(SourceChange::from_text_edit(
             diagnostic_range.file_id,
-            TextEdit::replace(diagnostic_range.range, format!("_{}", var_name.display(db))),
+            TextEdit::replace(name_range, format!("_{}", var_name.display(db))),
         )),
         trigger_signature_help: false,
     }])
@@ -220,6 +235,23 @@ macro_rules! my_macro {
 
 fn main() {
     my_macro!();
+}
+"#,
+        );
+    }
+    #[test]
+    fn unused_variable_in_array_destructure() {
+        check_fix(
+            r#"
+fn main() {
+    let arr = [1, 2, 3, 4, 5];
+    let [_x, y$0 @ ..] = arr;
+}
+"#,
+            r#"
+fn main() {
+    let arr = [1, 2, 3, 4, 5];
+    let [_x, _y @ ..] = arr;
 }
 "#,
         );
