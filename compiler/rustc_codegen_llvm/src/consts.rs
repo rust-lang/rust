@@ -26,8 +26,22 @@ use rustc_target::abi::{
 };
 use std::ops::Range;
 
-pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<'_>) -> &'ll Value {
+pub fn const_alloc_to_llvm<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    alloc: ConstAllocation<'_>,
+    is_static: bool,
+) -> &'ll Value {
     let alloc = alloc.inner();
+    // We expect that callers of const_alloc_to_llvm will instead directly codegen a pointer or
+    // integer for any &ZST where the ZST is a constant (i.e. not a static). We should never be
+    // producing empty LLVM allocations as they're just adding noise to binaries and forcing less
+    // optimal codegen.
+    //
+    // Statics have a guaranteed meaningful address so it's less clear that we want to do
+    // something like this; it's also harder.
+    if !is_static {
+        assert!(alloc.len() != 0);
+    }
     let mut llvals = Vec::with_capacity(alloc.provenance().ptrs().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
@@ -120,7 +134,7 @@ fn codegen_static_initializer<'ll, 'tcx>(
     def_id: DefId,
 ) -> Result<(&'ll Value, ConstAllocation<'tcx>), ErrorHandled> {
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
-    Ok((const_alloc_to_llvm(cx, alloc), alloc))
+    Ok((const_alloc_to_llvm(cx, alloc, /*static*/ true), alloc))
 }
 
 fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align: Align) {
