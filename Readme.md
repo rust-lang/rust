@@ -12,6 +12,10 @@ This is a GCC codegen for rustc, which means it can be loaded by the existing ru
 The primary goal of this project is to be able to compile Rust code on platforms unsupported by LLVM.
 A secondary goal is to check if using the gcc backend will provide any run-time speed improvement for the programs compiled using rustc.
 
+### Dependencies
+
+**rustup:** Follow the instructions on the official [website](https://www.rust-lang.org/tools/install)
+
 ## Building
 
 **This requires a patched libgccjit in order to work.
@@ -91,10 +95,16 @@ $ ./y.sh test --release
 
 ## Usage
 
-`$CG_GCCJIT_DIR` is the directory you cloned this repo into in the following instructions:
+You have to run these commands, in the corresponding order:
 
 ```bash
-export CG_GCCJIT_DIR=[the full path to rustc_codegen_gcc]
+$ ./y.sh prepare
+$ ./y.sh build --sysroot
+```
+To check if all is  working correctly, run:
+
+ ```bash
+$ ./y.sh cargo build --manifest-path tests/hello-world/Cargo.toml
 ```
 
 ### Cargo
