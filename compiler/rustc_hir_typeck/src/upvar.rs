@@ -38,6 +38,7 @@ use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::HirId;
 use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
@@ -88,7 +89,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum UpvarMigrationInfo {
     /// We previously captured all of `x`, but now we capture some sub-path.
-    CapturingPrecise { source_expr: Option<hir::HirId>, var_name: String },
+    CapturingPrecise { source_expr: Option<HirId>, var_name: String },
     CapturingNothing {
         // where the variable appears in the closure (but is not captured)
         use_span: Span,
@@ -131,7 +132,7 @@ struct MigrationLintNote {
 /// Intermediate format to store the hir id of the root variable and a HashSet containing
 /// information on why the root variable should be fully captured
 struct NeededMigration {
-    var_hir_id: hir::HirId,
+    var_hir_id: HirId,
     diagnostics_info: Vec<MigrationLintNote>,
 }
 
@@ -163,7 +164,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self, body), level = "debug")]
     fn analyze_closure(
         &self,
-        closure_hir_id: hir::HirId,
+        closure_hir_id: HirId,
         span: Span,
         body_id: hir::BodyId,
         body: &'tcx hir::Body<'tcx>,
@@ -1098,7 +1099,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn compute_2229_migrations_for_trait(
         &self,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
-        var_hir_id: hir::HirId,
+        var_hir_id: HirId,
         closure_clause: hir::CaptureBy,
     ) -> Option<FxIndexMap<UpvarMigrationInfo, UnordSet<&'static str>>> {
         let auto_traits_def_id = [
@@ -1210,7 +1211,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_span: Span,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         closure_clause: hir::CaptureBy,
-        var_hir_id: hir::HirId,
+        var_hir_id: HirId,
     ) -> Option<FxIndexSet<UpvarMigrationInfo>> {
         let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
@@ -1650,7 +1651,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn place_for_root_variable(
         &self,
         closure_def_id: LocalDefId,
-        var_hir_id: hir::HirId,
+        var_hir_id: HirId,
     ) -> Place<'tcx> {
         let upvar_id = ty::UpvarId::new(var_hir_id, closure_def_id);
 
@@ -1881,7 +1882,7 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
 }
 
 /// Returns the Span of where the value with the provided HirId would be dropped
-fn drop_location_span(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> Span {
+fn drop_location_span(tcx: TyCtxt<'_>, hir_id: HirId) -> Span {
     let owner_id = tcx.hir().get_enclosing_scope(hir_id).unwrap();
 
     let owner_node = tcx.hir_node(owner_id);
@@ -1933,7 +1934,7 @@ struct InferBorrowKind<'tcx> {
     /// Place { V1, [ProjectionKind::Field(Index=1, Variant=0)] } : CaptureKind { E2, MutableBorrow }
     /// ```
     capture_information: InferredCaptureInformation<'tcx>,
-    fake_reads: Vec<(Place<'tcx>, FakeReadCause, hir::HirId)>,
+    fake_reads: Vec<(Place<'tcx>, FakeReadCause, HirId)>,
 }
 
 impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
@@ -1941,7 +1942,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
         &mut self,
         place: &PlaceWithHirId<'tcx>,
         cause: FakeReadCause,
-        diag_expr_id: hir::HirId,
+        diag_expr_id: HirId,
     ) {
         let PlaceBase::Upvar(_) = place.place.base else { return };
 
@@ -1956,7 +1957,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
         assert_eq!(self.closure_def_id, upvar_id.closure_expr_id);
 
@@ -1974,7 +1975,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
     fn borrow(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
-        diag_expr_id: hir::HirId,
+        diag_expr_id: HirId,
         bk: ty::BorrowKind,
     ) {
         let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
@@ -2005,7 +2006,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+    fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         self.borrow(assignee_place, diag_expr_id, ty::BorrowKind::MutBorrow);
     }
 }
@@ -2192,14 +2193,14 @@ fn construct_capture_info_string<'tcx>(
     format!("{place_str} -> {capture_kind_str}")
 }
 
-fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
+fn var_name(tcx: TyCtxt<'_>, var_hir_id: HirId) -> Symbol {
     tcx.hir().name(var_hir_id)
 }
 
 #[instrument(level = "debug", skip(tcx))]
 fn should_do_rust_2021_incompatible_closure_captures_analysis(
     tcx: TyCtxt<'_>,
-    closure_id: hir::HirId,
+    closure_id: HirId,
 ) -> bool {
     if tcx.sess.at_least_rust_2021() {
         return false;

@@ -18,6 +18,16 @@ The value can either be a single identifier or two identifiers separated by `=`.
 For examples, `--cfg 'verbose'` or `--cfg 'feature="serde"'`. These correspond
 to `#[cfg(verbose)]` and `#[cfg(feature = "serde")]` respectively.
 
+<a id="option-check-cfg"></a>
+## `--check-cfg`: enables checking conditional configurations
+
+This flag will enable checking conditional configurations.
+Refer to the [Checking conditional configurations](check-cfg.md) of this book
+for further details and explanation.
+
+For examples, `--check-cfg 'cfg(verbose)'` or `--check-cfg 'cfg(feature, values("serde"))'`.
+These correspond to `#[cfg(verbose)]` and `#[cfg(feature = "serde")]` respectively.
+
 <a id="option-l-search-path"></a>
 ## `-L`: add a directory to the library search path
 

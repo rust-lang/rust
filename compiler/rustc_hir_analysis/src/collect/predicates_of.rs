@@ -37,7 +37,7 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
         // from the trait itself that *shouldn't* be shown as the source of
         // an obligation and instead be skipped. Otherwise we'd use
         // `tcx.def_span(def_id);`
-        let span = rustc_span::DUMMY_SP;
+        let span = DUMMY_SP;
 
         result.predicates =
             tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((

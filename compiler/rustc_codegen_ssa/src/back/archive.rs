@@ -285,14 +285,7 @@ impl<'a> ArArchiveBuilder<'a> {
             .tempfile_in(output.parent().unwrap_or_else(|| Path::new("")))
             .map_err(|err| io_error_context("couldn't create a temp file", err))?;
 
-        write_archive_to_stream(
-            archive_tmpfile.as_file_mut(),
-            &entries,
-            true,
-            archive_kind,
-            true,
-            false,
-        )?;
+        write_archive_to_stream(archive_tmpfile.as_file_mut(), &entries, archive_kind, false)?;
 
         let any_entries = !entries.is_empty();
         drop(entries);

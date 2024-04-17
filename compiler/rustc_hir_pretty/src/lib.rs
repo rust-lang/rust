@@ -9,9 +9,10 @@ use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
-use rustc_hir::LifetimeParamKind;
-use rustc_hir::{BindingAnnotation, ByRef, GenericArg, GenericParam, GenericParamKind, Node, Term};
-use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
+use rustc_hir::{
+    BindingAnnotation, ByRef, GenericArg, GenericBound, GenericParam, GenericParamKind, HirId,
+    LifetimeParamKind, Node, PatKind, RangeEnd, Term, TraitBoundModifier,
+};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::FileName;
@@ -20,7 +21,7 @@ use rustc_target::spec::abi::Abi;
 use std::cell::Cell;
 use std::vec;
 
-pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId) -> String {
+pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: HirId) -> String {
     to_string(&map, |s| s.print_node(map.hir_node(hir_id)))
 }
 
@@ -28,7 +29,7 @@ pub enum AnnNode<'a> {
     Name(&'a Symbol),
     Block(&'a hir::Block<'a>),
     Item(&'a hir::Item<'a>),
-    SubItem(hir::HirId),
+    SubItem(HirId),
     Expr(&'a hir::Expr<'a>),
     Pat(&'a hir::Pat<'a>),
     Arm(&'a hir::Arm<'a>),
@@ -49,10 +50,6 @@ pub trait PpAnn {
     fn post(&self, _state: &mut State<'_>, _node: AnnNode<'_>) {}
 }
 
-pub struct NoAnn;
-
-impl PpAnn for NoAnn {}
-
 impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
         match nested {
@@ -69,12 +66,12 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
 pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
-    attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
+    attrs: &'a dyn Fn(HirId) -> &'a [ast::Attribute],
     ann: &'a (dyn PpAnn + 'a),
 }
 
 impl<'a> State<'a> {
-    fn attrs(&self, id: hir::HirId) -> &'a [ast::Attribute] {
+    fn attrs(&self, id: HirId) -> &'a [ast::Attribute] {
         (self.attrs)(id)
     }
 
@@ -99,6 +96,7 @@ impl<'a> State<'a> {
             Node::PatField(a) => self.print_patfield(a),
             Node::Arm(a) => self.print_arm(a),
             Node::Infer(_) => self.word("_"),
+            Node::PreciseCapturingNonLifetimeArg(param) => self.print_ident(param.ident),
             Node::Block(a) => {
                 // Containing cbox, will be closed by print-block at `}`.
                 self.cbox(INDENT_UNIT);
@@ -163,7 +161,7 @@ pub fn print_crate<'a>(
     krate: &hir::Mod<'_>,
     filename: FileName,
     input: String,
-    attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
+    attrs: &'a dyn Fn(HirId) -> &'a [ast::Attribute],
     ann: &'a dyn PpAnn,
 ) -> String {
     let mut s = State {
@@ -190,16 +188,16 @@ where
     printer.s.eof()
 }
 
-pub fn ty_to_string(ty: &hir::Ty<'_>) -> String {
-    to_string(&NoAnn, |s| s.print_type(ty))
+pub fn ty_to_string(ann: &dyn PpAnn, ty: &hir::Ty<'_>) -> String {
+    to_string(ann, |s| s.print_type(ty))
 }
 
-pub fn qpath_to_string(segment: &hir::QPath<'_>) -> String {
-    to_string(&NoAnn, |s| s.print_qpath(segment, false))
+pub fn qpath_to_string(ann: &dyn PpAnn, segment: &hir::QPath<'_>) -> String {
+    to_string(ann, |s| s.print_qpath(segment, false))
 }
 
-pub fn pat_to_string(pat: &hir::Pat<'_>) -> String {
-    to_string(&NoAnn, |s| s.print_pat(pat))
+pub fn pat_to_string(ann: &dyn PpAnn, pat: &hir::Pat<'_>) -> String {
+    to_string(ann, |s| s.print_pat(pat))
 }
 
 impl<'a> State<'a> {

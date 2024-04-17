@@ -737,7 +737,7 @@ impl<'a> AstValidator<'a> {
                     }
                 }
             }
-            TyKind::ImplTrait(_, bounds) => {
+            TyKind::ImplTrait(_, bounds, _) => {
                 if self.is_impl_trait_banned {
                     self.dcx().emit_err(errors::ImplTraitPath { span: ty.span });
                 }

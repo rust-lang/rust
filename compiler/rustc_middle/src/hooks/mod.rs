@@ -47,12 +47,7 @@ macro_rules! declare_hooks {
         impl Default for Providers {
             fn default() -> Self {
                 Providers {
-                    $($name: |_, $($arg,)*| bug!(
-                        "`tcx.{}{:?}` cannot be called as `{}` was never assigned to a provider function.\n",
-                        stringify!($name),
-                        ($($arg,)*),
-                        stringify!($name),
-                    ),)*
+                    $($name: |_, $($arg,)*| default_hook(stringify!($name), &($($arg,)*))),*
                 }
             }
         }
@@ -84,7 +79,6 @@ declare_hooks! {
     /// via `mir_built`
     hook build_mir(key: LocalDefId) -> mir::Body<'tcx>;
 
-
     /// Imports all `SourceFile`s from the given crate into the current session.
     /// This normally happens automatically when we decode a `Span` from
     /// that crate's metadata - however, the incr comp cache needs
@@ -102,4 +96,17 @@ declare_hooks! {
     /// turn a deserialized `DefPathHash` into its current `DefId`.
     /// Will fetch a DefId from a DefPathHash for a foreign crate.
     hook def_path_hash_to_def_id_extern(hash: DefPathHash, stable_crate_id: StableCrateId) -> DefId;
+
+    /// Create a THIR tree for debugging.
+    hook thir_tree(key: LocalDefId) -> String;
+
+    /// Create a list-like THIR representation for debugging.
+    hook thir_flat(key: LocalDefId) -> String;
+}
+
+#[cold]
+fn default_hook(name: &str, args: &dyn std::fmt::Debug) -> ! {
+    bug!(
+        "`tcx.{name}{args:?}` cannot be called as `{name}` was never assigned to a provider function"
+    )
 }

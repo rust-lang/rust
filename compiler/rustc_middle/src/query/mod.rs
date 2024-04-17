@@ -474,20 +474,6 @@ rustc_queries! {
         desc { |tcx| "building THIR for `{}`", tcx.def_path_str(key) }
     }
 
-    /// Create a THIR tree for debugging.
-    query thir_tree(key: LocalDefId) -> &'tcx String {
-        no_hash
-        arena_cache
-        desc { |tcx| "constructing THIR tree for `{}`", tcx.def_path_str(key) }
-    }
-
-    /// Create a list-like THIR representation for debugging.
-    query thir_flat(key: LocalDefId) -> &'tcx String {
-        no_hash
-        arena_cache
-        desc { |tcx| "constructing flat THIR representation for `{}`", tcx.def_path_str(key) }
-    }
-
     /// Set of all the `DefId`s in this crate that have MIR associated with
     /// them. This includes all the body owners, but also things like struct
     /// constructors.
@@ -982,9 +968,6 @@ rustc_queries! {
     }
     query diagnostic_only_typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
         desc { |tcx| "type-checking `{}`", tcx.def_path_str(key) }
-    }
-    query lookup_method_for_diagnostic((def_id, hir_id): (LocalDefId, hir::HirId)) -> Option<DefId> {
-        desc { |tcx| "lookup_method_for_diagnostics `{}`", tcx.def_path_str(def_id) }
     }
 
     query used_trait_imports(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {

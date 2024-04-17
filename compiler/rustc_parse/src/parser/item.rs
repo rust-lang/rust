@@ -358,12 +358,12 @@ impl<'a> Parser<'a> {
     fn is_reuse_path_item(&mut self) -> bool {
         // no: `reuse ::path` for compatibility reasons with macro invocations
         self.token.is_keyword(kw::Reuse)
-            && self.look_ahead(1, |t| t.is_path_start() && t.kind != token::ModSep)
+            && self.look_ahead(1, |t| t.is_path_start() && t.kind != token::PathSep)
     }
 
     /// Are we sure this could not possibly be a macro invocation?
     fn isnt_macro_invocation(&mut self) -> bool {
-        self.check_ident() && self.look_ahead(1, |t| *t != token::Not && *t != token::ModSep)
+        self.check_ident() && self.look_ahead(1, |t| *t != token::Not && *t != token::PathSep)
     }
 
     /// Recover on encountering a struct or method definition where the user
@@ -625,7 +625,7 @@ impl<'a> Parser<'a> {
                     // This notably includes paths passed through `ty` macro fragments (#46438).
                     TyKind::Path(None, path) => path,
                     other => {
-                        if let TyKind::ImplTrait(_, bounds) = other
+                        if let TyKind::ImplTrait(_, bounds, None) = other
                             && let [bound] = bounds.as_slice()
                         {
                             // Suggest removing extra `impl` keyword:
@@ -1020,7 +1020,7 @@ impl<'a> Parser<'a> {
         {
             // `use *;` or `use ::*;` or `use {...};` or `use ::{...};`
             let mod_sep_ctxt = self.token.span.ctxt();
-            if self.eat(&token::ModSep) {
+            if self.eat(&token::PathSep) {
                 prefix
                     .segments
                     .push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
@@ -1031,7 +1031,7 @@ impl<'a> Parser<'a> {
             // `use path::*;` or `use path::{...};` or `use path;` or `use path as bar;`
             prefix = self.parse_path(PathStyle::Mod)?;
 
-            if self.eat(&token::ModSep) {
+            if self.eat(&token::PathSep) {
                 self.parse_use_tree_glob_or_nested()?
             } else {
                 // Recover from using a colon as path separator.
@@ -1063,7 +1063,7 @@ impl<'a> Parser<'a> {
     /// Parses a `UseTreeKind::Nested(list)`.
     ///
     /// ```text
-    /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
+    /// USE_TREE_LIST = ∅ | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
         self.parse_delim_comma_seq(Delimiter::Brace, |p| {
@@ -1968,11 +1968,8 @@ impl<'a> Parser<'a> {
         } else if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
-                let inherited_vis = Visibility {
-                    span: rustc_span::DUMMY_SP,
-                    kind: VisibilityKind::Inherited,
-                    tokens: None,
-                };
+                let inherited_vis =
+                    Visibility { span: DUMMY_SP, kind: VisibilityKind::Inherited, tokens: None };
                 // We use `parse_fn` to get a span for the function
                 let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
                 match self.parse_fn(
@@ -2752,7 +2749,7 @@ impl<'a> Parser<'a> {
         // Is `self` `n` tokens ahead?
         let is_isolated_self = |this: &Self, n| {
             this.is_keyword_ahead(n, &[kw::SelfLower])
-                && this.look_ahead(n + 1, |t| t != &token::ModSep)
+                && this.look_ahead(n + 1, |t| t != &token::PathSep)
         };
         // Is `mut self` `n` tokens ahead?
         let is_isolated_mut_self =

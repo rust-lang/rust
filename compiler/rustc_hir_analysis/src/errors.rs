@@ -10,6 +10,9 @@ use rustc_span::{symbol::Ident, Span, Symbol};
 mod pattern_types;
 pub use pattern_types::*;
 
+mod precise_captures;
+pub(crate) use precise_captures::*;
+
 #[derive(Diagnostic)]
 #[diag(hir_analysis_ambiguous_assoc_item)]
 pub struct AmbiguousAssocItem<'a> {

@@ -44,7 +44,7 @@ pub fn obligations<'tcx>(
         GenericArgKind::Const(ct) => {
             match ct.kind() {
                 ty::ConstKind::Infer(_) => {
-                    let resolved = infcx.shallow_resolve(ct);
+                    let resolved = infcx.shallow_resolve_const(ct);
                     if resolved == ct {
                         // No progress.
                         return None;

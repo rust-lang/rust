@@ -249,8 +249,6 @@ run-make/rlib-format-packed-bundled-libs-2/Makefile
 run-make/rlib-format-packed-bundled-libs-3/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
 run-make/rmeta-preferred/Makefile
-run-make/rust-lld-custom-target/Makefile
-run-make/rust-lld/Makefile
 run-make/rustc-macro-dep-files/Makefile
 run-make/rustdoc-determinism/Makefile
 run-make/rustdoc-error-lines/Makefile

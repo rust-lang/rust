@@ -91,8 +91,8 @@ fn adt_sized_constraint<'tcx>(
     let tail_ty = tcx.type_of(tail_def.did).instantiate_identity();
 
     let constraint_ty = sized_constraint_for_ty(tcx, tail_ty)?;
-    if constraint_ty.references_error() {
-        return None;
+    if let Err(guar) = constraint_ty.error_reported() {
+        return Some(ty::EarlyBinder::bind(Ty::new_error(tcx, guar)));
     }
 
     // perf hack: if there is a `constraint_ty: Sized` bound, then we know

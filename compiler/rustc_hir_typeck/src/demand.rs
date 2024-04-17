@@ -337,10 +337,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty_op: |ty| {
                 if let ty::Infer(infer) = ty.kind() {
                     match infer {
-                        ty::TyVar(_) => self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::MiscVariable,
-                            span: DUMMY_SP,
-                        }),
+                        ty::TyVar(_) => self
+                            .next_ty_var(TypeVariableOrigin { param_def_id: None, span: DUMMY_SP }),
                         ty::IntVar(_) => self.next_int_var(),
                         ty::FloatVar(_) => self.next_float_var(),
                         ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
@@ -356,10 +354,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::ConstKind::Infer(_) = ct.kind() {
                     self.next_const_var(
                         ct.ty(),
-                        ConstVariableOrigin {
-                            kind: ConstVariableOriginKind::MiscVariable,
-                            span: DUMMY_SP,
-                        },
+                        ConstVariableOrigin { param_def_id: None, span: DUMMY_SP },
                     )
                 } else {
                     ct
