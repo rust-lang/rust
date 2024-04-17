@@ -952,7 +952,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // a test for it.
             (_, ty::Infer(ty::TyVar(_))) => {}
             (ty::Infer(ty::TyVar(_)), _) => {}
-            _ if (r_a, r_b).has_opaque_types() => {
+            _ if r_a != r_b && (r_a, r_b).has_opaque_types() => {
                 span_bug!(
                     cause.span(),
                     "opaque types got hidden types registered from within subtype predicate: {r_a:?} vs {r_b:?}"
