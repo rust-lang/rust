@@ -385,15 +385,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let fake_borrows = match_has_guard
             .then(|| util::FakeBorrowCollector::collect_fake_borrows(self, candidates));
 
+        // See the doc comment on `match_candidates` for why we have an
+        // otherwise block. Match checking will ensure this is actually
+        // unreachable.
         let otherwise_block = self.cfg.start_new_block();
 
         // This will generate code to test scrutinee_place and
         // branch to the appropriate arm block
         self.match_candidates(match_start_span, scrutinee_span, block, otherwise_block, candidates);
 
-        // See the doc comment on `match_candidates` for why we may have an
-        // otherwise block. Match checking will ensure this is actually
-        // unreachable.
         let source_info = self.source_info(scrutinee_span);
 
         // Matching on a `scrutinee_place` with an uninhabited type doesn't
