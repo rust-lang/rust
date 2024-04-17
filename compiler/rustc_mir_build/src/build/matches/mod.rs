@@ -1968,6 +1968,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             false,
         );
 
+        // If branch coverage is enabled, record this branch.
+        self.visit_coverage_conditional_let(pat, post_guard_block, otherwise_post_guard_block);
+
         post_guard_block.unit()
     }
 

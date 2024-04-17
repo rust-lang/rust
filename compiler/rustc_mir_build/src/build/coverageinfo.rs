@@ -200,7 +200,7 @@ impl<'tcx> Builder<'_, 'tcx> {
     /// If branch coverage is enabled, inject marker statements into `true_block`
     /// and `false_block`, and record their IDs in the table of branches.
     ///
-    /// Used to instrument let-else for branch coverage.
+    /// Used to instrument let-else and if-let (including let-chains) for branch coverage.
     pub(crate) fn visit_coverage_conditional_let(
         &mut self,
         pattern: &Pat<'tcx>, // Pattern that has been matched when the true path is taken
