@@ -348,3 +348,55 @@ mod test_str_ext {
         assert!(!result.is_heap_allocated());
     }
 }
+#[cfg(feature = "borsh")]
+
+mod borsh_tests {
+    use borsh::BorshDeserialize;
+    use smol_str::{SmolStr, ToSmolStr};
+    use std::io::Cursor;
+
+    #[test]
+    fn borsh_serialize_stack() {
+        let smolstr_on_stack = "aßΔCaßδc".to_smolstr();
+        let mut buffer = Vec::new();
+        borsh::BorshSerialize::serialize(&smolstr_on_stack, &mut buffer).unwrap();
+        let mut cursor = Cursor::new(buffer);
+        let decoded: SmolStr = borsh::BorshDeserialize::deserialize_reader(&mut cursor).unwrap();
+        assert_eq!(smolstr_on_stack, decoded);
+    }
+    #[test]
+    fn borsh_serialize_heap() {
+        let smolstr_on_heap = "aßΔCaßδcaßΔCaßδcaßΔCaßδcaßΔCaßδcaßΔCaßδcaßΔCaßδcaßΔCaßδcaßΔCaßδcaßΔCaßδcaßΔCaßδcaßΔCaßδc".to_smolstr();
+        let mut buffer = Vec::new();
+        borsh::BorshSerialize::serialize(&smolstr_on_heap, &mut buffer).unwrap();
+        let mut cursor = Cursor::new(buffer);
+        let decoded: SmolStr = borsh::BorshDeserialize::deserialize_reader(&mut cursor).unwrap();
+        assert_eq!(smolstr_on_heap, decoded);
+    }
+    #[test]
+    fn borsh_non_utf8_stack() {
+        let invalid_utf8: Vec<u8> = vec![0xF0, 0x9F, 0x8F]; // Incomplete UTF-8 sequence
+
+        let wrong_utf8 = SmolStr::from(unsafe { String::from_utf8_unchecked(invalid_utf8) });
+        let mut buffer = Vec::new();
+        borsh::BorshSerialize::serialize(&wrong_utf8, &mut buffer).unwrap();
+        let mut cursor = Cursor::new(buffer);
+        let result = SmolStr::deserialize_reader(&mut cursor);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn borsh_non_utf8_heap() {
+        let invalid_utf8: Vec<u8> = vec![
+            0xC1, 0x8A, 0x5F, 0xE2, 0x3A, 0x9E, 0x3B, 0xAA, 0x01, 0x08, 0x6F, 0x2F, 0xC0, 0x32,
+            0xAB, 0xE1, 0x9A, 0x2F, 0x4A, 0x3F, 0x25, 0x0D, 0x8A, 0x2A, 0x19, 0x11, 0xF0, 0x7F,
+            0x0E, 0x80,
+        ];
+        let wrong_utf8 = SmolStr::from(unsafe { String::from_utf8_unchecked(invalid_utf8) });
+        let mut buffer = Vec::new();
+        borsh::BorshSerialize::serialize(&wrong_utf8, &mut buffer).unwrap();
+        let mut cursor = Cursor::new(buffer);
+        let result = SmolStr::deserialize_reader(&mut cursor);
+        assert!(result.is_err());
+    }
+}

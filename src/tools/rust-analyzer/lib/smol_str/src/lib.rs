@@ -795,5 +795,7 @@ impl<'a> arbitrary::Arbitrary<'a> for SmolStr {
     }
 }
 
+#[cfg(feature = "borsh")]
+mod borsh;
 #[cfg(feature = "serde")]
 mod serde;

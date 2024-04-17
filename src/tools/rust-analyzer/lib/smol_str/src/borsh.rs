@@ -1,0 +1,58 @@
+use crate::{Repr, SmolStr, INLINE_CAP};
+use alloc::string::{String, ToString};
+use borsh::io::{Error, ErrorKind, Read, Write};
+use borsh::{BorshDeserialize, BorshSerialize};
+use core::intrinsics::transmute;
+
+impl BorshSerialize for SmolStr {
+    fn serialize<W: Write>(&self, writer: &mut W) -> borsh::io::Result<()> {
+        self.as_str().serialize(writer)
+    }
+}
+
+impl BorshDeserialize for SmolStr {
+    #[inline]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> borsh::io::Result<Self> {
+        let len = u32::deserialize_reader(reader)?;
+        if (len as usize) < INLINE_CAP {
+            let mut buf = [0u8; INLINE_CAP];
+            reader.read_exact(&mut buf[..len as usize])?;
+            _ = core::str::from_utf8(&buf[..len as usize]).map_err(|err| {
+                let msg = err.to_string();
+                Error::new(ErrorKind::InvalidData, msg)
+            })?;
+            Ok(SmolStr(Repr::Inline {
+                len: unsafe { transmute(len as u8) },
+                buf,
+            }))
+        } else {
+            // u8::vec_from_reader always returns Some on success in current implementation
+            let vec = u8::vec_from_reader(len, reader)?.ok_or_else(|| {
+                Error::new(
+                    ErrorKind::Other,
+                    "u8::vec_from_reader unexpectedly returned None".to_string(),
+                )
+            })?;
+            Ok(SmolStr::from(String::from_utf8(vec).map_err(|err| {
+                let msg = err.to_string();
+                Error::new(ErrorKind::InvalidData, msg)
+            })?))
+        }
+    }
+}
+
+#[cfg(feature = "borsh/unstable__schema")]
+mod schema {
+    use alloc::collections::BTreeMap;
+    use borsh::schema::{Declaration, Definition};
+    use borsh::BorshSchema;
+    impl BorshSchema for SmolStr {
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            str::add_definitions_recursively(definitions)
+        }
+
+        fn declaration() -> Declaration {
+            str::declaration()
+        }
+    }
+}
