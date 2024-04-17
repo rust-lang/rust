@@ -57,7 +57,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{
-    ConstArg, GenericArg, ItemLocalMap, MissingLifetimeKind, ParamName, TraitCandidate,
+    ConstArg, GenericArg, HirId, ItemLocalMap, MissingLifetimeKind, ParamName, TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -108,7 +108,7 @@ struct LoweringContext<'a, 'hir> {
 
     /// When inside an `async` context, this is the `HirId` of the
     /// `task_context` local bound to the resume argument of the coroutine.
-    task_context: Option<hir::HirId>,
+    task_context: Option<HirId>,
 
     /// Used to get the current `fn`'s def span to point to when using `await`
     /// outside of an `async fn`.
@@ -662,18 +662,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// `HirIdValidator` later on, which makes sure that all `NodeId`s got mapped
     /// properly. Calling the method twice with the same `NodeId` is fine though.
     #[instrument(level = "debug", skip(self), ret)]
-    fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
+    fn lower_node_id(&mut self, ast_node_id: NodeId) -> HirId {
         assert_ne!(ast_node_id, DUMMY_NODE_ID);
 
         match self.node_id_to_local_id.entry(ast_node_id) {
-            Entry::Occupied(o) => {
-                hir::HirId { owner: self.current_hir_id_owner, local_id: *o.get() }
-            }
+            Entry::Occupied(o) => HirId { owner: self.current_hir_id_owner, local_id: *o.get() },
             Entry::Vacant(v) => {
                 // Generate a new `HirId`.
                 let owner = self.current_hir_id_owner;
                 let local_id = self.item_local_id_counter;
-                let hir_id = hir::HirId { owner, local_id };
+                let hir_id = HirId { owner, local_id };
 
                 v.insert(local_id);
                 self.item_local_id_counter.increment_by(1);
@@ -694,12 +692,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// Generate a new `HirId` without a backing `NodeId`.
     #[instrument(level = "debug", skip(self), ret)]
-    fn next_id(&mut self) -> hir::HirId {
+    fn next_id(&mut self) -> HirId {
         let owner = self.current_hir_id_owner;
         let local_id = self.item_local_id_counter;
         assert_ne!(local_id, hir::ItemLocalId::ZERO);
         self.item_local_id_counter.increment_by(1);
-        hir::HirId { owner, local_id }
+        HirId { owner, local_id }
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -707,7 +705,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let res: Result<Res, ()> = res.apply_id(|id| {
             let owner = self.current_hir_id_owner;
             let local_id = self.node_id_to_local_id.get(&id).copied().ok_or(())?;
-            Ok(hir::HirId { owner, local_id })
+            Ok(HirId { owner, local_id })
         });
         trace!(?res);
 
@@ -890,7 +888,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ret
     }
 
-    fn lower_attrs(&mut self, id: hir::HirId, attrs: &[Attribute]) -> Option<&'hir [Attribute]> {
+    fn lower_attrs(&mut self, id: HirId, attrs: &[Attribute]) -> Option<&'hir [Attribute]> {
         if attrs.is_empty() {
             None
         } else {
@@ -922,7 +920,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
     }
 
-    fn alias_attrs(&mut self, id: hir::HirId, target_id: hir::HirId) {
+    fn alias_attrs(&mut self, id: HirId, target_id: HirId) {
         debug_assert_eq!(id.owner, self.current_hir_id_owner);
         debug_assert_eq!(target_id.owner, self.current_hir_id_owner);
         if let Some(&a) = self.attrs.get(&target_id.local_id) {
@@ -2479,11 +2477,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.pat(span, hir::PatKind::Struct(qpath, fields, false))
     }
 
-    fn pat_ident(&mut self, span: Span, ident: Ident) -> (&'hir hir::Pat<'hir>, hir::HirId) {
+    fn pat_ident(&mut self, span: Span, ident: Ident) -> (&'hir hir::Pat<'hir>, HirId) {
         self.pat_ident_binding_mode(span, ident, hir::BindingAnnotation::NONE)
     }
 
-    fn pat_ident_mut(&mut self, span: Span, ident: Ident) -> (hir::Pat<'hir>, hir::HirId) {
+    fn pat_ident_mut(&mut self, span: Span, ident: Ident) -> (hir::Pat<'hir>, HirId) {
         self.pat_ident_binding_mode_mut(span, ident, hir::BindingAnnotation::NONE)
     }
 
@@ -2492,7 +2490,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         ident: Ident,
         bm: hir::BindingAnnotation,
-    ) -> (&'hir hir::Pat<'hir>, hir::HirId) {
+    ) -> (&'hir hir::Pat<'hir>, HirId) {
         let (pat, hir_id) = self.pat_ident_binding_mode_mut(span, ident, bm);
         (self.arena.alloc(pat), hir_id)
     }
@@ -2502,7 +2500,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         ident: Ident,
         bm: hir::BindingAnnotation,
-    ) -> (hir::Pat<'hir>, hir::HirId) {
+    ) -> (hir::Pat<'hir>, HirId) {
         let hir_id = self.next_id();
 
         (
@@ -2534,12 +2532,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn ty_path(
-        &mut self,
-        mut hir_id: hir::HirId,
-        span: Span,
-        qpath: hir::QPath<'hir>,
-    ) -> hir::Ty<'hir> {
+    fn ty_path(&mut self, mut hir_id: HirId, span: Span, qpath: hir::QPath<'hir>) -> hir::Ty<'hir> {
         let kind = match qpath {
             hir::QPath::Resolved(None, path) => {
                 // Turn trait object paths into `TyKind::TraitObject` instead.

@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::PatKind;
+use rustc_hir::{HirId, PatKind};
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
@@ -39,20 +39,20 @@ pub trait Delegate<'tcx> {
     /// diagnostics. Around pattern matching such as `let pat = expr`, the diagnostic
     /// id will be the id of the expression `expr` but the place itself will have
     /// the id of the binding in the pattern `pat`.
-    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
+    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId);
 
     /// The value found at `place` is being borrowed with kind `bk`.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn borrow(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
-        diag_expr_id: hir::HirId,
+        diag_expr_id: HirId,
         bk: ty::BorrowKind,
     );
 
     /// The value found at `place` is being copied.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
-    fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+    fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         // In most cases, copying data from `x` is equivalent to doing `*&x`, so by default
         // we treat a copy of `x` as a borrow of `x`.
         self.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow)
@@ -60,12 +60,12 @@ pub trait Delegate<'tcx> {
 
     /// The path at `assignee_place` is being assigned to.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
-    fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
+    fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: HirId);
 
     /// The path at `binding_place` is a binding that is being initialized.
     ///
     /// This covers cases such as `let x = 42;`
-    fn bind(&mut self, binding_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+    fn bind(&mut self, binding_place: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         // Bindings can normally be treated as a regular assignment, so by default we
         // forward this to the mutate callback.
         self.mutate(binding_place, diag_expr_id)
@@ -76,7 +76,7 @@ pub trait Delegate<'tcx> {
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
         cause: FakeReadCause,
-        diag_expr_id: hir::HirId,
+        diag_expr_id: HirId,
     );
 }
 
@@ -154,7 +154,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         self.mc.tcx()
     }
 
-    fn delegate_consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+    fn delegate_consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         delegate_consume(&self.mc, self.delegate, place_with_id, diag_expr_id)
     }
 
@@ -775,8 +775,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// closure as the DefId.
     fn walk_captures(&mut self, closure_expr: &hir::Closure<'_>) {
         fn upvar_is_local_variable(
-            upvars: Option<&FxIndexMap<hir::HirId, hir::Upvar>>,
-            upvar_id: hir::HirId,
+            upvars: Option<&FxIndexMap<HirId, hir::Upvar>>,
+            upvar_id: HirId,
             body_owner_is_closure: bool,
         ) -> bool {
             upvars.map(|upvars| !upvars.contains_key(&upvar_id)).unwrap_or(body_owner_is_closure)
@@ -902,7 +902,7 @@ fn delegate_consume<'a, 'tcx>(
     mc: &mc::MemCategorizationContext<'a, 'tcx>,
     delegate: &mut (dyn Delegate<'tcx> + 'a),
     place_with_id: &PlaceWithHirId<'tcx>,
-    diag_expr_id: hir::HirId,
+    diag_expr_id: HirId,
 ) {
     debug!("delegate_consume(place_with_id={:?})", place_with_id);
 

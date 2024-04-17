@@ -1,5 +1,6 @@
 pub(crate) mod check;
 pub(crate) mod clean;
+pub(crate) mod clippy;
 pub(crate) mod compile;
 pub(crate) mod dist;
 pub(crate) mod doc;

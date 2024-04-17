@@ -58,24 +58,24 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::PatKind;
+use rustc_hir::{HirId, PatKind};
 use rustc_infer::infer::InferCtxt;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 pub(crate) trait HirNode {
-    fn hir_id(&self) -> hir::HirId;
+    fn hir_id(&self) -> HirId;
 }
 
 impl HirNode for hir::Expr<'_> {
-    fn hir_id(&self) -> hir::HirId {
+    fn hir_id(&self) -> HirId {
         self.hir_id
     }
 }
 
 impl HirNode for hir::Pat<'_> {
-    fn hir_id(&self) -> hir::HirId {
+    fn hir_id(&self) -> HirId {
         self.hir_id
     }
 }
@@ -86,7 +86,7 @@ pub(crate) struct MemCategorizationContext<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_owner: LocalDefId,
-    upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
+    upvars: Option<&'tcx FxIndexMap<HirId, hir::Upvar>>,
 }
 
 pub(crate) type McResult<T> = Result<T, ()>;
@@ -127,11 +127,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.infcx.tainted_by_errors().is_some()
     }
 
-    fn resolve_type_vars_or_error(
-        &self,
-        id: hir::HirId,
-        ty: Option<Ty<'tcx>>,
-    ) -> McResult<Ty<'tcx>> {
+    fn resolve_type_vars_or_error(&self, id: HirId, ty: Option<Ty<'tcx>>) -> McResult<Ty<'tcx>> {
         match ty {
             Some(ty) => {
                 let ty = self.resolve_vars_if_possible(ty);
@@ -153,7 +149,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn node_ty(&self, hir_id: hir::HirId) -> McResult<Ty<'tcx>> {
+    pub(crate) fn node_ty(&self, hir_id: HirId) -> McResult<Ty<'tcx>> {
         self.resolve_type_vars_or_error(hir_id, self.typeck_results.node_type_opt(hir_id))
     }
 
@@ -377,7 +373,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, span), ret)]
     pub(crate) fn cat_res(
         &self,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         span: Span,
         expr_ty: Ty<'tcx>,
         res: Res,
@@ -416,7 +412,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// environment and upvar reference as appropriate. Only regionck cares
     /// about these dereferences, so we let it compute them as needed.
     #[instrument(level = "debug", skip(self), ret)]
-    fn cat_upvar(&self, hir_id: hir::HirId, var_id: hir::HirId) -> McResult<PlaceWithHirId<'tcx>> {
+    fn cat_upvar(&self, hir_id: HirId, var_id: HirId) -> McResult<PlaceWithHirId<'tcx>> {
         let closure_expr_def_id = self.body_owner;
 
         let upvar_id = ty::UpvarId {
@@ -429,7 +425,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    pub(crate) fn cat_rvalue(&self, hir_id: hir::HirId, expr_ty: Ty<'tcx>) -> PlaceWithHirId<'tcx> {
+    pub(crate) fn cat_rvalue(&self, hir_id: HirId, expr_ty: Ty<'tcx>) -> PlaceWithHirId<'tcx> {
         PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::Rvalue, Vec::new())
     }
 
@@ -523,7 +519,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     fn variant_index_for_adt(
         &self,
         qpath: &hir::QPath<'_>,
-        pat_hir_id: hir::HirId,
+        pat_hir_id: HirId,
         span: Span,
     ) -> McResult<VariantIdx> {
         let res = self.typeck_results.qpath_res(qpath, pat_hir_id);
@@ -556,7 +552,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// Here `pat_hir_id` is the HirId of the pattern itself.
     fn total_fields_in_adt_variant(
         &self,
-        pat_hir_id: hir::HirId,
+        pat_hir_id: HirId,
         variant_index: VariantIdx,
         span: Span,
     ) -> McResult<usize> {
@@ -573,7 +569,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
     /// Returns the total number of fields in a tuple used within a Tuple pattern.
     /// Here `pat_hir_id` is the HirId of the pattern itself.
-    fn total_fields_in_tuple(&self, pat_hir_id: hir::HirId, span: Span) -> McResult<usize> {
+    fn total_fields_in_tuple(&self, pat_hir_id: HirId, span: Span) -> McResult<usize> {
         let ty = self.typeck_results.node_type(pat_hir_id);
         match ty.kind() {
             ty::Tuple(args) => Ok(args.len()),

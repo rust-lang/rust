@@ -1063,7 +1063,7 @@ impl<'a> Parser<'a> {
     /// Parses a `UseTreeKind::Nested(list)`.
     ///
     /// ```text
-    /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
+    /// USE_TREE_LIST = ∅ | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
         self.parse_delim_comma_seq(Delimiter::Brace, |p| {
@@ -1968,11 +1968,8 @@ impl<'a> Parser<'a> {
         } else if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
-                let inherited_vis = Visibility {
-                    span: rustc_span::DUMMY_SP,
-                    kind: VisibilityKind::Inherited,
-                    tokens: None,
-                };
+                let inherited_vis =
+                    Visibility { span: DUMMY_SP, kind: VisibilityKind::Inherited, tokens: None };
                 // We use `parse_fn` to get a span for the function
                 let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
                 match self.parse_fn(

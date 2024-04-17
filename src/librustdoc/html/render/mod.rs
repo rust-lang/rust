@@ -56,7 +56,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::RustcVersion;
 use rustc_span::{
     symbol::{sym, Symbol},
-    BytePos, FileName, RealFileName,
+    BytePos, FileName, RealFileName, DUMMY_SP,
 };
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
@@ -2414,7 +2414,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
         let contents = match fs::read_to_string(&path) {
             Ok(contents) => contents,
             Err(err) => {
-                let span = item.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner());
+                let span = item.span(tcx).map_or(DUMMY_SP, |span| span.inner());
                 tcx.dcx().span_err(span, format!("failed to read file {}: {err}", path.display()));
                 return false;
             }
@@ -2495,7 +2495,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
                 file.start_pos + BytePos(byte_max),
             ))
         })()
-        .unwrap_or(rustc_span::DUMMY_SP);
+        .unwrap_or(DUMMY_SP);
 
         let mut decoration_info = FxHashMap::default();
         decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);

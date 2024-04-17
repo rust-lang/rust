@@ -602,7 +602,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         String::from_utf8(wr).unwrap()
     }
 
-    fn log_liveness(&self, entry_ln: LiveNode, hir_id: hir::HirId) {
+    fn log_liveness(&self, entry_ln: LiveNode, hir_id: HirId) {
         // hack to skip the loop unless debug! is enabled:
         debug!(
             "^^ liveness computation results for body {} (entry={:?})",

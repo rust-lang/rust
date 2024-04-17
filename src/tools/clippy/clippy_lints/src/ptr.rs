@@ -8,7 +8,7 @@ use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_i
 use hir::LifetimeName;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::def_id::DefId;
-use rustc_hir::hir_id::HirIdMap;
+use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{
     self as hir, AnonConst, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg,
@@ -324,7 +324,7 @@ struct PtrArgReplacement {
 
 struct PtrArg<'tcx> {
     idx: usize,
-    emission_id: hir::HirId,
+    emission_id: HirId,
     span: Span,
     ty_did: DefId,
     ty_name: Symbol,

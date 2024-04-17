@@ -9,9 +9,10 @@ use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
-use rustc_hir::LifetimeParamKind;
-use rustc_hir::{BindingAnnotation, ByRef, GenericArg, GenericParam, GenericParamKind, Node, Term};
-use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
+use rustc_hir::{
+    BindingAnnotation, ByRef, GenericArg, GenericBound, GenericParam, GenericParamKind, HirId,
+    LifetimeParamKind, Node, PatKind, RangeEnd, Term, TraitBoundModifier,
+};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::FileName;
@@ -20,7 +21,7 @@ use rustc_target::spec::abi::Abi;
 use std::cell::Cell;
 use std::vec;
 
-pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId) -> String {
+pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: HirId) -> String {
     to_string(&map, |s| s.print_node(map.hir_node(hir_id)))
 }
 
@@ -28,7 +29,7 @@ pub enum AnnNode<'a> {
     Name(&'a Symbol),
     Block(&'a hir::Block<'a>),
     Item(&'a hir::Item<'a>),
-    SubItem(hir::HirId),
+    SubItem(HirId),
     Expr(&'a hir::Expr<'a>),
     Pat(&'a hir::Pat<'a>),
     Arm(&'a hir::Arm<'a>),
@@ -65,12 +66,12 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
 pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
-    attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
+    attrs: &'a dyn Fn(HirId) -> &'a [ast::Attribute],
     ann: &'a (dyn PpAnn + 'a),
 }
 
 impl<'a> State<'a> {
-    fn attrs(&self, id: hir::HirId) -> &'a [ast::Attribute] {
+    fn attrs(&self, id: HirId) -> &'a [ast::Attribute] {
         (self.attrs)(id)
     }
 
@@ -160,7 +161,7 @@ pub fn print_crate<'a>(
     krate: &hir::Mod<'_>,
     filename: FileName,
     input: String,
-    attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
+    attrs: &'a dyn Fn(HirId) -> &'a [ast::Attribute],
     ann: &'a dyn PpAnn,
 ) -> String {
     let mut s = State {

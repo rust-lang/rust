@@ -4251,7 +4251,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         type_diffs: &[TypeError<'tcx>],
         span: Span,
         prev_ty: Ty<'tcx>,
-        body_id: hir::HirId,
+        body_id: HirId,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Vec<Option<(Span, (DefId, Ty<'tcx>))>> {
         let ocx = ObligationCtxt::new(self.infcx);
@@ -4764,7 +4764,7 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
 /// Collect all the awaited expressions within the input expression.
 #[derive(Default)]
 struct AwaitsVisitor {
-    awaits: Vec<hir::HirId>,
+    awaits: Vec<HirId>,
 }
 
 impl<'v> Visitor<'v> for AwaitsVisitor {

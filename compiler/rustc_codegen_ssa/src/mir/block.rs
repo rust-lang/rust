@@ -1861,12 +1861,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 }
 
 enum ReturnDest<'tcx, V> {
-    // Do nothing; the return value is indirect or ignored.
+    /// Do nothing; the return value is indirect or ignored.
     Nothing,
-    // Store the return value to the pointer.
+    /// Store the return value to the pointer.
     Store(PlaceRef<'tcx, V>),
-    // Store an indirect return value to an operand local place.
+    /// Store an indirect return value to an operand local place.
     IndirectOperand(PlaceRef<'tcx, V>, mir::Local),
-    // Store a direct return value to an operand local place.
+    /// Store a direct return value to an operand local place.
     DirectOperand(mir::Local),
 }

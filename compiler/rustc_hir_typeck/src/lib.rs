@@ -57,7 +57,7 @@ use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{HirIdMap, Node};
+use rustc_hir::{HirId, HirIdMap, Node};
 use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
@@ -339,13 +339,13 @@ pub struct EnclosingBreakables<'tcx> {
 }
 
 impl<'tcx> EnclosingBreakables<'tcx> {
-    fn find_breakable(&mut self, target_id: hir::HirId) -> &mut BreakableCtxt<'tcx> {
+    fn find_breakable(&mut self, target_id: HirId) -> &mut BreakableCtxt<'tcx> {
         self.opt_find_breakable(target_id).unwrap_or_else(|| {
             bug!("could not find enclosing breakable with id {}", target_id);
         })
     }
 
-    fn opt_find_breakable(&mut self, target_id: hir::HirId) -> Option<&mut BreakableCtxt<'tcx>> {
+    fn opt_find_breakable(&mut self, target_id: HirId) -> Option<&mut BreakableCtxt<'tcx>> {
         match self.by_id.get(&target_id) {
             Some(ix) => Some(&mut self.stack[*ix]),
             None => None,
