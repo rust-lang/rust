@@ -800,6 +800,7 @@ compiler-team = [
 compiler-team-contributors = [
     "@TaKO8Ki",
     "@Nadrieril",
+    "@nnethercote",
     "@fmease",
     "@fee1-dead",
     "@BoxyUwU",
@@ -857,14 +858,17 @@ parser = [
     "@compiler-errors",
     "@davidtwco",
     "@estebank",
+    "@nnethercote",
     "@petrochenkov",
     "@spastorino",
 ]
 lexer = [
+    "@nnethercote",
     "@petrochenkov",
     "@estebank",
 ]
 arena = [
+    "@nnethercote",
     "@spastorino",
 ]
 mir = [
