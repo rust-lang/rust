@@ -3,7 +3,7 @@ lint_ambiguous_wide_pointer_comparisons = ambiguous wide pointer comparison, the
     .addr_suggestion = use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
 
 lint_array_into_iter =
-    this method call resolves to `<&{$target} as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to <{$target} as IntoIterator>::into_iter in Rust 2021
+    this method call resolves to `<&{$target} as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<{$target} as IntoIterator>::into_iter` in Rust 2021
     .use_iter_suggestion = use `.iter()` instead of `.into_iter()` to avoid ambiguity
     .remove_into_iter_suggestion = or remove `.into_iter()` to iterate by value
     .use_explicit_into_iter_suggestion =
