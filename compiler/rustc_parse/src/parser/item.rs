@@ -1063,7 +1063,7 @@ impl<'a> Parser<'a> {
     /// Parses a `UseTreeKind::Nested(list)`.
     ///
     /// ```text
-    /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
+    /// USE_TREE_LIST = ∅ | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
         self.parse_delim_comma_seq(Delimiter::Brace, |p| {
