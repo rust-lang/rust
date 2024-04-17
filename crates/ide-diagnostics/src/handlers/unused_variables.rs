@@ -30,10 +30,10 @@ pub(crate) fn unused_variables(
         .primary_source(ctx.sema.db)
         .name()
         .map(|v| v.syntax().original_file_range_rooted(ctx.sema.db))
-        .filter(|it| Some(it.file_id) == ast.file_id.file_id())?;
-    if !diagnostic_range.range.contains_range(name_range.range) {
-        return None;
-    }
+        .filter(|it| {
+            Some(it.file_id) == ast.file_id.file_id()
+                && diagnostic_range.range.contains_range(it.range)
+        });
     let var_name = d.local.name(ctx.sema.db);
     Some(
         Diagnostic::new_with_syntax_node_ptr(
@@ -42,13 +42,9 @@ pub(crate) fn unused_variables(
             "unused variable",
             ast,
         )
-        .with_fixes(fixes(
-            ctx.sema.db,
-            var_name,
-            name_range.range,
-            diagnostic_range,
-            ast.file_id.is_macro(),
-        ))
+        .with_fixes(name_range.and_then(|it| {
+            fixes(ctx.sema.db, var_name, it.range, diagnostic_range, ast.file_id.is_macro())
+        }))
         .experimental(),
     )
 }
