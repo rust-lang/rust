@@ -153,6 +153,11 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         "debug"
     };
 
+    if let Ok(cg_rustflags) = std::env::var("CG_RUSTFLAGS") {
+        rustflags.push(' ');
+        rustflags.push_str(&cg_rustflags);
+    }
+
     let mut env = env.clone();
     env.insert("RUSTFLAGS".to_string(), rustflags);
     run_command_with_output_and_env(&args, Some(&start_dir), Some(&env))?;
