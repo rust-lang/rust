@@ -1,6 +1,6 @@
 macro_rules! m {
     () => {
-        let //~ ERROR macro expansion ignores token `let` and any following
+        let //~ ERROR macro expansion ignores keyword `let` and any tokens following
     };
 }
 

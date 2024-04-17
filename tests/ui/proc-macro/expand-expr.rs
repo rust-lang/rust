@@ -114,8 +114,8 @@ expand_expr_fail!(echo_pm!($)); //~ ERROR: expected expression, found `$`
 
 // We get errors reported and recover during macro expansion if the macro
 // doesn't produce a valid expression.
-expand_expr_is!("string", echo_tts!("string"; hello)); //~ ERROR: macro expansion ignores token `hello` and any following
-expand_expr_is!("string", echo_pm!("string"; hello)); //~ ERROR: macro expansion ignores token `;` and any following
+expand_expr_is!("string", echo_tts!("string"; hello)); //~ ERROR: macro expansion ignores `hello` and any tokens following
+expand_expr_is!("string", echo_pm!("string"; hello)); //~ ERROR: macro expansion ignores `;` and any tokens following
 
 // For now, fail if a non-literal expression is expanded.
 expand_expr_fail!(arbitrary_expression() + "etc");
