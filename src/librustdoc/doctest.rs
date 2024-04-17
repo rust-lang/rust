@@ -313,6 +313,7 @@ enum TestFailure {
     UnexpectedRunPass,
 }
 
+#[derive(Debug)]
 enum DirState {
     Temp(tempfile::TempDir),
     Perm(PathBuf),
@@ -367,21 +368,41 @@ pub(crate) struct DocTestInfo {
     path: PathBuf,
 }
 
+fn build_test_dir(outdir: &Arc<DirState>, is_multiple_tests: bool) -> PathBuf {
+    // Make sure we emit well-formed executable names for our target.
+    let is_perm_dir = matches!(**outdir, DirState::Perm(..));
+    let out_dir = outdir.path();
+    let out_dir = if is_multiple_tests && is_perm_dir {
+        // If this a "multiple tests" case and we generate it into a non temporary directory, we
+        // want to put it into the parent instead.
+        out_dir.parent().unwrap_or(out_dir)
+    } else {
+        out_dir
+    };
+    if is_perm_dir && let Err(err) = std::fs::create_dir_all(&out_dir) {
+        eprintln!("Couldn't create directory for doctest executables: {err}");
+        panic::resume_unwind(Box::new(()));
+    }
+    out_dir.into()
+}
+
 fn run_test(
     test: String,
     supports_color: bool,
     test_info: Option<DocTestInfo>,
     rustdoc_options: Arc<IndividualTestOptions>,
     is_multiple_tests: bool,
-    outdir: Arc<DirState>,
     mut lang_string: LangString,
     edition: Edition,
     report_unused_externs: impl Fn(UnusedExterns),
     no_run: bool,
+    // Used to prevent overwriting a binary in case `--persist-doctests` is used.
+    binary_extra: Option<&str>,
+    out_dir: PathBuf,
 ) -> Result<(), TestFailure> {
-    // Make sure we emit well-formed executable names for our target.
-    let rust_out = add_exe_suffix("rust_out".to_owned(), &rustdoc_options.target);
-    let output_file = outdir.path().join(rust_out);
+    let rust_out =
+        add_exe_suffix(format!("rust_out{}", binary_extra.unwrap_or("")), &rustdoc_options.target);
+    let output_file = out_dir.join(rust_out);
 
     let rustc_binary = rustdoc_options
         .test_builder
@@ -717,6 +738,7 @@ impl DocTest {
         let Self {
             supports_color, rustdoc_test_options, lang_string, outdir, path, no_run, ..
         } = self;
+        let out_dir = build_test_dir(&outdir, false);
         TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(std::mem::replace(&mut self.name, String::new())),
@@ -743,12 +765,18 @@ impl DocTest {
                     Some(DocTestInfo { line_offset, line: self.line, path }),
                     rustdoc_test_options,
                     false,
-                    outdir,
                     lang_string,
                     edition,
                     report_unused_externs,
                     no_run,
+                    None,
+                    out_dir,
                 );
+                // We need to move `outdir` into the closure to ensure the `TempDir` struct won't
+                // be dropped before all tests have been run.
+                //
+                // The call to `drop` is only to make use of `outdir`.
+                drop(outdir);
 
                 if let Err(err) = res {
                     match err {
@@ -891,11 +919,6 @@ pub(crate) fn make_test(
     let outdir = Arc::new(if let Some(ref path) = rustdoc_test_options.persist_doctests {
         let mut path = path.clone();
         path.push(&test_id);
-
-        if let Err(err) = std::fs::create_dir_all(&path) {
-            eprintln!("Couldn't create directory for doctest executables: {err}");
-            panic::resume_unwind(Box::new(()));
-        }
 
         DirState::Perm(path)
     } else {
@@ -1374,17 +1397,20 @@ test::test_main(&[{test_args}], vec![{ids}], None);
             ids = self.ids,
         )
         .expect("failed to generate test code");
+        let out_dir = build_test_dir(self.outdir, true);
         let ret = run_test(
             code,
             self.supports_color,
             None,
             Arc::clone(self.rustdoc_test_options),
             true,
-            Arc::clone(self.outdir),
             LangString::empty_for_test(),
             self.edition,
             |_: UnusedExterns| {},
             false,
+            // To prevent writing over an existing doctest
+            Some(&format!("_{}_{}", self.edition, *self.ran_edition_tests)),
+            out_dir,
         );
         if let Err(TestFailure::CompileError) = ret {
             // We failed to compile all compatible tests as one so we push them into the

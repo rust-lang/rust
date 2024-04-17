@@ -14,8 +14,8 @@ fn setup_test_env<F: FnOnce(&Path, &Path)>(callback: F) {
 }
 
 fn check_generated_binaries() {
-    run("doctests/t_rs_2_0/rust_out");
-    run("doctests/t_rs_8_0/rust_out");
+    run("doctests/t_rs_12_0/rust_out");
+    run("doctests/rust_out_2024");
 }
 
 fn main() {
@@ -27,6 +27,8 @@ fn main() {
             .arg("--persist-doctests")
             .arg(out_dir)
             .extern_("t", extern_path)
+            .arg("--edition")
+            .arg("2024")
             .run();
         check_generated_binaries();
     });
@@ -38,6 +40,8 @@ fn main() {
             .arg("--persist-doctests")
             .arg(out_dir)
             .extern_("t", extern_path)
+            .arg("--edition")
+            .arg("2024")
             .arg("--no-run")
             .run();
         check_generated_binaries();
@@ -58,6 +62,8 @@ fn main() {
             .arg("--test-run-directory")
             .arg(run_dir)
             .extern_("t", "libt.rlib")
+            .arg("--edition")
+            .arg("2024")
             .run();
 
         remove_dir_all(run_dir_path);
