@@ -121,7 +121,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         if a.const_.ty().is_bool() { a.const_.try_to_bool() } else { None }
     }
 
-    /// Transform "&(*a)" ==> "a".
+    /// Transform `&(*a)` ==> `a`.
     fn simplify_ref_deref(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Ref(_, _, place) = rvalue {
             if let Some((base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
@@ -141,7 +141,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         }
     }
 
-    /// Transform "Len([_; N])" ==> "N".
+    /// Transform `Len([_; N])` ==> `N`.
     fn simplify_len(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Len(ref place) = *rvalue {
             let place_ty = place.ty(self.local_decls, self.tcx).ty;
@@ -157,7 +157,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         }
     }
 
-    /// Transform "Aggregate(RawPtr, \[p, ()\])" ==> "Cast(PtrToPtr, p)".
+    /// Transform `Aggregate(RawPtr, [p, ()])` ==> `Cast(PtrToPtr, p)`.
     fn simplify_ptr_aggregate(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Aggregate(box AggregateKind::RawPtr(pointee_ty, mutability), fields) = rvalue
         {

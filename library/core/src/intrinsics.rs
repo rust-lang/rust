@@ -2791,7 +2791,8 @@ pub unsafe fn vtable_align(_ptr: *const ()) -> usize {
 #[rustc_intrinsic_must_be_overridden]
 #[cfg(not(bootstrap))]
 pub const fn aggregate_raw_ptr<P: AggregateRawPtr<D, Metadata = M>, D, M>(_data: D, _meta: M) -> P {
-    // No fallback because `libcore` doesn't want to know the layout
+    // To implement a fallback we'd have to assume the layout of the pointer,
+    // but the whole point of this intrinsic is that we shouldn't do that.
     unreachable!()
 }
 
