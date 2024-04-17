@@ -1,5 +1,5 @@
 macro_rules! t {
-    () => ( String ; );     //~ ERROR macro expansion ignores token `;`
+    () => ( String ; );     //~ ERROR macro expansion ignores `;`
 }
 
 fn main() {

@@ -1,4 +1,4 @@
-error: macro expansion ignores token `=>` and any following
+error: macro expansion ignores `=>` and any tokens following
   --> $DIR/macro-expand-to-match-arm.rs:3:18
    |
 LL |         $pattern => $block

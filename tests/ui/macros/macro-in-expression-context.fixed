@@ -11,7 +11,7 @@ macro_rules! foo {
         //~| NOTE `#[warn(semicolon_in_expressions_from_macros)]` on by default
         assert_eq!("B", "B");
     }
-    //~^^ ERROR macro expansion ignores token `assert_eq` and any following
+    //~^^ ERROR macro expansion ignores `assert_eq` and any tokens following
     //~| NOTE the usage of `foo!` is likely invalid in expression context
 }
 

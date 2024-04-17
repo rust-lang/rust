@@ -1,4 +1,4 @@
-error: macro expansion ignores token `;` and any following
+error: macro expansion ignores `;` and any tokens following
   --> $DIR/issue-30007.rs:2:20
    |
 LL |     () => ( String ; );
