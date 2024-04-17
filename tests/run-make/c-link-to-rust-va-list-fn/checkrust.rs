@@ -1,10 +1,7 @@
 #![crate_type = "staticlib"]
 #![feature(c_variadic)]
-#![feature(rustc_private)]
 
-extern crate libc;
-
-use libc::{c_char, c_double, c_int, c_long, c_longlong};
+use std::ffi::{c_char, c_double, c_int, c_long, c_longlong};
 use std::ffi::VaList;
 use std::ffi::{CString, CStr};
 
