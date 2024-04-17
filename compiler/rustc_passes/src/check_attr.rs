@@ -621,7 +621,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     ) -> bool {
         match target {
             Target::Fn => {
-                // `#[target_feature]` is not allowed in language items.
+                // `#[target_feature]` is not allowed in lang items.
                 if let Some((lang_item, _)) = hir::lang_items::extract(attrs)
                     // Calling functions with `#[target_feature]` is
                     // not unsafe on WASM, see #84988

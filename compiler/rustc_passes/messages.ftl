@@ -353,7 +353,7 @@ passes_incorrect_meta_item = expected a quoted string literal
 passes_incorrect_meta_item_suggestion = consider surrounding this with quotes
 
 passes_incorrect_target =
-    `{$name}` language item must be applied to a {$kind} with {$at_least ->
+    `{$name}` lang item must be applied to a {$kind} with {$at_least ->
         [true] at least {$num}
         *[false] {$num}
     } generic {$num ->
@@ -396,7 +396,7 @@ passes_invalid_macro_export_arguments_too_many_items = `#[macro_export]` can onl
 
 passes_lang_item_fn = {$name ->
     [panic_impl] `#[panic_handler]`
-    *[other] `{$name}` language item
+    *[other] `{$name}` lang item
 } function
 
 passes_lang_item_fn_with_target_feature =
@@ -408,7 +408,7 @@ passes_lang_item_fn_with_track_caller =
     .label = {passes_lang_item_fn} is not allowed to have `#[target_feature]`
 
 passes_lang_item_on_incorrect_target =
-    `{$name}` language item must be applied to a {$expected_target}
+    `{$name}` lang item must be applied to a {$expected_target}
     .label = attribute should be applied to a {$expected_target}, not a {$actual_target}
 
 passes_layout_abi =
@@ -464,7 +464,7 @@ passes_missing_const_stab_attr =
     {$descr} has missing const stability attribute
 
 passes_missing_lang_item =
-    language item required, but not found: `{$name}`
+    lang item required, but not found: `{$name}`
     .note = this can occur when a binary crate with `#![no_std]` is compiled for a target where `{$name}` is defined in the standard library
     .help = you may be able to compile for a target that doesn't need `{$name}`, specify a target with `--target` or in `.cargo/config`
 
@@ -705,8 +705,8 @@ passes_unknown_feature =
     unknown feature `{$feature}`
 
 passes_unknown_lang_item =
-    definition of an unknown language item: `{$name}`
-    .label = definition of unknown language item `{$name}`
+    definition of an unknown lang item: `{$name}`
+    .label = definition of unknown lang item `{$name}`
 
 passes_unlabeled_cf_in_while_condition =
     `break` or `continue` with no label in the condition of a `while` loop
