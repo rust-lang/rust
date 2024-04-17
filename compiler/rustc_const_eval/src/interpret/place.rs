@@ -1010,7 +1010,7 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         // This must be an allocation in `tcx`
         let _ = self.tcx.global_alloc(raw.alloc_id);
-        let ptr = self.global_base_pointer(Pointer::from(raw.alloc_id))?;
+        let ptr = self.global_root_pointer(Pointer::from(raw.alloc_id))?;
         let layout = self.layout_of(raw.ty)?;
         Ok(self.ptr_to_mplace(ptr.into(), layout))
     }
