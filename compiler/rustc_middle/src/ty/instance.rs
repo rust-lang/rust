@@ -173,7 +173,7 @@ pub enum InstanceDef<'tcx> {
     ///
     /// The `DefId` is for `core::future::async_drop::async_drop_in_place`, the `Ty`
     /// is the type `T`.
-    AsyncDropGlueCtorShim(DefId, Ty<'tcx>),
+    AsyncDropGlueCtorShim(DefId, Option<Ty<'tcx>>),
 }
 
 impl<'tcx> Instance<'tcx> {
@@ -406,7 +406,8 @@ fn fmt_instance(
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceDef::FnPtrAddrShim(_, ty) => write!(f, " - shim({ty})"),
-        InstanceDef::AsyncDropGlueCtorShim(_, ty) => write!(f, " - shim({ty})"),
+        InstanceDef::AsyncDropGlueCtorShim(_, None) => write!(f, " - shim(None)"),
+        InstanceDef::AsyncDropGlueCtorShim(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
     }
 }
 

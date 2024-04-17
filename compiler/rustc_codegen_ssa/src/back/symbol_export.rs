@@ -364,7 +364,7 @@ fn exported_symbols_provider_local(
                     ));
                 }
                 MonoItem::Fn(Instance {
-                    def: InstanceDef::AsyncDropGlueCtorShim(def_id, ty),
+                    def: InstanceDef::AsyncDropGlueCtorShim(def_id, Some(ty)),
                     args,
                 }) => {
                     // A little sanity-check

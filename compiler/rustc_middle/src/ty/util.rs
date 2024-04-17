@@ -1306,8 +1306,7 @@ impl<'tcx> Ty<'tcx> {
     /// Checks whether values of this type `T` implements the `AsyncDrop`
     /// trait.
     pub fn has_surface_async_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        self.trivially_has_surface_async_drop()
-            && tcx.has_surface_async_drop_raw(param_env.and(self))
+        self.could_have_surface_async_drop() && tcx.has_surface_async_drop_raw(param_env.and(self))
     }
 
     /// Fast path helper for testing if a type has `AsyncDrop`
@@ -1316,52 +1315,68 @@ impl<'tcx> Ty<'tcx> {
     /// Returning `false` means the type is known to not have `AsyncDrop`
     /// implementation. Returning `true` means nothing -- could be
     /// `AsyncDrop`, might not be.
-    fn trivially_has_surface_async_drop(self) -> bool {
-        match self.kind() {
-            ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Bool
-            | ty::Char
-            | ty::Str
-            | ty::Never
-            | ty::Ref(..)
-            | ty::RawPtr(_, _)
-            | ty::FnDef(..)
-            | ty::FnPtr(_)
-            | ty::Error(_)
-            | ty::Tuple(_)
-            | ty::Slice(_)
-            | ty::Array(_, _)
-            | ty::Closure(..)
-            | ty::CoroutineClosure(..)
-            | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
-            | ty::Pat(..) => false,
-            ty::Adt(..)
-            | ty::Bound(..)
-            | ty::Dynamic(..)
-            | ty::Foreign(_)
-            | ty::Infer(_)
-            | ty::Alias(..)
-            | ty::Param(_)
-            | ty::Placeholder(_) => true,
-        }
+    fn could_have_surface_async_drop(self) -> bool {
+        !self.is_async_destructor_trivially_noop()
+            && !matches!(
+                self.kind(),
+                ty::Tuple(_)
+                    | ty::Slice(_)
+                    | ty::Array(_, _)
+                    | ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Coroutine(..)
+            )
     }
 
     /// Checks whether values of this type `T` implements the `AsyncDrop`
     /// trait.
     pub fn has_surface_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        self.trivially_has_surface_drop() && tcx.has_surface_drop_raw(param_env.and(self))
+        self.could_have_surface_drop() && tcx.has_surface_drop_raw(param_env.and(self))
     }
 
-    /// Fast path helper for testing if a type has `AsyncDrop`
-    /// implementation.
+    /// Fast path helper for testing if a type has `Drop` implementation.
     ///
-    /// Returning `false` means the type is known to not have `AsyncDrop`
+    /// Returning `false` means the type is known to not have `Drop`
     /// implementation. Returning `true` means nothing -- could be
-    /// `AsyncDrop`, might not be.
-    fn trivially_has_surface_drop(self) -> bool {
+    /// `Drop`, might not be.
+    fn could_have_surface_drop(self) -> bool {
+        self.is_async_destructor_trivially_noop()
+            && !matches!(
+                self.kind(),
+                ty::Tuple(_)
+                    | ty::Slice(_)
+                    | ty::Array(_, _)
+                    | ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Coroutine(..)
+            )
+    }
+
+    /// Checks whether values of this type `T` implement has noop async destructor.
+    //
+    // FIXME: implement optimization to make ADTs, which do not need drop,
+    // to skip fields or to have noop async destructor.
+    pub fn is_async_destructor_noop(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> bool {
+        self.is_async_destructor_trivially_noop()
+            || if let ty::Adt(adt_def, _) = self.kind() {
+                (adt_def.is_union() || adt_def.is_payloadfree())
+                    && !self.has_surface_async_drop(tcx, param_env)
+                    && !self.has_surface_drop(tcx, param_env)
+            } else {
+                false
+            }
+    }
+
+    /// Fast path helper for testing if a type has noop async destructor.
+    ///
+    /// Returning `true` means the type is known to have noop async destructor
+    /// implementation. Returning `true` means nothing -- could be
+    /// `Drop`, might not be.
+    fn is_async_destructor_trivially_noop(self) -> bool {
         match self.kind() {
             ty::Int(_)
             | ty::Uint(_)
@@ -1371,26 +1386,12 @@ impl<'tcx> Ty<'tcx> {
             | ty::Str
             | ty::Never
             | ty::Ref(..)
-            | ty::RawPtr(_, _)
+            | ty::RawPtr(..)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
-            | ty::Error(_)
-            | ty::Tuple(_)
-            | ty::Slice(_)
-            | ty::Array(_, _)
-            | ty::Closure(..)
-            | ty::CoroutineClosure(..)
-            | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
-            | ty::Pat(..) => false,
-            ty::Adt(..)
-            | ty::Bound(..)
-            | ty::Dynamic(..)
-            | ty::Foreign(_)
-            | ty::Infer(_)
-            | ty::Alias(..)
-            | ty::Param(_)
-            | ty::Placeholder(_) => true,
+            | ty::FnPtr(_) => true,
+            ty::Tuple(tys) => tys.is_empty(),
+            ty::Adt(adt_def, _) => adt_def.is_manually_drop(),
+            _ => false,
         }
     }
 

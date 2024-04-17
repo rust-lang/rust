@@ -1100,14 +1100,14 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
 
                         // type parameters, opaques, and unnormalized projections don't have
-                        // a known discriminant and may need to be normalized further or rely
+                        // a known async destructor and may need to be normalized further or rely
                         // on param env for async destructor projections
                         ty::Param(_)
                         | ty::Foreign(_)
                         | ty::Alias(..)
                         | ty::Bound(..)
                         | ty::Placeholder(..)
-                        | ty::Infer(..)
+                        | ty::Infer(_)
                         | ty::Error(_) => false,
                     }
                 } else if lang_items.pointee_trait() == Some(trait_ref.def_id) {

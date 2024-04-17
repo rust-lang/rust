@@ -187,7 +187,7 @@ fn dump_path<'tcx>(
             }));
             s
         }
-        ty::InstanceDef::AsyncDropGlueCtorShim(_, ty) => {
+        ty::InstanceDef::AsyncDropGlueCtorShim(_, Some(ty)) => {
             // Unfortunately, pretty-printed typed are not very filename-friendly.
             // We dome some filtering.
             let mut s = ".".to_owned();

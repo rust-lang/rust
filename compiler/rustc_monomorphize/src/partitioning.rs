@@ -772,7 +772,7 @@ fn mono_item_visibility<'tcx>(
     let def_id = match instance.def {
         InstanceDef::Item(def_id)
         | InstanceDef::DropGlue(def_id, Some(_))
-        | InstanceDef::AsyncDropGlueCtorShim(def_id, _) => def_id,
+        | InstanceDef::AsyncDropGlueCtorShim(def_id, Some(_)) => def_id,
 
         // We match the visibility of statics here
         InstanceDef::ThreadLocalShim(def_id) => {
@@ -789,6 +789,7 @@ fn mono_item_visibility<'tcx>(
         | InstanceDef::ConstructCoroutineInClosureShim { .. }
         | InstanceDef::CoroutineKindShim { .. }
         | InstanceDef::DropGlue(..)
+        | InstanceDef::AsyncDropGlueCtorShim(..)
         | InstanceDef::CloneShim(..)
         | InstanceDef::FnPtrAddrShim(..) => return Visibility::Hidden,
     };

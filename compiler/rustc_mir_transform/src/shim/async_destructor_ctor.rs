@@ -24,9 +24,11 @@ use super::{local_decls_for_sig, new_body};
 pub fn build_async_destructor_ctor_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    self_ty: Ty<'tcx>,
+    ty: Option<Ty<'tcx>>,
 ) -> Body<'tcx> {
-    AsyncDestructorCtorShimBuilder::new(tcx, def_id, self_ty).build()
+    debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
+
+    AsyncDestructorCtorShimBuilder::new(tcx, def_id, ty).build()
 }
 
 /// Builder for async_drop_in_place shim. Functions as a stack machine
@@ -40,7 +42,7 @@ pub fn build_async_destructor_ctor_shim<'tcx>(
 struct AsyncDestructorCtorShimBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    self_ty: Ty<'tcx>,
+    self_ty: Option<Ty<'tcx>>,
     span: Span,
     source_info: SourceInfo,
     param_env: ty::ParamEnv<'tcx>,
@@ -64,12 +66,12 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     const INPUT_COUNT: usize = 1;
     const MAX_STACK_LEN: usize = 2;
 
-    fn new(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Option<Ty<'tcx>>) -> Self {
+        // Assuming `async_drop_in_place::<()>` is the same as for any type with noop async destructor
+        let arg_ty = if let Some(ty) = self_ty { ty } else { tcx.types.unit };
+        let sig = tcx.fn_sig(def_id).instantiate(tcx, &[arg_ty.into()]);
+        let sig = tcx.instantiate_bound_regions_with_erased(sig);
         let span = tcx.def_span(def_id);
-        let Some(sig) = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).no_bound_vars()
-        else {
-            span_bug!(span, "async_drop_in_place_raw with bound vars for `{self_ty}`");
-        };
 
         let source_info = SourceInfo::outermost(span);
 
@@ -110,7 +112,9 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     }
 
     fn build(self) -> Body<'tcx> {
-        let (tcx, def_id, self_ty) = (self.tcx, self.def_id, self.self_ty);
+        let (tcx, def_id, Some(self_ty)) = (self.tcx, self.def_id, self.self_ty) else {
+            return self.build_noop();
+        };
 
         let surface_drop_kind = || {
             let param_env = tcx.param_env_reveal_all_normalized(def_id);
@@ -127,8 +131,6 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             ty::Array(elem_ty, _) => self.build_slice(true, *elem_ty),
             ty::Slice(elem_ty) => self.build_slice(false, *elem_ty),
 
-            ty::Adt(adt_def, _) if adt_def.is_manually_drop() => self.build_noop(),
-
             ty::Tuple(elem_tys) => self.build_chain(None, elem_tys.iter()),
             ty::Adt(adt_def, args) if adt_def.is_struct() => {
                 let field_tys = adt_def.non_enum_variant().fields.iter().map(|f| f.ty(tcx, args));
@@ -143,33 +145,12 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 self.build_enum(*adt_def, *args, surface_drop_kind())
             }
 
-            ty::Never
-            | ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Str
-            | ty::RawPtr(_, _)
-            | ty::Ref(_, _, _)
-            | ty::FnDef(_, _)
-            | ty::FnPtr(_)
-            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
-            | ty::Error(_) => self.build_noop(),
-
             ty::Adt(adt_def, _) => {
                 assert!(adt_def.is_union());
-                match surface_drop_kind() {
-                    Some(SurfaceDropKind::Async) => self.build_fused_async_surface(),
-                    Some(SurfaceDropKind::Sync) => self.build_fused_sync_surface(),
-                    None => self.build_noop(),
+                match surface_drop_kind().unwrap() {
+                    SurfaceDropKind::Async => self.build_fused_async_surface(),
+                    SurfaceDropKind::Sync => self.build_fused_sync_surface(),
                 }
-            }
-
-            ty::Dynamic(..) | ty::CoroutineWitness(..) | ty::Coroutine(..) | ty::Pat(..) => {
-                bug!(
-                    "Building async destructor constructor shim is not yet implemented for type: {self_ty:?}"
-                )
             }
 
             ty::Bound(..)
@@ -179,6 +160,12 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             | ty::Param(_)
             | ty::Alias(..) => {
                 bug!("Building async destructor for unexpected type: {self_ty:?}")
+            }
+
+            _ => {
+                bug!(
+                    "Building async destructor constructor shim is not yet implemented for type: {self_ty:?}"
+                )
             }
         }
     }
@@ -430,11 +417,15 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     }
 
     fn combine_async_surface(&mut self) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::SurfaceAsyncDropInPlace, &[self.self_ty.into()])
+        self.apply_combinator(1, LangItem::SurfaceAsyncDropInPlace, &[self.self_ty.unwrap().into()])
     }
 
     fn combine_sync_surface(&mut self) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::AsyncDropSurfaceDropInPlace, &[self.self_ty.into()])
+        self.apply_combinator(
+            1,
+            LangItem::AsyncDropSurfaceDropInPlace,
+            &[self.self_ty.unwrap().into()],
+        )
     }
 
     fn combine_fuse(&mut self, inner_future_ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -457,7 +448,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.apply_combinator(
             4,
             LangItem::AsyncDropEither,
-            &[other.into(), matched.into(), self.self_ty.into()],
+            &[other.into(), matched.into(), self.self_ty.unwrap().into()],
         )
     }
 
@@ -477,7 +468,18 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
         debug_assert_eq!(
             output.ty(&self.locals, self.tcx),
-            self.self_ty.async_destructor_ty(self.tcx, self.param_env),
+            self.self_ty.map(|ty| ty.async_destructor_ty(self.tcx, self.param_env)).unwrap_or_else(
+                || {
+                    self.tcx
+                        .fn_sig(
+                            self.tcx.require_lang_item(LangItem::AsyncDropNoop, Some(self.span)),
+                        )
+                        .instantiate_identity()
+                        .output()
+                        .no_bound_vars()
+                        .unwrap()
+                }
+            ),
         );
         let dead_storage = match &output {
             Operand::Move(place) => Some(Statement {

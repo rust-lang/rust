@@ -57,44 +57,25 @@ fn resolve_instance<'tcx>(
         } else if Some(def_id) == tcx.lang_items().async_drop_in_place_fn() {
             let ty = args.type_at(0);
 
-            match *ty.kind() {
-                ty::Array(..)
-                | ty::Slice(_)
-                | ty::Tuple(_)
-                | ty::Bool
-                | ty::Char
-                | ty::Int(_)
-                | ty::Uint(_)
-                | ty::Float(_)
-                | ty::Str
-                | ty::RawPtr(_, _)
-                | ty::Ref(..)
-                | ty::FnDef(..)
-                | ty::FnPtr(..)
-                | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
-                | ty::Adt(..)
-                | ty::Closure(..)
-                | ty::CoroutineClosure(..)
-                | ty::CoroutineWitness(..)
-                | ty::Pat(..)
-                | ty::Never
-                | ty::Coroutine(..) => {}
-
-                ty::Param(_)
-                | ty::Error(_)
-                | ty::Dynamic(..)
-                | ty::Alias(..)
-                | ty::Infer(ty::TyVar(_))
-                | ty::Bound(..)
-                | ty::Foreign(_)
-                | ty::Placeholder(_)
-                | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-                    return Ok(None);
+            if ty.is_async_destructor_noop(tcx, param_env) {
+                match *ty.kind() {
+                    ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Coroutine(..)
+                    | ty::Tuple(..)
+                    | ty::Adt(..)
+                    | ty::Dynamic(..)
+                    | ty::Array(..)
+                    | ty::Slice(..) => {}
+                    // Async destructor ctor shims can only be built from ADTs.
+                    _ => return Ok(None),
                 }
+                debug!(" => nontrivial async drop glue ctor");
+                ty::InstanceDef::AsyncDropGlueCtorShim(def_id, Some(ty))
+            } else {
+                debug!(" => trivial async drop glue ctor");
+                ty::InstanceDef::AsyncDropGlueCtorShim(def_id, None)
             }
-
-            debug!(" =>  async drop glue ctor");
-            ty::InstanceDef::AsyncDropGlueCtorShim(def_id, ty)
         } else {
             debug!(" => free item");
             // FIXME(effects): we may want to erase the effect param if that is present on this item.

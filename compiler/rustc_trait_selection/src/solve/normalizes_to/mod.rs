@@ -819,7 +819,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let discriminant_ty = match *self_ty.kind() {
+        let async_destructor_ty = match *self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(..)
@@ -833,14 +833,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
-            | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
-            | ty::Pat(..)
             | ty::Never
             | ty::Adt(_, _)
             | ty::Str
             | ty::Slice(_)
-            | ty::Dynamic(_, _, _)
             | ty::Tuple(_)
             | ty::Error(_) => self_ty.async_destructor_ty(ecx.tcx(), goal.param_env),
 
@@ -858,10 +854,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 "unexpected self ty `{:?}` when normalizing `<T as AsyncDestruct>::AsyncDestructor`",
                 goal.predicate.self_ty()
             ),
+
+            _ => bug!(
+                "`consider_builtin_async_destruct_candidate` is not yet implemented for type: {self_ty:?}"
+            ),
         };
 
         ecx.probe_misc_candidate("builtin async destruct").enter(|ecx| {
-            ecx.eq(goal.param_env, goal.predicate.term, discriminant_ty.into())
+            ecx.eq(goal.param_env, goal.predicate.term, async_destructor_ty.into())
                 .expect("expected goal term to be fully unconstrained");
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })

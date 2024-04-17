@@ -2319,6 +2319,10 @@ impl<'tcx> Ty<'tcx> {
 
     /// Returns the type of the async destructor of this type.
     pub fn async_destructor_ty(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Ty<'tcx> {
+        if self.is_async_destructor_noop(tcx, param_env) || matches!(self.kind(), ty::Error(_)) {
+            return Ty::async_destructor_combinator(tcx, LangItem::AsyncDropNoop)
+                .instantiate_identity();
+        }
         match *self.kind() {
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx
@@ -2333,9 +2337,6 @@ impl<'tcx> Ty<'tcx> {
                     .instantiate(tcx, &[dtor.into()])
             }
 
-            ty::Adt(adt_def, _) if adt_def.is_manually_drop() => {
-                Ty::async_destructor_combinator(tcx, LangItem::AsyncDropNoop).instantiate_identity()
-            }
             ty::Adt(adt_def, args) if adt_def.is_enum() || adt_def.is_struct() => self
                 .adt_async_destructor_ty(
                     tcx,
@@ -2357,34 +2358,10 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(adt_def, _) => {
                 assert!(adt_def.is_union());
 
-                match self.surface_async_dropper_ty(tcx, param_env) {
-                    None => Ty::async_destructor_combinator(tcx, LangItem::AsyncDropNoop)
-                        .instantiate_identity(),
-                    Some(surface_drop) => {
-                        Ty::async_destructor_combinator(tcx, LangItem::AsyncDropFuse)
-                            .instantiate(tcx, &[surface_drop.into()])
-                    }
-                }
-            }
+                let surface_drop = self.surface_async_dropper_ty(tcx, param_env).unwrap();
 
-            ty::Never
-            | ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Str
-            | ty::RawPtr(_, _)
-            | ty::Ref(..)
-            | ty::FnDef(..)
-            | ty::FnPtr(..)
-            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
-            | ty::Error(_) => {
-                Ty::async_destructor_combinator(tcx, LangItem::AsyncDropNoop).instantiate_identity()
-            }
-
-            ty::Dynamic(..) | ty::CoroutineWitness(..) | ty::Coroutine(..) | ty::Pat(..) => {
-                bug!("`async_destructor_ty` is not yet implemented for type: {self:?}")
+                Ty::async_destructor_combinator(tcx, LangItem::AsyncDropFuse)
+                    .instantiate(tcx, &[surface_drop.into()])
             }
 
             ty::Bound(..)
@@ -2393,6 +2370,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`async_destructor_ty` applied to unexpected type: {self:?}")
             }
+
+            _ => bug!("`async_destructor_ty` is not yet implemented for type: {self:?}"),
         }
     }
 
@@ -2406,6 +2385,8 @@ impl<'tcx> Ty<'tcx> {
         I: Iterator + ExactSizeIterator,
         I::Item: IntoIterator<Item = Ty<'tcx>>,
     {
+        debug_assert!(!self.is_async_destructor_noop(tcx, param_env));
+
         let defer = Ty::async_destructor_combinator(tcx, LangItem::AsyncDropDefer);
         let chain = Ty::async_destructor_combinator(tcx, LangItem::AsyncDropChain);
 
@@ -2425,7 +2406,7 @@ impl<'tcx> Ty<'tcx> {
             .reduce(|other, matched| {
                 either.instantiate(tcx, &[other.into(), matched.into(), self.into()])
             })
-            .unwrap_or(noop);
+            .unwrap();
 
         let dtor = if let Some(dropper_ty) = self.surface_async_dropper_ty(tcx, param_env) {
             Ty::async_destructor_combinator(tcx, LangItem::AsyncDropChain)
