@@ -7,15 +7,14 @@
 extern crate alloc;
 
 use alloc::alloc::*;
+use core::fmt::Write;
 
-extern "Rust" {
-    fn miri_write_to_stderr(bytes: &[u8]);
-}
+#[path = "../../utils/mod.no_std.rs"]
+mod utils;
 
 #[alloc_error_handler]
-fn alloc_error_handler(_: Layout) -> ! {
-    let msg = "custom alloc error handler called!\n";
-    unsafe { miri_write_to_stderr(msg.as_bytes()) };
+fn alloc_error_handler(layout: Layout) -> ! {
+    let _ = writeln!(utils::MiriStderr, "custom alloc error handler: {layout:?}");
     core::intrinsics::abort(); //~ERROR: aborted
 }
 
@@ -25,9 +24,7 @@ mod plumbing {
 
     #[panic_handler]
     fn panic_handler(_: &core::panic::PanicInfo) -> ! {
-        let msg = "custom panic handler called!\n";
-        unsafe { miri_write_to_stderr(msg.as_bytes()) };
-        core::intrinsics::abort();
+        loop {}
     }
 
     struct NoAlloc;

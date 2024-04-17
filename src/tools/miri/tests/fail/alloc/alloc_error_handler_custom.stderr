@@ -1,4 +1,4 @@
-custom alloc error handler called!
+custom alloc error handler: Layout { size: 4, align: 4 (1 << 2) }
 error: abnormal termination: the program aborted execution
   --> $DIR/alloc_error_handler_custom.rs:LL:CC
    |
@@ -12,8 +12,8 @@ note: inside `_::__rg_oom`
    |
 LL | #[alloc_error_handler]
    | ---------------------- in this procedural macro expansion
-LL | fn alloc_error_handler(_: Layout) -> ! {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn alloc_error_handler(layout: Layout) -> ! {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: inside `alloc::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `alloc::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
 note: inside `start`

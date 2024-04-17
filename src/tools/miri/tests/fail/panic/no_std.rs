@@ -1,27 +1,11 @@
+//@compile-flags: -Cpanic=abort
 #![feature(start, core_intrinsics)]
 #![no_std]
-//@compile-flags: -Cpanic=abort
-
-// Plumbing to let us use `writeln!` to host stderr:
-
-extern "Rust" {
-    fn miri_write_to_stderr(bytes: &[u8]);
-}
-
-struct HostErr;
 
 use core::fmt::Write;
 
-impl Write for HostErr {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        unsafe {
-            miri_write_to_stderr(s.as_bytes());
-        }
-        Ok(())
-    }
-}
-
-// Aaaand the test:
+#[path = "../../utils/mod.no_std.rs"]
+mod utils;
 
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
@@ -30,6 +14,6 @@ fn start(_: isize, _: *const *const u8) -> isize {
 
 #[panic_handler]
 fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
-    writeln!(HostErr, "{panic_info}").ok();
+    writeln!(utils::MiriStderr, "{panic_info}").ok();
     core::intrinsics::abort(); //~ ERROR: the program aborted execution
 }

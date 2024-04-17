@@ -7,17 +7,17 @@
 extern crate alloc;
 
 use alloc::alloc::*;
+use core::fmt::Write;
 
-extern "Rust" {
-    fn miri_write_to_stderr(bytes: &[u8]);
-}
+#[path = "../../utils/mod.no_std.rs"]
+mod utils;
 
 // The default no_std alloc_error_handler is a panic.
 
 #[panic_handler]
-fn panic_handler(_panic_info: &core::panic::PanicInfo) -> ! {
-    let msg = "custom panic handler called!\n";
-    unsafe { miri_write_to_stderr(msg.as_bytes()) };
+fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
+    let _ = writeln!(utils::MiriStderr, "custom panic handler called!");
+    let _ = writeln!(utils::MiriStderr, "{panic_info}");
     core::intrinsics::abort(); //~ERROR: aborted
 }
 
