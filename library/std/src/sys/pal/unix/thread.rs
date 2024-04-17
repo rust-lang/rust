@@ -717,7 +717,7 @@ unsafe fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
 
     match __pthread_get_minstack.get() {
         None => libc::PTHREAD_STACK_MIN,
-        Some(f) => unsafe { f(attr) },
+        Some(f) => f(attr),
     }
 }
 
