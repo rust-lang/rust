@@ -391,6 +391,36 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_from_to_tryfrom() {
+    check_doc_test(
+        "convert_from_to_tryfrom",
+        r#####"
+//- minicore: from
+impl $0From<usize> for Thing {
+    fn from(val: usize) -> Self {
+        Thing {
+            b: val.to_string(),
+            a: val
+        }
+    }
+}
+"#####,
+        r#####"
+impl TryFrom<usize> for Thing {
+    type Error = ${0:()};
+
+    fn try_from(val: usize) -> Result<Self, Self::Error> {
+        Ok(Thing {
+            b: val.to_string(),
+            a: val
+        })
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_if_to_bool_then() {
     check_doc_test(
         "convert_if_to_bool_then",
