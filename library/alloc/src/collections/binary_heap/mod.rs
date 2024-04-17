@@ -385,6 +385,12 @@ impl<T: Clone, A: Allocator + Clone> Clone for BinaryHeap<T, A> {
         BinaryHeap { data: self.data.clone() }
     }
 
+    /// Overwrites the contents of `self` with a clone of the contents of `source`.
+    ///
+    /// This method is preferred over simply assigning `source.clone()` to `self`,
+    /// as it avoids reallocation if possible.
+    ///
+    /// See [`Vec::clone_from()`] for more details.
     fn clone_from(&mut self, source: &Self) {
         self.data.clone_from(&source.data);
     }

@@ -660,8 +660,14 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         DefKind::Impl { of_trait } => {
             if of_trait && let Some(impl_trait_header) = tcx.impl_trait_header(def_id) {
-                check_impl_items_against_trait(tcx, def_id, impl_trait_header);
-                check_on_unimplemented(tcx, def_id);
+                if tcx
+                    .ensure()
+                    .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id)
+                    .is_ok()
+                {
+                    check_impl_items_against_trait(tcx, def_id, impl_trait_header);
+                    check_on_unimplemented(tcx, def_id);
+                }
             }
         }
         DefKind::Trait => {
