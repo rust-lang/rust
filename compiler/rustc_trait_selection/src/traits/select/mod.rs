@@ -2631,7 +2631,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     nested.extend(
                         self.infcx
                             .at(&obligation.cause, obligation.param_env)
-                            .eq(DefineOpaqueTypes::No, source_projection, target_projection)
+                            .eq(DefineOpaqueTypes::Yes, source_projection, target_projection)
                             .map_err(|_| SelectionError::Unimplemented)?
                             .into_obligations(),
                     );

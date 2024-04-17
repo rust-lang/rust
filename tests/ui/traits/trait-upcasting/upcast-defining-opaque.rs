@@ -1,7 +1,7 @@
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
-//@[next] check-pass
+//@check-pass
 
 #![feature(trait_upcasting, type_alias_impl_trait)]
 
@@ -18,7 +18,7 @@ impl<T: ?Sized> Super for T {
 type Foo = impl Sized;
 
 fn upcast(x: &dyn Sub<Assoc = Foo>) -> &dyn Super<Assoc = i32> {
-    x //[current]~ mismatched types
+    x
 }
 
 fn main() {}
