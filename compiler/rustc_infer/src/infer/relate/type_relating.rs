@@ -80,8 +80,8 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         }
 
         let infcx = self.fields.infcx;
-        let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
-        let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
+        let a = infcx.shallow_resolve(a);
+        let b = infcx.shallow_resolve(b);
 
         match (a.kind(), b.kind()) {
             (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {

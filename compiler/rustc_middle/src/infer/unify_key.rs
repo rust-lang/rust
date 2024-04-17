@@ -86,21 +86,6 @@ impl<'tcx> UnifyValue for RegionVariableValue<'tcx> {
     }
 }
 
-impl ToType for ty::IntVarValue {
-    fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        match *self {
-            ty::IntType(i) => Ty::new_int(tcx, i),
-            ty::UintType(i) => Ty::new_uint(tcx, i),
-        }
-    }
-}
-
-impl ToType for ty::FloatVarValue {
-    fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        Ty::new_float(tcx, self.0)
-    }
-}
-
 // Generic consts.
 
 #[derive(Copy, Clone, Debug)]
@@ -211,6 +196,7 @@ impl<'tcx> EffectVarValue<'tcx> {
 
 impl<'tcx> UnifyValue for EffectVarValue<'tcx> {
     type Error = NoError;
+
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
         match (*value1, *value2) {
             (EffectVarValue::Unknown, EffectVarValue::Unknown) => Ok(EffectVarValue::Unknown),

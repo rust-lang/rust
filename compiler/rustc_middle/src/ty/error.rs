@@ -49,8 +49,6 @@ pub enum TypeError<'tcx> {
 
     Sorts(ExpectedFound<Ty<'tcx>>),
     ArgumentSorts(ExpectedFound<Ty<'tcx>>, usize),
-    IntMismatch(ExpectedFound<ty::IntVarValue>),
-    FloatMismatch(ExpectedFound<ty::FloatTy>),
     Traits(ExpectedFound<DefId>),
     VariadicMismatch(ExpectedFound<bool>),
 
@@ -155,23 +153,6 @@ impl<'tcx> TypeError<'tcx> {
                 report_maybe_different(&format!("trait `{expected}`"), &format!("trait `{found}`"))
                     .into()
             }
-            IntMismatch(ref values) => {
-                let expected = match values.expected {
-                    ty::IntVarValue::IntType(ty) => ty.name_str(),
-                    ty::IntVarValue::UintType(ty) => ty.name_str(),
-                };
-                let found = match values.found {
-                    ty::IntVarValue::IntType(ty) => ty.name_str(),
-                    ty::IntVarValue::UintType(ty) => ty.name_str(),
-                };
-                format!("expected `{expected}`, found `{found}`").into()
-            }
-            FloatMismatch(ref values) => format!(
-                "expected `{}`, found `{}`",
-                values.expected.name_str(),
-                values.found.name_str()
-            )
-            .into(),
             VariadicMismatch(ref values) => format!(
                 "expected {} fn, found {} function",
                 if values.expected { "variadic" } else { "non-variadic" },
@@ -206,8 +187,7 @@ impl<'tcx> TypeError<'tcx> {
         match self {
             CyclicTy(_) | CyclicConst(_) | SafetyMismatch(_) | ConstnessMismatch(_)
             | PolarityMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
-            | ArgumentSorts(..) | Sorts(_) | IntMismatch(_) | FloatMismatch(_)
-            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
+            | ArgumentSorts(..) | Sorts(_) | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
             | ArgumentMutability(_)
