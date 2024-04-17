@@ -2126,16 +2126,22 @@ impl<T: Clone, A: Allocator + Clone> Clone for LinkedList<T, A> {
         list
     }
 
-    fn clone_from(&mut self, other: &Self) {
-        let mut iter_other = other.iter();
-        if self.len() > other.len() {
-            self.split_off(other.len());
+    /// Overwrites the contents of `self` with a clone of the contents of `source`.
+    ///
+    /// This method is preferred over simply assigning `source.clone()` to `self`,
+    /// as it avoids reallocation of the nodes of the linked list. Additionally,
+    /// if the element type `T` overrides `clone_from()`, this will reuse the
+    /// resources of `self`'s elements as well.
+    fn clone_from(&mut self, source: &Self) {
+        let mut source_iter = source.iter();
+        if self.len() > source.len() {
+            self.split_off(source.len());
         }
-        for (elem, elem_other) in self.iter_mut().zip(&mut iter_other) {
-            elem.clone_from(elem_other);
+        for (elem, source_elem) in self.iter_mut().zip(&mut source_iter) {
+            elem.clone_from(source_elem);
         }
-        if !iter_other.is_empty() {
-            self.extend(iter_other.cloned());
+        if !source_iter.is_empty() {
+            self.extend(source_iter.cloned());
         }
     }
 }

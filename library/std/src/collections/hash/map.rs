@@ -1271,8 +1271,8 @@ where
     }
 
     #[inline]
-    fn clone_from(&mut self, other: &Self) {
-        self.base.clone_from(&other.base);
+    fn clone_from(&mut self, source: &Self) {
+        self.base.clone_from(&source.base);
     }
 }
 
