@@ -12,11 +12,9 @@ extern "Rust" {
     fn miri_write_to_stderr(bytes: &[u8]);
 }
 
-// The default no_std alloc_error_handler is a panic.
-
-#[panic_handler]
-fn panic_handler(_panic_info: &core::panic::PanicInfo) -> ! {
-    let msg = "custom panic handler called!\n";
+#[alloc_error_handler]
+fn alloc_error_handler(_: Layout) -> ! {
+    let msg = "custom alloc error handler called!\n";
     unsafe { miri_write_to_stderr(msg.as_bytes()) };
     core::intrinsics::abort(); //~ERROR: aborted
 }
@@ -24,6 +22,13 @@ fn panic_handler(_panic_info: &core::panic::PanicInfo) -> ! {
 // rustc requires us to provide some more things that aren't actually used by this test
 mod plumbing {
     use super::*;
+
+    #[panic_handler]
+    fn panic_handler(_: &core::panic::PanicInfo) -> ! {
+        let msg = "custom panic handler called!\n";
+        unsafe { miri_write_to_stderr(msg.as_bytes()) };
+        core::intrinsics::abort();
+    }
 
     struct NoAlloc;
 

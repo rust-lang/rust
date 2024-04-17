@@ -12,12 +12,10 @@ LL |     ABORT();
    = note: inside `std::alloc::_::__rg_oom` at RUSTLIB/std/src/alloc.rs:LL:CC
    = note: inside `std::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `std::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `std::boxed::Box::<i32, BadAlloc>::new_uninit_in` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-   = note: inside `std::boxed::Box::<i32, BadAlloc>::new_in` at RUSTLIB/alloc/src/boxed.rs:LL:CC
 note: inside `main`
   --> $DIR/alloc_error_handler.rs:LL:CC
    |
-LL |     let _b = Box::new_in(0, BadAlloc);
+LL |     handle_alloc_error(Layout::for_value(&0));
    | ^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
