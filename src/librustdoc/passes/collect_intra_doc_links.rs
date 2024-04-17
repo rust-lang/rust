@@ -1420,7 +1420,7 @@ impl LinkCollector<'_, '_> {
         //
         // Otherwise, check if 2 links are same, if so, skip the resolve process.
         //
-        // Notice that this algorithm is passive, might possibly miss actual redudant cases.
+        // Notice that this algorithm is passive, might possibly miss actual redundant cases.
         let explicit_link = explicit_link.to_string();
         let display_text = ori_link.display_text.as_ref().unwrap();
 

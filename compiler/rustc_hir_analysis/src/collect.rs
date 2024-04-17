@@ -992,7 +992,7 @@ fn lower_variant(
         .inspect(|f| {
             has_unnamed_fields |= f.ident.name == kw::Underscore;
             // We only check named ADT here because anonymous ADTs are checked inside
-            // the nammed ADT in which they are defined.
+            // the named ADT in which they are defined.
             if !is_anonymous {
                 field_uniqueness_check_ctx.check_field(f);
             }
