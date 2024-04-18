@@ -185,7 +185,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
         }
         // Collect variables mutably used and spans which will need dereferencings from the
         // function body.
-        let MutablyUsedVariablesCtxt { mutably_used_vars, .. } = {
+        let mutably_used_vars = {
             let mut ctx = MutablyUsedVariablesCtxt {
                 mutably_used_vars: HirIdSet::default(),
                 prev_bind: None,
@@ -217,7 +217,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                     check_closures(&mut ctx, cx, &infcx, &mut checked_closures, async_closures);
                 }
             }
-            ctx
+            ctx.generate_mutably_used_ids_from_aliases()
         };
         for ((&input, &_), arg) in it {
             // Only take `&mut` arguments.
@@ -309,12 +309,22 @@ struct MutablyUsedVariablesCtxt<'tcx> {
 }
 
 impl<'tcx> MutablyUsedVariablesCtxt<'tcx> {
-    fn add_mutably_used_var(&mut self, mut used_id: HirId) {
-        while let Some(id) = self.aliases.get(&used_id) {
-            self.mutably_used_vars.insert(used_id);
-            used_id = *id;
-        }
+    fn add_mutably_used_var(&mut self, used_id: HirId) {
         self.mutably_used_vars.insert(used_id);
+    }
+
+    // Because the alias may come after the mutable use of a variable, we need to fill the map at
+    // the end.
+    fn generate_mutably_used_ids_from_aliases(mut self) -> HirIdSet {
+        let all_ids = self.mutably_used_vars.iter().copied().collect::<Vec<_>>();
+        for mut used_id in all_ids {
+            while let Some(id) = self.aliases.get(&used_id) {
+                self.mutably_used_vars.insert(used_id);
+                used_id = *id;
+            }
+            self.mutably_used_vars.insert(used_id);
+        }
+        self.mutably_used_vars
     }
 
     fn would_be_alias_cycle(&self, alias: HirId, mut target: HirId) -> bool {
