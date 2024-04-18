@@ -506,13 +506,14 @@ The maximum byte size a `Future` can have, before it triggers the `clippy::large
 
 
 ## `ignore-interior-mutability`
-A list of paths to types that should be treated like `Arc`, i.e. ignored but
-for the generic parameters for determining interior mutability
+A list of paths to types that should be treated as if they do not contain interior mutability
 
 **Default Value:** `["bytes::Bytes"]`
 
 ---
 **Affected lints:**
+* [`borrow_interior_mutable_const`](https://rust-lang.github.io/rust-clippy/master/index.html#borrow_interior_mutable_const)
+* [`declare_interior_mutable_const`](https://rust-lang.github.io/rust-clippy/master/index.html#declare_interior_mutable_const)
 * [`ifs_same_cond`](https://rust-lang.github.io/rust-clippy/master/index.html#ifs_same_cond)
 * [`mutable_key_type`](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_key_type)
 
