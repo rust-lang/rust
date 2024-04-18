@@ -368,6 +368,8 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
             return None;
         }
 
+        // For signed comparisons, we need to consider different bit widths,
+        // so we need to transform to i128 for comparison.
         fn int_equal(l: ScalarInt, r: impl Into<u128>, size: Size) -> bool {
             l.try_to_int(l.size()).unwrap()
                 == ScalarInt::try_from_uint(r, size).unwrap().try_to_int(size).unwrap()
