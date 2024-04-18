@@ -2,7 +2,7 @@
 
 **Tier: 2 with host tools**
 
-One-sentence description of the target (e.g. CPU, OS)
+64-bit ARM-based Apple devices running macOS, Macs with Apple Silicon M1 or M2 chips. M3 is [`arm64e-apple-darwin`](platform-support/arm64e-apple-darwin.md).
 
 ## Target maintainers
 
@@ -10,39 +10,30 @@ One-sentence description of the target (e.g. CPU, OS)
 
 ## Requirements
 
-Does the target support host tools, or only cross-compilation? Does the target
-support std, or alloc (either with a default allocator, or if the user supplies
-an allocator)?
+This target supports host tools and cross-compilation. It provides the full standard library including std and alloc.
 
-Document the expectations of binaries built for the target. Do they assume
-specific minimum features beyond the baseline of the CPU/environment/etc? What
-version of the OS or environment do they expect?
+Binaries built for this target expect a Apple Silicon Mac.
 
-Are there notable `#[target_feature(...)]` or `-C target-feature=` values that
-programs may wish to use?
+### Format
 
-What calling convention does `extern "C"` use on the target?
-
-What format do binaries use by default? ELF, PE, something else?
+The default binary format is Mach-O, the executable format used on Apple's platforms.
 
 ## Building the target
 
-If Rust doesn't build the target by default, how can users build it? Can users
-just add it to the `target` list in `config.toml`?
+Just add it to the `target` with: 
+```
+rustup target add aarch64-apple-darwin
+```
 
 ## Building Rust programs
 
-Rust does not yet ship pre-compiled artifacts for this target. To compile for
-this target, you will either need to build Rust with the target enabled (see
-"Building the target" above), or build your own copy of `core` by using
-`build-std` or similar.
+Rust ships pre-compiled artifacts for this target or build your own copy of `core` by using
+`build-std`.
 
 ## Testing
 
-Does the target support running binaries, or do binaries have varying
-expectations that prevent having a standard way to run them? If users can run
-binaries, can they do so in some common emulator, or do they need native
-hardware? Does the target support running the Rust testsuite?
+Binaries produced for this target can be run directly on Apple Silicon Macs natively. 
+The Rust test suite can be run for this target on such hardware.
 
 ## Cross-compilation toolchains and C code
 
