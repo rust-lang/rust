@@ -348,6 +348,11 @@ pub(super) fn transcribe<'a>(
                                 TokenStream::from_ast(ty),
                             )
                         }
+                        MatchedSingle(ParseNtResult::Meta(meta)) => mk_delimited(
+                            meta.span(),
+                            MetaVarKind::Meta,
+                            TokenStream::from_ast(meta),
+                        ),
                         MatchedSingle(ParseNtResult::Vis(vis)) => {
                             mk_delimited(vis.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
                         }

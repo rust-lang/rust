@@ -200,7 +200,6 @@ impl HasTokens for Nonterminal {
     fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         match self {
             Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens(),
-            Nonterminal::NtMeta(attr_item) => attr_item.tokens(),
             Nonterminal::NtPath(path) => path.tokens(),
             Nonterminal::NtBlock(block) => block.tokens(),
         }
@@ -208,7 +207,6 @@ impl HasTokens for Nonterminal {
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
         match self {
             Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens_mut(),
-            Nonterminal::NtMeta(attr_item) => attr_item.tokens_mut(),
             Nonterminal::NtPath(path) => path.tokens_mut(),
             Nonterminal::NtBlock(block) => block.tokens_mut(),
         }

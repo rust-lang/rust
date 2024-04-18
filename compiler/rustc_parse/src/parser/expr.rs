@@ -1399,7 +1399,6 @@ impl<'a> Parser<'a> {
                     self.bump();
                     return Ok(self.mk_expr(self.prev_token.span, ExprKind::Block(block, None)));
                 }
-                _ => {}
             };
         }
 
