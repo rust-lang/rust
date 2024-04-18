@@ -3,9 +3,7 @@ use std::collections::BTreeSet;
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::coverage::{
-    BlockMarkerId, ConditionInfo, CoverageInfoHi, CoverageKind,
-};
+use rustc_middle::mir::coverage::{BlockMarkerId, ConditionInfo, CoverageInfoHi, CoverageKind};
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;

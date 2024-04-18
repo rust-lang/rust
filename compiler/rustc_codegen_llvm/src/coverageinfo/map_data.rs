@@ -203,11 +203,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// Return the source hash, generated from the HIR node structure, and used to indicate whether
     /// or not the source code structure changed between different compilations.
     pub(crate) fn source_hash(&self) -> u64 {
-        if self.is_used {
-            self.function_coverage_info.function_source_hash
-        } else {
-            0
-        }
+        if self.is_used { self.function_coverage_info.function_source_hash } else { 0 }
     }
 
     /// Returns an iterator over all filenames used by this function's mappings.
@@ -251,11 +247,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
     }
 
     fn counter_for_term(&self, term: CovTerm) -> Counter {
-        if self.is_zero_term(term) {
-            Counter::ZERO
-        } else {
-            Counter::from_term(term)
-        }
+        if self.is_zero_term(term) { Counter::ZERO } else { Counter::from_term(term) }
     }
 
     fn is_zero_term(&self, term: CovTerm) -> bool {

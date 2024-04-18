@@ -43,6 +43,12 @@ struct NotInfo {
     is_flipped: bool,
 }
 
+pub(crate) struct MatchArm {
+    pub(crate) source_info: SourceInfo,
+    pub(crate) pre_binding_block: Option<BasicBlock>,
+    pub(crate) arm_block: BasicBlock,
+}
+
 #[derive(Default)]
 struct BlockMarkerGen {
     num_block_markers: usize,
@@ -166,6 +172,34 @@ impl CoverageInfoBuilder {
                 arm_taken_marker: marker,
             };
             branch_info.branch_arm_lists.push(vec![arm(true_marker), arm(false_marker)]);
+        }
+    }
+
+    pub(crate) fn add_match_arms(&mut self, cfg: &mut CFG<'_>, arms: &[MatchArm]) {
+        // Match expressions with 0-1 arms don't have any branches for their arms.
+        if arms.len() < 2 {
+            return;
+        }
+
+        // FIXME(#124118) The current implementation of branch coverage for
+        // match arms can't handle or-patterns.
+        if arms.iter().any(|arm| arm.pre_binding_block.is_none()) {
+            return;
+        }
+
+        let branch_arms = arms
+            .iter()
+            .map(|&MatchArm { source_info, pre_binding_block, arm_block }| {
+                let pre_guard_marker =
+                    self.markers.inject_block_marker(cfg, source_info, pre_binding_block.unwrap());
+                let arm_taken_marker =
+                    self.markers.inject_block_marker(cfg, source_info, arm_block);
+                BranchArm { span: source_info.span, pre_guard_marker, arm_taken_marker }
+            })
+            .collect::<Vec<_>>();
+
+        if let Some(branch_info) = self.branch_info.as_mut() {
+            branch_info.branch_arm_lists.push(branch_arms);
         }
     }
 

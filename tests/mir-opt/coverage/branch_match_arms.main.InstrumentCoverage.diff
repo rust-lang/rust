@@ -26,12 +26,25 @@
           debug a => _9;
       }
   
+      coverage branches {
+          BlockMarkerId(0), BlockMarkerId(1) => $DIR/branch_match_arms.rs:16:9: 16:19 (#0)
+          BlockMarkerId(2), BlockMarkerId(3) => $DIR/branch_match_arms.rs:17:9: 17:19 (#0)
+          BlockMarkerId(4), BlockMarkerId(5) => $DIR/branch_match_arms.rs:18:9: 18:19 (#0)
+          BlockMarkerId(6), BlockMarkerId(7) => $DIR/branch_match_arms.rs:19:9: 19:19 (#0)
+      }
+  
 +     coverage ExpressionId(0) => Expression { lhs: Counter(1), op: Add, rhs: Counter(2) };
 +     coverage ExpressionId(1) => Expression { lhs: Expression(0), op: Add, rhs: Counter(3) };
 +     coverage ExpressionId(2) => Expression { lhs: Counter(0), op: Subtract, rhs: Expression(1) };
 +     coverage ExpressionId(3) => Expression { lhs: Counter(3), op: Add, rhs: Counter(2) };
 +     coverage ExpressionId(4) => Expression { lhs: Expression(3), op: Add, rhs: Counter(1) };
 +     coverage ExpressionId(5) => Expression { lhs: Expression(4), op: Add, rhs: Expression(2) };
++     coverage ExpressionId(6) => Expression { lhs: Expression(2), op: Add, rhs: Counter(1) };
++     coverage ExpressionId(7) => Expression { lhs: Expression(6), op: Add, rhs: Counter(2) };
++     coverage ExpressionId(8) => Expression { lhs: Expression(7), op: Add, rhs: Counter(3) };
++     coverage Branch { true_term: Counter(1), false_term: Expression(2) } => $DIR/branch_match_arms.rs:18:9 - 18:19;
++     coverage Branch { true_term: Counter(2), false_term: Expression(6) } => $DIR/branch_match_arms.rs:17:9 - 17:19;
++     coverage Branch { true_term: Counter(3), false_term: Expression(7) } => $DIR/branch_match_arms.rs:16:9 - 16:19;
 +     coverage Code(Counter(0)) => $DIR/branch_match_arms.rs:14:1 - 15:21;
 +     coverage Code(Counter(3)) => $DIR/branch_match_arms.rs:16:17 - 16:33;
 +     coverage Code(Counter(2)) => $DIR/branch_match_arms.rs:17:17 - 17:33;
@@ -55,17 +68,32 @@
   
       bb2: {
 +         Coverage::CounterIncrement(3);
+<<<<<<< HEAD
           falseEdge -> [real: bb8, imaginary: bb3];
+=======
+          Coverage::BlockMarker(0);
+          falseEdge -> [real: bb6, imaginary: bb3];
+>>>>>>> 59595611af7 (coverage: Treat each match arm as a "branch" for branch coverage)
       }
   
       bb3: {
 +         Coverage::CounterIncrement(2);
+<<<<<<< HEAD
           falseEdge -> [real: bb7, imaginary: bb4];
+=======
+          Coverage::BlockMarker(2);
+          falseEdge -> [real: bb8, imaginary: bb4];
+>>>>>>> 59595611af7 (coverage: Treat each match arm as a "branch" for branch coverage)
       }
   
       bb4: {
 +         Coverage::CounterIncrement(1);
+<<<<<<< HEAD
           falseEdge -> [real: bb6, imaginary: bb5];
+=======
+          Coverage::BlockMarker(4);
+          falseEdge -> [real: bb10, imaginary: bb5];
+>>>>>>> 59595611af7 (coverage: Treat each match arm as a "branch" for branch coverage)
       }
   
       bb5: {
@@ -73,16 +101,31 @@
           StorageLive(_9);
           _9 = copy ((_1 as A).0: u32);
           StorageLive(_10);
+<<<<<<< HEAD
           _10 = copy _9;
+=======
+          _10 = _9;
+          Coverage::BlockMarker(6);
+          Coverage::BlockMarker(7);
+>>>>>>> 59595611af7 (coverage: Treat each match arm as a "branch" for branch coverage)
           _0 = consume(move _10) -> [return: bb12, unwind: bb14];
       }
   
       bb6: {
+<<<<<<< HEAD
           StorageLive(_7);
           _7 = copy ((_1 as B).0: u32);
           StorageLive(_8);
           _8 = copy _7;
           _0 = consume(move _8) -> [return: bb11, unwind: bb14];
+=======
+          StorageLive(_3);
+          _3 = ((_1 as D).0: u32);
+          StorageLive(_4);
+          _4 = _3;
+          Coverage::BlockMarker(1);
+          _0 = consume(move _4) -> [return: bb7, unwind: bb14];
+>>>>>>> 59595611af7 (coverage: Treat each match arm as a "branch" for branch coverage)
       }
   
       bb7: {
@@ -107,12 +150,37 @@
           goto -> bb13;
       }
   
+<<<<<<< HEAD
       bb10: {
+=======
+      bb8: {
+          StorageLive(_5);
+          _5 = ((_1 as C).0: u32);
+          StorageLive(_6);
+          _6 = _5;
+          Coverage::BlockMarker(3);
+          _0 = consume(move _6) -> [return: bb9, unwind: bb14];
+      }
+  
+      bb9: {
+>>>>>>> 59595611af7 (coverage: Treat each match arm as a "branch" for branch coverage)
           StorageDead(_6);
           StorageDead(_5);
           goto -> bb13;
       }
   
+<<<<<<< HEAD
+=======
+      bb10: {
+          StorageLive(_7);
+          _7 = ((_1 as B).0: u32);
+          StorageLive(_8);
+          _8 = _7;
+          Coverage::BlockMarker(5);
+          _0 = consume(move _8) -> [return: bb11, unwind: bb14];
+      }
+  
+>>>>>>> 59595611af7 (coverage: Treat each match arm as a "branch" for branch coverage)
       bb11: {
           StorageDead(_8);
           StorageDead(_7);

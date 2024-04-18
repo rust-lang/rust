@@ -1740,13 +1740,12 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
             }
         } else if let Some(prov) = alloc.provenance().get(i, &tcx) {
             // Memory with provenance must be defined
-            assert!(alloc
-                .init_mask()
-                .is_range_initialized(alloc_range(i, Size::from_bytes(1)))
-                .is_ok());
+            assert!(
+                alloc.init_mask().is_range_initialized(alloc_range(i, Size::from_bytes(1))).is_ok()
+            );
             ascii.push('━'); // HEAVY HORIZONTAL
-                             // We have two characters to display this, which is obviously not enough.
-                             // Format is similar to "oversized" above.
+            // We have two characters to display this, which is obviously not enough.
+            // Format is similar to "oversized" above.
             let j = i.bytes_usize();
             let c = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + 1)[0];
             write!(w, "╾{c:02x}{prov:#?} (1 ptr byte)╼")?;

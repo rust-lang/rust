@@ -1,24 +1,35 @@
 Function name: guard_simple::never_taken
-Raw bytes (56): 0x[01, 01, 04, 01, 05, 11, 09, 0f, 0d, 05, 09, 08, 01, 08, 01, 02, 1e, 20, 05, 02, 02, 0e, 00, 1e, 05, 00, 22, 00, 24, 11, 01, 0e, 00, 1e, 20, 09, 06, 00, 0e, 00, 1e, 09, 00, 22, 00, 24, 0d, 01, 0e, 00, 10, 0b, 02, 01, 00, 02]
+Raw bytes (80): 0x[01, 01, 09, 07, 01, 17, 05, 0d, 09, 01, 05, 17, 11, 0d, 09, 11, 09, 23, 0d, 05, 09, 0a, 01, 08, 01, 02, 1e, 20, 01, 02, 02, 09, 00, 0a, 20, 05, 0e, 00, 0e, 00, 1e, 05, 00, 22, 00, 24, 20, 11, 12, 01, 09, 00, 0a, 11, 00, 0e, 00, 1e, 20, 09, 1a, 00, 0e, 00, 1e, 09, 00, 22, 00, 24, 0d, 01, 0e, 00, 10, 1f, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 4
-- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 1 operands: lhs = Counter(4), rhs = Counter(2)
-- expression 2 operands: lhs = Expression(3, Add), rhs = Counter(3)
-- expression 3 operands: lhs = Counter(1), rhs = Counter(2)
-Number of file 0 mappings: 8
+Number of expressions: 9
+- expression 0 operands: lhs = Expression(1, Add), rhs = Counter(0)
+- expression 1 operands: lhs = Expression(5, Add), rhs = Counter(1)
+- expression 2 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 4 operands: lhs = Expression(5, Add), rhs = Counter(4)
+- expression 5 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 6 operands: lhs = Counter(4), rhs = Counter(2)
+- expression 7 operands: lhs = Expression(8, Add), rhs = Counter(3)
+- expression 8 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 10
 - Code(Counter(0)) at (prev + 8, 1) to (start + 2, 30)
-- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 2, 14) to (start + 0, 30)
+- Branch { true: Counter(0), false: Expression(0, Sub) } at (prev + 2, 9) to (start + 0, 10)
+    true  = c0
+    false = (((c3 + c2) + c1) - c0)
+- Branch { true: Counter(1), false: Expression(3, Sub) } at (prev + 0, 14) to (start + 0, 30)
     true  = c1
     false = (c0 - c1)
 - Code(Counter(1)) at (prev + 0, 34) to (start + 0, 36)
-- Code(Counter(4)) at (prev + 1, 14) to (start + 0, 30)
-- Branch { true: Counter(2), false: Expression(1, Sub) } at (prev + 0, 14) to (start + 0, 30)
+- Branch { true: Counter(4), false: Expression(4, Sub) } at (prev + 1, 9) to (start + 0, 10)
+    true  = c4
+    false = ((c3 + c2) - c4)
+- Code(Counter(4)) at (prev + 0, 14) to (start + 0, 30)
+- Branch { true: Counter(2), false: Expression(6, Sub) } at (prev + 0, 14) to (start + 0, 30)
     true  = c2
     false = (c4 - c2)
 - Code(Counter(2)) at (prev + 0, 34) to (start + 0, 36)
 - Code(Counter(3)) at (prev + 1, 14) to (start + 0, 16)
-- Code(Expression(2, Add)) at (prev + 2, 1) to (start + 0, 2)
+- Code(Expression(7, Add)) at (prev + 2, 1) to (start + 0, 2)
     = ((c1 + c2) + c3)
 

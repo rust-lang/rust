@@ -87,4 +87,4 @@ fn main() {
     }
 }
 
-// FIXME(#124118) Actually instrument match arms for branch coverage.
+// FIXME(#124118) Support match expressions with or-patterns.
