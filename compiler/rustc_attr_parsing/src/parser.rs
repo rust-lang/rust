@@ -481,15 +481,6 @@ impl<'a> MetaItemListParserContext<'a> {
                 self.inside_delimiters.peek()
             {
                 match &**nt {
-                    // or maybe a full nt meta including the path but we return immediately
-                    token::Nonterminal::NtMeta(item) => {
-                        self.inside_delimiters.next();
-
-                        return Some(MetaItemOrLitParser::MetaItemParser(MetaItemParser {
-                            path: PathParser::Ast(&item.path),
-                            args: ArgParser::from_attr_args(&item.args, self.dcx),
-                        }));
-                    }
                     // an already interpolated path from a macro expansion is a path, no need to parse
                     // one from tokens
                     token::Nonterminal::NtPath(path) => {
