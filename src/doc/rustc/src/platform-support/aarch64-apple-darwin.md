@@ -37,7 +37,4 @@ The Rust test suite can be run for this target on such hardware.
 
 ## Cross-compilation toolchains and C code
 
-Does the target support C code? If so, what toolchain target should users use
-to build compatible C code? (This may match the target triple, or it may be a
-toolchain for a different target triple, potentially with specific options or
-caveats.)
+This target supports C code. To build compatible C code, you should use a toolchain targeting aarch64-apple-darwin, such as Xcode on a Mac or GCC. The toolchain target triple matches this Rust target triple.
