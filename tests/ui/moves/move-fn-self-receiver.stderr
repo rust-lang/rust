@@ -106,7 +106,10 @@ note: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/move-fn-self-receiver.rs:5:1
    |
 LL | struct Foo;
-   | ^^^^^^^^^^
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let ret = mut_foo.use_mut_self();
+   |               ------- you could clone this value
 
 error[E0382]: use of moved value: `rc_foo`
   --> $DIR/move-fn-self-receiver.rs:55:5
@@ -142,7 +145,10 @@ note: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/move-fn-self-receiver.rs:5:1
    |
 LL | struct Foo;
-   | ^^^^^^^^^^
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     foo_add + Foo;
+   |     ------- you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 

@@ -11,6 +11,13 @@ LL | |     x;
    | |_____value used here after move
    |       `x` moved due to usage in operator
    |
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/binop-move-semantics.rs:5:16
+   |
+LL | fn double_move<T: Add<Output=()>>(x: T) {
+   |                ^ consider constraining this type parameter with `Clone`
+LL |     x
+   |     - you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: consider further restricting this bound
@@ -51,6 +58,14 @@ LL |     x
 ...
 LL |     use_mut(n); use_imm(m);
    |                         - borrow later used here
+   |
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/binop-move-semantics.rs:17:18
+   |
+LL | fn move_borrowed<T: Add<Output=()>>(x: T, mut y: T) {
+   |                  ^ consider constraining this type parameter with `Clone`
+LL |     let m = &x;
+   |             -- you could clone this value
 
 error[E0505]: cannot move out of `y` because it is borrowed
   --> $DIR/binop-move-semantics.rs:23:5
@@ -65,6 +80,15 @@ LL |     y;
    |     ^ move out of `y` occurs here
 LL |     use_mut(n); use_imm(m);
    |             - borrow later used here
+   |
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/binop-move-semantics.rs:17:18
+   |
+LL | fn move_borrowed<T: Add<Output=()>>(x: T, mut y: T) {
+   |                  ^ consider constraining this type parameter with `Clone`
+LL |     let m = &x;
+LL |     let n = &mut y;
+   |             ------ you could clone this value
 
 error[E0507]: cannot move out of `*m` which is behind a mutable reference
   --> $DIR/binop-move-semantics.rs:30:5
@@ -80,12 +104,29 @@ LL | |     *n;
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/binop-move-semantics.rs:26:24
+   |
+LL | fn illegal_dereference<T: Add<Output=()>>(mut x: T, y: T) {
+   |                        ^ consider constraining this type parameter with `Clone`
+...
+LL |     *m
+   |     -- you could clone this value
 
 error[E0507]: cannot move out of `*n` which is behind a shared reference
   --> $DIR/binop-move-semantics.rs:32:5
    |
 LL |     *n;
    |     ^^ move occurs because `*n` has type `T`, which does not implement the `Copy` trait
+   |
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/binop-move-semantics.rs:26:24
+   |
+LL | fn illegal_dereference<T: Add<Output=()>>(mut x: T, y: T) {
+   |                        ^ consider constraining this type parameter with `Clone`
+...
+LL |     *n;
+   |     -- you could clone this value
 
 error[E0502]: cannot borrow `f` as immutable because it is also borrowed as mutable
   --> $DIR/binop-move-semantics.rs:54:5
