@@ -810,7 +810,6 @@ fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
         token::NtBlock(block) => vis.visit_block(block),
         token::NtExpr(expr) => vis.visit_expr(expr),
         token::NtLiteral(expr) => vis.visit_expr(expr),
-        token::NtPath(path) => vis.visit_path(path),
     }
 }
 
