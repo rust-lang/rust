@@ -15,7 +15,7 @@ mod zed {
 #[cfg(not(windows))]
 mod mlibc {
     extern crate libc;
-    use libc::{c_int, c_void, size_t, ssize_t};
+    use self::libc::{c_int, c_void, size_t, ssize_t};
 
     extern "C" {
         pub fn write(fd: c_int, buf: *const c_void, count: size_t) -> ssize_t;
