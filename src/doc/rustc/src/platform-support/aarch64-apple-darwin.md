@@ -2,7 +2,7 @@
 
 **Tier: 2 with host tools**
 
-64-bit ARM-based Apple devices running macOS, Macs with Apple Silicon M1 or M2 chips. M3 is [`arm64e-apple-darwin`](platform-support/arm64e-apple-darwin.md).
+64-bit ARM-based Apple devices running macOS, Macs with M1 or M2 Apple Silicon chips. M3 or higher is [`arm64e-apple-darwin`](platform-support/arm64e-apple-darwin.md).
 
 ## Target maintainers
 
@@ -12,7 +12,7 @@
 
 This target supports host tools and cross-compilation. It provides the full standard library including std and alloc.
 
-Binaries built for this target expect a Apple Silicon Mac.
+Binaries built for this target expect a Apple Silicon Mac on macOS 11.0 Big Sur+.
 
 ### Format
 
