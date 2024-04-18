@@ -44,15 +44,10 @@ fn non_mut_ref(_: &Vec<u32>) {}
 struct Bar;
 
 impl Bar {
-    // Should not warn on `&mut self`.
     fn bar(&mut self) {}
+    //~^ ERROR: this argument is a mutable reference, but not used mutably
 
     fn mushroom(&self, vec: &mut Vec<i32>) -> usize {
-        //~^ ERROR: this argument is a mutable reference, but not used mutably
-        vec.len()
-    }
-
-    fn badger(&mut self, vec: &mut Vec<i32>) -> usize {
         //~^ ERROR: this argument is a mutable reference, but not used mutably
         vec.len()
     }
@@ -305,6 +300,41 @@ fn true_setter(b: &mut bool) -> impl FnOnce() + '_ {
 // Should not warn.
 fn filter_copy<T: Copy>(predicate: &mut impl FnMut(T) -> bool) -> impl FnMut(&T) -> bool + '_ {
     move |&item| predicate(item)
+}
+
+trait MutSelfTrait {
+    // Should not warn since it's a trait method.
+    fn mut_self(&mut self);
+}
+
+struct MutSelf {
+    a: u32,
+}
+
+impl MutSelf {
+    fn bar(&mut self) {}
+    //~^ ERROR: this argument is a mutable reference, but not used mutably
+    async fn foo(&mut self, u: &mut i32, v: &mut u32) {
+        //~^ ERROR: this argument is a mutable reference, but not used mutably
+        //~| ERROR: this argument is a mutable reference, but not used mutably
+        async {
+            *u += 1;
+        }
+        .await;
+    }
+    async fn foo2(&mut self, u: &mut i32, v: &mut u32) {
+        //~^ ERROR: this argument is a mutable reference, but not used mutably
+        async {
+            self.a += 1;
+            *u += 1;
+        }
+        .await;
+    }
+}
+
+impl MutSelfTrait for MutSelf {
+    // Should not warn since it's a trait method.
+    fn mut_self(&mut self) {}
 }
 
 // `is_from_proc_macro` stress tests

@@ -83,7 +83,9 @@ fn should_skip<'tcx>(
     }
 
     if is_self(arg) {
-        return true;
+        // Interestingly enough, `self` arguments make `is_from_proc_macro` return `true`, hence why
+        // we return early here.
+        return false;
     }
 
     if let PatKind::Binding(.., name, _) = arg.pat.kind {
