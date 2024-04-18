@@ -651,7 +651,6 @@ impl Token {
                 matches!(&**nt,
                     | NtExpr(..)
                     | NtLiteral(..)
-                    | NtMeta(..)
                     | NtPath(..)
                 ),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
@@ -854,6 +853,7 @@ impl Token {
     /// Is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
+        #[allow(irrefutable_let_patterns)] // FIXME: temporary
         if let Interpolated(nt) = &self.kind
             && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = &**nt
         {
@@ -1060,8 +1060,6 @@ pub enum Nonterminal {
     NtBlock(P<ast::Block>),
     NtExpr(P<ast::Expr>),
     NtLiteral(P<ast::Expr>),
-    /// Stuff inside brackets for attributes
-    NtMeta(P<ast::AttrItem>),
     NtPath(P<ast::Path>),
 }
 
@@ -1153,7 +1151,6 @@ impl Nonterminal {
         match self {
             NtBlock(block) => block.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
-            NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
         }
     }
@@ -1163,7 +1160,6 @@ impl Nonterminal {
             NtBlock(..) => "block",
             NtExpr(..) => "expression",
             NtLiteral(..) => "literal",
-            NtMeta(..) => "attribute",
             NtPath(..) => "path",
         }
     }
@@ -1185,7 +1181,6 @@ impl fmt::Debug for Nonterminal {
             NtBlock(..) => f.pad("NtBlock(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
-            NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
         }
     }

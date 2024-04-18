@@ -803,12 +803,6 @@ fn visit_nonterminal<T: MutVisitor>(vis: &mut T, nt: &mut token::Nonterminal) {
         token::NtBlock(block) => vis.visit_block(block),
         token::NtExpr(expr) => vis.visit_expr(expr),
         token::NtLiteral(expr) => vis.visit_expr(expr),
-        token::NtMeta(item) => {
-            let AttrItem { unsafety: _, path, args, tokens } = item.deref_mut();
-            vis.visit_path(path);
-            visit_attr_args(vis, args);
-            visit_lazy_tts(vis, tokens);
-        }
         token::NtPath(path) => vis.visit_path(path),
     }
 }

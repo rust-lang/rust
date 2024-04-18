@@ -1754,6 +1754,7 @@ pub enum ParseNtResult {
     Stmt(P<ast::Stmt>),
     Pat(P<ast::Pat>, NtPatKind),
     Ty(P<ast::Ty>),
+    Meta(P<ast::AttrItem>),
     Vis(P<ast::Visibility>),
 
     /// This variant will eventually be removed, along with `Token::Interpolate`.

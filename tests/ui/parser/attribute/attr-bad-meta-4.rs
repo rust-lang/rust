@@ -1,8 +1,8 @@
 macro_rules! mac {
     ($attr_item: meta) => {
         #[cfg($attr_item)]
-        //~^ ERROR expected unsuffixed literal, found `an(arbitrary token stream)`
-        //~| ERROR expected unsuffixed literal, found `an(arbitrary token stream)`
+        //~^ ERROR expected unsuffixed literal, found `meta` metavariable
+        //~| ERROR expected unsuffixed literal, found `meta` metavariable
         struct S;
     }
 }
