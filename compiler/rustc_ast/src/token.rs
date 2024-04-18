@@ -1,16 +1,12 @@
 pub use BinOpToken::*;
 pub use LitKind::*;
-pub use Nonterminal::*;
 pub use NtExprKind::*;
 pub use NtPatKind::*;
 pub use TokenKind::*;
 
 use crate::ast;
-use crate::ptr::P;
 use crate::util::case::Case;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::symbol::{kw, sym};
 #[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
@@ -51,8 +47,8 @@ pub enum InvisibleOrigin {
     // `proc_macro::Delimiter::to_internal`, i.e. returned by a proc macro.
     ProcMacro,
 
-    // Converted from `TokenKind::Interpolated` in
-    // `TokenStream::flatten_token`. Treated similarly to `ProcMacro`.
+    // Converted from `TokenKind::NtLifetime` in `TokenStream::flatten_token`.
+    // Treated similarly to `ProcMacro`.
     FlattenToken,
 }
 
@@ -347,9 +343,7 @@ impl From<IdentIsRaw> for bool {
     }
 }
 
-// SAFETY: due to the `Clone` impl below, all fields of all variants other than
-// `Interpolated` must impl `Copy`.
-#[derive(PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     /// `=`
@@ -438,21 +432,6 @@ pub enum TokenKind {
     /// the `lifetime` metavariable in the macro's RHS.
     NtLifetime(Ident),
 
-    /// An embedded AST node, as produced by a macro. This only exists for
-    /// historical reasons. We'd like to get rid of it, for multiple reasons.
-    /// - It's conceptually very strange. Saying a token can contain an AST
-    ///   node is like saying, in natural language, that a word can contain a
-    ///   sentence.
-    /// - It requires special handling in a bunch of places in the parser.
-    /// - It prevents `Token` from implementing `Copy`.
-    /// It adds complexity and likely slows things down. Please don't add new
-    /// occurrences of this token kind!
-    ///
-    /// The span in the surrounding `Token` is that of the metavariable in the
-    /// macro's RHS. The span within the Nonterminal is that of the fragment
-    /// passed to the macro at the call site.
-    Interpolated(Lrc<Nonterminal>),
-
     /// A doc comment token.
     /// `Symbol` is the doc comment's data excluding its "quotes" (`///`, `/**`, etc)
     /// similarly to symbols in string literal tokens.
@@ -460,19 +439,6 @@ pub enum TokenKind {
 
     /// End Of File
     Eof,
-}
-
-impl Clone for TokenKind {
-    fn clone(&self) -> Self {
-        // `TokenKind` would impl `Copy` if it weren't for `Interpolated`. So
-        // for all other variants, this implementation of `clone` is just like
-        // a copy. This is faster than the `derive(Clone)` version which has a
-        // separate path for every variant.
-        match self {
-            Interpolated(nt) => Interpolated(nt.clone()),
-            _ => unsafe { std::ptr::read(self) },
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -563,7 +529,6 @@ impl Token {
     pub fn uninterpolated_span(&self) -> Span {
         match self.kind {
             NtIdent(ident, _) | NtLifetime(ident) => ident.span,
-            Interpolated(ref nt) => nt.use_span(),
             _ => self.span,
         }
     }
@@ -581,7 +546,7 @@ impl Token {
             }
 
             OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
-            | NtIdent(..) | Lifetime(..) | NtLifetime(..) | Interpolated(..) | Eof => false,
+            | NtIdent(..) | Lifetime(..) | NtLifetime(..) | Eof => false,
         }
     }
 
@@ -609,7 +574,6 @@ impl Token {
             PathSep                           | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
-            Interpolated(ref nt) => matches!(&**nt, NtBlock(..)),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Block |
                 MetaVarKind::Expr { .. } |
@@ -636,7 +600,6 @@ impl Token {
             | DotDot | DotDotDot | DotDotEq      // ranges
             | Lt | BinOp(Shl)                    // associated path
             | PathSep => true,                   // global path
-            Interpolated(ref nt) => matches!(&**nt, NtBlock(..)),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Block |
                 MetaVarKind::Pat(_) |
@@ -677,7 +640,6 @@ impl Token {
         match self.kind {
             OpenDelim(Delimiter::Brace) | Literal(..) | BinOp(Minus) => true,
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => true,
-            Interpolated(ref nt) => matches!(&**nt, NtBlock(..)),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Expr { .. } | MetaVarKind::Block | MetaVarKind::Literal,
             ))) => true,
@@ -800,35 +762,24 @@ impl Token {
         self.ident().is_some_and(|(ident, _)| ident.name == name)
     }
 
-    /// Would `maybe_reparse_metavar_expr` in `parser.rs` return `Ok(..)`?
+    /// Would `eat_metavar_expr` in `parser.rs` return `Ok(..)`?
     /// That is, is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_metavar_expr(&self) -> bool {
-        #[allow(irrefutable_let_patterns)] // FIXME: temporary
-        if let Interpolated(nt) = &self.kind
-            && let NtBlock(_) = &**nt
-        {
-            true
-        } else if matches!(
+        matches!(
             self.is_metavar_seq(),
-            Some(MetaVarKind::Expr { .. } | MetaVarKind::Literal | MetaVarKind::Path)
-        ) {
-            true
-        } else {
-            false
-        }
+            Some(
+                MetaVarKind::Expr { .. }
+                    | MetaVarKind::Literal
+                    | MetaVarKind::Path
+                    | MetaVarKind::Block
+            )
+        )
     }
 
-    /// Is the token an interpolated block (`$b:block`)?
-    pub fn is_whole_block(&self) -> bool {
-        #[allow(irrefutable_let_patterns)] // FIXME: temporary
-        if let Interpolated(nt) = &self.kind
-            && let NtBlock(..) = &**nt
-        {
-            return true;
-        }
-
-        false
+    /// Are we at a block from a metavar (`$b:block`)?
+    pub fn is_metavar_block(&self) -> bool {
+        matches!(self.is_metavar_seq(), Some(MetaVarKind::Block))
     }
 
     /// Returns `true` if the token is either the `mut` or `const` keyword.
@@ -853,7 +804,8 @@ impl Token {
         self.is_non_raw_ident_where(|id| id.name == kw)
     }
 
-    /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this token is an identifier equal to `kw` ignoring the case.
+    /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this
+    /// token is an identifier equal to `kw` ignoring the case.
     pub fn is_keyword_case(&self, kw: Symbol, case: Case) -> bool {
         self.is_keyword(kw)
             || (case == Case::Insensitive
@@ -974,7 +926,7 @@ impl Token {
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
             | DotDotEq | Comma | Semi | PathSep | RArrow | LArrow | FatArrow | Pound | Dollar
             | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..) | NtIdent(..)
-            | Lifetime(..) | NtLifetime(..) | Interpolated(..) | DocComment(..) | Eof => {
+            | Lifetime(..) | NtLifetime(..) | DocComment(..) | Eof => {
                 return None;
             }
         };
@@ -1009,12 +961,6 @@ pub enum NtExprKind {
     // - `inferred`: was written using `expr` in edition 2021 or earlier.
     // - `!inferred`: was written using `expr_2021`.
     Expr2021 { inferred: bool },
-}
-
-#[derive(Clone, Encodable, Decodable)]
-/// For interpolation during macro expansion.
-pub enum Nonterminal {
-    NtBlock(P<ast::Block>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
@@ -1100,47 +1046,6 @@ impl fmt::Display for NonterminalKind {
     }
 }
 
-impl Nonterminal {
-    pub fn use_span(&self) -> Span {
-        match self {
-            NtBlock(block) => block.span,
-        }
-    }
-
-    pub fn descr(&self) -> &'static str {
-        match self {
-            NtBlock(..) => "block",
-        }
-    }
-}
-
-impl PartialEq for Nonterminal {
-    fn eq(&self, _rhs: &Self) -> bool {
-        // FIXME: Assume that all nonterminals are not equal, we can't compare them
-        // correctly based on data from AST. This will prevent them from matching each other
-        // in macros. The comparison will become possible only when each nonterminal has an
-        // attached token stream from which it was parsed.
-        false
-    }
-}
-
-impl fmt::Debug for Nonterminal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            NtBlock(..) => f.pad("NtBlock(..)"),
-        }
-    }
-}
-
-impl<CTX> HashStable<CTX> for Nonterminal
-where
-    CTX: crate::HashStableContext,
-{
-    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
-        panic!("interpolated tokens should not be present in the HIR")
-    }
-}
-
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
@@ -1149,7 +1054,6 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(Lit, 12);
     static_assert_size!(LitKind, 2);
-    static_assert_size!(Nonterminal, 8);
     static_assert_size!(Token, 24);
     static_assert_size!(TokenKind, 16);
     // tidy-alphabetical-end

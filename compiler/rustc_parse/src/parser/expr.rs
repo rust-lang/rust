@@ -663,9 +663,7 @@ impl<'a> Parser<'a> {
     /// Returns the span of expr if it was not interpolated, or the span of the interpolated token.
     fn interpolated_or_expr_span(&self, expr: &Expr) -> Span {
         match self.prev_token.kind {
-            TokenKind::NtIdent(..) | TokenKind::NtLifetime(..) | TokenKind::Interpolated(..) => {
-                self.prev_token.span
-            }
+            TokenKind::NtIdent(..) | TokenKind::NtLifetime(..) => self.prev_token.span,
             TokenKind::CloseDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => {
                 // `expr.span` is the interpolated span, because invisible open
                 // and close delims both get marked with the same span, one
@@ -1404,15 +1402,7 @@ impl<'a> Parser<'a> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
 
         let span = self.token.span;
-        if let token::Interpolated(nt) = &self.token.kind {
-            match &**nt {
-                token::NtBlock(block) => {
-                    let block = block.clone();
-                    self.bump();
-                    return Ok(self.mk_expr(self.prev_token.span, ExprKind::Block(block, None)));
-                }
-            };
-        } else if let Some(expr) = self.eat_metavar_seq_with_matcher(
+        if let Some(expr) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Expr { .. }),
             |this| {
                 let expr = this.parse_expr_force_collect();
@@ -1431,6 +1421,10 @@ impl<'a> Parser<'a> {
             this.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())
         }) {
             return Ok(lit);
+        } else if let Some(block) = self.eat_metavar_seq(MetaVarKind::Block, |this| {
+            this.collect_tokens_no_attrs(|this| this.parse_block())
+        }) {
+            return Ok(self.mk_expr(span, ExprKind::Block(block, None)));
         } else if let Some(path) = self.eat_metavar_seq(MetaVarKind::Path, |this| {
             this.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))
         }) {
@@ -1685,7 +1679,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Loop) {
             self.parse_expr_loop(label, lo)
         } else if self.check_noexpect(&token::OpenDelim(Delimiter::Brace))
-            || self.token.is_whole_block()
+            || self.token.is_metavar_block()
         {
             self.parse_expr_block(label, lo, BlockCheckMode::Default)
         } else if !ate_colon
@@ -2361,7 +2355,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if self.token.is_whole_block() {
+        if self.token.is_metavar_block() {
             self.dcx().emit_err(errors::InvalidBlockMacroSegment {
                 span: self.token.span,
                 context: lo.to(self.token.span),
@@ -3461,7 +3455,7 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Do)
             && self.is_keyword_ahead(1, &[kw::Catch])
             && self
-                .look_ahead(2, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
+                .look_ahead(2, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block())
             && !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }
 
@@ -3472,7 +3466,7 @@ impl<'a> Parser<'a> {
     fn is_try_block(&self) -> bool {
         self.token.is_keyword(kw::Try)
             && self
-                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
+                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block())
             && self.token.uninterpolated_span().at_least_rust_2018()
     }
 
@@ -3505,12 +3499,12 @@ impl<'a> Parser<'a> {
                 // `async move {`
                 self.is_keyword_ahead(lookahead + 1, &[kw::Move])
                     && self.look_ahead(lookahead + 2, |t| {
-                        *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
+                        *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block()
                     })
             ) || (
                 // `async {`
                 self.look_ahead(lookahead + 1, |t| {
-                    *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
+                    *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block()
                 })
             ))
     }

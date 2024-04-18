@@ -15,7 +15,7 @@
 
 use crate::ast::AttrStyle;
 use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
-use crate::token::{self, Delimiter, InvisibleOrigin, Nonterminal, Token, TokenKind};
+use crate::token::{self, Delimiter, InvisibleOrigin, Token, TokenKind};
 use crate::AttrVec;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -285,11 +285,6 @@ pub struct AttributesData {
 }
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
-///
-/// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
-/// instead of a representation of the abstract syntax tree.
-/// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
-/// backwards compatibility.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
 
@@ -464,12 +459,6 @@ impl TokenStream {
         attr_stream.to_tokenstream()
     }
 
-    pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {
-        match nt {
-            Nonterminal::NtBlock(block) => TokenStream::from_ast(block),
-        }
-    }
-
     fn flatten_token(token: &Token, spacing: Spacing) -> TokenTree {
         match token.kind {
             token::NtIdent(ident, is_raw) => {
@@ -480,12 +469,6 @@ impl TokenStream {
                 DelimSpacing::new(Spacing::JointHidden, spacing),
                 Delimiter::Invisible(InvisibleOrigin::FlattenToken),
                 TokenStream::token_alone(token::Lifetime(ident.name), ident.span),
-            ),
-            token::Interpolated(ref nt) => TokenTree::Delimited(
-                DelimSpan::from_single(token.span),
-                DelimSpacing::new(Spacing::JointHidden, spacing),
-                Delimiter::Invisible(InvisibleOrigin::FlattenToken),
-                TokenStream::from_nonterminal_ast(&nt).flattened(),
             ),
             _ => TokenTree::Token(token.clone(), spacing),
         }
@@ -504,10 +487,9 @@ impl TokenStream {
     pub fn flattened(&self) -> TokenStream {
         fn can_skip(stream: &TokenStream) -> bool {
             stream.trees().all(|tree| match tree {
-                TokenTree::Token(token, _) => !matches!(
-                    token.kind,
-                    token::NtIdent(..) | token::NtLifetime(..) | token::Interpolated(..)
-                ),
+                TokenTree::Token(token, _) => {
+                    !matches!(token.kind, token::NtIdent(..) | token::NtLifetime(..))
+                }
                 TokenTree::Delimited(.., inner) => can_skip(inner),
             })
         }

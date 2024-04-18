@@ -8,7 +8,6 @@ use super::{
     TrailingToken,
 };
 use crate::errors::{self, MalformedLoopLabel};
-use crate::maybe_whole;
 
 use ast::Label;
 use rustc_ast as ast;
@@ -538,7 +537,11 @@ impl<'a> Parser<'a> {
         blk_mode: BlockCheckMode,
         can_be_struct_literal: bool,
     ) -> PResult<'a, (AttrVec, P<Block>)> {
-        maybe_whole!(self, NtBlock, |block| (AttrVec::new(), block));
+        if let Some(block) = self.eat_metavar_seq(MetaVarKind::Block, |this| {
+            this.collect_tokens_no_attrs(|this| this.parse_block())
+        }) {
+            return Ok((AttrVec::new(), block));
+        }
 
         let maybe_ident = self.prev_token.clone();
         self.maybe_recover_unexpected_block_label();
@@ -714,7 +717,7 @@ impl<'a> Parser<'a> {
                                 {
                                     if self.token == token::Colon
                                         && self.look_ahead(1, |token| {
-                                            token.is_whole_block()
+                                            token.is_metavar_block()
                                                 || matches!(
                                                     token.kind,
                                                     token::Ident(
