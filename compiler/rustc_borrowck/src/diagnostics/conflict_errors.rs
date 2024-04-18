@@ -1955,7 +1955,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(crate) fn find_expr(&self, span: Span) -> Option<&hir::Expr<'_>> {
         let tcx = self.infcx.tcx;
         let body_id = tcx.hir_node(self.mir_hir_id()).body_id()?;
-        let mut expr_finder = FindExprBySpan::new(span);
+        let mut expr_finder = FindExprBySpan::new(span, tcx);
         expr_finder.visit_expr(tcx.hir().body(body_id).value);
         expr_finder.result
     }
@@ -1989,14 +1989,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             };
 
             let mut expr_finder =
-                FindExprBySpan::new(self.body.local_decls[*index1].source_info.span);
+                FindExprBySpan::new(self.body.local_decls[*index1].source_info.span, tcx);
             expr_finder.visit_expr(hir.body(body_id).value);
             let Some(index1) = expr_finder.result else {
                 note_default_suggestion();
                 return;
             };
 
-            expr_finder = FindExprBySpan::new(self.body.local_decls[*index2].source_info.span);
+            expr_finder = FindExprBySpan::new(self.body.local_decls[*index2].source_info.span, tcx);
             expr_finder.visit_expr(hir.body(body_id).value);
             let Some(index2) = expr_finder.result else {
                 note_default_suggestion();

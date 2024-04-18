@@ -901,7 +901,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // Remove all the desugaring and macro contexts.
             span.remove_mark();
         }
-        let mut expr_finder = FindExprBySpan::new(span);
+        let mut expr_finder = FindExprBySpan::new(span, self.tcx);
         let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
             return;
         };
@@ -1367,7 +1367,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             return false;
                         };
                         let body = self.tcx.hir().body(body_id);
-                        let mut expr_finder = FindExprBySpan::new(span);
+                        let mut expr_finder = FindExprBySpan::new(span, self.tcx);
                         expr_finder.visit_expr(body.value);
                         let Some(expr) = expr_finder.result else {
                             return false;
@@ -1469,7 +1469,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // Remove all the hir desugaring contexts while maintaining the macro contexts.
             span.remove_mark();
         }
-        let mut expr_finder = super::FindExprBySpan::new(span);
+        let mut expr_finder = super::FindExprBySpan::new(span, self.tcx);
         let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
             return false;
         };

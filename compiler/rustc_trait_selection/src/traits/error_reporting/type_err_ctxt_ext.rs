@@ -2457,7 +2457,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     && let Some(body_id) =
                         self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
                 {
-                    let mut expr_finder = FindExprBySpan::new(span);
+                    let mut expr_finder = FindExprBySpan::new(span, self.tcx);
                     expr_finder.visit_expr(self.tcx.hir().body(body_id).value);
 
                     if let Some(hir::Expr {
