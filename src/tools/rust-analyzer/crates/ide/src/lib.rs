@@ -273,8 +273,15 @@ impl Analysis {
         self.with_db(|db| status::status(db, file_id))
     }
 
-    pub fn source_root(&self, file_id: FileId) -> Cancellable<SourceRootId> {
+    pub fn source_root_id(&self, file_id: FileId) -> Cancellable<SourceRootId> {
         self.with_db(|db| db.file_source_root(file_id))
+    }
+
+    pub fn is_local_source_root(&self, source_root_id: SourceRootId) -> Cancellable<bool> {
+        self.with_db(|db| {
+            let sr = db.source_root(source_root_id);
+            !sr.is_library
+        })
     }
 
     pub fn parallel_prime_caches<F>(&self, num_worker_threads: u8, cb: F) -> Cancellable<()>

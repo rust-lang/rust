@@ -367,7 +367,7 @@ pub(crate) fn handle_join_lines(
     let _p = tracing::span!(tracing::Level::INFO, "handle_join_lines").entered();
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let source_root = snap.analysis.source_root(file_id)?;
+    let source_root = snap.analysis.source_root_id(file_id)?;
     let config = snap.config.join_lines(Some(source_root));
     let line_index = snap.file_line_index(file_id)?;
 
@@ -949,7 +949,7 @@ pub(crate) fn handle_completion(
     let completion_trigger_character =
         context.and_then(|ctx| ctx.trigger_character).and_then(|s| s.chars().next());
 
-    let source_root = snap.analysis.source_root(position.file_id)?;
+    let source_root = snap.analysis.source_root_id(position.file_id)?;
     let completion_config = &snap.config.completion(Some(source_root));
     // FIXME: We should fix up the position when retrying the cancelled request instead
     position.offset = position.offset.min(line_index.index.len());
@@ -997,7 +997,7 @@ pub(crate) fn handle_completion_resolve(
     let Ok(offset) = from_proto::offset(&line_index, resolve_data.position.position) else {
         return Ok(original_completion);
     };
-    let source_root = snap.analysis.source_root(file_id)?;
+    let source_root = snap.analysis.source_root_id(file_id)?;
 
     let additional_edits = snap
         .analysis
@@ -1229,7 +1229,7 @@ pub(crate) fn handle_code_action(
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
     let frange = from_proto::file_range(&snap, &params.text_document, params.range)?;
-    let source_root = snap.analysis.source_root(file_id)?;
+    let source_root = snap.analysis.source_root_id(file_id)?;
 
     let mut assists_config = snap.config.assist(Some(source_root));
     assists_config.allowed = params
@@ -1307,7 +1307,7 @@ pub(crate) fn handle_code_action_resolve(
     let line_index = snap.file_line_index(file_id)?;
     let range = from_proto::text_range(&line_index, params.code_action_params.range)?;
     let frange = FileRange { file_id, range };
-    let source_root = snap.analysis.source_root(file_id)?;
+    let source_root = snap.analysis.source_root_id(file_id)?;
 
     let mut assists_config = snap.config.assist(Some(source_root));
     assists_config.allowed = params
@@ -1460,7 +1460,7 @@ pub(crate) fn handle_document_highlight(
     let _p = tracing::span!(tracing::Level::INFO, "handle_document_highlight").entered();
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
     let line_index = snap.file_line_index(position.file_id)?;
-    let source_root = snap.analysis.source_root(position.file_id)?;
+    let source_root = snap.analysis.source_root_id(position.file_id)?;
 
     let refs = match snap
         .analysis
@@ -1511,7 +1511,7 @@ pub(crate) fn handle_inlay_hints(
         params.range,
     )?;
     let line_index = snap.file_line_index(file_id)?;
-    let source_root = snap.analysis.source_root(file_id)?;
+    let source_root = snap.analysis.source_root_id(file_id)?;
     let range = TextRange::new(
         range.start().min(line_index.index.len()),
         range.end().min(line_index.index.len()),
@@ -1553,7 +1553,7 @@ pub(crate) fn handle_inlay_hints_resolve(
 
     let line_index = snap.file_line_index(file_id)?;
     let hint_position = from_proto::offset(&line_index, original_hint.position)?;
-    let source_root = snap.analysis.source_root(file_id)?;
+    let source_root = snap.analysis.source_root_id(file_id)?;
 
     let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints(Some(source_root));
     forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
@@ -1687,7 +1687,7 @@ pub(crate) fn handle_semantic_tokens_full(
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
-    let source_root = snap.analysis.source_root(file_id)?;
+    let source_root = snap.analysis.source_root_id(file_id)?;
 
     let mut highlight_config = snap.config.highlighting_config(Some(source_root));
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
@@ -1718,7 +1718,7 @@ pub(crate) fn handle_semantic_tokens_full_delta(
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
-    let source_root = snap.analysis.source_root(file_id)?;
+    let source_root = snap.analysis.source_root_id(file_id)?;
 
     let mut highlight_config = snap.config.highlighting_config(Some(source_root));
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
@@ -1762,7 +1762,7 @@ pub(crate) fn handle_semantic_tokens_range(
     let frange = from_proto::file_range(&snap, &params.text_document, params.range)?;
     let text = snap.analysis.file_text(frange.file_id)?;
     let line_index = snap.file_line_index(frange.file_id)?;
-    let source_root = snap.analysis.source_root(frange.file_id)?;
+    let source_root = snap.analysis.source_root_id(frange.file_id)?;
 
     let mut highlight_config = snap.config.highlighting_config(Some(source_root));
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
@@ -1991,8 +1991,8 @@ fn goto_type_action_links(
     snap: &GlobalStateSnapshot,
     nav_targets: &[HoverGotoTypeData],
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if nav_targets.is_empty()
-        || !snap.config.hover_actions().goto_type_def
+    if !snap.config.hover_actions().goto_type_def
+        || nav_targets.is_empty()
         || !snap.config.client_commands().goto_location
     {
         return None;

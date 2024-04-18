@@ -186,6 +186,11 @@ impl GlobalState {
                         scheme: None,
                         pattern: Some("**/Cargo.lock".into()),
                     },
+                    lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/rust-analyzer.toml".into()),
+                    },
                 ]),
             },
         };
