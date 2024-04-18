@@ -1798,31 +1798,15 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         document.execCommand("copy");
         document.body.removeChild(el);
 
-        // There is always one children, but multiple childNodes.
-        but.children[0].style.display = "none";
-
-        let tmp;
-        if (but.childNodes.length < 2) {
-            tmp = document.createTextNode("✓");
-            but.appendChild(tmp);
-        } else {
-            onEachLazy(but.childNodes, e => {
-                if (e.nodeType === Node.TEXT_NODE) {
-                    tmp = e;
-                    return true;
-                }
-            });
-            tmp.textContent = "✓";
-        }
+        but.classList.add("clicked");
 
         if (reset_button_timeout !== null) {
             window.clearTimeout(reset_button_timeout);
         }
 
         function reset_button() {
-            tmp.textContent = "";
             reset_button_timeout = null;
-            but.children[0].style.display = "";
+            but.classList.remove("clicked");
         }
 
         reset_button_timeout = window.setTimeout(reset_button, 1000);
