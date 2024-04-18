@@ -302,7 +302,7 @@ impl Subdiagnostic for SingleLabelManySpans {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _: F,
+        _: &F,
     ) {
         diag.span_labels(self.spans, self.label);
     }

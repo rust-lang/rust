@@ -382,7 +382,7 @@ impl Subdiagnostic for EmptyLabelManySpans {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _: F,
+        _: &F,
     ) {
         diag.span_labels(self.0, "");
     }
@@ -751,7 +751,7 @@ impl Subdiagnostic for StableFeature {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _: F,
+        _: &F,
     ) {
         diag.arg("name", self.name);
         diag.arg("since", self.since);

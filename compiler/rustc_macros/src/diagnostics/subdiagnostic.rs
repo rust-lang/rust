@@ -90,7 +90,7 @@ impl SubdiagnosticDerive {
                 fn add_to_diag_with<__G, __F>(
                     self,
                     #diag: &mut rustc_errors::Diag<'_, __G>,
-                    #f: __F
+                    #f: &__F
                 ) where
                     __G: rustc_errors::EmissionGuarantee,
                     __F: rustc_errors::SubdiagMessageOp<__G>,

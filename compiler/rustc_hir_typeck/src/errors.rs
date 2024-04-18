@@ -191,7 +191,7 @@ impl Subdiagnostic for TypeMismatchFruTypo {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         diag.arg("expr", self.expr.as_deref().unwrap_or("NONE"));
 
@@ -370,7 +370,7 @@ impl Subdiagnostic for RemoveSemiForCoerce {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         let mut multispan: MultiSpan = self.semi.into();
         multispan.push_span_label(self.expr, fluent::hir_typeck_remove_semi_for_coerce_expr);
@@ -546,7 +546,7 @@ impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         match self {
             CastUnknownPointerSub::To(span) => {

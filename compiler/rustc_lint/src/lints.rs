@@ -274,7 +274,7 @@ impl<'a, 'b> Subdiagnostic for SuggestChangingAssocTypes<'a, 'b> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
         // bound. Let's see if this type does that.
@@ -330,7 +330,7 @@ impl Subdiagnostic for BuiltinTypeAliasGenericBoundsSuggestion {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         diag.multipart_suggestion(
             fluent::lint_suggestion,
@@ -451,7 +451,7 @@ impl Subdiagnostic for BuiltinUnpermittedTypeInitSub {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         let mut err = self.err;
         loop {
@@ -506,7 +506,7 @@ impl Subdiagnostic for BuiltinClashingExternSub<'_> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         let mut expected_str = DiagStyledString::new();
         expected_str.push(self.expected.fn_sig(self.tcx).to_string(), false);
@@ -788,7 +788,7 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagLabels {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         for (c, span) in self.spans {
             diag.span_label(span, format!("{c:?}"));
@@ -806,7 +806,7 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         match self {
             HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
@@ -954,7 +954,7 @@ impl Subdiagnostic for NonBindingLetSub {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         let can_suggest_binding = self.drop_fn_start_end.is_some() || !self.is_assign_desugar;
 
@@ -1240,7 +1240,7 @@ impl Subdiagnostic for NonSnakeCaseDiagSub {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         match self {
             NonSnakeCaseDiagSub::Label { span } => {
@@ -1482,7 +1482,7 @@ impl Subdiagnostic for OverflowingBinHexSign {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         match self {
             OverflowingBinHexSign::Positive => {
