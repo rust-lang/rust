@@ -305,19 +305,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
 impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    /// Read bytes from a `(ptr, len)` argument
-    fn read_byte_slice<'i>(&'i self, bytes: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, &'i [u8]>
-    where
-        'mir: 'i,
-    {
-        let this = self.eval_context_ref();
-        let (ptr, len) = this.read_immediate(bytes)?.to_scalar_pair();
-        let ptr = ptr.to_pointer(this)?;
-        let len = len.to_target_usize(this)?;
-        let bytes = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
-        Ok(bytes)
-    }
-
     /// Returns the minimum alignment for the target architecture for allocations of the given size.
     fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {
         let this = self.eval_context_ref();
@@ -466,7 +453,9 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [ptr, nth_parent, name] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let nth_parent = this.read_scalar(nth_parent)?.to_u8()?;
-                let name = this.read_byte_slice(name)?;
+                let name = this.read_immediate(name)?;
+
+                let name = this.read_byte_slice(&name)?;
                 // We must make `name` owned because we need to
                 // end the shared borrow from `read_byte_slice` before we can
                 // start the mutable borrow for `give_pointer_debug_name`.
@@ -527,7 +516,8 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // README for details.
             "miri_write_to_stdout" | "miri_write_to_stderr" => {
                 let [msg] = this.check_shim(abi, Abi::Rust, link_name, args)?;
-                let msg = this.read_byte_slice(msg)?;
+                let msg = this.read_immediate(msg)?;
+                let msg = this.read_byte_slice(&msg)?;
                 // Note: we're ignoring errors writing to host stdout/stderr.
                 let _ignore = match link_name.as_str() {
                     "miri_write_to_stdout" => std::io::stdout().write_all(msg),
