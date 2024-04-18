@@ -10,6 +10,7 @@ use rustc_ast::token::IdentIsRaw;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::StmtKind;
+use rustc_ast::{ExprKind, UnOp};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Diag, DiagCtxtHandle, PResult};
 use rustc_parse::parser::ParseNtResult;
@@ -311,6 +312,29 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSingle(ParseNtResult::Pat(pat, pat_kind)) => {
                             mk_delimited(MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))
+                        }
+                        MatchedSingle(ParseNtResult::Expr(expr, kind)) => {
+                            let (can_begin_literal_maybe_minus, can_begin_string_literal) =
+                                match &expr.kind {
+                                    ExprKind::Lit(_) => (true, true),
+                                    ExprKind::Unary(UnOp::Neg, e)
+                                        if matches!(&e.kind, ExprKind::Lit(_)) =>
+                                    {
+                                        (true, false)
+                                    }
+                                    _ => (false, false),
+                                };
+                            mk_delimited(
+                                MetaVarKind::Expr {
+                                    kind: *kind,
+                                    can_begin_literal_maybe_minus,
+                                    can_begin_string_literal,
+                                },
+                                TokenStream::from_ast(expr),
+                            )
+                        }
+                        MatchedSingle(ParseNtResult::Literal(lit)) => {
+                            mk_delimited(MetaVarKind::Literal, TokenStream::from_ast(lit))
                         }
                         MatchedSingle(ParseNtResult::Ty(ty)) => {
                             mk_delimited(MetaVarKind::Ty, TokenStream::from_ast(ty))

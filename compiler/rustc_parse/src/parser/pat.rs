@@ -965,7 +965,7 @@ impl<'a> Parser<'a> {
                 || t.kind == token::Dot // e.g. `.5` for recovery;
                 || matches!(t.kind, token::Literal(..) | token::BinOp(token::Minus))
                 || t.is_bool_lit()
-                || t.is_whole_expr()
+                || t.is_metavar_expr()
                 || t.is_lifetime() // recover `'a` instead of `'a'`
                 || (self.may_recover() // recover leading `(`
                     && t.kind == token::OpenDelim(Delimiter::Parenthesis)

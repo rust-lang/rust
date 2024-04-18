@@ -1602,10 +1602,10 @@ pub(crate) struct SelfArgumentPointer {
 
 #[derive(Diagnostic)]
 #[diag(parse_unexpected_token_after_dot)]
-pub struct UnexpectedTokenAfterDot<'a> {
+pub struct UnexpectedTokenAfterDot {
     #[primary_span]
     pub span: Span,
-    pub actual: Cow<'a, str>,
+    pub actual: String,
 }
 
 #[derive(Diagnostic)]
