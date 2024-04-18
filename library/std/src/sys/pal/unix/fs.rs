@@ -870,12 +870,9 @@ impl Iterator for ReadDir {
 
 impl Drop for Dir {
     fn drop(&mut self) {
-        let r = unsafe { libc::closedir(self.0) };
-        assert!(
-            r == 0 || crate::io::Error::last_os_error().is_interrupted(),
-            "unexpected error during closedir: {:?}",
-            crate::io::Error::last_os_error()
-        );
+        // Note that errors are ignored when closing a directory as we have
+        // no non-destructive way to report it. See #124105 and #98338.
+        let _ = unsafe { libc::closedir(self.0) };
     }
 }
 
