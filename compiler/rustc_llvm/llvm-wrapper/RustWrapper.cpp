@@ -1522,6 +1522,7 @@ extern "C" void LLVMRustFreeOperandBundleDef(OperandBundleDef *Bundle) {
   delete Bundle;
 }
 
+// OpBundlesIndirect is an array of pointers (*not* a pointer to an array).
 extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
                                           LLVMValueRef *Args, unsigned NumArgs,
                                           OperandBundleDef **OpBundlesIndirect,
@@ -1574,6 +1575,7 @@ extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B,
       unwrap(Dst), unwrap(Val), unwrap(Size), MaybeAlign(DstAlign), IsVolatile));
 }
 
+// OpBundlesIndirect is an array of pointers (*not* a pointer to an array).
 extern "C" LLVMValueRef
 LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
                     LLVMValueRef *Args, unsigned NumArgs,
@@ -1596,6 +1598,7 @@ LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
                                       Name));
 }
 
+// OpBundlesIndirect is an array of pointers (*not* a pointer to an array).
 extern "C" LLVMValueRef
 LLVMRustBuildCallBr(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
                     LLVMBasicBlockRef DefaultDest,
