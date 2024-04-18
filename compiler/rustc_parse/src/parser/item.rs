@@ -2712,7 +2712,7 @@ impl<'a> Parser<'a> {
                 match ty {
                     Ok(ty) => {
                         let ident = Ident::new(kw::Empty, this.prev_token.span);
-                        let bm = BindingAnnotation::NONE;
+                        let bm = BindingMode::NONE;
                         let pat = this.mk_pat_ident(ty.span, bm, ident);
                         (pat, ty)
                     }
