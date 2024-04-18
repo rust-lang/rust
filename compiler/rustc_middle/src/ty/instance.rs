@@ -288,6 +288,7 @@ impl<'tcx> InstanceDef<'tcx> {
         let def_id = match *self {
             ty::InstanceDef::Item(def) => def,
             ty::InstanceDef::DropGlue(_, Some(_)) => return false,
+            ty::InstanceDef::AsyncDropGlueCtorShim(_, Some(_)) => return false,
             ty::InstanceDef::ThreadLocalShim(_) => return false,
             _ => return true,
         };
@@ -357,11 +358,12 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::FnPtrAddrShim(..)
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::DropGlue(_, Some(_))
-            | InstanceDef::AsyncDropGlueCtorShim(..) => false,
+            | InstanceDef::AsyncDropGlueCtorShim(_, Some(_)) => false,
             InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::ConstructCoroutineInClosureShim { .. }
             | InstanceDef::CoroutineKindShim { .. }
             | InstanceDef::DropGlue(..)
+            | InstanceDef::AsyncDropGlueCtorShim(..)
             | InstanceDef::Item(_)
             | InstanceDef::Intrinsic(..)
             | InstanceDef::ReifyShim(..)

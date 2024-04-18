@@ -9,7 +9,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, CallSource, CastKind, Const, ConstOperand, ConstValue, Local,
     LocalDecl, MirSource, Operand, Place, PlaceElem, Rvalue, SourceInfo, Statement, StatementKind,
-    Terminator, TerminatorKind, UnwindAction, UnwindTerminateReason,
+    Terminator, TerminatorKind, UnwindAction, UnwindTerminateReason, RETURN_PLACE,
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::Discr;
@@ -67,9 +67,12 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     const MAX_STACK_LEN: usize = 2;
 
     fn new(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Option<Ty<'tcx>>) -> Self {
-        // Assuming `async_drop_in_place::<()>` is the same as for any type with noop async destructor
-        let arg_ty = if let Some(ty) = self_ty { ty } else { tcx.types.unit };
-        let sig = tcx.fn_sig(def_id).instantiate(tcx, &[arg_ty.into()]);
+        let args = if let Some(ty) = self_ty {
+            tcx.mk_args(&[ty.into()])
+        } else {
+            ty::GenericArgs::identity_for_item(tcx, def_id)
+        };
+        let sig = tcx.fn_sig(def_id).instantiate(tcx, args);
         let sig = tcx.instantiate_bound_regions_with_erased(sig);
         let span = tcx.def_span(def_id);
 
@@ -113,7 +116,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
     fn build(self) -> Body<'tcx> {
         let (tcx, def_id, Some(self_ty)) = (self.tcx, self.def_id, self.self_ty) else {
-            return self.build_noop();
+            return self.build_zst_output();
         };
 
         let surface_drop_kind = || {
@@ -258,8 +261,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.return_()
     }
 
-    fn build_noop(mut self) -> Body<'tcx> {
-        self.put_noop();
+    fn build_zst_output(mut self) -> Body<'tcx> {
+        self.put_zst_output();
         self.return_()
     }
 
@@ -286,6 +289,15 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         let dtor = self.combine_slice(elem_ty);
         self.combine_fuse(dtor);
         self.return_()
+    }
+
+    fn put_zst_output(&mut self) {
+        let return_ty = self.locals[RETURN_PLACE].ty;
+        self.put_operand(Operand::Constant(Box::new(ConstOperand {
+            span: self.span,
+            user_ty: None,
+            const_: Const::zero_sized(return_ty),
+        })));
     }
 
     /// Puts `to_drop: *mut Self` on top of the stack.
@@ -464,23 +476,15 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 self.stack.len(),
             )
         };
-        const RETURN_LOCAL: Local = Local::from_u32(0);
+        #[cfg(debug_assertions)]
+        if let Some(ty) = self.self_ty {
+            debug_assert_eq!(
+                output.ty(&self.locals, self.tcx),
+                ty.async_destructor_ty(self.tcx, self.param_env),
+                "output async destructor types did not match for type: {ty:?}",
+            );
+        }
 
-        debug_assert_eq!(
-            output.ty(&self.locals, self.tcx),
-            self.self_ty.map(|ty| ty.async_destructor_ty(self.tcx, self.param_env)).unwrap_or_else(
-                || {
-                    self.tcx
-                        .fn_sig(
-                            self.tcx.require_lang_item(LangItem::AsyncDropNoop, Some(self.span)),
-                        )
-                        .instantiate_identity()
-                        .output()
-                        .no_bound_vars()
-                        .unwrap()
-                }
-            ),
-        );
         let dead_storage = match &output {
             Operand::Move(place) => Some(Statement {
                 source_info,
@@ -492,7 +496,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         last_bb.statements.extend(
             iter::once(Statement {
                 source_info,
-                kind: StatementKind::Assign(Box::new((RETURN_LOCAL.into(), Rvalue::Use(output)))),
+                kind: StatementKind::Assign(Box::new((RETURN_PLACE.into(), Rvalue::Use(output)))),
             })
             .chain(dead_storage),
         );

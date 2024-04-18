@@ -57,7 +57,7 @@ fn resolve_instance<'tcx>(
         } else if Some(def_id) == tcx.lang_items().async_drop_in_place_fn() {
             let ty = args.type_at(0);
 
-            if ty.is_async_destructor_noop(tcx, param_env) {
+            if !ty.is_async_destructor_noop(tcx, param_env) {
                 match *ty.kind() {
                     ty::Closure(..)
                     | ty::CoroutineClosure(..)

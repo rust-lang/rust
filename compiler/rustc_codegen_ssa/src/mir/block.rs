@@ -835,7 +835,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let def = instance.map(|i| i.def);
 
-        if let Some(ty::InstanceDef::DropGlue(_, None)) = def {
+        if let Some(
+            ty::InstanceDef::DropGlue(_, None) | ty::InstanceDef::AsyncDropGlueCtorShim(_, None),
+        ) = def
+        {
             // Empty drop glue; a no-op.
             let target = target.unwrap();
             return helper.funclet_br(self, bx, target, mergeable_succ);

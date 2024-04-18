@@ -1340,7 +1340,7 @@ impl<'tcx> Ty<'tcx> {
     /// implementation. Returning `true` means nothing -- could be
     /// `Drop`, might not be.
     fn could_have_surface_drop(self) -> bool {
-        self.is_async_destructor_trivially_noop()
+        !self.is_async_destructor_trivially_noop()
             && !matches!(
                 self.kind(),
                 ty::Tuple(_)
