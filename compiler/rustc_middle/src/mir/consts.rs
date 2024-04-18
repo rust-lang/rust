@@ -87,7 +87,7 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     pub fn try_to_bits(&self, size: Size) -> Option<u128> {
-        self.try_to_scalar_int()?.to_bits(size).ok()
+        self.try_to_scalar_int()?.try_to_bits(size).ok()
     }
 
     pub fn try_to_bool(&self) -> Option<bool> {
@@ -260,7 +260,7 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn try_to_bits(self, size: Size) -> Option<u128> {
-        self.try_to_scalar_int()?.to_bits(size).ok()
+        self.try_to_scalar_int()?.try_to_bits(size).ok()
     }
 
     #[inline]
@@ -334,7 +334,7 @@ impl<'tcx> Const<'tcx> {
         let int = self.try_eval_scalar_int(tcx, param_env)?;
         let size =
             tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(self.ty())).ok()?.size;
-        int.to_bits(size).ok()
+        int.try_to_bits(size).ok()
     }
 
     /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.

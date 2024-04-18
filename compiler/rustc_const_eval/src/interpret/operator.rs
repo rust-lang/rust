@@ -155,10 +155,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let l = left.to_scalar_int()?;
         let r = right.to_scalar_int()?;
         // Prepare to convert the values to signed or unsigned form.
-        let l_signed = || l.try_to_int(left.layout.size).unwrap();
-        let l_unsigned = || l.try_to_uint(left.layout.size).unwrap();
-        let r_signed = || r.try_to_int(right.layout.size).unwrap();
-        let r_unsigned = || r.try_to_uint(right.layout.size).unwrap();
+        let l_signed = || l.assert_int(left.layout.size);
+        let l_unsigned = || l.assert_uint(left.layout.size);
+        let r_signed = || r.assert_int(right.layout.size);
+        let r_unsigned = || r.assert_uint(right.layout.size);
 
         let throw_ub_on_overflow = match bin_op {
             AddUnchecked => Some(sym::unchecked_add),

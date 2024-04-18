@@ -249,7 +249,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     }
 
     /// Return the immediate as a `ScalarInt`. Ensures that it has the size that the layout of the
-    /// immediate indcates.
+    /// immediate indicates.
     #[inline]
     pub fn to_scalar_int(&self) -> InterpResult<'tcx, ScalarInt> {
         let s = self.to_scalar().to_scalar_int()?;

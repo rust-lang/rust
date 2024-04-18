@@ -236,7 +236,7 @@ impl<Prov> Scalar<Prov> {
     ) -> Result<Either<u128, Pointer<Prov>>, ScalarSizeMismatch> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         Ok(match self {
-            Scalar::Int(int) => Left(int.to_bits(target_size).map_err(|size| {
+            Scalar::Int(int) => Left(int.try_to_bits(target_size).map_err(|size| {
                 ScalarSizeMismatch { target_size: target_size.bytes(), data_size: size.bytes() }
             })?),
             Scalar::Ptr(ptr, sz) => {
@@ -316,7 +316,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     #[inline]
     pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        self.to_scalar_int()?.to_bits(target_size).map_err(|size| {
+        self.to_scalar_int()?.try_to_bits(target_size).map_err(|size| {
             err_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
                 target_size: target_size.bytes(),
                 data_size: size.bytes(),

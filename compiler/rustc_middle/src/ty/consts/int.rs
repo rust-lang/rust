@@ -247,14 +247,7 @@ impl ScalarInt {
     }
 
     #[inline]
-    pub fn assert_bits(self, target_size: Size) -> u128 {
-        self.to_bits(target_size).unwrap_or_else(|size| {
-            bug!("expected int of size {}, but got size {}", target_size.bytes(), size.bytes())
-        })
-    }
-
-    #[inline]
-    pub fn to_bits(self, target_size: Size) -> Result<u128, Size> {
+    pub fn try_to_bits(self, target_size: Size) -> Result<u128, Size> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         if target_size.bytes() == u64::from(self.size.get()) {
             self.check_data();
@@ -264,16 +257,28 @@ impl ScalarInt {
         }
     }
 
+    #[inline]
+    pub fn assert_bits(self, target_size: Size) -> u128 {
+        self.try_to_bits(target_size).unwrap_or_else(|size| {
+            bug!("expected int of size {}, but got size {}", target_size.bytes(), size.bytes())
+        })
+    }
+
     /// Tries to convert the `ScalarInt` to an unsigned integer of the given size.
     /// Fails if the size of the `ScalarInt` is not equal to `size` and returns the
     /// `ScalarInt`s size in that case.
     #[inline]
     pub fn try_to_uint(self, size: Size) -> Result<u128, Size> {
-        self.to_bits(size)
+        self.try_to_bits(size)
+    }
+
+    #[inline]
+    pub fn assert_uint(self, size: Size) -> u128 {
+        self.assert_bits(size)
     }
 
     // Tries to convert the `ScalarInt` to `u8`. Fails if the `size` of the `ScalarInt`
-    // in not equal to `Size { raw: 1 }` and returns the `size` value of the `ScalarInt` in
+    // in not equal to 1 byte and returns the `size` value of the `ScalarInt` in
     // that case.
     #[inline]
     pub fn try_to_u8(self) -> Result<u8, Size> {
@@ -281,7 +286,7 @@ impl ScalarInt {
     }
 
     /// Tries to convert the `ScalarInt` to `u16`. Fails if the size of the `ScalarInt`
-    /// in not equal to `Size { raw: 2 }` and returns the `size` value of the `ScalarInt` in
+    /// in not equal to 2 bytes and returns the `size` value of the `ScalarInt` in
     /// that case.
     #[inline]
     pub fn try_to_u16(self) -> Result<u16, Size> {
@@ -289,7 +294,7 @@ impl ScalarInt {
     }
 
     /// Tries to convert the `ScalarInt` to `u32`. Fails if the `size` of the `ScalarInt`
-    /// in not equal to `Size { raw: 4 }` and returns the `size` value of the `ScalarInt` in
+    /// in not equal to 4 bytes and returns the `size` value of the `ScalarInt` in
     /// that case.
     #[inline]
     pub fn try_to_u32(self) -> Result<u32, Size> {
@@ -297,7 +302,7 @@ impl ScalarInt {
     }
 
     /// Tries to convert the `ScalarInt` to `u64`. Fails if the `size` of the `ScalarInt`
-    /// in not equal to `Size { raw: 8 }` and returns the `size` value of the `ScalarInt` in
+    /// in not equal to 8 bytes and returns the `size` value of the `ScalarInt` in
     /// that case.
     #[inline]
     pub fn try_to_u64(self) -> Result<u64, Size> {
@@ -305,7 +310,7 @@ impl ScalarInt {
     }
 
     /// Tries to convert the `ScalarInt` to `u128`. Fails if the `size` of the `ScalarInt`
-    /// in not equal to `Size { raw: 16 }` and returns the `size` value of the `ScalarInt` in
+    /// in not equal to 16 bytes and returns the `size` value of the `ScalarInt` in
     /// that case.
     #[inline]
     pub fn try_to_u128(self) -> Result<u128, Size> {
@@ -318,7 +323,7 @@ impl ScalarInt {
     }
 
     // Tries to convert the `ScalarInt` to `bool`. Fails if the `size` of the `ScalarInt`
-    // in not equal to `Size { raw: 1 }` or if the value is not 0 or 1 and returns the `size`
+    // in not equal to 1 byte or if the value is not 0 or 1 and returns the `size`
     // value of the `ScalarInt` in that case.
     #[inline]
     pub fn try_to_bool(self) -> Result<bool, Size> {
@@ -334,40 +339,46 @@ impl ScalarInt {
     /// `ScalarInt`s size in that case.
     #[inline]
     pub fn try_to_int(self, size: Size) -> Result<i128, Size> {
-        let b = self.to_bits(size)?;
+        let b = self.try_to_bits(size)?;
         Ok(size.sign_extend(b) as i128)
     }
 
+    #[inline]
+    pub fn assert_int(self, size: Size) -> i128 {
+        let b = self.assert_bits(size);
+        size.sign_extend(b) as i128
+    }
+
     /// Tries to convert the `ScalarInt` to i8.
-    /// Fails if the size of the `ScalarInt` is not equal to `Size { raw: 1 }`
+    /// Fails if the size of the `ScalarInt` is not equal to 1 byte
     /// and returns the `ScalarInt`s size in that case.
     pub fn try_to_i8(self) -> Result<i8, Size> {
         self.try_to_int(Size::from_bits(8)).map(|v| i8::try_from(v).unwrap())
     }
 
     /// Tries to convert the `ScalarInt` to i16.
-    /// Fails if the size of the `ScalarInt` is not equal to `Size { raw: 2 }`
+    /// Fails if the size of the `ScalarInt` is not equal to 2 bytes
     /// and returns the `ScalarInt`s size in that case.
     pub fn try_to_i16(self) -> Result<i16, Size> {
         self.try_to_int(Size::from_bits(16)).map(|v| i16::try_from(v).unwrap())
     }
 
     /// Tries to convert the `ScalarInt` to i32.
-    /// Fails if the size of the `ScalarInt` is not equal to `Size { raw: 4 }`
+    /// Fails if the size of the `ScalarInt` is not equal to 4 bytes
     /// and returns the `ScalarInt`s size in that case.
     pub fn try_to_i32(self) -> Result<i32, Size> {
         self.try_to_int(Size::from_bits(32)).map(|v| i32::try_from(v).unwrap())
     }
 
     /// Tries to convert the `ScalarInt` to i64.
-    /// Fails if the size of the `ScalarInt` is not equal to `Size { raw: 8 }`
+    /// Fails if the size of the `ScalarInt` is not equal to 8 bytes
     /// and returns the `ScalarInt`s size in that case.
     pub fn try_to_i64(self) -> Result<i64, Size> {
         self.try_to_int(Size::from_bits(64)).map(|v| i64::try_from(v).unwrap())
     }
 
     /// Tries to convert the `ScalarInt` to i128.
-    /// Fails if the size of the `ScalarInt` is not equal to `Size { raw: 16 }`
+    /// Fails if the size of the `ScalarInt` is not equal to 16 bytes
     /// and returns the `ScalarInt`s size in that case.
     pub fn try_to_i128(self) -> Result<i128, Size> {
         self.try_to_int(Size::from_bits(128))
@@ -381,7 +392,7 @@ impl ScalarInt {
     #[inline]
     pub fn try_to_float<F: Float>(self) -> Result<F, Size> {
         // Going through `to_uint` to check size and truncation.
-        Ok(F::from_bits(self.to_bits(Size::from_bits(F::BITS))?))
+        Ok(F::from_bits(self.try_to_bits(Size::from_bits(F::BITS))?))
     }
 
     #[inline]
@@ -430,7 +441,7 @@ macro_rules! try_from {
                 fn try_from(int: ScalarInt) -> Result<Self, Size> {
                     // The `unwrap` cannot fail because to_bits (if it succeeds)
                     // is guaranteed to return a value that fits into the size.
-                    int.to_bits(Size::from_bytes(std::mem::size_of::<$ty>()))
+                    int.try_to_bits(Size::from_bytes(std::mem::size_of::<$ty>()))
                        .map(|u| u.try_into().unwrap())
                 }
             }
@@ -465,7 +476,7 @@ impl TryFrom<ScalarInt> for char {
 
     #[inline]
     fn try_from(int: ScalarInt) -> Result<Self, Self::Error> {
-        let Ok(bits) = int.to_bits(Size::from_bytes(std::mem::size_of::<char>())) else {
+        let Ok(bits) = int.try_to_bits(Size::from_bytes(std::mem::size_of::<char>())) else {
             return Err(CharTryFromScalarInt);
         };
         match char::from_u32(bits.try_into().unwrap()) {
@@ -487,7 +498,7 @@ impl TryFrom<ScalarInt> for Half {
     type Error = Size;
     #[inline]
     fn try_from(int: ScalarInt) -> Result<Self, Size> {
-        int.to_bits(Size::from_bytes(2)).map(Self::from_bits)
+        int.try_to_bits(Size::from_bytes(2)).map(Self::from_bits)
     }
 }
 
@@ -503,7 +514,7 @@ impl TryFrom<ScalarInt> for Single {
     type Error = Size;
     #[inline]
     fn try_from(int: ScalarInt) -> Result<Self, Size> {
-        int.to_bits(Size::from_bytes(4)).map(Self::from_bits)
+        int.try_to_bits(Size::from_bytes(4)).map(Self::from_bits)
     }
 }
 
@@ -519,7 +530,7 @@ impl TryFrom<ScalarInt> for Double {
     type Error = Size;
     #[inline]
     fn try_from(int: ScalarInt) -> Result<Self, Size> {
-        int.to_bits(Size::from_bytes(8)).map(Self::from_bits)
+        int.try_to_bits(Size::from_bytes(8)).map(Self::from_bits)
     }
 }
 
@@ -535,7 +546,7 @@ impl TryFrom<ScalarInt> for Quad {
     type Error = Size;
     #[inline]
     fn try_from(int: ScalarInt) -> Result<Self, Size> {
-        int.to_bits(Size::from_bytes(16)).map(Self::from_bits)
+        int.try_to_bits(Size::from_bytes(16)).map(Self::from_bits)
     }
 }
 
