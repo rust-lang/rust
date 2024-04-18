@@ -8,6 +8,7 @@ use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
+use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::os_str::bytes_to_os_str;
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;

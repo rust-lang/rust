@@ -6,6 +6,7 @@ use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
+use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
