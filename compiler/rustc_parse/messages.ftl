@@ -836,7 +836,7 @@ parse_unexpected_parentheses_in_match_arm_pattern = unexpected parentheses surro
 parse_unexpected_self_in_generic_parameters = unexpected keyword `Self` in generic parameters
     .note = you cannot use `Self` as a generic parameter because it is reserved for associated items
 
-parse_unexpected_token_after_dot = unexpected token: `{$actual}`
+parse_unexpected_token_after_dot = unexpected token: {$actual}
 
 parse_unexpected_token_after_label = expected `while`, `for`, `loop` or `{"{"}` after a label
     .suggestion_remove_label = consider removing the label

@@ -801,8 +801,6 @@ pub fn visit_token<T: MutVisitor>(vis: &mut T, t: &mut Token) {
 fn visit_nonterminal<T: MutVisitor>(vis: &mut T, nt: &mut token::Nonterminal) {
     match nt {
         token::NtBlock(block) => vis.visit_block(block),
-        token::NtExpr(expr) => vis.visit_expr(expr),
-        token::NtLiteral(expr) => vis.visit_expr(expr),
     }
 }
 

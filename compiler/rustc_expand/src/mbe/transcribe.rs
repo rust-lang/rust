@@ -2,11 +2,10 @@ use std::mem;
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{
-    self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Nonterminal, Token,
-    TokenKind,
+    self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Token, TokenKind,
 };
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
-use rustc_ast::{ExprKind, StmtKind};
+use rustc_ast::{ExprKind, StmtKind, UnOp};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Diag, DiagCtxtHandle, PResult};
 use rustc_parse::lexer::nfc_normalize;
@@ -317,6 +316,29 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSingle(ParseNtResult::Pat(pat, pat_kind)) => {
                             mk_delimited(MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))
+                        }
+                        MatchedSingle(ParseNtResult::Expr(expr, kind)) => {
+                            let (can_begin_literal_maybe_minus, can_begin_string_literal) =
+                                match &expr.kind {
+                                    ExprKind::Lit(_) => (true, true),
+                                    ExprKind::Unary(UnOp::Neg, e)
+                                        if matches!(&e.kind, ExprKind::Lit(_)) =>
+                                    {
+                                        (true, false)
+                                    }
+                                    _ => (false, false),
+                                };
+                            mk_delimited(
+                                MetaVarKind::Expr {
+                                    kind: *kind,
+                                    can_begin_literal_maybe_minus,
+                                    can_begin_string_literal,
+                                },
+                                TokenStream::from_ast(expr),
+                            )
+                        }
+                        MatchedSingle(ParseNtResult::Literal(lit)) => {
+                            mk_delimited(MetaVarKind::Literal, TokenStream::from_ast(lit))
                         }
                         MatchedSingle(ParseNtResult::Ty(ty)) => {
                             mk_delimited(MetaVarKind::Ty, TokenStream::from_ast(ty))
@@ -837,10 +859,8 @@ fn extract_symbol_from_pnr<'a>(
             },
             _,
         )) => Ok(*symbol),
-        ParseNtResult::Nt(nt)
-            if let Nonterminal::NtLiteral(expr) = &**nt
-                && let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) =
-                    &expr.kind =>
+        ParseNtResult::Literal(expr)
+            if let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) = &expr.kind =>
         {
             Ok(*symbol)
         }

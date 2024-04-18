@@ -462,7 +462,6 @@ impl TokenStream {
     pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {
         match nt {
             Nonterminal::NtBlock(block) => TokenStream::from_ast(block),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => TokenStream::from_ast(expr),
         }
     }
 
