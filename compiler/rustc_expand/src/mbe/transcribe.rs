@@ -7,7 +7,7 @@ use rustc_ast::token::{
     TokenKind,
 };
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
-use rustc_ast::{ExprKind, TyKind};
+use rustc_ast::{ExprKind, StmtKind, TyKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagCtxtHandle, PResult, pluralize};
 use rustc_parse::lexer::nfc_normalize;
@@ -322,6 +322,18 @@ pub(super) fn transcribe<'a>(
                             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
                             let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
+                        }
+                        MatchedSingle(ParseNtResult::Item(item)) => {
+                            mk_delimited(item.span, MetaVarKind::Item, TokenStream::from_ast(item))
+                        }
+                        MatchedSingle(ParseNtResult::Stmt(stmt)) => {
+                            let stream = if let StmtKind::Empty = stmt.kind {
+                                // FIXME: Properly collect tokens for empty statements.
+                                TokenStream::token_alone(token::Semi, stmt.span)
+                            } else {
+                                TokenStream::from_ast(stmt)
+                            };
+                            mk_delimited(stmt.span, MetaVarKind::Stmt, stream)
                         }
                         MatchedSingle(ParseNtResult::Pat(pat, pat_kind)) => mk_delimited(
                             pat.span,

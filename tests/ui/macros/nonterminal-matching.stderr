@@ -1,4 +1,4 @@
-error: no rules expected item `enum E {}`
+error: no rules expected `item` metavariable
   --> $DIR/nonterminal-matching.rs:19:10
    |
 LL |     macro n(a $nt_item b) {
@@ -10,7 +10,7 @@ LL |     n!(a $nt_item b);
 LL | complex_nonterminal!(enum E {});
    | ------------------------------- in this macro invocation
    |
-note: while trying to match item `enum E {}`
+note: while trying to match `item` metavariable
   --> $DIR/nonterminal-matching.rs:15:15
    |
 LL |     macro n(a $nt_item b) {
@@ -89,7 +89,7 @@ LL |     (path a::b::c) => {};
    = help: try using `:tt` instead in the macro definition
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: no rules expected statement `let abc = 0`
+error: no rules expected `stmt` metavariable
   --> $DIR/nonterminal-matching.rs:35:35
    |
 LL |     (stmt $x:stmt) => { bar!(stmt $x); };
