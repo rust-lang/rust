@@ -1378,8 +1378,9 @@ mod panic {
         // Special-case the single-argument case for const_panic.
         ("{}", $arg:expr $(,)?) => ({
             #[rustc_const_panic_str] // enforce a &&str argument in const-check and hook this by const-eval
+            #[rustc_do_not_const_check] // hooked by const-eval
             const fn panic_cold_display<T: $crate::fmt::Display>(arg: &T) -> ! {
-                loop {}
+                $crate::panicking::panic_display(arg)
             }
             panic_cold_display(&$arg);
         }),

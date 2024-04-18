@@ -49,6 +49,7 @@ impl Evaluator<'_> {
         if self.not_special_fn_cache.borrow().contains(&def) {
             return Ok(false);
         }
+
         let function_data = self.db.function_data(def);
         let is_intrinsic = match &function_data.abi {
             Some(abi) => *abi == Interned::new_str("rust-intrinsic"),
@@ -311,16 +312,20 @@ impl Evaluator<'_> {
 
     fn detect_lang_function(&self, def: FunctionId) -> Option<LangItem> {
         use LangItem::*;
-        let candidate = self.db.lang_attr(def.into())?;
+        let attrs = self.db.attrs(def.into());
+
+        if attrs.by_key("rustc_const_panic_str").exists() {
+            // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
+            return Some(LangItem::BeginPanic);
+        }
+
+        let candidate = attrs.by_key("lang").string_value().and_then(LangItem::from_str)?;
         // We want to execute these functions with special logic
         // `PanicFmt` is not detected here as it's redirected later.
         if [BeginPanic, SliceLen, DropInPlace].contains(&candidate) {
             return Some(candidate);
         }
-        if self.db.attrs(def.into()).by_key("rustc_const_panic_str").exists() {
-            // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
-            return Some(LangItem::BeginPanic);
-        }
+
         None
     }
 
