@@ -1,12 +1,12 @@
 error[E0382]: use of moved value: `value`
-  --> $DIR/issue-72649-uninit-in-loop.rs:24:22
+  --> $DIR/issue-72649-uninit-in-loop.rs:29:22
    |
 LL |         let value = NonCopy{};
    |             ----- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
 LL |
 LL |         let _used = value;
    |                     ----- value moved here
-LL |
+...
 LL |         let _used2 = value;
    |                      ^^^^^ value used here after move
    |
@@ -14,10 +14,13 @@ note: if `NonCopy` implemented `Clone`, you could clone the value
   --> $DIR/issue-72649-uninit-in-loop.rs:5:1
    |
 LL | struct NonCopy;
-   | ^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let _used = value;
+   |                     ----- you could clone this value
 
 error[E0382]: use of moved value: `value`
-  --> $DIR/issue-72649-uninit-in-loop.rs:36:26
+  --> $DIR/issue-72649-uninit-in-loop.rs:42:26
    |
 LL |     let value = NonCopy{};
    |         ----- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
@@ -34,10 +37,13 @@ note: if `NonCopy` implemented `Clone`, you could clone the value
   --> $DIR/issue-72649-uninit-in-loop.rs:5:1
    |
 LL | struct NonCopy;
-   | ^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let _used = value;
+   |                     ----- you could clone this value
 
 error[E0382]: use of moved value: `value`
-  --> $DIR/issue-72649-uninit-in-loop.rs:46:21
+  --> $DIR/issue-72649-uninit-in-loop.rs:52:21
    |
 LL |     let value = NonCopy{};
    |         ----- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
@@ -51,10 +57,13 @@ note: if `NonCopy` implemented `Clone`, you could clone the value
   --> $DIR/issue-72649-uninit-in-loop.rs:5:1
    |
 LL | struct NonCopy;
-   | ^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let _used = value;
+   |                     ----- you could clone this value
 
 error[E0382]: use of moved value: `value`
-  --> $DIR/issue-72649-uninit-in-loop.rs:57:22
+  --> $DIR/issue-72649-uninit-in-loop.rs:64:22
    |
 LL |     let mut value = NonCopy{};
    |         --------- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
@@ -68,10 +77,13 @@ note: if `NonCopy` implemented `Clone`, you could clone the value
   --> $DIR/issue-72649-uninit-in-loop.rs:5:1
    |
 LL | struct NonCopy;
-   | ^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let _used2 = value;
+   |                      ----- you could clone this value
 
 error[E0381]: used binding `value` isn't initialized
-  --> $DIR/issue-72649-uninit-in-loop.rs:65:21
+  --> $DIR/issue-72649-uninit-in-loop.rs:73:21
    |
 LL |         let value: NonCopy;
    |             ----- binding declared here but left uninitialized
@@ -84,7 +96,7 @@ LL |         let value: NonCopy = /* value */;
    |                            +++++++++++++
 
 error[E0381]: used binding `value` isn't initialized
-  --> $DIR/issue-72649-uninit-in-loop.rs:73:21
+  --> $DIR/issue-72649-uninit-in-loop.rs:81:21
    |
 LL |     let mut value: NonCopy;
    |         --------- binding declared here but left uninitialized

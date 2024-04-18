@@ -23,7 +23,10 @@ note: if `T` implemented `Clone`, you could clone the value
   --> $DIR/issue-20801.rs:3:1
    |
 LL | struct T(u8);
-   | ^^^^^^^^
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let a = unsafe { *mut_ref() };
+   |                      ---------- you could clone this value
 help: consider removing the dereference here
    |
 LL -     let a = unsafe { *mut_ref() };
@@ -40,7 +43,10 @@ note: if `T` implemented `Clone`, you could clone the value
   --> $DIR/issue-20801.rs:3:1
    |
 LL | struct T(u8);
-   | ^^^^^^^^
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let b = unsafe { *imm_ref() };
+   |                      ---------- you could clone this value
 help: consider removing the dereference here
    |
 LL -     let b = unsafe { *imm_ref() };
@@ -57,7 +63,10 @@ note: if `T` implemented `Clone`, you could clone the value
   --> $DIR/issue-20801.rs:3:1
    |
 LL | struct T(u8);
-   | ^^^^^^^^
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let c = unsafe { *mut_ptr() };
+   |                      ---------- you could clone this value
 help: consider removing the dereference here
    |
 LL -     let c = unsafe { *mut_ptr() };
@@ -74,7 +83,10 @@ note: if `T` implemented `Clone`, you could clone the value
   --> $DIR/issue-20801.rs:3:1
    |
 LL | struct T(u8);
-   | ^^^^^^^^
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let d = unsafe { *const_ptr() };
+   |                      ------------ you could clone this value
 help: consider removing the dereference here
    |
 LL -     let d = unsafe { *const_ptr() };

@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/issue-24357.rs:8:12
+  --> $DIR/issue-24357.rs:10:12
    |
 LL |    let x = NoCopy;
    |        - move occurs because `x` has type `NoCopy`, which does not implement the `Copy` trait
@@ -16,7 +16,10 @@ note: if `NoCopy` implemented `Clone`, you could clone the value
   --> $DIR/issue-24357.rs:1:1
    |
 LL | struct NoCopy;
-   | ^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |    let f = move || { let y = x; };
+   |                              - you could clone this value
 
 error: aborting due to 1 previous error
 
