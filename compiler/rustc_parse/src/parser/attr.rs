@@ -1,11 +1,10 @@
 use crate::errors;
 use crate::fluent_generated as fluent;
-use crate::maybe_whole;
 
 use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
-use rustc_ast::token::{self, Delimiter};
+use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_errors::{codes::*, Diag, PResult};
 use rustc_span::{sym, symbol::kw, BytePos, Span};
 use thin_vec::ThinVec;
@@ -249,7 +248,11 @@ impl<'a> Parser<'a> {
     ///     PATH `=` UNSUFFIXED_LIT
     /// The delimiters or `=` are still put into the resulting token stream.
     pub fn parse_attr_item(&mut self, capture_tokens: bool) -> PResult<'a, ast::AttrItem> {
-        maybe_whole!(self, NtMeta, |attr| attr.into_inner());
+        if let Some(item) =
+            self.eat_metavar_seq(MetaVarKind::Meta, |this| this.parse_attr_item(true))
+        {
+            return Ok(item);
+        }
 
         let do_parse = |this: &mut Self| {
             let is_unsafe = this.eat_keyword(kw::Unsafe);
@@ -374,18 +377,18 @@ impl<'a> Parser<'a> {
     /// MetaSeq = MetaItemInner (',' MetaItemInner)* ','? ;
     /// ```
     pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
-        // We can't use `maybe_whole` here because it would bump in the `None`
-        // case, which we don't want.
-        if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtMeta(attr_item) = &**nt
+        // Clone the parser so we can backtrack in the case where `attr_item.meta()` fails.
+        let mut parser = self.clone();
+        if let Some(attr_item) =
+            parser.eat_metavar_seq(MetaVarKind::Meta, |this| this.parse_attr_item(true))
         {
-            match attr_item.meta(attr_item.path.span) {
+            return match attr_item.meta(attr_item.path.span) {
                 Some(meta) => {
-                    self.bump();
-                    return Ok(meta);
+                    *self = parser;
+                    Ok(meta)
                 }
-                None => self.unexpected()?,
-            }
+                None => self.unexpected_any(),
+            };
         }
 
         let lo = self.token.span;
@@ -439,7 +442,7 @@ impl<'a> Parser<'a> {
 
         let mut err = errors::InvalidMetaItem {
             span: self.token.span,
-            token: self.token.clone(),
+            descr: super::token_descr(&self.token),
             quote_ident_sugg: None,
         };
 
