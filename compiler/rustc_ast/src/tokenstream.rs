@@ -468,7 +468,6 @@ impl TokenStream {
                 TokenStream::token_alone(token::Semi, stmt.span)
             }
             Nonterminal::NtStmt(stmt) => TokenStream::from_ast(stmt),
-            Nonterminal::NtPath(path) => TokenStream::from_ast(path),
             Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => TokenStream::from_ast(expr),
         }
     }

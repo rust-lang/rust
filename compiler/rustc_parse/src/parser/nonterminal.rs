@@ -51,7 +51,7 @@ impl<'a> Parser<'a> {
                 NtStmt(_)
                 | NtExpr(_)
                 | NtLiteral(_) // `true`, `false`
-                | NtPath(_) => true,
+                => true,
 
                 NtItem(_) | NtBlock(_) => false,
             }
@@ -97,7 +97,7 @@ impl<'a> Parser<'a> {
                 token::NtLifetime(..) => true,
                 token::Interpolated(nt) => match &**nt {
                     NtBlock(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
-                    NtItem(_) | NtPath(_) => false,
+                    NtItem(_) => false,
                 },
                 token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(k))) => match k {
                     MetaVarKind::Block
@@ -204,7 +204,9 @@ impl<'a> Parser<'a> {
                 };
             }
             NonterminalKind::Path => {
-                NtPath(P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?))
+                return Ok(ParseNtResult::Path(P(
+                    self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?
+                )));
             }
             NonterminalKind::Meta => {
                 return Ok(ParseNtResult::Meta(P(self.parse_attr_item(ForceCollect::Yes)?)));
