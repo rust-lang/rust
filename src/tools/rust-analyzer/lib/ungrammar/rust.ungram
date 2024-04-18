@@ -1,3 +1,5 @@
+// Note this grammar file does not reflect the current language as this file is no longer maintained.
+
 // Rust Un-Grammar.
 //
 // This grammar specifies the structure of Rust's concrete syntax tree.
