@@ -332,7 +332,7 @@ pub fn abort_internal() -> ! {
                 core::arch::asm!("int $$0x29", in("ecx") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
             } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
                 core::arch::asm!(".inst 0xDEFB", in("r0") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
-            } else if #[cfg(target_arch = "aarch64")] {
+            } else if #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))] {
                 core::arch::asm!("brk 0xF003", in("x0") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
             } else {
                 core::intrinsics::abort();
