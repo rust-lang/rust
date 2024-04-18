@@ -244,6 +244,8 @@ impl<'tcx> Const<'tcx> {
             Const::Ty(c) => match c.kind() {
                 ty::ConstKind::Value(valtree) if c.ty().is_primitive() => {
                     // A valtree of a type where leaves directly represent the scalar const value.
+                    // Just checking whether it is a leaf is insufficient as e.g. references are leafs
+                    // but the leaf value is the value they point to, not the reference itself!
                     Some(valtree.unwrap_leaf().into())
                 }
                 _ => None,
@@ -255,7 +257,17 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
-        self.try_to_scalar()?.try_to_int().ok()
+        // This is equivalent to `self.try_to_scalar()?.try_to_int().ok()`, but measurably faster.
+        match self {
+            Const::Val(ConstValue::Scalar(Scalar::Int(x)), _) => Some(x),
+            Const::Ty(c) => match c.kind() {
+                ty::ConstKind::Value(valtree) if c.ty().is_primitive() => {
+                    Some(valtree.unwrap_leaf())
+                }
+                _ => None,
+            },
+            _ => None,
+        }
     }
 
     #[inline]
