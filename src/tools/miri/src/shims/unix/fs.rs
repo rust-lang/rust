@@ -196,13 +196,12 @@ struct OpenDir {
     read_dir: ReadDir,
     /// The most recent entry returned by readdir().
     /// Will be freed by the next call.
-    entry: Pointer<Option<Provenance>>,
+    entry: Option<Pointer<Option<Provenance>>>,
 }
 
 impl OpenDir {
     fn new(read_dir: ReadDir) -> Self {
-        // We rely on `free` being a NOP on null pointers.
-        Self { read_dir, entry: Pointer::null() }
+        Self { read_dir, entry: None }
     }
 }
 
@@ -924,8 +923,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let d_name_offset = dirent64_layout.fields.offset(4 /* d_name */).bytes();
                 let size = d_name_offset.checked_add(name_len).unwrap();
 
-                let entry =
-                    this.malloc(size, /*zero_init:*/ false, MiriMemoryKind::Runtime)?;
+                let entry = this.allocate_ptr(
+                    Size::from_bytes(size),
+                    dirent64_layout.align.abi,
+                    MiriMemoryKind::Runtime.into(),
+                )?;
+                let entry: Pointer<Option<Provenance>> = entry.into();
 
                 // If the host is a Unix system, fill in the inode number with its real value.
                 // If not, use 0 as a fallback value.
@@ -949,23 +952,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let name_ptr = entry.offset(Size::from_bytes(d_name_offset), this)?;
                 this.write_bytes_ptr(name_ptr, name_bytes.iter().copied())?;
 
-                entry
+                Some(entry)
             }
             None => {
                 // end of stream: return NULL
-                Pointer::null()
+                None
             }
             Some(Err(e)) => {
                 this.set_last_error_from_io_error(e.kind())?;
-                Pointer::null()
+                None
             }
         };
 
         let open_dir = this.machine.dirs.streams.get_mut(&dirp).unwrap();
         let old_entry = std::mem::replace(&mut open_dir.entry, entry);
-        this.free(old_entry, MiriMemoryKind::Runtime)?;
+        if let Some(old_entry) = old_entry {
+            this.deallocate_ptr(old_entry, None, MiriMemoryKind::Runtime.into())?;
+        }
 
-        Ok(Scalar::from_maybe_pointer(entry, this))
+        Ok(Scalar::from_maybe_pointer(entry.unwrap_or_else(Pointer::null), this))
     }
 
     fn macos_fbsd_readdir_r(
@@ -1106,7 +1111,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         if let Some(open_dir) = this.machine.dirs.streams.remove(&dirp) {
-            this.free(open_dir.entry, MiriMemoryKind::Runtime)?;
+            if let Some(entry) = open_dir.entry {
+                this.deallocate_ptr(entry, None, MiriMemoryKind::Runtime.into())?;
+            }
             drop(open_dir);
             Ok(0)
         } else {
