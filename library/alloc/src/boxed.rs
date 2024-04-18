@@ -165,6 +165,7 @@ use core::ops::{
 };
 use core::pin::Pin;
 use core::ptr::{self, addr_of_mut, NonNull, Unique};
+use core::slice;
 use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
@@ -177,6 +178,7 @@ use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
+use crate::vec;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
 
@@ -2077,6 +2079,51 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T, Global
 impl<I> FromIterator<I> for Box<[I]> {
     fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
         iter.into_iter().collect::<Vec<_>>().into_boxed_slice()
+    }
+}
+
+/// This implementation is required to make sure that the `Box<[I; N]>: IntoIterator`
+/// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<I, const N: usize, A: Allocator> !Iterator for Box<[I; N], A> {}
+
+/// This implementation is required to make sure that the `&Box<[I; N]>: IntoIterator`
+/// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, const N: usize, I, A: Allocator> !Iterator for &'a Box<[I; N], A> {}
+
+/// This implementation is required to make sure that the `&mut Box<[I; N]>: IntoIterator`
+/// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, const N: usize, I, A: Allocator> !Iterator for &'a mut Box<[I; N], A> {}
+
+// Note: the `#[rustc_skip_during_method_dispatch(boxed_slice)]` on `trait IntoIterator`
+// hides this implementation from explicit `.into_iter()` calls on editions < 2024,
+// so those calls will still resolve to the slice implementation, by reference.
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<I, const N: usize, A: Allocator> IntoIterator for Box<[I; N], A> {
+    type IntoIter = vec::IntoIter<I, A>;
+    type Item = I;
+    fn into_iter(self) -> vec::IntoIter<I, A> {
+        (self as Box<[I], A>).into_vec().into_iter()
+    }
+}
+
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, const N: usize, A: Allocator> IntoIterator for &'a Box<[I; N], A> {
+    type IntoIter = slice::Iter<'a, I>;
+    type Item = &'a I;
+    fn into_iter(self) -> slice::Iter<'a, I> {
+        self.iter()
+    }
+}
+
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, const N: usize, A: Allocator> IntoIterator for &'a mut Box<[I; N], A> {
+    type IntoIter = slice::IterMut<'a, I>;
+    type Item = &'a mut I;
+    fn into_iter(self) -> slice::IterMut<'a, I> {
+        self.iter_mut()
     }
 }
 
