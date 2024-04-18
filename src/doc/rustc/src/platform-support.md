@@ -86,7 +86,7 @@ so Rustup may install the documentation for a similar tier 1 target instead.
 
 target | notes
 -------|-------
-`aarch64-apple-darwin` | ARM64 macOS (11.0+, Big Sur+)
+[`aarch64-apple-darwin`](platform-support/aarch64-apple-darwin.md) | ARM64 macOS (11.0+, Big Sur+)
 `aarch64-pc-windows-msvc` | ARM64 Windows MSVC
 `aarch64-unknown-linux-musl` | ARM64 Linux with musl 1.2.3
 `arm-unknown-linux-gnueabi` | ARMv6 Linux (kernel 3.2, glibc 2.17)
