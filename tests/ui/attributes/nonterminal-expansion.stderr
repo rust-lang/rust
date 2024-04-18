@@ -1,4 +1,4 @@
-error: expected unsuffixed literal, found `n!()`
+error: expected unsuffixed literal, found expression `n!()`
   --> $DIR/nonterminal-expansion.rs:7:22
    |
 LL |         #[repr(align($n))]

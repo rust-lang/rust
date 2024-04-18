@@ -336,6 +336,14 @@ pub(super) fn transcribe<'a>(
                                 TokenStream::from_ast(ty),
                             )
                         }
+                        MatchedSingle(ParseNtResult::Meta(attr_item)) => {
+                            let has_meta_form = attr_item.meta_kind().is_some();
+                            mk_delimited(
+                                attr_item.span(),
+                                MetaVarKind::Meta { has_meta_form },
+                                TokenStream::from_ast(attr_item),
+                            )
+                        }
                         MatchedSingle(ParseNtResult::Vis(vis)) => {
                             mk_delimited(vis.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
                         }

@@ -90,7 +90,10 @@ pub enum MetaVarKind {
     Ident,
     Lifetime,
     Literal,
-    Meta,
+    Meta {
+        /// Will `AttrItem::meta` succeed on this, if reparsed?
+        has_meta_form: bool,
+    },
     Path,
     Vis,
     TT,
@@ -110,7 +113,7 @@ impl fmt::Display for MetaVarKind {
             MetaVarKind::Ident => sym::ident,
             MetaVarKind::Lifetime => sym::lifetime,
             MetaVarKind::Literal => sym::literal,
-            MetaVarKind::Meta => sym::meta,
+            MetaVarKind::Meta { .. } => sym::meta,
             MetaVarKind::Path => sym::path,
             MetaVarKind::Vis => sym::vis,
             MetaVarKind::TT => sym::tt,
@@ -658,13 +661,12 @@ impl Token {
                 matches!(&**nt,
                     | NtExpr(..)
                     | NtLiteral(..)
-                    | NtMeta(..)
                     | NtPath(..)
                 ),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Expr { .. } |
                 MetaVarKind::Literal |
-                MetaVarKind::Meta |
+                MetaVarKind::Meta { .. } |
                 MetaVarKind::Pat(_) |
                 MetaVarKind::Path |
                 MetaVarKind::Ty { .. }
@@ -861,6 +863,7 @@ impl Token {
     /// Is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
+        #[allow(irrefutable_let_patterns)] // FIXME: temporary
         if let Interpolated(nt) = &self.kind
             && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = &**nt
         {
@@ -1076,8 +1079,6 @@ pub enum Nonterminal {
     NtStmt(P<ast::Stmt>),
     NtExpr(P<ast::Expr>),
     NtLiteral(P<ast::Expr>),
-    /// Stuff inside brackets for attributes
-    NtMeta(P<ast::AttrItem>),
     NtPath(P<ast::Path>),
 }
 
@@ -1171,7 +1172,6 @@ impl Nonterminal {
             NtBlock(block) => block.span,
             NtStmt(stmt) => stmt.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
-            NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
         }
     }
@@ -1183,7 +1183,6 @@ impl Nonterminal {
             NtStmt(..) => "statement",
             NtExpr(..) => "expression",
             NtLiteral(..) => "literal",
-            NtMeta(..) => "attribute",
             NtPath(..) => "path",
         }
     }
@@ -1207,7 +1206,6 @@ impl fmt::Debug for Nonterminal {
             NtStmt(..) => f.pad("NtStmt(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
-            NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
         }
     }

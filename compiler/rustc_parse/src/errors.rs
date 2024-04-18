@@ -1025,7 +1025,7 @@ pub(crate) struct SuffixedLiteralInAttribute {
 pub(crate) struct InvalidMetaItem {
     #[primary_span]
     pub span: Span,
-    pub token: Token,
+    pub descr: String,
     #[subdiagnostic]
     pub quote_ident_sugg: Option<InvalidMetaItemQuoteIdentSugg>,
 }
