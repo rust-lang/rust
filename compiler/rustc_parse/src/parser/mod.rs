@@ -1026,8 +1026,9 @@ impl<'a> Parser<'a> {
         let initial_semicolon = self.token.span;
 
         while self.eat(&TokenKind::Semi) {
-            let _ =
-                self.parse_stmt_without_recovery(false, ForceCollect::Yes).unwrap_or_else(|e| {
+            let _ = self
+                .parse_stmt_without_recovery(false, ForceCollect::Yes, false)
+                .unwrap_or_else(|e| {
                     e.cancel();
                     None
                 });
@@ -1702,6 +1703,8 @@ pub enum ParseNtResult {
     Tt(TokenTree),
     Ident(Ident, IdentIsRaw),
     Lifetime(Ident),
+    Item(P<ast::Item>),
+    Stmt(P<ast::Stmt>),
     Pat(P<ast::Pat>, NtPatKind),
     Ty(P<ast::Ty>),
     Vis(P<ast::Visibility>),

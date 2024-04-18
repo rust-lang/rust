@@ -9,6 +9,7 @@ use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::IdentIsRaw;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::StmtKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Diag, DiagCtxtHandle, PResult};
 use rustc_parse::parser::ParseNtResult;
@@ -295,6 +296,18 @@ pub(super) fn transcribe<'a>(
                             marker.visit_span(&mut sp);
                             let kind = token::NtLifetime(*ident);
                             TokenTree::token_alone(kind, sp)
+                        }
+                        MatchedSingle(ParseNtResult::Item(item)) => {
+                            mk_delimited(MetaVarKind::Item, TokenStream::from_ast(item))
+                        }
+                        MatchedSingle(ParseNtResult::Stmt(stmt)) => {
+                            let stream = if let StmtKind::Empty = stmt.kind {
+                                // FIXME: Properly collect tokens for empty statements.
+                                TokenStream::token_alone(token::Semi, stmt.span)
+                            } else {
+                                TokenStream::from_ast(stmt)
+                            };
+                            mk_delimited(MetaVarKind::Stmt, stream)
                         }
                         MatchedSingle(ParseNtResult::Pat(pat, pat_kind)) => {
                             mk_delimited(MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))

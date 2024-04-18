@@ -1,11 +1,11 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
-    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing, TrailingToken,
+    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Recovered, Trailing,
+    TrailingToken,
 };
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
-use crate::maybe_whole;
 use ast::token::IdentIsRaw;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
@@ -123,10 +123,13 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
-        maybe_whole!(self, NtItem, |item| {
+        if let Some(item) =
+            self.eat_metavar_seq(MetaVarKind::Item, |this| this.parse_item(ForceCollect::Yes))
+        {
+            let mut item = item.expect("an actual item");
             attrs.prepend_to_nt_inner(&mut item.attrs);
-            Some(item.into_inner())
-        });
+            return Ok(Some(item.into_inner()));
+        }
 
         let item =
             self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {
