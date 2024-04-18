@@ -1749,6 +1749,7 @@ pub enum ParseNtResult {
     Pat(P<ast::Pat>, NtPatKind),
     Ty(P<ast::Ty>),
     Meta(P<ast::AttrItem>),
+    Path(P<ast::Path>),
     Vis(P<ast::Visibility>),
 
     /// This variant will eventually be removed, along with `Token::Interpolate`.
