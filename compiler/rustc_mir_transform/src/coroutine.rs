@@ -52,6 +52,7 @@
 
 mod by_move_body;
 pub use by_move_body::ByMoveBody;
+use smallvec::SmallVec;
 
 use crate::abort_unwinding_calls;
 use crate::deref_separator::deref_finder;
@@ -64,6 +65,7 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind};
 use rustc_index::bit_set::{BitMatrix, BitSet, GrowableBitSet};
+use rustc_index::IndexSlice;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -80,7 +82,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::PanicStrategy;
-use std::{iter, ops};
+use std::ops;
 
 pub struct StateTransform;
 
@@ -249,9 +251,13 @@ struct TransformVisitor<'tcx> {
     old_yield_ty: Ty<'tcx>,
 
     old_ret_ty: Ty<'tcx>,
+
+    // A marker where the "virtual" upvar local indexing starts
+    upvar_start: Local,
 }
 
 impl<'tcx> TransformVisitor<'tcx> {
+    /// Construct a returning block so that the Future/AsyncGen is fused.
     fn insert_none_ret_block(&self, body: &mut Body<'tcx>) -> BasicBlock {
         let block = BasicBlock::new(body.basic_blocks.len());
         let source_info = SourceInfo::outermost(body.span);
@@ -483,15 +489,22 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
         assert_eq!(self.remap.get(local), None);
     }
 
-    fn visit_place(
-        &mut self,
-        place: &mut Place<'tcx>,
-        _context: PlaceContext,
-        _location: Location,
-    ) {
+    fn visit_place(&mut self, place: &mut Place<'tcx>, _context: PlaceContext, location: Location) {
         // Replace an Local in the remap with a coroutine struct access
         if let Some(&(ty, variant_index, idx)) = self.remap.get(&place.local) {
             replace_base(place, self.make_field(variant_index, idx, ty), self.tcx);
+        } else if place.local == ty::CAPTURE_STRUCT_LOCAL {
+            let [PlaceElem::Field(field, _), more_projections @ ..] = &**place.projection else {
+                // dropping coroutine struct will be handled later
+                return;
+            };
+            let Some(&(ty, variant_index, idx)) =
+                self.remap.get(&(self.upvar_start + field.as_usize()))
+            else {
+                bug!("unrecognized upvar {field:?} at {location:?}")
+            };
+            *place =
+                self.make_field(variant_index, idx, ty).project_deeper(more_projections, self.tcx);
         }
     }
 
@@ -568,19 +581,19 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 }
 
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let coroutine_ty = body.local_decls.raw[1].ty;
+    let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
     // Replace the by value coroutine argument
-    body.local_decls.raw[1].ty = ref_coroutine_ty;
+    body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty = ref_coroutine_ty;
 
     // Add a deref to accesses of the coroutine state
     DerefArgVisitor { tcx }.visit_body(body);
 }
 
 fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let ref_coroutine_ty = body.local_decls.raw[1].ty;
+    let ref_coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     let pin_did = tcx.require_lang_item(LangItem::Pin, Some(body.span));
     let pin_adt_ref = tcx.adt_def(pin_did);
@@ -588,7 +601,7 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     let pin_ref_coroutine_ty = Ty::new_adt(tcx, pin_adt_ref, args);
 
     // Replace the by ref coroutine argument
-    body.local_decls.raw[1].ty = pin_ref_coroutine_ty;
+    body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty = pin_ref_coroutine_ty;
 
     // Add the Pin field access to accesses of the coroutine state
     PinArgVisitor { ref_coroutine_ty, tcx }.visit_body(body);
@@ -757,36 +770,49 @@ struct LivenessInfo {
 ///   case none exist, the local is considered to be always live.
 /// - a local has to be stored if it is either directly used after the
 ///   the suspend point, or if it is live and has been previously borrowed.
+#[instrument(level = "debug", skip(tcx, body))]
 fn locals_live_across_suspend_points<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     always_live_locals: &BitSet<Local>,
     movable: bool,
+    upvars: &IndexSlice<FieldIdx, Ty<'tcx>>,
 ) -> LivenessInfo {
+    let nr_body_local = body.local_decls().next_index();
+    let nr_local_and_upvar = nr_body_local.as_usize() + upvars.len();
+    debug!(nr_body_local = body.local_decls().len(), "total body local decls");
+    debug!(?nr_local_and_upvar, "total local decls plus upvars");
+    let mut always_live_locals = GrowableBitSet::from(always_live_locals.clone());
+    always_live_locals.ensure(nr_local_and_upvar);
+    let always_live_locals: BitSet<_> = always_live_locals.into();
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
-    let mut storage_live = MaybeStorageLive::new(std::borrow::Cow::Borrowed(always_live_locals))
+    let mut storage_live = MaybeStorageLive::new(std::borrow::Cow::Borrowed(&always_live_locals))
         .into_engine(tcx, body)
         .iterate_to_fixpoint()
         .into_results_cursor(body);
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
-    let borrowed_locals_results =
-        MaybeBorrowedLocals.into_engine(tcx, body).pass_name("coroutine").iterate_to_fixpoint();
+    let borrowed_locals_results = MaybeBorrowedLocals::new(Some((nr_body_local, upvars.len())))
+        .into_engine(tcx, body)
+        .pass_name("coroutine")
+        .iterate_to_fixpoint();
 
     let mut borrowed_locals_cursor = borrowed_locals_results.clone().into_results_cursor(body);
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
-    let mut requires_storage_cursor =
-        MaybeRequiresStorage::new(borrowed_locals_results.into_results_cursor(body))
-            .into_engine(tcx, body)
-            .iterate_to_fixpoint()
-            .into_results_cursor(body);
+    let mut requires_storage_cursor = MaybeRequiresStorage::new_with_upvar(
+        borrowed_locals_results.into_results_cursor(body),
+        (nr_body_local, upvars.len()),
+    )
+    .into_engine(tcx, body)
+    .iterate_to_fixpoint()
+    .into_results_cursor(body);
 
     // Calculate the liveness of MIR locals ignoring borrows.
-    let mut liveness = MaybeLiveLocals
+    let mut liveness = MaybeLiveLocals { upvars: Some((nr_body_local, upvars.len())) }
         .into_engine(tcx, body)
         .pass_name("coroutine")
         .iterate_to_fixpoint()
@@ -795,15 +821,21 @@ fn locals_live_across_suspend_points<'tcx>(
     let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
     let mut live_locals_at_suspension_points = Vec::new();
     let mut source_info_at_suspension_points = Vec::new();
-    let mut live_locals_at_any_suspension_point = BitSet::new_empty(body.local_decls.len());
+    let mut live_locals_at_any_suspension_point = BitSet::new_empty(nr_local_and_upvar);
+
+    // At UNRESUMED, upvars are live
+    for idx in 0..upvars.len() {
+        live_locals_at_any_suspension_point.insert(nr_body_local + idx);
+    }
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
             let loc = Location { block, statement_index: data.statements.len() };
 
             liveness.seek_to_block_end(block);
-            let mut live_locals: BitSet<_> = BitSet::new_empty(body.local_decls.len());
+            let mut live_locals: BitSet<_> = BitSet::new_empty(nr_local_and_upvar);
             live_locals.union(liveness.get());
+            debug!(?live_locals, "+= liveness");
 
             if !movable {
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
@@ -818,6 +850,7 @@ fn locals_live_across_suspend_points<'tcx>(
                 // of the local, which happens using the `intersect` operation below.
                 borrowed_locals_cursor.seek_before_primary_effect(loc);
                 live_locals.union(borrowed_locals_cursor.get());
+                debug!(?live_locals, "+= borrowed");
             }
 
             // Store the storage liveness for later use so we can restore the state
@@ -858,7 +891,7 @@ fn locals_live_across_suspend_points<'tcx>(
     let storage_conflicts = compute_storage_conflicts(
         body,
         &saved_locals,
-        always_live_locals.clone(),
+        always_live_locals,
         requires_storage_cursor.into_results(),
     );
 
@@ -926,13 +959,12 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     always_live_locals: BitSet<Local>,
     mut requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal> {
-    assert_eq!(body.local_decls.len(), saved_locals.domain_size());
-
     debug!("compute_storage_conflicts({:?})", body.span);
     debug!("always_live = {:?}", always_live_locals);
 
     // Locals that are always live or ones that need to be stored across
     // suspension points are not eligible for overlap.
+    let nr_local_decl_upvars = always_live_locals.domain_size();
     let mut ineligible_locals = always_live_locals;
     ineligible_locals.intersect(&**saved_locals);
 
@@ -940,8 +972,8 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     let mut visitor = StorageConflictVisitor {
         body,
         saved_locals: saved_locals,
-        local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
-        eligible_storage_live: BitSet::new_empty(body.local_decls.len()),
+        local_conflicts: BitMatrix::from_row_n(&ineligible_locals, nr_local_decl_upvars),
+        eligible_storage_live: BitSet::new_empty(nr_local_decl_upvars),
     };
 
     requires_storage.visit_reachable_with(body, &mut visitor);
@@ -955,7 +987,9 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     // However, in practice these bitsets are not usually large. The layout code
     // also needs to keep track of how many conflicts each local has, so it's
     // simpler to keep it this way for now.
-    let mut storage_conflicts = BitMatrix::new(saved_locals.count(), saved_locals.count());
+    let nr_saved_local = saved_locals.count();
+    debug!(?nr_saved_local, "compute_storage_conflicts");
+    let mut storage_conflicts = BitMatrix::new(nr_saved_local, nr_saved_local);
     for (saved_local_a, local_a) in saved_locals.iter_enumerated() {
         if ineligible_locals.contains(local_a) {
             // Conflicts with everything.
@@ -1028,9 +1062,12 @@ impl StorageConflictVisitor<'_, '_, '_> {
     }
 }
 
+#[instrument(level = "debug", skip(liveness, body), fields(?body.source))]
 fn compute_layout<'tcx>(
     liveness: LivenessInfo,
     body: &Body<'tcx>,
+    upvars: IndexVec<FieldIdx, Ty<'tcx>>,
+    upvar_spans: &[Span],
 ) -> (
     FxHashMap<Local, (Ty<'tcx>, VariantIdx, FieldIdx)>,
     CoroutineLayout<'tcx>,
@@ -1043,38 +1080,59 @@ fn compute_layout<'tcx>(
         storage_conflicts,
         storage_liveness,
     } = liveness;
+    let upvar_start = body.local_decls().next_index();
 
     // Gather live local types and their indices.
     let mut locals = IndexVec::<CoroutineSavedLocal, _>::new();
     let mut tys = IndexVec::<CoroutineSavedLocal, _>::new();
+    let mut saved_upvar_start = None;
+    // `saved_locals` enumerates first locals in the body, then upvars
     for (saved_local, local) in saved_locals.iter_enumerated() {
+        assert_ne!(local, ty::CAPTURE_STRUCT_LOCAL);
         debug!("coroutine saved local {:?} => {:?}", saved_local, local);
 
         locals.push(local);
-        let decl = &body.local_decls[local];
-        debug!(?decl);
 
-        // Do not `assert_crate_local` here, as post-borrowck cleanup may have already cleared
-        // the information. This is alright, since `ignore_for_traits` is only relevant when
-        // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
-        // default.
-        let ignore_for_traits = match decl.local_info {
-            // Do not include raw pointers created from accessing `static` items, as those could
-            // well be re-created by another access to the same static.
-            ClearCrossCrate::Set(box LocalInfo::StaticRef { is_thread_local, .. }) => {
-                !is_thread_local
+        if local < upvar_start {
+            let decl = &body.local_decls[local];
+            debug!(?decl);
+
+            // Do not `assert_crate_local` here, as post-borrowck cleanup may have already cleared
+            // the information. This is alright, since `ignore_for_traits` is only relevant when
+            // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
+            // default.
+            let ignore_for_traits = match decl.local_info {
+                // Do not include raw pointers created from accessing `static` items, as those could
+                // well be re-created by another access to the same static.
+                ClearCrossCrate::Set(box LocalInfo::StaticRef { is_thread_local, .. }) => {
+                    !is_thread_local
+                }
+                // Fake borrows are only read by fake reads, so do not have any reality in
+                // post-analysis MIR.
+                ClearCrossCrate::Set(box LocalInfo::FakeBorrow) => true,
+                _ => false,
+            };
+            let decl =
+                CoroutineSavedTy { ty: decl.ty, source_info: decl.source_info, ignore_for_traits };
+            debug!(?decl);
+
+            tys.push(decl);
+        } else {
+            // This is an upvar
+            let idx = local.index() - upvar_start.index();
+            let ty = upvars[FieldIdx::from_usize(idx)];
+            let decl = CoroutineSavedTy {
+                ty,
+                source_info: SourceInfo::outermost(upvar_spans[idx]),
+                ignore_for_traits: false,
+            };
+            let idx = tys.push(decl);
+            if saved_upvar_start.is_none() {
+                saved_upvar_start = Some(idx);
             }
-            // Fake borrows are only read by fake reads, so do not have any reality in
-            // post-analysis MIR.
-            ClearCrossCrate::Set(box LocalInfo::FakeBorrow) => true,
-            _ => false,
-        };
-        let decl =
-            CoroutineSavedTy { ty: decl.ty, source_info: decl.source_info, ignore_for_traits };
-        debug!(?decl);
-
-        tys.push(decl);
+        }
     }
+    let saved_upvar_start = saved_upvar_start.unwrap_or(tys.next_index());
 
     // Leave empty variants for the UNRESUMED, RETURNED, and POISONED states.
     // In debuginfo, these will correspond to the beginning (UNRESUMED) or end
@@ -1085,15 +1143,28 @@ fn compute_layout<'tcx>(
         SourceInfo::outermost(body_span.shrink_to_hi()),
         SourceInfo::outermost(body_span.shrink_to_hi()),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect();
 
     // Build the coroutine variant field list.
     // Create a map from local indices to coroutine struct indices.
-    let mut variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>> =
-        iter::repeat(IndexVec::new()).take(RESERVED_VARIANTS).collect();
-    let mut remap = FxHashMap::default();
+    let variant_fields: [IndexVec<FieldIdx, CoroutineSavedLocal>; RESERVED_VARIANTS] = [
+        // First, the UNRESUMED variant contains all the upvars.
+        saved_locals
+            .iter_enumerated()
+            .filter_map(|(saved_local, local)| (local >= upvar_start).then_some(saved_local))
+            .collect(),
+        IndexVec::new(),
+        IndexVec::new(),
+    ];
+    let mut variant_fields: IndexVec<VariantIdx, _> = variant_fields.into_iter().collect();
+    let mut remap: FxHashMap<_, _> = upvars
+        .iter_enumerated()
+        .map(|(field, &ty)| {
+            (upvar_start + field.as_usize(), (ty, VariantIdx::from(UNRESUMED), field))
+        })
+        .collect();
+    debug!(?live_locals_at_suspension_points, "compute_layout");
     for (suspension_point_idx, live_locals) in live_locals_at_suspension_points.iter().enumerate() {
         let variant_index = VariantIdx::from(RESERVED_VARIANTS + suspension_point_idx);
         let mut fields = IndexVec::new();
@@ -1104,18 +1175,39 @@ fn compute_layout<'tcx>(
             // around inside coroutines, so it doesn't matter which variant
             // index we access them by.
             let idx = FieldIdx::from_usize(idx);
-            remap.entry(locals[saved_local]).or_insert((tys[saved_local].ty, variant_index, idx));
+            if saved_local.as_usize() < upvar_start.as_usize() {
+                remap.entry(locals[saved_local]).or_insert((
+                    tys[saved_local].ty,
+                    variant_index,
+                    idx,
+                ));
+            } else {
+                // An upvar maps into the UNRESUMED state
+                remap.entry(locals[saved_local]).or_insert((
+                    tys[saved_local].ty,
+                    VariantIdx::from(UNRESUMED),
+                    FieldIdx::from(saved_local.as_usize() - upvar_start.as_usize()),
+                ));
+            }
         }
         variant_fields.push(fields);
         variant_source_info.push(source_info_at_suspension_points[suspension_point_idx]);
     }
+    debug!(?remap, "coroutine");
     debug!("coroutine variant_fields = {:?}", variant_fields);
     debug!("coroutine storage_conflicts = {:#?}", storage_conflicts);
 
     let mut field_names = IndexVec::from_elem(None, &tys);
     for var in &body.var_debug_info {
         let VarDebugInfoContents::Place(place) = &var.value else { continue };
-        let Some(local) = place.as_local() else { continue };
+        let local = match place.as_ref() {
+            PlaceRef {
+                local: ty::CAPTURE_STRUCT_LOCAL,
+                projection: [ProjectionElem::Field(field, _ty), ..],
+            } => upvar_start + field.as_usize(),
+            PlaceRef { local, projection: [] } => local,
+            _ => continue,
+        };
         let Some(&(_, variant, field)) = remap.get(&local) else { continue };
 
         let saved_local = variant_fields[variant][field];
@@ -1123,6 +1215,7 @@ fn compute_layout<'tcx>(
     }
 
     let layout = CoroutineLayout {
+        upvar_start: saved_upvar_start,
         field_tys: tys,
         field_names,
         variant_fields,
@@ -1220,6 +1313,21 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         );
     }
     elaborator.patch.apply(body);
+    for block_data in body.basic_blocks_mut() {
+        if let Terminator {
+            source_info: _,
+            kind: TerminatorKind::Drop { place, target: _, unwind: _, replace: _ },
+        } = block_data.terminator_mut()
+            && SELF_ARG == place.local
+            && matches!(**place.projection, [PlaceElem::Field(..), ..])
+        {
+            let more_projections = &**place.projection;
+            assert!(!more_projections.is_empty());
+            *place = tcx
+                .mk_place_downcast_unnamed(Place::from(SELF_ARG), VariantIdx::from(UNRESUMED))
+                .project_deeper(more_projections, tcx);
+        }
+    }
 }
 
 fn create_coroutine_drop_shim<'tcx>(
@@ -1248,6 +1356,7 @@ fn create_coroutine_drop_shim<'tcx>(
 
     insert_switch(&mut body, cases, transform, TerminatorKind::Return);
 
+    // All coroutine drop exits are now returns
     for block in body.basic_blocks_mut() {
         let kind = &mut block.terminator_mut().kind;
         if let TerminatorKind::CoroutineDrop = *kind {
@@ -1276,7 +1385,22 @@ fn create_coroutine_drop_shim<'tcx>(
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
     // filename.
     body.source.instance = coroutine_instance;
-    dump_mir(tcx, false, "coroutine_drop", &0, &body, |_, _| Ok(()));
+    // Select appropriate flavour of the coroutine kind shim.
+    let ty::Coroutine(_, args) = coroutine_ty.kind() else { bug!() };
+    let pass_name = {
+        let kind_ty = args.as_coroutine().kind_ty();
+        if let ty::Int(..) = kind_ty.kind()
+            && let Some(kind) = kind_ty.to_opt_closure_kind()
+        {
+            match kind {
+                ty::ClosureKind::Fn | ty::ClosureKind::FnMut => "coroutine_drop_fnmut",
+                ty::ClosureKind::FnOnce => "coroutine_drop_fnonce",
+            }
+        } else {
+            "coroutine_drop"
+        }
+    };
+    dump_mir(tcx, false, pass_name, &0 as _, &body, |_, _| Ok(()));
     body.source.instance = drop_instance;
 
     body
@@ -1462,7 +1586,7 @@ fn create_coroutine_resume_function<'tcx>(
 
     pm::run_passes_no_validate(tcx, body, &[&abort_unwinding_calls::AbortUnwindingCalls], None);
 
-    dump_mir(tcx, false, "coroutine_resume", &0, body, |_, _| Ok(()));
+    dump_mir(tcx, false, "coroutine_resume", &0 as _, body, |_, _| Ok(()));
 }
 
 fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
@@ -1527,7 +1651,7 @@ fn create_cases<'tcx>(
                     }
                 }
 
-                if operation == Operation::Resume {
+                if matches!(operation, Operation::Resume) {
                     // Move the resume argument to the destination place of the `Yield` terminator
                     let resume_arg = Local::new(2); // 0 = return, 1 = self
                     statements.push(Statement {
@@ -1567,21 +1691,33 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     // The first argument is the coroutine type passed by value
     let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
-    let movable = match *coroutine_ty.kind() {
-        ty::Coroutine(def_id, _) => tcx.coroutine_movability(def_id) == hir::Movability::Movable,
+    let (def_id, upvar_tys, movable) = match *coroutine_ty.kind() {
+        ty::Coroutine(def_id, args) => (
+            def_id,
+            args.as_coroutine().upvar_tys(),
+            matches!(tcx.coroutine_movability(def_id), hir::Movability::Movable),
+        ),
         ty::Error(_) => return None,
         _ => span_bug!(body.span, "unexpected coroutine type {}", coroutine_ty),
     };
 
     // The witness simply contains all locals live across suspend points.
 
+    dump_mir(tcx, true, "coroutine_liveness", &"witness", body, |_, _| Ok(()));
     let always_live_locals = always_storage_live_locals(body);
-    let liveness_info = locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
+    let upvars: IndexVec<FieldIdx, _> = upvar_tys.iter().collect();
+    let upvar_spans: SmallVec<[_; 4]> = tcx
+        .closure_captures(def_id.expect_local())
+        .iter()
+        .map(|capture| capture.var_ident.span)
+        .collect();
+    let liveness_info =
+        locals_live_across_suspend_points(tcx, body, &always_live_locals, movable, &upvars);
 
     // Extract locals which are live across suspension point into `layout`
     // `remap` gives a mapping from local indices onto coroutine struct indices
     // `storage_liveness` tells us which locals have live storage at suspension points
-    let (_, coroutine_layout, _) = compute_layout(liveness_info, body);
+    let (_, coroutine_layout, _) = compute_layout(liveness_info, body, upvars, &upvar_spans);
 
     check_suspend_tys(tcx, &coroutine_layout, body);
 
@@ -1599,19 +1735,30 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         assert!(body.coroutine_drop().is_none());
 
         // The first argument is the coroutine type passed by value
-        let coroutine_ty = body.local_decls.raw[1].ty;
+        let coroutine_ty = body.local_decls[SELF_ARG].ty;
         let coroutine_kind = body.coroutine_kind().unwrap();
 
         // Get the discriminant type and args which typeck computed
-        let (discr_ty, movable) = match *coroutine_ty.kind() {
-            ty::Coroutine(_, args) => {
+        let (def_id, discr_ty, upvar_tys, movable) = match *coroutine_ty.kind() {
+            ty::Coroutine(def_id, args) => {
                 let args = args.as_coroutine();
-                (args.discr_ty(tcx), coroutine_kind.movability() == hir::Movability::Movable)
+                (
+                    def_id,
+                    args.discr_ty(tcx),
+                    args.upvar_tys(),
+                    matches!(coroutine_kind.movability(), hir::Movability::Movable),
+                )
             }
             _ => {
                 tcx.dcx().span_bug(body.span, format!("unexpected coroutine type {coroutine_ty}"));
             }
         };
+        let upvars: IndexVec<FieldIdx, _> = upvar_tys.iter().collect();
+        let upvar_spans: SmallVec<[_; 4]> = tcx
+            .closure_captures(def_id.expect_local())
+            .iter()
+            .map(|capture| capture.var_ident.span)
+            .collect();
 
         let new_ret_ty = match coroutine_kind {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
@@ -1675,11 +1822,12 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 ))),
             },
         );
+        dump_mir(tcx, false, "coroutine_post-replace-resume", &0 as _, body, |_, _| Ok(()));
 
         let always_live_locals = always_storage_live_locals(body);
 
         let liveness_info =
-            locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
+            locals_live_across_suspend_points(tcx, body, &always_live_locals, movable, &upvars);
 
         if tcx.sess.opts.unstable_opts.validate_mir {
             let mut vis = EnsureCoroutineFieldAssignmentsNeverAlias {
@@ -1694,7 +1842,8 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto coroutine struct indices
         // `storage_liveness` tells us which locals have live storage at suspension points
-        let (remap, layout, storage_liveness) = compute_layout(liveness_info, body);
+        let (remap, layout, storage_liveness) =
+            compute_layout(liveness_info, body, upvars, &upvar_spans);
 
         let can_return = can_return(tcx, body, tcx.param_env(body.source.def_id()));
 
@@ -1714,6 +1863,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             discr_ty,
             old_ret_ty,
             old_yield_ty,
+            upvar_start: body.local_decls.next_index(),
         };
         transform.visit_body(body);
 
@@ -1742,14 +1892,14 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // This is expanded to a drop ladder in `elaborate_coroutine_drops`.
         let drop_clean = insert_clean_drop(body);
 
-        dump_mir(tcx, false, "coroutine_pre-elab", &0, body, |_, _| Ok(()));
+        dump_mir(tcx, false, "coroutine_pre-elab", &0 as _, body, |_, _| Ok(()));
 
         // Expand `drop(coroutine_struct)` to a drop ladder which destroys upvars.
-        // If any upvars are moved out of, drop elaboration will handle upvar destruction.
+        // If any upvars are moved out of, earlier rounds of drop elaboration will handle upvar destruction.
         // However we need to also elaborate the code generated by `insert_clean_drop`.
         elaborate_coroutine_drops(tcx, body);
 
-        dump_mir(tcx, false, "coroutine_post-transform", &0, body, |_, _| Ok(()));
+        dump_mir(tcx, false, "coroutine_post-transform", &0 as _, body, |_, _| Ok(()));
 
         // Create a copy of our MIR and use it to create the drop shim for the coroutine
         let drop_shim = create_coroutine_drop_shim(tcx, &transform, coroutine_ty, body, drop_clean);

@@ -33,7 +33,7 @@ pub async fn test() {
     foo().await;
     //~^ ERROR: large future with a size of 65540 bytes
     calls_fut(fut).await;
-    //~^ ERROR: large future with a size of 49159 bytes
+    //~^ ERROR: large future with a size of 32774 bytes
 }
 
 pub fn foo() -> impl std::future::Future<Output = ()> {

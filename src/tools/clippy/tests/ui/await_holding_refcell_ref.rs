@@ -1,6 +1,6 @@
 #![warn(clippy::await_holding_refcell_ref)]
 
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 
 async fn bad(x: &RefCell<u32>) -> u32 {
     let b = x.borrow();
@@ -39,6 +39,10 @@ async fn also_bad(x: &RefCell<u32>) -> u32 {
     let third = baz().await;
 
     first + second + third
+}
+
+async fn equally_bad(x: Ref<'_, u32>) {
+    //~^ ERROR: this `RefCell` reference is passed in through an argument or captured
 }
 
 async fn less_bad(x: &RefCell<u32>) -> u32 {

@@ -1,8 +1,9 @@
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges,
+    self, CallReturnPlaces, Local, Location, Place, PlaceElem, StatementKind, TerminatorEdges,
 };
+use rustc_middle::ty;
 
 use crate::{Analysis, AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 
@@ -23,7 +24,15 @@ use crate::{Analysis, AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 /// [`MaybeBorrowedLocals`]: super::MaybeBorrowedLocals
 /// [flow-test]: https://github.com/rust-lang/rust/blob/a08c47310c7d49cbdc5d7afb38408ba519967ecd/src/test/ui/mir-dataflow/liveness-ptr.rs
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
-pub struct MaybeLiveLocals;
+pub struct MaybeLiveLocals {
+    pub upvars: Option<(Local, usize)>,
+}
+
+impl MaybeLiveLocals {
+    fn domain_size(&self, body: &mir::Body<'_>) -> usize {
+        body.local_decls.len() + self.upvars.map_or(0, |(_, nr_upvar)| nr_upvar)
+    }
+}
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
     type Domain = BitSet<Local>;
@@ -33,7 +42,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = not live
-        BitSet::new_empty(body.local_decls.len())
+        BitSet::new_empty(self.domain_size(body))
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
@@ -41,11 +50,59 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
     }
 }
 
+fn maybe_upvar_kill(
+    trans: &mut impl GenKill<Local>,
+    place: &Place<'_>,
+    upvars: Option<(Local, usize)>,
+    location: Location,
+) {
+    trace!(?location, ?place, "liveness kill");
+    if place.local == ty::CAPTURE_STRUCT_LOCAL
+        && let Some((upvar_start, nr_upvar)) = upvars
+    {
+        match **place.projection {
+            [] => {
+                for field in 0..nr_upvar {
+                    trans.kill(upvar_start + field)
+                }
+            }
+            [PlaceElem::Field(field, _), ..] => trans.kill(upvar_start + field.as_usize()),
+            _ => bug!("unexpected upvar access"),
+        }
+    } else {
+        trans.kill(place.local);
+    }
+}
+
+fn maybe_upvar_gen(
+    trans: &mut impl GenKill<Local>,
+    place: &Place<'_>,
+    upvars: Option<(Local, usize)>,
+    location: Location,
+) {
+    trace!(?location, ?place, "liveness gen");
+    if place.local == ty::CAPTURE_STRUCT_LOCAL
+        && let Some((upvar_start, nr_upvar)) = upvars
+    {
+        match **place.projection {
+            [] => {
+                for field in 0..nr_upvar {
+                    trans.gen(upvar_start + field)
+                }
+            }
+            [PlaceElem::Field(field, _), ..] => trans.gen(upvar_start + field.as_usize()),
+            _ => bug!("unexpected upvar access"),
+        }
+    } else {
+        trans.gen(place.local);
+    }
+}
+
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     type Idx = Local;
 
     fn domain_size(&self, body: &mir::Body<'tcx>) -> usize {
-        body.local_decls.len()
+        self.domain_size(body)
     }
 
     fn statement_effect(
@@ -54,7 +111,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        TransferFunction(trans).visit_statement(statement, location);
+        TransferFunction { trans, upvars: self.upvars }.visit_statement(statement, location);
     }
 
     fn terminator_effect<'mir>(
@@ -63,7 +120,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        TransferFunction(trans).visit_terminator(terminator, location);
+        TransferFunction { trans, upvars: self.upvars }.visit_terminator(terminator, location);
         terminator.edges()
     }
 
@@ -74,22 +131,30 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         if let CallReturnPlaces::Yield(resume_place) = return_places {
-            YieldResumeEffect(trans).visit_place(
+            YieldResumeEffect { trans, upvars: self.upvars }.visit_place(
                 &resume_place,
                 PlaceContext::MutatingUse(MutatingUseContext::Yield),
                 Location::START,
             )
         } else {
+            trace!(?return_places, "(return) liveness kill?");
             return_places.for_each(|place| {
                 if let Some(local) = place.as_local() {
                     trans.kill(local);
+                } else if place.local == ty::CAPTURE_STRUCT_LOCAL
+                    && let [PlaceElem::Field(..)] = &**place.projection
+                {
+                    maybe_upvar_kill(trans, &place, self.upvars, Location::START);
                 }
             });
         }
     }
 }
 
-pub struct TransferFunction<'a, T>(pub &'a mut T);
+pub struct TransferFunction<'a, T> {
+    pub trans: &'a mut T,
+    pub upvars: Option<(Local, usize)>,
+}
 
 impl<'tcx, T> Visitor<'tcx> for TransferFunction<'_, T>
 where
@@ -113,34 +178,39 @@ where
                     // above. However, if the place looks like `*_5`, this is still unconditionally a use of
                     // `_5`.
                 } else {
-                    self.0.kill(place.local);
+                    maybe_upvar_kill(self.trans, place, self.upvars, location);
                 }
             }
-            Some(DefUse::Use) => self.0.gen(place.local),
+            Some(DefUse::Use) => {
+                maybe_upvar_gen(self.trans, place, self.upvars, location);
+            }
             None => {}
         }
 
         self.visit_projection(place.as_ref(), context, location);
     }
 
-    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
-        DefUse::apply(self.0, local.into(), context);
+    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
+        DefUse::apply(self.trans, local.into(), context, self.upvars, location);
     }
 }
 
-struct YieldResumeEffect<'a, T>(&'a mut T);
+struct YieldResumeEffect<'a, T> {
+    trans: &'a mut T,
+    upvars: Option<(Local, usize)>,
+}
 
 impl<'tcx, T> Visitor<'tcx> for YieldResumeEffect<'_, T>
 where
     T: GenKill<Local>,
 {
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
-        DefUse::apply(self.0, *place, context);
+        DefUse::apply(self.trans, *place, context, self.upvars, location);
         self.visit_projection(place.as_ref(), context, location);
     }
 
-    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
-        DefUse::apply(self.0, local.into(), context);
+    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
+        DefUse::apply(self.trans, local.into(), context, self.upvars, location);
     }
 }
 
@@ -151,10 +221,16 @@ enum DefUse {
 }
 
 impl DefUse {
-    fn apply(trans: &mut impl GenKill<Local>, place: Place<'_>, context: PlaceContext) {
+    fn apply(
+        trans: &mut impl GenKill<Local>,
+        place: Place<'_>,
+        context: PlaceContext,
+        upvars: Option<(Local, usize)>,
+        location: Location,
+    ) {
         match DefUse::for_place(place, context) {
-            Some(DefUse::Def) => trans.kill(place.local),
-            Some(DefUse::Use) => trans.gen(place.local),
+            Some(DefUse::Def) => maybe_upvar_kill(trans, &place, upvars, location),
+            Some(DefUse::Use) => maybe_upvar_gen(trans, &place, upvars, location),
             None => {}
         }
     }
@@ -281,7 +357,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
                 return;
             }
         }
-        TransferFunction(trans).visit_statement(statement, location);
+        TransferFunction { trans, upvars: None }.visit_statement(statement, location);
     }
 
     fn apply_terminator_effect<'mir>(
@@ -290,7 +366,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        TransferFunction(trans).visit_terminator(terminator, location);
+        TransferFunction { trans, upvars: None }.visit_terminator(terminator, location);
         terminator.edges()
     }
 
@@ -301,7 +377,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         if let CallReturnPlaces::Yield(resume_place) = return_places {
-            YieldResumeEffect(trans).visit_place(
+            YieldResumeEffect { trans, upvars: None }.visit_place(
                 &resume_place,
                 PlaceContext::MutatingUse(MutatingUseContext::Yield),
                 Location::START,

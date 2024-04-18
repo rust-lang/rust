@@ -743,14 +743,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             };
 
                             ty::EarlyBinder::bind(f_ty.ty).instantiate(self.tcx, args)
+                        } else if let Some(&ty) = args.as_coroutine().upvar_tys().get(f.as_usize())
+                        {
+                            ty
                         } else {
-                            let Some(&f_ty) = args.as_coroutine().prefix_tys().get(f.index())
-                            else {
-                                fail_out_of_bounds(self, location);
-                                return;
-                            };
-
-                            f_ty
+                            fail_out_of_bounds(self, location);
+                            return;
                         };
 
                         check_equal(self, location, f_ty);

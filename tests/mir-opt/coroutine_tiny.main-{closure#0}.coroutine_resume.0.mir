@@ -1,5 +1,6 @@
 // MIR for `main::{closure#0}` 0 coroutine_resume
 /* coroutine_layout = CoroutineLayout {
+    upvar_start: _1,
     field_tys: {
         _0: CoroutineSavedTy {
             ty: HasDrop,
@@ -16,8 +17,31 @@
         Panicked (2): [],
         Suspend0 (3): [_0],
     },
+    field_names: {
+        _0: Some(
+            "_d",
+        ),
+    },
     storage_conflicts: BitMatrix(1x1) {
         (_0, _0),
+    },
+    variant_source_info: {
+        0: SourceInfo {
+            span: $DIR/coroutine_tiny.rs:20:16: 20:16 (#0),
+            scope: scope[0],
+        },
+        1: SourceInfo {
+            span: $DIR/coroutine_tiny.rs:26:6: 26:6 (#0),
+            scope: scope[0],
+        },
+        2: SourceInfo {
+            span: $DIR/coroutine_tiny.rs:26:6: 26:6 (#0),
+            scope: scope[0],
+        },
+        3: SourceInfo {
+            span: $DIR/coroutine_tiny.rs:23:13: 23:18 (#0),
+            scope: scope[1],
+        },
     },
 } */
 

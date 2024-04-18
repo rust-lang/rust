@@ -816,22 +816,18 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                         }),
                     };
                 }
-                ty::CoroutineClosure(_, args) => {
-                    return match args.as_coroutine_closure().upvar_tys().get(field.index()) {
+                ty::CoroutineClosure(_def_id, args) => {
+                    let upvar_tys = args.as_coroutine_closure().upvar_tys();
+                    return match upvar_tys.get(field.index()) {
                         Some(&ty) => Ok(ty),
-                        None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_coroutine_closure().upvar_tys().len(),
-                        }),
+                        None => Err(FieldAccessError::OutOfRange { field_count: upvar_tys.len() }),
                     };
                 }
-                ty::Coroutine(_, args) => {
-                    // Only prefix fields (upvars and current state) are
-                    // accessible without a variant index.
-                    return match args.as_coroutine().prefix_tys().get(field.index()) {
-                        Some(ty) => Ok(*ty),
-                        None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_coroutine().prefix_tys().len(),
-                        }),
+                ty::Coroutine(_def_id, args) => {
+                    let upvar_tys = args.as_coroutine().upvar_tys();
+                    return match upvar_tys.get(field.index()) {
+                        Some(&ty) => Ok(ty),
+                        None => Err(FieldAccessError::OutOfRange { field_count: upvar_tys.len() }),
                     };
                 }
                 ty::Tuple(tys) => {
@@ -1905,11 +1901,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
-                match args.as_coroutine().prefix_tys().get(field_index.as_usize()) {
+                let upvar_tys = args.as_coroutine().upvar_tys();
+                match upvar_tys.get(field_index.as_usize()) {
                     Some(ty) => Ok(*ty),
-                    None => Err(FieldAccessError::OutOfRange {
-                        field_count: args.as_coroutine().prefix_tys().len(),
-                    }),
+                    None => Err(FieldAccessError::OutOfRange { field_count: upvar_tys.len() }),
                 }
             }
             AggregateKind::CoroutineClosure(_, args) => {
@@ -2534,7 +2529,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         self.prove_aggregate_predicates(aggregate_kind, location);
 
-        if *aggregate_kind == AggregateKind::Tuple {
+        if matches!(aggregate_kind, AggregateKind::Tuple) {
             // tuple rvalue field type is always the type of the op. Nothing to check here.
             return;
         }

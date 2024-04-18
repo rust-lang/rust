@@ -74,7 +74,8 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         }
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_liveness).is_some() {
-            let flow_liveness = MaybeLiveLocals.into_engine(tcx, body).iterate_to_fixpoint();
+            let flow_liveness =
+                MaybeLiveLocals { upvars: None }.into_engine(tcx, body).iterate_to_fixpoint();
 
             sanity_check_via_rustc_peek(tcx, flow_liveness.into_results_cursor(body));
         }

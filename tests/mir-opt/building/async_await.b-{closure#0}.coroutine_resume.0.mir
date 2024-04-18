@@ -1,5 +1,6 @@
 // MIR for `b::{closure#0}` 0 coroutine_resume
 /* coroutine_layout = CoroutineLayout {
+    upvar_start: _2,
     field_tys: {
         _0: CoroutineSavedTy {
             ty: Coroutine(
@@ -45,9 +46,39 @@
         Suspend0 (3): [_0],
         Suspend1 (4): [_1],
     },
+    field_names: {
+        _0: Some(
+            "__awaitee",
+        ),
+        _1: Some(
+            "__awaitee",
+        ),
+    },
     storage_conflicts: BitMatrix(2x2) {
         (_0, _0),
         (_1, _1),
+    },
+    variant_source_info: {
+        0: SourceInfo {
+            span: $DIR/async_await.rs:15:18: 15:18 (#0),
+            scope: scope[0],
+        },
+        1: SourceInfo {
+            span: $DIR/async_await.rs:18:2: 18:2 (#0),
+            scope: scope[0],
+        },
+        2: SourceInfo {
+            span: $DIR/async_await.rs:18:2: 18:2 (#0),
+            scope: scope[0],
+        },
+        3: SourceInfo {
+            span: $DIR/async_await.rs:16:9: 16:14 (#8),
+            scope: scope[1],
+        },
+        4: SourceInfo {
+            span: $DIR/async_await.rs:17:9: 17:14 (#10),
+            scope: scope[3],
+        },
     },
 } */
 

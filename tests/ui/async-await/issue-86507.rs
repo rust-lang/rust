@@ -15,6 +15,7 @@ impl Foo for () {
         -> Pin<Box<dyn Future<Output = ()> + Send + 'async_trait>>
         where 'me:'async_trait {
             Box::pin( //~ ERROR future cannot be sent between threads safely
+                //~^ ERROR future cannot be sent between threads safely
                 async move {
                     let x = x;
                 }
