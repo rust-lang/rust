@@ -1,5 +1,4 @@
 use std::mem;
-use std::sync::Arc;
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{
@@ -307,7 +306,9 @@ pub(super) fn transcribe<'a>(
                     let tt = match cur_matched {
                         MatchedSingle(ParseNtResult::Tt(tt)) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
-                            // without wrapping them into groups.
+                            // without wrapping them into groups. Other variables are emitted into
+                            // the output stream as groups with `Delimiter::Invisible` to maintain
+                            // parsing priorities.
                             maybe_use_metavar_location(psess, &stack, sp, tt, &mut marker)
                         }
                         MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
@@ -325,6 +326,11 @@ pub(super) fn transcribe<'a>(
                         MatchedSingle(ParseNtResult::Item(item)) => {
                             mk_delimited(item.span, MetaVarKind::Item, TokenStream::from_ast(item))
                         }
+                        MatchedSingle(ParseNtResult::Block(block)) => mk_delimited(
+                            block.span,
+                            MetaVarKind::Block,
+                            TokenStream::from_ast(block),
+                        ),
                         MatchedSingle(ParseNtResult::Stmt(stmt)) => {
                             let stream = if let StmtKind::Empty = stmt.kind {
                                 // FIXME: Properly collect tokens for empty statements.
@@ -384,15 +390,6 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSingle(ParseNtResult::Vis(vis)) => {
                             mk_delimited(vis.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
-                        }
-                        MatchedSingle(ParseNtResult::Nt(nt)) => {
-                            // Other variables are emitted into the output stream as groups with
-                            // `Delimiter::Invisible` to maintain parsing priorities.
-                            // `Interpolated` is currently used for such groups in rustc parser.
-                            marker.visit_span(&mut sp);
-                            let use_span = nt.use_span();
-                            with_metavar_spans(|mspans| mspans.insert(use_span, sp));
-                            TokenTree::token_alone(token::Interpolated(Arc::clone(nt)), sp)
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
