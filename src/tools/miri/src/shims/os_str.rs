@@ -260,6 +260,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_ref();
         let target_os = &this.tcx.sess.target.os;
 
+        // Below we assume that everything non-Windows works like Unix, at least
+        // when it comes to file system path conventions.
         #[cfg(windows)]
         return if target_os == "windows" {
             // Windows-on-Windows, all fine.
@@ -297,6 +299,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     {
                         converted.remove(0);
                     }
+                    // If the path starts with `\\`, it is a magic Windows path. Conveniently, paths
+                    // starting with `//` on Unix are also magic where the first component can have
+                    // "application-specific" meaning, which is reflected e.g. by `path::absolute`
+                    // leaving leading `//` alone (but normalizing leading `///` to `/`). So we
+                    // don't have to do anything, the magic Windows path should work mostly fine as
+                    // a magic Unix path.
                 }
             }
             Cow::Owned(OsString::from_wide(&converted))
@@ -324,13 +332,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     {
                         converted.remove(0);
                     }
-                    // If this start withs a `\` but not a `\\`, then for Windows this is a relative
-                    // path. But the host path is absolute as it started with `/`. We add `\\?` so
-                    // it starts with `\\?\` which is some magic path on Windows that *is*
-                    // considered absolute.
+                    // If this starts withs a `\` but not a `\\`, then for Windows this is a
+                    // relative path (relative to "the root of the current directory", e.g. the
+                    // drive letter). But the host path on Unix is absolute as it starts with `/`.
                     else if converted.get(0).copied() == Some(b'\\')
                         && converted.get(1).copied() != Some(b'\\')
                     {
+                        // We add `\\?` so it starts with `\\?\` which is some magic path on Windows
+                        // that *is* considered absolute. This way we store the absolute host path
+                        // in something that looks like an absolute path to the (Windows) target.
                         converted.splice(0..0, b"\\\\?".iter().copied());
                     }
                 }
