@@ -278,6 +278,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let new_align = this.min_align(new_size, kind);
         if this.ptr_is_null(old_ptr)? {
+            // Here we must behave like `malloc`.
             if new_size == 0 {
                 Ok(Pointer::null())
             } else {
@@ -287,8 +288,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         } else {
             if new_size == 0 {
-                this.deallocate_ptr(old_ptr, None, kind.into())?;
-                Ok(Pointer::null())
+                // C, in their infinite wisdom, made this UB.
+                // <https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2464.pdf>
+                throw_ub_format!("`realloc` with a size of zero");
             } else {
                 let new_ptr = this.reallocate_ptr(
                     old_ptr,
