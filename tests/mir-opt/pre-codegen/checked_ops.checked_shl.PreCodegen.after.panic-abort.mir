@@ -13,11 +13,17 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
             debug b => _5;
         }
         scope 3 (inlined core::num::<impl u32>::overflowing_shl) {
+            debug self => _1;
+            debug rhs => _2;
             let mut _4: u32;
             let mut _5: bool;
             scope 4 (inlined core::num::<impl u32>::wrapping_shl) {
+                debug self => _1;
+                debug rhs => _2;
                 let mut _3: u32;
                 scope 5 (inlined core::num::<impl u32>::unchecked_shl) {
+                    debug self => _1;
+                    debug rhs => _3;
                 }
             }
         }
