@@ -10,11 +10,13 @@
    LL|      1|        _ if black_box(false) => {}
                                                ^0
   ------------------
+  |  Branch (LL:9): [True: 1, False: 0]
   |  Branch (LL:14): [True: 0, False: 1]
   ------------------
    LL|      1|        _ if black_box(false) => {}
                                                ^0
   ------------------
+  |  Branch (LL:9): [True: 1, False: 0]
   |  Branch (LL:14): [True: 0, False: 1]
   ------------------
    LL|      1|        _ => {}
