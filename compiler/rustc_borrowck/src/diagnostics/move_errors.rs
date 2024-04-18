@@ -447,7 +447,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     };
 
                     if let Some(expr) = self.find_expr(span) {
-                        self.suggest_cloning(err, place_ty, expr, self.find_expr(other_span));
+                        self.suggest_cloning(err, place_ty, expr, self.find_expr(other_span), None);
                     }
 
                     err.subdiagnostic(
@@ -482,7 +482,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
 
                 if let Some(expr) = self.find_expr(use_span) {
-                    self.suggest_cloning(err, place_ty, expr, self.find_expr(span));
+                    self.suggest_cloning(
+                        err,
+                        place_ty,
+                        expr,
+                        self.find_expr(span),
+                        Some(use_spans),
+                    );
                 }
 
                 err.subdiagnostic(
@@ -595,7 +601,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let place_desc = &format!("`{}`", self.local_names[*local].unwrap());
 
                 if let Some(expr) = self.find_expr(binding_span) {
-                    self.suggest_cloning(err, bind_to.ty, expr, None);
+                    self.suggest_cloning(err, bind_to.ty, expr, None, None);
                 }
 
                 err.subdiagnostic(

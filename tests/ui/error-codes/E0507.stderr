@@ -15,7 +15,10 @@ note: if `TheDarkKnight` implemented `Clone`, you could clone the value
   --> $DIR/E0507.rs:3:1
    |
 LL | struct TheDarkKnight;
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     x.borrow().nothing_is_true();
+   |     ---------- you could clone this value
 
 error: aborting due to 1 previous error
 
