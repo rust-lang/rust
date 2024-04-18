@@ -403,6 +403,7 @@ pub(super) fn definition(
     def: Definition,
     famous_defs: Option<&FamousDefs<'_, '_>>,
     notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
+    macro_arm: Option<u32>,
     config: &HoverConfig,
 ) -> Markup {
     let mod_path = definition_mod_path(db, &def);
@@ -412,6 +413,13 @@ pub(super) fn definition(
         }
         Definition::Adt(Adt::Struct(struct_)) => {
             struct_.display_limited(db, config.max_struct_field_count).to_string()
+        }
+        Definition::Macro(it) => {
+            let mut label = it.display(db).to_string();
+            if let Some(macro_arm) = macro_arm {
+                format_to!(label, " // matched arm #{}", macro_arm);
+            }
+            label
         }
         _ => def.label(db),
     };
