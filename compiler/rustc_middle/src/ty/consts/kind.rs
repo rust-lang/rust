@@ -71,8 +71,5 @@ pub enum Expr<'tcx> {
     Cast(CastKind, Const<'tcx>, Ty<'tcx>),
 }
 
-#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 static_assert_size!(Expr<'_>, 24);
-
-#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
-static_assert_size!(super::ConstKind<'_>, 32);

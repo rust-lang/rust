@@ -241,12 +241,12 @@ pub enum ProvenanceExtra {
     Wildcard,
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 static_assert_size!(Pointer<Provenance>, 24);
 // FIXME: this would with in 24bytes but layout optimizations are not smart enough
-// #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+// #[cfg(target_pointer_width = "64")]
 //static_assert_size!(Pointer<Option<Provenance>>, 24);
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 static_assert_size!(Scalar<Provenance>, 32);
 
 impl fmt::Debug for Provenance {
