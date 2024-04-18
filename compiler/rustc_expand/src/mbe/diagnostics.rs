@@ -67,9 +67,7 @@ pub(super) fn failed_to_match_macro(
     }
 
     if let MatcherLoc::Token { token: expected_token } = &remaining_matcher
-        && (matches!(expected_token.kind, TokenKind::Interpolated(_))
-            || matches!(token.kind, TokenKind::Interpolated(_))
-            || matches!(expected_token.kind, TokenKind::OpenDelim(Delimiter::Invisible(_)))
+        && (matches!(expected_token.kind, TokenKind::OpenDelim(Delimiter::Invisible(_)))
             || matches!(token.kind, TokenKind::OpenDelim(Delimiter::Invisible(_))))
     {
         err.note("captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens");

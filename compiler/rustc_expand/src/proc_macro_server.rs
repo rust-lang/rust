@@ -292,15 +292,6 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }));
                 }
 
-                Interpolated(nt) => {
-                    let stream = TokenStream::from_nonterminal_ast(&nt);
-                    trees.push(TokenTree::Group(Group {
-                        delimiter: pm::Delimiter::None,
-                        stream: Some(stream),
-                        span: DelimSpan::from_single(span),
-                    }))
-                }
-
                 OpenDelim(..) | CloseDelim(..) => unreachable!(),
                 Eof => unreachable!(),
             }

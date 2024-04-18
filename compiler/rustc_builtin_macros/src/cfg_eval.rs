@@ -173,11 +173,11 @@ impl CfgEval<'_> {
                 _ => unreachable!(),
             };
 
-        // 'Flatten' all nonterminals (i.e. `TokenKind::Interpolated`)
+        // 'Flatten' all nonterminals (i.e. `TokenKind::Nt{Ident,Lifetime}`)
         // to `None`-delimited groups containing the corresponding tokens. This
         // is normally delayed until the proc-macro server actually needs to
-        // provide a `TokenKind::Interpolated` to a proc-macro. We do this earlier,
-        // so that we can handle cases like:
+        // provide tokens to a proc-macro. We do this earlier, so that we can
+        // handle cases like:
         //
         // ```rust
         // #[cfg_eval] #[cfg] $item
