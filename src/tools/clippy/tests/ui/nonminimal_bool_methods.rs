@@ -109,4 +109,12 @@ fn dont_warn_for_negated_partial_ord_comparison() {
     let _ = !(a >= b);
 }
 
+fn issue_12625() {
+    let a = 0;
+    let b = 0;
+    if !(a as u64 >= b) {} //~ ERROR: this boolean expression can be simplified
+    if !((a as u64) >= b) {} //~ ERROR: this boolean expression can be simplified
+    if !(a as u64 <= b) {} //~ ERROR: this boolean expression can be simplified
+}
+
 fn main() {}

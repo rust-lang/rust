@@ -463,6 +463,18 @@ fn issue11642() {
     }
 }
 
+fn issue11738() {
+    macro_rules! m {
+        () => {
+            let _ = i32::MIN as u32; // cast_sign_loss
+            let _ = u32::MAX as u8; // cast_possible_truncation
+            let _ = std::f64::consts::PI as f32; // cast_possible_truncation
+            let _ = 0i8 as i32; // cast_lossless
+        };
+    }
+    m!();
+}
+
 fn issue12506() -> usize {
     let bar: Result<Option<i64>, u32> = Ok(Some(10));
     bar.unwrap().unwrap() as usize

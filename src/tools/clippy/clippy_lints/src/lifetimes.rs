@@ -291,10 +291,7 @@ fn elision_suggestions(
                     }) => {
                         // expand `&'a T` to `&'a T`
                         //          ^^         ^^^
-                        let span = cx
-                            .sess()
-                            .source_map()
-                            .span_extend_while_whitespace(usage.ident.span);
+                        let span = cx.sess().source_map().span_extend_while_whitespace(usage.ident.span);
 
                         (span, String::new())
                     },
