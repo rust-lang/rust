@@ -808,6 +808,15 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 if let Some(def_id) = item.def_id()
                     && let Some(name) = item.name
                 {
+                    if let Some((path, item_type)) = self.cache().paths.get(&def_id)
+                        && *item_type == item.type_()
+                        && &path[path.len() - 1..] == &self.current[..]
+                    {
+                        // Avoid populating this list with no-ops.
+                        // If this module is already the One True Path,
+                        // that's sufficient.
+                        continue;
+                    }
                     self.current_module_linkable_items.insert(def_id, (item.type_(), name));
                 }
             }
