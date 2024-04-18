@@ -225,6 +225,30 @@ fn match_i8_i16_failed(i: EnumAi8) -> i16 {
     }
 }
 
+// We cannot transform it, even though `-1i8` and `255i16` are the same in terms of bits,
+// what we actually require is that they are considered equal in a signed comparison.
+// EMIT_MIR matches_reduce_branches.match_i8_i16_failed_2_a.MatchBranchSimplification.diff
+fn match_i8_i16_failed_2_a(i: EnumAi8) -> i16 {
+    // CHECK-LABEL: fn match_i8_i16_failed_2_a(
+    // CHECK: switchInt
+    match i {
+        EnumAi8::A => 255,
+        EnumAi8::B => 2,
+        EnumAi8::C => -3,
+    }
+}
+
+// EMIT_MIR matches_reduce_branches.match_i8_i16_failed_2_b.MatchBranchSimplification.diff
+fn match_i8_i16_failed_2_b(i: EnumAi8) -> i16 {
+    // CHECK-LABEL: fn match_i8_i16_failed_2_b(
+    // CHECK: switchInt
+    match i {
+        EnumAi8::A => -1,
+        EnumAi8::B => 2,
+        EnumAi8::C => 253,
+    }
+}
+
 #[repr(i16)]
 enum EnumAi16 {
     A = -1,
@@ -253,12 +277,11 @@ enum EnumAi128 {
     D = -1,
 }
 
+// FIXME: This transform is reasonable.
 // EMIT_MIR matches_reduce_branches.match_i128_u128.MatchBranchSimplification.diff
 fn match_i128_u128(i: EnumAi128) -> u128 {
     // CHECK-LABEL: fn match_i128_u128(
-    // CHECK-NOT: switchInt
-    // CHECK: _0 = _3 as u128 (IntToInt);
-    // CHECH: return
+    // CHECK: switchInt
     match i {
         EnumAi128::A => 1,
         EnumAi128::B => 2,
