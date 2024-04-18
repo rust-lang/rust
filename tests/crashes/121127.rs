@@ -1,5 +1,6 @@
 //@ known-bug: #121127
-//@ compile-flags: -Zpolymorphize=on -Zinline-mir=yes
+//@ compile-flags: -Zpolymorphize=on -Zinline-mir=yes -C debuginfo=2
+// Note that as of PR#123949 this only crashes with debuginfo enabled
 
 #![feature(specialization)]
 
