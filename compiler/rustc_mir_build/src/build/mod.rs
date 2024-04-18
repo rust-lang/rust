@@ -9,7 +9,7 @@ use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, BindingAnnotation, ByRef, HirId, Node};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Node};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -931,7 +931,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Don't introduce extra copies for simple bindings
                 PatKind::Binding {
                     var,
-                    mode: BindingAnnotation(ByRef::No, mutability),
+                    mode: BindingMode(ByRef::No, mutability),
                     subpattern: None,
                     ..
                 } => {
@@ -941,7 +941,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         if let Some(kind) = param.self_kind {
                             LocalInfo::User(BindingForm::ImplicitSelf(kind))
                         } else {
-                            let binding_mode = BindingAnnotation(ByRef::No, mutability);
+                            let binding_mode = BindingMode(ByRef::No, mutability);
                             LocalInfo::User(BindingForm::Var(VarBindingForm {
                                 binding_mode,
                                 opt_ty_info: param.ty_span,

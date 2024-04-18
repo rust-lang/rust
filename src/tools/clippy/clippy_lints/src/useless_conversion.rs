@@ -5,7 +5,7 @@ use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{get_parent_expr, is_trait_method, is_ty_alias, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, MatchSource, Node, PatKind};
+use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Node, PatKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_lint::{LateContext, LateLintPass};
@@ -282,7 +282,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     if let Some(id) = path_to_local(recv)
                         && let Node::Pat(pat) = cx.tcx.hir_node(id)
                         && let PatKind::Binding(ann, ..) = pat.kind
-                        && ann != BindingAnnotation::MUT
+                        && ann != BindingMode::MUT
                     {
                         // Do not remove .into_iter() applied to a non-mutable local variable used in
                         // a larger expression context as it would differ in mutability.
