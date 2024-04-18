@@ -870,6 +870,27 @@ impl Iterator for ReadDir {
 
 impl Drop for Dir {
     fn drop(&mut self) {
+        // ideally this would use assert_unsafe_precondition!, but that's only in core
+        #[cfg(all(
+            debug_assertions,
+            not(any(
+                target_os = "redox",
+                target_os = "nto",
+                target_os = "vita",
+                target_os = "hurd",
+            ))
+        ))]
+        {
+            use crate::sys::os::errno;
+            // close() can bubble up error codes from FUSE which can send semantically
+            // inappropriate error codes including EBADF.
+            // So we check file flags instead which live on the file descriptor and not the underlying file.
+            // The downside is that it costs an extra syscall, so we only do it for debug.
+            let fd = unsafe { libc::dirfd(self.0) };
+            if unsafe { libc::fcntl(fd, libc::F_GETFD) } == -1 && errno() == libc::EBADF {
+                rtabort!("IO Safety violation: DIR*'s owned file descriptor already closed");
+            }
+        }
         let r = unsafe { libc::closedir(self.0) };
         assert!(
             r == 0 || crate::io::Error::last_os_error().is_interrupted(),
