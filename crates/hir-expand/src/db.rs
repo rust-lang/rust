@@ -3,7 +3,7 @@
 use base_db::{salsa, CrateId, FileId, SourceDatabase};
 use either::Either;
 use limit::Limit;
-use mbe::syntax_node_to_token_tree;
+use mbe::{syntax_node_to_token_tree, MatchedArmIndex};
 use rustc_hash::FxHashSet;
 use span::{AstIdMap, Span, SyntaxContextData, SyntaxContextId};
 use syntax::{ast, AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T};
@@ -546,7 +546,7 @@ fn macro_expand(
     db: &dyn ExpandDatabase,
     macro_call_id: MacroCallId,
     loc: MacroCallLoc,
-) -> ExpandResult<(CowArc<tt::Subtree>, Option<u32>)> {
+) -> ExpandResult<(CowArc<tt::Subtree>, MatchedArmIndex)> {
     let _p = tracing::span!(tracing::Level::INFO, "macro_expand").entered();
 
     let (ExpandResult { value: (tt, matched_arm), err }, span) = match loc.def.kind {

@@ -122,6 +122,9 @@ impl fmt::Display for CountError {
     }
 }
 
+/// Index of the matched macro arm on successful expansion.
+pub type MatchedArmIndex = Option<u32>;
+
 /// This struct contains AST for a single `macro_rules` definition. What might
 /// be very confusing is that AST has almost exactly the same shape as
 /// `tt::TokenTree`, but there's a crucial difference: in macro rules, `$ident`
@@ -251,7 +254,7 @@ impl DeclarativeMacro {
         new_meta_vars: bool,
         call_site: Span,
         def_site_edition: Edition,
-    ) -> ExpandResult<(tt::Subtree<Span>, Option<u32>)> {
+    ) -> ExpandResult<(tt::Subtree<Span>, MatchedArmIndex)> {
         expander::expand_rules(&self.rules, tt, marker, new_meta_vars, call_site, def_site_edition)
     }
 }

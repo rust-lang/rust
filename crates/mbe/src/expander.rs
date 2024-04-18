@@ -9,7 +9,7 @@ use rustc_hash::FxHashMap;
 use span::{Edition, Span};
 use syntax::SmolStr;
 
-use crate::{parser::MetaVarKind, ExpandError, ExpandResult};
+use crate::{parser::MetaVarKind, ExpandError, ExpandResult, MatchedArmIndex};
 
 pub(crate) fn expand_rules(
     rules: &[crate::Rule],
@@ -18,7 +18,7 @@ pub(crate) fn expand_rules(
     new_meta_vars: bool,
     call_site: Span,
     def_site_edition: Edition,
-) -> ExpandResult<(tt::Subtree<Span>, Option<u32>)> {
+) -> ExpandResult<(tt::Subtree<Span>, MatchedArmIndex)> {
     let mut match_: Option<(matcher::Match, &crate::Rule, usize)> = None;
     for (idx, rule) in rules.iter().enumerate() {
         let new_match = matcher::match_(&rule.lhs, input, def_site_edition);
@@ -53,7 +53,7 @@ pub(crate) fn expand_rules(
         // if we got here, there was no match without errors
         let ExpandResult { value, err: transcribe_err } =
             transcriber::transcribe(&rule.rhs, &match_.bindings, marker, new_meta_vars, call_site);
-        ExpandResult { value: (value, Some(idx as u32)), err: match_.err.or(transcribe_err) }
+        ExpandResult { value: (value, idx.try_into().ok()), err: match_.err.or(transcribe_err) }
     } else {
         ExpandResult::new(
             (

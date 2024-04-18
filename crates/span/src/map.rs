@@ -15,6 +15,8 @@ use crate::{
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct SpanMap<S> {
     spans: Vec<(TextSize, SpanData<S>)>,
+    /// Index of the matched macro arm on successful expansion for declarative macros.
+    // FIXME: Does it make sense to have this here?
     pub matched_arm: Option<u32>,
 }
 
