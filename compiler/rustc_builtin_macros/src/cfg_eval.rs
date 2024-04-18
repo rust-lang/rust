@@ -140,8 +140,9 @@ impl CfgEval<'_> {
                     Annotatable::ForeignItem(self.flat_map_foreign_item(item).pop().unwrap())
                 }
                 Annotatable::Stmt(_) => {
-                    let stmt =
-                        parser.parse_stmt_without_recovery(false, ForceCollect::Yes)?.unwrap();
+                    let stmt = parser
+                        .parse_stmt_without_recovery(false, ForceCollect::Yes, false)?
+                        .unwrap();
                     Annotatable::Stmt(P(self.flat_map_stmt(stmt).pop().unwrap()))
                 }
                 Annotatable::Expr(_) => {
