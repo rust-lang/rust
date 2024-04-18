@@ -198,16 +198,17 @@ impl Lit {
         }
     }
 
-    /// Keep this in sync with `Token::can_begin_literal_maybe_minus` excluding unary negation.
+    /// Keep this in sync with `Token::can_begin_literal_maybe_minus` and
+    /// `Parser::eat_token_lit` (excluding unary negation).
     pub fn from_token(token: &Token) -> Option<Lit> {
         match token.uninterpolate().kind {
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
             Literal(token_lit) => Some(token_lit),
-            Interpolated(ref nt)
-                if let NtExpr(expr) | NtLiteral(expr) = &**nt
-                    && let ast::ExprKind::Lit(token_lit) = expr.kind =>
-            {
-                Some(token_lit)
+            OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
+                MetaVarKind::Literal | MetaVarKind::Expr { .. },
+            ))) => {
+                // Unreachable with the current test suite.
+                panic!("from_token metavar");
             }
             _ => None,
         }
@@ -590,6 +591,9 @@ impl Token {
     /// for which spans affect name resolution and edition checks.
     /// Note that keywords are also identifiers, so they should use this
     /// if they keep spans or perform edition checks.
+    //
+    // Note: `Parser::uninterpolated_token_span` may give better information
+    // than this method does.
     pub fn uninterpolated_span(&self) -> Span {
         match self.kind {
             NtIdent(ident, _) | NtLifetime(ident, _) => ident.span,
@@ -642,12 +646,7 @@ impl Token {
             PathSep                           | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
-            Interpolated(ref nt) =>
-                matches!(&**nt,
-                    NtBlock(..)   |
-                    NtExpr(..)    |
-                    NtLiteral(..)
-                ),
+            Interpolated(ref nt) => matches!(&**nt, NtBlock(..)),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Block |
                 MetaVarKind::Expr { .. } |
@@ -677,11 +676,6 @@ impl Token {
             Lt |                                 // path (UFCS constant)
             Shl => true,                         // path (double UFCS)
             Or => matches!(pat_kind, PatWithOr), // leading vert `|` or-pattern
-            Interpolated(nt) =>
-                matches!(&**nt,
-                    | NtExpr(..)
-                    | NtLiteral(..)
-                ),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Expr { .. } |
                 MetaVarKind::Literal |
@@ -724,7 +718,7 @@ impl Token {
         match self.kind {
             OpenDelim(Delimiter::Brace) | Literal(..) | Minus => true,
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => true,
-            Interpolated(ref nt) => matches!(&**nt, NtExpr(..) | NtBlock(..) | NtLiteral(..)),
+            Interpolated(ref nt) => matches!(&**nt, NtBlock(..)),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Expr { .. } | MetaVarKind::Block | MetaVarKind::Literal,
             ))) => true,
@@ -768,22 +762,12 @@ impl Token {
     ///
     /// In other words, would this token be a valid start of `parse_literal_maybe_minus`?
     ///
-    /// Keep this in sync with and `Lit::from_token`, excluding unary negation.
+    /// Keep this in sync with `Lit::from_token` and `Parser::eat_token_lit`
+    /// (excluding unary negation).
     pub fn can_begin_literal_maybe_minus(&self) -> bool {
         match self.uninterpolate().kind {
             Literal(..) | Minus => true,
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => true,
-            Interpolated(ref nt) => match &**nt {
-                NtLiteral(_) => true,
-                NtExpr(e) => match &e.kind {
-                    ast::ExprKind::Lit(_) => true,
-                    ast::ExprKind::Unary(ast::UnOp::Neg, e) => {
-                        matches!(&e.kind, ast::ExprKind::Lit(_))
-                    }
-                    _ => false,
-                },
-                _ => false,
-            },
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind))) => match mv_kind {
                 MetaVarKind::Literal => true,
                 MetaVarKind::Expr { can_begin_literal_maybe_minus, .. } => {
@@ -798,14 +782,6 @@ impl Token {
     pub fn can_begin_string_literal(&self) -> bool {
         match self.uninterpolate().kind {
             Literal(..) => true,
-            Interpolated(ref nt) => match &**nt {
-                NtLiteral(_) => true,
-                NtExpr(e) => match &e.kind {
-                    ast::ExprKind::Lit(_) => true,
-                    _ => false,
-                },
-                _ => false,
-            },
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind))) => match mv_kind {
                 MetaVarKind::Literal => true,
                 MetaVarKind::Expr { can_begin_string_literal, .. } => can_begin_string_literal,
@@ -869,11 +845,16 @@ impl Token {
 
     /// Is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
-    pub fn is_whole_expr(&self) -> bool {
+    pub fn is_metavar_expr(&self) -> bool {
         #[allow(irrefutable_let_patterns)] // FIXME: temporary
         if let Interpolated(nt) = &self.kind
-            && let NtExpr(_) | NtLiteral(_) | NtBlock(_) = &**nt
+            && let NtBlock(_) = &**nt
         {
+            true
+        } else if matches!(
+            self.is_metavar_seq(),
+            Some(MetaVarKind::Expr { .. } | MetaVarKind::Literal | MetaVarKind::Path)
+        ) {
             true
         } else {
             matches!(self.is_metavar_seq(), Some(MetaVarKind::Path))
@@ -882,6 +863,7 @@ impl Token {
 
     /// Is the token an interpolated block (`$b:block`)?
     pub fn is_whole_block(&self) -> bool {
+        #[allow(irrefutable_let_patterns)] // FIXME: temporary
         if let Interpolated(nt) = &self.kind
             && let NtBlock(..) = &**nt
         {
@@ -1100,8 +1082,6 @@ pub enum NtExprKind {
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtBlock(P<ast::Block>),
-    NtExpr(P<ast::Expr>),
-    NtLiteral(P<ast::Expr>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
@@ -1191,15 +1171,12 @@ impl Nonterminal {
     pub fn use_span(&self) -> Span {
         match self {
             NtBlock(block) => block.span,
-            NtExpr(expr) | NtLiteral(expr) => expr.span,
         }
     }
 
     pub fn descr(&self) -> &'static str {
         match self {
             NtBlock(..) => "block",
-            NtExpr(..) => "expression",
-            NtLiteral(..) => "literal",
         }
     }
 }
@@ -1218,8 +1195,6 @@ impl fmt::Debug for Nonterminal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             NtBlock(..) => f.pad("NtBlock(..)"),
-            NtExpr(..) => f.pad("NtExpr(..)"),
-            NtLiteral(..) => f.pad("NtLiteral(..)"),
         }
     }
 }
@@ -1242,7 +1217,7 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(Lit, 12);
     static_assert_size!(LitKind, 2);
-    static_assert_size!(Nonterminal, 16);
+    static_assert_size!(Nonterminal, 8);
     static_assert_size!(Token, 24);
     static_assert_size!(TokenKind, 16);
     // tidy-alphabetical-end

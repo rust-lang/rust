@@ -24,8 +24,8 @@ pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use path::PathStyle;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{
-    self, Delimiter, IdentIsRaw, InvisibleOrigin, MetaVarKind, Nonterminal, NtPatKind, Token,
-    TokenKind,
+    self, Delimiter, IdentIsRaw, InvisibleOrigin, MetaVarKind, Nonterminal, NtExprKind, NtPatKind,
+    Token, TokenKind,
 };
 use rustc_ast::tokenstream::{AttrsTarget, Spacing, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
@@ -101,6 +101,7 @@ pub enum ForceCollect {
 #[macro_export]
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
+        #[allow(irrefutable_let_patterns)] // FIXME: temporary
         if let token::Interpolated(nt) = &$p.token.kind
             && let token::$constructor(x) = &**nt
         {
@@ -297,6 +298,10 @@ impl TokenTreeCursor {
     #[inline]
     fn curr(&self) -> Option<&TokenTree> {
         self.stream.get(self.index)
+    }
+
+    fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
+        self.stream.get(self.index + n)
     }
 
     #[inline]
@@ -1290,6 +1295,17 @@ impl<'a> Parser<'a> {
         looker(&token)
     }
 
+    /// Like `lookahead`, but skips over token trees rather than tokens. Useful
+    /// when looking past possible metavariable pasting sites.
+    pub fn tree_look_ahead<R>(
+        &self,
+        dist: usize,
+        looker: impl FnOnce(&TokenTree) -> R,
+    ) -> Option<R> {
+        assert_ne!(dist, 0);
+        self.token_cursor.curr.look_ahead(dist - 1).map(looker)
+    }
+
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
     pub(crate) fn is_keyword_ahead(&self, dist: usize, kws: &[Symbol]) -> bool {
         self.look_ahead(dist, |t| kws.iter().any(|&kw| t.is_keyword(kw)))
@@ -1706,6 +1722,16 @@ impl<'a> Parser<'a> {
     pub fn approx_token_stream_pos(&self) -> u32 {
         self.num_bump_calls
     }
+
+    pub fn uninterpolated_token_span(&self) -> Span {
+        match &self.token.kind {
+            token::Interpolated(nt) => nt.use_span(),
+            token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => {
+                self.look_ahead(1, |t| t.span)
+            }
+            _ => self.token.span,
+        }
+    }
 }
 
 pub(crate) fn make_unclosed_delims_error(
@@ -1758,6 +1784,8 @@ pub enum ParseNtResult {
     Item(P<ast::Item>),
     Stmt(P<ast::Stmt>),
     Pat(P<ast::Pat>, NtPatKind),
+    Expr(P<ast::Expr>, NtExprKind),
+    Literal(P<ast::Expr>),
     Ty(P<ast::Ty>),
     Meta(P<ast::AttrItem>),
     Path(P<ast::Path>),
