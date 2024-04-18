@@ -266,7 +266,7 @@ struct S13 {
 
 impl S13 {
     fn new() -> Self {
-        // Shoud not warn!
+        // Should not warn!
         Self::default()
     }
 }

@@ -1016,9 +1016,18 @@ fn report<'tcx>(
                         },
                         _ => (0, false),
                     };
+                    let is_in_tuple = matches!(
+                        get_parent_expr(cx, data.first_expr),
+                        Some(Expr {
+                            kind: ExprKind::Tup(..),
+                            ..
+                        })
+                    );
+
                     let sugg = if !snip_is_macro
                         && (calls_field || expr.precedence().order() < precedence)
                         && !has_enclosing_paren(&snip)
+                        && !is_in_tuple
                     {
                         format!("({snip})")
                     } else {

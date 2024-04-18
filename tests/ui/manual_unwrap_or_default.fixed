@@ -16,6 +16,16 @@ fn main() {
 
     let x: Option<Vec<String>> = None;
     x.unwrap_or_default();
+
+    // Issue #12564
+    // No error as &Vec<_> doesn't implement std::default::Default
+    let mut map = std::collections::HashMap::from([(0, vec![0; 3]), (1, vec![1; 3]), (2, vec![2])]);
+    let x: &[_] = if let Some(x) = map.get(&0) { x } else { &[] };
+    // Same code as above written using match.
+    let x: &[_] = match map.get(&0) {
+        Some(x) => x,
+        None => &[],
+    };
 }
 
 // Issue #12531

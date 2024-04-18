@@ -650,8 +650,47 @@ error: casting `i32` to `u32` may lose the sign of the value
 LL |         (a.abs() * b.pow(2) / c.abs()) as u32
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:469:21
+   |
+LL |             let _ = i32::MIN as u32; // cast_sign_loss
+   |                     ^^^^^^^^^^^^^^^
+...
+LL |     m!();
+   |     ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: casting `u32` to `u8` may truncate the value
+  --> tests/ui/cast.rs:470:21
+   |
+LL |             let _ = u32::MAX as u8; // cast_possible_truncation
+   |                     ^^^^^^^^^^^^^^
+...
+LL |     m!();
+   |     ---- in this macro invocation
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |             let _ = u8::try_from(u32::MAX); // cast_possible_truncation
+   |                     ~~~~~~~~~~~~~~~~~~~~~~
+
+error: casting `f64` to `f32` may truncate the value
+  --> tests/ui/cast.rs:471:21
+   |
+LL |             let _ = std::f64::consts::PI as f32; // cast_possible_truncation
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     m!();
+   |     ---- in this macro invocation
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: casting `i64` to `usize` may truncate the value on targets with 32-bit wide pointers
-  --> tests/ui/cast.rs:468:5
+  --> tests/ui/cast.rs:480:5
    |
 LL |     bar.unwrap().unwrap() as usize
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -663,10 +702,10 @@ LL |     usize::try_from(bar.unwrap().unwrap())
    |
 
 error: casting `i64` to `usize` may lose the sign of the value
-  --> tests/ui/cast.rs:468:5
+  --> tests/ui/cast.rs:480:5
    |
 LL |     bar.unwrap().unwrap() as usize
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 87 previous errors
+error: aborting due to 90 previous errors
 
