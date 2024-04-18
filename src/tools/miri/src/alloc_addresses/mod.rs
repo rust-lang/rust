@@ -78,7 +78,7 @@ impl GlobalStateInner {
         GlobalStateInner {
             int_to_ptr_map: Vec::default(),
             base_addr: FxHashMap::default(),
-            reuse: ReusePool::new(config.address_reuse_rate),
+            reuse: ReusePool::new(config),
             exposed: FxHashSet::default(),
             next_base_addr: stack_addr,
             provenance_mode: config.provenance_mode,
@@ -164,9 +164,13 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 assert!(!matches!(kind, AllocKind::Dead));
 
                 // This allocation does not have a base address yet, pick or reuse one.
-                let base_addr = if let Some((reuse_addr, clock)) =
-                    global_state.reuse.take_addr(&mut *rng, size, align, memory_kind)
-                {
+                let base_addr = if let Some((reuse_addr, clock)) = global_state.reuse.take_addr(
+                    &mut *rng,
+                    size,
+                    align,
+                    memory_kind,
+                    ecx.get_active_thread(),
+                ) {
                     if let Some(data_race) = &ecx.machine.data_race {
                         data_race.validate_lock_acquire(&clock, ecx.get_active_thread());
                     }
@@ -363,12 +367,13 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         // `alloc_id_from_addr` any more.
         global_state.exposed.remove(&dead_id);
         // Also remember this address for future reuse.
-        global_state.reuse.add_addr(rng, addr, size, align, kind, || {
+        let thread = self.threads.get_active_thread_id();
+        global_state.reuse.add_addr(rng, addr, size, align, kind, thread, || {
             let mut clock = concurrency::VClock::default();
             if let Some(data_race) = &self.data_race {
                 data_race.validate_lock_release(
                     &mut clock,
-                    self.threads.get_active_thread_id(),
+                    thread,
                     self.threads.active_thread_ref().current_span(),
                 );
             }
