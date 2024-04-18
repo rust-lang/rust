@@ -202,7 +202,6 @@ impl HasTokens for Nonterminal {
             Nonterminal::NtItem(item) => item.tokens(),
             Nonterminal::NtStmt(stmt) => stmt.tokens(),
             Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens(),
-            Nonterminal::NtPath(path) => path.tokens(),
             Nonterminal::NtBlock(block) => block.tokens(),
         }
     }
@@ -211,7 +210,6 @@ impl HasTokens for Nonterminal {
             Nonterminal::NtItem(item) => item.tokens_mut(),
             Nonterminal::NtStmt(stmt) => stmt.tokens_mut(),
             Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens_mut(),
-            Nonterminal::NtPath(path) => path.tokens_mut(),
             Nonterminal::NtBlock(block) => block.tokens_mut(),
         }
     }

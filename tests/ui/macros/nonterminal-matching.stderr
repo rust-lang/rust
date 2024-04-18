@@ -67,7 +67,7 @@ LL |     (literal 4) => {};
    = help: try using `:tt` instead in the macro definition
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: no rules expected path `a::b::c`
+error: no rules expected `path` metavariable
   --> $DIR/nonterminal-matching.rs:34:35
    |
 LL |     (path $x:path) => { bar!(path $x); };
