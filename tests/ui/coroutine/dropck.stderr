@@ -18,6 +18,9 @@ LL | }
 error[E0597]: `ref_` does not live long enough
   --> $DIR/dropck.rs:16:18
    |
+LL |     let ref_ = Box::leak(Box::new(Some(cell.borrow_mut())));
+   |         ---- binding `ref_` declared here
+...
 LL |     || {
    |     -- value captured here by coroutine
 LL |         // but the coroutine can use it to drop a `Ref<'a, i32>`.

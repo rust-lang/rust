@@ -50,15 +50,22 @@ pub struct FindExprBySpan<'hir> {
     pub span: Span,
     pub result: Option<&'hir hir::Expr<'hir>>,
     pub ty_result: Option<&'hir hir::Ty<'hir>>,
+    pub tcx: TyCtxt<'hir>,
 }
 
 impl<'hir> FindExprBySpan<'hir> {
-    pub fn new(span: Span) -> Self {
-        Self { span, result: None, ty_result: None }
+    pub fn new(span: Span, tcx: TyCtxt<'hir>) -> Self {
+        Self { span, result: None, ty_result: None, tcx }
     }
 }
 
 impl<'v> Visitor<'v> for FindExprBySpan<'v> {
+    type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
+    }
+
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
         if self.span == ex.span {
             self.result = Some(ex);
