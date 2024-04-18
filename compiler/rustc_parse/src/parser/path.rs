@@ -16,9 +16,8 @@ use tracing::debug;
 
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
-use crate::errors::PathSingleColon;
+use crate::errors::{self, PathSingleColon};
 use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
-use crate::{errors, maybe_whole};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -195,7 +194,11 @@ impl<'a> Parser<'a> {
             }
         };
 
-        maybe_whole!(self, NtPath, |path| reject_generics_if_mod_style(self, path.into_inner()));
+        if let Some(path) =
+            self.eat_metavar_seq(MetaVarKind::Path, |this| this.parse_path(PathStyle::Type))
+        {
+            return Ok(reject_generics_if_mod_style(self, path));
+        }
 
         if let Some(MetaVarKind::Ty) = self.token.is_metavar_seq() {
             let mut snapshot = self.create_snapshot_for_diagnostic();

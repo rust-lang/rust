@@ -614,8 +614,7 @@ impl Token {
                 matches!(&**nt,
                     NtBlock(..)   |
                     NtExpr(..)    |
-                    NtLiteral(..) |
-                    NtPath(..)
+                    NtLiteral(..)
                 ),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Block |
@@ -651,7 +650,6 @@ impl Token {
                 matches!(&**nt,
                     | NtExpr(..)
                     | NtLiteral(..)
-                    | NtPath(..)
                 ),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Expr { .. } |
@@ -680,7 +678,6 @@ impl Token {
             Lifetime(..)                | // lifetime bound in trait object
             Lt | BinOp(Shl)             | // associated path
             PathSep                      => true, // global path
-            Interpolated(ref nt) => matches!(&**nt, NtPath(..)),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Ty |
                 MetaVarKind::Path
@@ -839,28 +836,19 @@ impl Token {
         self.ident().is_some_and(|(ident, _)| ident.name == name)
     }
 
-    /// Returns `true` if the token is an interpolated path.
-    fn is_whole_path(&self) -> bool {
-        if let Interpolated(nt) = &self.kind
-            && let NtPath(..) = &**nt
-        {
-            return true;
-        }
-
-        false
-    }
-
     /// Is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
         #[allow(irrefutable_let_patterns)] // FIXME: temporary
         if let Interpolated(nt) = &self.kind
-            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = &**nt
+            && let NtExpr(_) | NtLiteral(_) | NtBlock(_) = &**nt
         {
-            return true;
+            true
+        } else if matches!(self.is_metavar_seq(), Some(MetaVarKind::Path)) {
+            true
+        } else {
+            false
         }
-
-        false
     }
 
     /// Is the token an interpolated block (`$b:block`)?
@@ -886,7 +874,7 @@ impl Token {
     pub fn is_path_start(&self) -> bool {
         self == &PathSep
             || self.is_qpath_start()
-            || self.is_whole_path()
+            || matches!(self.is_metavar_seq(), Some(MetaVarKind::Path))
             || self.is_path_segment_keyword()
             || self.is_ident() && !self.is_reserved_ident()
     }
@@ -1060,7 +1048,6 @@ pub enum Nonterminal {
     NtBlock(P<ast::Block>),
     NtExpr(P<ast::Expr>),
     NtLiteral(P<ast::Expr>),
-    NtPath(P<ast::Path>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
@@ -1151,7 +1138,6 @@ impl Nonterminal {
         match self {
             NtBlock(block) => block.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
-            NtPath(path) => path.span,
         }
     }
 
@@ -1160,7 +1146,6 @@ impl Nonterminal {
             NtBlock(..) => "block",
             NtExpr(..) => "expression",
             NtLiteral(..) => "literal",
-            NtPath(..) => "path",
         }
     }
 }
@@ -1181,7 +1166,6 @@ impl fmt::Debug for Nonterminal {
             NtBlock(..) => f.pad("NtBlock(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
-            NtPath(..) => f.pad("NtPath(..)"),
         }
     }
 }

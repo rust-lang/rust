@@ -1,8 +1,8 @@
-error: expected identifier, found `a::b::c`
+error: expected identifier, found metavariable
   --> $DIR/import-prefix-macro-2.rs:11:26
    |
 LL |     ($p: path) => (use ::$p {S, Z});
-   |                          ^^ expected identifier
+   |                          ^^ expected identifier, found metavariable
 ...
 LL | import! { a::b::c }
    | ------------------- in this macro invocation

@@ -8,7 +8,7 @@ mod a {
 }
 
 macro_rules! import {
-    ($p: path) => (use ::$p {S, Z}); //~ERROR  expected identifier, found `a::b::c`
+    ($p: path) => (use ::$p {S, Z}); //~ERROR expected identifier, found metavariable
 }
 
 import! { a::b::c }

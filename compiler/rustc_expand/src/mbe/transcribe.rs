@@ -324,6 +324,9 @@ pub(super) fn transcribe<'a>(
                         MatchedSingle(ParseNtResult::Meta(meta)) => {
                             mk_delimited(MetaVarKind::Meta, TokenStream::from_ast(meta))
                         }
+                        MatchedSingle(ParseNtResult::Path(path)) => {
+                            mk_delimited(MetaVarKind::Path, TokenStream::from_ast(path))
+                        }
                         MatchedSingle(ParseNtResult::Vis(vis)) => {
                             mk_delimited(MetaVarKind::Vis, TokenStream::from_ast(vis))
                         }
