@@ -542,6 +542,20 @@ fn main() {
             miri_config.tracked_alloc_ids.extend(ids);
         } else if arg == "-Zmiri-track-alloc-accesses" {
             miri_config.track_alloc_accesses = true;
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-address-reuse-rate=") {
+            let rate = match param.parse::<f64>() {
+                Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,
+                Ok(_) =>
+                    show_error!(
+                        "-Zmiri-compare-exchange-weak-failure-rate must be between `0.0` and `1.0`"
+                    ),
+                Err(err) =>
+                    show_error!(
+                        "-Zmiri-compare-exchange-weak-failure-rate requires a `f64` between `0.0` and `1.0`: {}",
+                        err
+                    ),
+            };
+            miri_config.address_reuse_rate = rate;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-compare-exchange-weak-failure-rate=") {
             let rate = match param.parse::<f64>() {
                 Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,

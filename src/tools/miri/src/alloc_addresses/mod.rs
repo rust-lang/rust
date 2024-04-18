@@ -78,7 +78,7 @@ impl GlobalStateInner {
         GlobalStateInner {
             int_to_ptr_map: Vec::default(),
             base_addr: FxHashMap::default(),
-            reuse: ReusePool::new(),
+            reuse: ReusePool::new(config.address_reuse_rate),
             exposed: FxHashSet::default(),
             next_base_addr: stack_addr,
             provenance_mode: config.provenance_mode,
@@ -142,7 +142,11 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn addr_from_alloc_id(&self, alloc_id: AllocId, _kind: MemoryKind) -> InterpResult<'tcx, u64> {
+    fn addr_from_alloc_id(
+        &self,
+        alloc_id: AllocId,
+        memory_kind: MemoryKind,
+    ) -> InterpResult<'tcx, u64> {
         let ecx = self.eval_context_ref();
         let mut global_state = ecx.machine.alloc_addresses.borrow_mut();
         let global_state = &mut *global_state;
@@ -161,7 +165,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 // This allocation does not have a base address yet, pick or reuse one.
                 let base_addr = if let Some((reuse_addr, clock)) =
-                    global_state.reuse.take_addr(&mut *rng, size, align)
+                    global_state.reuse.take_addr(&mut *rng, size, align, memory_kind)
                 {
                     if let Some(data_race) = &ecx.machine.data_race {
                         data_race.validate_lock_acquire(&clock, ecx.get_active_thread());
@@ -334,7 +338,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
-    pub fn free_alloc_id(&mut self, dead_id: AllocId, size: Size, align: Align) {
+    pub fn free_alloc_id(&mut self, dead_id: AllocId, size: Size, align: Align, kind: MemoryKind) {
         let global_state = self.alloc_addresses.get_mut();
         let rng = self.rng.get_mut();
 
@@ -359,7 +363,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         // `alloc_id_from_addr` any more.
         global_state.exposed.remove(&dead_id);
         // Also remember this address for future reuse.
-        global_state.reuse.add_addr(rng, addr, size, align, || {
+        global_state.reuse.add_addr(rng, addr, size, align, kind, || {
             let mut clock = concurrency::VClock::default();
             if let Some(data_race) = &self.data_race {
                 data_race.validate_lock_release(

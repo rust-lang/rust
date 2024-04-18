@@ -295,6 +295,11 @@ up the sysroot.  If you are using `miri` (the Miri driver) directly, see the
 Miri adds its own set of `-Z` flags, which are usually set via the `MIRIFLAGS`
 environment variable. We first document the most relevant and most commonly used flags:
 
+* `-Zmiri-address-reuse-rate=<rate>` changes the probability that a freed *non-stack* allocation
+  will be added to the pool for address reuse, and the probability that a new *non-stack* allocation
+  will be taken from the pool. Stack allocations never get added to or taken from the pool. The
+  default is `0.5`. Note that a very high reuse rate can mask concurrency bugs as address
+  reuse induces synchronization between threads.
 * `-Zmiri-compare-exchange-weak-failure-rate=<rate>` changes the failure rate of
   `compare_exchange_weak` operations. The default is `0.8` (so 4 out of 5 weak ops will fail).
   You can change it to any value between `0.0` and `1.0`, where `1.0` means it

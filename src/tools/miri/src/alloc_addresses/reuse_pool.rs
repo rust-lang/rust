@@ -4,13 +4,9 @@ use rand::Rng;
 
 use rustc_target::abi::{Align, Size};
 
-use crate::concurrency::VClock;
+use crate::{concurrency::VClock, MemoryKind};
 
 const MAX_POOL_SIZE: usize = 64;
-
-// Just use fair coins, until we have evidence that other numbers are better.
-const ADDR_REMEMBER_CHANCE: f64 = 0.5;
-const ADDR_TAKE_CHANCE: f64 = 0.5;
 
 /// The pool strikes a balance between exploring more possible executions and making it more likely
 /// to find bugs. The hypothesis is that bugs are more likely to occur when reuse happens for
@@ -18,6 +14,7 @@ const ADDR_TAKE_CHANCE: f64 = 0.5;
 /// structure. Therefore we only reuse allocations when size and alignment match exactly.
 #[derive(Debug)]
 pub struct ReusePool {
+    address_reuse_rate: f64,
     /// The i-th element in `pool` stores allocations of alignment `2^i`. We store these reusable
     /// allocations as address-size pairs, the list must be sorted by the size.
     ///
@@ -30,8 +27,8 @@ pub struct ReusePool {
 }
 
 impl ReusePool {
-    pub fn new() -> Self {
-        ReusePool { pool: vec![] }
+    pub fn new(address_reuse_rate: f64) -> Self {
+        ReusePool { address_reuse_rate, pool: vec![] }
     }
 
     fn subpool(&mut self, align: Align) -> &mut Vec<(u64, Size, VClock)> {
@@ -48,10 +45,14 @@ impl ReusePool {
         addr: u64,
         size: Size,
         align: Align,
+        kind: MemoryKind,
         clock: impl FnOnce() -> VClock,
     ) {
         // Let's see if we even want to remember this address.
-        if !rng.gen_bool(ADDR_REMEMBER_CHANCE) {
+        // We don't remember stack addresses: there's a lot of them (so the perf impact is big),
+        // and we only want to reuse stack slots within the same thread or else we'll add a lot of
+        // undesired synchronization.
+        if kind == MemoryKind::Stack || !rng.gen_bool(self.address_reuse_rate) {
             return;
         }
         // Determine the pool to add this to, and where in the pool to put it.
@@ -73,9 +74,10 @@ impl ReusePool {
         rng: &mut impl Rng,
         size: Size,
         align: Align,
+        kind: MemoryKind,
     ) -> Option<(u64, VClock)> {
-        // Determine whether we'll even attempt a reuse.
-        if !rng.gen_bool(ADDR_TAKE_CHANCE) {
+        // Determine whether we'll even attempt a reuse. As above, we don't do reuse for stack addresses.
+        if kind == MemoryKind::Stack || !rng.gen_bool(self.address_reuse_rate) {
             return None;
         }
         // Determine the pool to take this from.
