@@ -12,7 +12,7 @@ macro_rules! mac2 {
     ($eval:pat) => {
         let mut $eval = ();
         //~^ ERROR `mut` must be followed by a named binding
-        //~| ERROR expected identifier, found `does_not_exist!()`
+        //~| ERROR expected identifier, found metavariable
     };
 }
 

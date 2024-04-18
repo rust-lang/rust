@@ -10,11 +10,11 @@ use crate::errors::{
     UnexpectedParenInRangePatSugg, UnexpectedVertVertBeforeFunctionParam,
     UnexpectedVertVertInPattern,
 };
+use crate::maybe_recover_from_interpolated_ty_qpath;
 use crate::parser::expr::{could_be_unclosed_char_literal, LhsExpr};
-use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, Delimiter, Token};
+use rustc_ast::token::{self, BinOpToken, Delimiter, MetaVarKind, NtPatKind::*, Token};
 use rustc_ast::{
     self as ast, AttrVec, BindingMode, ByRef, Expr, ExprKind, MacCall, Mutability, Pat, PatField,
     PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
@@ -425,6 +425,29 @@ impl<'a> Parser<'a> {
         None
     }
 
+    fn eat_metavar_pat(&mut self) -> Option<P<Pat>> {
+        // Must try both kinds of pattern nonterminals.
+        if let Some(pat) = self.eat_metavar_seq_with_matcher(
+            |mv_kind| matches!(mv_kind, MetaVarKind::Pat(PatParam { .. })),
+            |this| this.collect_tokens_no_attrs(|this| this.parse_pat_no_top_alt(None, None)),
+        ) {
+            Some(pat)
+        } else if let Some(pat) = self.eat_metavar_seq(MetaVarKind::Pat(PatWithOr), |this| {
+            this.collect_tokens_no_attrs(|this| {
+                this.parse_pat_allow_top_alt(
+                    None,
+                    RecoverComma::No,
+                    RecoverColon::No,
+                    CommaRecoveryMode::EitherTupleOrPipe,
+                )
+            })
+        }) {
+            Some(pat)
+        } else {
+            None
+        }
+    }
+
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
     /// allowed).
     fn parse_pat_with_range_pat(
@@ -434,7 +457,10 @@ impl<'a> Parser<'a> {
         syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, P<Pat>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
-        maybe_whole!(self, NtPat, |pat| pat);
+
+        if let Some(pat) = self.eat_metavar_pat() {
+            return Ok(pat);
+        }
 
         let mut lo = self.token.span;
 
@@ -755,10 +781,8 @@ impl<'a> Parser<'a> {
         self.recover_additional_muts();
 
         // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
-        if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtPat(..) = &**nt {
-                self.expected_ident_found_err().emit();
-            }
+        if let Some(MetaVarKind::Pat(_)) = self.token.is_metavar_seq() {
+            self.expected_ident_found_err().emit();
         }
 
         // Parse the pattern we hope to be an identifier.
