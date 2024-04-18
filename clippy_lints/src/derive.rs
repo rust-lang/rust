@@ -132,7 +132,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Deriving `serde::Deserialize` will create a constructor
-    /// that may violate invariants hold by another constructor.
+    /// that may violate invariants held by another constructor.
     ///
     /// ### Example
     /// ```rust,ignore

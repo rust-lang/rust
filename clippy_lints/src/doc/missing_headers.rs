@@ -11,7 +11,7 @@ use super::{DocHeaders, MISSING_ERRORS_DOC, MISSING_PANICS_DOC, MISSING_SAFETY_D
 pub fn check(
     cx: &LateContext<'_>,
     owner_id: OwnerId,
-    sig: &FnSig<'_>,
+    sig: FnSig<'_>,
     headers: DocHeaders,
     body_id: Option<BodyId>,
     panic_span: Option<Span>,
