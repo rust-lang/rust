@@ -813,7 +813,6 @@ fn visit_nonterminal<T: MutVisitor>(vis: &mut T, nt: &mut token::Nonterminal) {
                 vis.flat_map_stmt(stmt).expect_one("expected visitor to produce exactly one item")
             })
         }),
-        token::NtPat(pat) => vis.visit_pat(pat),
         token::NtExpr(expr) => vis.visit_expr(expr),
         token::NtLiteral(expr) => vis.visit_expr(expr),
         token::NtMeta(item) => {

@@ -652,7 +652,6 @@ impl Token {
                     | NtExpr(..)
                     | NtLiteral(..)
                     | NtMeta(..)
-                    | NtPat(..)
                     | NtPath(..)
                 ),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
@@ -1061,7 +1060,6 @@ pub enum Nonterminal {
     NtItem(P<ast::Item>),
     NtBlock(P<ast::Block>),
     NtStmt(P<ast::Stmt>),
-    NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
@@ -1158,7 +1156,6 @@ impl Nonterminal {
             NtItem(item) => item.span,
             NtBlock(block) => block.span,
             NtStmt(stmt) => stmt.span,
-            NtPat(pat) => pat.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
             NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
@@ -1170,7 +1167,6 @@ impl Nonterminal {
             NtItem(..) => "item",
             NtBlock(..) => "block",
             NtStmt(..) => "statement",
-            NtPat(..) => "pattern",
             NtExpr(..) => "expression",
             NtLiteral(..) => "literal",
             NtMeta(..) => "attribute",
@@ -1195,7 +1191,6 @@ impl fmt::Debug for Nonterminal {
             NtItem(..) => f.pad("NtItem(..)"),
             NtBlock(..) => f.pad("NtBlock(..)"),
             NtStmt(..) => f.pad("NtStmt(..)"),
-            NtPat(..) => f.pad("NtPat(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
             NtMeta(..) => f.pad("NtMeta(..)"),

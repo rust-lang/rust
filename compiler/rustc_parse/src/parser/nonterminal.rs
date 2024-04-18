@@ -49,7 +49,6 @@ impl<'a> Parser<'a> {
         fn nt_may_be_ident(nt: &Nonterminal) -> bool {
             match nt {
                 NtStmt(_)
-                | NtPat(_)
                 | NtExpr(_)
                 | NtLiteral(_) // `true`, `false`
                 | NtMeta(_)
@@ -99,7 +98,7 @@ impl<'a> Parser<'a> {
                 token::NtLifetime(..) => true,
                 token::Interpolated(nt) => match &**nt {
                     NtBlock(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
-                    NtItem(_) | NtPat(_) | NtMeta(_) | NtPath(_) => false,
+                    NtItem(_) | NtMeta(_) | NtPath(_) => false,
                 },
                 token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(k))) => match k {
                     MetaVarKind::Block
@@ -170,15 +169,18 @@ impl<'a> Parser<'a> {
                 }
             },
             NonterminalKind::Pat(pat_kind) => {
-                NtPat(self.collect_tokens_no_attrs(|this| match pat_kind {
-                    PatParam { .. } => this.parse_pat_no_top_alt(None, None),
-                    PatWithOr => this.parse_pat_allow_top_alt(
-                        None,
-                        RecoverComma::No,
-                        RecoverColon::No,
-                        CommaRecoveryMode::EitherTupleOrPipe,
-                    ),
-                })?)
+                return Ok(ParseNtResult::Pat(
+                    self.collect_tokens_no_attrs(|this| match pat_kind {
+                        PatParam { .. } => this.parse_pat_no_top_alt(None, None),
+                        PatWithOr => this.parse_pat_allow_top_alt(
+                            None,
+                            RecoverComma::No,
+                            RecoverColon::No,
+                            CommaRecoveryMode::EitherTupleOrPipe,
+                        ),
+                    })?,
+                    pat_kind,
+                ));
             }
             NonterminalKind::Expr(_) => NtExpr(self.parse_expr_force_collect()?),
             NonterminalKind::Literal => {
