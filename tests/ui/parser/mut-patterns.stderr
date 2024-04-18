@@ -158,11 +158,11 @@ LL -     let mut W(mut a, W(b, W(ref c, W(d, B { box f }))))
 LL +     let W(mut a, W(mut b, W(ref c, W(mut d, B { box mut f }))))
    |
 
-error: expected identifier, found `x`
+error: expected identifier, found metavariable
   --> $DIR/mut-patterns.rs:48:21
    |
 LL |             let mut $p = 0;
-   |                     ^^ expected identifier
+   |                     ^^ expected identifier, found metavariable
 ...
 LL |     foo!(x);
    |     ------- in this macro invocation
