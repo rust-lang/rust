@@ -49,6 +49,10 @@ pub(crate) struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
     pub(crate) current: Vec<Symbol>,
+    /// Set of visible DefIds in the current module.
+    /// This generates optimal link hrefs in the common case when
+    /// an entire module is glob-inlined and its children link to each other.
+    pub(crate) current_module_linkable_items: DefIdMap<(ItemType, Symbol)>,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
     pub(crate) dst: PathBuf,
@@ -79,9 +83,9 @@ pub(crate) struct Context<'tcx> {
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(all(not(windows), target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 160);
+rustc_data_structures::static_assert_size!(Context<'_>, 192);
 #[cfg(all(windows, target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 168);
+rustc_data_structures::static_assert_size!(Context<'_>, 200);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
 pub(crate) struct SharedContext<'tcx> {
@@ -561,6 +565,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         let mut cx = Context {
             current: Vec::new(),
+            current_module_linkable_items: Default::default(),
             dst,
             render_redirect_pages: false,
             id_map,
@@ -591,6 +596,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     fn make_child_renderer(&self) -> Self {
         Self {
             current: self.current.clone(),
+            current_module_linkable_items: self.current_module_linkable_items.clone(),
             dst: self.dst.clone(),
             render_redirect_pages: self.render_redirect_pages,
             deref_id_map: Default::default(),
@@ -785,8 +791,29 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         info!("Recursing into {}", self.dst.display());
 
         if !item.is_stripped() {
+            // Populate a list of items that are directly in the module
+            // or inlined into it.
+            // When an intra-doc link or named type needs linked,
+            // these are preferred over more distant paths.
+            let (clean::StrippedItem(box clean::ModuleItem(ref module))
+            | clean::ModuleItem(ref module)) = *item.kind
+            else {
+                unreachable!()
+            };
+            self.current_module_linkable_items = Default::default();
+            for item in &module.items {
+                if item.is_stripped() {
+                    continue;
+                }
+                if let Some(def_id) = item.def_id()
+                    && let Some(name) = item.name
+                {
+                    self.current_module_linkable_items.insert(def_id, (item.type_(), name));
+                }
+            }
+            // Render the current module to HTML.
+            // Buf will be empty if the module is stripped and there is no redirect for it.
             let buf = self.render_item(item, true);
-            // buf will be empty if the module is stripped and there is no redirect for it
             if !buf.is_empty() {
                 self.shared.ensure_dir(&self.dst)?;
                 let joint_dst = self.dst.join("index.html");

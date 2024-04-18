@@ -725,13 +725,25 @@ pub(crate) fn href_with_root_path(
     }
 
     let mut is_remote = false;
-    let (fqp, shortty, url_parts) = match cache.paths.get(&did) {
-        Some(&(ref fqp, shortty)) => (fqp, shortty, {
-            let module_fqp = to_module_fqp(shortty, fqp.as_slice());
-            debug!(?fqp, ?shortty, ?module_fqp);
-            href_relative_parts(module_fqp, relative_to).collect()
-        }),
-        None => {
+    let chain_fqp: Vec<Symbol>;
+    let (fqp, shortty, url_parts) =
+        if let Some(&(shortty, name)) = cx.current_module_linkable_items.get(&did) {
+            // If this item exists in the current module, then link to that.
+            // The path within the current module might not be the One True Path,
+            // but link to it anyway, since a relative path to a sibling is shorter.
+            if shortty == ItemType::Module {
+                (relative_to, shortty, UrlPartsBuilder::singleton(name.as_str()))
+            } else {
+                chain_fqp = relative_to.iter().copied().chain([name]).collect();
+                (&chain_fqp, shortty, UrlPartsBuilder::new())
+            }
+        } else if let Some(&(ref fqp, shortty)) = cache.paths.get(&did) {
+            // If this item exists in the current crate, then link to that.
+            (fqp, shortty, {
+                let module_fqp = to_module_fqp(shortty, fqp.as_slice());
+                href_relative_parts(module_fqp, relative_to).collect()
+            })
+        } else {
             // Associated items are handled differently with "jump to def". The anchor is generated
             // directly here whereas for intra-doc links, we have some extra computation being
             // performed there.
@@ -746,8 +758,8 @@ pub(crate) fn href_with_root_path(
             } else {
                 return generate_item_def_id_path(did, original_did, cx, root_path, def_kind);
             }
-        }
-    };
+        };
+    debug!(?fqp, ?shortty, ?url_parts);
     make_href(root_path, shortty, url_parts, fqp, is_remote)
 }
 
