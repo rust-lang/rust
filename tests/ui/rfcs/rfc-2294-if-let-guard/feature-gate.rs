@@ -59,8 +59,10 @@ fn _macros() {
     }
     use_expr!((let 0 = 1 && 0 == 0));
     //~^ ERROR expected expression, found `let` statement
+    //~| ERROR expected expression, found `let` statement
     use_expr!((let 0 = 1));
     //~^ ERROR expected expression, found `let` statement
+    //~| ERROR expected expression, found `let` statement
     match () {
         #[cfg(FALSE)]
         () if let 0 = 1 => {}
