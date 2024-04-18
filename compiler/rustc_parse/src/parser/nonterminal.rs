@@ -48,13 +48,12 @@ impl<'a> Parser<'a> {
         /// Old variant of `may_be_ident`. Being phased out.
         fn nt_may_be_ident(nt: &Nonterminal) -> bool {
             match nt {
-                NtStmt(_)
-                | NtExpr(_)
+                NtExpr(_)
                 | NtLiteral(_) // `true`, `false`
                 | NtMeta(_)
                 | NtPath(_) => true,
 
-                NtItem(_) | NtBlock(_) => false,
+                NtBlock(_) => false,
             }
         }
 
@@ -97,8 +96,8 @@ impl<'a> Parser<'a> {
                 token::OpenDelim(Delimiter::Brace) => true,
                 token::NtLifetime(..) => true,
                 token::Interpolated(nt) => match &**nt {
-                    NtBlock(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
-                    NtItem(_) | NtMeta(_) | NtPath(_) => false,
+                    NtBlock(_) | NtExpr(_) | NtLiteral(_) => true,
+                    NtMeta(_) | NtPath(_) => false,
                 },
                 token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(k))) => match k {
                     MetaVarKind::Block
@@ -148,7 +147,7 @@ impl<'a> Parser<'a> {
             // Note that TT is treated differently to all the others.
             NonterminalKind::TT => return Ok(ParseNtResult::Tt(self.parse_token_tree())),
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
-                Some(item) => NtItem(item),
+                Some(item) => return Ok(ParseNtResult::Item(item)),
                 None => {
                     return Err(self
                         .dcx()
@@ -161,7 +160,7 @@ impl<'a> Parser<'a> {
                 NtBlock(self.collect_tokens_no_attrs(|this| this.parse_block())?)
             }
             NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
-                Some(s) => NtStmt(P(s)),
+                Some(stmt) => return Ok(ParseNtResult::Stmt(P(stmt))),
                 None => {
                     return Err(self
                         .dcx()
