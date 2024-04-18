@@ -204,6 +204,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     self.ident(start)
                 }
                 rustc_lexer::TokenKind::InvalidIdent
+                | rustc_lexer::TokenKind::InvalidPrefix
                     // Do not recover an identifier with emoji if the codepoint is a confusable
                     // with a recoverable substitution token, like `➖`.
                     if !UNICODE_ARRAY
@@ -301,7 +302,9 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 rustc_lexer::TokenKind::Caret => token::BinOp(token::Caret),
                 rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
 
-                rustc_lexer::TokenKind::Unknown | rustc_lexer::TokenKind::InvalidIdent => {
+                rustc_lexer::TokenKind::Unknown
+                | rustc_lexer::TokenKind::InvalidIdent
+                | rustc_lexer::TokenKind::InvalidPrefix => {
                     // Don't emit diagnostics for sequences of the same invalid token
                     if swallow_next_invalid > 0 {
                         swallow_next_invalid -= 1;
