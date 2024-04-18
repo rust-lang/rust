@@ -20,7 +20,7 @@ The default binary format is Mach-O, the executable format used on Apple's platf
 
 ## Building the target
 
-Just add it to the `target` with: 
+Just add it to the `target` with:
 ```
 rustup target add aarch64-apple-darwin
 ```
@@ -32,9 +32,10 @@ Rust ships pre-compiled artifacts for this target or build your own copy of `cor
 
 ## Testing
 
-Binaries produced for this target can be run directly on Apple Silicon Macs natively. 
+Binaries produced for this target can be run directly on Apple Silicon Macs natively.
 The Rust test suite can be run for this target on such hardware.
 
 ## Cross-compilation toolchains and C code
 
-This target supports C code. To build compatible C code, you should use a toolchain targeting aarch64-apple-darwin, such as Xcode on a Mac or GCC. The toolchain target triple matches this Rust target triple.
+This target supports C code. To build compatible C code, you should use a toolchain targeting aarch64-apple-darwin, such as Xcode on a Mac or GCC.
+The toolchain target triple matches this Rust target triple.
