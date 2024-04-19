@@ -580,10 +580,11 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
 
             match param.kind {
                 ty::GenericParamDefKind::Lifetime => {
+                    let use_span = tcx.def_span(param.def_id);
+                    let opaque_span = tcx.def_span(opaque_def_id);
                     // Check if the lifetime param was captured but isn't named in the precise captures list.
                     if variances[param.index as usize] == ty::Invariant {
-                        let param_span = if let DefKind::OpaqueTy =
-                            tcx.def_kind(tcx.parent(param.def_id))
+                        if let DefKind::OpaqueTy = tcx.def_kind(tcx.parent(param.def_id))
                             && let ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
                             | ty::ReLateParam(ty::LateParamRegion {
                                 bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
@@ -591,16 +592,22 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                             }) = *tcx
                                 .map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local())
                         {
-                            Some(tcx.def_span(def_id))
+                            tcx.dcx().emit_err(errors::LifetimeNotCaptured {
+                                opaque_span,
+                                use_span,
+                                param_span: tcx.def_span(def_id),
+                            });
                         } else {
-                            None
-                        };
-                        // FIXME(precise_capturing): Structured suggestion for this would be useful
-                        tcx.dcx().emit_err(errors::LifetimeNotCaptured {
-                            use_span: tcx.def_span(param.def_id),
-                            param_span,
-                            opaque_span: tcx.def_span(opaque_def_id),
-                        });
+                            // If the `use_span` is actually just the param itself, then we must
+                            // have not duplicated the lifetime but captured the original.
+                            // The "effective" `use_span` will be the span of the opaque itself,
+                            // and the param span will be the def span of the param.
+                            tcx.dcx().emit_err(errors::LifetimeNotCaptured {
+                                opaque_span,
+                                use_span: opaque_span,
+                                param_span: use_span,
+                            });
+                        }
                         continue;
                     }
                 }

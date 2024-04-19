@@ -6,9 +6,9 @@ use rustc_span::{Span, Symbol};
 #[note]
 pub struct ParamNotCaptured {
     #[primary_span]
-    pub param_span: Span,
-    #[label]
     pub opaque_span: Span,
+    #[label]
+    pub param_span: Span,
     pub kind: &'static str,
 }
 
@@ -18,7 +18,7 @@ pub struct LifetimeNotCaptured {
     #[primary_span]
     pub use_span: Span,
     #[label(hir_analysis_param_label)]
-    pub param_span: Option<Span>,
+    pub param_span: Span,
     #[label]
     pub opaque_span: Span,
 }
