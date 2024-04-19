@@ -407,8 +407,7 @@ impl ProcMacroExpander for Expander {
         call_site: Span,
         mixed_site: Span,
     ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
-        let env = env.iter().map(|(k, v)| (k.to_owned(), v.to_owned())).collect();
-        match self.0.expand(subtree, attrs, env, def_site, call_site, mixed_site) {
+        match self.0.expand(subtree, attrs, env.clone(), def_site, call_site, mixed_site) {
             Ok(Ok(subtree)) => Ok(subtree),
             Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
             Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),

@@ -295,9 +295,28 @@ pub struct CrateData {
     pub is_proc_macro: bool,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct Env {
     entries: FxHashMap<String, String>,
+}
+
+impl fmt::Debug for Env {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        struct EnvDebug<'s>(Vec<(&'s String, &'s String)>);
+
+        impl fmt::Debug for EnvDebug<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_map().entries(self.0.iter().copied()).finish()
+            }
+        }
+        f.debug_struct("Env")
+            .field("entries", &{
+                let mut entries: Vec<_> = self.entries.iter().collect();
+                entries.sort();
+                EnvDebug(entries)
+            })
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -660,8 +679,16 @@ impl Env {
         self.entries.get(env).cloned()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.entries.iter().map(|(k, v)| (k.as_str(), v.as_str()))
+    pub fn extend_from_other(&mut self, other: &Env) {
+        self.entries.extend(other.entries.iter().map(|(x, y)| (x.to_owned(), y.to_owned())));
+    }
+}
+
+impl From<Env> for Vec<(String, String)> {
+    fn from(env: Env) -> Vec<(String, String)> {
+        let mut entries: Vec<_> = env.entries.into_iter().collect();
+        entries.sort();
+        entries
     }
 }
 

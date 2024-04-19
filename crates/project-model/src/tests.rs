@@ -98,6 +98,11 @@ fn get_test_json_file<T: DeserializeOwned>(file: &str) -> T {
     }
 }
 
+fn replace_cargo(s: &mut String) {
+    let path = toolchain::Tool::Cargo.path().to_string().escape_debug().collect::<String>();
+    *s = s.replace(&path, "$CARGO$");
+}
+
 fn replace_root(s: &mut String, direction: bool) {
     if direction {
         let root = if cfg!(windows) { r#"C:\\ROOT\"# } else { "/ROOT/" };
@@ -156,7 +161,9 @@ fn to_crate_graph(project_workspace: ProjectWorkspace) -> (CrateGraph, ProcMacro
 
 fn check_crate_graph(crate_graph: CrateGraph, expect: ExpectFile) {
     let mut crate_graph = format!("{crate_graph:#?}");
+
     replace_root(&mut crate_graph, false);
+    replace_cargo(&mut crate_graph);
     replace_fake_sys_root(&mut crate_graph);
     expect.assert_eq(&crate_graph);
 }
