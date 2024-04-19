@@ -751,9 +751,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // Get the local name of this closure. This can be inaccurate because
             // of the possibility of reassignment, but this should be good enough.
             match &kind {
-                hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, ident, None) => {
-                    Some(ident.name)
-                }
+                hir::PatKind::Binding(hir::BindingMode::NONE, _, ident, None) => Some(ident.name),
                 _ => {
                     err.note(msg);
                     None

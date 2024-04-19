@@ -11,7 +11,7 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
-use rustc_session::config::OptLevel;
+use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 use rustc_target::abi::FieldIdx;
@@ -699,7 +699,19 @@ impl<'tcx> Inliner<'tcx> {
         // Insert all of the (mapped) parts of the callee body into the caller.
         caller_body.local_decls.extend(callee_body.drain_vars_and_temps());
         caller_body.source_scopes.extend(&mut callee_body.source_scopes.drain(..));
-        caller_body.var_debug_info.append(&mut callee_body.var_debug_info);
+        if self
+            .tcx
+            .sess
+            .opts
+            .unstable_opts
+            .inline_mir_preserve_debug
+            .unwrap_or(self.tcx.sess.opts.debuginfo != DebugInfo::None)
+        {
+            // Note that we need to preserve these in the standard library so that
+            // people working on rust can build with or without debuginfo while
+            // still getting consistent results from the mir-opt tests.
+            caller_body.var_debug_info.append(&mut callee_body.var_debug_info);
+        }
         caller_body.basic_blocks_mut().extend(callee_body.basic_blocks_mut().drain(..));
 
         caller_body[callsite.block].terminator = Some(Terminator {

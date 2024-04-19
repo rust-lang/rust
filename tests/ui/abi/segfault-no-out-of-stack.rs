@@ -1,31 +1,29 @@
 //@ run-pass
-
-#![allow(unused_imports)]
 //@ ignore-wasm32 can't run commands
 //@ ignore-sgx no processes
 //@ ignore-fuchsia must translate zircon signal to SIGSEGV/SIGBUS, FIXME (#58590)
+
 #![feature(rustc_private)]
 
-extern crate libc;
-
 use std::env;
+use std::ffi::c_char;
 use std::process::{Command, ExitStatus};
 
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
-    fn rust_get_null_ptr() -> *mut ::libc::c_char;
+    fn rust_get_null_ptr() -> *mut c_char;
 }
 
 #[cfg(unix)]
-fn check_status(status: std::process::ExitStatus) {
-    use libc;
+fn check_status(status: ExitStatus) {
+    extern crate libc;
     use std::os::unix::process::ExitStatusExt;
 
     assert!(status.signal() == Some(libc::SIGSEGV) || status.signal() == Some(libc::SIGBUS));
 }
 
 #[cfg(not(unix))]
-fn check_status(status: std::process::ExitStatus) {
+fn check_status(status: ExitStatus) {
     assert!(!status.success());
 }
 

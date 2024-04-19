@@ -12,7 +12,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BindingAnnotation, ByRef, HirId, MatchSource, RangeEnd};
+use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::newtype_index;
 use rustc_index::IndexVec;
 use rustc_middle::middle::region;
@@ -603,10 +603,7 @@ impl<'tcx> Pat<'tcx> {
     pub fn simple_ident(&self) -> Option<Symbol> {
         match self.kind {
             PatKind::Binding {
-                name,
-                mode: BindingAnnotation(ByRef::No, _),
-                subpattern: None,
-                ..
+                name, mode: BindingMode(ByRef::No, _), subpattern: None, ..
             } => Some(name),
             _ => None,
         }
@@ -730,7 +727,7 @@ pub enum PatKind<'tcx> {
     Binding {
         name: Symbol,
         #[type_visitable(ignore)]
-        mode: BindingAnnotation,
+        mode: BindingMode,
         #[type_visitable(ignore)]
         var: LocalVarId,
         ty: Ty<'tcx>,
@@ -1206,7 +1203,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
     // tidy-alphabetical-start

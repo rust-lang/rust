@@ -1,5 +1,5 @@
 thread 'rustc' panicked at compiler/rustc_const_eval/src/transform/validate.rs:LL:CC:
-broken MIR in Item(DefId(0:4 ~ mir_validation[fad2]::main)) (after phase change to runtime-optimized) at bb0[1]:
+broken MIR in Item(DefId) (after phase change to runtime-optimized) at bb0[1]:
 (*(_2.0: *mut i32)), has deref at the wrong place
 stack backtrace:
 

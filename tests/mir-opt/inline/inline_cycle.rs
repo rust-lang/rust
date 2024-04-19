@@ -1,4 +1,5 @@
 // skip-filecheck
+//@ compile-flags: -C debuginfo=full
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // Check that inliner handles various forms of recursion and doesn't fall into
 // an infinite inlining cycle. The particular outcome of inlining is not

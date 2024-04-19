@@ -17,7 +17,7 @@ use rustc_hir::{
     def::{DefKind, Res},
     def_id::{DefId, LocalDefId, LocalDefIdMap},
     hir_id::OwnerId,
-    BindingAnnotation, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
+    BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
 };
 use rustc_index::IndexVec;
 use rustc_macros::HashStable;
@@ -78,8 +78,8 @@ pub struct TypeckResults<'tcx> {
 
     adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 
-    /// Stores the actual binding mode for all instances of [`BindingAnnotation`].
-    pat_binding_modes: ItemLocalMap<BindingAnnotation>,
+    /// Stores the actual binding mode for all instances of [`BindingMode`].
+    pat_binding_modes: ItemLocalMap<BindingMode>,
 
     /// Stores the types which were implicitly dereferenced in pattern binding modes
     /// for later usage in THIR lowering. For example,
@@ -413,22 +413,17 @@ impl<'tcx> TypeckResults<'tcx> {
         matches!(self.type_dependent_defs().get(expr.hir_id), Some(Ok((DefKind::AssocFn, _))))
     }
 
-    pub fn extract_binding_mode(
-        &self,
-        s: &Session,
-        id: HirId,
-        sp: Span,
-    ) -> Option<BindingAnnotation> {
+    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {
         self.pat_binding_modes().get(id).copied().or_else(|| {
             s.dcx().span_bug(sp, "missing binding mode");
         })
     }
 
-    pub fn pat_binding_modes(&self) -> LocalTableInContext<'_, BindingAnnotation> {
+    pub fn pat_binding_modes(&self) -> LocalTableInContext<'_, BindingMode> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.pat_binding_modes }
     }
 
-    pub fn pat_binding_modes_mut(&mut self) -> LocalTableInContextMut<'_, BindingAnnotation> {
+    pub fn pat_binding_modes_mut(&mut self) -> LocalTableInContextMut<'_, BindingMode> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_binding_modes }
     }
 
@@ -460,7 +455,7 @@ impl<'tcx> TypeckResults<'tcx> {
         let mut has_ref_mut = false;
         pat.walk(|pat| {
             if let hir::PatKind::Binding(_, id, _, _) = pat.kind
-                && let Some(BindingAnnotation(ByRef::Yes(Mutability::Mut), _)) =
+                && let Some(BindingMode(ByRef::Yes(Mutability::Mut), _)) =
                     self.pat_binding_modes().get(id)
             {
                 has_ref_mut = true;

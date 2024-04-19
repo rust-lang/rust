@@ -2303,6 +2303,7 @@ extern "C" {
         Members: *const &RustArchiveMember<'_>,
         WriteSymbtab: bool,
         Kind: ArchiveKind,
+        isEC: bool,
     ) -> LLVMRustResult;
     pub fn LLVMRustArchiveMemberNew<'a>(
         Filename: *const c_char,

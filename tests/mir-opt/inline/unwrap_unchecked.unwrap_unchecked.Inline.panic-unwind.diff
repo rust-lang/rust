@@ -6,10 +6,8 @@
       let mut _0: T;
       let mut _2: std::option::Option<T>;
 +     scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) {
-+         debug self => _2;
 +         let mut _3: isize;
 +         scope 2 {
-+             debug val => _0;
 +         }
 +         scope 3 (inlined unreachable_unchecked) {
 +             let mut _4: bool;

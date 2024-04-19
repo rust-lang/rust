@@ -3,6 +3,7 @@
 //@normalize-stderr-test: "\n +at [^\n]+" -> ""
 //@normalize-stderr-test: "\n +\[\.\.\. omitted [0-9]+ frames? \.\.\.\]" -> ""
 //@normalize-stderr-test: "\n[ =]*note:.*" -> ""
+//@normalize-stderr-test: "DefId\([^()]*\)" -> "DefId"
 #![feature(custom_mir, core_intrinsics)]
 use core::intrinsics::mir::*;
 
