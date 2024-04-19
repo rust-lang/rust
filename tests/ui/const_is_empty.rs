@@ -1,4 +1,3 @@
-#![feature(inline_const)]
 #![warn(clippy::const_is_empty)]
 #![allow(clippy::needless_late_init, unused_must_use)]
 
