@@ -5894,6 +5894,7 @@ Released 2018-09-13
 [`allowed-dotfiles`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allowed-dotfiles
 [`allowed-duplicate-crates`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allowed-duplicate-crates
 [`allowed-idents-below-min-chars`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allowed-idents-below-min-chars
+[`allowed-prefixes`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allowed-prefixes
 [`allowed-scripts`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allowed-scripts
 [`allowed-wildcard-imports`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allowed-wildcard-imports
 [`arithmetic-side-effects-allowed`]: https://doc.rust-lang.org/clippy/lint_configuration.html#arithmetic-side-effects-allowed
