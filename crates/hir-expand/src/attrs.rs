@@ -1,5 +1,5 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
-use std::{fmt, ops};
+use std::{borrow::Cow, fmt, ops};
 
 use base_db::CrateId;
 use cfg::CfgExpr;
@@ -297,6 +297,20 @@ impl Attr {
         }
     }
 
+    pub fn string_value_unescape(&self) -> Option<Cow<'_, str>> {
+        match self.input.as_deref()? {
+            AttrInput::Literal(it) => match it.text.strip_prefix('r') {
+                Some(it) => {
+                    it.trim_matches('#').strip_prefix('"')?.strip_suffix('"').map(Cow::Borrowed)
+                }
+                None => {
+                    it.text.strip_prefix('"')?.strip_suffix('"').and_then(unescape).map(Cow::Owned)
+                }
+            },
+            _ => None,
+        }
+    }
+
     /// #[path(ident)]
     pub fn single_ident_value(&self) -> Option<&tt::Ident> {
         match self.input.as_deref()? {
@@ -344,6 +358,39 @@ impl Attr {
             None
         }
     }
+}
+
+fn unescape(s: &str) -> Option<String> {
+    let mut res = String::with_capacity(s.len());
+    let mut chars = s.chars();
+
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            match chars.next()? {
+                'n' => res.push('\n'),
+                'r' => res.push('\r'),
+                't' => res.push('\t'),
+                '\\' => res.push('\\'),
+                '\'' => res.push('\''),
+                '"' => res.push('"'),
+                '0' => res.push('\0'),
+                'x' => {
+                    let hex = chars.by_ref().take(2).collect::<String>();
+                    let c = u8::from_str_radix(&hex, 16).ok()?;
+                    res.push(c as char);
+                }
+                'u' => {
+                    let hex = chars.by_ref().take(4).collect::<String>();
+                    let c = u32::from_str_radix(&hex, 16).ok()?;
+                    res.push(char::from_u32(c)?);
+                }
+                _ => return None,
+            }
+        } else {
+            res.push(c);
+        }
+    }
+    Some(res)
 }
 
 pub fn collect_attrs(

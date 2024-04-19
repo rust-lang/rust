@@ -1917,7 +1917,7 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect_module(&mut self, module_id: FileItemTreeId<Mod>, attrs: &Attrs) {
-        let path_attr = attrs.by_key("path").string_value();
+        let path_attr = attrs.by_key("path").string_value_unescape();
         let is_macro_use = attrs.by_key("macro_use").exists();
         let module = &self.item_tree[module_id];
         match &module.kind {
@@ -1931,7 +1931,8 @@ impl ModCollector<'_, '_> {
                     module_id,
                 );
 
-                let Some(mod_dir) = self.mod_dir.descend_into_definition(&module.name, path_attr)
+                let Some(mod_dir) =
+                    self.mod_dir.descend_into_definition(&module.name, path_attr.as_deref())
                 else {
                     return;
                 };
@@ -1952,8 +1953,12 @@ impl ModCollector<'_, '_> {
             ModKind::Outline => {
                 let ast_id = AstId::new(self.file_id(), module.ast_id);
                 let db = self.def_collector.db;
-                match self.mod_dir.resolve_declaration(db, self.file_id(), &module.name, path_attr)
-                {
+                match self.mod_dir.resolve_declaration(
+                    db,
+                    self.file_id(),
+                    &module.name,
+                    path_attr.as_deref(),
+                ) {
                     Ok((file_id, is_mod_rs, mod_dir)) => {
                         let item_tree = db.file_item_tree(file_id.into());
                         let krate = self.def_collector.def_map.krate;
