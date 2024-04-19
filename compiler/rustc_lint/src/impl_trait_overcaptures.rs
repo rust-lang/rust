@@ -24,8 +24,8 @@ declare_lint! {
 }
 
 declare_lint_pass!(
-    /// Lint for use of `async fn` in the definition of a publicly-reachable
-    /// trait.
+    /// Lint for opaque types that will begin capturing in-scope but unmentioned lifetimes
+    /// in edition 2024.
     ImplTraitOvercaptures => [IMPL_TRAIT_OVERCAPTURES]
 );
 
@@ -50,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplTraitOvercaptures {
                 }
             }
             DefKind::Fn => {
-                // All freee functions need to check for overcaptures.
+                // All free functions need to check for overcaptures.
             }
             DefKind::Closure => return,
             kind => {
@@ -64,6 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplTraitOvercaptures {
         let sig = cx.tcx.fn_sig(parent_def_id).instantiate_identity();
 
         let mut in_scope_parameters = FxIndexSet::default();
+        // Populate the in_scope_parameters list first with all of the generics in scope
         let mut current_def_id = Some(parent_def_id.to_def_id());
         while let Some(def_id) = current_def_id {
             let generics = cx.tcx.generics_of(def_id);
@@ -73,6 +74,8 @@ impl<'tcx> LateLintPass<'tcx> for ImplTraitOvercaptures {
             current_def_id = generics.parent;
         }
 
+        // Then visit the signature to walk through all the binders (incl. the late-bound
+        // vars on the function itself, which we need to count too).
         sig.visit_with(&mut VisitOpaqueTypes {
             tcx: cx.tcx,
             parent_def_id,
@@ -94,6 +97,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> Self::Result {
+        // When we get into a binder, we need to add its own bound vars to the scope.
         let mut added = vec![];
         for arg in t.bound_vars() {
             let arg: ty::BoundVariableKind = arg;
@@ -117,6 +121,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
 
         t.super_visit_with(self);
 
+        // And remove them. The `shift_remove` should be `O(1)` since we're popping
+        // them off from the end.
         for arg in added.into_iter().rev() {
             self.in_scope_parameters.shift_remove(&arg);
         }
@@ -129,22 +135,29 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
 
         if let ty::Alias(ty::Opaque, opaque_ty) = *t.kind()
             && let Some(opaque_def_id) = opaque_ty.def_id.as_local()
+            // Don't recurse infinitely on an opaque
             && self.seen.insert(opaque_def_id)
+            // If it's owned by this function
             && let opaque =
                 self.tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty()
             && let hir::OpaqueTyOrigin::FnReturn(parent_def_id) = opaque.origin
             && parent_def_id == self.parent_def_id
+            // And if the opaque doesn't already have `use<>` syntax on it...
             && opaque.precise_capturing_args.is_none()
         {
+            // Compute the set of args that are captured by the opaque...
             let mut captured = UnordSet::default();
             let variances = self.tcx.variances_of(opaque_def_id);
             let mut current_def_id = Some(opaque_def_id.to_def_id());
             while let Some(def_id) = current_def_id {
                 let generics = self.tcx.generics_of(def_id);
-                for param in &generics.params {
+                for param in &generics.own_params {
+                    // A param is captured if it's invariant.
                     if variances[param.index as usize] != ty::Invariant {
                         continue;
                     }
+                    // We need to turn all `ty::Param`/`ConstKind::Param` and
+                    // `ReEarlyParam`/`ReBound` into def ids.
                     captured.insert(extract_def_id_from_arg(
                         self.tcx,
                         generics,
@@ -154,6 +167,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
                 current_def_id = generics.parent;
             }
 
+            // Compute the set of in scope params that are not captured. Get their spans,
+            // since that's all we really care about them for emitting the diagnostic.
             let uncaptured_spans: Vec<_> = self
                 .in_scope_parameters
                 .iter()
@@ -174,6 +189,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
                 );
             }
 
+            // Walk into the bounds of the opaque, too, since we want to get nested opaques
+            // in this lint as well. Interestingly, one place that I expect this lint to fire
+            // is for `impl for<'a> Bound<Out = impl Other>`, since `impl Other` will begin
+            // to capture `'a` in e2024 (even though late-bound vars in opaques are not allowed).
             for clause in
                 self.tcx.item_bounds(opaque_ty.def_id).iter_instantiated(self.tcx, opaque_ty.args)
             {
