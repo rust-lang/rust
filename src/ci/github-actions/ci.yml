@@ -717,6 +717,15 @@ jobs:
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-8c
 
+          - name: dist-arm64ec-msvc
+            env:
+              RUST_CONFIGURE_ARGS: >-
+                --build=x86_64-pc-windows-msvc
+                --target=arm64ec-pc-windows-msvc
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              BOOTSTRAP_SKIP_TARGET_SANITY: 1
+            <<: *job-windows-8c
+
           - name: dist-i686-mingw
             env:
               RUST_CONFIGURE_ARGS: >-

@@ -24,8 +24,8 @@ if isWindows; then
             arch=x86_64
             mingw_archive="${MINGW_ARCHIVE_64}"
             ;;
-        *aarch64*)
-            # aarch64 is a cross-compiled target. Use the x86_64
+        *aarch64* | *arm64ec*)
+            # aarch64 and arm64ec are cross-compiled targets. Use the x86_64
             # mingw, since that's the host architecture.
             bits=64
             arch=x86_64

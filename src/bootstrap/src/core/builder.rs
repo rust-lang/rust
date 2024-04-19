@@ -2540,7 +2540,10 @@ impl Cargo {
         // FIXME: the guard against msvc shouldn't need to be here
         if target.is_msvc() {
             if let Some(ref cl) = builder.config.llvm_clang_cl {
-                self.command.env("CC", cl).env("CXX", cl);
+                // Arm64EC isn't yet supported by LLVM's linker.
+                if !target.starts_with("arm64ec-") {
+                    self.command.env("CC", cl).env("CXX", cl);
+                }
             }
         } else {
             let ccache = builder.config.ccache.as_ref();

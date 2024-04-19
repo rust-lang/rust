@@ -37,32 +37,27 @@ if isMacOS; then
     # Configure `AR` specifically so rustbuild doesn't try to infer it as
     # `clang-ar` by accident.
     ciCommandSetEnv AR "ar"
-elif isWindows && ! isKnownToBeMingwBuild; then
+elif isWindows; then
     # If we're compiling for MSVC then we, like most other distribution builders,
     # switch to clang as the compiler. This'll allow us eventually to enable LTO
     # amongst LLVM and rustc. Note that we only do this on MSVC as I don't think
     # clang has an output mode compatible with MinGW that we need. If it does we
     # should switch to clang for MinGW as well!
-    #
-    # The LLVM installer is an NSIS installer, which we can extract with 7z. We
-    # don't want to run the installer directly; extracting it is more reliable
-    # in CI environments.
 
-    mkdir -p citools/clang-rust
-    cd citools
-    retry curl -f "${MIRRORS_BASE}/LLVM-${LLVM_VERSION}-win64.exe" \
-        -o "LLVM-${LLVM_VERSION}-win64.exe"
-    7z x -oclang-rust/ "LLVM-${LLVM_VERSION}-win64.exe"
-    ciCommandSetEnv RUST_CONFIGURE_ARGS \
-        "${RUST_CONFIGURE_ARGS} --set llvm.clang-cl=$(pwd)/clang-rust/bin/clang-cl.exe"
+    if isKnownToBeMingwBuild; then
+        # Remove LLVM so it isn't accidently used.
+        rm -rf /c/Program\ Files/LLVM
+    else
+        ln -s /c/Program\ Files/LLVM $(pwd)/clang-rust
+        ciCommandSetEnv RUST_CONFIGURE_ARGS \
+            "${RUST_CONFIGURE_ARGS} --set llvm.clang-cl=$(pwd)/clang-rust/bin/clang-cl.exe"
 
-    # Disable downloading CI LLVM on this builder;
-    # setting up clang-cl just above conflicts with the default if-unchanged option.
-    ciCommandSetEnv NO_DOWNLOAD_CI_LLVM 1
-fi
+        # lldb does not work correctly on Windows because it requires python310.dll
+        # so remove it (otherwise it will be used by the build since its on the PATH).
+        rm -rf /c/Program\ Files/LLVM/bin/lldb.exe
 
-if isWindows; then
-    # GitHub image 20210928.2 added LLVM, but it is broken (and we don't want
-    # to use it anyways).
-    rm -rf /c/Program\ Files/LLVM
+        # Disable downloading CI LLVM on this builder;
+        # setting up clang-cl just above conflicts with the default if-unchanged option.
+        ciCommandSetEnv NO_DOWNLOAD_CI_LLVM 1
+    fi
 fi

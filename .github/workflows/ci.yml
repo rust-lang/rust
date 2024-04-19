@@ -454,6 +454,11 @@ jobs:
               SCRIPT: python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
             os: windows-2019-8core-32gb
+          - name: dist-arm64ec-msvc
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --target=arm64ec-pc-windows-msvc"
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+            os: windows-2019-8core-32gb
           - name: dist-i686-mingw
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --enable-full-tools --enable-profiler"

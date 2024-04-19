@@ -27,7 +27,7 @@ shared_defs:
     <<: *base-job
 
   - &job-windows-8c
-    os: windows-2019-8core-32gb
+    os: windows-2022
     <<: *base-job
 
   - &job-windows-16c
@@ -38,13 +38,12 @@ shared_defs:
     os: [ self-hosted, ARM64, linux ]
 
 pr:
-  - name: mingw-check
-    <<: *job-linux-4c
-  - name: mingw-check-tidy
-    <<: *job-linux-4c
-  - name: x86_64-gnu-llvm-17
+  - name: dist-arm64ec-msvc
     env:
-      ENABLE_GCC_CODEGEN: "1"
-    <<: *job-linux-16c
-  - name: x86_64-gnu-tools
-    <<: *job-linux-16c
+      RUST_CONFIGURE_ARGS: >-
+        --build=x86_64-pc-windows-msvc
+        --target=arm64ec-pc-windows-msvc
+        --set build.docs=false
+      SCRIPT: python x.py dist bootstrap --include-default-paths
+      BOOTSTRAP_SKIP_TARGET_SANITY: 1
+    <<: *job-windows-8c
