@@ -852,6 +852,24 @@ Command to be executed instead of 'cargo' for runnables.
 Additional arguments to be passed to cargo for runnables such as
 tests or binaries. For example, it may be `--release`.
 --
+[[rust-analyzer.runnables.extraTestBinaryArgs]]rust-analyzer.runnables.extraTestBinaryArgs::
++
+--
+Default:
+----
+[
+  "--show-output"
+]
+----
+Additional arguments to be passed through Cargo to launched tests, benchmarks, or
+doc-tests.
+
+Unless the launched target uses a
+[custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),
+they will end up being interpreted as options to
+[`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
+
+--
 [[rust-analyzer.rustc.source]]rust-analyzer.rustc.source (default: `null`)::
 +
 --

@@ -1594,6 +1594,16 @@
                         "type": "string"
                     }
                 },
+                "rust-analyzer.runnables.extraTestBinaryArgs": {
+                    "markdownDescription": "Additional arguments to be passed through Cargo to launched tests, benchmarks, or\ndoc-tests.\n\nUnless the launched target uses a\n[custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),\nthey will end up being interpreted as options to\n[`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).",
+                    "default": [
+                        "--show-output"
+                    ],
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "rust-analyzer.rustc.source": {
                     "markdownDescription": "Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private\nprojects, or \"discover\" to try to automatically find it if the `rustc-dev` component\nis installed.\n\nAny project which uses rust-analyzer with the rustcPrivate\ncrates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.\n\nThis option does not take effect until rust-analyzer is restarted.",
                     "default": null,

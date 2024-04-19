@@ -157,7 +157,7 @@ fn main() {}
           {
             "args": {
               "cargoArgs": ["test", "--package", "foo", "--test", "spam"],
-              "executableArgs": ["test_eggs", "--exact", "--nocapture"],
+              "executableArgs": ["test_eggs", "--exact", "--show-output"],
               "cargoExtraArgs": [],
               "overrideCargo": null,
               "workspaceRoot": server.path().join("foo")
@@ -190,7 +190,7 @@ fn main() {}
               "cargoExtraArgs": [],
               "executableArgs": [
                 "",
-                "--nocapture"
+                "--show-output"
               ]
             },
             "kind": "cargo",

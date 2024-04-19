@@ -392,6 +392,14 @@ config_data! {
         /// Additional arguments to be passed to cargo for runnables such as
         /// tests or binaries. For example, it may be `--release`.
         runnables_extraArgs: Vec<String>   = vec![],
+        /// Additional arguments to be passed through Cargo to launched tests, benchmarks, or
+        /// doc-tests.
+        ///
+        /// Unless the launched target uses a
+        /// [custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),
+        /// they will end up being interpreted as options to
+        /// [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
+        runnables_extraTestBinaryArgs: Vec<String> = vec!["--show-output".to_owned()],
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
         /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
@@ -823,6 +831,8 @@ pub struct RunnablesConfig {
     pub override_cargo: Option<String>,
     /// Additional arguments for the `cargo`, e.g. `--release`.
     pub cargo_extra_args: Vec<String>,
+    /// Additional arguments for the binary being run, if it is a test or benchmark.
+    pub extra_test_binary_args: Vec<String>,
 }
 
 /// Configuration for workspace symbol search requests.
@@ -1749,6 +1759,7 @@ impl Config {
         RunnablesConfig {
             override_cargo: self.runnables_command().clone(),
             cargo_extra_args: self.runnables_extraArgs().clone(),
+            extra_test_binary_args: self.runnables_extraTestBinaryArgs().clone(),
         }
     }
 
