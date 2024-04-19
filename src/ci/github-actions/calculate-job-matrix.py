@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-JOBS_YAML_PATH = Path(__file__).absolute().parent.parent / "github-actions" / "jobs.yml"
+JOBS_YAML_PATH = Path(__file__).absolute().parent / "jobs.yml"
 
 
 if __name__ == "__main__":
