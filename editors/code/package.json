@@ -610,7 +610,10 @@
                 },
                 "rust-analyzer.cargo.cfgs": {
                     "markdownDescription": "List of cfg options to enable with the given values.",
-                    "default": {},
+                    "default": {
+                        "debug_assertions": null,
+                        "miri": null
+                    },
                     "type": "object"
                 },
                 "rust-analyzer.cargo.extraArgs": {

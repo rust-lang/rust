@@ -1,3 +1,4 @@
+//! Cargo-like environment variables injection.
 use base_db::Env;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;

@@ -1454,8 +1454,14 @@ fn sysroot_to_crate_graph(
                 None,
                 rustc_cfg,
                 &CfgOverrides {
-                    global: CfgDiff::new(vec![CfgAtom::Flag("debug_assertions".into())], vec![])
-                        .unwrap(),
+                    global: CfgDiff::new(
+                        vec![
+                            CfgAtom::Flag("debug_assertions".into()),
+                            CfgAtom::Flag("miri".into()),
+                        ],
+                        vec![],
+                    )
+                    .unwrap(),
                     ..Default::default()
                 },
                 &WorkspaceBuildScripts::default(),
@@ -1519,6 +1525,7 @@ fn sysroot_to_crate_graph(
                 let mut cfg_options = CfgOptions::default();
                 cfg_options.extend(rustc_cfg);
                 cfg_options.insert_atom("debug_assertions".into());
+                cfg_options.insert_atom("miri".into());
                 cfg_options
             });
             let sysroot_crates: FxHashMap<SysrootCrate, CrateId> = stitched

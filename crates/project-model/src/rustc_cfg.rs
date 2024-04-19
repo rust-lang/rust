@@ -32,9 +32,6 @@ pub(crate) fn get(
         }
     }
 
-    // Add miri cfg, which is useful for mir eval in stdlib
-    res.push(CfgFlag::Atom("miri".into()));
-
     let rustc_cfgs = get_rust_cfgs(target, extra_env, config);
 
     let rustc_cfgs = match rustc_cfgs {
