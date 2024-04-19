@@ -44,19 +44,13 @@ impl<'tcx> EnvVars<'tcx> {
                 let forward = ecx.machine.communicate()
                     || config.forwarded_env_vars.iter().any(|v| **v == *name);
                 if forward {
-                    let var_ptr = match ecx.tcx.sess.target.os.as_ref() {
-                        _ if ecx.target_os_is_unix() =>
-                            alloc_env_var_as_c_str(name.as_ref(), value.as_ref(), ecx)?,
-                        "windows" => alloc_env_var_as_wide_str(name.as_ref(), value.as_ref(), ecx)?,
-                        unsupported =>
-                            throw_unsup_format!(
-                                "environment support for target OS `{}` not yet available",
-                                unsupported
-                            ),
-                    };
-                    ecx.machine.env_vars.map.insert(name.clone(), var_ptr);
+                    add_env_var(ecx, name, value)?;
                 }
             }
+        }
+
+        for (name, value) in &config.set_env_vars {
+            add_env_var(ecx, OsStr::new(name), OsStr::new(value))?;
         }
 
         // Initialize the `environ` pointer when needed.
@@ -87,6 +81,24 @@ impl<'tcx> EnvVars<'tcx> {
         }
         Ok(())
     }
+}
+
+fn add_env_var<'mir, 'tcx>(
+    ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+    name: &OsStr,
+    value: &OsStr,
+) -> InterpResult<'tcx, ()> {
+    let var_ptr = match ecx.tcx.sess.target.os.as_ref() {
+        _ if ecx.target_os_is_unix() => alloc_env_var_as_c_str(name, value, ecx)?,
+        "windows" => alloc_env_var_as_wide_str(name, value, ecx)?,
+        unsupported =>
+            throw_unsup_format!(
+                "environment support for target OS `{}` not yet available",
+                unsupported
+            ),
+    };
+    ecx.machine.env_vars.map.insert(name.to_os_string(), var_ptr);
+    Ok(())
 }
 
 fn alloc_env_var_as_c_str<'mir, 'tcx>(
