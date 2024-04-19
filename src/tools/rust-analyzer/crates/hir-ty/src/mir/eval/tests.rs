@@ -104,7 +104,6 @@ fn main() {
 }
     "#,
     );
-    panic!("a");
 }
 
 #[test]

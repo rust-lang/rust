@@ -27,6 +27,7 @@ pub trait TyExt {
     fn is_scalar(&self) -> bool;
     fn is_floating_point(&self) -> bool;
     fn is_never(&self) -> bool;
+    fn is_str(&self) -> bool;
     fn is_unknown(&self) -> bool;
     fn contains_unknown(&self) -> bool;
     fn is_ty_var(&self) -> bool;
@@ -85,6 +86,10 @@ impl TyExt for Ty {
 
     fn is_never(&self) -> bool {
         matches!(self.kind(Interner), TyKind::Never)
+    }
+
+    fn is_str(&self) -> bool {
+        matches!(self.kind(Interner), TyKind::Str)
     }
 
     fn is_unknown(&self) -> bool {

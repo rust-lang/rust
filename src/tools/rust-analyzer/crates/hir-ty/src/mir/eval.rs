@@ -1138,7 +1138,7 @@ impl Evaluator<'_> {
                 let mut ty = self.operand_ty(lhs, locals)?;
                 while let TyKind::Ref(_, _, z) = ty.kind(Interner) {
                     ty = z.clone();
-                    let size = if ty.kind(Interner) == &TyKind::Str {
+                    let size = if ty.is_str() {
                         if *op != BinOp::Eq {
                             never!("Only eq is builtin for `str`");
                         }
