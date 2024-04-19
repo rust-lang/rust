@@ -63,4 +63,8 @@ pub fn yes_ord() -> impl Ord {
     [0; 32]
 }
 
+pub fn yes_default() -> impl Default {
+    [0; 32]
+}
+
 fn main() {}

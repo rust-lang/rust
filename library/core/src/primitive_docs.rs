@@ -589,15 +589,12 @@ mod prim_pointer {}
 /// - [`Copy`]
 /// - [`Clone`]
 /// - [`Debug`]
+/// - [`Default`]
 /// - [`IntoIterator`] (implemented for `[T; N]`, `&[T; N]` and `&mut [T; N]`)
 /// - [`PartialEq`], [`PartialOrd`], [`Eq`], [`Ord`]
 /// - [`Hash`]
 /// - [`AsRef`], [`AsMut`]
 /// - [`Borrow`], [`BorrowMut`]
-///
-/// Arrays of sizes from 0 to 32 (inclusive) implement the [`Default`] trait
-/// if the element type allows it. As a stopgap, trait implementations are
-/// statically generated up to size 32.
 ///
 /// Arrays of sizes from 1 to 12 (inclusive) implement [`From<Tuple>`], where `Tuple`
 /// is a homogeneous [prim@tuple] of appropriate length.

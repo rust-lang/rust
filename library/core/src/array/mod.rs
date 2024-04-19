@@ -428,29 +428,12 @@ impl<T: Copy> SpecArrayClone for T {
     }
 }
 
-// The Default impls cannot be done with const generics because `[T; 0]` doesn't
-// require Default to be implemented, and having different impl blocks for
-// different numbers isn't supported yet.
-
-macro_rules! array_impl_default {
-    {$n:expr, $t:ident $($ts:ident)*} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] where T: Default {
-            fn default() -> [T; $n] {
-                [$t::default(), $($ts::default()),*]
-            }
-        }
-        array_impl_default!{($n - 1), $($ts)*}
-    };
-    {$n:expr,} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] {
-            fn default() -> [T; $n] { [] }
-        }
-    };
+#[stable(feature = "default_array_lib", since = "1.79.0")]
+impl<T, const N: usize> Default for [T; N] where T: Default {
+    fn default() -> [T; N] {
+        from_fn::<T, N, _>(|_| T::default())
+    }
 }
-
-array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
 
 impl<T, const N: usize> [T; N] {
     /// Returns an array of the same size as `self`, with function `f` applied to each element
