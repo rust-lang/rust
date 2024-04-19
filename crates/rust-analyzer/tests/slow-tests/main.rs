@@ -119,7 +119,8 @@ fn f() {
 
 #[test]
 fn completes_items_from_standard_library_in_cargo_script() {
-    if skip_slow_tests() {
+    // this test requires nightly so CI can't run it
+    if skip_slow_tests() || std::env::var("CI").is_ok() {
         return;
     }
 
@@ -139,7 +140,7 @@ version = "0.1.0"
 pub struct SpecialHashMap2;
 //- /src/lib.rs
 #!/usr/bin/env -S cargo +nightly -Zscript
----cargo
+---
 [dependencies]
 dependency = { path = "../dependency" }
 ---
@@ -178,7 +179,7 @@ use dependency2::Spam;
     server.write_file_and_save(
         "src/lib.rs",
         r#"#!/usr/bin/env -S cargo +nightly -Zscript
----cargo
+---
 [dependencies]
 dependency2 = { path = "../dependency2" }
 ---

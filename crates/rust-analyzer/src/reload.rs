@@ -682,6 +682,7 @@ impl GlobalState {
                                 _ => None,
                             }
                         }
+                        // FIXME
                         ProjectWorkspace::DetachedFile { .. } => None,
                     })
                     .map(|(id, root, sysroot_root)| {

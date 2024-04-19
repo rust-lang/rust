@@ -518,7 +518,13 @@ impl ProjectWorkspace {
         progress: &dyn Fn(String),
     ) -> anyhow::Result<WorkspaceBuildScripts> {
         match self {
-            ProjectWorkspace::Cargo { cargo, toolchain, sysroot, .. } => {
+            ProjectWorkspace::DetachedFile {
+                cargo_script: Some(cargo),
+                toolchain,
+                sysroot,
+                ..
+            }
+            | ProjectWorkspace::Cargo { cargo, toolchain, sysroot, .. } => {
                 WorkspaceBuildScripts::run_for_workspace(
                     config,
                     cargo,
@@ -530,9 +536,8 @@ impl ProjectWorkspace {
                     format!("Failed to run build scripts for {}", cargo.workspace_root())
                 })
             }
-            ProjectWorkspace::Json { .. } | ProjectWorkspace::DetachedFile { .. } => {
-                Ok(WorkspaceBuildScripts::default())
-            }
+            ProjectWorkspace::DetachedFile { cargo_script: None, .. }
+            | ProjectWorkspace::Json { .. } => Ok(WorkspaceBuildScripts::default()),
         }
     }
 
@@ -734,13 +739,50 @@ impl ProjectWorkspace {
                     }))
                     .collect()
             }
-            ProjectWorkspace::DetachedFile { file, sysroot, .. } => iter::once(PackageRoot {
-                is_local: true,
-                include: vec![file.clone()],
-                exclude: Vec::new(),
-            })
-            .chain(mk_sysroot(sysroot.as_ref()))
-            .collect(),
+            ProjectWorkspace::DetachedFile { file, cargo_script, sysroot, .. } => {
+                iter::once(PackageRoot {
+                    is_local: true,
+                    include: vec![file.clone()],
+                    exclude: Vec::new(),
+                })
+                .chain(cargo_script.iter().flat_map(|cargo| {
+                    cargo.packages().map(|pkg| {
+                        let is_local = cargo[pkg].is_local;
+                        let pkg_root = cargo[pkg].manifest.parent().to_path_buf();
+
+                        let mut include = vec![pkg_root.clone()];
+
+                        // In case target's path is manually set in Cargo.toml to be
+                        // outside the package root, add its parent as an extra include.
+                        // An example of this situation would look like this:
+                        //
+                        // ```toml
+                        // [lib]
+                        // path = "../../src/lib.rs"
+                        // ```
+                        let extra_targets = cargo[pkg]
+                            .targets
+                            .iter()
+                            .filter(|&&tgt| matches!(cargo[tgt].kind, TargetKind::Lib { .. }))
+                            .filter_map(|&tgt| cargo[tgt].root.parent())
+                            .map(|tgt| tgt.normalize().to_path_buf())
+                            .filter(|path| !path.starts_with(&pkg_root));
+                        include.extend(extra_targets);
+
+                        let mut exclude = vec![pkg_root.join(".git")];
+                        if is_local {
+                            exclude.push(pkg_root.join("target"));
+                        } else {
+                            exclude.push(pkg_root.join("tests"));
+                            exclude.push(pkg_root.join("examples"));
+                            exclude.push(pkg_root.join("benches"));
+                        }
+                        PackageRoot { is_local, include, exclude }
+                    })
+                }))
+                .chain(mk_sysroot(sysroot.as_ref()))
+                .collect()
+            }
         }
     }
 
@@ -756,9 +798,10 @@ impl ProjectWorkspace {
                 let sysroot_package_len = sysroot.as_ref().map_or(0, |it| it.num_packages());
                 cargo.packages().len() + sysroot_package_len + rustc_package_len
             }
-            ProjectWorkspace::DetachedFile { sysroot, .. } => {
+            ProjectWorkspace::DetachedFile { sysroot, cargo_script, .. } => {
                 let sysroot_package_len = sysroot.as_ref().map_or(0, |it| it.num_packages());
-                sysroot_package_len + 1
+                sysroot_package_len
+                    + cargo_script.as_ref().map_or(1, |cargo| cargo.packages().len())
             }
         }
     }

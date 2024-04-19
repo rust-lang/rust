@@ -307,6 +307,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                         }
                         None
                     }
+                    // FIXME
                     project_model::ProjectWorkspace::DetachedFile { .. } => return None,
                 };
                 Some((idx, package))
