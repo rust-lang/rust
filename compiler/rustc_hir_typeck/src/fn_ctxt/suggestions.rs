@@ -18,8 +18,8 @@ use rustc_hir::def::Res;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node,
-    Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
+    Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId,
+    Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::collect::suggest_impl_trait;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
@@ -1940,6 +1940,91 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return true;
         }
         false
+    }
+
+    // If the expr is a while or for loop and is the tail expr of its
+    // enclosing body suggest returning a value right after it
+    pub fn suggest_returning_value_after_loop(
+        &self,
+        err: &mut Diag<'_>,
+        expr: &hir::Expr<'tcx>,
+        expected: Ty<'tcx>,
+    ) -> bool {
+        let hir = self.tcx.hir();
+        let enclosing_scope =
+            hir.get_enclosing_scope(expr.hir_id).map(|hir_id| self.tcx.hir_node(hir_id));
+
+        // Get tail expr of the enclosing block or body
+        let tail_expr = if let Some(Node::Block(hir::Block { expr, .. })) = enclosing_scope
+            && expr.is_some()
+        {
+            *expr
+        } else {
+            let body_def_id = hir.enclosing_body_owner(expr.hir_id);
+            let body_id = hir.body_owned_by(body_def_id);
+            let body = hir.body(body_id);
+
+            // Get tail expr of the body
+            match body.value.kind {
+                // Regular function body etc.
+                hir::ExprKind::Block(block, _) => block.expr,
+                // Anon const body (there's no block in this case)
+                hir::ExprKind::DropTemps(expr) => Some(expr),
+                _ => None,
+            }
+        };
+
+        let Some(tail_expr) = tail_expr else {
+            return false; // Body doesn't have a tail expr we can compare with
+        };
+
+        // Get the loop expr within the tail expr
+        let loop_expr_in_tail = match expr.kind {
+            hir::ExprKind::Loop(_, _, hir::LoopSource::While, _) => tail_expr,
+            hir::ExprKind::Loop(_, _, hir::LoopSource::ForLoop, _) => {
+                match tail_expr.peel_drop_temps() {
+                    Expr { kind: ExprKind::Match(_, [Arm { body, .. }], _), .. } => body,
+                    _ => return false, // Not really a for loop
+                }
+            }
+            _ => return false, // Not a while or a for loop
+        };
+
+        // If the expr is the loop expr in the tail
+        // then make the suggestion
+        if expr.hir_id == loop_expr_in_tail.hir_id {
+            let span = expr.span;
+
+            let (msg, suggestion) = if expected.is_never() {
+                (
+                    "consider adding a diverging expression here",
+                    "`loop {}` or `panic!(\"...\")`".to_string(),
+                )
+            } else {
+                ("consider returning a value here", format!("`{expected}` value"))
+            };
+
+            let src_map = self.tcx.sess.source_map();
+            let suggestion = if src_map.is_multiline(expr.span) {
+                let indentation = src_map.indentation_before(span).unwrap_or_else(String::new);
+                format!("\n{indentation}/* {suggestion} */")
+            } else {
+                // If the entire expr is on a single line
+                // put the suggestion also on the same line
+                format!(" /* {suggestion} */")
+            };
+
+            err.span_suggestion_verbose(
+                span.shrink_to_hi(),
+                msg,
+                suggestion,
+                Applicability::MaybeIncorrect,
+            );
+
+            true
+        } else {
+            false
+        }
     }
 
     /// If the expected type is an enum (Issue #55250) with any variants whose
