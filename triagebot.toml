@@ -106,10 +106,16 @@ resolved/implemented on Fuchsia. Could one of you weigh in?
 """
 label = "O-fuchsia"
 
-[ping.macos]
+[ping.apple]
+alias = ["macos", "ios", "tvos", "watchos", "visionos"]
 message = """\
-Hey MacOS Group! This issue or PR could use some MacOS-specific guidance. Could one
-of you weigh in? Thanks <3
+Hey Apple notification group! This issue or PR could use some Apple-specific
+guidance. Could one of you weigh in? Thanks <3
+
+(In case it's useful, here are some [instructions] for tackling these sorts of
+issues).
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/apple.html
 """
 label = "O-macos"
 
