@@ -18,9 +18,7 @@ use parking_lot::{
     RwLockWriteGuard,
 };
 use proc_macro_api::ProcMacroServer;
-use project_model::{
-    CargoScriptTomls, CargoWorkspace, ProjectWorkspace, Target, WorkspaceBuildScripts,
-};
+use project_model::{CargoWorkspace, ProjectWorkspace, Target, WorkspaceBuildScripts};
 use rustc_hash::{FxHashMap, FxHashSet};
 use triomphe::Arc;
 use vfs::{AnchoredPathBuf, ChangedFile, Vfs};
@@ -127,6 +125,7 @@ pub(crate) struct GlobalState {
     /// to invalidate any salsa caches.
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
     pub(crate) crate_graph_file_dependencies: FxHashSet<vfs::VfsPath>,
+    pub(crate) detached_files: FxHashSet<vfs::AbsPathBuf>,
 
     // op queues
     pub(crate) fetch_workspaces_queue:
@@ -146,7 +145,6 @@ pub(crate) struct GlobalState {
     /// this queue should run only *after* [`GlobalState::process_changes`] has
     /// been called.
     pub(crate) deferred_task_queue: TaskQueue,
-    pub(crate) cargo_script_tomls: Arc<Mutex<CargoScriptTomls>>,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -236,6 +234,7 @@ impl GlobalState {
 
             workspaces: Arc::from(Vec::new()),
             crate_graph_file_dependencies: FxHashSet::default(),
+            detached_files: FxHashSet::default(),
             fetch_workspaces_queue: OpQueue::default(),
             fetch_build_data_queue: OpQueue::default(),
             fetch_proc_macros_queue: OpQueue::default(),
@@ -243,7 +242,6 @@ impl GlobalState {
             prime_caches_queue: OpQueue::default(),
 
             deferred_task_queue: task_queue,
-            cargo_script_tomls: Arc::new(Mutex::new(CargoScriptTomls(FxHashMap::default()))),
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
@@ -326,11 +324,7 @@ impl GlobalState {
                     if file.is_created_or_deleted() {
                         workspace_structure_change.get_or_insert((path, false)).1 |=
                             self.crate_graph_file_dependencies.contains(vfs_path);
-                    } else if reload::should_refresh_for_change(
-                        &path,
-                        file.kind(),
-                        &mut self.cargo_script_tomls.lock(),
-                    ) {
+                    } else if reload::should_refresh_for_change(&path, file.kind()) {
                         workspace_structure_change.get_or_insert((path.clone(), false));
                     }
                 }
@@ -527,7 +521,7 @@ impl GlobalStateSnapshot {
                 cargo.target_by_root(path).map(|it| (cargo, it))
             }
             ProjectWorkspace::Json { .. } => None,
-            ProjectWorkspace::DetachedFiles { .. } => None,
+            ProjectWorkspace::DetachedFile { .. } => None,
         })
     }
 

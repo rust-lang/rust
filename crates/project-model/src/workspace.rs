@@ -2,7 +2,7 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{collections::VecDeque, fmt, fs, io::BufRead, iter, sync};
+use std::{collections::VecDeque, fmt, fs, iter, sync};
 
 use anyhow::{format_err, Context};
 use base_db::{
@@ -99,9 +99,9 @@ pub enum ProjectWorkspace {
     // //
     /// Project with a set of disjoint files, not belonging to any particular workspace.
     /// Backed by basic sysroot crates for basic completion and highlighting.
-    DetachedFiles {
-        /// The set of detached files.
-        files: Vec<AbsPathBuf>,
+    DetachedFile {
+        /// The file in question.
+        file: AbsPathBuf,
         /// The sysroot loaded for this workspace.
         sysroot: Result<Sysroot, Option<String>>,
         /// Holds cfg flags for the current target. We get those by running
@@ -118,50 +118,6 @@ pub enum ProjectWorkspace {
         /// Is this file a cargo script file?
         cargo_script: Option<CargoWorkspace>,
     },
-}
-
-/// Tracks the cargo toml parts in cargo scripts, to detect if they
-/// changed and reload workspace in that case.
-pub struct CargoScriptTomls(pub FxHashMap<AbsPathBuf, String>);
-
-impl CargoScriptTomls {
-    fn extract_toml_part(p: &AbsPath) -> Option<String> {
-        let mut r = String::new();
-        let f = std::fs::File::open(p).ok()?;
-        let f = std::io::BufReader::new(f);
-        let mut started = false;
-        for line in f.lines() {
-            let line = line.ok()?;
-            if started {
-                if line.trim() == "//! ```" {
-                    return Some(r);
-                }
-                r += &line;
-            } else {
-                if line.trim() == "//! ```cargo" {
-                    started = true;
-                }
-            }
-        }
-        None
-    }
-
-    pub fn track_file(&mut self, p: AbsPathBuf) {
-        let toml = CargoScriptTomls::extract_toml_part(&p).unwrap_or_default();
-        self.0.insert(p, toml);
-    }
-
-    pub fn need_reload(&mut self, p: &AbsPath) -> bool {
-        let Some(prev) = self.0.get_mut(p) else {
-            return false; // File is not tracked
-        };
-        let next = CargoScriptTomls::extract_toml_part(p).unwrap_or_default();
-        if *prev == next {
-            return false;
-        }
-        *prev = next;
-        true
-    }
 }
 
 impl fmt::Debug for ProjectWorkspace {
@@ -213,8 +169,8 @@ impl fmt::Debug for ProjectWorkspace {
                     .field("n_cfg_overrides", &cfg_overrides.len());
                 debug_struct.finish()
             }
-            ProjectWorkspace::DetachedFiles {
-                files,
+            ProjectWorkspace::DetachedFile {
+                file,
                 sysroot,
                 rustc_cfg,
                 toolchain,
@@ -223,7 +179,8 @@ impl fmt::Debug for ProjectWorkspace {
                 cargo_script,
             } => f
                 .debug_struct("DetachedFiles")
-                .field("n_files", &files.len())
+                .field("file", &file)
+                .field("cargo_script", &cargo_script.is_some())
                 .field("sysroot", &sysroot.is_ok())
                 .field("cargo_script", &cargo_script.is_some())
                 .field("n_rustc_cfg", &rustc_cfg.len())
@@ -479,71 +436,79 @@ impl ProjectWorkspace {
     pub fn load_detached_files(
         detached_files: Vec<AbsPathBuf>,
         config: &CargoConfig,
-        cargo_script_tomls: &mut CargoScriptTomls,
-    ) -> anyhow::Result<ProjectWorkspace> {
-        let dir = detached_files
-            .first()
-            .and_then(|it| it.parent())
-            .ok_or_else(|| format_err!("No detached files to load"))?;
-        let sysroot = match &config.sysroot {
-            Some(RustLibSource::Path(path)) => {
-                Sysroot::with_sysroot_dir(path.clone(), config.sysroot_query_metadata)
-                    .map_err(|e| Some(format!("Failed to find sysroot at {path}:{e}")))
-            }
-            Some(RustLibSource::Discover) => Sysroot::discover(
-                dir,
-                &config.extra_env,
-                config.sysroot_query_metadata,
-            )
-            .map_err(|e| {
-                Some(format!("Failed to find sysroot for {dir}. Is rust-src installed? {e}"))
-            }),
-            None => Err(None),
-        };
+    ) -> Vec<anyhow::Result<ProjectWorkspace>> {
+        dbg!(detached_files
+            .into_iter()
+            .map(|detached_file| {
+                let dir = detached_file
+                    .parent()
+                    .ok_or_else(|| format_err!("detached file has no parent"))?;
+                let sysroot = match &config.sysroot {
+                    Some(RustLibSource::Path(path)) => {
+                        Sysroot::with_sysroot_dir(path.clone(), config.sysroot_query_metadata)
+                            .map_err(|e| Some(format!("Failed to find sysroot at {path}:{e}")))
+                    }
+                    Some(RustLibSource::Discover) => {
+                        Sysroot::discover(dir, &config.extra_env, config.sysroot_query_metadata)
+                            .map_err(|e| {
+                                Some(format!(
+                                    "Failed to find sysroot for {dir}. Is rust-src installed? {e}"
+                                ))
+                            })
+                    }
+                    None => Err(None),
+                };
 
-        let sysroot_ref = sysroot.as_ref().ok();
-        let toolchain =
-            match get_toolchain_version(dir, sysroot_ref, Tool::Rustc, &config.extra_env, "rustc ")
-            {
-                Ok(it) => it,
-                Err(e) => {
-                    tracing::error!("{e}");
-                    None
-                }
-            };
+                let sysroot_ref = sysroot.as_ref().ok();
+                let toolchain = match get_toolchain_version(
+                    dir,
+                    sysroot_ref,
+                    Tool::Rustc,
+                    &config.extra_env,
+                    "rustc ",
+                ) {
+                    Ok(it) => it,
+                    Err(e) => {
+                        tracing::error!("{e}");
+                        None
+                    }
+                };
 
-        let rustc_cfg = rustc_cfg::get(None, &config.extra_env, RustcCfgConfig::Rustc(sysroot_ref));
-        let data_layout = target_data_layout::get(
-            RustcDataLayoutConfig::Rustc(sysroot_ref),
-            None,
-            &config.extra_env,
-        );
-        let cargo_toml = ManifestPath::try_from(detached_files[0].clone()).unwrap();
-        let meta = CargoWorkspace::fetch_metadata(
-            &cargo_toml,
-            cargo_toml.parent(),
-            config,
-            sysroot_ref,
-            &|_| (),
-        )
-        .with_context(|| {
-            format!("Failed to read Cargo metadata from Cargo.toml file {cargo_toml}")
-        })?;
-        let cargo = CargoWorkspace::new(meta);
+                let rustc_cfg =
+                    rustc_cfg::get(None, &config.extra_env, RustcCfgConfig::Rustc(sysroot_ref));
+                let data_layout = target_data_layout::get(
+                    RustcDataLayoutConfig::Rustc(sysroot_ref),
+                    None,
+                    &config.extra_env,
+                );
 
-        for file in &detached_files {
-            cargo_script_tomls.track_file(file.clone());
-        }
+                let cargo_script = ManifestPath::try_from(detached_file.clone())
+                    .ok()
+                    .and_then(|file| {
+                        CargoWorkspace::fetch_metadata(
+                            &file,
+                            file.parent(),
+                            config,
+                            sysroot_ref,
+                            &|_| (),
+                        )
+                        .ok()
+                    })
+                    .map(CargoWorkspace::new);
 
-        Ok(ProjectWorkspace::DetachedFiles {
-            files: detached_files,
-            sysroot,
-            rustc_cfg,
-            toolchain,
-            target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
-            cfg_overrides: config.cfg_overrides.clone(),
-            cargo_script: Some(cargo),
-        })
+                Ok(ProjectWorkspace::DetachedFile {
+                    file: detached_file,
+                    sysroot,
+                    rustc_cfg,
+                    toolchain,
+                    target_layout: data_layout
+                        .map(Arc::from)
+                        .map_err(|it| Arc::from(it.to_string())),
+                    cfg_overrides: config.cfg_overrides.clone(),
+                    cargo_script,
+                })
+            })
+            .collect())
     }
 
     /// Runs the build scripts for this [`ProjectWorkspace`].
@@ -565,7 +530,7 @@ impl ProjectWorkspace {
                     format!("Failed to run build scripts for {}", cargo.workspace_root())
                 })
             }
-            ProjectWorkspace::Json { .. } | ProjectWorkspace::DetachedFiles { .. } => {
+            ProjectWorkspace::Json { .. } | ProjectWorkspace::DetachedFile { .. } => {
                 Ok(WorkspaceBuildScripts::default())
             }
         }
@@ -623,11 +588,11 @@ impl ProjectWorkspace {
         }
     }
 
-    pub fn workspace_definition_path(&self) -> Option<&AbsPath> {
+    pub fn workspace_definition_path(&self) -> &AbsPath {
         match self {
-            ProjectWorkspace::Cargo { cargo, .. } => Some(cargo.workspace_root()),
-            ProjectWorkspace::Json { project, .. } => Some(project.path()),
-            ProjectWorkspace::DetachedFiles { .. } => None,
+            ProjectWorkspace::Cargo { cargo, .. } => cargo.workspace_root(),
+            ProjectWorkspace::Json { project, .. } => project.path(),
+            ProjectWorkspace::DetachedFile { file, .. } => file,
         }
     }
 
@@ -635,10 +600,10 @@ impl ProjectWorkspace {
         match self {
             ProjectWorkspace::Cargo { sysroot: Ok(sysroot), .. }
             | ProjectWorkspace::Json { sysroot: Ok(sysroot), .. }
-            | ProjectWorkspace::DetachedFiles { sysroot: Ok(sysroot), .. } => {
+            | ProjectWorkspace::DetachedFile { sysroot: Ok(sysroot), .. } => {
                 sysroot.discover_proc_macro_srv()
             }
-            ProjectWorkspace::DetachedFiles { .. } => {
+            ProjectWorkspace::DetachedFile { .. } => {
                 Err(anyhow::format_err!("cannot find proc-macro server, no sysroot was found"))
             }
             ProjectWorkspace::Cargo { cargo, .. } => Err(anyhow::format_err!(
@@ -769,15 +734,13 @@ impl ProjectWorkspace {
                     }))
                     .collect()
             }
-            ProjectWorkspace::DetachedFiles { files, sysroot, .. } => files
-                .iter()
-                .map(|detached_file| PackageRoot {
-                    is_local: true,
-                    include: vec![detached_file.clone()],
-                    exclude: Vec::new(),
-                })
-                .chain(mk_sysroot(sysroot.as_ref()))
-                .collect(),
+            ProjectWorkspace::DetachedFile { file, sysroot, .. } => iter::once(PackageRoot {
+                is_local: true,
+                include: vec![file.clone()],
+                exclude: Vec::new(),
+            })
+            .chain(mk_sysroot(sysroot.as_ref()))
+            .collect(),
         }
     }
 
@@ -793,9 +756,9 @@ impl ProjectWorkspace {
                 let sysroot_package_len = sysroot.as_ref().map_or(0, |it| it.num_packages());
                 cargo.packages().len() + sysroot_package_len + rustc_package_len
             }
-            ProjectWorkspace::DetachedFiles { sysroot, files, .. } => {
+            ProjectWorkspace::DetachedFile { sysroot, .. } => {
                 let sysroot_package_len = sysroot.as_ref().map_or(0, |it| it.num_packages());
-                sysroot_package_len + files.len()
+                sysroot_package_len + 1
             }
         }
     }
@@ -848,8 +811,8 @@ impl ProjectWorkspace {
                 ),
                 sysroot,
             ),
-            ProjectWorkspace::DetachedFiles {
-                files,
+            ProjectWorkspace::DetachedFile {
+                file,
                 sysroot,
                 rustc_cfg,
                 toolchain: _,
@@ -868,10 +831,10 @@ impl ProjectWorkspace {
                         &WorkspaceBuildScripts::default(),
                     )
                 } else {
-                    detached_files_to_crate_graph(
+                    detached_file_to_crate_graph(
                         rustc_cfg.clone(),
                         load,
-                        files,
+                        file,
                         sysroot.as_ref().ok(),
                         cfg_overrides,
                     )
@@ -949,8 +912,8 @@ impl ProjectWorkspace {
                     && cfg_overrides == o_cfg_overrides
             }
             (
-                Self::DetachedFiles {
-                    files,
+                Self::DetachedFile {
+                    file,
                     sysroot,
                     rustc_cfg,
                     cargo_script,
@@ -958,8 +921,8 @@ impl ProjectWorkspace {
                     target_layout,
                     cfg_overrides,
                 },
-                Self::DetachedFiles {
-                    files: o_files,
+                Self::DetachedFile {
+                    file: o_file,
                     sysroot: o_sysroot,
                     rustc_cfg: o_rustc_cfg,
                     cargo_script: o_cargo_script,
@@ -968,7 +931,7 @@ impl ProjectWorkspace {
                     cfg_overrides: o_cfg_overrides,
                 },
             ) => {
-                files == o_files
+                file == o_file
                     && sysroot == o_sysroot
                     && rustc_cfg == o_rustc_cfg
                     && toolchain == o_toolchain
@@ -1285,10 +1248,10 @@ fn cargo_to_crate_graph(
     res
 }
 
-fn detached_files_to_crate_graph(
+fn detached_file_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
     load: FileLoader<'_>,
-    detached_files: &[AbsPathBuf],
+    detached_file: &AbsPathBuf,
     sysroot: Option<&Sysroot>,
     override_cfg: &CfgOverrides,
 ) -> (CrateGraph, ProcMacroPaths) {
@@ -1305,34 +1268,32 @@ fn detached_files_to_crate_graph(
     override_cfg.apply(&mut cfg_options, "");
     let cfg_options = Arc::new(cfg_options);
 
-    for detached_file in detached_files {
-        let file_id = match load(detached_file) {
-            Some(file_id) => file_id,
-            None => {
-                tracing::error!("Failed to load detached file {:?}", detached_file);
-                continue;
-            }
-        };
-        let display_name = detached_file
-            .file_stem()
-            .map(|file_stem| CrateDisplayName::from_canonical_name(file_stem.to_owned()));
-        let detached_file_crate = crate_graph.add_crate_root(
-            file_id,
-            Edition::CURRENT,
-            display_name.clone(),
-            None,
-            cfg_options.clone(),
-            None,
-            Env::default(),
-            false,
-            CrateOrigin::Local {
-                repo: None,
-                name: display_name.map(|n| n.canonical_name().to_owned()),
-            },
-        );
+    let file_id = match load(detached_file) {
+        Some(file_id) => file_id,
+        None => {
+            tracing::error!("Failed to load detached file {:?}", detached_file);
+            return (crate_graph, FxHashMap::default());
+        }
+    };
+    let display_name = detached_file
+        .file_stem()
+        .map(|file_stem| CrateDisplayName::from_canonical_name(file_stem.to_owned()));
+    let detached_file_crate = crate_graph.add_crate_root(
+        file_id,
+        Edition::CURRENT,
+        display_name.clone(),
+        None,
+        cfg_options.clone(),
+        None,
+        Env::default(),
+        false,
+        CrateOrigin::Local {
+            repo: None,
+            name: display_name.map(|n| n.canonical_name().to_owned()),
+        },
+    );
 
-        public_deps.add_to_crate_graph(&mut crate_graph, detached_file_crate);
-    }
+    public_deps.add_to_crate_graph(&mut crate_graph, detached_file_crate);
     (crate_graph, FxHashMap::default())
 }
 

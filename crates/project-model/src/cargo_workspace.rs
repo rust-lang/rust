@@ -305,8 +305,10 @@ impl CargoWorkspace {
                     .collect(),
             );
         }
-        if cargo_toml.extension().is_some_and(|x| x == "rs") {
-            // TODO: enable `+nightly` for cargo scripts
+        // The manifest is a rust file, so this means its a script manifest
+        if cargo_toml.extension().is_some_and(|ext| ext == "rs") {
+            // Deliberately don't set up RUSTC_BOOTSTRAP or a nightly override here, the user should
+            // opt into it themselves.
             other_options.push("-Zscript".to_owned());
         }
         meta.other_options(other_options);

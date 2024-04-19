@@ -75,8 +75,8 @@ impl Tester {
             &cargo_config.extra_env,
         );
 
-        let workspace = ProjectWorkspace::DetachedFiles {
-            files: vec![tmp_file],
+        let workspace = ProjectWorkspace::DetachedFile {
+            file: tmp_file,
             sysroot,
             rustc_cfg: vec![],
             toolchain: None,

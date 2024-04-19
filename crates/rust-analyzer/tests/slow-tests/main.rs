@@ -139,16 +139,16 @@ version = "0.1.0"
 pub struct SpecialHashMap2;
 //- /src/lib.rs
 #!/usr/bin/env -S cargo +nightly -Zscript
-//! ```cargo
+//! ---cargo
 //! [dependencies]
 //! dependency = { path = "../dependency" }
-//! ```
+//! ---
 use dependency::Spam;
 use dependency2::Spam;
 "#,
     )
     .with_config(serde_json::json!({
-        "cargo": { "sysroot": "discover" },
+        "cargo": { "sysroot": null },
     }))
     .server()
     .wait_until_workspace_is_loaded();
@@ -156,18 +156,18 @@ use dependency2::Spam;
     let res = server.send_request::<Completion>(CompletionParams {
         text_document_position: TextDocumentPositionParams::new(
             server.doc_id("src/lib.rs"),
-            Position::new(7, 18),
+            Position::new(5, 18),
         ),
         context: None,
         partial_result_params: PartialResultParams::default(),
         work_done_progress_params: WorkDoneProgressParams::default(),
     });
-    assert!(res.to_string().contains("SpecialHashMap"));
+    assert!(res.to_string().contains("SpecialHashMap"), "{}", res.to_string());
 
     let res = server.send_request::<Completion>(CompletionParams {
         text_document_position: TextDocumentPositionParams::new(
             server.doc_id("src/lib.rs"),
-            Position::new(8, 18),
+            Position::new(6, 18),
         ),
         context: None,
         partial_result_params: PartialResultParams::default(),
@@ -178,10 +178,10 @@ use dependency2::Spam;
     server.write_file_and_save(
         "src/lib.rs",
         r#"#!/usr/bin/env -S cargo +nightly -Zscript
-//! ```cargo
+//! ---cargo
 //! [dependencies]
 //! dependency2 = { path = "../dependency2" }
-//! ```
+//! ---
 use dependency::Spam;
 use dependency2::Spam;
 "#
@@ -195,7 +195,7 @@ use dependency2::Spam;
     let res = server.send_request::<Completion>(CompletionParams {
         text_document_position: TextDocumentPositionParams::new(
             server.doc_id("src/lib.rs"),
-            Position::new(7, 18),
+            Position::new(5, 18),
         ),
         context: None,
         partial_result_params: PartialResultParams::default(),
@@ -206,7 +206,7 @@ use dependency2::Spam;
     let res = server.send_request::<Completion>(CompletionParams {
         text_document_position: TextDocumentPositionParams::new(
             server.doc_id("src/lib.rs"),
-            Position::new(8, 18),
+            Position::new(6, 18),
         ),
         context: None,
         partial_result_params: PartialResultParams::default(),
