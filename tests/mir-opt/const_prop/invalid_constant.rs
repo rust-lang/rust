@@ -4,7 +4,6 @@
 // Verify that we can pretty print invalid constants.
 
 #![feature(adt_const_params)]
-#![feature(inline_const)]
 #![allow(incomplete_features)]
 
 #[derive(Copy, Clone)]

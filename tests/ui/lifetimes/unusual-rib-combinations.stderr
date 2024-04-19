@@ -1,11 +1,11 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/unusual-rib-combinations.rs:24:15
+  --> $DIR/unusual-rib-combinations.rs:22:15
    |
 LL | fn d<const C: S>() {}
    |               ^ expected named lifetime parameter
 
 error[E0770]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/unusual-rib-combinations.rs:29:22
+  --> $DIR/unusual-rib-combinations.rs:27:22
    |
 LL | struct Bar<const N: &'a (dyn for<'a> Foo<'a>)>;
    |                      ^^ the type must not depend on the parameter `'a`
@@ -13,25 +13,25 @@ LL | struct Bar<const N: &'a (dyn for<'a> Foo<'a>)>;
    = note: lifetime parameters may not be used in the type of const parameters
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/unusual-rib-combinations.rs:7:16
+  --> $DIR/unusual-rib-combinations.rs:5:16
    |
 LL | fn a() -> [u8; foo::()] {
    |                ^^^^^^^ only `Fn` traits may use parentheses
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/unusual-rib-combinations.rs:14:15
+  --> $DIR/unusual-rib-combinations.rs:12:15
    |
 LL | fn b<const C: u8()>() {}
    |               ^^^^ only `Fn` traits may use parentheses
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/unusual-rib-combinations.rs:18:10
+  --> $DIR/unusual-rib-combinations.rs:16:10
    |
 LL | fn c<T = u8()>() {}
    |          ^^^^ only `Fn` traits may use parentheses
 
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/unusual-rib-combinations.rs:18:6
+  --> $DIR/unusual-rib-combinations.rs:16:6
    |
 LL | fn c<T = u8()>() {}
    |      ^^^^^^^^
@@ -41,7 +41,7 @@ LL | fn c<T = u8()>() {}
    = note: `#[deny(invalid_type_param_default)]` on by default
 
 error[E0308]: mismatched types
-  --> $DIR/unusual-rib-combinations.rs:7:16
+  --> $DIR/unusual-rib-combinations.rs:5:16
    |
 LL | fn a() -> [u8; foo::()] {
    |                ^^^^^^^ expected `usize`, found fn item
@@ -50,7 +50,7 @@ LL | fn a() -> [u8; foo::()] {
            found fn item `fn() {foo}`
 
 error: `S<'_>` is forbidden as the type of a const generic parameter
-  --> $DIR/unusual-rib-combinations.rs:24:15
+  --> $DIR/unusual-rib-combinations.rs:22:15
    |
 LL | fn d<const C: S>() {}
    |               ^
