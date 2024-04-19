@@ -1241,7 +1241,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    fn implements_clone(&self, ty: Ty<'tcx>) -> bool {
+    pub(crate) fn implements_clone(&self, ty: Ty<'tcx>) -> bool {
         let Some(clone_trait_def) = self.infcx.tcx.lang_items().clone_trait() else { return false };
         self.infcx
             .type_implements_trait(clone_trait_def, [ty], self.param_env)
