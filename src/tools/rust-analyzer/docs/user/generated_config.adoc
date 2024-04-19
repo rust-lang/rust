@@ -538,10 +538,10 @@ How to render the size information in a memory layout hover.
 --
 How many variants of an enum to display when hovering on. Show none if empty.
 --
-[[rust-analyzer.hover.show.structOrUnionFields]]rust-analyzer.hover.show.structOrUnionFields (default: `5`)::
+[[rust-analyzer.hover.show.fields]]rust-analyzer.hover.show.fields (default: `5`)::
 +
 --
-How many fields of a struct or union to display when hovering on. Show none if empty.
+How many fields of a struct, variant or union to display when hovering on. Show none if empty.
 --
 [[rust-analyzer.hover.show.traitAssocItems]]rust-analyzer.hover.show.traitAssocItems (default: `null`)::
 +

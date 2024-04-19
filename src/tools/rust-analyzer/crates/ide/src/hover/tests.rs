@@ -18,7 +18,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     format: HoverDocFormat::Markdown,
     keywords: true,
     max_trait_assoc_items_count: None,
-    max_struct_or_union_fields_count: Some(5),
+    max_fields_count: Some(5),
     max_enum_variants_count: Some(5),
 };
 
@@ -52,7 +52,7 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 #[track_caller]
-fn check_hover_struct_or_union_fields_limit(
+fn check_hover_fields_limit(
     fields_count: impl Into<Option<usize>>,
     ra_fixture: &str,
     expect: Expect,
@@ -62,7 +62,7 @@ fn check_hover_struct_or_union_fields_limit(
         .hover(
             &HoverConfig {
                 links_in_hover: true,
-                max_struct_or_union_fields_count: fields_count.into(),
+                max_fields_count: fields_count.into(),
                 ..HOVER_BASE_CONFIG
             },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
@@ -939,7 +939,7 @@ struct Foo$0 where u32: Copy { field: u32 }
 
 #[test]
 fn hover_record_struct_limit() {
-    check_hover_struct_or_union_fields_limit(
+    check_hover_fields_limit(
         3,
         r#"
     struct Foo$0 { a: u32, b: i32, c: i32 }
@@ -961,7 +961,7 @@ fn hover_record_struct_limit() {
             ```
         "#]],
     );
-    check_hover_struct_or_union_fields_limit(
+    check_hover_fields_limit(
         3,
         r#"
     struct Foo$0 { a: u32 }
@@ -981,7 +981,7 @@ fn hover_record_struct_limit() {
             ```
         "#]],
     );
-    check_hover_struct_or_union_fields_limit(
+    check_hover_fields_limit(
         3,
         r#"
     struct Foo$0 { a: u32, b: i32, c: i32, d: u32 }
@@ -1004,7 +1004,7 @@ fn hover_record_struct_limit() {
             ```
         "#]],
     );
-    check_hover_struct_or_union_fields_limit(
+    check_hover_fields_limit(
         None,
         r#"
     struct Foo$0 { a: u32, b: i32, c: i32 }
@@ -1022,7 +1022,7 @@ fn hover_record_struct_limit() {
             ```
         "#]],
     );
-    check_hover_struct_or_union_fields_limit(
+    check_hover_fields_limit(
         0,
         r#"
     struct Foo$0 { a: u32, b: i32, c: i32 }
@@ -1040,6 +1040,100 @@ fn hover_record_struct_limit() {
             ```
         "#]],
     )
+}
+
+#[test]
+fn hover_record_variant_limit() {
+    check_hover_fields_limit(
+        3,
+        r#"
+    enum Foo { A$0 { a: u32, b: i32, c: i32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            A { a: u32, b: i32, c: i32, }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        3,
+        r#"
+    enum Foo { A$0 { a: u32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            A { a: u32, }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        3,
+        r#"
+    enum Foo { A$0 { a: u32, b: i32, c: i32, d: u32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 16 (0x10), align = 4
+            A { a: u32, b: i32, c: i32, /* … */ }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        None,
+        r#"
+    enum Foo { A$0 { a: u32, b: i32, c: i32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            A
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        0,
+        r#"
+    enum Foo { A$0 { a: u32, b: i32, c: i32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            A { /* … */ }
+            ```
+        "#]],
+    );
 }
 
 #[test]
@@ -1152,7 +1246,7 @@ fn hover_enum_limit() {
 
 #[test]
 fn hover_union_limit() {
-    check_hover_struct_or_union_fields_limit(
+    check_hover_fields_limit(
         5,
         r#"union Foo$0 { a: u32, b: i32 }"#,
         expect![[r#"
@@ -1171,7 +1265,7 @@ fn hover_union_limit() {
             ```
         "#]],
     );
-    check_hover_struct_or_union_fields_limit(
+    check_hover_fields_limit(
         1,
         r#"union Foo$0 { a: u32, b: i32 }"#,
         expect![[r#"
@@ -1190,7 +1284,7 @@ fn hover_union_limit() {
             ```
         "#]],
     );
-    check_hover_struct_or_union_fields_limit(
+    check_hover_fields_limit(
         0,
         r#"union Foo$0 { a: u32, b: i32 }"#,
         expect![[r#"
@@ -1206,7 +1300,7 @@ fn hover_union_limit() {
             ```
         "#]],
     );
-    check_hover_struct_or_union_fields_limit(
+    check_hover_fields_limit(
         None,
         r#"union Foo$0 { a: u32, b: i32 }"#,
         expect![[r#"
@@ -1691,7 +1785,7 @@ impl Thing {
                 ```
             "#]],
     );
-    check_hover_struct_or_union_fields_limit(
+    check_hover_fields_limit(
         None,
         r#"
 struct Thing { x: u32 }
@@ -6832,7 +6926,7 @@ enum Enum {
 
             ```rust
             // size = 4, align = 4
-            RecordV { field: u32 }
+            RecordV { field: u32, }
             ```
         "#]],
     );

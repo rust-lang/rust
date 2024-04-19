@@ -1161,8 +1161,8 @@
                     ],
                     "minimum": 0
                 },
-                "rust-analyzer.hover.show.structOrUnionFields": {
-                    "markdownDescription": "How many fields of a struct or union to display when hovering on. Show none if empty.",
+                "rust-analyzer.hover.show.fields": {
+                    "markdownDescription": "How many fields of a struct, variant or union to display when hovering on. Show none if empty.",
                     "default": 5,
                     "type": [
                         "null",

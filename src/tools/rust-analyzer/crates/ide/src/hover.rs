@@ -33,7 +33,7 @@ pub struct HoverConfig {
     pub keywords: bool,
     pub format: HoverDocFormat,
     pub max_trait_assoc_items_count: Option<usize>,
-    pub max_struct_or_union_fields_count: Option<usize>,
+    pub max_fields_count: Option<usize>,
     pub max_enum_variants_count: Option<usize>,
 }
 

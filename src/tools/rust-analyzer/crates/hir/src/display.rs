@@ -188,7 +188,7 @@ impl HirDisplay for Struct {
             StructKind::Record => {
                 let has_where_clause = write_where_clause(def_id, f)?;
                 if let Some(limit) = f.entity_limit {
-                    display_fields(&self.fields(f.db), has_where_clause, limit, f)?;
+                    display_fields(&self.fields(f.db), has_where_clause, limit, false, f)?;
                 }
             }
             StructKind::Unit => _ = write_where_clause(def_id, f)?,
@@ -225,7 +225,7 @@ impl HirDisplay for Union {
 
         let has_where_clause = write_where_clause(def_id, f)?;
         if let Some(limit) = f.entity_limit {
-            display_fields(&self.fields(f.db), has_where_clause, limit, f)?;
+            display_fields(&self.fields(f.db), has_where_clause, limit, false, f)?;
         }
         Ok(())
     }
@@ -235,10 +235,12 @@ fn display_fields(
     fields: &[Field],
     has_where_clause: bool,
     limit: usize,
+    in_line: bool,
     f: &mut HirFormatter<'_>,
 ) -> Result<(), HirDisplayError> {
     let count = fields.len().min(limit);
-    f.write_char(if !has_where_clause { ' ' } else { '\n' })?;
+    let (indent, separator) = if in_line { ("", ' ') } else { ("    ", '\n') };
+    f.write_char(if !has_where_clause { ' ' } else { separator })?;
     if count == 0 {
         if fields.is_empty() {
             f.write_str("{}")?;
@@ -246,15 +248,19 @@ fn display_fields(
             f.write_str("{ /* … */ }")?;
         }
     } else {
-        f.write_str("{\n")?;
+        f.write_char('{')?;
+        f.write_char(separator)?;
         for field in &fields[..count] {
-            f.write_str("    ")?;
+            f.write_str(indent)?;
             field.hir_fmt(f)?;
-            f.write_str(",\n")?;
+            f.write_char(',')?;
+            f.write_char(separator)?;
         }
 
         if fields.len() > count {
-            f.write_str("    /* … */\n")?;
+            f.write_str(indent)?;
+            f.write_str("/* … */")?;
+            f.write_char(separator)?;
         }
         f.write_str("}")?;
     }
@@ -345,21 +351,10 @@ impl HirDisplay for Variant {
                 }
                 f.write_char(')')?;
             }
-            VariantData::Record(fields) => {
-                f.write_str(" {")?;
-                let mut first = true;
-                for (_, field) in fields.iter() {
-                    if first {
-                        first = false;
-                        f.write_char(' ')?;
-                    } else {
-                        f.write_str(", ")?;
-                    }
-                    // Enum variant fields must be pub.
-                    write!(f, "{}: ", field.name.display(f.db.upcast()))?;
-                    field.type_ref.hir_fmt(f)?;
+            VariantData::Record(_) => {
+                if let Some(limit) = f.entity_limit {
+                    display_fields(&self.fields(f.db), false, limit, true, f)?;
                 }
-                f.write_str(" }")?;
             }
         }
         Ok(())
