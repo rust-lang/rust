@@ -118,6 +118,105 @@ fn f() {
 }
 
 #[test]
+fn completes_items_from_standard_library_in_cargo_script() {
+    // this test requires nightly so CI can't run it
+    if skip_slow_tests() || std::env::var("CI").is_ok() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /dependency/Cargo.toml
+[package]
+name = "dependency"
+version = "0.1.0"
+//- /dependency/src/lib.rs
+pub struct SpecialHashMap;
+//- /dependency2/Cargo.toml
+[package]
+name = "dependency2"
+version = "0.1.0"
+//- /dependency2/src/lib.rs
+pub struct SpecialHashMap2;
+//- /src/lib.rs
+#!/usr/bin/env -S cargo +nightly -Zscript
+---
+[dependencies]
+dependency = { path = "../dependency" }
+---
+use dependency::Spam;
+use dependency2::Spam;
+"#,
+    )
+    .with_config(serde_json::json!({
+        "cargo": { "sysroot": null },
+    }))
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    let res = server.send_request::<Completion>(CompletionParams {
+        text_document_position: TextDocumentPositionParams::new(
+            server.doc_id("src/lib.rs"),
+            Position::new(5, 18),
+        ),
+        context: None,
+        partial_result_params: PartialResultParams::default(),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    assert!(res.to_string().contains("SpecialHashMap"), "{}", res.to_string());
+
+    let res = server.send_request::<Completion>(CompletionParams {
+        text_document_position: TextDocumentPositionParams::new(
+            server.doc_id("src/lib.rs"),
+            Position::new(6, 18),
+        ),
+        context: None,
+        partial_result_params: PartialResultParams::default(),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    assert!(!res.to_string().contains("SpecialHashMap"));
+
+    server.write_file_and_save(
+        "src/lib.rs",
+        r#"#!/usr/bin/env -S cargo +nightly -Zscript
+---
+[dependencies]
+dependency2 = { path = "../dependency2" }
+---
+use dependency::Spam;
+use dependency2::Spam;
+"#
+        .to_owned(),
+    );
+
+    let server = server.wait_until_workspace_is_loaded();
+
+    std::thread::sleep(std::time::Duration::from_secs(3));
+
+    let res = server.send_request::<Completion>(CompletionParams {
+        text_document_position: TextDocumentPositionParams::new(
+            server.doc_id("src/lib.rs"),
+            Position::new(5, 18),
+        ),
+        context: None,
+        partial_result_params: PartialResultParams::default(),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    assert!(!res.to_string().contains("SpecialHashMap"));
+
+    let res = server.send_request::<Completion>(CompletionParams {
+        text_document_position: TextDocumentPositionParams::new(
+            server.doc_id("src/lib.rs"),
+            Position::new(6, 18),
+        ),
+        context: None,
+        partial_result_params: PartialResultParams::default(),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    assert!(res.to_string().contains("SpecialHashMap"));
+}
+
+#[test]
 fn test_runnables_project() {
     if skip_slow_tests() {
         return;

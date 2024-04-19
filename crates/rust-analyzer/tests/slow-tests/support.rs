@@ -125,7 +125,7 @@ impl Project<'_> {
         }
 
         let mut config = Config::new(
-            tmp_dir_path,
+            tmp_dir_path.clone(),
             lsp_types::ClientCapabilities {
                 workspace: Some(lsp_types::WorkspaceClientCapabilities {
                     did_change_watched_files: Some(
@@ -185,10 +185,14 @@ impl Project<'_> {
             roots,
             None,
         );
-        config.update(self.config).expect("invalid config");
+        // TODO: don't hardcode src/lib.rs as detached file
+        let mut c = self.config;
+        let p = tmp_dir_path.join("src/lib.rs").to_string();
+        c["detachedFiles"] = serde_json::json!([p]);
+        config.update(c).expect("invalid config");
         config.rediscover_workspaces();
 
-        Server::new(tmp_dir, config)
+        Server::new(tmp_dir.keep(), config)
     }
 }
 
@@ -283,6 +287,7 @@ impl Server {
         }
     }
 
+    #[track_caller]
     pub(crate) fn send_request<R>(&self, params: R::Params) -> Value
     where
         R: lsp_types::request::Request,
@@ -294,6 +299,7 @@ impl Server {
         let r = Request::new(id.into(), R::METHOD.to_owned(), params);
         self.send_request_(r)
     }
+    #[track_caller]
     fn send_request_(&self, r: Request) -> Value {
         let id = r.id.clone();
         self.client.sender.send(r.clone().into()).unwrap();
@@ -373,6 +379,16 @@ impl Server {
 
     pub(crate) fn path(&self) -> &Utf8Path {
         self.dir.path()
+    }
+
+    pub(crate) fn write_file_and_save(&self, path: &str, text: String) {
+        fs::write(self.dir.path().join(path), &text).unwrap();
+        self.notification::<lsp_types::notification::DidSaveTextDocument>(
+            lsp_types::DidSaveTextDocumentParams {
+                text_document: self.doc_id(path),
+                text: Some(text),
+            },
+        )
     }
 }
 

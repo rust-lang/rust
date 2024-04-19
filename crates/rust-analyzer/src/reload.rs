@@ -153,7 +153,7 @@ impl GlobalState {
         for ws in self.workspaces.iter() {
             let (ProjectWorkspace::Cargo { sysroot, .. }
             | ProjectWorkspace::Json { sysroot, .. }
-            | ProjectWorkspace::DetachedFiles { sysroot, .. }) = ws;
+            | ProjectWorkspace::DetachedFile { sysroot, .. }) = ws;
             match sysroot {
                 Err(None) => (),
                 Err(Some(e)) => {
@@ -255,7 +255,7 @@ impl GlobalState {
                 }
 
                 if !detached_files.is_empty() {
-                    workspaces.push(project_model::ProjectWorkspace::load_detached_files(
+                    workspaces.extend(project_model::ProjectWorkspace::load_detached_files(
                         detached_files,
                         &cargo_config,
                     ));
@@ -540,9 +540,6 @@ impl GlobalState {
     }
 
     fn recreate_crate_graph(&mut self, cause: String) {
-        // crate graph construction relies on these paths, record them so when one of them gets
-        // deleted or created we trigger a reconstruction of the crate graph
-        let mut crate_graph_file_dependencies = mem::take(&mut self.crate_graph_file_dependencies);
         self.report_progress(
             "Building CrateGraph",
             crate::lsp::utils::Progress::Begin,
@@ -551,13 +548,25 @@ impl GlobalState {
             None,
         );
 
+        // crate graph construction relies on these paths, record them so when one of them gets
+        // deleted or created we trigger a reconstruction of the crate graph
+        self.crate_graph_file_dependencies.clear();
+        self.detached_files = self
+            .workspaces
+            .iter()
+            .filter_map(|ws| match ws {
+                ProjectWorkspace::DetachedFile { file, .. } => Some(file.clone()),
+                _ => None,
+            })
+            .collect();
+
         let (crate_graph, proc_macro_paths, layouts, toolchains) = {
             // Create crate graph from all the workspaces
             let vfs = &mut self.vfs.write().0;
 
             let load = |path: &AbsPath| {
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
-                crate_graph_file_dependencies.insert(vfs_path.clone());
+                self.crate_graph_file_dependencies.insert(vfs_path.clone());
                 vfs.file_id(&vfs_path)
             };
 
@@ -577,7 +586,6 @@ impl GlobalState {
         change.set_target_data_layouts(layouts);
         change.set_toolchains(toolchains);
         self.analysis_host.apply_change(change);
-        self.crate_graph_file_dependencies = crate_graph_file_dependencies;
         self.report_progress(
             "Building CrateGraph",
             crate::lsp::utils::Progress::End,
@@ -674,7 +682,8 @@ impl GlobalState {
                                 _ => None,
                             }
                         }
-                        ProjectWorkspace::DetachedFiles { .. } => None,
+                        // FIXME
+                        ProjectWorkspace::DetachedFile { .. } => None,
                     })
                     .map(|(id, root, sysroot_root)| {
                         let sender = sender.clone();
@@ -713,15 +722,9 @@ pub fn ws_to_crate_graph(
         let (other, mut crate_proc_macros) = ws.to_crate_graph(&mut load, extra_env);
         let num_layouts = layouts.len();
         let num_toolchains = toolchains.len();
-        let (toolchain, layout) = match ws {
-            ProjectWorkspace::Cargo { toolchain, target_layout, .. }
-            | ProjectWorkspace::Json { toolchain, target_layout, .. } => {
-                (toolchain.clone(), target_layout.clone())
-            }
-            ProjectWorkspace::DetachedFiles { .. } => {
-                (None, Err("detached files have no layout".into()))
-            }
-        };
+        let (ProjectWorkspace::Cargo { toolchain, target_layout, .. }
+        | ProjectWorkspace::Json { toolchain, target_layout, .. }
+        | ProjectWorkspace::DetachedFile { toolchain, target_layout, .. }) = ws;
 
         let mapping = crate_graph.extend(
             other,
@@ -730,7 +733,7 @@ pub fn ws_to_crate_graph(
                 // if the newly created crate graph's layout is equal to the crate of the merged graph, then
                 // we can merge the crates.
                 let id = cg_id.into_raw().into_u32() as usize;
-                layouts[id] == layout && toolchains[id] == toolchain && cg_data == o_data
+                layouts[id] == *target_layout && toolchains[id] == *toolchain && cg_data == o_data
             },
         );
         // Populate the side tables for the newly merged crates
@@ -742,13 +745,13 @@ pub fn ws_to_crate_graph(
                 if layouts.len() <= idx {
                     layouts.resize(idx + 1, e.clone());
                 }
-                layouts[idx].clone_from(&layout);
+                layouts[idx].clone_from(target_layout);
             }
             if idx >= num_toolchains {
                 if toolchains.len() <= idx {
                     toolchains.resize(idx + 1, None);
                 }
-                toolchains[idx].clone_from(&toolchain);
+                toolchains[idx].clone_from(toolchain);
             }
         });
         proc_macro_paths.push(crate_proc_macros);

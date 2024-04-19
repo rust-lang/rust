@@ -101,7 +101,7 @@ pub(crate) fn handle_analyzer_status(
             "Workspace root folders: {:?}",
             snap.workspaces
                 .iter()
-                .flat_map(|ws| ws.workspace_definition_path())
+                .map(|ws| ws.workspace_definition_path())
                 .collect::<Vec<&AbsPath>>()
         );
     }
@@ -1761,7 +1761,9 @@ pub(crate) fn handle_open_docs(
     let ws_and_sysroot = snap.workspaces.iter().find_map(|ws| match ws {
         ProjectWorkspace::Cargo { cargo, sysroot, .. } => Some((cargo, sysroot.as_ref().ok())),
         ProjectWorkspace::Json { .. } => None,
-        ProjectWorkspace::DetachedFiles { .. } => None,
+        ProjectWorkspace::DetachedFile { cargo_script, sysroot, .. } => {
+            cargo_script.as_ref().zip(Some(sysroot.as_ref().ok()))
+        }
     });
 
     let (cargo, sysroot) = match ws_and_sysroot {

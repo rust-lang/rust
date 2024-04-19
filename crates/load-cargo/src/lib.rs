@@ -335,7 +335,7 @@ fn load_crate_graph(
 ) -> RootDatabase {
     let (ProjectWorkspace::Cargo { toolchain, target_layout, .. }
     | ProjectWorkspace::Json { toolchain, target_layout, .. }
-    | ProjectWorkspace::DetachedFiles { toolchain, target_layout, .. }) = ws;
+    | ProjectWorkspace::DetachedFile { toolchain, target_layout, .. }) = ws;
 
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
     let mut db = RootDatabase::new(lru_cap);

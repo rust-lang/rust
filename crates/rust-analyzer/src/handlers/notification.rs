@@ -154,6 +154,10 @@ pub(crate) fn handle_did_save_text_document(
                 state
                     .fetch_workspaces_queue
                     .request_op(format!("workspace vfs file change saved {abs_path}"), false);
+            } else if state.detached_files.contains(abs_path) {
+                state
+                    .fetch_workspaces_queue
+                    .request_op(format!("detached file saved {abs_path}"), false);
             }
         }
 
@@ -303,7 +307,8 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                         }
                         None
                     }
-                    project_model::ProjectWorkspace::DetachedFiles { .. } => return None,
+                    // FIXME
+                    project_model::ProjectWorkspace::DetachedFile { .. } => return None,
                 };
                 Some((idx, package))
             });

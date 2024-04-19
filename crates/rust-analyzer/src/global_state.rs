@@ -125,6 +125,7 @@ pub(crate) struct GlobalState {
     /// to invalidate any salsa caches.
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
     pub(crate) crate_graph_file_dependencies: FxHashSet<vfs::VfsPath>,
+    pub(crate) detached_files: FxHashSet<vfs::AbsPathBuf>,
 
     // op queues
     pub(crate) fetch_workspaces_queue:
@@ -233,6 +234,7 @@ impl GlobalState {
 
             workspaces: Arc::from(Vec::new()),
             crate_graph_file_dependencies: FxHashSet::default(),
+            detached_files: FxHashSet::default(),
             fetch_workspaces_queue: OpQueue::default(),
             fetch_build_data_queue: OpQueue::default(),
             fetch_proc_macros_queue: OpQueue::default(),
@@ -519,7 +521,7 @@ impl GlobalStateSnapshot {
                 cargo.target_by_root(path).map(|it| (cargo, it))
             }
             ProjectWorkspace::Json { .. } => None,
-            ProjectWorkspace::DetachedFiles { .. } => None,
+            ProjectWorkspace::DetachedFile { .. } => None,
         })
     }
 
