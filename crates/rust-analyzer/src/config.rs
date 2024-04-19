@@ -166,8 +166,6 @@ config_data! {
         /// Set to `true` to use a subdirectory of the existing target directory or
         /// set to a path relative to the workspace to use that path.
         cargo_targetDir | rust_analyzerTargetDir: Option<TargetDirectory> = None,
-        /// Unsets the implicit `#[cfg(test)]` for the specified crates.
-        cargo_unsetTest: Vec<String>     = vec!["core".to_owned()],
 
         /// Run the check command for diagnostics on save.
         checkOnSave | checkOnSave_enable: bool                         = true,
@@ -1614,16 +1612,7 @@ impl Config {
                     vec![],
                 )
                 .unwrap(),
-                selective: self
-                    .cargo_unsetTest()
-                    .iter()
-                    .map(|it| {
-                        (
-                            it.clone(),
-                            CfgDiff::new(vec![], vec![CfgAtom::Flag("test".into())]).unwrap(),
-                        )
-                    })
-                    .collect(),
+                selective: Default::default(),
             },
             wrap_rustc_in_build_scripts: *self.cargo_buildScripts_useRustcWrapper(),
             invocation_strategy: match self.cargo_buildScripts_invocationStrategy() {
