@@ -164,20 +164,6 @@ jobs:
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
         if: success() && !env.SKIP_JOB
-      - name: upload artifacts to github
-        uses: actions/upload-artifact@v4
-        with:
-          name: "${{ env.DOC_ARTIFACT_NAME }}"
-          path: obj/artifacts/doc
-          if-no-files-found: ignore
-          retention-days: 5
-        if: success() && !env.SKIP_JOB
-      - name: upload artifacts to S3
-        run: src/ci/scripts/upload-artifacts.sh
-        env:
-          AWS_ACCESS_KEY_ID: "${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}"
-          AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}"
-        if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
   master:
     name: master
     runs-on: ubuntu-latest

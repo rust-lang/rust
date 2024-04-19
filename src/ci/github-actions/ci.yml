@@ -97,11 +97,11 @@ x--expand-yaml-anchors--remove:
     <<: *base-job
 
   - &job-windows-8c
-    os: windows-2019-8core-32gb
+    os: windows-2022
     <<: *base-job
 
   - &job-windows-16c
-    os: windows-2019-16core-64gb
+    os: windows-2022
     <<: *base-job
 
   - &job-aarch64-linux
@@ -259,29 +259,6 @@ x--expand-yaml-anchors--remove:
 
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
-        <<: *step
-
-      - name: upload artifacts to github
-        uses: actions/upload-artifact@v4
-        with:
-          # name is set in previous step
-          name: ${{ env.DOC_ARTIFACT_NAME }}
-          path: obj/artifacts/doc
-          if-no-files-found: ignore
-          retention-days: 5
-        <<: *step
-
-      - name: upload artifacts to S3
-        run: src/ci/scripts/upload-artifacts.sh
-        env:
-          AWS_ACCESS_KEY_ID: ${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}
-        # Adding a condition on DEPLOY=1 or DEPLOY_ALT=1 is not needed as all deploy
-        # builders *should* have the AWS credentials available. Still, explicitly
-        # adding the condition is helpful as this way CI will not silently skip
-        # deploying artifacts from a dist builder if the variables are misconfigured,
-        # erroring about invalid credentials instead.
-        if: success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
         <<: *step
 
   # These snippets are used by the try-success, try-failure, auto-success and auto-failure jobs.

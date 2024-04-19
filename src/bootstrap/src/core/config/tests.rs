@@ -102,7 +102,7 @@ fn detect_src_and_out() {
     test(parse(""), None);
 
     {
-        let build_dir = if cfg!(windows) { Some("C:\\tmp") } else { Some("/tmp") };
+        let build_dir = if cfg!(windows) { Some("D:\\tmp") } else { Some("/tmp") };
         test(parse("build.build-dir = \"/tmp\""), build_dir);
     }
 }

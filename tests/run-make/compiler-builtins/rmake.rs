@@ -63,7 +63,8 @@ fn main() {
         .env("RUSTC", rustc)
         .env("RUSTFLAGS", "-Copt-level=0 -Cdebug-assertions=yes")
         .env("CARGO_TARGET_DIR", &target_dir)
-        .env("RUSTC_BOOTSTRAP", "1");
+        .env("RUSTC_BOOTSTRAP", "1")
+        .env("LIB", std::env::var("LIB").unwrap_or_default());
     set_host_rpath(&mut cmd);
 
     let status = cmd.status().unwrap();
