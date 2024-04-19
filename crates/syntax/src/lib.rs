@@ -65,6 +65,7 @@ pub use rowan::{
     api::Preorder, Direction, GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize,
     TokenAtOffset, WalkEvent,
 };
+pub use rustc_lexer::unescape;
 pub use smol_str::{format_smolstr, SmolStr};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
