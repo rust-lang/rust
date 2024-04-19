@@ -223,6 +223,12 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
         // empty stacks.
         self.top_user_relevant_frame.or_else(|| self.stack.len().checked_sub(1))
     }
+
+    pub fn current_span(&self) -> Span {
+        self.top_user_relevant_frame()
+            .map(|frame_idx| self.stack[frame_idx].current_span())
+            .unwrap_or(rustc_span::DUMMY_SP)
+    }
 }
 
 impl<'mir, 'tcx> std::fmt::Debug for Thread<'mir, 'tcx> {
