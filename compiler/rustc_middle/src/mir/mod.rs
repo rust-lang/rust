@@ -18,8 +18,7 @@ use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, Into
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::{
-    self as hir, BindingAnnotation, ByRef, CoroutineDesugaring, CoroutineKind, HirId,
-    ImplicitSelfKind,
+    self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
 };
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
@@ -930,7 +929,7 @@ pub enum LocalKind {
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct VarBindingForm<'tcx> {
     /// Is variable bound via `x`, `mut x`, `ref x`, `ref mut x`, `mut ref x`, or `mut ref mut x`?
-    pub binding_mode: BindingAnnotation,
+    pub binding_mode: BindingMode,
     /// If an explicit type was provided for this variable binding,
     /// this holds the source Span of that type.
     ///
@@ -1155,7 +1154,7 @@ impl<'tcx> LocalDecl<'tcx> {
             self.local_info(),
             LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
-                    binding_mode: BindingAnnotation(ByRef::No, _),
+                    binding_mode: BindingMode(ByRef::No, _),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
@@ -1172,7 +1171,7 @@ impl<'tcx> LocalDecl<'tcx> {
             self.local_info(),
             LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
-                    binding_mode: BindingAnnotation(ByRef::No, _),
+                    binding_mode: BindingMode(ByRef::No, _),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
@@ -1814,7 +1813,7 @@ impl DefLocation {
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;

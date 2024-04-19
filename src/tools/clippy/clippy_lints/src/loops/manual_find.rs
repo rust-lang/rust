@@ -7,7 +7,7 @@ use clippy_utils::{higher, is_res_lang_ctor, path_res, peel_blocks_with_stmt};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind};
+use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
@@ -107,7 +107,7 @@ fn get_binding(pat: &Pat<'_>) -> Option<HirId> {
             hir_id = None;
             return;
         }
-        if let BindingAnnotation::NONE = annotation {
+        if let BindingMode::NONE = annotation {
             hir_id = Some(id);
         }
     });

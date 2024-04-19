@@ -229,8 +229,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 else {
                     bug!();
                 };
-                let hir::PatKind::Binding(hir::BindingAnnotation(hir::ByRef::No, _), _, _, _) =
-                    pat.kind
+                let hir::PatKind::Binding(hir::BindingMode(hir::ByRef::No, _), _, _, _) = pat.kind
                 else {
                     // Complex pattern, skip the non-upvar local.
                     continue;

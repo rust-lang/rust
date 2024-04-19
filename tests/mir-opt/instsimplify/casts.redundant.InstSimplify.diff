@@ -8,7 +8,6 @@
       let mut _3: *const &u8;
       let mut _4: *const &u8;
       scope 1 (inlined generic_cast::<&u8, &u8>) {
-          debug x => _4;
           let mut _5: *const &u8;
       }
   

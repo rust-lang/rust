@@ -99,7 +99,7 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, ByRef, Closure, Destination, Expr,
+    self as hir, def, Arm, ArrayLen, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, Destination, Expr,
     ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item,
     ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment,
     PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
@@ -184,7 +184,7 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 /// canonical binding `HirId`.
 pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
     if let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
-        && matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..))
+        && matches!(pat.kind, PatKind::Binding(BindingMode::NONE, ..))
         && let Node::LetStmt(local) = cx.tcx.parent_hir_node(hir_id)
     {
         return local.init;
