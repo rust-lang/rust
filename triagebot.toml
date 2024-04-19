@@ -227,7 +227,9 @@ trigger_files = [
 
 [autolabel."O-macos"]
 trigger_files = [
-    "library/std/src/os/macos"
+    "library/std/src/os/macos",
+    "library/std/src/sys/pal/unix/thread_parking/darwin.rs",
+    "compiler/rustc_target/src/spec/base/apple",
 ]
 
 [autolabel."O-netbsd"]
