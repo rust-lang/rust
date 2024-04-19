@@ -277,6 +277,13 @@ fn default_hook(info: &PanicInfo<'_>) {
                         "note: run with `RUST_BACKTRACE=1` environment variable to display a \
                              backtrace"
                     );
+                    if cfg!(miri) {
+                        let _ = writeln!(
+                            err,
+                            "note: in Miri, you may have to set `-Zmiri-env-forward=RUST_BACKTRACE` \
+                                for the environment variable to have an effect"
+                        );
+                    }
                 }
             }
             // If backtraces aren't supported or are forced-off, do nothing.
