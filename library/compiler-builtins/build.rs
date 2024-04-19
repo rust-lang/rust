@@ -572,7 +572,9 @@ mod c {
         // rust-lang/rust.
         let root = match env::var_os("RUST_COMPILER_RT_ROOT") {
             Some(s) => PathBuf::from(s),
-            None => panic!("RUST_COMPILER_RT_ROOT is not set"),
+            None => {
+                panic!("RUST_COMPILER_RT_ROOT is not set. You may need to download compiler-rt.")
+            }
         };
         if !root.exists() {
             panic!("RUST_COMPILER_RT_ROOT={} does not exist", root.display());
