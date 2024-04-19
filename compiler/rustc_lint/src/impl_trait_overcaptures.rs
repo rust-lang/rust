@@ -194,10 +194,15 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
                         .chain(others)
                         .map(|def_id| self.tcx.item_name(def_id).to_string())
                         .collect();
-                    Some((
-                        format!(" use<{}>", generics.join(", ")),
-                        opaque_span.with_lo(opaque_span.lo() + BytePos(4)).shrink_to_lo(),
-                    ))
+                    // Make sure that we're not trying to name any APITs
+                    if generics.iter().all(|name| !name.starts_with("impl ")) {
+                        Some((
+                            format!(" use<{}>", generics.join(", ")),
+                            opaque_span.with_lo(opaque_span.lo() + BytePos(4)).shrink_to_lo(),
+                        ))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 };
