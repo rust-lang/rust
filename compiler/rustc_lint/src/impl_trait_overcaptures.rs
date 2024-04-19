@@ -1,5 +1,5 @@
-use rustc_data_structures::{fx::FxIndexSet, unord::UnordSet};
-use rustc_errors::LintDiagnostic;
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_errors::{Applicability, LintDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -7,7 +7,9 @@ use rustc_hir::intravisit;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::Span;
+use rustc_session::lint::FutureIncompatibilityReason;
+use rustc_span::edition::Edition;
+use rustc_span::{BytePos, Span};
 
 use crate::fluent_generated as fluent;
 use crate::{LateContext, LateLintPass};
@@ -146,7 +148,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
             && opaque.precise_capturing_args.is_none()
         {
             // Compute the set of args that are captured by the opaque...
-            let mut captured = UnordSet::default();
+            let mut captured = FxIndexSet::default();
             let variances = self.tcx.variances_of(opaque_def_id);
             let mut current_def_id = Some(opaque_def_id.to_def_id());
             while let Some(def_id) = current_def_id {
@@ -172,19 +174,43 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
             let uncaptured_spans: Vec<_> = self
                 .in_scope_parameters
                 .iter()
-                .filter(|def_id| !captured.contains(def_id))
+                .filter(|def_id| !captured.contains(*def_id))
                 .map(|def_id| self.tcx.def_span(def_id))
                 .collect();
 
             if !uncaptured_spans.is_empty() {
+                let opaque_span = self.tcx.def_span(opaque_def_id);
+
+                let suggestion = if let Ok(snippet) =
+                    self.tcx.sess.source_map().span_to_snippet(opaque_span)
+                    && snippet.starts_with("impl ")
+                {
+                    let (lifetimes, others): (Vec<_>, Vec<_>) = captured
+                        .into_iter()
+                        .partition(|def_id| self.tcx.def_kind(*def_id) == DefKind::LifetimeParam);
+                    // Take all lifetime params first, then all others (ty/ct).
+                    let generics: Vec<_> = lifetimes
+                        .into_iter()
+                        .chain(others)
+                        .map(|def_id| self.tcx.item_name(def_id).to_string())
+                        .collect();
+                    Some((
+                        format!(" use<{}>", generics.join(", ")),
+                        opaque_span.with_lo(opaque_span.lo() + BytePos(4)).shrink_to_lo(),
+                    ))
+                } else {
+                    None
+                };
+
                 self.tcx.emit_node_lint(
                     IMPL_TRAIT_OVERCAPTURES,
                     self.tcx.local_def_id_to_hir_id(opaque_def_id),
                     ImplTraitOvercapturesLint {
-                        opaque_span: self.tcx.def_span(opaque_def_id),
+                        opaque_span,
                         self_ty: t,
                         num_captured: uncaptured_spans.len(),
                         uncaptured_spans,
+                        suggestion,
                     },
                 );
             }
@@ -209,6 +235,7 @@ struct ImplTraitOvercapturesLint<'tcx> {
     uncaptured_spans: Vec<Span>,
     self_ty: Ty<'tcx>,
     num_captured: usize,
+    suggestion: Option<(String, Span)>,
 }
 
 impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
@@ -218,6 +245,14 @@ impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
             .span(self.opaque_span)
             .span_note(self.uncaptured_spans, fluent::lint_note)
             .note(fluent::lint_note2);
+        if let Some((suggestion, span)) = self.suggestion {
+            diag.span_suggestion(
+                span,
+                fluent::lint_suggestion,
+                suggestion,
+                Applicability::MachineApplicable,
+            );
+        }
     }
 
     fn msg(&self) -> rustc_errors::DiagMessage {

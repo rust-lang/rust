@@ -15,6 +15,7 @@ lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than pos
         *[other] these lifetimes are
      } in scope but not mentioned in the type's bounds
     .note2 = all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+    .suggestion = use the precise capturing `use<...>` syntax to make the captures explicit
 
 lint_async_fn_in_trait = use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
     .note = you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
