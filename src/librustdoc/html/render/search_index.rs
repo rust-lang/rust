@@ -49,6 +49,7 @@ use encode::{bitmap_to_string, write_vlqhex_to_string};
 pub(crate) struct SerializedSearchIndex {
     pub(crate) index: String,
     pub(crate) desc: Vec<(usize, String)>,
+    pub(crate) param_names: String,
 }
 
 const DESC_INDEX_SHARD_LEN: usize = 128 * 1024;
@@ -681,6 +682,23 @@ pub(crate) fn build_index<'tcx>(
         desc.iter().map(|(len, _)| *len).sum::<usize>() + empty_desc.len()
     );
 
+    let param_names = {
+        let result: Vec<Vec<&str>> = crate_items
+            .iter()
+            .map(|item| match &item.search_type {
+                Some(ty) => ty.param_names.iter().map(|sym| sym.as_str()).collect(),
+                None => Vec::new(),
+            })
+            .collect();
+        serde_json::to_string(&result)
+            .expect("failed serde conversion")
+            // All these `replace` calls are because we have to go through JS string for JSON content.
+            .replace('\\', r"\\")
+            .replace('\'', r"\'")
+            // We need to escape double quotes for the JSON.
+            .replace("\\\"", "\\\\\"")
+    };
+
     // The index, which is actually used to search, is JSON
     // It uses `JSON.parse(..)` to actually load, since JSON
     // parses faster than the full JavaScript syntax.
@@ -702,7 +720,7 @@ pub(crate) fn build_index<'tcx>(
         // We need to escape double quotes for the JSON.
         .replace("\\\"", "\\\\\"")
     );
-    SerializedSearchIndex { index, desc }
+    SerializedSearchIndex { index, desc, param_names }
 }
 
 pub(crate) fn get_function_type_for_search<'tcx>(
@@ -738,7 +756,7 @@ pub(crate) fn get_function_type_for_search<'tcx>(
             None
         }
     });
-    let (mut inputs, mut output, where_clause) = match *item.kind {
+    let (mut inputs, mut output, param_names, where_clause) = match *item.kind {
         clean::FunctionItem(ref f) | clean::MethodItem(ref f, _) | clean::TyMethodItem(ref f) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
         }
@@ -748,7 +766,7 @@ pub(crate) fn get_function_type_for_search<'tcx>(
     inputs.retain(|a| a.id.is_some() || a.generics.is_some());
     output.retain(|a| a.id.is_some() || a.generics.is_some());
 
-    Some(IndexItemFunctionType { inputs, output, where_clause })
+    Some(IndexItemFunctionType { inputs, output, where_clause, param_names })
 }
 
 fn get_index_type(
@@ -1250,7 +1268,7 @@ fn get_fn_inputs_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_or_trait_generics: Option<&(clean::Type, clean::Generics)>,
     cache: &Cache,
-) -> (Vec<RenderType>, Vec<RenderType>, Vec<Vec<RenderType>>) {
+) -> (Vec<RenderType>, Vec<RenderType>, Vec<Symbol>, Vec<Vec<RenderType>>) {
     let decl = &func.decl;
 
     let mut rgen: FxHashMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
@@ -1296,7 +1314,21 @@ fn get_fn_inputs_and_outputs<'tcx>(
     let mut ret_types = Vec::new();
     simplify_fn_type(self_, generics, &decl.output, tcx, 0, &mut ret_types, &mut rgen, true, cache);
 
-    let mut simplified_params = rgen.into_values().collect::<Vec<_>>();
-    simplified_params.sort_by_key(|(idx, _)| -idx);
-    (arg_types, ret_types, simplified_params.into_iter().map(|(_idx, traits)| traits).collect())
+    let mut simplified_params = rgen.into_iter().collect::<Vec<_>>();
+    simplified_params.sort_by_key(|(_, (idx, _))| -idx);
+    (
+        arg_types,
+        ret_types,
+        simplified_params
+            .iter()
+            .map(|(name, (_idx, _traits))| match name {
+                SimplifiedParam::Symbol(name) => *name,
+                SimplifiedParam::Anonymous(_) => kw::Empty,
+                SimplifiedParam::AssociatedType(def_id, name) => {
+                    Symbol::intern(&format!("{}::{}", tcx.item_name(*def_id), name))
+                }
+            })
+            .collect(),
+        simplified_params.into_iter().map(|(_name, (_idx, traits))| traits).collect(),
+    )
 }
