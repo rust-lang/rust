@@ -409,7 +409,7 @@ impl<'tcx> Const<'tcx> {
         let size =
             tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(self.ty())).ok()?.size;
         // if `ty` does not depend on generic parameters, use an empty param_env
-        int.to_bits(size).ok()
+        int.try_to_bits(size).ok()
     }
 
     #[inline]
