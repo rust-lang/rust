@@ -1,4 +1,3 @@
-#![feature(inline_const)]
 #![allow(arithmetic_overflow, unconditional_panic)]
 
 // The only way to have promoteds that fail is in `const fn` called from `const`/`static`.

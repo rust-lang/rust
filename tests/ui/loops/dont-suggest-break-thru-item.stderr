@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/dont-suggest-break-thru-item.rs:9:17
+  --> $DIR/dont-suggest-break-thru-item.rs:7:17
    |
 LL | /             if true {
 LL | |                 Err(1)
@@ -17,7 +17,7 @@ LL |                 return Err(1);
    |                 ++++++       +
 
 error[E0308]: mismatched types
-  --> $DIR/dont-suggest-break-thru-item.rs:23:17
+  --> $DIR/dont-suggest-break-thru-item.rs:21:17
    |
 LL | /             if true {
 LL | |                 Err(1)
@@ -35,7 +35,7 @@ LL |                 return Err(1);
    |                 ++++++       +
 
 error[E0308]: mismatched types
-  --> $DIR/dont-suggest-break-thru-item.rs:37:17
+  --> $DIR/dont-suggest-break-thru-item.rs:35:17
    |
 LL | /             if true {
 LL | |                 Err(1)
@@ -48,7 +48,7 @@ LL | |             }
                    found enum `Result<_, {integer}>`
 
 error[E0308]: mismatched types
-  --> $DIR/dont-suggest-break-thru-item.rs:49:17
+  --> $DIR/dont-suggest-break-thru-item.rs:47:17
    |
 LL | /             if true {
 LL | |                 Err(1)

@@ -4,7 +4,6 @@
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
 #![feature(custom_mir)]
-#![feature(inline_const)]
 #![allow(unreachable_code)]
 
 use std::intrinsics::{transmute, transmute_unchecked};
