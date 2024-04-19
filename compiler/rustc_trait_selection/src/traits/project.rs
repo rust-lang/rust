@@ -641,7 +641,7 @@ pub fn compute_inherent_assoc_ty_args<'a, 'b, 'tcx>(
         );
     }
 
-    match selcx.infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, impl_ty, self_ty) {
+    match selcx.infcx.at(&cause, param_env).eq(DefineOpaqueTypes::Yes, impl_ty, self_ty) {
         Ok(mut ok) => obligations.append(&mut ok.obligations),
         Err(_) => {
             tcx.dcx().span_bug(
