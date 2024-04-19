@@ -15,7 +15,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir, BindingAnnotation, ByRef, HirId};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
 use rustc_middle::middle::limits::get_limit_size;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
@@ -839,7 +839,7 @@ fn check_for_bindings_named_same_as_variants(
 ) {
     if let PatKind::Binding {
         name,
-        mode: BindingAnnotation(ByRef::No, Mutability::Not),
+        mode: BindingMode(ByRef::No, Mutability::Not),
         subpattern: None,
         ty,
         ..

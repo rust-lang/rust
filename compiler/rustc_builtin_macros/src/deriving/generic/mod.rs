@@ -180,7 +180,7 @@ pub use SubstructureFields::*;
 use crate::{deriving, errors};
 use rustc_ast::ptr::P;
 use rustc_ast::{
-    self as ast, BindingAnnotation, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
+    self as ast, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
     Mutability, PatKind, TyKind, VariantData,
 };
 use rustc_attr as attr;
@@ -1479,11 +1479,7 @@ impl<'a> TraitDef<'a> {
                             struct_field.ident,
                             cx.pat(
                                 path.span,
-                                PatKind::Ident(
-                                    BindingAnnotation(by_ref, Mutability::Not),
-                                    path,
-                                    None,
-                                ),
+                                PatKind::Ident(BindingMode(by_ref, Mutability::Not), path, None),
                             ),
                         )
                     });

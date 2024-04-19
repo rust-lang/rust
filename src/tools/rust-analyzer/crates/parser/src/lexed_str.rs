@@ -178,7 +178,7 @@ impl<'a> Converter<'a> {
                 rustc_lexer::TokenKind::Ident => {
                     SyntaxKind::from_keyword(token_text).unwrap_or(IDENT)
                 }
-                rustc_lexer::TokenKind::InvalidIdent => {
+                rustc_lexer::TokenKind::InvalidPrefix | rustc_lexer::TokenKind::InvalidIdent => {
                     err = "Ident contains invalid characters";
                     IDENT
                 }

@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{get_parent_expr, path_to_local};
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, Node, PatKind, UnOp};
+use rustc_hir::{BindingMode, Expr, ExprKind, Node, PatKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
@@ -84,7 +84,7 @@ fn is_mutable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(hir_id) = path_to_local(expr)
         && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
     {
-        matches!(pat.kind, PatKind::Binding(BindingAnnotation::MUT, ..))
+        matches!(pat.kind, PatKind::Binding(BindingMode::MUT, ..))
     } else {
         true
     }

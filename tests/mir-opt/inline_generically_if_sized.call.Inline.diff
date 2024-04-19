@@ -6,7 +6,6 @@
       let mut _0: i32;
       let mut _2: &T;
 +     scope 1 (inlined <T as Foo>::bar) {
-+         debug self => _2;
 +     }
   
       bb0: {

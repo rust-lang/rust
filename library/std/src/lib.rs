@@ -277,6 +277,7 @@
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
+#![feature(asm_experimental_arch)]
 #![feature(c_unwind)]
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
@@ -407,7 +408,6 @@
 // tidy-alphabetical-start
 #![feature(const_collections_with_hasher)]
 #![feature(const_hash)]
-#![feature(const_io_structs)]
 #![feature(const_ip)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]

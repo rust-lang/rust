@@ -5,7 +5,7 @@ use clippy_utils::ty::type_diagnostic_name;
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
 use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, path_to_local, path_to_local_id};
 use rustc_errors::Applicability;
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, TyKind, Unsafety};
+use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{
@@ -229,7 +229,7 @@ fn check_inputs(
         && params.iter().zip(self_arg.into_iter().chain(args)).all(|(p, arg)| {
             matches!(
                 p.pat.kind,
-                PatKind::Binding(BindingAnnotation::NONE, id, _, None)
+                PatKind::Binding(BindingMode::NONE, id, _, None)
                 if path_to_local_id(arg, id)
             )
             // Only allow adjustments which change regions (i.e. re-borrowing).

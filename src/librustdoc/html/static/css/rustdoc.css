@@ -1627,23 +1627,26 @@ a.tooltip:hover::after {
 	color: var(--copy-path-button-color);
 	background: var(--main-background-color);
 	height: 34px;
+	width: 33px;
 	margin-left: 10px;
 	padding: 0;
 	padding-left: 2px;
 	border: 0;
-	width: 33px;
-	line-height: 0;
 	font-size: 0;
 }
-
-#copy-path:before {
+#copy-path::before {
 	filter: var(--copy-path-img-filter);
 	content: url('clipboard-24048e6d87f63d07.svg');
-	width: 19px;
-	height: 18px;
 }
-#copy-path:hover:before {
+#copy-path:hover::before {
 	filter: var(--copy-path-img-hover-filter);
+}
+#copy-path.clicked::before {
+	/* Checkmark <https://www.svgrepo.com/svg/335033/checkmark> */
+	content: url('data:image/svg+xml,<svg viewBox="-1 -1 23 23" xmlns="http://www.w3.org/2000/svg" \
+		fill="black" height="18px">\
+		<g><path d="M9 19.414l-6.707-6.707 1.414-1.414L9 16.586 20.293 5.293l1.414 1.414"></path>\
+		</g></svg>');
 }
 
 @keyframes rotating {

@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `TryFrom<Ty>` for type `u8`
+  --> $DIR/conflicting-impls.rs:12:1
+   |
+LL | impl TryFrom<Ty> for u8 {
+   | ----------------------- first implementation here
+...
+LL | impl TryFrom<Ty> for u8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u8`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

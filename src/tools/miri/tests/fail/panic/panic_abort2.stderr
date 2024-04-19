@@ -1,6 +1,7 @@
 thread 'main' panicked at $DIR/panic_abort2.rs:LL:CC:
 42-panicking from libstd
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
 error: abnormal termination: the program aborted execution
   --> RUSTLIB/panic_abort/src/lib.rs:LL:CC
    |

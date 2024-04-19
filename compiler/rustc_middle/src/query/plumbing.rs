@@ -322,7 +322,7 @@ macro_rules! define_callbacks {
 
                 // Ensure that keys grow no larger than 72 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
-                #[cfg(all(any(target_arch = "x86_64", target_arch="aarch64"), target_pointer_width = "64"))]
+                #[cfg(target_pointer_width = "64")]
                 const _: () = {
                     if mem::size_of::<Key<'static>>() > 72 {
                         panic!("{}", concat!(
@@ -337,7 +337,7 @@ macro_rules! define_callbacks {
 
                 // Ensure that values grow no larger than 64 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
-                #[cfg(all(any(target_arch = "x86_64", target_arch="aarch64"), target_pointer_width = "64"))]
+                #[cfg(target_pointer_width = "64")]
                 const _: () = {
                     if mem::size_of::<Value<'static>>() > 64 {
                         panic!("{}", concat!(

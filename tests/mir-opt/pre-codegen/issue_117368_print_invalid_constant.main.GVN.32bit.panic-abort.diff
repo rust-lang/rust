@@ -18,11 +18,8 @@
               debug ptr => _3;
           }
           scope 5 (inlined <std::alloc::Global as Allocator>::allocate) {
-              debug self => _9;
-              debug layout => _8;
           }
           scope 6 (inlined #[track_caller] Result::<NonNull<[u8]>, std::alloc::AllocError>::unwrap) {
-              debug self => _6;
               let mut _12: isize;
               let _13: std::alloc::AllocError;
               let mut _14: !;
@@ -30,23 +27,18 @@
               let mut _16: &dyn std::fmt::Debug;
               let mut _17: &std::alloc::AllocError;
               scope 7 {
-                  debug t => _5;
               }
               scope 8 {
-                  debug e => const std::alloc::AllocError;
               }
           }
           scope 9 (inlined NonNull::<[u8]>::as_ptr) {
-              debug self => _5;
               let mut _18: *const [u8];
           }
       }
       scope 3 (inlined #[track_caller] Option::<Layout>::unwrap) {
-          debug self => _2;
           let mut _10: isize;
           let mut _11: !;
           scope 4 {
-              debug val => _1;
           }
       }
   

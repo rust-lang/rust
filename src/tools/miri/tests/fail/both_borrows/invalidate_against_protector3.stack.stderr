@@ -6,7 +6,7 @@ LL |     unsafe { *x = 0 };
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created here, as the base tag for ALLOC
+help: <TAG> was created here, as the root tag for ALLOC
   --> $DIR/invalidate_against_protector3.rs:LL:CC
    |
 LL |         let ptr = alloc(Layout::for_value(&0i32)) as *mut i32;

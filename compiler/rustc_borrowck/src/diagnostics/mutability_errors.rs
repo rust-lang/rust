@@ -5,7 +5,7 @@ use core::ops::ControlFlow;
 use hir::{ExprKind, Param};
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, BindingAnnotation, ByRef, Node};
+use rustc_hir::{self as hir, BindingMode, ByRef, Node};
 use rustc_infer::traits;
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, InstanceDef, ToPredicate, Ty, TyCtxt};
@@ -303,7 +303,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 {
                     match *decl.local_info() {
                         LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
-                            binding_mode: BindingAnnotation(ByRef::No, Mutability::Not),
+                            binding_mode: BindingMode(ByRef::No, Mutability::Not),
                             opt_ty_info: Some(sp),
                             opt_match_place: _,
                             pat_span: _,
@@ -398,7 +398,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let upvar_hir_id = captured_place.get_root_variable();
 
                 if let Node::Pat(pat) = self.infcx.tcx.hir_node(upvar_hir_id)
-                    && let hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, upvar_ident, _) =
+                    && let hir::PatKind::Binding(hir::BindingMode::NONE, _, upvar_ident, _) =
                         pat.kind
                 {
                     if upvar_ident.name == kw::SelfLower {
@@ -729,7 +729,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         debug!("local_decl: {:?}", local_decl);
         let pat_span = match *local_decl.local_info() {
             LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
-                binding_mode: BindingAnnotation(ByRef::No, Mutability::Not),
+                binding_mode: BindingMode(ByRef::No, Mutability::Not),
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span,
@@ -1086,7 +1086,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-                binding_mode: BindingAnnotation(ByRef::No, _),
+                binding_mode: BindingMode(ByRef::No, _),
                 opt_ty_info,
                 ..
             })) => {
@@ -1154,7 +1154,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-                binding_mode: BindingAnnotation(ByRef::Yes(_), _),
+                binding_mode: BindingMode(ByRef::Yes(_), _),
                 ..
             })) => {
                 let pattern_span: Span = local_decl.source_info.span;
@@ -1356,7 +1356,7 @@ pub fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<
     match *local_decl.local_info() {
         // Check if mutably borrowing a mutable reference.
         LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-            binding_mode: BindingAnnotation(ByRef::No, Mutability::Not),
+            binding_mode: BindingMode(ByRef::No, Mutability::Not),
             ..
         })) => matches!(local_decl.ty.kind(), ty::Ref(_, _, hir::Mutability::Mut)),
         LocalInfo::User(mir::BindingForm::ImplicitSelf(kind)) => {

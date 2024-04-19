@@ -346,16 +346,28 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     {
                         let desc =
                             short_markdown_summary(&item.doc_value(), &item.link_names(self.cache));
+                        // For searching purposes, a re-export is a duplicate if:
+                        //
+                        // - It's either an inline, or a true re-export
+                        // - It's got the same name
+                        // - Both of them have the same exact path
+                        let defid = (match &*item.kind {
+                            &clean::ItemKind::ImportItem(ref import) => import.source.did,
+                            _ => None,
+                        })
+                        .or_else(|| item.item_id.as_def_id());
                         // In case this is a field from a tuple struct, we don't add it into
                         // the search index because its name is something like "0", which is
                         // not useful for rustdoc search.
                         self.cache.search_index.push(IndexItem {
                             ty,
+                            defid,
                             name: s,
                             path: join_with_double_colon(path),
                             desc,
                             parent,
                             parent_idx: None,
+                            exact_path: None,
                             impl_id: if let Some(ParentStackItem::Impl { item_id, .. }) =
                                 self.cache.parent_stack.last()
                             {

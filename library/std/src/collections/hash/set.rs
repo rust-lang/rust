@@ -978,6 +978,10 @@ where
         Self { base: self.base.clone() }
     }
 
+    /// Overwrites the contents of `self` with a clone of the contents of `source`.
+    ///
+    /// This method is preferred over simply assigning `source.clone()` to `self`,
+    /// as it avoids reallocation if possible.
     #[inline]
     fn clone_from(&mut self, other: &Self) {
         self.base.clone_from(&other.base);

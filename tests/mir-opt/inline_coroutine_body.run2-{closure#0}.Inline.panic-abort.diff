@@ -21,8 +21,6 @@
               scope 3 {
               }
 +             scope 6 (inlined ActionPermit::<'_, T>::perform::{closure#0}) {
-+                 debug _task_context => _31;
-+                 debug self => ((*(_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()})).0: ActionPermit<'_, T>);
 +                 let _11: ActionPermit<'_, T>;
 +                 let mut _12: std::future::Ready<()>;
 +                 let mut _13: std::future::Ready<()>;
@@ -52,28 +50,22 @@
 +                 let mut _39: &mut {async fn body of ActionPermit<'_, T>::perform()};
 +                 let mut _40: &mut {async fn body of ActionPermit<'_, T>::perform()};
 +                 scope 7 {
-+                     debug self => (((*(_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()})) as variant#3).0: ActionPermit<'_, T>);
 +                     let mut _15: std::future::Ready<()>;
 +                     scope 8 {
-+                         debug __awaitee => (((*(_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()})) as variant#3).1: std::future::Ready<()>);
 +                         let _26: ();
 +                         scope 9 {
-+                             debug result => _26;
 +                         }
 +                     }
 +                     scope 10 (inlined ready::<()>) {
-+                         debug t => _14;
 +                         let mut _41: std::option::Option<()>;
 +                     }
 +                 }
 +             }
           }
 +         scope 5 (inlined Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}>::new_unchecked) {
-+             debug pointer => _5;
 +         }
       }
 +     scope 4 (inlined ActionPermit::<'_, T>::perform) {
-+         debug self => _3;
 +     }
   
       bb0: {

@@ -34,9 +34,22 @@ where
     /// Returns an iterator over the remaining elements of the original iterator
     /// that are not going to be returned by this iterator. The returned
     /// iterator will yield at most `N-1` elements.
+    ///
+    /// # Example
+    /// ```
+    /// # // Also serves as a regression test for https://github.com/rust-lang/rust/issues/123333
+    /// # #![feature(iter_array_chunks)]
+    /// let x = [1,2,3,4,5].into_iter().array_chunks::<2>();
+    /// let mut rem = x.into_remainder().unwrap();
+    /// assert_eq!(rem.next(), Some(5));
+    /// assert_eq!(rem.next(), None);
+    /// ```
     #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
     #[inline]
-    pub fn into_remainder(self) -> Option<array::IntoIter<I::Item, N>> {
+    pub fn into_remainder(mut self) -> Option<array::IntoIter<I::Item, N>> {
+        if self.remainder.is_none() {
+            while let Some(_) = self.next() {}
+        }
         self.remainder
     }
 }

@@ -288,26 +288,17 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     }
 
     /// Return the `AllocId` for the given thread-local static in the current thread.
-    fn thread_local_static_base_pointer(
+    fn thread_local_static_pointer(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         def_id: DefId,
     ) -> InterpResult<'tcx, Pointer<Self::Provenance>> {
         throw_unsup!(ThreadLocalStatic(def_id))
     }
 
-    /// Return the root pointer for the given `extern static`.
-    fn extern_static_base_pointer(
+    /// Return the `AllocId` for the given `extern static`.
+    fn extern_static_pointer(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         def_id: DefId,
-    ) -> InterpResult<'tcx, Pointer<Self::Provenance>>;
-
-    /// Return a "base" pointer for the given allocation: the one that is used for direct
-    /// accesses to this static/const/fn allocation, or the one returned from the heap allocator.
-    ///
-    /// Not called on `extern` or thread-local statics (those use the methods above).
-    fn adjust_alloc_base_pointer(
-        ecx: &InterpCx<'mir, 'tcx, Self>,
-        ptr: Pointer,
     ) -> InterpResult<'tcx, Pointer<Self::Provenance>>;
 
     /// "Int-to-pointer cast"
@@ -336,6 +327,8 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
 
     /// Called to adjust allocations to the Provenance and AllocExtra of this machine.
     ///
+    /// If `alloc` contains pointers, then they are all pointing to globals.
+    ///
     /// The way we construct allocations is to always first construct it without extra and then add
     /// the extra. This keeps uniform code paths for handling both allocations created by CTFE for
     /// globals, and allocations created by Miri during evaluation.
@@ -353,6 +346,19 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>;
+
+    /// Return a "root" pointer for the given allocation: the one that is used for direct
+    /// accesses to this static/const/fn allocation, or the one returned from the heap allocator.
+    ///
+    /// Not called on `extern` or thread-local statics (those use the methods above).
+    ///
+    /// `kind` is the kind of the allocation the pointer points to; it can be `None` when
+    /// it's a global and `GLOBAL_KIND` is `None`.
+    fn adjust_alloc_root_pointer(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        ptr: Pointer,
+        kind: Option<MemoryKind<Self::MemoryKind>>,
+    ) -> InterpResult<'tcx, Pointer<Self::Provenance>>;
 
     /// Evaluate the inline assembly.
     ///
@@ -592,7 +598,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         Ok(alloc)
     }
 
-    fn extern_static_base_pointer(
+    fn extern_static_pointer(
         ecx: &InterpCx<$mir, $tcx, Self>,
         def_id: DefId,
     ) -> InterpResult<$tcx, Pointer> {
@@ -601,9 +607,10 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn adjust_alloc_base_pointer(
+    fn adjust_alloc_root_pointer(
         _ecx: &InterpCx<$mir, $tcx, Self>,
         ptr: Pointer<CtfeProvenance>,
+        _kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> InterpResult<$tcx, Pointer<CtfeProvenance>> {
         Ok(ptr)
     }

@@ -9,7 +9,7 @@ use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, BindingAnnotation, ByRef, HirId, Node};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Node};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -931,7 +931,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Don't introduce extra copies for simple bindings
                 PatKind::Binding {
                     var,
-                    mode: BindingAnnotation(ByRef::No, mutability),
+                    mode: BindingMode(ByRef::No, mutability),
                     subpattern: None,
                     ..
                 } => {
@@ -941,7 +941,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         if let Some(kind) = param.self_kind {
                             LocalInfo::User(BindingForm::ImplicitSelf(kind))
                         } else {
-                            let binding_mode = BindingAnnotation(ByRef::No, mutability);
+                            let binding_mode = BindingMode(ByRef::No, mutability);
                             LocalInfo::User(BindingForm::Var(VarBindingForm {
                                 binding_mode,
                                 opt_ty_info: param.ty_span,
@@ -1023,7 +1023,13 @@ pub(crate) fn parse_float_into_scalar(
     let num = num.as_str();
     match float_ty {
         // FIXME(f16_f128): When available, compare to the library parser as with `f32` and `f64`
-        ty::FloatTy::F16 => num.parse::<Half>().ok().map(Scalar::from_f16),
+        ty::FloatTy::F16 => {
+            let mut f = num.parse::<Half>().ok()?;
+            if neg {
+                f = -f;
+            }
+            Some(Scalar::from_f16(f))
+        }
         ty::FloatTy::F32 => {
             let Ok(rust_f) = num.parse::<f32>() else { return None };
             let mut f = num
@@ -1071,7 +1077,13 @@ pub(crate) fn parse_float_into_scalar(
             Some(Scalar::from_f64(f))
         }
         // FIXME(f16_f128): When available, compare to the library parser as with `f32` and `f64`
-        ty::FloatTy::F128 => num.parse::<Quad>().ok().map(Scalar::from_f128),
+        ty::FloatTy::F128 => {
+            let mut f = num.parse::<Quad>().ok()?;
+            if neg {
+                f = -f;
+            }
+            Some(Scalar::from_f128(f))
+        }
     }
 }
 

@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHasher;
 use rustc_hir::def::Res;
 use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::{
-    ArrayLen, BinOpKind, BindingAnnotation, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy, GenericArg,
+    ArrayLen, BinOpKind, BindingMode, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy, GenericArg,
     GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeName, Pat, PatField, PatKind, Path,
     PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
@@ -947,7 +947,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_pat(&mut self, pat: &Pat<'_>) {
         std::mem::discriminant(&pat.kind).hash(&mut self.s);
         match pat.kind {
-            PatKind::Binding(BindingAnnotation(by_ref, mutability), _, _, pat) => {
+            PatKind::Binding(BindingMode(by_ref, mutability), _, _, pat) => {
                 std::mem::discriminant(&by_ref).hash(&mut self.s);
                 std::mem::discriminant(&mutability).hash(&mut self.s);
                 if let Some(pat) = pat {

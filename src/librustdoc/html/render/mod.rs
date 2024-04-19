@@ -111,11 +111,13 @@ pub(crate) enum RenderMode {
 #[derive(Debug)]
 pub(crate) struct IndexItem {
     pub(crate) ty: ItemType,
+    pub(crate) defid: Option<DefId>,
     pub(crate) name: Symbol,
     pub(crate) path: String,
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
     pub(crate) parent_idx: Option<isize>,
+    pub(crate) exact_path: Option<String>,
     pub(crate) impl_id: Option<DefId>,
     pub(crate) search_type: Option<IndexItemFunctionType>,
     pub(crate) aliases: Box<[Symbol]>,

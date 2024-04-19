@@ -17,7 +17,7 @@ use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
 use rustc_ast::util::parser;
 use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, BlockCheckMode, PatKind};
-use rustc_ast::{attr, BindingAnnotation, ByRef, DelimArgs, RangeEnd, RangeSyntax, Term};
+use rustc_ast::{attr, BindingMode, ByRef, DelimArgs, RangeEnd, RangeSyntax, Term};
 use rustc_ast::{GenericArg, GenericBound, SelfKind};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -1558,7 +1558,7 @@ impl<'a> State<'a> {
         match &pat.kind {
             PatKind::Wild => self.word("_"),
             PatKind::Never => self.word("!"),
-            PatKind::Ident(BindingAnnotation(by_ref, mutbl), ident, sub) => {
+            PatKind::Ident(BindingMode(by_ref, mutbl), ident, sub) => {
                 if mutbl.is_mut() {
                     self.word_nbsp("mut");
                 }
@@ -1654,7 +1654,7 @@ impl<'a> State<'a> {
                 if mutbl.is_mut() {
                     self.word("mut ");
                 }
-                if let PatKind::Ident(ast::BindingAnnotation::MUT, ..) = inner.kind {
+                if let PatKind::Ident(ast::BindingMode::MUT, ..) = inner.kind {
                     self.popen();
                     self.print_pat(inner);
                     self.pclose();

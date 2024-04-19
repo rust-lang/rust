@@ -8,8 +8,6 @@
       let mut _3: i64;
       let mut _4: u32;
 +     scope 1 (inlined core::num::<impl i64>::unchecked_shr) {
-+         debug self => _3;
-+         debug rhs => _4;
 +     }
   
       bb0: {

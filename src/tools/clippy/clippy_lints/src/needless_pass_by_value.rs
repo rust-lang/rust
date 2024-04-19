@@ -9,7 +9,7 @@ use rustc_ast::ast::Attribute;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    BindingAnnotation, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node, PatKind,
+    BindingMode, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node, PatKind,
     QPath, TyKind,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
@@ -192,7 +192,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 })
                 && !implements_borrow_trait
                 && !all_borrowable_trait
-                && let PatKind::Binding(BindingAnnotation(_, Mutability::Not), canonical_id, ..) = arg.pat.kind
+                && let PatKind::Binding(BindingMode(_, Mutability::Not), canonical_id, ..) = arg.pat.kind
                 && !moved_vars.contains(&canonical_id)
             {
                 // Dereference suggestion

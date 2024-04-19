@@ -3,7 +3,6 @@
 fn f_u64() -> () {
     let mut _0: ();
     scope 1 (inlined f_dispatch::<u64>) {
-        debug t => const 0_u64;
         let _1: ();
         scope 2 (inlined std::mem::size_of::<u64>) {
         }

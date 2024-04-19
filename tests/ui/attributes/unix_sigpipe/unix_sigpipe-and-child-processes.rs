@@ -11,10 +11,8 @@
 // processes with and without the attribute. Search for
 // `unix_sigpipe_attr_specified()` in the code base to learn more.
 
-#![feature(rustc_private)]
 #![cfg_attr(any(sig_dfl, sig_ign, inherit), feature(unix_sigpipe))]
 
-extern crate libc;
 extern crate sigpipe_utils;
 
 use sigpipe_utils::*;

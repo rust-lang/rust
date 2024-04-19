@@ -7,7 +7,7 @@ use clippy_utils::{
 };
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, Visitor};
-use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
+use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
@@ -120,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
         // Matches statements which initializes vectors. For example: `let mut vec = Vec::with_capacity(10)`
         // or `Vec::new()`
         if let StmtKind::Let(local) = stmt.kind
-            && let PatKind::Binding(BindingAnnotation::MUT, local_id, _, None) = local.pat.kind
+            && let PatKind::Binding(BindingMode::MUT, local_id, _, None) = local.pat.kind
             && let Some(init) = local.init
             && let Some(size_expr) = Self::as_vec_initializer(cx, init)
         {

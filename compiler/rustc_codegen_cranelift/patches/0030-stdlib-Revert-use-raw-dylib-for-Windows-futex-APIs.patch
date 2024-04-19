@@ -1,0 +1,37 @@
+From 0d741cf82c3c908616abd39dc84ebf7d8702e0c3 Mon Sep 17 00:00:00 2001
+From: Chris Denton <chris@chrisdenton.dev>
+Date: Tue, 16 Apr 2024 15:51:34 +0000
+Subject: [PATCH] Revert use raw-dylib for Windows futex APIs
+
+---
+ library/std/src/sys/pal/windows/c.rs | 14 +-------------
+ 1 file changed, 1 insertion(+), 13 deletions(-)
+
+diff --git a/library/std/src/sys/pal/windows/c.rs b/library/std/src/sys/pal/windows/c.rs
+index 9d58ce05f01..1c828bac4b6 100644
+--- a/library/std/src/sys/pal/windows/c.rs
++++ b/library/std/src/sys/pal/windows/c.rs
+@@ -357,19 +357,7 @@ pub fn GetTempPath2W(bufferlength: u32, buffer: PWSTR) -> u32 {
+ }
+ 
+ #[cfg(not(target_vendor = "win7"))]
+-// Use raw-dylib to import synchronization functions to workaround issues with the older mingw import library.
+-#[cfg_attr(
+-    target_arch = "x86",
+-    link(
+-        name = "api-ms-win-core-synch-l1-2-0",
+-        kind = "raw-dylib",
+-        import_name_type = "undecorated"
+-    )
+-)]
+-#[cfg_attr(
+-    not(target_arch = "x86"),
+-    link(name = "api-ms-win-core-synch-l1-2-0", kind = "raw-dylib")
+-)]
++#[link(name = "synchronization")]
+ extern "system" {
+     pub fn WaitOnAddress(
+         address: *const c_void,
+-- 
+2.42.0.windows.2
+

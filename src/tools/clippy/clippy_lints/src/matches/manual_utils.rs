@@ -11,7 +11,7 @@ use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Path, QPath};
+use rustc_hir::{BindingMode, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_span::{sym, SyntaxContext};
 
@@ -139,7 +139,7 @@ where
             }
 
             // `ref` and `ref mut` annotations were handled earlier.
-            let annotation = if matches!(annotation, BindingAnnotation::MUT) {
+            let annotation = if matches!(annotation, BindingMode::MUT) {
                 "mut "
             } else {
                 ""

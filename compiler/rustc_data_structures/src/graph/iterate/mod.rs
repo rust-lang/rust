@@ -70,21 +70,21 @@ pub fn reverse_post_order<G: DirectedGraph + Successors>(
 }
 
 /// A "depth-first search" iterator for a directed graph.
-pub struct DepthFirstSearch<'graph, G>
+pub struct DepthFirstSearch<G>
 where
-    G: ?Sized + DirectedGraph + Successors,
+    G: DirectedGraph + Successors,
 {
-    graph: &'graph G,
+    graph: G,
     stack: Vec<G::Node>,
     visited: BitSet<G::Node>,
 }
 
-impl<'graph, G> DepthFirstSearch<'graph, G>
+impl<G> DepthFirstSearch<G>
 where
-    G: ?Sized + DirectedGraph + Successors,
+    G: DirectedGraph + Successors,
 {
-    pub fn new(graph: &'graph G) -> Self {
-        Self { graph, stack: vec![], visited: BitSet::new_empty(graph.num_nodes()) }
+    pub fn new(graph: G) -> Self {
+        Self { stack: vec![], visited: BitSet::new_empty(graph.num_nodes()), graph }
     }
 
     /// Version of `push_start_node` that is convenient for chained
@@ -125,9 +125,9 @@ where
     }
 }
 
-impl<G> std::fmt::Debug for DepthFirstSearch<'_, G>
+impl<G> std::fmt::Debug for DepthFirstSearch<G>
 where
-    G: ?Sized + DirectedGraph + Successors,
+    G: DirectedGraph + Successors,
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut f = fmt.debug_set();
@@ -138,9 +138,9 @@ where
     }
 }
 
-impl<G> Iterator for DepthFirstSearch<'_, G>
+impl<G> Iterator for DepthFirstSearch<G>
 where
-    G: ?Sized + DirectedGraph + Successors,
+    G: DirectedGraph + Successors,
 {
     type Item = G::Node;
 

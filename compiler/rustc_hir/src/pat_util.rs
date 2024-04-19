@@ -1,6 +1,6 @@
 use crate::def::{CtorOf, DefKind, Res};
 use crate::def_id::{DefId, DefIdSet};
-use crate::hir::{self, BindingAnnotation, ByRef, HirId, PatKind};
+use crate::hir::{self, BindingMode, ByRef, HirId, PatKind};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -60,7 +60,7 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
 impl hir::Pat<'_> {
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
-    pub fn each_binding(&self, mut f: impl FnMut(hir::BindingAnnotation, HirId, Span, Ident)) {
+    pub fn each_binding(&self, mut f: impl FnMut(hir::BindingMode, HirId, Span, Ident)) {
         self.walk_always(|p| {
             if let PatKind::Binding(binding_mode, _, ident, _) = p.kind {
                 f(binding_mode, p.hir_id, p.span, ident);
@@ -74,10 +74,7 @@ impl hir::Pat<'_> {
     /// When encountering an or-pattern `p_0 | ... | p_n` only the first non-never pattern will be
     /// visited. If they're all never patterns we visit nothing, which is ok since a never pattern
     /// cannot have bindings.
-    pub fn each_binding_or_first(
-        &self,
-        f: &mut impl FnMut(hir::BindingAnnotation, HirId, Span, Ident),
-    ) {
+    pub fn each_binding_or_first(&self, f: &mut impl FnMut(hir::BindingMode, HirId, Span, Ident)) {
         self.walk(|p| match &p.kind {
             PatKind::Or(ps) => {
                 for p in *ps {
@@ -98,7 +95,7 @@ impl hir::Pat<'_> {
 
     pub fn simple_ident(&self) -> Option<Ident> {
         match self.kind {
-            PatKind::Binding(BindingAnnotation(ByRef::No, _), _, ident, None) => Some(ident),
+            PatKind::Binding(BindingMode(ByRef::No, _), _, ident, None) => Some(ident),
             _ => None,
         }
     }
@@ -135,8 +132,8 @@ impl hir::Pat<'_> {
     pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
         let mut result = None;
         self.each_binding(|annotation, _, _, _| match annotation {
-            hir::BindingAnnotation::REF if result.is_none() => result = Some(hir::Mutability::Not),
-            hir::BindingAnnotation::REF_MUT => result = Some(hir::Mutability::Mut),
+            hir::BindingMode::REF if result.is_none() => result = Some(hir::Mutability::Not),
+            hir::BindingMode::REF_MUT => result = Some(hir::Mutability::Mut),
             _ => {}
         });
         result

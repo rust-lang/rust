@@ -178,7 +178,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let pat_id = self.lower_node_id(pat_node_id);
         let pat = self.arena.alloc(hir::Pat {
             hir_id: pat_id,
-            kind: hir::PatKind::Binding(hir::BindingAnnotation::NONE, pat_id, Ident::empty(), None),
+            kind: hir::PatKind::Binding(hir::BindingMode::NONE, pat_id, Ident::empty(), None),
             span: ty.span,
             default_binding_modes: false,
         });

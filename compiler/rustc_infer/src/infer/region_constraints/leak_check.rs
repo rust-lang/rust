@@ -382,7 +382,7 @@ impl<'tcx> MiniGraph<'tcx> {
                 edges.push((source_node, target_node));
             },
         );
-        let graph = VecGraph::new(nodes.len(), edges);
+        let graph = VecGraph::<_, false>::new(nodes.len(), edges);
         let sccs = Sccs::new(&graph);
         Self { nodes, sccs }
     }

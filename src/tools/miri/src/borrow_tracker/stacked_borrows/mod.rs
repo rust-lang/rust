@@ -518,9 +518,9 @@ impl Stacks {
             // not through a pointer). That is, whenever we directly write to a local, this will pop
             // everything else off the stack, invalidating all previous pointers,
             // and in particular, *all* raw pointers.
-            MemoryKind::Stack => (state.base_ptr_tag(id, machine), Permission::Unique),
+            MemoryKind::Stack => (state.root_ptr_tag(id, machine), Permission::Unique),
             // Everything else is shared by default.
-            _ => (state.base_ptr_tag(id, machine), Permission::SharedReadWrite),
+            _ => (state.root_ptr_tag(id, machine), Permission::SharedReadWrite),
         };
         Stacks::new(size, perm, base_tag, id, machine)
     }

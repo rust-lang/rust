@@ -4,13 +4,13 @@ if let ExprKind::Block(block, None) = expr.kind
     && let Some(init) = local.init
     && let ExprKind::Lit(ref lit) = init.kind
     && let LitKind::Int(42, LitIntType::Signed(IntTy::I32)) = lit.node
-    && let PatKind::Binding(BindingAnnotation::NONE, _, name, None) = local.pat.kind
+    && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
     && name.as_str() == "x"
     && let StmtKind::Local(local1) = block.stmts[1].kind
     && let Some(init1) = local1.init
     && let ExprKind::Lit(ref lit1) = init1.kind
     && let LitKind::Float(_, LitFloatType::Suffixed(FloatTy::F32)) = lit1.node
-    && let PatKind::Binding(BindingAnnotation::NONE, _, name1, None) = local1.pat.kind
+    && let PatKind::Binding(BindingMode::NONE, _, name1, None) = local1.pat.kind
     && name1.as_str() == "_t"
     && let StmtKind::Semi(e) = block.stmts[2].kind
     && let ExprKind::Unary(UnOp::Neg, inner) = e.kind
@@ -28,7 +28,7 @@ if let ExprKind::Block(block, None) = expr.kind
     && let ExprKind::Path(ref qpath) = func.kind
     && match_qpath(qpath, &["String", "new"])
     && args.is_empty()
-    && let PatKind::Binding(BindingAnnotation::NONE, _, name, None) = local.pat.kind
+    && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
     && name.as_str() == "expr"
     && let Some(trailing_expr) = block.expr
     && let ExprKind::Call(func1, args1) = trailing_expr.kind

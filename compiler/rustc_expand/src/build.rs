@@ -202,7 +202,7 @@ impl<'a> ExtCtxt<'a> {
         ex: P<ast::Expr>,
     ) -> ast::Stmt {
         let pat = if mutbl {
-            self.pat_ident_binding_mode(sp, ident, ast::BindingAnnotation::MUT)
+            self.pat_ident_binding_mode(sp, ident, ast::BindingMode::MUT)
         } else {
             self.pat_ident(sp, ident)
         };
@@ -490,14 +490,14 @@ impl<'a> ExtCtxt<'a> {
         self.pat(span, PatKind::Lit(expr))
     }
     pub fn pat_ident(&self, span: Span, ident: Ident) -> P<ast::Pat> {
-        self.pat_ident_binding_mode(span, ident, ast::BindingAnnotation::NONE)
+        self.pat_ident_binding_mode(span, ident, ast::BindingMode::NONE)
     }
 
     pub fn pat_ident_binding_mode(
         &self,
         span: Span,
         ident: Ident,
-        ann: ast::BindingAnnotation,
+        ann: ast::BindingMode,
     ) -> P<ast::Pat> {
         let pat = PatKind::Ident(ann, ident.with_span_pos(span), None);
         self.pat(span, pat)

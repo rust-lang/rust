@@ -2,7 +2,7 @@ use crate::build::ExprCategory;
 use crate::errors::*;
 
 use rustc_errors::DiagArgValue;
-use rustc_hir::{self as hir, BindingAnnotation, ByRef, HirId, Mutability};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
@@ -288,7 +288,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     visit::walk_pat(self, pat);
                 }
             }
-            PatKind::Binding { mode: BindingAnnotation(ByRef::Yes(rm), _), ty, .. } => {
+            PatKind::Binding { mode: BindingMode(ByRef::Yes(rm), _), ty, .. } => {
                 if self.inside_adt {
                     let ty::Ref(_, ty, _) = ty.kind() else {
                         span_bug!(

@@ -10,7 +10,7 @@ use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
 use rustc_hir::{
-    BindingAnnotation, ByRef, GenericArg, GenericBound, GenericParam, GenericParamKind, HirId,
+    BindingMode, ByRef, GenericArg, GenericBound, GenericParam, GenericParamKind, HirId,
     LifetimeParamKind, Node, PatKind, RangeEnd, Term, TraitBoundModifier,
 };
 use rustc_span::source_map::SourceMap;
@@ -1723,7 +1723,7 @@ impl<'a> State<'a> {
         match pat.kind {
             PatKind::Wild => self.word("_"),
             PatKind::Never => self.word("!"),
-            PatKind::Binding(BindingAnnotation(by_ref, mutbl), _, ident, sub) => {
+            PatKind::Binding(BindingMode(by_ref, mutbl), _, ident, sub) => {
                 if mutbl.is_mut() {
                     self.word_nbsp("mut");
                 }

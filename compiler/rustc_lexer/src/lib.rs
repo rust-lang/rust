@@ -88,6 +88,10 @@ pub enum TokenKind {
     /// tokens.
     UnknownPrefix,
 
+    /// Similar to the above, but *always* an error on every edition. This is used
+    /// for emoji identifier recovery, as those are not meant to be ever accepted.
+    InvalidPrefix,
+
     /// Examples: `12u8`, `1.0e-40`, `b"123"`. Note that `_` is an invalid
     /// suffix, but may be present here on string and float literals. Users of
     /// this type will need to check for and reject that case.
@@ -528,7 +532,7 @@ impl Cursor<'_> {
         // Known prefixes must have been handled earlier. So if
         // we see a prefix here, it is definitely an unknown prefix.
         match self.first() {
-            '#' | '"' | '\'' => UnknownPrefix,
+            '#' | '"' | '\'' => InvalidPrefix,
             _ => InvalidIdent,
         }
     }

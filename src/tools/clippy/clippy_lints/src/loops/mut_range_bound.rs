@@ -2,7 +2,7 @@ use super::MUT_RANGE_BOUND;
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::{get_enclosing_block, higher, path_to_local};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, Node, PatKind};
+use rustc_hir::{BindingMode, Expr, ExprKind, HirId, Node, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
@@ -41,7 +41,7 @@ fn mut_warn_with_span(cx: &LateContext<'_>, span: Option<Span>) {
 fn check_for_mutability(cx: &LateContext<'_>, bound: &Expr<'_>) -> Option<HirId> {
     if let Some(hir_id) = path_to_local(bound)
         && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
-        && let PatKind::Binding(BindingAnnotation::MUT, ..) = pat.kind
+        && let PatKind::Binding(BindingMode::MUT, ..) = pat.kind
     {
         return Some(hir_id);
     }

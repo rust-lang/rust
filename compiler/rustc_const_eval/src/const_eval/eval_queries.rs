@@ -10,20 +10,21 @@ use rustc_middle::traits::Reveal;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_target::abi::{self, Abi};
 
 use super::{CanAccessMutGlobal, CompileTimeEvalContext, CompileTimeInterpreter};
 use crate::const_eval::CheckAlignment;
-use crate::errors;
 use crate::errors::ConstEvalError;
-use crate::interpret::eval_nullary_intrinsic;
+use crate::errors::{self, DanglingPtrInFinal};
 use crate::interpret::{
     create_static_alloc, intern_const_alloc_recursive, CtfeValidationMode, GlobalId, Immediate,
     InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking,
     StackPopCleanup,
 };
+use crate::interpret::{eval_nullary_intrinsic, InternResult};
 use crate::CTRL_C_RECEIVED;
 
 // Returns a pointer to where the result lives
@@ -89,10 +90,34 @@ fn eval_body_using_ecx<'mir, 'tcx, R: InterpretationResult<'tcx>>(
     }
 
     // Intern the result
-    intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
+    let intern_result = intern_const_alloc_recursive(ecx, intern_kind, &ret);
 
     // Since evaluation had no errors, validate the resulting constant.
     const_validate_mplace(&ecx, &ret, cid)?;
+
+    // Only report this after validation, as validaiton produces much better diagnostics.
+    // FIXME: ensure validation always reports this and stop making interning care about it.
+
+    match intern_result {
+        Ok(()) => {}
+        Err(InternResult::FoundDanglingPointer) => {
+            return Err(ecx
+                .tcx
+                .dcx()
+                .emit_err(DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind })
+                .into());
+        }
+        Err(InternResult::FoundBadMutablePointer) => {
+            // only report mutable pointers if there were no dangling pointers
+            let err_diag = errors::MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind };
+            ecx.tcx.emit_node_span_lint(
+                lint::builtin::CONST_EVAL_MUTABLE_PTR_IN_FINAL_VALUE,
+                ecx.best_lint_scope(),
+                err_diag.span,
+                err_diag,
+            )
+        }
+    }
 
     Ok(R::make_result(ret, ecx))
 }

@@ -764,7 +764,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Other cases need layout.
         let adjust_scalar = |scalar| -> InterpResult<'tcx, _> {
             Ok(match scalar {
-                Scalar::Ptr(ptr, size) => Scalar::Ptr(self.global_base_pointer(ptr)?, size),
+                Scalar::Ptr(ptr, size) => Scalar::Ptr(self.global_root_pointer(ptr)?, size),
                 Scalar::Int(int) => Scalar::Int(int),
             })
         };
@@ -772,7 +772,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let imm = match val_val {
             mir::ConstValue::Indirect { alloc_id, offset } => {
                 // This is const data, no mutation allowed.
-                let ptr = self.global_base_pointer(Pointer::new(
+                let ptr = self.global_root_pointer(Pointer::new(
                     CtfeProvenance::from(alloc_id).as_immutable(),
                     offset,
                 ))?;
@@ -784,7 +784,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // This is const data, no mutation allowed.
                 let alloc_id = self.tcx.reserve_and_set_memory_alloc(data);
                 let ptr = Pointer::new(CtfeProvenance::from(alloc_id).as_immutable(), Size::ZERO);
-                Immediate::new_slice(self.global_base_pointer(ptr)?.into(), meta, self)
+                Immediate::new_slice(self.global_root_pointer(ptr)?.into(), meta, self)
             }
         };
         Ok(OpTy { op: Operand::Immediate(imm), layout })
@@ -792,7 +792,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;

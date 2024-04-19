@@ -7,7 +7,7 @@ use rustc_ast::LitIntType;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::{
-    ArrayLen, BindingAnnotation, CaptureBy, Closure, ClosureKind, CoroutineKind, ExprKind, FnRetTy, HirId, Lit,
+    ArrayLen, BindingMode, CaptureBy, Closure, ClosureKind, CoroutineKind, ExprKind, FnRetTy, HirId, Lit,
     PatKind, QPath, StmtKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -645,14 +645,14 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 bind!(self, name);
                 opt_bind!(self, sub);
                 let ann = match ann {
-                    BindingAnnotation::NONE => "NONE",
-                    BindingAnnotation::REF => "REF",
-                    BindingAnnotation::MUT => "MUT",
-                    BindingAnnotation::REF_MUT => "REF_MUT",
-                    BindingAnnotation::MUT_REF => "MUT_REF",
-                    BindingAnnotation::MUT_REF_MUT => "MUT_REF_MUT",
+                    BindingMode::NONE => "NONE",
+                    BindingMode::REF => "REF",
+                    BindingMode::MUT => "MUT",
+                    BindingMode::REF_MUT => "REF_MUT",
+                    BindingMode::MUT_REF => "MUT_REF",
+                    BindingMode::MUT_REF_MUT => "MUT_REF_MUT",
                 };
-                kind!("Binding(BindingAnnotation::{ann}, _, {name}, {sub})");
+                kind!("Binding(BindingMode::{ann}, _, {name}, {sub})");
                 self.ident(name);
                 sub.if_some(|p| self.pat(p));
             },

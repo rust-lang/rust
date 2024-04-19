@@ -30,7 +30,7 @@ use unescape_error_reporting::{emit_unescape_error, escaped_char};
 //
 // This assertion is in this crate, rather than in `rustc_lexer`, because that
 // crate cannot depend on `rustc_data_structures`.
-#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(rustc_lexer::Token, 12);
 
 #[derive(Clone, Debug)]
@@ -204,6 +204,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     self.ident(start)
                 }
                 rustc_lexer::TokenKind::InvalidIdent
+                | rustc_lexer::TokenKind::InvalidPrefix
                     // Do not recover an identifier with emoji if the codepoint is a confusable
                     // with a recoverable substitution token, like `➖`.
                     if !UNICODE_ARRAY
@@ -301,7 +302,9 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 rustc_lexer::TokenKind::Caret => token::BinOp(token::Caret),
                 rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
 
-                rustc_lexer::TokenKind::Unknown | rustc_lexer::TokenKind::InvalidIdent => {
+                rustc_lexer::TokenKind::Unknown
+                | rustc_lexer::TokenKind::InvalidIdent
+                | rustc_lexer::TokenKind::InvalidPrefix => {
                     // Don't emit diagnostics for sequences of the same invalid token
                     if swallow_next_invalid > 0 {
                         swallow_next_invalid -= 1;

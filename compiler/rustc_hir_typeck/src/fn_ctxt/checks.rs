@@ -2011,12 +2011,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (span, code) in errors_causecode {
             self.dcx().try_steal_modify_and_emit_err(span, StashKey::MaybeForgetReturn, |err| {
                 if let Some(fn_sig) = self.body_fn_sig()
-                    && let ExprBindingObligation(_, _, hir_id, ..) = code
+                    && let ExprBindingObligation(_, _, binding_hir_id, ..) = code
                     && !fn_sig.output().is_unit()
                 {
                     let mut block_num = 0;
                     let mut found_semi = false;
-                    for (_, node) in self.tcx.hir().parent_iter(hir_id) {
+                    for (hir_id, node) in self.tcx.hir().parent_iter(binding_hir_id) {
+                        // Don't proceed into parent bodies
+                        if hir_id.owner != binding_hir_id.owner {
+                            break;
+                        }
                         match node {
                             hir::Node::Stmt(stmt) => {
                                 if let hir::StmtKind::Semi(expr) = stmt.kind {

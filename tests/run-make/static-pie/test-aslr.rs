@@ -17,7 +17,7 @@ fn main() {
     let arg0 = args.next().unwrap();
     match args.next() {
         Some(s) if s.eq("--report") => {
-            println!("main = {:#?}", &main as *const _);
+            println!("main = {:#?}", main as fn() as usize);
         }
         Some(s) if s.eq("--test-no-aslr") => {
             let cnt = run_self(&arg0);

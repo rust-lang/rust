@@ -29,7 +29,7 @@ use rustc_ast::token::{self, Delimiter, Lit, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::AttrTokenTree;
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
-    AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingAnnotation, Block,
+    AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
     BlockCheckMode, Expr, ExprKind, GenericArg, Generics, HasTokens, Item, ItemKind, Param, Pat,
     PatKind, Path, PathSegment, QSelf, Ty, TyKind,
 };
@@ -51,7 +51,7 @@ use thin_vec::{thin_vec, ThinVec};
 pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
     let pat = P(Pat {
         id: ast::DUMMY_NODE_ID,
-        kind: PatKind::Ident(BindingAnnotation::NONE, ident, None),
+        kind: PatKind::Ident(BindingMode::NONE, ident, None),
         span: ident.span,
         tokens: None,
     });
@@ -2787,7 +2787,7 @@ impl<'a> Parser<'a> {
                                 }
                                 _ => {}
                             },
-                            PatKind::Ident(BindingAnnotation::NONE, ident, None) => {
+                            PatKind::Ident(BindingMode::NONE, ident, None) => {
                                 match &first_pat.kind {
                                     PatKind::Ident(_, old_ident, _) => {
                                         let path = PatKind::Path(

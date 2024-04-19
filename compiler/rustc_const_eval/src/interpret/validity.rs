@@ -449,67 +449,41 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // `!` is a ZST and we want to validate it.
             if let Ok((alloc_id, _offset, _prov)) = self.ecx.ptr_try_get_alloc_id(place.ptr()) {
                 let mut skip_recursive_check = false;
-                // Let's see what kind of memory this points to.
-                // `unwrap` since dangling pointers have already been handled.
-                let alloc_kind = self.ecx.tcx.try_get_global_alloc(alloc_id).unwrap();
-                let alloc_actual_mutbl = match alloc_kind {
-                    GlobalAlloc::Static(did) => {
-                        // Special handling for pointers to statics (irrespective of their type).
-                        assert!(!self.ecx.tcx.is_thread_local_static(did));
-                        assert!(self.ecx.tcx.is_static(did));
-                        // Mode-specific checks
-                        match self.ctfe_mode {
-                            Some(
-                                CtfeValidationMode::Static { .. }
-                                | CtfeValidationMode::Promoted { .. },
-                            ) => {
-                                // We skip recursively checking other statics. These statics must be sound by
-                                // themselves, and the only way to get broken statics here is by using
-                                // unsafe code.
-                                // The reasons we don't check other statics is twofold. For one, in all
-                                // sound cases, the static was already validated on its own, and second, we
-                                // trigger cycle errors if we try to compute the value of the other static
-                                // and that static refers back to us (potentially through a promoted).
-                                // This could miss some UB, but that's fine.
-                                skip_recursive_check = true;
-                            }
-                            Some(CtfeValidationMode::Const { .. }) => {
-                                // We can't recursively validate `extern static`, so we better reject them.
-                                if self.ecx.tcx.is_foreign_item(did) {
-                                    throw_validation_failure!(self.path, ConstRefToExtern);
-                                }
-                            }
-                            None => {}
+                let alloc_actual_mutbl = mutability(self.ecx, alloc_id);
+                if let GlobalAlloc::Static(did) = self.ecx.tcx.global_alloc(alloc_id) {
+                    let DefKind::Static { nested, .. } = self.ecx.tcx.def_kind(did) else { bug!() };
+                    // Special handling for pointers to statics (irrespective of their type).
+                    assert!(!self.ecx.tcx.is_thread_local_static(did));
+                    assert!(self.ecx.tcx.is_static(did));
+                    // Mode-specific checks
+                    match self.ctfe_mode {
+                        Some(
+                            CtfeValidationMode::Static { .. } | CtfeValidationMode::Promoted { .. },
+                        ) => {
+                            // We skip recursively checking other statics. These statics must be sound by
+                            // themselves, and the only way to get broken statics here is by using
+                            // unsafe code.
+                            // The reasons we don't check other statics is twofold. For one, in all
+                            // sound cases, the static was already validated on its own, and second, we
+                            // trigger cycle errors if we try to compute the value of the other static
+                            // and that static refers back to us (potentially through a promoted).
+                            // This could miss some UB, but that's fine.
+                            // We still walk nested allocations, as they are fundamentally part of this validation run.
+                            // This means we will also recurse into nested statics of *other*
+                            // statics, even though we do not recurse into other statics directly.
+                            // That's somewhat inconsistent but harmless.
+                            skip_recursive_check = !nested;
                         }
-                        // Return alloc mutability. For "root" statics we look at the type to account for interior
-                        // mutability; for nested statics we have no type and directly use the annotated mutability.
-                        let DefKind::Static { mutability, nested } = self.ecx.tcx.def_kind(did)
-                        else {
-                            bug!()
-                        };
-                        match (mutability, nested) {
-                            (Mutability::Mut, _) => Mutability::Mut,
-                            (Mutability::Not, true) => Mutability::Not,
-                            (Mutability::Not, false)
-                                if !self
-                                    .ecx
-                                    .tcx
-                                    .type_of(did)
-                                    .no_bound_vars()
-                                    .expect("statics should not have generic parameters")
-                                    .is_freeze(*self.ecx.tcx, ty::ParamEnv::reveal_all()) =>
-                            {
-                                Mutability::Mut
+                        Some(CtfeValidationMode::Const { .. }) => {
+                            // We can't recursively validate `extern static`, so we better reject them.
+                            if self.ecx.tcx.is_foreign_item(did) {
+                                throw_validation_failure!(self.path, ConstRefToExtern);
                             }
-                            (Mutability::Not, false) => Mutability::Not,
                         }
+                        None => {}
                     }
-                    GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
-                    GlobalAlloc::Function(..) | GlobalAlloc::VTable(..) => {
-                        // These are immutable, we better don't allow mutable pointers here.
-                        Mutability::Not
-                    }
-                };
+                }
+
                 // Mutability check.
                 // If this allocation has size zero, there is no actual mutability here.
                 let (size, _align, _alloc_kind) = self.ecx.get_alloc_info(alloc_id);
@@ -708,17 +682,58 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn in_mutable_memory(&self, op: &OpTy<'tcx, M::Provenance>) -> bool {
         if let Some(mplace) = op.as_mplace_or_imm().left() {
             if let Some(alloc_id) = mplace.ptr().provenance.and_then(|p| p.get_alloc_id()) {
-                let mutability = match self.ecx.tcx.global_alloc(alloc_id) {
-                    GlobalAlloc::Static(_) => {
-                        self.ecx.memory.alloc_map.get(alloc_id).unwrap().1.mutability
-                    }
-                    GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
-                    _ => span_bug!(self.ecx.tcx.span, "not a memory allocation"),
-                };
-                return mutability == Mutability::Mut;
+                return mutability(self.ecx, alloc_id).is_mut();
             }
         }
         false
+    }
+}
+
+/// Returns whether the allocation is mutable, and whether it's actually a static.
+/// For "root" statics we look at the type to account for interior
+/// mutability; for nested statics we have no type and directly use the annotated mutability.
+fn mutability<'mir, 'tcx: 'mir>(
+    ecx: &InterpCx<'mir, 'tcx, impl Machine<'mir, 'tcx>>,
+    alloc_id: AllocId,
+) -> Mutability {
+    // Let's see what kind of memory this points to.
+    // We're not using `try_global_alloc` since dangling pointers have already been handled.
+    match ecx.tcx.global_alloc(alloc_id) {
+        GlobalAlloc::Static(did) => {
+            let DefKind::Static { mutability, nested } = ecx.tcx.def_kind(did) else { bug!() };
+            if nested {
+                assert!(
+                    ecx.memory.alloc_map.get(alloc_id).is_none(),
+                    "allocations of nested statics are already interned: {alloc_id:?}, {did:?}"
+                );
+                // Nested statics in a `static` are never interior mutable,
+                // so just use the declared mutability.
+                mutability
+            } else {
+                let mutability = match mutability {
+                    Mutability::Not
+                        if !ecx
+                            .tcx
+                            .type_of(did)
+                            .no_bound_vars()
+                            .expect("statics should not have generic parameters")
+                            .is_freeze(*ecx.tcx, ty::ParamEnv::reveal_all()) =>
+                    {
+                        Mutability::Mut
+                    }
+                    _ => mutability,
+                };
+                if let Some((_, alloc)) = ecx.memory.alloc_map.get(alloc_id) {
+                    assert_eq!(alloc.mutability, mutability);
+                }
+                mutability
+            }
+        }
+        GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
+        GlobalAlloc::Function(..) | GlobalAlloc::VTable(..) => {
+            // These are immutable, we better don't allow mutable pointers here.
+            Mutability::Not
+        }
     }
 }
 

@@ -876,9 +876,10 @@ impl<'src> Classifier<'src> {
                 },
                 Some(c) => c,
             },
-            TokenKind::RawIdent | TokenKind::UnknownPrefix | TokenKind::InvalidIdent => {
-                Class::Ident(self.new_span(before, text))
-            }
+            TokenKind::RawIdent
+            | TokenKind::UnknownPrefix
+            | TokenKind::InvalidPrefix
+            | TokenKind::InvalidIdent => Class::Ident(self.new_span(before, text)),
             TokenKind::Lifetime { .. } => Class::Lifetime,
             TokenKind::Eof => panic!("Eof in advance"),
         };

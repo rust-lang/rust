@@ -477,7 +477,7 @@ pub enum SubregionOrigin<'tcx> {
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 static_assert_size!(SubregionOrigin<'_>, 32);
 
 impl<'tcx> SubregionOrigin<'tcx> {
@@ -952,7 +952,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // a test for it.
             (_, ty::Infer(ty::TyVar(_))) => {}
             (ty::Infer(ty::TyVar(_)), _) => {}
-            _ if (r_a, r_b).has_opaque_types() => {
+            _ if r_a != r_b && (r_a, r_b).has_opaque_types() => {
                 span_bug!(
                     cause.span(),
                     "opaque types got hidden types registered from within subtype predicate: {r_a:?} vs {r_b:?}"

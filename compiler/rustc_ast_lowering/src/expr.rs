@@ -643,7 +643,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (pat, task_context_hid) = self.pat_ident_binding_mode(
                     span,
                     Ident::with_dummy_span(sym::_task_context),
-                    hir::BindingAnnotation::MUT,
+                    hir::BindingMode::MUT,
                 );
                 let param = hir::Param {
                     hir_id: self.next_id(),
@@ -805,11 +805,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // debuggers and debugger extensions expect it to be called `__awaitee`. They use
         // this name to identify what is being awaited by a suspended async functions.
         let awaitee_ident = Ident::with_dummy_span(sym::__awaitee);
-        let (awaitee_pat, awaitee_pat_hid) = self.pat_ident_binding_mode(
-            gen_future_span,
-            awaitee_ident,
-            hir::BindingAnnotation::MUT,
-        );
+        let (awaitee_pat, awaitee_pat_hid) =
+            self.pat_ident_binding_mode(gen_future_span, awaitee_ident, hir::BindingMode::MUT);
 
         let task_context_ident = Ident::with_dummy_span(sym::_task_context);
 
@@ -1648,7 +1645,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `mut iter`
         let iter = Ident::with_dummy_span(sym::iter);
         let (iter_pat, iter_pat_nid) =
-            self.pat_ident_binding_mode(head_span, iter, hir::BindingAnnotation::MUT);
+            self.pat_ident_binding_mode(head_span, iter, hir::BindingMode::MUT);
 
         let match_expr = {
             let iter = self.expr_ident(head_span, iter, iter_pat_nid);

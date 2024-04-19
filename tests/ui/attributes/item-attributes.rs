@@ -148,7 +148,7 @@ mod test_foreign_items {
             #![rustc_dummy]
 
             #[rustc_dummy]
-            fn rust_get_test_int() -> u32;
+            fn rust_get_test_int() -> isize;
         }
     }
 }

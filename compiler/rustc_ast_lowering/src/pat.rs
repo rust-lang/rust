@@ -243,7 +243,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_pat_ident(
         &mut self,
         p: &Pat,
-        annotation: BindingAnnotation,
+        annotation: BindingMode,
         ident: Ident,
         lower_sub: impl FnOnce(&mut Self) -> Option<&'hir hir::Pat<'hir>>,
     ) -> hir::PatKind<'hir> {

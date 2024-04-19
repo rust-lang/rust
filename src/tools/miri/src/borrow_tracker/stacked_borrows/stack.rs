@@ -47,7 +47,7 @@ impl Stack {
         let mut first_removed = None;
 
         // We never consider removing the bottom-most tag. For stacks without an unknown
-        // bottom this preserves the base tag.
+        // bottom this preserves the root tag.
         // Note that the algorithm below is based on considering the tag at read_idx - 1,
         // so precisely considering the tag at index 0 for removal when we have an unknown
         // bottom would complicate the implementation. The simplification of not considering
@@ -93,7 +93,7 @@ impl Stack {
                 self.unique_range = 0..self.len();
             }
 
-            // Replace any Items which have been collected with the base item, a known-good value.
+            // Replace any Items which have been collected with the root item, a known-good value.
             for i in 0..CACHE_LEN {
                 if self.cache.idx[i] >= first_removed {
                     self.cache.items[i] = self.borrows[0];
@@ -331,7 +331,7 @@ impl<'tcx> Stack {
         self.verify_cache_consistency();
     }
 
-    /// Construct a new `Stack` using the passed `Item` as the base tag.
+    /// Construct a new `Stack` using the passed `Item` as the root tag.
     pub fn new(item: Item) -> Self {
         Stack {
             borrows: vec![item],
@@ -438,8 +438,8 @@ impl<'tcx> Stack {
             let mut removed = 0;
             let mut cursor = 0;
             // Remove invalid entries from the cache by rotating them to the end of the cache, then
-            // keep track of how many invalid elements there are and overwrite them with the base tag.
-            // The base tag here serves as a harmless default value.
+            // keep track of how many invalid elements there are and overwrite them with the root tag.
+            // The root tag here serves as a harmless default value.
             for _ in 0..CACHE_LEN - 1 {
                 if self.cache.idx[cursor] >= start {
                     self.cache.idx[cursor..CACHE_LEN - removed].rotate_left(1);

@@ -46,7 +46,7 @@ use diagnostics::{ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime}
 #[derive(Copy, Clone, Debug)]
 struct BindingInfo {
     span: Span,
-    annotation: BindingAnnotation,
+    annotation: BindingMode,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -3655,14 +3655,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn try_resolve_as_non_binding(
         &mut self,
         pat_src: PatternSource,
-        ann: BindingAnnotation,
+        ann: BindingMode,
         ident: Ident,
         has_sub: bool,
     ) -> Option<Res> {
         // An immutable (no `mut`) by-value (no `ref`) binding pattern without
         // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
         // also be interpreted as a path to e.g. a constant, variant, etc.
-        let is_syntactic_ambiguity = !has_sub && ann == BindingAnnotation::NONE;
+        let is_syntactic_ambiguity = !has_sub && ann == BindingMode::NONE;
 
         let ls_binding = self.maybe_resolve_ident_in_lexical_scope(ident, ValueNS)?;
         let (res, binding) = match ls_binding {

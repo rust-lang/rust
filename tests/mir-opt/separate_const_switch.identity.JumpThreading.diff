@@ -5,54 +5,44 @@
       debug x => _1;
       let mut _0: std::result::Result<i32, i32>;
       let mut _2: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, i32>, i32>;
-      let mut _3: std::result::Result<i32, i32>;
-      let mut _4: isize;
-      let _5: std::result::Result<std::convert::Infallible, i32>;
-      let mut _6: std::result::Result<std::convert::Infallible, i32>;
-      let _7: i32;
+      let mut _3: isize;
+      let _4: std::result::Result<std::convert::Infallible, i32>;
+      let _5: i32;
       scope 1 {
-          debug residual => _5;
+          debug residual => _4;
           scope 2 {
               scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<Infallible, i32>>>::from_residual) {
-                  debug residual => _6;
-                  let _12: i32;
+                  let _10: i32;
                   scope 9 {
-                      debug e => _12;
                       scope 10 (inlined <i32 as From<i32>>::from) {
-                          debug t => _12;
                       }
                   }
               }
           }
       }
       scope 3 {
-          debug val => _7;
+          debug val => _5;
           scope 4 {
           }
       }
       scope 5 (inlined <Result<i32, i32> as Try>::branch) {
-          debug self => _3;
-          let mut _8: isize;
-          let _9: i32;
-          let _10: i32;
-          let mut _11: std::result::Result<std::convert::Infallible, i32>;
+          let mut _6: isize;
+          let _7: i32;
+          let _8: i32;
+          let mut _9: std::result::Result<std::convert::Infallible, i32>;
           scope 6 {
-              debug v => _9;
           }
           scope 7 {
-              debug e => _10;
           }
       }
   
       bb0: {
           StorageLive(_2);
-          StorageLive(_3);
-          _3 = _1;
+          StorageLive(_6);
+          StorageLive(_7);
           StorageLive(_8);
-          StorageLive(_9);
-          StorageLive(_10);
-          _8 = discriminant(_1);
-          switchInt(move _8) -> [0: bb6, 1: bb5, otherwise: bb1];
+          _6 = discriminant(_1);
+          switchInt(move _6) -> [0: bb6, 1: bb5, otherwise: bb1];
       }
   
       bb1: {
@@ -60,55 +50,50 @@
       }
   
       bb2: {
-          _7 = ((_2 as Continue).0: i32);
-          _0 = Result::<i32, i32>::Ok(_7);
+          _5 = ((_2 as Continue).0: i32);
+          _0 = Result::<i32, i32>::Ok(_5);
           StorageDead(_2);
           return;
       }
   
       bb3: {
-          _5 = ((_2 as Break).0: std::result::Result<std::convert::Infallible, i32>);
-          StorageLive(_6);
-          _6 = _5;
-          _12 = ((_5 as Err).0: i32);
-          _0 = Result::<i32, i32>::Err(_12);
-          StorageDead(_6);
+          _4 = ((_2 as Break).0: std::result::Result<std::convert::Infallible, i32>);
+          _10 = ((_4 as Err).0: i32);
+          _0 = Result::<i32, i32>::Err(_10);
           StorageDead(_2);
           return;
       }
   
       bb4: {
-          StorageDead(_10);
-          StorageDead(_9);
           StorageDead(_8);
-          StorageDead(_3);
-          _4 = discriminant(_2);
--         switchInt(move _4) -> [0: bb2, 1: bb3, otherwise: bb1];
+          StorageDead(_7);
+          StorageDead(_6);
+          _3 = discriminant(_2);
+-         switchInt(move _3) -> [0: bb2, 1: bb3, otherwise: bb1];
 +         goto -> bb2;
       }
   
       bb5: {
-          _10 = ((_1 as Err).0: i32);
-          StorageLive(_11);
-          _11 = Result::<Infallible, i32>::Err(_10);
-          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _11);
-          StorageDead(_11);
+          _8 = ((_1 as Err).0: i32);
+          StorageLive(_9);
+          _9 = Result::<Infallible, i32>::Err(_8);
+          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _9);
+          StorageDead(_9);
 -         goto -> bb4;
 +         goto -> bb7;
       }
   
       bb6: {
-          _9 = ((_1 as Ok).0: i32);
-          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(_9);
+          _7 = ((_1 as Ok).0: i32);
+          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(_7);
           goto -> bb4;
 +     }
 + 
 +     bb7: {
-+         StorageDead(_10);
-+         StorageDead(_9);
 +         StorageDead(_8);
-+         StorageDead(_3);
-+         _4 = discriminant(_2);
++         StorageDead(_7);
++         StorageDead(_6);
++         _3 = discriminant(_2);
 +         goto -> bb3;
       }
   }

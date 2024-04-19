@@ -2,9 +2,9 @@
 //@ revisions: riscv32 riscv64
 //
 //@ [riscv32] needs-llvm-components: riscv
-//@ [riscv32] compile-flags: --target=riscv32i-unknown-none-elf -C target-feature=-fast-unaligned-access --crate-type=rlib
+//@ [riscv32] compile-flags: --target=riscv32i-unknown-none-elf -C target-feature=-unaligned-scalar-mem --crate-type=rlib
 //@ [riscv64] needs-llvm-components: riscv
-//@ [riscv64] compile-flags: --target=riscv64gc-unknown-none-elf -C target-feature=-fast-unaligned-access --crate-type=rlib
+//@ [riscv64] compile-flags: --target=riscv64gc-unknown-none-elf -C target-feature=-unaligned-scalar-mem --crate-type=rlib
 #![no_core]
 #![feature(
     no_core,

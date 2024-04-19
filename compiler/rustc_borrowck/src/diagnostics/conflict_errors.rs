@@ -377,7 +377,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if p.span == self.expr_span {
                     self.pat = Some(p);
                 }
-                if let hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, i, sub) = p.kind {
+                if let hir::PatKind::Binding(hir::BindingMode::NONE, _, i, sub) = p.kind {
                     if i.span == self.expr_span || p.span == self.expr_span {
                         self.pat = Some(p);
                     }

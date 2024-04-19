@@ -394,16 +394,13 @@ fn copy_self_contained_objects(
             target_deps.push((libunwind_path, DependencyType::TargetSelfContained));
         }
     } else if target.contains("-wasi") {
-        let srcdir = builder
-            .wasi_root(target)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Target {:?} does not have a \"wasi-root\" key in Config.toml",
-                    target.triple
-                )
-            })
-            .join("lib")
-            .join(target.to_string().replace("-preview1", "").replace("p2", "").replace("p1", ""));
+        let srcdir = builder.wasi_libdir(target).unwrap_or_else(|| {
+            panic!(
+                "Target {:?} does not have a \"wasi-root\" key in Config.toml \
+                    or `$WASI_SDK_PATH` set",
+                target.triple
+            )
+        });
         for &obj in &["libc.a", "crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,
@@ -514,12 +511,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         }
 
         if target.contains("-wasi") {
-            if let Some(p) = builder.wasi_root(target) {
-                let root = format!(
-                    "native={}/lib/{}",
-                    p.to_str().unwrap(),
-                    target.to_string().replace("-preview1", "")
-                );
+            if let Some(dir) = builder.wasi_libdir(target) {
+                let root = format!("native={}", dir.to_str().unwrap());
                 cargo.rustflag("-L").rustflag(&root);
             }
         }
