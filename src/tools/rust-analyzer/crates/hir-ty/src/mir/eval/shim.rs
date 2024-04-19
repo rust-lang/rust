@@ -360,7 +360,7 @@ impl Evaluator<'_> {
                             ))
                         };
                     }
-                    let size = self.size_of_sized(&ty, locals, "begin panic arg")?;
+                    let size = self.size_of_sized(ty, locals, "begin panic arg")?;
                     let pointee = arg.interval.get(self)?;
                     arg = IntervalAndTy {
                         interval: Interval::new(Address::from_bytes(pointee)?, size),

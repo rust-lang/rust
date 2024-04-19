@@ -428,6 +428,17 @@ impl MirEvalError {
         }
         Ok(())
     }
+
+    pub fn is_panic(&self) -> Option<&str> {
+        let mut err = self;
+        while let MirEvalError::InFunction(e, _) = err {
+            err = e;
+        }
+        match err {
+            MirEvalError::Panic(msg) => Some(msg),
+            _ => None,
+        }
+    }
 }
 
 impl std::fmt::Debug for MirEvalError {

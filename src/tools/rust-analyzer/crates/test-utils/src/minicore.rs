@@ -28,7 +28,7 @@
 //!     env: option
 //!     eq: sized
 //!     error: fmt
-//!     fmt: option, result, transmute, coerce_unsized
+//!     fmt: option, result, transmute, coerce_unsized, copy, clone, derive
 //!     fn:
 //!     from: sized
 //!     future: pin
@@ -919,6 +919,7 @@ pub mod fmt {
             type Opaque;
         }
 
+        #[derive(Copy, Clone)]
         #[lang = "format_argument"]
         pub struct Argument<'a> {
             value: &'a Opaque,
@@ -986,6 +987,7 @@ pub mod fmt {
         }
     }
 
+    #[derive(Copy, Clone)]
     #[lang = "format_arguments"]
     pub struct Arguments<'a> {
         pieces: &'a [&'static str],
@@ -1421,6 +1423,7 @@ mod panicking {
 }
 // endregion:panic
 
+#[macro_use]
 mod macros {
     // region:panic
     #[macro_export]
