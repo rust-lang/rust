@@ -410,14 +410,17 @@ pub(super) fn definition(
         Definition::Trait(trait_) => {
             trait_.display_limited(db, config.max_trait_assoc_items_count).to_string()
         }
-        Definition::Adt(adt) => {
-            adt.display_limited(db, config.max_adt_fields_or_variants_count).to_string()
+        Definition::Adt(adt @ (Adt::Struct(_) | Adt::Union(_))) => {
+            adt.display_limited(db, config.max_struct_or_union_fields_count).to_string()
+        }
+        Definition::Adt(adt @ Adt::Enum(_)) => {
+            adt.display_limited(db, config.max_enum_variants_count).to_string()
         }
         Definition::SelfType(impl_def) => {
             let self_ty = &impl_def.self_ty(db);
             match self_ty.as_adt() {
                 Some(adt) => {
-                    adt.display_limited(db, config.max_adt_fields_or_variants_count).to_string()
+                    adt.display_limited(db, config.max_struct_or_union_fields_count).to_string()
                 }
                 None => self_ty.display(db).to_string(),
             }

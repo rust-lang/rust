@@ -188,7 +188,7 @@ impl HirDisplay for Struct {
             StructKind::Record => {
                 let has_where_clause = write_where_clause(def_id, f)?;
                 if let Some(limit) = f.entity_limit {
-                    display_fields_or_variants(&self.fields(f.db), has_where_clause, limit, f)?;
+                    display_fields(&self.fields(f.db), has_where_clause, limit, f)?;
                 }
             }
             StructKind::Unit => _ = write_where_clause(def_id, f)?,
@@ -208,7 +208,7 @@ impl HirDisplay for Enum {
 
         let has_where_clause = write_where_clause(def_id, f)?;
         if let Some(limit) = f.entity_limit {
-            display_fields_or_variants(&self.variants(f.db), has_where_clause, limit, f)?;
+            display_variants(&self.variants(f.db), has_where_clause, limit, f)?;
         }
 
         Ok(())
@@ -225,35 +225,83 @@ impl HirDisplay for Union {
 
         let has_where_clause = write_where_clause(def_id, f)?;
         if let Some(limit) = f.entity_limit {
-            display_fields_or_variants(&self.fields(f.db), has_where_clause, limit, f)?;
+            display_fields(&self.fields(f.db), has_where_clause, limit, f)?;
         }
         Ok(())
     }
 }
 
-fn display_fields_or_variants<T: HirDisplay>(
-    fields_or_variants: &[T],
+fn display_fields(
+    fields: &[Field],
     has_where_clause: bool,
     limit: usize,
     f: &mut HirFormatter<'_>,
 ) -> Result<(), HirDisplayError> {
-    let count = fields_or_variants.len().min(limit);
+    let count = fields.len().min(limit);
     f.write_char(if !has_where_clause { ' ' } else { '\n' })?;
     if count == 0 {
-        if fields_or_variants.is_empty() {
+        if fields.is_empty() {
             f.write_str("{}")?;
         } else {
             f.write_str("{ /* … */ }")?;
         }
     } else {
         f.write_str("{\n")?;
-        for field in &fields_or_variants[..count] {
+        for field in &fields[..count] {
             f.write_str("    ")?;
             field.hir_fmt(f)?;
             f.write_str(",\n")?;
         }
 
-        if fields_or_variants.len() > count {
+        if fields.len() > count {
+            f.write_str("    /* … */\n")?;
+        }
+        f.write_str("}")?;
+    }
+
+    Ok(())
+}
+
+fn display_variants(
+    variants: &[Variant],
+    has_where_clause: bool,
+    limit: usize,
+    f: &mut HirFormatter<'_>,
+) -> Result<(), HirDisplayError> {
+    let count = variants.len().min(limit);
+    f.write_char(if !has_where_clause { ' ' } else { '\n' })?;
+    if count == 0 {
+        if variants.is_empty() {
+            f.write_str("{}")?;
+        } else {
+            f.write_str("{ /* … */ }")?;
+        }
+    } else {
+        f.write_str("{\n")?;
+        for variant in &variants[..count] {
+            f.write_str("    ")?;
+            write!(f, "{}", variant.name(f.db).display(f.db.upcast()))?;
+            match variant.kind(f.db) {
+                StructKind::Tuple => {
+                    if variant.fields(f.db).is_empty() {
+                        f.write_str("()")?;
+                    } else {
+                        f.write_str("( /* … */ )")?;
+                    }
+                }
+                StructKind::Record => {
+                    if variant.fields(f.db).is_empty() {
+                        f.write_str(" {}")?;
+                    } else {
+                        f.write_str(" { /* … */ }")?;
+                    }
+                }
+                StructKind::Unit => {}
+            }
+            f.write_str(",\n")?;
+        }
+
+        if variants.len() > count {
             f.write_str("    /* … */\n")?;
         }
         f.write_str("}")?;
