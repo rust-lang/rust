@@ -234,6 +234,7 @@ impl GlobalState {
                                 it.clone(),
                                 cargo_config.target.as_deref(),
                                 &cargo_config.extra_env,
+                                &cargo_config.cfg_overrides,
                             ))
                         }
                     })

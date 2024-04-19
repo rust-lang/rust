@@ -86,6 +86,8 @@ pub enum ProjectWorkspace {
         toolchain: Option<Version>,
         /// The target data layout queried for workspace.
         target_layout: TargetLayoutLoadResult,
+        /// A set of cfg overrides for this workspace.
+        cfg_overrides: CfgOverrides,
     },
     // FIXME: The primary limitation of this approach is that the set of detached files needs to be fixed at the beginning.
     // That's not the end user experience we should strive for.
@@ -111,6 +113,8 @@ pub enum ProjectWorkspace {
         toolchain: Option<Version>,
         /// The target data layout queried for workspace.
         target_layout: TargetLayoutLoadResult,
+        /// A set of cfg overrides for the files.
+        cfg_overrides: CfgOverrides,
     },
 }
 
@@ -149,6 +153,7 @@ impl fmt::Debug for ProjectWorkspace {
                 rustc_cfg,
                 toolchain,
                 target_layout: data_layout,
+                cfg_overrides,
             } => {
                 let mut debug_struct = f.debug_struct("Json");
                 debug_struct.field("n_crates", &project.n_crates());
@@ -158,7 +163,8 @@ impl fmt::Debug for ProjectWorkspace {
                 debug_struct
                     .field("n_rustc_cfg", &rustc_cfg.len())
                     .field("toolchain", &toolchain)
-                    .field("data_layout", &data_layout);
+                    .field("data_layout", &data_layout)
+                    .field("n_cfg_overrides", &cfg_overrides.len());
                 debug_struct.finish()
             }
             ProjectWorkspace::DetachedFiles {
@@ -167,6 +173,7 @@ impl fmt::Debug for ProjectWorkspace {
                 rustc_cfg,
                 toolchain,
                 target_layout,
+                cfg_overrides,
             } => f
                 .debug_struct("DetachedFiles")
                 .field("n_files", &files.len())
@@ -174,6 +181,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("n_rustc_cfg", &rustc_cfg.len())
                 .field("toolchain", &toolchain)
                 .field("data_layout", &target_layout)
+                .field("n_cfg_overrides", &cfg_overrides.len())
                 .finish(),
         }
     }
@@ -227,6 +235,7 @@ impl ProjectWorkspace {
                     project_json,
                     config.target.as_deref(),
                     &config.extra_env,
+                    &config.cfg_overrides,
                 )
             }
             ProjectManifest::CargoToml(cargo_toml) => {
@@ -368,6 +377,7 @@ impl ProjectWorkspace {
         project_json: ProjectJson,
         target: Option<&str>,
         extra_env: &FxHashMap<String, String>,
+        cfg_overrides: &CfgOverrides,
     ) -> ProjectWorkspace {
         let sysroot = match (project_json.sysroot.clone(), project_json.sysroot_src.clone()) {
             (Some(sysroot), Some(sysroot_src)) => {
@@ -414,6 +424,7 @@ impl ProjectWorkspace {
             rustc_cfg,
             toolchain,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
+            cfg_overrides: cfg_overrides.clone(),
         }
     }
 
@@ -464,6 +475,7 @@ impl ProjectWorkspace {
             rustc_cfg,
             toolchain,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
+            cfg_overrides: config.cfg_overrides.clone(),
         })
     }
 
@@ -619,6 +631,7 @@ impl ProjectWorkspace {
                 rustc_cfg: _,
                 toolchain: _,
                 target_layout: _,
+                cfg_overrides: _,
             } => project
                 .crates()
                 .map(|(_, krate)| PackageRoot {
@@ -734,6 +747,7 @@ impl ProjectWorkspace {
                 rustc_cfg,
                 toolchain: _,
                 target_layout: _,
+                cfg_overrides,
             } => (
                 project_json_to_crate_graph(
                     rustc_cfg.clone(),
@@ -741,6 +755,7 @@ impl ProjectWorkspace {
                     project,
                     sysroot.as_ref().ok(),
                     extra_env,
+                    cfg_overrides,
                 ),
                 sysroot,
             ),
@@ -772,12 +787,14 @@ impl ProjectWorkspace {
                 rustc_cfg,
                 toolchain: _,
                 target_layout: _,
+                cfg_overrides,
             } => (
                 detached_files_to_crate_graph(
                     rustc_cfg.clone(),
                     load,
                     files,
                     sysroot.as_ref().ok(),
+                    cfg_overrides,
                 ),
                 sysroot,
             ),
@@ -828,28 +845,45 @@ impl ProjectWorkspace {
                     && cargo_config_extra_env == o_cargo_config_extra_env
             }
             (
-                Self::Json { project, sysroot, rustc_cfg, toolchain, target_layout: _ },
+                Self::Json {
+                    project,
+                    sysroot,
+                    rustc_cfg,
+                    toolchain,
+                    target_layout: _,
+                    cfg_overrides,
+                },
                 Self::Json {
                     project: o_project,
                     sysroot: o_sysroot,
                     rustc_cfg: o_rustc_cfg,
                     toolchain: o_toolchain,
                     target_layout: _,
+                    cfg_overrides: o_cfg_overrides,
                 },
             ) => {
                 project == o_project
                     && rustc_cfg == o_rustc_cfg
                     && sysroot == o_sysroot
                     && toolchain == o_toolchain
+                    && cfg_overrides == o_cfg_overrides
             }
             (
-                Self::DetachedFiles { files, sysroot, rustc_cfg, toolchain, target_layout },
+                Self::DetachedFiles {
+                    files,
+                    sysroot,
+                    rustc_cfg,
+                    toolchain,
+                    target_layout,
+                    cfg_overrides,
+                },
                 Self::DetachedFiles {
                     files: o_files,
                     sysroot: o_sysroot,
                     rustc_cfg: o_rustc_cfg,
                     toolchain: o_toolchain,
                     target_layout: o_target_layout,
+                    cfg_overrides: o_cfg_overrides,
                 },
             ) => {
                 files == o_files
@@ -857,6 +891,7 @@ impl ProjectWorkspace {
                     && rustc_cfg == o_rustc_cfg
                     && toolchain == o_toolchain
                     && target_layout == o_target_layout
+                    && cfg_overrides == o_cfg_overrides
             }
             _ => false,
         }
@@ -877,6 +912,7 @@ fn project_json_to_crate_graph(
     project: &ProjectJson,
     sysroot: Option<&Sysroot>,
     extra_env: &FxHashMap<String, String>,
+    override_cfg: &CfgOverrides,
 ) -> (CrateGraph, ProcMacroPaths) {
     let mut res = (CrateGraph::default(), ProcMacroPaths::default());
     let (crate_graph, proc_macros) = &mut res;
@@ -916,19 +952,22 @@ fn project_json_to_crate_graph(
                     None => &rustc_cfg,
                 };
 
+                let mut cfg_options = target_cfgs
+                    .iter()
+                    .chain(cfg.iter())
+                    .chain(iter::once(&r_a_cfg_flag))
+                    .cloned()
+                    .collect();
+                override_cfg.apply(
+                    &mut cfg_options,
+                    display_name.as_ref().map(|it| it.canonical_name()).unwrap_or_default(),
+                );
                 let crate_graph_crate_id = crate_graph.add_crate_root(
                     file_id,
                     *edition,
                     display_name.clone(),
                     version.clone(),
-                    Arc::new(
-                        target_cfgs
-                            .iter()
-                            .chain(cfg.iter())
-                            .chain(iter::once(&r_a_cfg_flag))
-                            .cloned()
-                            .collect(),
-                    ),
+                    Arc::new(cfg_options),
                     None,
                     env,
                     *is_proc_macro,
@@ -992,7 +1031,7 @@ fn cargo_to_crate_graph(
         None => (SysrootPublicDeps::default(), None),
     };
 
-    let cfg_options = create_cfg_options(rustc_cfg);
+    let cfg_options = CfgOptions::from_iter(rustc_cfg);
 
     // Mapping of a package to its library target
     let mut pkg_to_lib_crate = FxHashMap::default();
@@ -1168,6 +1207,7 @@ fn detached_files_to_crate_graph(
     load: FileLoader<'_>,
     detached_files: &[AbsPathBuf],
     sysroot: Option<&Sysroot>,
+    override_cfg: &CfgOverrides,
 ) -> (CrateGraph, ProcMacroPaths) {
     let _p = tracing::span!(tracing::Level::INFO, "detached_files_to_crate_graph").entered();
     let mut crate_graph = CrateGraph::default();
@@ -1176,8 +1216,10 @@ fn detached_files_to_crate_graph(
         None => (SysrootPublicDeps::default(), None),
     };
 
-    let mut cfg_options = create_cfg_options(rustc_cfg);
+    let mut cfg_options = CfgOptions::from_iter(rustc_cfg);
+    cfg_options.insert_atom("test".into());
     cfg_options.insert_atom("rust_analyzer".into());
+    override_cfg.apply(&mut cfg_options, "");
     let cfg_options = Arc::new(cfg_options);
 
     for detached_file in detached_files {
@@ -1411,7 +1453,11 @@ fn sysroot_to_crate_graph(
                 cargo,
                 None,
                 rustc_cfg,
-                &CfgOverrides::default(),
+                &CfgOverrides {
+                    global: CfgDiff::new(vec![CfgAtom::Flag("debug_assertions".into())], vec![])
+                        .unwrap(),
+                    ..Default::default()
+                },
                 &WorkspaceBuildScripts::default(),
             );
 
@@ -1469,7 +1515,12 @@ fn sysroot_to_crate_graph(
             (SysrootPublicDeps { deps: pub_deps }, libproc_macro)
         }
         SysrootMode::Stitched(stitched) => {
-            let cfg_options = Arc::new(create_cfg_options(rustc_cfg));
+            let cfg_options = Arc::new({
+                let mut cfg_options = CfgOptions::default();
+                cfg_options.extend(rustc_cfg);
+                cfg_options.insert_atom("debug_assertions".into());
+                cfg_options
+            });
             let sysroot_crates: FxHashMap<SysrootCrate, CrateId> = stitched
                 .crates()
                 .filter_map(|krate| {
@@ -1541,11 +1592,4 @@ fn add_dep_inner(graph: &mut CrateGraph, from: CrateId, dep: Dependency) {
     if let Err(err) = graph.add_dep(from, dep) {
         tracing::error!("{}", err)
     }
-}
-
-fn create_cfg_options(rustc_cfg: Vec<CfgFlag>) -> CfgOptions {
-    let mut cfg_options = CfgOptions::default();
-    cfg_options.extend(rustc_cfg);
-    cfg_options.insert_atom("debug_assertions".into());
-    cfg_options
 }

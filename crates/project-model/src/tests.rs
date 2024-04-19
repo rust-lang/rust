@@ -75,6 +75,7 @@ fn load_rust_project(file: &str) -> (CrateGraph, ProcMacroPaths) {
         rustc_cfg: Vec::new(),
         toolchain: None,
         target_layout: Err(Arc::from("test has no data layout")),
+        cfg_overrides: Default::default(),
     };
     to_crate_graph(project_workspace)
 }
