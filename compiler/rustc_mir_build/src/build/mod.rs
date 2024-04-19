@@ -1023,7 +1023,13 @@ pub(crate) fn parse_float_into_scalar(
     let num = num.as_str();
     match float_ty {
         // FIXME(f16_f128): When available, compare to the library parser as with `f32` and `f64`
-        ty::FloatTy::F16 => num.parse::<Half>().ok().map(Scalar::from_f16),
+        ty::FloatTy::F16 => {
+            let mut f = num.parse::<Half>().ok()?;
+            if neg {
+                f = -f;
+            }
+            Some(Scalar::from_f16(f))
+        }
         ty::FloatTy::F32 => {
             let Ok(rust_f) = num.parse::<f32>() else { return None };
             let mut f = num
@@ -1071,7 +1077,13 @@ pub(crate) fn parse_float_into_scalar(
             Some(Scalar::from_f64(f))
         }
         // FIXME(f16_f128): When available, compare to the library parser as with `f32` and `f64`
-        ty::FloatTy::F128 => num.parse::<Quad>().ok().map(Scalar::from_f128),
+        ty::FloatTy::F128 => {
+            let mut f = num.parse::<Quad>().ok()?;
+            if neg {
+                f = -f;
+            }
+            Some(Scalar::from_f128(f))
+        }
     }
 }
 
