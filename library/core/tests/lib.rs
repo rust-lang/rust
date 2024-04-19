@@ -46,7 +46,7 @@
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(try_find)]
-#![feature(inline_const)]
+#![cfg_attr(bootstrap, feature(inline_const))]
 #![feature(is_sorted)]
 #![feature(layout_for_ptr)]
 #![feature(pattern)]
