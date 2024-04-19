@@ -4,7 +4,7 @@ use anyhow::Context;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
-use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath, Sysroot};
+use crate::{cfg::CfgFlag, utf8_stdout, ManifestPath, Sysroot};
 
 /// Determines how `rustc --print cfg` is discovered and invoked.
 pub(crate) enum RustcCfgConfig<'a> {

@@ -55,7 +55,7 @@ use rustc_hash::FxHashMap;
 use serde::{de, Deserialize, Serialize};
 use span::Edition;
 
-use crate::cfg_flag::CfgFlag;
+use crate::cfg::CfgFlag;
 
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Eq, PartialEq)]

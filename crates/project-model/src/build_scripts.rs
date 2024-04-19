@@ -23,16 +23,18 @@ use serde::Deserialize;
 use toolchain::Tool;
 
 use crate::{
-    cfg_flag::CfgFlag, utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
+    cfg::CfgFlag, utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
     InvocationStrategy, Package, Sysroot, TargetKind,
 };
 
+/// Output of the build script and proc-macro building steps for a workspace.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct WorkspaceBuildScripts {
     outputs: ArenaMap<Package, BuildScriptOutput>,
     error: Option<String>,
 }
 
+/// Output of the build script and proc-macro building step for a concrete package.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct BuildScriptOutput {
     /// List of config flags defined by this package's build script.

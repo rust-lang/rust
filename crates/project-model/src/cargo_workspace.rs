@@ -135,6 +135,20 @@ pub struct PackageData {
     pub active_features: Vec<String>,
     /// String representation of package id
     pub id: String,
+    /// Authors as given in the `Cargo.toml`
+    pub authors: Vec<String>,
+    /// Description as given in the `Cargo.toml`
+    pub description: Option<String>,
+    /// Homepage as given in the `Cargo.toml`
+    pub homepage: Option<String>,
+    /// License as given in the `Cargo.toml`
+    pub license: Option<String>,
+    /// License file as given in the `Cargo.toml`
+    pub license_file: Option<Utf8PathBuf>,
+    /// Readme file as given in the `Cargo.toml`
+    pub readme: Option<Utf8PathBuf>,
+    /// Rust version as given in the `Cargo.toml`
+    pub rust_version: Option<semver::Version>,
     /// The contents of [package.metadata.rust-analyzer]
     pub metadata: RustAnalyzerPackageMetaData,
 }
@@ -224,6 +238,10 @@ impl TargetKind {
             };
         }
         TargetKind::Other
+    }
+
+    pub fn is_executable(self) -> bool {
+        matches!(self, TargetKind::Bin | TargetKind::Example)
     }
 }
 
@@ -330,6 +348,13 @@ impl CargoWorkspace {
                 repository,
                 edition,
                 metadata,
+                authors,
+                description,
+                homepage,
+                license,
+                license_file,
+                readme,
+                rust_version,
                 ..
             } = meta_pkg;
             let meta = from_value::<PackageMetadata>(metadata).unwrap_or_default();
@@ -358,6 +383,13 @@ impl CargoWorkspace {
                 is_member,
                 edition,
                 repository,
+                authors,
+                description,
+                homepage,
+                license,
+                license_file,
+                readme,
+                rust_version,
                 dependencies: Vec::new(),
                 features: features.into_iter().collect(),
                 active_features: Vec::new(),

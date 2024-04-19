@@ -331,10 +331,11 @@ impl CrateGraph {
         version: Option<String>,
         cfg_options: Arc<CfgOptions>,
         potential_cfg_options: Option<Arc<CfgOptions>>,
-        env: Env,
+        mut env: Env,
         is_proc_macro: bool,
         origin: CrateOrigin,
     ) -> CrateId {
+        env.entries.shrink_to_fit();
         let data = CrateData {
             root_file_id,
             edition,
@@ -651,8 +652,8 @@ impl FromIterator<(String, String)> for Env {
 }
 
 impl Env {
-    pub fn set(&mut self, env: &str, value: String) {
-        self.entries.insert(env.to_owned(), value);
+    pub fn set(&mut self, env: &str, value: impl Into<String>) {
+        self.entries.insert(env.to_owned(), value.into());
     }
 
     pub fn get(&self, env: &str) -> Option<String> {
