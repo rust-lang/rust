@@ -132,4 +132,105 @@ const EXPECTED = [
         'query': 'reference<mut, reference<middle>>, reference<mut, reference<middle>> -> ()',
         'others': [],
     },
+    // pinkie with shorthand
+    {
+        'query': '&usize, usize -> ()',
+        'others': [
+            { 'path': 'reference', 'name': 'pinky' },
+        ],
+    },
+    {
+        'query': '&usize, &usize -> ()',
+        'others': [],
+    },
+    {
+        'query': '&mut usize, usize -> ()',
+        'others': [],
+    },
+    // thumb with shorthand
+    {
+        'query': '&thumb, thumb -> ()',
+        'others': [
+            { 'path': 'reference::Thumb', 'name': 'up' },
+        ],
+    },
+    {
+        'query': '&thumb, &thumb -> ()',
+        'others': [],
+    },
+    {
+        'query': '&mut thumb, thumb -> ()',
+        'others': [],
+    },
+    // index with explicit names
+    {
+        'query': '&index, index -> ()',
+        'others': [
+            { 'path': 'reference::Index', 'name': 'point' },
+        ],
+    },
+    {
+        'query': '&index, &index -> ()',
+        'others': [],
+    },
+    {
+        'query': '&mut index, index -> ()',
+        'others': [],
+    },
+    // ring with shorthand
+    {
+        'query': '&ring, ring -> ()',
+        'others': [
+            { 'path': 'reference::Ring', 'name': 'wear' },
+        ],
+    },
+    {
+        'query': '&ring, ring -> ()',
+        'others': [
+            { 'path': 'reference::Ring', 'name': 'wear' },
+        ],
+    },
+    {
+        'query': '&mut ring, &ring -> ()',
+        'others': [
+            { 'path': 'reference::Ring', 'name': 'wear' },
+        ],
+    },
+    {
+        'query': '&mut ring, &mut ring -> ()',
+        'others': [],
+    },
+    // middle with shorthand
+    {
+        'query': '&middle, &middle -> ()',
+        'others': [
+            { 'path': 'reference', 'name': 'show' },
+        ],
+    },
+    {
+        'query': '&mut middle, &mut middle -> ()',
+        'others': [
+            { 'path': 'reference', 'name': 'show' },
+        ],
+    },
+    {
+        'query': '&&mut middle, &mut &middle -> ()',
+        'others': [
+            { 'path': 'reference', 'name': 'show' },
+        ],
+    },
+    {
+        'query': '&mut &middle, &&mut middle -> ()',
+        'others': [
+            { 'path': 'reference', 'name': 'show' },
+        ],
+    },
+    {
+        'query': '&&mut middle, &&mut middle -> ()',
+        'others': [],
+    },
+    {
+        'query': '&mut &middle, &mut &middle -> ()',
+        'others': [],
+    },
 ];
