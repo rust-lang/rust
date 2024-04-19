@@ -209,7 +209,7 @@ impl ChangeFixture {
                 assert!(default_crate_root.is_none());
                 default_crate_root = Some(file_id);
                 default_cfg.extend(meta.cfg.into_iter());
-                default_env.extend(meta.env.iter().map(|(x, y)| (x.to_owned(), y.to_owned())));
+                default_env.extend_from_other(&meta.env);
             }
 
             source_change.change_file(file_id, Some(text));

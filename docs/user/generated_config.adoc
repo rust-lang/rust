@@ -88,10 +88,18 @@ or build-script sources change and are saved.
 Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
 avoid checking unnecessary things.
 --
-[[rust-analyzer.cargo.cfgs]]rust-analyzer.cargo.cfgs (default: `{}`)::
+[[rust-analyzer.cargo.cfgs]]rust-analyzer.cargo.cfgs::
 +
 --
+Default:
+----
+{
+  "debug_assertions": null,
+  "miri": null
+}
+----
 List of cfg options to enable with the given values.
+
 --
 [[rust-analyzer.cargo.extraArgs]]rust-analyzer.cargo.extraArgs (default: `[]`)::
 +

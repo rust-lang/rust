@@ -124,7 +124,12 @@ config_data! {
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = true,
         /// List of cfg options to enable with the given values.
-        cargo_cfgs: FxHashMap<String, String> = FxHashMap::default(),
+        cargo_cfgs: FxHashMap<String, Option<String>> = {
+            let mut m = FxHashMap::default();
+            m.insert("debug_assertions".to_owned(), None);
+            m.insert("miri".to_owned(), None);
+            m
+        },
         /// Extra arguments that are passed to every cargo invocation.
         cargo_extraArgs: Vec<String> = vec![],
         /// Extra environment variables that will be set when running cargo, rustc
@@ -1601,12 +1606,9 @@ impl Config {
                 global: CfgDiff::new(
                     self.cargo_cfgs()
                         .iter()
-                        .map(|(key, val)| {
-                            if val.is_empty() {
-                                CfgAtom::Flag(key.into())
-                            } else {
-                                CfgAtom::KeyValue { key: key.into(), value: val.into() }
-                            }
+                        .map(|(key, val)| match val {
+                            Some(val) => CfgAtom::KeyValue { key: key.into(), value: val.into() },
+                            None => CfgAtom::Flag(key.into()),
                         })
                         .collect(),
                     vec![],
@@ -2676,6 +2678,9 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "object",
         },
         "FxHashMap<Box<str>, usize>" => set! {
+            "type": "object",
+        },
+        "FxHashMap<String, Option<String>>" => set! {
             "type": "object",
         },
         "Option<usize>" => set! {
