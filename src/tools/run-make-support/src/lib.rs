@@ -4,6 +4,8 @@
 //! as `object` or `wasmparser`, they can be re-exported and be made available through this library.
 
 pub mod cc;
+pub mod clang;
+pub mod llvm_readobj;
 pub mod run;
 pub mod rustc;
 pub mod rustdoc;
@@ -17,6 +19,8 @@ pub use regex;
 pub use wasmparser;
 
 pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
+pub use clang::{clang, Clang};
+pub use llvm_readobj::{llvm_readobj, LlvmReadobj};
 pub use run::{run, run_fail};
 pub use rustc::{aux_build, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
