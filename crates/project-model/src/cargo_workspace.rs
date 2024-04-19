@@ -379,11 +379,12 @@ impl CargoWorkspace {
             let is_local = source.is_none();
             let is_member = ws_members.contains(&id);
 
+            let manifest = AbsPathBuf::assert(manifest_path);
             let pkg = packages.alloc(PackageData {
                 id: id.repr.clone(),
                 name,
                 version,
-                manifest: AbsPathBuf::assert(manifest_path).try_into().unwrap(),
+                manifest: manifest.clone().try_into().unwrap(),
                 targets: Vec::new(),
                 is_local,
                 is_member,
@@ -406,11 +407,22 @@ impl CargoWorkspace {
             for meta_tgt in meta_targets {
                 let cargo_metadata::Target { name, kind, required_features, src_path, .. } =
                     meta_tgt;
+                let kind = TargetKind::new(&kind);
                 let tgt = targets.alloc(TargetData {
                     package: pkg,
                     name,
-                    root: AbsPathBuf::assert(src_path),
-                    kind: TargetKind::new(&kind),
+                    root: if kind == TargetKind::Bin
+                        && manifest.extension().is_some_and(|ext| ext == "rs")
+                    {
+                        // cargo strips the script part of a cargo script away and places the
+                        // modified manifest file into a special target dir which is then used as
+                        // the source path. We don't want that, we want the original here so map it
+                        // back
+                        manifest.clone()
+                    } else {
+                        AbsPathBuf::assert(src_path)
+                    },
+                    kind,
                     required_features,
                 });
                 pkg_data.targets.push(tgt);

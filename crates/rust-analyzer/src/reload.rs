@@ -718,9 +718,7 @@ pub fn ws_to_crate_graph(
     let mut toolchains = Vec::default();
     let e = Err(Arc::from("missing layout"));
     for ws in workspaces {
-        dbg!(ws);
         let (other, mut crate_proc_macros) = ws.to_crate_graph(&mut load, extra_env);
-        dbg!(&other);
         let num_layouts = layouts.len();
         let num_toolchains = toolchains.len();
         let (ProjectWorkspace::Cargo { toolchain, target_layout, .. }

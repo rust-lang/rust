@@ -139,10 +139,10 @@ version = "0.1.0"
 pub struct SpecialHashMap2;
 //- /src/lib.rs
 #!/usr/bin/env -S cargo +nightly -Zscript
-//! ---cargo
-//! [dependencies]
-//! dependency = { path = "../dependency" }
-//! ---
+---cargo
+[dependencies]
+dependency = { path = "../dependency" }
+---
 use dependency::Spam;
 use dependency2::Spam;
 "#,
@@ -178,10 +178,10 @@ use dependency2::Spam;
     server.write_file_and_save(
         "src/lib.rs",
         r#"#!/usr/bin/env -S cargo +nightly -Zscript
-//! ---cargo
-//! [dependencies]
-//! dependency2 = { path = "../dependency2" }
-//! ---
+---cargo
+[dependencies]
+dependency2 = { path = "../dependency2" }
+---
 use dependency::Spam;
 use dependency2::Spam;
 "#

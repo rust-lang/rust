@@ -437,7 +437,7 @@ impl ProjectWorkspace {
         detached_files: Vec<AbsPathBuf>,
         config: &CargoConfig,
     ) -> Vec<anyhow::Result<ProjectWorkspace>> {
-        dbg!(detached_files
+        detached_files
             .into_iter()
             .map(|detached_file| {
                 let dir = detached_file
@@ -508,7 +508,7 @@ impl ProjectWorkspace {
                     cargo_script,
                 })
             })
-            .collect())
+            .collect()
     }
 
     /// Runs the build scripts for this [`ProjectWorkspace`].
@@ -822,7 +822,7 @@ impl ProjectWorkspace {
             } => (
                 if let Some(cargo) = cargo_script {
                     cargo_to_crate_graph(
-                        load,
+                        &mut |path| load(path),
                         None,
                         cargo,
                         sysroot.as_ref().ok(),
