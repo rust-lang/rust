@@ -8,6 +8,7 @@ use intern::Interned;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
 use span::{Span, SyntaxContextId};
+use syntax::unescape;
 use syntax::{ast, format_smolstr, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
 use triomphe::ThinArc;
 
@@ -54,8 +55,7 @@ impl RawAttrs {
                     Attr {
                         id,
                         input: Some(Interned::new(AttrInput::Literal(tt::Literal {
-                            // FIXME: Escape quotes from comment content
-                            text: SmolStr::new(format_smolstr!("\"{doc}\"",)),
+                            text: SmolStr::new(format_smolstr!("\"{}\"", Self::escape_chars(doc))),
                             span,
                         }))),
                         path: Interned::new(ModPath::from(crate::name!(doc))),
@@ -72,6 +72,10 @@ impl RawAttrs {
         };
 
         RawAttrs { entries }
+    }
+
+    fn escape_chars(s: &str) -> String {
+        s.replace('\\', r#"\\"#).replace('"', r#"\""#)
     }
 
     pub fn from_attrs_owner(
@@ -303,9 +307,7 @@ impl Attr {
                 Some(it) => {
                     it.trim_matches('#').strip_prefix('"')?.strip_suffix('"').map(Cow::Borrowed)
                 }
-                None => {
-                    it.text.strip_prefix('"')?.strip_suffix('"').and_then(unescape).map(Cow::Owned)
-                }
+                None => it.text.strip_prefix('"')?.strip_suffix('"').and_then(unescape),
             },
             _ => None,
         }
@@ -360,37 +362,31 @@ impl Attr {
     }
 }
 
-fn unescape(s: &str) -> Option<String> {
-    let mut res = String::with_capacity(s.len());
-    let mut chars = s.chars();
-
-    while let Some(c) = chars.next() {
-        if c == '\\' {
-            match chars.next()? {
-                'n' => res.push('\n'),
-                'r' => res.push('\r'),
-                't' => res.push('\t'),
-                '\\' => res.push('\\'),
-                '\'' => res.push('\''),
-                '"' => res.push('"'),
-                '0' => res.push('\0'),
-                'x' => {
-                    let hex = chars.by_ref().take(2).collect::<String>();
-                    let c = u8::from_str_radix(&hex, 16).ok()?;
-                    res.push(c as char);
-                }
-                'u' => {
-                    let hex = chars.by_ref().take(4).collect::<String>();
-                    let c = u32::from_str_radix(&hex, 16).ok()?;
-                    res.push(char::from_u32(c)?);
-                }
-                _ => return None,
-            }
-        } else {
-            res.push(c);
+fn unescape(s: &str) -> Option<Cow<'_, str>> {
+    let mut buf = String::new();
+    let mut prev_end = 0;
+    let mut has_error = false;
+    unescape::unescape_unicode(s, unescape::Mode::Str, &mut |char_range, unescaped_char| match (
+        unescaped_char,
+        buf.capacity() == 0,
+    ) {
+        (Ok(c), false) => buf.push(c),
+        (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
+            prev_end = char_range.end
         }
+        (Ok(c), true) => {
+            buf.reserve_exact(s.len());
+            buf.push_str(&s[..prev_end]);
+            buf.push(c);
+        }
+        (Err(_), _) => has_error = true,
+    });
+
+    match (has_error, buf.capacity() == 0) {
+        (true, _) => None,
+        (false, false) => Some(Cow::Owned(buf)),
+        (false, true) => Some(Cow::Borrowed(s)),
     }
-    Some(res)
 }
 
 pub fn collect_attrs(
