@@ -279,13 +279,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Entry::Occupied(mut entry) => {
                 debug!(" - composing on top of {:?}", entry.get());
-                match (&entry.get()[..], &adj[..]) {
-                    // Applying any adjustment on top of a NeverToAny
-                    // is a valid NeverToAny adjustment, because it can't
-                    // be reached.
-                    (&[Adjustment { kind: Adjust::NeverToAny, .. }], _) => return,
+                match (&mut entry.get_mut()[..], &adj[..]) {
                     (
-                        &[
+                        [Adjustment { kind: Adjust::NeverToAny, target }],
+                        &[.., Adjustment { target: new_target, .. }],
+                    ) => {
+                        // NeverToAny coercion can target any type, so instead of adding a new
+                        // adjustment on top we can change the target.
+                        //
+                        // This is required for things like `a == a` (where `a: !`) to produce
+                        // valid MIR -- we need borrow adjustment from things like `==` to change
+                        // the type to `&!` (or `&()` depending on the fallback). This might be
+                        // relevant even in unreachable code.
+                        *target = new_target;
+                    }
+
+                    (
+                        &mut [
                             Adjustment { kind: Adjust::Deref(_), .. },
                             Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. },
                         ],
@@ -294,11 +304,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .., // Any following adjustments are allowed.
                         ],
                     ) => {
-                        // A reborrow has no effect before a dereference.
+                        // A reborrow has no effect before a dereference, so we can safely replace adjustments.
+                        *entry.get_mut() = adj;
                     }
-                    // FIXME: currently we never try to compose autoderefs
-                    // and ReifyFnPointer/UnsafeFnPointer, but we could.
+
                     _ => {
+                        // FIXME: currently we never try to compose autoderefs
+                        // and ReifyFnPointer/UnsafeFnPointer, but we could.
                         self.dcx().span_delayed_bug(
                             expr.span,
                             format!(
@@ -308,9 +320,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 adj
                             ),
                         );
+
+                        *entry.get_mut() = adj;
                     }
                 }
-                *entry.get_mut() = adj;
             }
         }
 
