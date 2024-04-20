@@ -170,9 +170,9 @@ pub enum BorrowKind {
     ///
     /// This is used when lowering index expressions and matches. This is used to prevent code like
     /// the following from compiling:
-    /// ```compile_fail,E0506
-    /// let mut x = vec![vec![0, 1]];
-    /// let y = vec![];
+    /// ```compile_fail,E0510
+    /// let mut x: &[_] = &[[0, 1]];
+    /// let y: &[_] = &[];
     /// let _ = x[0][{x = y; 1}];
     /// ```
     /// ```compile_fail,E0510
