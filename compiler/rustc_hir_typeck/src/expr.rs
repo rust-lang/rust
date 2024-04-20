@@ -2697,7 +2697,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn point_at_param_definition(&self, err: &mut Diag<'_>, param: ty::ParamTy) {
         let generics = self.tcx.generics_of(self.body_id);
-        let generic_param = generics.type_param(&param, self.tcx);
+        let generic_param = generics.type_param(param, self.tcx);
         if let ty::GenericParamDefKind::Type { synthetic: true, .. } = generic_param.kind {
             return;
         }
