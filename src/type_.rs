@@ -170,9 +170,19 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             TypeKind::Double
         } else if typ.is_vector() {
             TypeKind::Vector
+        } else if typ.get_pointee().is_some() {
+            TypeKind::Pointer
+        } else if typ.dyncast_array().is_some() {
+            TypeKind::Array
+        } else if typ.is_struct().is_some() {
+            TypeKind::Struct
+        } else if typ.dyncast_function_ptr_type().is_some() {
+            TypeKind::Function
+        } else if typ == self.type_void() {
+            TypeKind::Void
         } else {
             // TODO(antoyo): support other types.
-            TypeKind::Void
+            unimplemented!();
         }
     }
 
