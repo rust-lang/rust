@@ -227,6 +227,36 @@ impl IntoDiagArg for rustc_lint_defs::Level {
     }
 }
 
+impl<Id> IntoDiagArg for hir::def::Res<Id> {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.descr()))
+    }
+}
+
+impl IntoDiagArg for DiagLocation {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+impl IntoDiagArg for Backtrace {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+impl IntoDiagArg for Level {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+impl IntoDiagArg for type_ir::ClosureKind {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(self.as_str().into())
+    }
+}
+
 #[derive(Clone)]
 pub struct DiagSymbolList(Vec<Symbol>);
 
@@ -241,12 +271,6 @@ impl IntoDiagArg for DiagSymbolList {
         DiagArgValue::StrListSepByAnd(
             self.0.into_iter().map(|sym| Cow::Owned(format!("`{sym}`"))).collect(),
         )
-    }
-}
-
-impl<Id> IntoDiagArg for hir::def::Res<Id> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        DiagArgValue::Str(Cow::Borrowed(self.descr()))
     }
 }
 
@@ -316,24 +340,6 @@ pub struct ExpectedLifetimeParameter {
     pub count: usize,
 }
 
-impl IntoDiagArg for DiagLocation {
-    fn into_diag_arg(self) -> DiagArgValue {
-        DiagArgValue::Str(Cow::from(self.to_string()))
-    }
-}
-
-impl IntoDiagArg for Backtrace {
-    fn into_diag_arg(self) -> DiagArgValue {
-        DiagArgValue::Str(Cow::from(self.to_string()))
-    }
-}
-
-impl IntoDiagArg for Level {
-    fn into_diag_arg(self) -> DiagArgValue {
-        DiagArgValue::Str(Cow::from(self.to_string()))
-    }
-}
-
 #[derive(Subdiagnostic)]
 #[suggestion(errors_indicate_anonymous_lifetime, code = "{suggestion}", style = "verbose")]
 pub struct IndicateAnonymousLifetime {
@@ -341,10 +347,4 @@ pub struct IndicateAnonymousLifetime {
     pub span: Span,
     pub count: usize,
     pub suggestion: String,
-}
-
-impl IntoDiagArg for type_ir::ClosureKind {
-    fn into_diag_arg(self) -> DiagArgValue {
-        DiagArgValue::Str(self.as_str().into())
-    }
 }
