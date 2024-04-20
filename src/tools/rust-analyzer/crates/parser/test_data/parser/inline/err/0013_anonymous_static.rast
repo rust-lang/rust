@@ -1,0 +1,21 @@
+SOURCE_FILE
+  STATIC
+    STATIC_KW "static"
+    WHITESPACE " "
+    ERROR
+      UNDERSCORE "_"
+    COLON ":"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "i32"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "5"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 7: expected a name
