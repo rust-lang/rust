@@ -1,23 +1,16 @@
 //! Make sure that cross-language LTO works on riscv targets,
-//! which requires extra abi metadata to be emitted.
+//! which requires extra `target-abi` metadata to be emitted.
 //@ needs-matching-clang
 //@ needs-llvm-components riscv
 extern crate run_make_support;
 
-use run_make_support::{bin_name, rustc, tmp_dir};
+use run_make_support::{bin_name, clang, llvm_readobj, rustc, tmp_dir};
 use std::{
     env,
     path::PathBuf,
     process::{Command, Output},
     str,
 };
-
-fn handle_failed_output(output: Output) {
-    eprintln!("output status: `{}`", output.status);
-    eprintln!("=== STDOUT ===\n{}\n\n", String::from_utf8(output.stdout).unwrap());
-    eprintln!("=== STDERR ===\n{}\n\n", String::from_utf8(output.stderr).unwrap());
-    std::process::exit(1)
-}
 
 fn check_target(target: &str, clang_target: &str, carch: &str, is_double_float: bool) {
     eprintln!("Checking target {target}");
@@ -30,40 +23,24 @@ fn check_target(target: &str, clang_target: &str, carch: &str, is_double_float: 
         .linker_plugin_lto("on")
         .run();
     // C part
-    let clang = env::var("CLANG").unwrap();
-    let mut cmd = Command::new(clang);
-    let executable = tmp_dir().join("riscv-xlto");
-    cmd.arg("-target")
-        .arg(clang_target)
-        .arg(format!("-march={carch}"))
-        .arg(format!("-flto=thin"))
-        .arg(format!("-fuse-ld=lld"))
-        .arg("-nostdlib")
-        .arg("-o")
-        .arg(&executable)
-        .arg("cstart.c")
-        .arg(tmp_dir().join("libriscv_xlto.rlib"));
-    eprintln!("{cmd:?}");
-    let output = cmd.output().unwrap();
-    if !output.status.success() {
-        handle_failed_output(output);
-    }
+    clang()
+        .target(clang_target)
+        .arch(carch)
+        .lto("thin")
+        .use_ld("lld")
+        .no_stdlib()
+        .out_exe("riscv-xlto")
+        .input("cstart.c")
+        .input(tmp_dir().join("libriscv_xlto.rlib"))
+        .run();
+
     // Check that the built binary has correct float abi
-    let llvm_readobj =
-        PathBuf::from(env::var("LLVM_BIN_DIR").unwrap()).join(bin_name("llvm-readobj"));
-    let mut cmd = Command::new(llvm_readobj);
-    cmd.arg("--file-header").arg(executable);
-    eprintln!("{cmd:?}");
-    let output = cmd.output().unwrap();
-    if output.status.success() {
-        assert!(
-            !(is_double_float
-                ^ dbg!(str::from_utf8(&output.stdout).unwrap())
-                    .contains("EF_RISCV_FLOAT_ABI_DOUBLE"))
-        )
-    } else {
-        handle_failed_output(output);
-    }
+    let executable = tmp_dir().join(bin_name("riscv-xlto"));
+    let output = llvm_readobj().input(&executable).file_header().run();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    eprintln!("obj:\n{}", stdout);
+
+    assert!(!(is_double_float ^ stdout.contains("EF_RISCV_FLOAT_ABI_DOUBLE")));
 }
 
 fn main() {

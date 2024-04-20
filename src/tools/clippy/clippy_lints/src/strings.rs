@@ -300,11 +300,8 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                     e.span,
                     "calling `as_bytes()` on `include_str!(..)`",
                     "consider using `include_bytes!(..)` instead",
-                    snippet_with_applicability(cx, receiver.span.source_callsite(), r#""foo""#, &mut applicability).replacen(
-                        "include_str",
-                        "include_bytes",
-                        1,
-                    ),
+                    snippet_with_applicability(cx, receiver.span.source_callsite(), r#""foo""#, &mut applicability)
+                        .replacen("include_str", "include_bytes", 1),
                     applicability,
                 );
             } else if lit_content.as_str().is_ascii()

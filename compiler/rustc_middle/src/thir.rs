@@ -16,7 +16,7 @@ use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::newtype_index;
 use rustc_index::IndexVec;
 use rustc_middle::middle::region;
-use rustc_middle::mir::interpret::{AllocId, Scalar};
+use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::IntegerExt;
@@ -1006,18 +1006,17 @@ impl<'tcx> PatRangeBoundary<'tcx> {
 
             // This code is hot when compiling matches with many ranges. So we
             // special-case extraction of evaluated scalars for speed, for types where
-            // raw data comparisons are appropriate. E.g. `unicode-normalization` has
+            // unsigned int comparisons are appropriate. E.g. `unicode-normalization` has
             // many ranges such as '\u{037A}'..='\u{037F}', and chars can be compared
             // in this way.
-            (Finite(mir::Const::Ty(a)), Finite(mir::Const::Ty(b)))
-                if matches!(ty.kind(), ty::Uint(_) | ty::Char) =>
-            {
-                return Some(a.to_valtree().cmp(&b.to_valtree()));
+            (Finite(a), Finite(b)) if matches!(ty.kind(), ty::Uint(_) | ty::Char) => {
+                if let (Some(a), Some(b)) = (a.try_to_scalar_int(), b.try_to_scalar_int()) {
+                    let sz = ty.primitive_size(tcx);
+                    let a = a.assert_uint(sz);
+                    let b = b.assert_uint(sz);
+                    return Some(a.cmp(&b));
+                }
             }
-            (
-                Finite(mir::Const::Val(mir::ConstValue::Scalar(Scalar::Int(a)), _)),
-                Finite(mir::Const::Val(mir::ConstValue::Scalar(Scalar::Int(b)), _)),
-            ) if matches!(ty.kind(), ty::Uint(_) | ty::Char) => return Some(a.cmp(&b)),
             _ => {}
         }
 

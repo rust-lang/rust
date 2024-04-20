@@ -24,7 +24,7 @@ jobs:
         node-version: '18.x'
 
     - name: Install remark
-      run: npm install remark-cli remark-lint remark-lint-maximum-line-length remark-preset-lint-recommended remark-gfm
+      run: npm install remark-cli remark-lint remark-lint-maximum-line-length@^3.1.3 remark-preset-lint-recommended remark-gfm
 
     - name: Install mdbook
       run: |

@@ -37,7 +37,7 @@
 use crate::abi::call::Conv;
 use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
 use crate::json::{Json, ToJson};
-use crate::spec::abi::{lookup as lookup_abi, Abi};
+use crate::spec::abi::Abi;
 use crate::spec::crt_objects::CrtObjects;
 use rustc_fs_util::try_canonicalize;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -1915,6 +1915,19 @@ impl HasTargetSpec for Target {
     }
 }
 
+/// Which C ABI to use for `wasm32-unknown-unknown`.
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum WasmCAbi {
+    /// Spec-compliant C ABI.
+    Spec,
+    /// Legacy ABI. Which is non-spec-compliant.
+    Legacy,
+}
+
+pub trait HasWasmCAbiOpt {
+    fn wasm_c_abi_opt(&self) -> WasmCAbi;
+}
+
 type StaticCow<T> = Cow<'static, T>;
 
 /// Optional aspects of a target specification.
@@ -2273,9 +2286,6 @@ pub struct TargetOptions {
     /// distributed with the target, the sanitizer should still appear in this list for the target.
     pub supported_sanitizers: SanitizerSet,
 
-    /// If present it's a default value to use for adjusting the C ABI.
-    pub default_adjusted_cabi: Option<Abi>,
-
     /// Minimum number of bits in #[repr(C)] enum. Defaults to the size of c_int
     pub c_enum_min_bits: Option<u64>,
 
@@ -2507,7 +2517,6 @@ impl Default for TargetOptions {
             // `Off` is supported by default, but targets can remove this manually, e.g. Windows.
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             supported_sanitizers: SanitizerSet::empty(),
-            default_adjusted_cabi: None,
             c_enum_min_bits: None,
             generate_arange_section: true,
             supports_stack_protector: true,
@@ -2538,9 +2547,21 @@ impl DerefMut for Target {
 
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
-    pub fn adjust_abi(&self, abi: Abi, c_variadic: bool) -> Abi {
+    pub fn adjust_abi<C>(&self, cx: &C, abi: Abi, c_variadic: bool) -> Abi
+    where
+        C: HasWasmCAbiOpt,
+    {
         match abi {
-            Abi::C { .. } => self.default_adjusted_cabi.unwrap_or(abi),
+            Abi::C { .. } => {
+                if self.arch == "wasm32"
+                    && self.os == "unknown"
+                    && cx.wasm_c_abi_opt() == WasmCAbi::Legacy
+                {
+                    Abi::Wasm
+                } else {
+                    abi
+                }
+            }
 
             // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
             // `__stdcall` only applies on x86 and on non-variadic functions:
@@ -3079,16 +3100,6 @@ impl Target {
                     }
                 }
             } );
-            ($key_name:ident, Option<Abi>) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match lookup_abi(s) {
-                        Ok(abi) => base.$key_name = Some(abi),
-                        _ => return Some(Err(format!("'{}' is not a valid value for abi", s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
             ($key_name:ident, TargetFamilies) => ( {
                 if let Some(value) = obj.remove("target-family") {
                     if let Some(v) = value.as_array() {
@@ -3238,7 +3249,6 @@ impl Target {
         key!(split_debuginfo, SplitDebuginfo)?;
         key!(supported_split_debuginfo, fallible_list)?;
         key!(supported_sanitizers, SanitizerSet)?;
-        key!(default_adjusted_cabi, Option<Abi>)?;
         key!(generate_arange_section, bool);
         key!(supports_stack_protector, bool);
         key!(entry_name);
@@ -3501,10 +3511,6 @@ impl ToJson for Target {
         target_option_val!(entry_name);
         target_option_val!(entry_abi);
         target_option_val!(supports_xray);
-
-        if let Some(abi) = self.default_adjusted_cabi {
-            d.insert("default-adjusted-cabi".into(), Abi::name(abi).to_json());
-        }
 
         // Serializing `-Clink-self-contained` needs a dynamic key to support the
         // backwards-compatible variants.
