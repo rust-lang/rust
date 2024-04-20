@@ -486,7 +486,7 @@ fn sanity_check_found_hidden_type<'tcx>(
 fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDefId) {
     let hir::OpaqueTy { precise_capturing_args, .. } =
         *tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
-    let Some(precise_capturing_args) = precise_capturing_args else {
+    let Some((precise_capturing_args, _)) = precise_capturing_args else {
         // No precise capturing args; nothing to validate
         return;
     };
