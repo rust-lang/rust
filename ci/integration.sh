@@ -104,7 +104,7 @@ case ${INTEGRATION} in
         check_fmt_with_all_tests
         cd -
         ;;
-    error-chain | tempdir)
+    tempdir)
         git clone --depth=1 https://github.com/rust-lang-deprecated/${INTEGRATION}.git
         cd ${INTEGRATION}
         show_head
