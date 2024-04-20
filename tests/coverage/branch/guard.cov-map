@@ -1,4 +1,4 @@
-Function name: branch_guard::branch_match_guard
+Function name: guard::branch_match_guard
 Raw bytes (85): 0x[01, 01, 06, 19, 0d, 05, 09, 0f, 15, 13, 11, 17, 0d, 05, 09, 0d, 01, 0c, 01, 01, 10, 1d, 03, 0b, 00, 0c, 15, 01, 14, 02, 0a, 0d, 03, 0e, 00, 0f, 19, 00, 14, 00, 19, 20, 0d, 02, 00, 14, 00, 1e, 0d, 00, 1d, 02, 0a, 11, 03, 0e, 00, 0f, 1d, 00, 14, 00, 19, 20, 11, 09, 00, 14, 00, 1e, 11, 00, 1d, 02, 0a, 17, 03, 0e, 02, 0a, 0b, 04, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
