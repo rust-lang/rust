@@ -1,4 +1,4 @@
-//@ unit-test: GVN
+//@ test-mir-pass: GVN
 //@ compile-flags: -O
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // skip-filecheck

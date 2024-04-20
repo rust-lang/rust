@@ -5,7 +5,7 @@
 // Removed statement kinds: BlockMarker, SpanMarker
 // Retained statement kinds: CounterIncrement, ExpressionUsed
 
-//@ unit-test: InstrumentCoverage
+//@ test-mir-pass: InstrumentCoverage
 //@ compile-flags: -Cinstrument-coverage -Zcoverage-options=branch -Zno-profiler-runtime
 
 // EMIT_MIR instrument_coverage_cleanup.main.InstrumentCoverage.diff
