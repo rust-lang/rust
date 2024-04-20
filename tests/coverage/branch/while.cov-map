@@ -1,4 +1,4 @@
-Function name: branch_while::while_cond
+Function name: while::while_cond
 Raw bytes (42): 0x[01, 01, 03, 05, 09, 03, 09, 03, 09, 06, 01, 0c, 01, 01, 10, 05, 03, 09, 00, 12, 03, 01, 0b, 00, 10, 20, 09, 0a, 00, 0b, 00, 10, 09, 00, 11, 02, 06, 0a, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
@@ -18,7 +18,7 @@ Number of file 0 mappings: 6
 - Code(Expression(2, Sub)) at (prev + 3, 1) to (start + 0, 2)
     = ((c1 + c2) - c2)
 
-Function name: branch_while::while_cond_not
+Function name: while::while_cond_not
 Raw bytes (42): 0x[01, 01, 03, 05, 09, 03, 09, 03, 09, 06, 01, 15, 01, 01, 10, 05, 03, 09, 00, 12, 03, 01, 0b, 00, 14, 20, 09, 0a, 00, 0b, 00, 14, 09, 00, 15, 02, 06, 0a, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
@@ -38,7 +38,7 @@ Number of file 0 mappings: 6
 - Code(Expression(2, Sub)) at (prev + 3, 1) to (start + 0, 2)
     = ((c1 + c2) - c2)
 
-Function name: branch_while::while_op_and
+Function name: while::while_op_and
 Raw bytes (56): 0x[01, 01, 04, 05, 09, 03, 0d, 03, 0d, 11, 0d, 08, 01, 1e, 01, 01, 10, 05, 03, 09, 01, 12, 03, 02, 0b, 00, 10, 20, 0a, 0d, 00, 0b, 00, 10, 0a, 00, 14, 00, 19, 20, 09, 11, 00, 14, 00, 19, 09, 00, 1a, 03, 06, 0f, 04, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
@@ -64,7 +64,7 @@ Number of file 0 mappings: 8
 - Code(Expression(3, Add)) at (prev + 4, 1) to (start + 0, 2)
     = (c4 + c3)
 
-Function name: branch_while::while_op_or
+Function name: while::while_op_or
 Raw bytes (66): 0x[01, 01, 09, 05, 1b, 09, 0d, 03, 09, 03, 09, 22, 0d, 03, 09, 09, 0d, 22, 0d, 03, 09, 08, 01, 29, 01, 01, 10, 05, 03, 09, 01, 12, 03, 02, 0b, 00, 10, 20, 09, 22, 00, 0b, 00, 10, 22, 00, 14, 00, 19, 20, 0d, 1e, 00, 14, 00, 19, 1b, 00, 1a, 03, 06, 1e, 04, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1

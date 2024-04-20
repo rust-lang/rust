@@ -16,7 +16,7 @@
    LL|      2|    }
    LL|      3|}
   ------------------
-  | branch_generics::print_size::<()>:
+  | generics::print_size::<()>:
   |   LL|      1|fn print_size<T>() {
   |   LL|      1|    if std::mem::size_of::<T>() > 4 {
   |  ------------------
@@ -28,7 +28,7 @@
   |   LL|      1|    }
   |   LL|      1|}
   ------------------
-  | branch_generics::print_size::<u32>:
+  | generics::print_size::<u32>:
   |   LL|      1|fn print_size<T>() {
   |   LL|      1|    if std::mem::size_of::<T>() > 4 {
   |  ------------------
@@ -40,7 +40,7 @@
   |   LL|      1|    }
   |   LL|      1|}
   ------------------
-  | branch_generics::print_size::<u64>:
+  | generics::print_size::<u64>:
   |   LL|      1|fn print_size<T>() {
   |   LL|      1|    if std::mem::size_of::<T>() > 4 {
   |  ------------------
