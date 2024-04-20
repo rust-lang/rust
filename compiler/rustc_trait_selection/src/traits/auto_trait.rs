@@ -175,9 +175,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         AutoTraitResult::PositiveImpl(auto_trait_callback(info))
     }
-}
 
-impl<'tcx> AutoTraitFinder<'tcx> {
     /// The core logic responsible for computing the bounds for our synthesized impl.
     ///
     /// To calculate the bounds, we call `SelectionContext.select` in a loop. Like
