@@ -1,4 +1,4 @@
-//@ unit-test: EarlyOtherwiseBranch
+//@ test-mir-pass: EarlyOtherwiseBranch
 //@ compile-flags: -Zmir-enable-passes=+UnreachableEnumBranching
 
 // Tests various cases that the `early_otherwise_branch` opt should *not* optimize
