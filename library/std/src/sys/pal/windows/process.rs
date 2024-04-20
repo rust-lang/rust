@@ -354,12 +354,21 @@ impl Command {
 
         let mut si = zeroed_startupinfo();
 
+        // if STARTF_USESTDHANDLES is not used with PSEUDOCONSOLE,
+        // it is not guaranteed that all the desired stdio of the new process are
+        // really connected to the new console.
+        // The problem + solution is described here:
+        // https://github.com/microsoft/terminal/issues/4380#issuecomment-580865346
+        const PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE: usize = 0x20016;
+        let force_use_std_handles =
+            self.proc_thread_attributes.contains_key(&PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE);
+
         // If at least one of stdin, stdout or stderr are set (i.e. are non null)
         // then set the `hStd` fields in `STARTUPINFO`.
         // Otherwise skip this and allow the OS to apply its default behavior.
         // This provides more consistent behavior between Win7 and Win8+.
         let is_set = |stdio: &Handle| !stdio.as_raw_handle().is_null();
-        if is_set(&stderr) || is_set(&stdout) || is_set(&stdin) {
+        if force_use_std_handles || is_set(&stderr) || is_set(&stdout) || is_set(&stdin) {
             si.dwFlags |= c::STARTF_USESTDHANDLES;
             si.hStdInput = stdin.as_raw_handle();
             si.hStdOutput = stdout.as_raw_handle();
