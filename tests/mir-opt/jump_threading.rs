@@ -1,4 +1,4 @@
-//@ unit-test: JumpThreading
+//@ test-mir-pass: JumpThreading
 //@ compile-flags: -Zmir-enable-passes=+Inline
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 

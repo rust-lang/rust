@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ unit-test: RemoveStorageMarkers
+//@ test-mir-pass: RemoveStorageMarkers
 
 // Checks that storage markers are removed at opt-level=0.
 //

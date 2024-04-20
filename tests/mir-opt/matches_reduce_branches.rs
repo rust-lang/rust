@@ -1,4 +1,4 @@
-//@ unit-test: MatchBranchSimplification
+//@ test-mir-pass: MatchBranchSimplification
 
 #![feature(repr128)]
 #![feature(core_intrinsics)]

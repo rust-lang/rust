@@ -1,4 +1,4 @@
-//@ unit-test: UnreachablePropagation
+//@ test-mir-pass: UnreachablePropagation
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 enum Empty {}

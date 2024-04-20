@@ -1,4 +1,4 @@
-//@ unit-test: DataflowConstProp
+//@ test-mir-pass: DataflowConstProp
 //@ compile-flags: -Coverflow-checks=on
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 

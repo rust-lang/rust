@@ -1,5 +1,5 @@
 //@ compile-flags: -Zlint-mir=no
-//@ unit-test: ReferencePropagation
+//@ test-mir-pass: ReferencePropagation
 //@ needs-unwind
 
 #![feature(raw_ref_op)]

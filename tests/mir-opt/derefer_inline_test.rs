@@ -1,5 +1,5 @@
 // skip-filecheck
-//@ unit-test: Derefer
+//@ test-mir-pass: Derefer
 // EMIT_MIR derefer_inline_test.main.Derefer.diff
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 

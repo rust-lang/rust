@@ -1,6 +1,6 @@
 // skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ unit-test: CopyProp
+//@ test-mir-pass: CopyProp
 
 // EMIT_MIR issue_107511.main.CopyProp.diff
 fn main() {
