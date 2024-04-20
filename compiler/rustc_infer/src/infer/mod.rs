@@ -1521,15 +1521,6 @@ impl<'tcx> InferCtxt<'tcx> {
         closure_kind_ty.to_opt_closure_kind()
     }
 
-    /// Clears the selection, evaluation, and projection caches. This is useful when
-    /// repeatedly attempting to select an `Obligation` while changing only
-    /// its `ParamEnv`, since `FulfillmentContext` doesn't use probing.
-    pub fn clear_caches(&self) {
-        self.selection_cache.clear();
-        self.evaluation_cache.clear();
-        self.inner.borrow_mut().projection_cache().clear();
-    }
-
     pub fn universe(&self) -> ty::UniverseIndex {
         self.universe.get()
     }
