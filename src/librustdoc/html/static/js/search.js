@@ -1500,10 +1500,10 @@ function initSearch(rawSearchIndex) {
          * This function checks if a list of search query `queryElems` can all be found in the
          * search index (`fnTypes`).
          *
-         * This function returns `true` on a match, or `false` if none. If `solutionCb` is
+         * This function returns highlighted results on a match, or `null`. If `solutionCb` is
          * supplied, it will call that function with mgens, and that callback can accept or
-         * reject the result bu returning `true` or `false`. If the callback returns false,
-         * then this function will try with a different solution, or bail with false if it
+         * reject the result by returning `true` or `false`. If the callback returns false,
+         * then this function will try with a different solution, or bail with null if it
          * runs out of candidates.
          *
          * @param {Array<FunctionType>} fnTypesIn - The objects to check.
@@ -1516,7 +1516,7 @@ function initSearch(rawSearchIndex) {
          *     - Limit checks that Ty matches Vec<Ty>,
          *       but not Vec<ParamEnvAnd<WithInfcx<ConstTy<Interner<Ty=Ty>>>>>
          *
-         * @return {boolean} - Returns true if a match, false otherwise.
+         * @return {[FunctionType]|null} - Returns highlighed results if a match, null otherwise.
          */
         function unifyFunctionTypes(
             fnTypesIn,
@@ -1527,17 +1527,17 @@ function initSearch(rawSearchIndex) {
             unboxingDepth,
         ) {
             if (unboxingDepth >= UNBOXING_LIMIT) {
-                return false;
+                return null;
             }
             /**
              * @type Map<integer, integer>|null
              */
             const mgens = mgensIn === null ? null : new Map(mgensIn);
             if (queryElems.length === 0) {
-                return !solutionCb || solutionCb(mgens);
+                return (!solutionCb || solutionCb(mgens)) ? fnTypesIn : null;
             }
             if (!fnTypesIn || fnTypesIn.length === 0) {
-                return false;
+                return null;
             }
             const ql = queryElems.length;
             const fl = fnTypesIn.length;
@@ -1546,7 +1546,7 @@ function initSearch(rawSearchIndex) {
             if (ql === 1 && queryElems[0].generics.length === 0
                 && queryElems[0].bindings.size === 0) {
                 const queryElem = queryElems[0];
-                for (const fnType of fnTypesIn) {
+                for (const [i, fnType] of fnTypesIn.entries()) {
                     if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgens)) {
                         continue;
                     }
@@ -1558,14 +1558,18 @@ function initSearch(rawSearchIndex) {
                         const mgensScratch = new Map(mgens);
                         mgensScratch.set(fnType.id, queryElem.id);
                         if (!solutionCb || solutionCb(mgensScratch)) {
-                            return true;
+                            const highlighted = [...fnTypesIn];
+                            highlighted[i] = Object.assign({ highlighted: true }, fnType);
+                            return highlighted;
                         }
                     } else if (!solutionCb || solutionCb(mgens ? new Map(mgens) : null)) {
                         // unifyFunctionTypeIsMatchCandidate already checks that ids match
-                        return true;
+                        const highlighted = [...fnTypesIn];
+                        highlighted[i] = Object.assign({ highlighted: true }, fnType);
+                        return highlighted;
                     }
                 }
-                for (const fnType of fnTypesIn) {
+                for (const [i, fnType] of fnTypesIn.entries()) {
                     if (!unifyFunctionTypeIsUnboxCandidate(
                         fnType,
                         queryElem,
@@ -1590,17 +1594,28 @@ function initSearch(rawSearchIndex) {
                             solutionCb,
                             unboxingDepth + 1,
                         )) {
-                            return true;
+                            const highlighted = [...fnTypesIn];
+                            highlighted[i] = Object.assign({ highlighted: true }, fnType);
+                            return highlighted;
                         }
-                    } else if (unifyFunctionTypes(
-                        [...fnType.generics, ...Array.from(fnType.bindings.values()).flat() ],
-                        queryElems,
-                        whereClause,
-                        mgens ? new Map(mgens) : null,
-                        solutionCb,
-                        unboxingDepth + 1,
-                    )) {
-                        return true;
+                    } else {
+                        const highlightedGenerics = unifyFunctionTypes(
+                            [...fnType.generics, ...Array.from(fnType.bindings.values()).flat() ],
+                            queryElems,
+                            whereClause,
+                            mgens ? new Map(mgens) : null,
+                            solutionCb,
+                            unboxingDepth + 1,
+                        );
+                        if (highlightedGenerics) {
+                            const highlighted = [...fnTypesIn];
+                            highlighted[i] = Object.assign({
+                                generics: highlightedGenerics,
+                                bindings: new Map(),
+                                highlighted: false,
+                            }, fnType);
+                            return highlighted;
+                        }
                     }
                 }
                 return false;
@@ -1696,7 +1711,11 @@ function initSearch(rawSearchIndex) {
                     unboxingDepth,
                 );
                 if (passesUnification) {
-                    return true;
+                    return fnTypesIn.map(innerFnType => {
+                        const highlighted = fnType === innerFnType ||
+                            passesUnification.indexOf(innerFnType) !== -1;
+                        return Object.assign({ highlighted }, innerFnType);
+                    });
                 }
                 // backtrack
                 fnTypes[flast] = fnTypes[i];
@@ -1739,10 +1758,27 @@ function initSearch(rawSearchIndex) {
                     unboxingDepth + 1,
                 );
                 if (passesUnification) {
-                    return true;
+                    return fnTypesIn.map(innerFnType => {
+                        if (fnType === innerFnType) {
+                            return Object.assign({
+                                generics: unifyFunctionTypes(
+                                    [...generics, ...bindings],
+                                    [queryElem],
+                                    whereClause,
+                                    mgensScratch,
+                                    solutionCb,
+                                    unboxingDepth + 1,
+                                ) || [],
+                                bindings: new Map(),
+                                highlighted: false,
+                            }, innerFnType);
+                        }
+                        const highlighted = passesUnification.indexOf(innerFnType) !== -1;
+                        return Object.assign({ highlighted }, innerFnType);
+                    });
                 }
             }
-            return false;
+            return null;
         }
         /**
          * Check if this function is a match candidate.
