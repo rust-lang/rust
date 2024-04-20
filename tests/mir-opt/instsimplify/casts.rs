@@ -1,4 +1,4 @@
-//@ unit-test: InstSimplify
+//@ test-mir-pass: InstSimplify
 //@ compile-flags: -Zinline-mir
 #![crate_type = "lib"]
 

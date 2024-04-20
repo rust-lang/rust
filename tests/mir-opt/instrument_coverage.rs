@@ -2,7 +2,7 @@
 // The Coverage::CounterIncrement statements are later converted into LLVM
 // instrprof.increment intrinsics, during codegen.
 
-//@ unit-test: InstrumentCoverage
+//@ test-mir-pass: InstrumentCoverage
 //@ compile-flags: -Cinstrument-coverage -Zno-profiler-runtime
 
 // EMIT_MIR instrument_coverage.main.InstrumentCoverage.diff

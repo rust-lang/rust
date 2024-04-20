@@ -1,6 +1,6 @@
 // skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ unit-test: CopyProp
+//@ test-mir-pass: CopyProp
 
 #![feature(custom_mir, core_intrinsics)]
 #![allow(unused_assignments)]
