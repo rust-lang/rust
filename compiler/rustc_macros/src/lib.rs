@@ -144,6 +144,7 @@ decl_derive!(
         help,
         note,
         warning,
+        subdiagnostic,
         suggestion,
         suggestion_short,
         suggestion_hidden,
