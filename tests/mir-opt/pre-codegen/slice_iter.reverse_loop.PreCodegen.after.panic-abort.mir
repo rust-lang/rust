@@ -126,7 +126,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     bb5: {
         StorageDead(_16);
         _18 = discriminant(_17);
-        switchInt(move _18) -> [0: bb6, 1: bb8, otherwise: bb10];
+        switchInt(move _18) -> [0: bb6, 1: bb8];
     }
 
     bb6: {
@@ -153,9 +153,5 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_20);
         StorageDead(_17);
         goto -> bb4;
-    }
-
-    bb10: {
-        unreachable;
     }
 }

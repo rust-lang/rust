@@ -14,18 +14,34 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
     type T = stable_mir::mir::Body;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        tables.synthetic_unreachable_block = self.basic_blocks.len();
+
+        let mut smir_blocks: Vec<_> = self
+            .basic_blocks
+            .iter()
+            .map(|block| stable_mir::mir::BasicBlock {
+                terminator: block.terminator().stable(tables),
+                statements: block
+                    .statements
+                    .iter()
+                    .map(|statement| statement.stable(tables))
+                    .collect(),
+            })
+            .collect();
+
+        assert_eq!(tables.synthetic_unreachable_block, smir_blocks.len());
+        if let Some(unreachable_span) = tables.unreachable_block_span.take() {
+            smir_blocks.push(stable_mir::mir::BasicBlock {
+                statements: Vec::new(),
+                terminator: stable_mir::mir::Terminator {
+                    span: unreachable_span,
+                    kind: stable_mir::mir::TerminatorKind::Unreachable,
+                },
+            });
+        }
+
         stable_mir::mir::Body::new(
-            self.basic_blocks
-                .iter()
-                .map(|block| stable_mir::mir::BasicBlock {
-                    terminator: block.terminator().stable(tables),
-                    statements: block
-                        .statements
-                        .iter()
-                        .map(|statement| statement.stable(tables))
-                        .collect(),
-                })
-                .collect(),
+            smir_blocks,
             self.local_decls
                 .iter()
                 .map(|decl| stable_mir::mir::LocalDecl {
@@ -602,7 +618,16 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
     type T = stable_mir::mir::Terminator;
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use stable_mir::mir::Terminator;
-        Terminator { kind: self.kind.stable(tables), span: self.source_info.span.stable(tables) }
+        let terminator = Terminator {
+            kind: self.kind.stable(tables),
+            span: self.source_info.span.stable(tables),
+        };
+        if tables.unreachable_block_span.is_none()
+            && terminator.successors().contains(&tables.synthetic_unreachable_block)
+        {
+            tables.unreachable_block_span = Some(terminator.span);
+        }
+        terminator
     }
 }
 
@@ -620,7 +645,10 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
                     let branches = targets.iter().map(|(val, target)| (val, target.as_usize()));
                     stable_mir::mir::SwitchTargets::new(
                         branches.collect(),
-                        targets.otherwise().as_usize(),
+                        match targets.otherwise() {
+                            mir::SwitchAction::Goto(bb) => bb.as_usize(),
+                            mir::SwitchAction::Unreachable => tables.synthetic_unreachable_block,
+                        },
                     )
                 },
             },

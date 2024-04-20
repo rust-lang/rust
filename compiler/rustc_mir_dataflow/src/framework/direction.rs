@@ -1,6 +1,8 @@
 use std::ops::RangeInclusive;
 
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
+use rustc_middle::mir::{
+    self, BasicBlock, CallReturnPlaces, Location, SwitchAction, TerminatorEdges,
+};
 
 use super::visitor::ResultsVisitor;
 use super::{Analysis, Effect, EffectIndex, Results, SwitchIntTarget};
@@ -304,12 +306,14 @@ impl Direction for Forward {
                     // Once we get to the final, "otherwise" branch, there is no need to preserve
                     // `exit_state`, so pass it directly to `apply_switch_int_edge_effect` to save
                     // a clone of the dataflow state.
-                    let otherwise = targets.otherwise();
-                    analysis.apply_switch_int_edge_effect(&mut data, exit_state, SwitchIntTarget {
-                        value: None,
-                        target: otherwise,
-                    });
-                    propagate(otherwise, exit_state);
+                    if let SwitchAction::Goto(otherwise) = targets.otherwise() {
+                        analysis.apply_switch_int_edge_effect(
+                            &mut data,
+                            exit_state,
+                            SwitchIntTarget { value: None, target: otherwise },
+                        );
+                        propagate(otherwise, exit_state);
+                    }
                 } else {
                     for target in targets.all_targets() {
                         propagate(*target, exit_state);

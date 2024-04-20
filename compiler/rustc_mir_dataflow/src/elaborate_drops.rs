@@ -591,6 +591,10 @@ where
         succ: BasicBlock,
         unwind: Unwind,
     ) -> BasicBlock {
+        // FIXME: the arguments here are still using the manual-unreachable;
+        // consider changing them to allow `SwitchAction::Unreachable` somehow.
+        debug_assert_eq!(blocks.len(), values.len() + 1);
+
         // If there are multiple variants, then if something
         // is present within the enum the discriminant, tracked
         // by the rest path, must be initialized.
@@ -609,7 +613,7 @@ where
                     discr: Operand::Move(discr),
                     targets: SwitchTargets::new(
                         values.iter().copied().zip(blocks.iter().copied()),
-                        *blocks.last().unwrap(),
+                        SwitchAction::Goto(*blocks.last().unwrap()),
                     ),
                 },
             }),

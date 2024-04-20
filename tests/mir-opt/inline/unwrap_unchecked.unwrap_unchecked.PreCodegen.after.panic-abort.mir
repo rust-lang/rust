@@ -18,16 +18,16 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
     bb0: {
         StorageLive(_2);
         _2 = discriminant(_1);
-        switchInt(move _2) -> [0: bb2, 1: bb1, otherwise: bb2];
+        switchInt(move _2) -> [0: bb1, 1: bb2];
     }
 
     bb1: {
-        _0 = copy ((_1 as Some).0: T);
-        StorageDead(_2);
-        return;
+        unreachable;
     }
 
     bb2: {
-        unreachable;
+        _0 = copy ((_1 as Some).0: T);
+        StorageDead(_2);
+        return;
     }
 }

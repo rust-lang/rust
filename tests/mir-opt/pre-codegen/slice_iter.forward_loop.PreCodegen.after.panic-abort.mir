@@ -114,7 +114,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb5: {
         _17 = discriminant(_16);
-        switchInt(move _17) -> [0: bb6, 1: bb8, otherwise: bb10];
+        switchInt(move _17) -> [0: bb6, 1: bb8];
     }
 
     bb6: {
@@ -141,9 +141,5 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_19);
         StorageDead(_16);
         goto -> bb4;
-    }
-
-    bb10: {
-        unreachable;
     }
 }

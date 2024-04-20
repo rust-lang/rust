@@ -1039,8 +1039,10 @@ fn insert_switch<'tcx>(
 ) {
     let default_block = insert_term_block(body, default);
     let (assign, discr) = transform.get_discr(body);
-    let switch_targets =
-        SwitchTargets::new(cases.iter().map(|(i, bb)| ((*i) as u128, *bb)), default_block);
+    let switch_targets = SwitchTargets::new(
+        cases.iter().map(|(i, bb)| ((*i) as u128, *bb)),
+        SwitchAction::Goto(default_block),
+    );
     let switch = TerminatorKind::SwitchInt { discr: Operand::Move(discr), targets: switch_targets };
 
     let source_info = SourceInfo::outermost(body.span);

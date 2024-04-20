@@ -119,12 +119,12 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb4: {
         StorageLive(_17);
         _16 = &mut _15;
-        _17 = <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next(move _16) -> [return: bb5, unwind: bb11];
+        _17 = <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next(move _16) -> [return: bb5, unwind: bb10];
     }
 
     bb5: {
         _18 = discriminant(_17);
-        switchInt(move _18) -> [0: bb6, 1: bb8, otherwise: bb10];
+        switchInt(move _18) -> [0: bb6, 1: bb8];
     }
 
     bb6: {
@@ -144,7 +144,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _21 = &_2;
         StorageLive(_22);
         _22 = (copy _19, copy _20);
-        _23 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _21, move _22) -> [return: bb9, unwind: bb11];
+        _23 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _21, move _22) -> [return: bb9, unwind: bb10];
     }
 
     bb9: {
@@ -154,15 +154,11 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         goto -> bb4;
     }
 
-    bb10: {
-        unreachable;
+    bb10 (cleanup): {
+        drop(_2) -> [return: bb11, unwind terminate(cleanup)];
     }
 
     bb11 (cleanup): {
-        drop(_2) -> [return: bb12, unwind terminate(cleanup)];
-    }
-
-    bb12 (cleanup): {
         resume;
     }
 }

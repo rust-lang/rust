@@ -155,7 +155,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageDead(_16);
         StorageLive(_18);
         _18 = discriminant(_17);
-        switchInt(move _18) -> [0: bb6, 1: bb8, otherwise: bb11];
+        switchInt(move _18) -> [0: bb6, 1: bb8];
     }
 
     bb6: {
@@ -203,9 +203,5 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageDead(_26);
         StorageDead(_23);
         goto -> bb4;
-    }
-
-    bb11: {
-        unreachable;
     }
 }

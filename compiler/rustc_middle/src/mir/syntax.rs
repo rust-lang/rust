@@ -959,19 +959,49 @@ pub struct SwitchTargets {
     /// are found in the corresponding indices from the `targets` vector.
     pub(super) values: SmallVec<[Pu128; 1]>,
 
-    /// Possible branch sites. The last element of this vector is used
-    /// for the otherwise branch, so targets.len() == values.len() + 1
-    /// should hold.
+    /// Possible branch sites.
+    ///
+    /// If `targets.len() == values.len() + 1`, the last element of this vector
+    /// is used for the otherwise branch in [`SwitchAction::Goto`].
+    ///
+    /// If `targets.len() == values.len()`, the otherwise branch is
+    /// [`SwitchAction::Unreachable`].
+    ///
+    /// You must ensure that we're always in at one of those cases.
     //
     // This invariant is quite non-obvious and also could be improved.
     // One way to make this invariant is to have something like this instead:
     //
     // branches: Vec<(ConstInt, BasicBlock)>,
-    // otherwise: Option<BasicBlock> // exhaustive if None
+    // otherwise: SwitchAction,
     //
     // However we’ve decided to keep this as-is until we figure a case
     // where some other approach seems to be strictly better than other.
     pub(super) targets: SmallVec<[BasicBlock; 2]>,
+}
+
+/// The action to be taken for a particular input to the [`TerminatorKind::SwitchInt`]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub enum SwitchAction {
+    /// Jump to the specified block
+    Goto(BasicBlock),
+    /// Triggers undefined behavior
+    ///
+    /// This is equivalent to jumping to a block with [`TerminatorKind::Unreachable`],
+    /// but lets us not have to store such a block in the body.
+    /// It also makes it easier in analysis to know this action is unreachable
+    /// without needing to have all the basic blocks around to look at.
+    Unreachable,
+}
+
+impl SwitchAction {
+    pub fn into_terminator<'tcx>(self) -> TerminatorKind<'tcx> {
+        match self {
+            SwitchAction::Goto(bb) => TerminatorKind::Goto { target: bb },
+            SwitchAction::Unreachable => TerminatorKind::Unreachable,
+        }
+    }
 }
 
 /// Action to be taken when a stack unwind happens.
