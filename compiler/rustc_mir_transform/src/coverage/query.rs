@@ -61,7 +61,17 @@ fn coverage_ids_info<'tcx>(
         .max()
         .unwrap_or(CounterId::ZERO);
 
-    CoverageIdsInfo { max_counter_id }
+    let mcdc_bitmap_bytes = mir_body
+        .coverage_branch_info
+        .as_deref()
+        .map(|info| {
+            info.mcdc_decision_spans
+                .iter()
+                .fold(0, |acc, decision| acc + (1_u32 << decision.conditions_num).div_ceil(8))
+        })
+        .unwrap_or_default();
+
+    CoverageIdsInfo { max_counter_id, mcdc_bitmap_bytes }
 }
 
 fn all_coverage_in_mir_body<'a, 'tcx>(
