@@ -1,4 +1,5 @@
 //! Ensure that the MIR validator runs on Miri's input.
+//@rustc-env:RUSTC_ICE=0
 //@normalize-stderr-test: "\n +[0-9]+:[^\n]+" -> ""
 //@normalize-stderr-test: "\n +at [^\n]+" -> ""
 //@normalize-stderr-test: "\n +\[\.\.\. omitted [0-9]+ frames? \.\.\.\]" -> ""
