@@ -344,7 +344,7 @@ pub(super) fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     let use_cache = !selcx.is_intercrate();
 
     let projection_ty = infcx.resolve_vars_if_possible(projection_ty);
-    let cache_key = ProjectionCacheKey::new(projection_ty);
+    let cache_key = ProjectionCacheKey::new(projection_ty, param_env);
 
     // FIXME(#20304) For now, I am caching here, which is good, but it
     // means we don't capture the type variables that are created in
@@ -2105,27 +2105,28 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
 }
 
 pub(crate) trait ProjectionCacheKeyExt<'cx, 'tcx>: Sized {
-    fn from_poly_projection_predicate(
+    fn from_poly_projection_obligation(
         selcx: &mut SelectionContext<'cx, 'tcx>,
-        predicate: ty::PolyProjectionPredicate<'tcx>,
+        obligation: &PolyProjectionObligation<'tcx>,
     ) -> Option<Self>;
 }
 
 impl<'cx, 'tcx> ProjectionCacheKeyExt<'cx, 'tcx> for ProjectionCacheKey<'tcx> {
-    fn from_poly_projection_predicate(
+    fn from_poly_projection_obligation(
         selcx: &mut SelectionContext<'cx, 'tcx>,
-        predicate: ty::PolyProjectionPredicate<'tcx>,
+        obligation: &PolyProjectionObligation<'tcx>,
     ) -> Option<Self> {
         let infcx = selcx.infcx;
         // We don't do cross-snapshot caching of obligations with escaping regions,
         // so there's no cache key to use
-        predicate.no_bound_vars().map(|predicate| {
+        obligation.predicate.no_bound_vars().map(|predicate| {
             ProjectionCacheKey::new(
                 // We don't attempt to match up with a specific type-variable state
                 // from a specific call to `opt_normalize_projection_type` - if
                 // there's no precise match, the original cache entry is "stranded"
                 // anyway.
                 infcx.resolve_vars_if_possible(predicate.projection_ty),
+                obligation.param_env,
             )
         })
     }
