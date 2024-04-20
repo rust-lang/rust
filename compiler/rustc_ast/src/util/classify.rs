@@ -1,12 +1,60 @@
 //! Routines the parser and pretty-printer use to classify AST nodes.
 
+use crate::ast::ExprKind::*;
 use crate::{ast, token::Delimiter};
+
+/// This classification determines whether various syntactic positions break out
+/// of parsing the current expression (true) or continue parsing more of the
+/// same expression (false).
+///
+/// For example, it's relevant in the parsing of match arms:
+///
+/// ```ignore (illustrative)
+/// match ... {
+///     // Is this calling $e as a function, or is it the start of a new arm
+///     // with a tuple pattern?
+///     _ => $e (
+///             ^                                                          )
+///
+///     // Is this an Index operation, or new arm with a slice pattern?
+///     _ => $e [
+///             ^                                                          ]
+///
+///     // Is this a binary operator, or leading vert in a new arm? Same for
+///     // other punctuation which can either be a binary operator in
+///     // expression or unary operator in pattern, such as `&` and `-`.
+///     _ => $e |
+///             ^
+/// }
+/// ```
+///
+/// If $e is something like `{}` or `if … {}`, then terminate the current
+/// arm and parse a new arm.
+///
+/// If $e is something like `path::to` or `(…)`, continue parsing the same
+/// arm.
+///
+/// *Almost* the same classification is used as an early bail-out for parsing
+/// statements. See `expr_requires_semi_to_be_stmt`.
+pub fn expr_is_complete(e: &ast::Expr) -> bool {
+    matches!(
+        e.kind,
+        If(..)
+            | Match(..)
+            | Block(..)
+            | While(..)
+            | Loop(..)
+            | ForLoop { .. }
+            | TryBlock(..)
+            | ConstBlock(..)
+    )
+}
 
 /// Does this expression require a semicolon to be treated as a statement?
 ///
 /// The negation of this: "can this expression be used as a statement without a
-/// semicolon" -- is used as an early bail-out in the parser so that, for
-/// instance,
+/// semicolon" -- is used as an early bail-out when parsing statements so that,
+/// for instance,
 ///
 /// ```ignore (illustrative)
 /// if true {...} else {...}
@@ -15,56 +63,26 @@ use crate::{ast, token::Delimiter};
 ///
 /// isn't parsed as `(if true {...} else {...} | x) | 5`.
 ///
-/// Nearly the same early bail-out also occurs in the right-hand side of match
-/// arms:
+/// Surprising special case: even though braced macro calls like `m! {}`
+/// normally do not introduce a boundary when found at the head of a match arm,
+/// they do terminate the parsing of a statement.
 ///
 /// ```ignore (illustrative)
-/// match i {
-///     0 => if true {...} else {...}
-///     | x => {}
+/// match ... {
+///     _ => m! {} (),  // macro that expands to a function, which is then called
 /// }
-/// ```
 ///
-/// Here the `|` is a leading vert in a second match arm. It is not a binary
-/// operator with the If as its left operand. If the first arm were some other
-/// expression for which `expr_requires_semi_to_be_stmt` returns true, then the
-/// `|` on the next line would be a binary operator (leading to a parse error).
-///
-/// The statement case and the match-arm case are "nearly" the same early
-/// bail-out because of 1 edge case. Macro calls with brace delimiter terminate
-/// a statement without a semicolon, but do not terminate a match-arm without
-/// comma.
-///
-/// ```ignore (illustrative)
-/// m! {} - 1;  // two statements: a macro call followed by -1 literal
-///
-/// match () {
-///     _ => m! {} - 1,  // binary subtraction operator
-/// }
+/// let _ = { m! {} () };  // macro call followed by unit
 /// ```
 pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
-    use ast::ExprKind::*;
-
     match &e.kind {
-        If(..)
-        | Match(..)
-        | Block(..)
-        | While(..)
-        | Loop(..)
-        | ForLoop { .. }
-        | TryBlock(..)
-        | ConstBlock(..) => false,
-
         MacCall(mac_call) => mac_call.args.delim != Delimiter::Brace,
-
-        _ => true,
+        _ => !expr_is_complete(e),
     }
 }
 
 /// If an expression ends with `}`, returns the innermost expression ending in the `}`
 pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<&ast::Expr> {
-    use ast::ExprKind::*;
-
     loop {
         match &expr.kind {
             AddrOf(_, _, e)
