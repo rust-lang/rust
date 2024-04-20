@@ -152,7 +152,7 @@ impl VClock {
     }
 
     /// Get a mutable slice to the internal vector with minimum `min_len`
-    /// elements, to preserve invariants this vector must modify
+    /// elements. To preserve invariants, the caller must modify
     /// the `min_len`-1 nth element to a non-zero value
     #[inline]
     fn get_mut_with_min_len(&mut self, min_len: usize) -> &mut [VTimestamp] {

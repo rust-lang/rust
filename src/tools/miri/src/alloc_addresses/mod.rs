@@ -171,7 +171,9 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     memory_kind,
                     ecx.get_active_thread(),
                 ) {
-                    if let Some(data_race) = &ecx.machine.data_race {
+                    if let Some(clock) = clock
+                        && let Some(data_race) = &ecx.machine.data_race
+                    {
                         data_race.acquire_clock(&clock, ecx.get_active_thread());
                     }
                     reuse_addr

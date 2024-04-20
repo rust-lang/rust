@@ -78,6 +78,7 @@ impl ReusePool {
         subpool.insert(pos, (addr, size, thread, clock));
     }
 
+    /// Returns the address to use and optionally a clock we have to synchronize with.
     pub fn take_addr(
         &mut self,
         rng: &mut impl Rng,
@@ -85,7 +86,7 @@ impl ReusePool {
         align: Align,
         kind: MemoryKind,
         thread: ThreadId,
-    ) -> Option<(u64, VClock)> {
+    ) -> Option<(u64, Option<VClock>)> {
         // Determine whether we'll even attempt a reuse. As above, we don't do reuse for stack addresses.
         if kind == MemoryKind::Stack || !rng.gen_bool(self.address_reuse_rate) {
             return None;
@@ -122,6 +123,7 @@ impl ReusePool {
         let (chosen_addr, chosen_size, chosen_thread, clock) = subpool.remove(idx);
         debug_assert!(chosen_size >= size && chosen_addr % align.bytes() == 0);
         debug_assert!(cross_thread_reuse || chosen_thread == thread);
-        Some((chosen_addr, clock))
+        // No synchronization needed if we reused from the current thread.
+        Some((chosen_addr, if chosen_thread == thread { None } else { Some(clock) }))
     }
 }
