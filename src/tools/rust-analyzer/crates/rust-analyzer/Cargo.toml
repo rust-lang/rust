@@ -94,6 +94,7 @@ in-rust-tree = [
     "hir/in-rust-tree",
     "hir-def/in-rust-tree",
     "hir-ty/in-rust-tree",
+    "load-cargo/in-rust-tree",
 ]
 
 [lints]
