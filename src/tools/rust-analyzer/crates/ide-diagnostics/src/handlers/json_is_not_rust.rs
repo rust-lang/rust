@@ -30,7 +30,8 @@ struct State {
 impl State {
     fn generate_new_name(&mut self, name: &str) -> ast::Name {
         let name = stdx::to_camel_case(name);
-        let count = if let Some(count) = self.names.get(&name) {
+        let count = if let Some(count) = self.names.get_mut(&name) {
+            *count += 1;
             *count
         } else {
             self.names.insert(name.clone(), 1);
@@ -252,6 +253,41 @@ mod tests {
             struct Value1{  }
             struct Bar1{ kind: String, value: Value1 }
             struct Root1{ bar: Bar1, foo: String }
+
+            "#,
+        );
+    }
+
+    #[test]
+    fn naming() {
+        check_fix(
+            r#"
+            {$0
+                "user": {
+                    "address": {
+                        "street": "Main St",
+                        "house": 3
+                    },
+                    "email": "example@example.com"
+                },
+                "another_user": {
+                    "user": {
+                        "address": {
+                            "street": "Main St",
+                            "house": 3
+                        },
+                        "email": "example@example.com"
+                    }
+                }
+            }
+            "#,
+            r#"
+            struct Address1{ house: i64, street: String }
+            struct User1{ address: Address1, email: String }
+            struct AnotherUser1{ user: User1 }
+            struct Address2{ house: i64, street: String }
+            struct User2{ address: Address2, email: String }
+            struct Root1{ another_user: AnotherUser1, user: User2 }
 
             "#,
         );
