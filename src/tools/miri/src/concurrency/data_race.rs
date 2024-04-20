@@ -547,9 +547,9 @@ impl MemoryCellClocks {
     ) -> Result<(), DataRace> {
         trace!("Unsynchronized read with vectors: {:#?} :: {:#?}", self, thread_clocks);
         if !current_span.is_dummy() {
-            thread_clocks.clock[index].span = current_span;
+            thread_clocks.clock.index_mut(index).span = current_span;
         }
-        thread_clocks.clock[index].set_read_type(read_type);
+        thread_clocks.clock.index_mut(index).set_read_type(read_type);
         if self.write_was_before(&thread_clocks.clock) {
             let race_free = if let Some(atomic) = self.atomic() {
                 // We must be ordered-after all atomic accesses, reads and writes.
@@ -577,7 +577,7 @@ impl MemoryCellClocks {
     ) -> Result<(), DataRace> {
         trace!("Unsynchronized write with vectors: {:#?} :: {:#?}", self, thread_clocks);
         if !current_span.is_dummy() {
-            thread_clocks.clock[index].span = current_span;
+            thread_clocks.clock.index_mut(index).span = current_span;
         }
         if self.write_was_before(&thread_clocks.clock) && self.read <= thread_clocks.clock {
             let race_free = if let Some(atomic) = self.atomic() {
