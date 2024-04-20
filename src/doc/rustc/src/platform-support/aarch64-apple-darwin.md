@@ -21,7 +21,7 @@ The default binary format is Mach-O, the executable format used on Apple's platf
 ## Building the target
 
 Just add it to the `target` with:
-```
+```sh
 rustup target add aarch64-apple-darwin
 ```
 
