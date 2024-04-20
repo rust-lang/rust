@@ -54,17 +54,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     (ty::Param(expected), ty::Param(found)) => {
                         let generics = tcx.generics_of(body_owner_def_id);
-                        if let Some(param) = generics.opt_type_param(expected, tcx) {
-                            let e_span = tcx.def_span(param.def_id);
-                            if !sp.contains(e_span) {
-                                diag.span_label(e_span, "expected type parameter");
-                            }
+                        let e_span = tcx.def_span(generics.type_param(expected, tcx).def_id);
+                        if !sp.contains(e_span) {
+                            diag.span_label(e_span, "expected type parameter");
                         }
-                        if let Some(param) = generics.opt_type_param(found, tcx) {
-                            let f_span = tcx.def_span(param.def_id);
-                            if !sp.contains(f_span) {
-                                diag.span_label(f_span, "found type parameter");
-                            }
+                        let f_span = tcx.def_span(generics.type_param(found, tcx).def_id);
+                        if !sp.contains(f_span) {
+                            diag.span_label(f_span, "found type parameter");
                         }
                         diag.note(
                             "a type parameter was expected, but a different one was found; \
@@ -87,29 +83,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     | (ty::Alias(ty::Projection, proj), ty::Param(p))
                         if !tcx.is_impl_trait_in_trait(proj.def_id) =>
                     {
-                        let parent = tcx
-                            .generics_of(body_owner_def_id)
-                            .opt_type_param(p, tcx)
-                            .and_then(|param| {
-                                let p_def_id = param.def_id;
-                                let p_span = tcx.def_span(p_def_id);
-                                let expected = match (values.expected.kind(), values.found.kind()) {
-                                    (ty::Param(_), _) => "expected ",
-                                    (_, ty::Param(_)) => "found ",
-                                    _ => "",
-                                };
-                                if !sp.contains(p_span) {
-                                    diag.span_label(
-                                        p_span,
-                                        format!("{expected}this type parameter"),
-                                    );
-                                }
-                                p_def_id.as_local().and_then(|id| {
-                                    let local_id = tcx.local_def_id_to_hir_id(id);
-                                    let generics = tcx.parent_hir_node(local_id).generics()?;
-                                    Some((id, generics))
-                                })
-                            });
+                        let param = tcx.generics_of(body_owner_def_id).type_param(p, tcx);
+                        let p_def_id = param.def_id;
+                        let p_span = tcx.def_span(p_def_id);
+                        let expected = match (values.expected.kind(), values.found.kind()) {
+                            (ty::Param(_), _) => "expected ",
+                            (_, ty::Param(_)) => "found ",
+                            _ => "",
+                        };
+                        if !sp.contains(p_span) {
+                            diag.span_label(p_span, format!("{expected}this type parameter"));
+                        }
+                        let parent = p_def_id.as_local().and_then(|id| {
+                            let local_id = tcx.local_def_id_to_hir_id(id);
+                            let generics = tcx.parent_hir_node(local_id).generics()?;
+                            Some((id, generics))
+                        });
                         let mut note = true;
                         if let Some((local_id, generics)) = parent {
                             // Synthesize the associated type restriction `Add<Output = Expected>`.
@@ -183,16 +172,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     (ty::Param(p), ty::Dynamic(..) | ty::Alias(ty::Opaque, ..))
                     | (ty::Dynamic(..) | ty::Alias(ty::Opaque, ..), ty::Param(p)) => {
                         let generics = tcx.generics_of(body_owner_def_id);
-                        if let Some(param) = generics.opt_type_param(p, tcx) {
-                            let p_span = tcx.def_span(param.def_id);
-                            let expected = match (values.expected.kind(), values.found.kind()) {
-                                (ty::Param(_), _) => "expected ",
-                                (_, ty::Param(_)) => "found ",
-                                _ => "",
-                            };
-                            if !sp.contains(p_span) {
-                                diag.span_label(p_span, format!("{expected}this type parameter"));
-                            }
+                        let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
+                        let expected = match (values.expected.kind(), values.found.kind()) {
+                            (ty::Param(_), _) => "expected ",
+                            (_, ty::Param(_)) => "found ",
+                            _ => "",
+                        };
+                        if !sp.contains(p_span) {
+                            diag.span_label(p_span, format!("{expected}this type parameter"));
                         }
                         diag.help("type parameters must be constrained to match other types");
                         if tcx.sess.teach(diag.code.unwrap()) {
@@ -233,11 +220,9 @@ impl<T> Trait<T> for X {
                         ty::Closure(..) | ty::CoroutineClosure(..) | ty::Coroutine(..),
                     ) => {
                         let generics = tcx.generics_of(body_owner_def_id);
-                        if let Some(param) = generics.opt_type_param(p, tcx) {
-                            let p_span = tcx.def_span(param.def_id);
-                            if !sp.contains(p_span) {
-                                diag.span_label(p_span, "expected this type parameter");
-                            }
+                        let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
+                        if !sp.contains(p_span) {
+                            diag.span_label(p_span, "expected this type parameter");
                         }
                         diag.help(format!(
                             "every closure has a distinct type and so could not always match the \
@@ -246,16 +231,14 @@ impl<T> Trait<T> for X {
                     }
                     (ty::Param(p), _) | (_, ty::Param(p)) => {
                         let generics = tcx.generics_of(body_owner_def_id);
-                        if let Some(param) = generics.opt_type_param(p, tcx) {
-                            let p_span = tcx.def_span(param.def_id);
-                            let expected = match (values.expected.kind(), values.found.kind()) {
-                                (ty::Param(_), _) => "expected ",
-                                (_, ty::Param(_)) => "found ",
-                                _ => "",
-                            };
-                            if !sp.contains(p_span) {
-                                diag.span_label(p_span, format!("{expected}this type parameter"));
-                            }
+                        let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
+                        let expected = match (values.expected.kind(), values.found.kind()) {
+                            (ty::Param(_), _) => "expected ",
+                            (_, ty::Param(_)) => "found ",
+                            _ => "",
+                        };
+                        if !sp.contains(p_span) {
+                            diag.span_label(p_span, format!("{expected}this type parameter"));
                         }
                     }
                     (ty::Alias(ty::Projection | ty::Inherent, proj_ty), _)
@@ -545,10 +528,8 @@ impl<T> Trait<T> for X {
             return false;
         };
         let generics = tcx.generics_of(body_owner_def_id);
-        let Some(param) = generics.opt_type_param(param_ty, tcx) else {
-            return false;
-        };
-        let Some(def_id) = param.def_id.as_local() else {
+        let def_id = generics.type_param(param_ty, tcx).def_id;
+        let Some(def_id) = def_id.as_local() else {
             return false;
         };
 
