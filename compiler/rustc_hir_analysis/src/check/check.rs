@@ -612,12 +612,20 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                     }
                 }
                 ty::GenericParamDefKind::Type { .. } => {
-                    // FIXME(precise_capturing): Structured suggestion for this would be useful
-                    tcx.dcx().emit_err(errors::ParamNotCaptured {
-                        param_span: tcx.def_span(param.def_id),
-                        opaque_span: tcx.def_span(opaque_def_id),
-                        kind: "type",
-                    });
+                    if matches!(tcx.def_kind(param.def_id), DefKind::Trait | DefKind::TraitAlias) {
+                        // FIXME(precise_capturing): Structured suggestion for this would be useful
+                        tcx.dcx().emit_err(errors::SelfTyNotCaptured {
+                            trait_span: tcx.def_span(param.def_id),
+                            opaque_span: tcx.def_span(opaque_def_id),
+                        });
+                    } else {
+                        // FIXME(precise_capturing): Structured suggestion for this would be useful
+                        tcx.dcx().emit_err(errors::ParamNotCaptured {
+                            param_span: tcx.def_span(param.def_id),
+                            opaque_span: tcx.def_span(opaque_def_id),
+                            kind: "type",
+                        });
+                    }
                 }
                 ty::GenericParamDefKind::Const { .. } => {
                     // FIXME(precise_capturing): Structured suggestion for this would be useful

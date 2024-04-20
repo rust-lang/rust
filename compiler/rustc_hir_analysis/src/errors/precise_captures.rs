@@ -13,6 +13,16 @@ pub struct ParamNotCaptured {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_self_ty_not_captured)]
+#[note]
+pub struct SelfTyNotCaptured {
+    #[primary_span]
+    pub opaque_span: Span,
+    #[label]
+    pub trait_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_lifetime_not_captured)]
 pub struct LifetimeNotCaptured {
     #[primary_span]
