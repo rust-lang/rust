@@ -1,5 +1,5 @@
 // skip-filecheck
-//@ compile-flags: -O -Zmir-opt-level=2 -Cdebuginfo=2
+//@ compile-flags: -O -Zmir-opt-level=2
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![crate_type = "lib"]

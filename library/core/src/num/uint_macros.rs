@@ -579,8 +579,17 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_sub(rhs);
-            if unlikely!(b) { None } else { Some(a) }
+            // Per PR#103299, there's no advantage to the `overflowing` intrinsic
+            // for *unsigned* subtraction and we just emit the manual check anyway.
+            // Thus, rather than using `overflowing_sub` that produces a wrapping
+            // subtraction, check it ourself so we can use an unchecked one.
+
+            if self >= rhs {
+                // SAFETY: just checked this can't overflow
+                Some(unsafe { intrinsics::unchecked_sub(self, rhs) })
+            } else {
+                None
+            }
         }
 
         /// Strict integer subtraction. Computes `self - rhs`, panicking if
@@ -1222,12 +1231,19 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
+        // We could always go back to wrapping
+        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
-            let (a, b) = self.overflowing_shl(rhs);
-            if unlikely!(b) { None } else { Some(a) }
+            // Not using overflowing_shl as that's a wrapping shift
+            if rhs < Self::BITS {
+                // SAFETY: just checked the RHS is in-range
+                Some(unsafe { self.unchecked_shl(rhs) })
+            } else {
+                None
+            }
         }
 
         /// Strict shift left. Computes `self << rhs`, panicking if `rhs` is larger
@@ -1313,12 +1329,19 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
+        // We could always go back to wrapping
+        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
-            let (a, b) = self.overflowing_shr(rhs);
-            if unlikely!(b) { None } else { Some(a) }
+            // Not using overflowing_shr as that's a wrapping shift
+            if rhs < Self::BITS {
+                // SAFETY: just checked the RHS is in-range
+                Some(unsafe { self.unchecked_shr(rhs) })
+            } else {
+                None
+            }
         }
 
         /// Strict shift right. Computes `self >> rhs`, panicking `rhs` is
