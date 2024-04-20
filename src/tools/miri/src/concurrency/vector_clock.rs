@@ -49,7 +49,7 @@ const SMALL_VECTOR: usize = 4;
 /// a 32-bit unsigned integer which is the actual timestamp, and a `Span`
 /// so that diagnostics can report what code was responsible for an operation.
 #[derive(Clone, Copy, Debug)]
-pub struct VTimestamp {
+pub(super) struct VTimestamp {
     /// The lowest bit indicates read type, the rest is the time.
     /// `1` indicates a retag read, `0` a regular read.
     time_and_read_type: u32,
@@ -85,7 +85,7 @@ impl VTimestamp {
     }
 
     #[inline]
-    pub fn read_type(&self) -> NaReadType {
+    pub(super) fn read_type(&self) -> NaReadType {
         if self.time_and_read_type & 1 == 0 { NaReadType::Read } else { NaReadType::Retag }
     }
 
@@ -95,7 +95,7 @@ impl VTimestamp {
     }
 
     #[inline]
-    pub fn span_data(&self) -> SpanData {
+    pub(super) fn span_data(&self) -> SpanData {
         self.span.data()
     }
 }
