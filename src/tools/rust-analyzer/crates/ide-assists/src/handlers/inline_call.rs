@@ -49,13 +49,13 @@ use crate::{
 //
 // fn bar() {
 //     {
-//         let word = "안녕하세요";
+//         let word: &str = "안녕하세요";
 //         if !word.is_empty() {
 //             print(word);
 //         }
 //     };
 //     {
-//         let word = "여러분";
+//         let word: &str = "여러분";
 //         if !word.is_empty() {
 //             print(word);
 //         }

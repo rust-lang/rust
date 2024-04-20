@@ -56,7 +56,6 @@ use base_db::salsa::impl_intern_value_trivial;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
-    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
     NoSolution,
 };
 use either::Either;
@@ -98,7 +97,9 @@ pub use traits::TraitEnvironment;
 pub use utils::{all_super_traits, is_fn_unsafe_to_call};
 
 pub use chalk_ir::{
-    cast::Cast, AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
+    cast::Cast,
+    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
+    AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
 };
 
 pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
@@ -288,7 +289,7 @@ impl Hash for ConstScalar {
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
-    generics(db.upcast(), id.parent).param_idx(id)
+    generics(db.upcast(), id.parent).type_or_const_param_idx(id)
 }
 
 pub(crate) fn wrap_empty_binders<T>(value: T) -> Binders<T>
@@ -603,14 +604,14 @@ pub enum ImplTraitId {
 }
 impl_intern_value_trivial!(ImplTraitId);
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(PartialEq, Eq, Debug, Hash)]
 pub struct ImplTraits {
     pub(crate) impl_traits: Arena<ImplTrait>,
 }
 
 has_interner!(ImplTraits);
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(PartialEq, Eq, Debug, Hash)]
 pub struct ImplTrait {
     pub(crate) bounds: Binders<Vec<QuantifiedWhereClause>>,
 }
@@ -622,7 +623,7 @@ pub fn static_lifetime() -> Lifetime {
 }
 
 pub fn error_lifetime() -> Lifetime {
-    static_lifetime()
+    LifetimeData::Error.intern(Interner)
 }
 
 pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
@@ -861,7 +862,7 @@ where
             if cfg!(debug_assertions) {
                 Err(NoSolution)
             } else {
-                Ok(static_lifetime())
+                Ok(error_lifetime())
             }
         }
 
@@ -873,7 +874,7 @@ where
             if cfg!(debug_assertions) {
                 Err(NoSolution)
             } else {
-                Ok(static_lifetime())
+                Ok(error_lifetime())
             }
         }
     }

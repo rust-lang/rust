@@ -62,7 +62,7 @@
 use std::rc::Rc;
 
 use smallvec::{smallvec, SmallVec};
-use span::Span;
+use span::{Edition, Span};
 use syntax::SmolStr;
 use tt::DelimSpan;
 
@@ -108,8 +108,8 @@ impl Match {
 }
 
 /// Matching errors are added to the `Match`.
-pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree<Span>) -> Match {
-    let mut res = match_loop(pattern, input);
+pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree<Span>, edition: Edition) -> Match {
+    let mut res = match_loop(pattern, input, edition);
     res.bound_count = count(res.bindings.bindings());
     return res;
 
@@ -363,6 +363,7 @@ fn match_loop_inner<'t>(
     eof_items: &mut SmallVec<[MatchState<'t>; 1]>,
     error_items: &mut SmallVec<[MatchState<'t>; 1]>,
     delim_span: tt::DelimSpan<Span>,
+    edition: Edition,
 ) {
     macro_rules! try_push {
         ($items: expr, $it:expr) => {
@@ -473,7 +474,7 @@ fn match_loop_inner<'t>(
             OpDelimited::Op(Op::Var { kind, name, .. }) => {
                 if let &Some(kind) = kind {
                     let mut fork = src.clone();
-                    let match_res = match_meta_var(kind, &mut fork, delim_span);
+                    let match_res = match_meta_var(kind, &mut fork, delim_span, edition);
                     match match_res.err {
                         None => {
                             // Some meta variables are optional (e.g. vis)
@@ -586,7 +587,7 @@ fn match_loop_inner<'t>(
     }
 }
 
-fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree<Span>) -> Match {
+fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree<Span>, edition: Edition) -> Match {
     let span = src.delimiter.delim_span();
     let mut src = TtIter::new(src);
     let mut stack: SmallVec<[TtIter<'_, Span>; 1]> = SmallVec::new();
@@ -627,6 +628,7 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree<Span>) -> Match {
             &mut eof_items,
             &mut error_items,
             span,
+            edition,
         );
         stdx::always!(cur_items.is_empty());
 
@@ -740,21 +742,14 @@ fn match_meta_var(
     kind: MetaVarKind,
     input: &mut TtIter<'_, Span>,
     delim_span: DelimSpan<Span>,
+    edition: Edition,
 ) -> ExpandResult<Option<Fragment>> {
     let fragment = match kind {
         MetaVarKind::Path => {
-            return input.expect_fragment(parser::PrefixEntryPoint::Path).map(|it| {
+            return input.expect_fragment(parser::PrefixEntryPoint::Path, edition).map(|it| {
                 it.map(|it| tt::TokenTree::subtree_or_wrap(it, delim_span)).map(Fragment::Path)
             });
         }
-        MetaVarKind::Ty => parser::PrefixEntryPoint::Ty,
-        MetaVarKind::Pat => parser::PrefixEntryPoint::PatTop,
-        MetaVarKind::PatParam => parser::PrefixEntryPoint::Pat,
-        MetaVarKind::Stmt => parser::PrefixEntryPoint::Stmt,
-        MetaVarKind::Block => parser::PrefixEntryPoint::Block,
-        MetaVarKind::Meta => parser::PrefixEntryPoint::MetaItem,
-        MetaVarKind::Item => parser::PrefixEntryPoint::Item,
-        MetaVarKind::Vis => parser::PrefixEntryPoint::Vis,
         MetaVarKind::Expr => {
             // `expr` should not match underscores, let expressions, or inline const. The latter
             // two are for [backwards compatibility][0].
@@ -770,7 +765,7 @@ fn match_meta_var(
                 }
                 _ => {}
             };
-            return input.expect_fragment(parser::PrefixEntryPoint::Expr).map(|tt| {
+            return input.expect_fragment(parser::PrefixEntryPoint::Expr, edition).map(|tt| {
                 tt.map(|tt| match tt {
                     tt::TokenTree::Leaf(leaf) => tt::Subtree {
                         delimiter: tt::Delimiter::invisible_spanned(*leaf.span()),
@@ -818,8 +813,16 @@ fn match_meta_var(
             };
             return tt_result.map(|it| Some(Fragment::Tokens(it))).into();
         }
+        MetaVarKind::Ty => parser::PrefixEntryPoint::Ty,
+        MetaVarKind::Pat => parser::PrefixEntryPoint::PatTop,
+        MetaVarKind::PatParam => parser::PrefixEntryPoint::Pat,
+        MetaVarKind::Stmt => parser::PrefixEntryPoint::Stmt,
+        MetaVarKind::Block => parser::PrefixEntryPoint::Block,
+        MetaVarKind::Meta => parser::PrefixEntryPoint::MetaItem,
+        MetaVarKind::Item => parser::PrefixEntryPoint::Item,
+        MetaVarKind::Vis => parser::PrefixEntryPoint::Vis,
     };
-    input.expect_fragment(fragment).map(|it| it.map(Fragment::Tokens))
+    input.expect_fragment(fragment, edition).map(|it| it.map(Fragment::Tokens))
 }
 
 fn collect_vars(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate) {

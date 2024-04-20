@@ -255,7 +255,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
 mod tests {
     use expect_test::{expect, Expect};
     use itertools::Itertools;
-    use parser::SyntaxKind;
+    use parser::{Edition, SyntaxKind};
     use text_edit::TextEdit;
 
     use crate::{AstNode, SyntaxElement};
@@ -607,8 +607,8 @@ fn main() {
     }
 
     fn check_diff(from: &str, to: &str, expected_diff: Expect) {
-        let from_node = crate::SourceFile::parse(from).tree().syntax().clone();
-        let to_node = crate::SourceFile::parse(to).tree().syntax().clone();
+        let from_node = crate::SourceFile::parse(from, Edition::CURRENT).tree().syntax().clone();
+        let to_node = crate::SourceFile::parse(to, Edition::CURRENT).tree().syntax().clone();
         let diff = super::diff(&from_node, &to_node);
 
         let line_number =
