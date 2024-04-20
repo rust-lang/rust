@@ -46,9 +46,35 @@ where
         .is_some()
 }
 
-pub fn depth_first_search<G>(graph: &G, from: G::Node) -> iterate::DepthFirstSearch<'_, G>
+pub fn depth_first_search<G>(graph: G, from: G::Node) -> iterate::DepthFirstSearch<G>
 where
-    G: ?Sized + Successors,
+    G: Successors,
 {
     iterate::DepthFirstSearch::new(graph).with_start_node(from)
+}
+
+pub fn depth_first_search_as_undirected<G>(
+    graph: G,
+    from: G::Node,
+) -> iterate::DepthFirstSearch<impl Successors<Node = G::Node>>
+where
+    G: Successors + Predecessors,
+{
+    struct AsUndirected<G>(G);
+
+    impl<G: DirectedGraph> DirectedGraph for AsUndirected<G> {
+        type Node = G::Node;
+
+        fn num_nodes(&self) -> usize {
+            self.0.num_nodes()
+        }
+    }
+
+    impl<G: Successors + Predecessors> Successors for AsUndirected<G> {
+        fn successors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
+            self.0.successors(node).chain(self.0.predecessors(node))
+        }
+    }
+
+    iterate::DepthFirstSearch::new(AsUndirected(graph)).with_start_node(from)
 }

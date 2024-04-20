@@ -17,7 +17,7 @@ mod useless_attribute;
 mod utils;
 
 use clippy_config::msrvs::Msrv;
-use rustc_ast::{Attribute, Crate, MetaItemKind, NestedMetaItem};
+use rustc_ast::{Attribute, MetaItemKind, NestedMetaItem};
 use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, impl_lint_pass};
@@ -534,11 +534,13 @@ declare_lint_pass!(Attributes => [
     BLANKET_CLIPPY_RESTRICTION_LINTS,
     SHOULD_PANIC_WITHOUT_EXPECT,
     MIXED_ATTRIBUTES_STYLE,
+    DUPLICATED_ATTRIBUTES,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
         blanket_clippy_restriction_lints::check_command_line(cx);
+        duplicated_attributes::check(cx, cx.tcx.hir().krate_attrs());
     }
 
     fn check_attribute(&mut self, cx: &LateContext<'tcx>, attr: &'tcx Attribute) {
@@ -578,6 +580,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
             _ => {},
         }
         mixed_attributes_style::check(cx, item.span, attrs);
+        duplicated_attributes::check(cx, attrs);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
@@ -606,17 +609,11 @@ impl_lint_pass!(EarlyAttributes => [
     MAYBE_MISUSED_CFG,
     DEPRECATED_CLIPPY_CFG_ATTR,
     UNNECESSARY_CLIPPY_CFG,
-    DUPLICATED_ATTRIBUTES,
 ]);
 
 impl EarlyLintPass for EarlyAttributes {
-    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
-        duplicated_attributes::check(cx, &krate.attrs);
-    }
-
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
         empty_line_after::check(cx, item);
-        duplicated_attributes::check(cx, &item.attrs);
     }
 
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {

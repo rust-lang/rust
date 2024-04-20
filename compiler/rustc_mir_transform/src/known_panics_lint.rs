@@ -796,7 +796,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 if let Some(ref value) = self.eval_operand(discr)
                     && let Some(value_const) = self.use_ecx(|this| this.ecx.read_scalar(value))
                     && let Ok(constant) = value_const.try_to_int()
-                    && let Ok(constant) = constant.to_bits(constant.size())
+                    && let Ok(constant) = constant.try_to_bits(constant.size())
                 {
                     // We managed to evaluate the discriminant, so we know we only need to visit
                     // one target.

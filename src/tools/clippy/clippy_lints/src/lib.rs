@@ -594,6 +594,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         pub_underscore_fields_behavior,
         ref allowed_duplicate_crates,
         allow_comparison_to_zero,
+        ref allowed_prefixes,
 
         blacklisted_names: _,
         cyclomatic_complexity_threshold: _,
@@ -864,6 +865,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             struct_field_name_threshold,
             avoid_breaking_exported_api,
             allow_private_module_inception,
+            allowed_prefixes,
         ))
     });
     store.register_early_pass(|| Box::new(tabs_in_doc_comments::TabsInDocComments));

@@ -1,3 +1,4 @@
+//@needs-asm-support
 //@aux-build:proc_macros.rs
 #![allow(unused)]
 #![allow(deref_nullptr)]

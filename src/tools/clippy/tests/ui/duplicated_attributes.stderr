@@ -1,16 +1,16 @@
 error: duplicated attribute
-  --> tests/ui/duplicated_attributes.rs:4:10
+  --> tests/ui/duplicated_attributes.rs:6:10
    |
 LL | #![allow(dead_code)]
    |          ^^^^^^^^^
    |
 note: first defined here
-  --> tests/ui/duplicated_attributes.rs:3:10
+  --> tests/ui/duplicated_attributes.rs:5:10
    |
 LL | #![allow(dead_code)]
    |          ^^^^^^^^^
 help: remove this attribute
-  --> tests/ui/duplicated_attributes.rs:4:10
+  --> tests/ui/duplicated_attributes.rs:6:10
    |
 LL | #![allow(dead_code)]
    |          ^^^^^^^^^
@@ -18,38 +18,21 @@ LL | #![allow(dead_code)]
    = help: to override `-D warnings` add `#[allow(clippy::duplicated_attributes)]`
 
 error: duplicated attribute
-  --> tests/ui/duplicated_attributes.rs:9:9
+  --> tests/ui/duplicated_attributes.rs:14:9
    |
 LL | #[allow(dead_code)]
    |         ^^^^^^^^^
    |
 note: first defined here
-  --> tests/ui/duplicated_attributes.rs:8:9
+  --> tests/ui/duplicated_attributes.rs:13:9
    |
 LL | #[allow(dead_code)]
    |         ^^^^^^^^^
 help: remove this attribute
-  --> tests/ui/duplicated_attributes.rs:9:9
+  --> tests/ui/duplicated_attributes.rs:14:9
    |
 LL | #[allow(dead_code)]
    |         ^^^^^^^^^
 
-error: duplicated attribute
-  --> tests/ui/duplicated_attributes.rs:15:7
-   |
-LL | #[cfg(unix)]
-   |       ^^^^
-   |
-note: first defined here
-  --> tests/ui/duplicated_attributes.rs:13:7
-   |
-LL | #[cfg(unix)]
-   |       ^^^^
-help: remove this attribute
-  --> tests/ui/duplicated_attributes.rs:15:7
-   |
-LL | #[cfg(unix)]
-   |       ^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
