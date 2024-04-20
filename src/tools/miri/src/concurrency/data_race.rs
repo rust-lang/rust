@@ -547,9 +547,9 @@ impl MemoryCellClocks {
     ) -> Result<(), DataRace> {
         trace!("Unsynchronized read with vectors: {:#?} :: {:#?}", self, thread_clocks);
         if !current_span.is_dummy() {
-            thread_clocks.clock[index].span = current_span;
+            thread_clocks.clock.index_mut(index).span = current_span;
         }
-        thread_clocks.clock[index].set_read_type(read_type);
+        thread_clocks.clock.index_mut(index).set_read_type(read_type);
         if self.write_was_before(&thread_clocks.clock) {
             let race_free = if let Some(atomic) = self.atomic() {
                 // We must be ordered-after all atomic accesses, reads and writes.
@@ -577,7 +577,7 @@ impl MemoryCellClocks {
     ) -> Result<(), DataRace> {
         trace!("Unsynchronized write with vectors: {:#?} :: {:#?}", self, thread_clocks);
         if !current_span.is_dummy() {
-            thread_clocks.clock[index].span = current_span;
+            thread_clocks.clock.index_mut(index).span = current_span;
         }
         if self.write_was_before(&thread_clocks.clock) && self.read <= thread_clocks.clock {
             let race_free = if let Some(atomic) = self.atomic() {
@@ -1701,54 +1701,51 @@ impl GlobalState {
         format!("thread `{thread_name}`")
     }
 
-    /// Acquire a lock, express that the previous call of
-    /// `validate_lock_release` must happen before this.
+    /// Acquire the given clock into the given thread, establishing synchronization with
+    /// the moment when that clock snapshot was taken via `release_clock`.
     /// As this is an acquire operation, the thread timestamp is not
     /// incremented.
-    pub fn validate_lock_acquire(&self, lock: &VClock, thread: ThreadId) {
-        let (_, mut clocks) = self.load_thread_state_mut(thread);
+    pub fn acquire_clock(&self, lock: &VClock, thread: ThreadId) {
+        let (_, mut clocks) = self.thread_state_mut(thread);
         clocks.clock.join(lock);
     }
 
-    /// Release a lock handle, express that this happens-before
-    /// any subsequent calls to `validate_lock_acquire`.
-    /// For normal locks this should be equivalent to `validate_lock_release_shared`
-    /// since an acquire operation should have occurred before, however
-    /// for futex & condvar operations this is not the case and this
-    /// operation must be used.
-    pub fn validate_lock_release(&self, lock: &mut VClock, thread: ThreadId, current_span: Span) {
-        let (index, mut clocks) = self.load_thread_state_mut(thread);
-        lock.clone_from(&clocks.clock);
+    /// Returns the `release` clock of the given thread.
+    /// Other threads can acquire this clock in the future to establish synchronization
+    /// with this program point.
+    pub fn release_clock(&self, thread: ThreadId, current_span: Span) -> Ref<'_, VClock> {
+        // We increment the clock each time this happens, to ensure no two releases
+        // can be confused with each other.
+        let (index, mut clocks) = self.thread_state_mut(thread);
         clocks.increment_clock(index, current_span);
-    }
-
-    /// Release a lock handle, express that this happens-before
-    /// any subsequent calls to `validate_lock_acquire` as well
-    /// as any previous calls to this function after any
-    /// `validate_lock_release` calls.
-    /// For normal locks this should be equivalent to `validate_lock_release`.
-    /// This function only exists for joining over the set of concurrent readers
-    /// in a read-write lock and should not be used for anything else.
-    pub fn validate_lock_release_shared(
-        &self,
-        lock: &mut VClock,
-        thread: ThreadId,
-        current_span: Span,
-    ) {
-        let (index, mut clocks) = self.load_thread_state_mut(thread);
-        lock.join(&clocks.clock);
-        clocks.increment_clock(index, current_span);
+        drop(clocks);
+        // To return a read-only view, we need to release the RefCell
+        // and borrow it again.
+        let (_index, clocks) = self.thread_state(thread);
+        Ref::map(clocks, |c| &c.clock)
     }
 
     /// Load the vector index used by the given thread as well as the set of vector clocks
     /// used by the thread.
     #[inline]
-    fn load_thread_state_mut(&self, thread: ThreadId) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
+    fn thread_state_mut(&self, thread: ThreadId) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
         let index = self.thread_info.borrow()[thread]
             .vector_index
             .expect("Loading thread state for thread with no assigned vector");
         let ref_vector = self.vector_clocks.borrow_mut();
         let clocks = RefMut::map(ref_vector, |vec| &mut vec[index]);
+        (index, clocks)
+    }
+
+    /// Load the vector index used by the given thread as well as the set of vector clocks
+    /// used by the thread.
+    #[inline]
+    fn thread_state(&self, thread: ThreadId) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
+        let index = self.thread_info.borrow()[thread]
+            .vector_index
+            .expect("Loading thread state for thread with no assigned vector");
+        let ref_vector = self.vector_clocks.borrow();
+        let clocks = Ref::map(ref_vector, |vec| &vec[index]);
         (index, clocks)
     }
 
@@ -1759,10 +1756,7 @@ impl GlobalState {
         &self,
         thread_mgr: &ThreadManager<'_, '_>,
     ) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
-        let index = self.current_index(thread_mgr);
-        let ref_vector = self.vector_clocks.borrow();
-        let clocks = Ref::map(ref_vector, |vec| &vec[index]);
-        (index, clocks)
+        self.thread_state(thread_mgr.get_active_thread_id())
     }
 
     /// Load the current vector clock in use and the current set of thread clocks
@@ -1772,10 +1766,7 @@ impl GlobalState {
         &self,
         thread_mgr: &ThreadManager<'_, '_>,
     ) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
-        let index = self.current_index(thread_mgr);
-        let ref_vector = self.vector_clocks.borrow_mut();
-        let clocks = RefMut::map(ref_vector, |vec| &mut vec[index]);
-        (index, clocks)
+        self.thread_state_mut(thread_mgr.get_active_thread_id())
     }
 
     /// Return the current thread, should be the same
