@@ -225,7 +225,7 @@ fn test_expr() {
     );
     c2_match_arm!(
         [ m! {} - 1 ],
-        "match () { _ => (m! {}) - 1, }", // parenthesis is redundant
+        "match () { _ => m! {} - 1, }",
         "match () { _ => m! {} - 1 }",
     );
 
