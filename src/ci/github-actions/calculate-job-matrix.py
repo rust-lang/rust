@@ -6,8 +6,6 @@ be executed on CI.
 
 It reads job definitions from `src/ci/github-actions/jobs.yml`
 and filters them based on the event that happened on CI.
-
-Currently, it only supports PR and try builds.
 """
 import enum
 import json
@@ -22,14 +20,30 @@ JOBS_YAML_PATH = Path(__file__).absolute().parent / "jobs.yml"
 
 
 def name_jobs(jobs: List[Dict], prefix: str) -> List[Dict]:
+    """
+    Add a `name` attribute to each job, based on its image and the given `prefix`.
+    """
     for job in jobs:
         job["name"] = f"{prefix} - {job['image']}"
+    return jobs
+
+
+def add_base_env(jobs: List[Dict], environment: Dict[str, str]) -> List[Dict]:
+    """
+    Prepends `environment` to the `env` attribute of each job.
+    The `env` of each job has higher precedence than `environment`.
+    """
+    for job in jobs:
+        env = environment.copy()
+        env.update(job.get("env", {}))
+        job["env"] = env
     return jobs
 
 
 class JobType(enum.Enum):
     PR = enum.auto()
     Try = enum.auto()
+    Auto = enum.auto()
 
 
 def find_job_type(github_ctx: Dict[str, Any]) -> Optional[JobType]:
@@ -53,14 +67,19 @@ def find_job_type(github_ctx: Dict[str, Any]) -> Optional[JobType]:
         if try_build:
             return JobType.Try
 
+        if ref == "refs/heads/auto" and repository == "rust-lang-ci/rust":
+            return JobType.Auto
+
     return None
 
 
 def calculate_jobs(job_type: JobType, job_data: Dict[str, Any]) -> List[Dict[str, Any]]:
     if job_type == JobType.PR:
-        return name_jobs(job_data["pr"], "PR")
+        return add_base_env(name_jobs(job_data["pr"], "PR"), job_data["envs"]["pr"])
     elif job_type == JobType.Try:
-        return name_jobs(job_data["try"], "try")
+        return add_base_env(name_jobs(job_data["try"], "try"), job_data["envs"]["production"])
+    elif job_type == JobType.Auto:
+        return add_base_env(name_jobs(job_data["auto"], "auto"), job_data["envs"]["production"])
 
     return []
 
@@ -68,10 +87,10 @@ def calculate_jobs(job_type: JobType, job_data: Dict[str, Any]) -> List[Dict[str
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    github_ctx = json.loads(os.environ["GITHUB_CTX"])
-
     with open(JOBS_YAML_PATH) as f:
         data = yaml.safe_load(f)
+
+    github_ctx = json.loads(os.environ["GITHUB_CTX"])
 
     job_type = find_job_type(github_ctx)
     logging.info(f"Job type: {job_type}")
