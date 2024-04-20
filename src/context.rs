@@ -432,6 +432,8 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
         let func = if self.intrinsics.borrow().contains_key(func_name) {
             self.intrinsics.borrow()[func_name]
+        } else if let Some(variable) = self.get_declared_value(func_name) {
+            return variable;
         } else {
             get_fn(self, instance)
         };
