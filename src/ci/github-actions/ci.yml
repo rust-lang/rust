@@ -351,17 +351,25 @@ jobs:
       - name: Checkout the source code
         uses: actions/checkout@v4
       - name: Calculate the CI job matrix
+        env:
+          GITHUB_CTX: ${{ toJSON(github) }}
         run: python3 src/ci/github-actions/calculate-job-matrix.py >> $GITHUB_OUTPUT
         id: jobs
-  pr:
+  # This is either a PR or a try job, decided by calculate-job-matrix.py
+  job:
     <<: *base-ci-job
-    name: PR - ${{ matrix.name }}
+    name: ${{ matrix.name }}
     needs: [ calculate_matrix ]
     env:
-      <<: [*shared-ci-variables, *public-variables]
-      PR_CI_JOB: 1
-    if: github.event_name == 'pull_request'
-    continue-on-error: ${{ matrix.name == 'mingw-check-tidy' }}
+      CI_JOB_NAME: ${{ matrix.image }}
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      # commit of PR sha or commit sha. `GITHUB_SHA` is not accurate for PRs.
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SCCACHE_BUCKET: rust-lang-ci-sccache2
+      TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
+      CACHE_DOMAIN: ci-caches.rust-lang.org
+    continue-on-error: ${{ matrix.continue_on_error || false }}
     strategy:
       matrix:
         # Check the `calculate_matrix` job to see how is the matrix defined.
@@ -751,23 +759,6 @@ jobs:
               SCRIPT: python x.py dist bootstrap --include-default-paths
             <<: *job-windows-8c
 
-  try:
-    <<: *base-ci-job
-    name: try - ${{ matrix.name }}
-    env:
-      DIST_TRY_BUILD: 1
-      <<: [*shared-ci-variables, *prod-variables]
-    if: github.event_name == 'push' && (((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust') || ((github.ref == 'refs/heads/automation/bors/try') && github.repository == 'rust-lang/rust'))
-    strategy:
-      matrix:
-        include:
-          - &dist-x86_64-linux
-            name: dist-x86_64-linux
-            env:
-              CODEGEN_BACKENDS: llvm,cranelift
-            <<: *job-linux-16c
-
-
   master:
     name: master
     runs-on: ubuntu-latest
@@ -791,11 +782,11 @@ jobs:
   # build completed, as there is no practical way to detect when a workflow is
   # successful listening to webhooks only.
   try-success:
-    needs: [try]
+    needs: [ job ]
     if: "success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
     <<: *base-success-job
   try-failure:
-    needs: [try]
+    needs: [ job ]
     if: "!success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
     <<: *base-failure-job
   auto-success:

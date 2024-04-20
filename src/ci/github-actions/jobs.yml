@@ -2,7 +2,7 @@
 # dynamically in CI from ci.yml.
 # You *do not* need to re-run `src/tools/expand-yaml-anchors` when you
 # modify this file.
-shared_defs:
+runners:
   - &base-job
     env: { }
 
@@ -37,14 +37,49 @@ shared_defs:
   - &job-aarch64-linux
     os: [ self-hosted, ARM64, linux ]
 
+envs:
+  - &prod-variables
+    DEPLOY_BUCKET: rust-lang-ci2
+    TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/rust-lang/rust/issues
+    TOOLSTATE_PUBLISH: 1
+    # AWS_SECRET_ACCESS_KEYs are stored in GitHub's secrets storage, named
+    # AWS_SECRET_ACCESS_KEY_<keyid>. Including the key id in the name allows to
+    # rotate them in a single branch while keeping the old key in another
+    # branch, which wouldn't be possible if the key was named with the kind
+    # (caches, artifacts...).
+    CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
+    ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
+    AWS_REGION: us-west-1
+
+  - &pr-env
+    PR_CI_JOB: 1
+
+# Pull request jobs
 pr:
-  - name: mingw-check
+  - image: mingw-check
+    env:
+      <<: *pr-env
     <<: *job-linux-4c
-  - name: mingw-check-tidy
+  - image: mingw-check-tidy
+    continue_on_error: true
+    env:
+      <<: *pr-env
     <<: *job-linux-4c
-  - name: x86_64-gnu-llvm-17
+  - image: x86_64-gnu-llvm-17
     env:
       ENABLE_GCC_CODEGEN: "1"
+      <<: *pr-env
     <<: *job-linux-16c
-  - name: x86_64-gnu-tools
+  - image: x86_64-gnu-tools
+    env:
+      <<: *pr-env
+    <<: *job-linux-16c
+
+# Try build jobs
+try:
+  - image: dist-x86_64-linux
+    env:
+      DIST_TRY_BUILD: 1
+      CODEGEN_BACKENDS: llvm,cranelift
+      <<: *prod-variables
     <<: *job-linux-16c
