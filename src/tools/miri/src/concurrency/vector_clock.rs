@@ -13,15 +13,13 @@ use super::data_race::NaReadType;
 /// but in some cases one vector index may be shared with
 /// multiple thread ids if it's safe to do so.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct VectorIdx(u32);
+pub(super) struct VectorIdx(u32);
 
 impl VectorIdx {
     #[inline(always)]
-    pub fn to_u32(self) -> u32 {
+    fn to_u32(self) -> u32 {
         self.0
     }
-
-    pub const MAX_INDEX: VectorIdx = VectorIdx(u32::MAX);
 }
 
 impl Idx for VectorIdx {

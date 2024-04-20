@@ -847,6 +847,7 @@ impl VClockAlloc {
         kind: MemoryKind,
         current_span: Span,
     ) -> VClockAlloc {
+        // Determine the thread that did the allocation, and when it did it.
         let (alloc_timestamp, alloc_index) = match kind {
             // User allocated and stack memory should track allocation.
             MemoryKind::Machine(
@@ -864,7 +865,7 @@ impl VClockAlloc {
                 (alloc_timestamp, alloc_index)
             }
             // Other global memory should trace races but be allocated at the 0 timestamp
-            // (conceptually they are allocated before everything).
+            // (conceptually they are allocated on the main thread before everything).
             MemoryKind::Machine(
                 MiriMemoryKind::Global
                 | MiriMemoryKind::Machine
@@ -872,7 +873,8 @@ impl VClockAlloc {
                 | MiriMemoryKind::ExternStatic
                 | MiriMemoryKind::Tls,
             )
-            | MemoryKind::CallerLocation => (VTimestamp::ZERO, VectorIdx::MAX_INDEX),
+            | MemoryKind::CallerLocation =>
+                (VTimestamp::ZERO, global.thread_index(ThreadId::MAIN_THREAD)),
         };
         VClockAlloc {
             alloc_ranges: RefCell::new(RangeMap::new(
@@ -1454,7 +1456,7 @@ impl GlobalState {
         // Setup the main-thread since it is not explicitly created:
         // uses vector index and thread-id 0.
         let index = global_state.vector_clocks.get_mut().push(ThreadClockSet::default());
-        global_state.vector_info.get_mut().push(ThreadId::new(0));
+        global_state.vector_info.get_mut().push(ThreadId::MAIN_THREAD);
         global_state
             .thread_info
             .get_mut()
@@ -1725,13 +1727,15 @@ impl GlobalState {
         Ref::map(clocks, |c| &c.clock)
     }
 
+    fn thread_index(&self, thread: ThreadId) -> VectorIdx {
+        self.thread_info.borrow()[thread].vector_index.expect("thread has no assigned vector")
+    }
+
     /// Load the vector index used by the given thread as well as the set of vector clocks
     /// used by the thread.
     #[inline]
     fn thread_state_mut(&self, thread: ThreadId) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
-        let index = self.thread_info.borrow()[thread]
-            .vector_index
-            .expect("Loading thread state for thread with no assigned vector");
+        let index = self.thread_index(thread);
         let ref_vector = self.vector_clocks.borrow_mut();
         let clocks = RefMut::map(ref_vector, |vec| &mut vec[index]);
         (index, clocks)
@@ -1741,9 +1745,7 @@ impl GlobalState {
     /// used by the thread.
     #[inline]
     fn thread_state(&self, thread: ThreadId) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
-        let index = self.thread_info.borrow()[thread]
-            .vector_index
-            .expect("Loading thread state for thread with no assigned vector");
+        let index = self.thread_index(thread);
         let ref_vector = self.vector_clocks.borrow();
         let clocks = Ref::map(ref_vector, |vec| &vec[index]);
         (index, clocks)
@@ -1774,9 +1776,7 @@ impl GlobalState {
     #[inline]
     fn current_index(&self, thread_mgr: &ThreadManager<'_, '_>) -> VectorIdx {
         let active_thread_id = thread_mgr.get_active_thread_id();
-        self.thread_info.borrow()[active_thread_id]
-            .vector_index
-            .expect("active thread has no assigned vector")
+        self.thread_index(active_thread_id)
     }
 
     // SC ATOMIC STORE rule in the paper.
