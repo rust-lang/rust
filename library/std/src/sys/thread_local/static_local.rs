@@ -11,8 +11,6 @@ pub macro thread_local_inner {
     (@key $t:ty, const $init:expr) => {{
         #[inline] // see comments below
         #[deny(unsafe_op_in_unsafe_fn)]
-        // FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_refs` lint
-        #[allow(static_mut_refs)]
         unsafe fn __getit(
             _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
         ) -> $crate::option::Option<&'static $t> {
@@ -25,7 +23,8 @@ pub macro thread_local_inner {
             // FIXME(#84224) this should come after the `target_thread_local`
             // block.
             static mut VAL: $t = INIT_EXPR;
-            unsafe { $crate::option::Option::Some(&VAL) }
+            // SAFETY: we only ever create shared references, so there's no mutable aliasing.
+            unsafe { $crate::option::Option::Some(&*$crate::ptr::addr_of!(VAL)) }
         }
 
         unsafe {
