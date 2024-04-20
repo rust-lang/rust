@@ -3,11 +3,12 @@
 //! Note that HIR pretty printing is layered on top of this crate.
 
 mod expr;
+mod fixup;
 mod item;
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
-use crate::pprust::state::expr::FixupContext;
+use crate::pprust::state::fixup::FixupContext;
 use ast::TraitBoundModifiers;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
