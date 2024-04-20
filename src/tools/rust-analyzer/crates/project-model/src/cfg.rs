@@ -3,9 +3,11 @@
 //! rustc main.rs --cfg foo --cfg 'feature="bar"'
 use std::{fmt, str::FromStr};
 
-use cfg::CfgOptions;
+use cfg::{CfgDiff, CfgOptions};
+use rustc_hash::FxHashMap;
+use serde::Serialize;
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize)]
 pub enum CfgFlag {
     Atom(String),
     KeyValue { key: String, value: String },
@@ -67,5 +69,29 @@ impl fmt::Display for CfgFlag {
                 f.write_str(value)
             }
         }
+    }
+}
+
+/// A set of cfg-overrides per crate.
+#[derive(Default, Debug, Clone, Eq, PartialEq)]
+pub struct CfgOverrides {
+    /// A global set of overrides matching all crates.
+    pub global: CfgDiff,
+    /// A set of overrides matching specific crates.
+    pub selective: FxHashMap<String, CfgDiff>,
+}
+
+impl CfgOverrides {
+    pub fn len(&self) -> usize {
+        self.global.len() + self.selective.values().map(|it| it.len()).sum::<usize>()
+    }
+
+    pub fn apply(&self, cfg_options: &mut CfgOptions, name: &str) {
+        if !self.global.is_empty() {
+            cfg_options.apply_diff(self.global.clone());
+        };
+        if let Some(diff) = self.selective.get(name) {
+            cfg_options.apply_diff(diff.clone());
+        };
     }
 }

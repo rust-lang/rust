@@ -91,7 +91,7 @@ jobs:
         run: cargo build --quiet ${{ env.USE_SYSROOT_ABI }}
 
       - name: Test
-        if: matrix.os == 'ubuntu-latest' || github.event_name == 'push'
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || github.event_name == 'push'
         run: cargo test ${{ env.USE_SYSROOT_ABI }} -- --nocapture --quiet
 
       - name: Switch to stable toolchain

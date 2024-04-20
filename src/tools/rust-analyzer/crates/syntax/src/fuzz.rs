@@ -4,6 +4,7 @@
 
 use std::str::{self, FromStr};
 
+use parser::Edition;
 use text_edit::Indel;
 
 use crate::{validation, AstNode, SourceFile, TextRange};
@@ -14,7 +15,7 @@ fn check_file_invariants(file: &SourceFile) {
 }
 
 pub fn check_parser(text: &str) {
-    let file = SourceFile::parse(text);
+    let file = SourceFile::parse(text, Edition::CURRENT);
     check_file_invariants(&file.tree());
 }
 
@@ -48,11 +49,11 @@ impl CheckReparse {
 
     #[allow(clippy::print_stderr)]
     pub fn run(&self) {
-        let parse = SourceFile::parse(&self.text);
-        let new_parse = parse.reparse(&self.edit);
+        let parse = SourceFile::parse(&self.text, Edition::CURRENT);
+        let new_parse = parse.reparse(&self.edit, Edition::CURRENT);
         check_file_invariants(&new_parse.tree());
         assert_eq!(&new_parse.tree().syntax().text().to_string(), &self.edited_text);
-        let full_reparse = SourceFile::parse(&self.edited_text);
+        let full_reparse = SourceFile::parse(&self.edited_text, Edition::CURRENT);
         for (a, b) in
             new_parse.tree().syntax().descendants().zip(full_reparse.tree().syntax().descendants())
         {

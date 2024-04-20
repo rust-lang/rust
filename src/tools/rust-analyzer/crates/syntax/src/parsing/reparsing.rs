@@ -26,7 +26,9 @@ pub(crate) fn incremental_reparse(
         return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
     }
 
-    if let Some((green, new_errors, old_range)) = reparse_block(node, edit) {
+    if let Some((green, new_errors, old_range)) =
+        reparse_block(node, edit, parser::Edition::CURRENT)
+    {
         return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
     }
     None
@@ -84,6 +86,7 @@ fn reparse_token(
 fn reparse_block(
     root: &SyntaxNode,
     edit: &Indel,
+    edition: parser::Edition,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     let (node, reparser) = find_reparsable_node(root, edit.delete)?;
     let text = get_text_after_edit(node.clone().into(), edit);
@@ -94,7 +97,7 @@ fn reparse_block(
         return None;
     }
 
-    let tree_traversal = reparser.parse(&parser_input);
+    let tree_traversal = reparser.parse(&parser_input, edition);
 
     let (green, new_parser_errors, _eof) = build_tree(lexed, tree_traversal);
 
@@ -174,6 +177,7 @@ fn merge_errors(
 
 #[cfg(test)]
 mod tests {
+    use parser::Edition;
     use test_utils::{assert_eq_text, extract_range};
 
     use super::*;
@@ -188,9 +192,9 @@ mod tests {
             after
         };
 
-        let fully_reparsed = SourceFile::parse(&after);
+        let fully_reparsed = SourceFile::parse(&after, Edition::CURRENT);
         let incrementally_reparsed: Parse<SourceFile> = {
-            let before = SourceFile::parse(&before);
+            let before = SourceFile::parse(&before, Edition::CURRENT);
             let (green, new_errors, range) = incremental_reparse(
                 before.tree().syntax(),
                 &edit,

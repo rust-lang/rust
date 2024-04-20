@@ -1560,21 +1560,21 @@ fn y() {
 fn test_hover_macro_invocation() {
     check(
         r#"
-macro_rules! foo { () => {} }
+macro_rules! foo { (a) => {}; () => {} }
 
 fn f() { fo$0o!(); }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                macro_rules! foo
-                ```
-            "#]],
+            ```rust
+            macro_rules! foo // matched arm #1
+            ```
+        "#]],
     )
 }
 
@@ -1590,22 +1590,22 @@ macro foo() {}
 fn f() { fo$0o!(); }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                macro foo
-                ```
+            ```rust
+            macro foo // matched arm #0
+            ```
 
-                ---
+            ---
 
-                foo bar
+            foo bar
 
-                foo bar baz
-            "#]],
+            foo bar baz
+        "#]],
     )
 }
 
@@ -2317,6 +2317,49 @@ fn test_hover_layout_of_variant() {
             ```rust
             // size = 4, align = 2
             Variant1(u8, u16)
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_layout_of_variant_generic() {
+    check(
+        r#"enum Option<T> {
+    Some(T),
+    None$0
+}"#,
+        expect![[r#"
+            *None*
+
+            ```rust
+            test::Option
+            ```
+
+            ```rust
+            None
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_layout_generic_unused() {
+    check(
+        r#"
+//- minicore: phantom_data
+struct S$0<T>(core::marker::PhantomData<T>);
+"#,
+        expect![[r#"
+            *S*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 0, align = 1
+            struct S<T>(PhantomData<T>)
             ```
         "#]],
     );
@@ -3258,12 +3301,12 @@ fn foo(ar$0g: &impl Foo<S>) {}
 fn test_hover_dyn_return_has_goto_type_action() {
     check_actions(
         r#"
-trait Foo {}
+trait Foo<T> {}
 struct S;
-impl Foo for S {}
+impl Foo<S> for S {}
 
 struct B<T>{}
-fn foo() -> B<dyn Foo> {}
+fn foo() -> B<dyn Foo<S>> {}
 
 fn main() { let s$0t = foo(); }
 "#,
@@ -3277,8 +3320,8 @@ fn main() { let s$0t = foo(); }
                                 file_id: FileId(
                                     0,
                                 ),
-                                full_range: 42..55,
-                                focus_range: 49..50,
+                                full_range: 48..61,
+                                focus_range: 55..56,
                                 name: "B",
                                 kind: Struct,
                                 description: "struct B<T>",
@@ -3290,11 +3333,24 @@ fn main() { let s$0t = foo(); }
                                 file_id: FileId(
                                     0,
                                 ),
-                                full_range: 0..12,
+                                full_range: 0..15,
                                 focus_range: 6..9,
                                 name: "Foo",
                                 kind: Trait,
-                                description: "trait Foo",
+                                description: "trait Foo<T>",
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 16..25,
+                                focus_range: 23..24,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S",
                             },
                         },
                     ],
@@ -3673,6 +3729,7 @@ struct S$0T<const C: usize = 1, T = Foo>(T);
             ```
 
             ```rust
+            // size = 0, align = 1
             struct ST<const C: usize = 1, T = Foo>(T)
             ```
         "#]],
@@ -3694,6 +3751,7 @@ struct S$0T<const C: usize = {40 + 2}, T = Foo>(T);
             ```
 
             ```rust
+            // size = 0, align = 1
             struct ST<const C: usize = {const}, T = Foo>(T)
             ```
         "#]],
@@ -3716,6 +3774,7 @@ struct S$0T<const C: usize = VAL, T = Foo>(T);
             ```
 
             ```rust
+            // size = 0, align = 1
             struct ST<const C: usize = VAL, T = Foo>(T)
             ```
         "#]],
@@ -4040,7 +4099,6 @@ impl<T> Foo<T$0> {}
             ```
         "#]],
     );
-    // lifetimes bounds arent being tracked yet
     check(
         r#"
 //- minicore: sized
@@ -4051,7 +4109,7 @@ impl<T: 'static> Foo<T$0> {}
             *T*
 
             ```rust
-            T
+            T: 'static
             ```
         "#]],
     );
@@ -4215,6 +4273,10 @@ fn foo<T$0: ?Sized + Sized + Sized>() {}
                 ```
             "#]],
         );
+    }
+
+    #[test]
+    fn mixed2() {
         check(
             r#"
 //- minicore: sized
@@ -7873,8 +7935,44 @@ struct Pedro$0<'a> {
             ```
 
             ```rust
+            // size = 16 (0x10), align = 8, niches = 1
             struct Pedro<'a>
             ```
         "#]],
     )
+}
+
+#[test]
+fn hover_impl_trait_arg_self() {
+    check(
+        r#"
+trait T<Rhs = Self> {}
+fn main(a$0: impl T) {}
+"#,
+        expect![[r#"
+            *a*
+
+            ```rust
+            a: impl T + ?Sized
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_struct_default_arg_self() {
+    check(
+        r#"
+struct T<Rhs = Self> {}
+fn main(a$0: T) {}
+"#,
+        expect![[r#"
+            *a*
+
+            ```rust
+            // size = 0, align = 1
+            a: T
+            ```
+        "#]],
+    );
 }

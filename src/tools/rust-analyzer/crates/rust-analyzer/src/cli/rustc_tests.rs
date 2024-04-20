@@ -75,12 +75,14 @@ impl Tester {
             &cargo_config.extra_env,
         );
 
-        let workspace = ProjectWorkspace::DetachedFiles {
-            files: vec![tmp_file],
+        let workspace = ProjectWorkspace::DetachedFile {
+            file: tmp_file,
             sysroot,
             rustc_cfg: vec![],
             toolchain: None,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
+            cfg_overrides: Default::default(),
+            cargo_script: None,
         };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,

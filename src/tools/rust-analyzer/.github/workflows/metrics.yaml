@@ -58,7 +58,7 @@ jobs:
           key: ${{ runner.os }}-target-${{ github.sha }}
 
       - name: Upload build metrics
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-${{ github.sha }}
           path: target/build.json
@@ -95,7 +95,7 @@ jobs:
         run: cargo xtask metrics "${{ matrix.names }}"
 
       - name: Upload metrics
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.names }}-${{ github.sha }}
           path: target/${{ matrix.names }}.json
@@ -109,32 +109,32 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download build metrics
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-${{ github.sha }}
 
       - name: Download self metrics
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: self-${{ github.sha }}
 
       - name: Download ripgrep-13.0.0 metrics
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ripgrep-13.0.0-${{ github.sha }}
 
       - name: Download webrender-2022 metrics
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: webrender-2022-${{ github.sha }}
 
       - name: Download diesel-1.4.8 metrics
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: diesel-1.4.8-${{ github.sha }}
 
       - name: Download hyper-0.14.18 metrics
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: hyper-0.14.18-${{ github.sha }}
 

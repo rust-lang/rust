@@ -131,7 +131,10 @@ export async function createClient(
                             ? diag.code
                             : diag.code?.value;
                     if (
-                        value === "unlinked-file" &&
+                        // FIXME: We currently emit this diagnostic way too early, before we have
+                        // loaded the project fully
+                        // value === "unlinked-file" &&
+                        value === "temporary-disabled" &&
                         !unlinkedFiles.includes(uri) &&
                         diag.message !== "file not included in module tree"
                     ) {
