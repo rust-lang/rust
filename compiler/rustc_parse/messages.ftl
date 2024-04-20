@@ -230,6 +230,10 @@ parse_expected_struct_field = expected one of `,`, `:`, or `{"}"}`, found `{$tok
 
 parse_expected_trait_in_trait_impl_found_type = expected a trait, found type
 
+parse_expr_rarrow_call = `->` used for field access or method call
+    .suggestion = try using `.` instead
+    .help = the `.` operator will dereference the value if needed
+
 parse_extern_crate_name_with_dashes = crate name using dashes are not valid in `extern crate` statements
     .label = dash-separated idents are not valid
     .suggestion = if the original crate name uses dashes you need to use underscores in the code
