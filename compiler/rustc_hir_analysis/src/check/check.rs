@@ -492,6 +492,7 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
     };
 
     let mut expected_captures = UnordSet::default();
+    let mut shadowed_captures = UnordSet::default();
     let mut seen_params = UnordMap::default();
     let mut prev_non_lifetime_param = None;
     for arg in precise_capturing_args {
@@ -530,6 +531,21 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
         match tcx.named_bound_var(hir_id) {
             Some(ResolvedArg::EarlyBound(def_id)) => {
                 expected_captures.insert(def_id);
+
+                // Make sure we allow capturing these lifetimes through `Self` and
+                // `T::Assoc` projection syntax, too. These will occur when we only
+                // see lifetimes are captured after hir-lowering -- this aligns with
+                // the cases that were stabilized with the `impl_trait_projection`
+                // feature -- see <https://github.com/rust-lang/rust/pull/115659>.
+                if let DefKind::LifetimeParam = tcx.def_kind(def_id)
+                    && let ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
+                    | ty::ReLateParam(ty::LateParamRegion {
+                        bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
+                        ..
+                    }) = *tcx.map_opaque_lifetime_to_parent_lifetime(def_id.expect_local())
+                {
+                    shadowed_captures.insert(def_id);
+                }
             }
             _ => {
                 tcx.dcx().span_delayed_bug(
@@ -555,23 +571,30 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                 );
                 continue;
             }
+            // If a param is shadowed by a early-bound (duplicated) lifetime, then
+            // it may or may not be captured as invariant, depending on if it shows
+            // up through `Self` or `T::Assoc` syntax.
+            if shadowed_captures.contains(&param.def_id) {
+                continue;
+            }
 
             match param.kind {
                 ty::GenericParamDefKind::Lifetime => {
                     // Check if the lifetime param was captured but isn't named in the precise captures list.
                     if variances[param.index as usize] == ty::Invariant {
-                        let param_span =
-                            if let ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
+                        let param_span = if let DefKind::OpaqueTy =
+                            tcx.def_kind(tcx.parent(param.def_id))
+                            && let ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
                             | ty::ReLateParam(ty::LateParamRegion {
                                 bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
                                 ..
                             }) = *tcx
                                 .map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local())
-                            {
-                                Some(tcx.def_span(def_id))
-                            } else {
-                                None
-                            };
+                        {
+                            Some(tcx.def_span(def_id))
+                        } else {
+                            None
+                        };
                         // FIXME(precise_capturing): Structured suggestion for this would be useful
                         tcx.dcx().emit_err(errors::LifetimeNotCaptured {
                             use_span: tcx.def_span(param.def_id),
