@@ -2,7 +2,7 @@
 
 **Tier: 2 with host tools**
 
-64-bit ARM-based Apple devices running macOS, Macs with M1 or M2 Apple Silicon chips. M3 or higher is [`arm64e-apple-darwin`](platform-support/arm64e-apple-darwin.md).
+64-bit Arm-based Apple devices running macOS: Macs with M1-family or later Apple Silicon CPUs.
 
 ## Target maintainers
 
