@@ -36,7 +36,6 @@ tests/ui/parser/unclosed-delimiter-in-dep.rs
 tests/ui/simd/intrinsic/ptr-cast.rs
 tests/ui/consts/missing_span_in_backtrace.rs
 tests/ui/drop/dynamic-drop.rs
-tests/ui/dyn-star/box.rs
 tests/ui/issues/issue-40883.rs
 tests/ui/issues/issue-43853.rs
 tests/ui/issues/issue-47364.rs
