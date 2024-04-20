@@ -1039,7 +1039,27 @@ fn hover_record_struct_limit() {
             struct Foo { /* … */ }
             ```
         "#]],
-    )
+    );
+
+    // No extra spaces within `{}` when there are no fields
+    check_hover_fields_limit(
+        5,
+        r#"
+    struct Foo$0 {}
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 0, align = 1
+            struct Foo {}
+            ```
+        "#]],
+    );
 }
 
 #[test]

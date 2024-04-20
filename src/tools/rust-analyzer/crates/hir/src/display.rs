@@ -249,19 +249,23 @@ fn display_fields(
         }
     } else {
         f.write_char('{')?;
-        f.write_char(separator)?;
-        for field in &fields[..count] {
-            f.write_str(indent)?;
-            field.hir_fmt(f)?;
-            f.write_char(',')?;
+
+        if !fields.is_empty() {
             f.write_char(separator)?;
+            for field in &fields[..count] {
+                f.write_str(indent)?;
+                field.hir_fmt(f)?;
+                f.write_char(',')?;
+                f.write_char(separator)?;
+            }
+
+            if fields.len() > count {
+                f.write_str(indent)?;
+                f.write_str("/* … */")?;
+                f.write_char(separator)?;
+            }
         }
 
-        if fields.len() > count {
-            f.write_str(indent)?;
-            f.write_str("/* … */")?;
-            f.write_char(separator)?;
-        }
         f.write_str("}")?;
     }
 
