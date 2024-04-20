@@ -58,13 +58,15 @@ mod view_item_tree;
 mod view_memory_layout;
 mod view_mir;
 
+use std::panic::UnwindSafe;
+
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
 use hir::ChangeWithProcMacros;
 use ide_db::{
     base_db::{
         salsa::{self, ParallelDatabase},
-        CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
+        CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, SourceDatabaseExt, VfsPath,
     },
     prime_caches, symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
@@ -252,7 +254,7 @@ impl Analysis {
             Edition::CURRENT,
             None,
             None,
-            cfg_options.clone(),
+            Arc::new(cfg_options),
             None,
             Env::default(),
             false,
@@ -271,6 +273,10 @@ impl Analysis {
         self.with_db(|db| status::status(db, file_id))
     }
 
+    pub fn source_root(&self, file_id: FileId) -> Cancellable<SourceRootId> {
+        self.with_db(|db| db.file_source_root(file_id))
+    }
+
     pub fn parallel_prime_caches<F>(&self, num_worker_threads: u8, cb: F) -> Cancellable<()>
     where
         F: Fn(ParallelPrimeCachesProgress) + Sync + std::panic::UnwindSafe,
@@ -280,7 +286,7 @@ impl Analysis {
 
     /// Gets the text of the source file.
     pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<str>> {
-        self.with_db(|db| db.file_text(file_id))
+        self.with_db(|db| SourceDatabaseExt::file_text(db, file_id))
     }
 
     /// Gets the syntax tree of the file.
@@ -290,7 +296,6 @@ impl Analysis {
 
     /// Returns true if this file belongs to an immutable library.
     pub fn is_library_file(&self, file_id: FileId) -> Cancellable<bool> {
-        use ide_db::base_db::SourceDatabaseExt;
         self.with_db(|db| db.source_root(db.file_source_root(file_id)).is_library)
     }
 
@@ -428,8 +433,11 @@ impl Analysis {
         file_id: FileId,
         position: TextSize,
         hash: u64,
+        hasher: impl Fn(&InlayHint) -> u64 + Send + UnwindSafe,
     ) -> Cancellable<Option<InlayHint>> {
-        self.with_db(|db| inlay_hints::inlay_hints_resolve(db, file_id, position, hash, config))
+        self.with_db(|db| {
+            inlay_hints::inlay_hints_resolve(db, file_id, position, hash, config, hasher)
+        })
     }
 
     /// Returns the set of folding ranges.

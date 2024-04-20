@@ -26,7 +26,7 @@ pub struct HighlightedRange {
     // FIXME: This needs to be more precise. Reference category makes sense only
     // for references, but we also have defs. And things like exit points are
     // neither.
-    pub category: Option<ReferenceCategory>,
+    pub category: ReferenceCategory,
 }
 
 #[derive(Default, Clone)]
@@ -113,7 +113,11 @@ fn highlight_closure_captures(
                         range,
                         category,
                     });
-                let category = local.is_mut(sema.db).then_some(ReferenceCategory::Write);
+                let category = if local.is_mut(sema.db) {
+                    ReferenceCategory::WRITE
+                } else {
+                    ReferenceCategory::empty()
+                };
                 local
                     .sources(sema.db)
                     .into_iter()
@@ -137,7 +141,9 @@ fn highlight_references(
     {
         match resolution.map(Definition::from) {
             Some(def) => iter::once(def).collect(),
-            None => return Some(vec![HighlightedRange { range, category: None }]),
+            None => {
+                return Some(vec![HighlightedRange { range, category: ReferenceCategory::empty() }])
+            }
         }
     } else {
         find_defs(sema, token.clone())
@@ -211,7 +217,11 @@ fn highlight_references(
         // highlight the defs themselves
         match def {
             Definition::Local(local) => {
-                let category = local.is_mut(sema.db).then_some(ReferenceCategory::Write);
+                let category = if local.is_mut(sema.db) {
+                    ReferenceCategory::WRITE
+                } else {
+                    ReferenceCategory::empty()
+                };
                 local
                     .sources(sema.db)
                     .into_iter()
@@ -238,8 +248,11 @@ fn highlight_references(
                         continue;
                     }
                     let hl_range = nav.focus_range.map(|range| {
-                        let category = matches!(def, Definition::Local(l) if l.is_mut(sema.db))
-                            .then_some(ReferenceCategory::Write);
+                        let category = if matches!(def, Definition::Local(l) if l.is_mut(sema.db)) {
+                            ReferenceCategory::WRITE
+                        } else {
+                            ReferenceCategory::empty()
+                        };
                         HighlightedRange { range, category }
                     });
                     if let Some(hl_range) = hl_range {
@@ -272,24 +285,30 @@ fn highlight_exit_points(
             def_ranges
                 .into_iter()
                 .flatten()
-                .map(|range| HighlightedRange { category: None, range }),
+                .map(|range| HighlightedRange { category: ReferenceCategory::empty(), range }),
         );
         let body = body?;
         walk_expr(&body, &mut |expr| match expr {
             ast::Expr::ReturnExpr(expr) => {
                 if let Some(token) = expr.return_token() {
-                    highlights.push(HighlightedRange { category: None, range: token.text_range() });
+                    highlights.push(HighlightedRange {
+                        category: ReferenceCategory::empty(),
+                        range: token.text_range(),
+                    });
                 }
             }
             ast::Expr::TryExpr(try_) => {
                 if let Some(token) = try_.question_mark_token() {
-                    highlights.push(HighlightedRange { category: None, range: token.text_range() });
+                    highlights.push(HighlightedRange {
+                        category: ReferenceCategory::empty(),
+                        range: token.text_range(),
+                    });
                 }
             }
             ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroExpr(_) => {
                 if sema.type_of_expr(&expr).map_or(false, |ty| ty.original.is_never()) {
                     highlights.push(HighlightedRange {
-                        category: None,
+                        category: ReferenceCategory::empty(),
                         range: expr.syntax().text_range(),
                     });
                 }
@@ -309,7 +328,7 @@ fn highlight_exit_points(
                         .map_or_else(|| tail.syntax().text_range(), |tok| tok.text_range()),
                     _ => tail.syntax().text_range(),
                 };
-                highlights.push(HighlightedRange { category: None, range })
+                highlights.push(HighlightedRange { category: ReferenceCategory::empty(), range })
             });
         }
         Some(highlights)
@@ -354,7 +373,9 @@ fn highlight_break_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
             token.map(|tok| tok.text_range()),
             label.as_ref().map(|it| it.syntax().text_range()),
         );
-        highlights.extend(range.map(|range| HighlightedRange { category: None, range }));
+        highlights.extend(
+            range.map(|range| HighlightedRange { category: ReferenceCategory::empty(), range }),
+        );
         for_each_break_and_continue_expr(label, body, &mut |expr| {
             let range: Option<TextRange> = match (cursor_token_kind, expr) {
                 (T![for] | T![while] | T![loop] | T![break], ast::Expr::BreakExpr(break_)) => {
@@ -372,7 +393,9 @@ fn highlight_break_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
                 ),
                 _ => None,
             };
-            highlights.extend(range.map(|range| HighlightedRange { category: None, range }));
+            highlights.extend(
+                range.map(|range| HighlightedRange { category: ReferenceCategory::empty(), range }),
+            );
         });
         Some(highlights)
     }
@@ -430,14 +453,18 @@ fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
         async_token: Option<SyntaxToken>,
         body: Option<ast::Expr>,
     ) -> Option<Vec<HighlightedRange>> {
-        let mut highlights =
-            vec![HighlightedRange { category: None, range: async_token?.text_range() }];
+        let mut highlights = vec![HighlightedRange {
+            category: ReferenceCategory::empty(),
+            range: async_token?.text_range(),
+        }];
         if let Some(body) = body {
             walk_expr(&body, &mut |expr| {
                 if let ast::Expr::AwaitExpr(expr) = expr {
                     if let Some(token) = expr.await_token() {
-                        highlights
-                            .push(HighlightedRange { category: None, range: token.text_range() });
+                        highlights.push(HighlightedRange {
+                            category: ReferenceCategory::empty(),
+                            range: token.text_range(),
+                        });
                     }
                 }
             });
@@ -481,6 +508,8 @@ fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSe
 
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
+
     use crate::fixture;
 
     use super::*;
@@ -504,28 +533,18 @@ mod tests {
 
         let hls = analysis.highlight_related(config, pos).unwrap().unwrap_or_default();
 
-        let mut expected = annotations
-            .into_iter()
-            .map(|(r, access)| (r.range, (!access.is_empty()).then_some(access)))
-            .collect::<Vec<_>>();
+        let mut expected =
+            annotations.into_iter().map(|(r, access)| (r.range, access)).collect::<Vec<_>>();
 
-        let mut actual = hls
+        let mut actual: Vec<(TextRange, String)> = hls
             .into_iter()
             .map(|hl| {
                 (
                     hl.range,
-                    hl.category.map(|it| {
-                        match it {
-                            ReferenceCategory::Read => "read",
-                            ReferenceCategory::Write => "write",
-                            ReferenceCategory::Import => "import",
-                            ReferenceCategory::Test => "test",
-                        }
-                        .to_owned()
-                    }),
+                    hl.category.iter_names().map(|(name, _flag)| name.to_lowercase()).join(","),
                 )
             })
-            .collect::<Vec<_>>();
+            .collect();
         actual.sort_by_key(|(range, _)| range.start());
         expected.sort_by_key(|(range, _)| range.start());
 
