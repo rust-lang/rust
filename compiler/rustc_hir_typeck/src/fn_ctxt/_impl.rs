@@ -1,5 +1,5 @@
 use crate::callee::{self, DeferredCallResolution};
-use crate::errors::CtorIsPrivate;
+use crate::errors::{self, CtorIsPrivate};
 use crate::method::{self, MethodCallee, SelfSource};
 use crate::rvalue_scopes;
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
@@ -21,6 +21,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
+use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -1162,6 +1163,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span,
                 tcx.at(span).type_of(impl_def_id).instantiate_identity(),
             );
+
+            // Firstly, check that this SelfCtor even comes from the item we're currently
+            // typechecking. This can happen because we never validated the resolution of
+            // SelfCtors, and when we started doing so, we noticed regressions. After
+            // sufficiently long time, we can remove this check and turn it into a hard
+            // error in `validate_res_from_ribs` -- it's just difficult to tell whether the
+            // self type has any generic types during rustc_resolve, which is what we use
+            // to determine if this is a hard error or warning.
+            if std::iter::successors(Some(self.body_id.to_def_id()), |def_id| {
+                self.tcx.generics_of(def_id).parent
+            })
+            .all(|def_id| def_id != impl_def_id)
+            {
+                let sugg = ty.normalized.ty_adt_def().map(|def| errors::ReplaceWithName {
+                    span: path_span,
+                    name: self.tcx.item_name(def.did()).to_ident_string(),
+                });
+                if ty.raw.has_param() {
+                    let guar = self.tcx.dcx().emit_err(errors::SelfCtorFromOuterItem {
+                        span: path_span,
+                        impl_span: tcx.def_span(impl_def_id),
+                        sugg,
+                    });
+                    return (Ty::new_error(self.tcx, guar), res);
+                } else {
+                    self.tcx.emit_node_span_lint(
+                        SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
+                        hir_id,
+                        path_span,
+                        errors::SelfCtorFromOuterItemLint {
+                            impl_span: tcx.def_span(impl_def_id),
+                            sugg,
+                        },
+                    );
+                }
+            }
+
             match ty.normalized.ty_adt_def() {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let (ctor_kind, ctor_def_id) = adt_def.non_enum_variant().ctor.unwrap();
