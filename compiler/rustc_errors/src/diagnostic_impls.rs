@@ -348,3 +348,11 @@ pub struct IndicateAnonymousLifetime {
     pub count: usize,
     pub suggestion: String,
 }
+
+#[derive(Subdiagnostic)]
+pub struct ElidedLifetimeInPathSubdiag {
+    #[subdiagnostic]
+    pub expected: ExpectedLifetimeParameter,
+    #[subdiagnostic]
+    pub indicate: Option<IndicateAnonymousLifetime>,
+}
