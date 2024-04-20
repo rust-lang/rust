@@ -12,10 +12,10 @@ pub fn main() {
         // result variable
         let result: Result<(), &str> = try {
             let my_string = String::from("");
-            let my_str: & str = & my_string;
+            let my_str: &str = &my_string;
             //~^ ERROR `my_string` does not live long enough
-            Err(my_str) ?;
-            Err("") ?;
+            Err::<(), _>(my_str)?;
+            Err::<(), _>("")?;
         };
         do_something_with(result);
     }
@@ -25,13 +25,13 @@ pub fn main() {
         let mut i = 5;
         let k = &mut i;
         let mut j: Result<(), &mut i32> = try {
-            Err(k) ?;
+            Err::<(), _>(k)?;
             i = 10; //~ ERROR cannot assign to `i` because it is borrowed
         };
         ::std::mem::drop(k); //~ ERROR use of moved value: `k`
         i = 40; //~ ERROR cannot assign to `i` because it is borrowed
 
-        let i_ptr = if let Err(i_ptr) = j { i_ptr } else { panic ! ("") };
+        let i_ptr = if let Err(i_ptr) = j { i_ptr } else { panic!("") };
         *i_ptr = 50;
     }
 }

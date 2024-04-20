@@ -8,7 +8,7 @@ use humansize::BINARY;
 
 const LLVM_PGO_CRATES: &[&str] = &[
     "syn-1.0.89",
-    "cargo-0.60.0",
+    //"cargo-0.60.0",
     "serde-1.0.136",
     "ripgrep-13.0.0",
     "regex-1.5.5",
@@ -19,7 +19,7 @@ const LLVM_PGO_CRATES: &[&str] = &[
 const RUSTC_PGO_CRATES: &[&str] = &[
     "externs",
     "ctfe-stress-5",
-    "cargo-0.60.0",
+    //"cargo-0.60.0",
     "token-stream-stress",
     "match-stress",
     "tuple-stress",
