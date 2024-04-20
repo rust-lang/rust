@@ -912,10 +912,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         })
     }
 
+    /// Read bytes from a byte slice.
+    fn read_byte_slice<'a>(
+        &'a self,
+        slice: &ImmTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, &'a [u8]>
+    where
+        'mir: 'a,
+    {
+        let this = self.eval_context_ref();
+        let (ptr, len) = slice.to_scalar_pair();
+        let ptr = ptr.to_pointer(this)?;
+        let len = len.to_target_usize(this)?;
+        let bytes = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
+        Ok(bytes)
+    }
+
     /// Read a sequence of bytes until the first null terminator.
     fn read_c_str<'a>(&'a self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, &'a [u8]>
     where
-        'tcx: 'a,
         'mir: 'a,
     {
         let this = self.eval_context_ref();
@@ -1265,9 +1280,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     /// This function is backed by a cache, and can be assumed to be very fast.
     /// It will work even when the stack is empty.
     pub fn current_span(&self) -> Span {
-        self.top_user_relevant_frame()
-            .map(|frame_idx| self.stack()[frame_idx].current_span())
-            .unwrap_or(rustc_span::DUMMY_SP)
+        self.threads.active_thread_ref().current_span()
     }
 
     /// Returns the span of the *caller* of the current operation, again
@@ -1279,7 +1292,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         // We need to go down at least to the caller (len - 2), or however
         // far we have to go to find a frame in a local crate which is also not #[track_caller].
         let frame_idx = self.top_user_relevant_frame().unwrap();
-        let frame_idx = cmp::min(frame_idx, self.stack().len().checked_sub(2).unwrap());
+        let frame_idx = cmp::min(frame_idx, self.stack().len().saturating_sub(2));
         self.stack()[frame_idx].current_span()
     }
 

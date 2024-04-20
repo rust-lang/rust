@@ -307,6 +307,15 @@ fn parse_comma_list<T: FromStr>(input: &str) -> Result<Vec<T>, T::Err> {
     input.split(',').map(str::parse::<T>).collect()
 }
 
+/// Parses the input as a float in the range from 0.0 to 1.0 (inclusive).
+fn parse_rate(input: &str) -> Result<f64, &'static str> {
+    match input.parse::<f64>() {
+        Ok(rate) if rate >= 0.0 && rate <= 1.0 => Ok(rate),
+        Ok(_) => Err("must be between `0.0` and `1.0`"),
+        Err(_) => Err("requires a `f64` between `0.0` and `1.0`"),
+    }
+}
+
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn jemalloc_magic() {
     // These magic runes are copied from
@@ -499,14 +508,9 @@ fn main() {
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-forward=") {
             miri_config.forwarded_env_vars.push(param.to_owned());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-pointer-tag=") {
-            let ids: Vec<u64> = match parse_comma_list(param) {
-                Ok(ids) => ids,
-                Err(err) =>
-                    show_error!(
-                        "-Zmiri-track-pointer-tag requires a comma separated list of valid `u64` arguments: {}",
-                        err
-                    ),
-            };
+            let ids: Vec<u64> = parse_comma_list(param).unwrap_or_else(|err| {
+                show_error!("-Zmiri-track-pointer-tag requires a comma separated list of valid `u64` arguments: {err}")
+            });
             for id in ids.into_iter().map(miri::BorTag::new) {
                 if let Some(id) = id {
                     miri_config.tracked_pointer_tags.insert(id);
@@ -515,14 +519,9 @@ fn main() {
                 }
             }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-call-id=") {
-            let ids: Vec<u64> = match parse_comma_list(param) {
-                Ok(ids) => ids,
-                Err(err) =>
-                    show_error!(
-                        "-Zmiri-track-call-id requires a comma separated list of valid `u64` arguments: {}",
-                        err
-                    ),
-            };
+            let ids: Vec<u64> = parse_comma_list(param).unwrap_or_else(|err| {
+                show_error!("-Zmiri-track-call-id requires a comma separated list of valid `u64` arguments: {err}")
+            });
             for id in ids.into_iter().map(miri::CallId::new) {
                 if let Some(id) = id {
                     miri_config.tracked_call_ids.insert(id);
@@ -531,56 +530,37 @@ fn main() {
                 }
             }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-alloc-id=") {
-            let ids: Vec<miri::AllocId> = match parse_comma_list::<NonZero<u64>>(param) {
-                Ok(ids) => ids.into_iter().map(miri::AllocId).collect(),
-                Err(err) =>
-                    show_error!(
-                        "-Zmiri-track-alloc-id requires a comma separated list of valid non-zero `u64` arguments: {}",
-                        err
-                    ),
-            };
-            miri_config.tracked_alloc_ids.extend(ids);
+            let ids = parse_comma_list::<NonZero<u64>>(param).unwrap_or_else(|err| {
+                show_error!("-Zmiri-track-alloc-id requires a comma separated list of valid non-zero `u64` arguments: {err}")
+            });
+            miri_config.tracked_alloc_ids.extend(ids.into_iter().map(miri::AllocId));
         } else if arg == "-Zmiri-track-alloc-accesses" {
             miri_config.track_alloc_accesses = true;
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-address-reuse-rate=") {
+            miri_config.address_reuse_rate = parse_rate(param)
+                .unwrap_or_else(|err| show_error!("-Zmiri-address-reuse-rate {err}"));
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-address-reuse-cross-thread-rate=") {
+            miri_config.address_reuse_cross_thread_rate = parse_rate(param)
+                .unwrap_or_else(|err| show_error!("-Zmiri-address-reuse-cross-thread-rate {err}"));
         } else if let Some(param) = arg.strip_prefix("-Zmiri-compare-exchange-weak-failure-rate=") {
-            let rate = match param.parse::<f64>() {
-                Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,
-                Ok(_) =>
-                    show_error!(
-                        "-Zmiri-compare-exchange-weak-failure-rate must be between `0.0` and `1.0`"
-                    ),
-                Err(err) =>
-                    show_error!(
-                        "-Zmiri-compare-exchange-weak-failure-rate requires a `f64` between `0.0` and `1.0`: {}",
-                        err
-                    ),
-            };
-            miri_config.cmpxchg_weak_failure_rate = rate;
+            miri_config.cmpxchg_weak_failure_rate = parse_rate(param).unwrap_or_else(|err| {
+                show_error!("-Zmiri-compare-exchange-weak-failure-rate {err}")
+            });
         } else if let Some(param) = arg.strip_prefix("-Zmiri-preemption-rate=") {
-            let rate = match param.parse::<f64>() {
-                Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,
-                Ok(_) => show_error!("-Zmiri-preemption-rate must be between `0.0` and `1.0`"),
-                Err(err) =>
-                    show_error!(
-                        "-Zmiri-preemption-rate requires a `f64` between `0.0` and `1.0`: {}",
-                        err
-                    ),
-            };
-            miri_config.preemption_rate = rate;
+            miri_config.preemption_rate =
+                parse_rate(param).unwrap_or_else(|err| show_error!("-Zmiri-preemption-rate {err}"));
         } else if arg == "-Zmiri-report-progress" {
             // This makes it take a few seconds between progress reports on my laptop.
             miri_config.report_progress = Some(1_000_000);
         } else if let Some(param) = arg.strip_prefix("-Zmiri-report-progress=") {
-            let interval = match param.parse::<u32>() {
-                Ok(i) => i,
-                Err(err) => show_error!("-Zmiri-report-progress requires a `u32`: {}", err),
-            };
+            let interval = param.parse::<u32>().unwrap_or_else(|err| {
+                show_error!("-Zmiri-report-progress requires a `u32`: {}", err)
+            });
             miri_config.report_progress = Some(interval);
         } else if let Some(param) = arg.strip_prefix("-Zmiri-provenance-gc=") {
-            let interval = match param.parse::<u32>() {
-                Ok(i) => i,
-                Err(err) => show_error!("-Zmiri-provenance-gc requires a `u32`: {}", err),
-            };
+            let interval = param.parse::<u32>().unwrap_or_else(|err| {
+                show_error!("-Zmiri-provenance-gc requires a `u32`: {}", err)
+            });
             miri_config.gc_interval = interval;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-measureme=") {
             miri_config.measureme_out = Some(param.to_string());
@@ -605,23 +585,20 @@ fn main() {
                 show_error!("-Zmiri-extern-so-file `{}` does not exist", filename);
             }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-num-cpus=") {
-            let num_cpus = match param.parse::<u32>() {
-                Ok(i) => i,
-                Err(err) => show_error!("-Zmiri-num-cpus requires a `u32`: {}", err),
-            };
-
+            let num_cpus = param
+                .parse::<u32>()
+                .unwrap_or_else(|err| show_error!("-Zmiri-num-cpus requires a `u32`: {}", err));
             miri_config.num_cpus = num_cpus;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-force-page-size=") {
-            let page_size = match param.parse::<u64>() {
-                Ok(i) =>
-                    if i.is_power_of_two() {
-                        i * 1024
-                    } else {
-                        show_error!("-Zmiri-force-page-size requires a power of 2: {}", i)
-                    },
-                Err(err) => show_error!("-Zmiri-force-page-size requires a `u64`: {}", err),
+            let page_size = param.parse::<u64>().unwrap_or_else(|err| {
+                show_error!("-Zmiri-force-page-size requires a `u64`: {}", err)
+            });
+            // Convert from kilobytes to bytes.
+            let page_size = if page_size.is_power_of_two() {
+                page_size * 1024
+            } else {
+                show_error!("-Zmiri-force-page-size requires a power of 2: {page_size}");
             };
-
             miri_config.page_size = Some(page_size);
         } else {
             // Forward to rustc.

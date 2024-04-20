@@ -1,4 +1,5 @@
 //@ignore-target-windows: No libc on Windows
+//@error-in-other-file: deadlock
 
 use std::cell::UnsafeCell;
 use std::sync::Arc;

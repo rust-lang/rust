@@ -1,5 +1,6 @@
 // We want to control preemption here.
-//@compile-flags: -Zmiri-preemption-rate=0
+// Avoid accidental synchronization via address reuse.
+//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-address-reuse-cross-thread-rate=0
 
 use std::sync::atomic::Ordering::*;
 use std::sync::atomic::{AtomicU16, AtomicU32};
