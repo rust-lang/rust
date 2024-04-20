@@ -512,6 +512,7 @@ impl AtomicBool {
     ///
     /// ```
     /// #![feature(atomic_from_mut)]
+    /// # #![cfg_attr(bootstrap, feature(inline_const))]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let mut some_bools = [const { AtomicBool::new(false) }; 10];
@@ -1314,6 +1315,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// ```
     /// #![feature(atomic_from_mut)]
+    /// # #![cfg_attr(bootstrap, feature(inline_const))]
     /// use std::ptr::null_mut;
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
@@ -2304,6 +2306,7 @@ macro_rules! atomic_int {
             ///
             /// ```
             /// #![feature(atomic_from_mut)]
+            /// # #![cfg_attr(bootstrap, feature(inline_const))]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let mut some_ints = [const { ", stringify!($atomic_type), "::new(0) }; 10];")]
