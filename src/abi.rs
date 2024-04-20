@@ -4,6 +4,7 @@ use gccjit::{ToLValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeMethods};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::Ty;
 #[cfg(feature = "master")]
 use rustc_session::config;
@@ -184,9 +185,17 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 }
                 PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
                     assert!(!on_stack);
-                    let ty =
-                        apply_attrs(cx.type_ptr_to(arg.memory_ty(cx)), &attrs, argument_tys.len());
-                    apply_attrs(ty, &meta_attrs, argument_tys.len())
+                    // Construct the type of a (wide) pointer to `ty`, and pass its two fields.
+                    // Any two ABI-compatible unsized types have the same metadata type and
+                    // moreover the same metadata value leads to the same dynamic size and
+                    // alignment, so this respects ABI compatibility.
+                    let ptr_ty = Ty::new_mut_ptr(cx.tcx, arg.layout.ty);
+                    let ptr_layout = cx.layout_of(ptr_ty);
+                    let typ1 = ptr_layout.scalar_pair_element_gcc_type(cx, 0);
+                    let typ2 = ptr_layout.scalar_pair_element_gcc_type(cx, 1);
+                    argument_tys.push(apply_attrs(typ1, &attrs, argument_tys.len()));
+                    argument_tys.push(apply_attrs(typ2, &meta_attrs, argument_tys.len()));
+                    continue;
                 }
             };
             argument_tys.push(arg_ty);
