@@ -76,6 +76,7 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 
 /// Extra --check-cfg to add when building
 /// (Mode restriction, config name, config values (if any))
+#[allow(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
 const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (None, "bootstrap", None),
     (Some(Mode::Rustc), "parallel_compiler", None),
@@ -1625,10 +1626,7 @@ impl Build {
     /// Returns `true` if unstable features should be enabled for the compiler
     /// we're building.
     fn unstable_features(&self) -> bool {
-        match &self.config.channel[..] {
-            "stable" | "beta" => false,
-            "nightly" | _ => true,
-        }
+        !matches!(&self.config.channel[..], "stable" | "beta")
     }
 
     /// Returns a Vec of all the dependencies of the given root crate,

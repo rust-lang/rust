@@ -1139,7 +1139,7 @@ pub fn rustc_cargo_env(
     // busting caches (e.g. like #71152).
     if builder.config.llvm_enabled(target) {
         let building_is_expensive =
-            crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target).is_err();
+            crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target).should_build();
         // `top_stage == stage` might be false for `check --stage 1`, if we are building the stage 1 compiler
         let can_skip_build = builder.kind == Kind::Check && builder.top_stage == stage;
         let should_skip_build = building_is_expensive && can_skip_build;
@@ -1282,11 +1282,7 @@ fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
     if path.path.to_str().unwrap().contains(CODEGEN_BACKEND_PREFIX) {
         let mut needs_codegen_backend_config = true;
         for backend in run.builder.config.codegen_backends(run.target) {
-            if path
-                .path
-                .to_str()
-                .unwrap()
-                .ends_with(&(CODEGEN_BACKEND_PREFIX.to_owned() + &backend))
+            if path.path.to_str().unwrap().ends_with(&(CODEGEN_BACKEND_PREFIX.to_owned() + backend))
             {
                 needs_codegen_backend_config = false;
             }
@@ -1846,7 +1842,7 @@ impl Step for Assemble {
                 extra_features: vec![],
             });
             let tool_exe = exe("llvm-bitcode-linker", target_compiler.host);
-            builder.copy_link(&src_path, &libdir_bin.join(&tool_exe));
+            builder.copy_link(&src_path, &libdir_bin.join(tool_exe));
         }
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,

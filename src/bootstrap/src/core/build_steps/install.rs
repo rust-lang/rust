@@ -130,7 +130,7 @@ fn prepare_dir(destdir_env: &Option<PathBuf>, mut path: PathBuf) -> String {
     // https://www.gnu.org/prep/standards/html_node/DESTDIR.html
     if let Some(destdir) = destdir_env {
         let without_destdir = path.clone();
-        path = destdir.clone();
+        path.clone_from(destdir);
         // Custom .join() which ignores disk roots.
         for part in without_destdir.components() {
             if let Component::Normal(s) = part {
