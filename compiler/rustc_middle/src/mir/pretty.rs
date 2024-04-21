@@ -1094,6 +1094,15 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                         struct_fmt.finish()
                     }),
+
+                    AggregateKind::RawPtr(pointee_ty, mutability) => {
+                        let kind_str = match mutability {
+                            Mutability::Mut => "mut",
+                            Mutability::Not => "const",
+                        };
+                        with_no_trimmed_paths!(write!(fmt, "*{kind_str} {pointee_ty} from "))?;
+                        fmt_tuple(fmt, "")
+                    }
                 }
             }
 
