@@ -22,6 +22,7 @@ pub(crate) struct BranchInfoBuilder {
 
     num_block_markers: usize,
     branch_spans: Vec<BranchSpan>,
+
     mcdc_branch_spans: Vec<MCDCBranchSpan>,
     mcdc_decision_spans: Vec<MCDCDecisionSpan>,
     mcdc_state: Option<MCDCState>,
@@ -95,13 +96,7 @@ impl BranchInfoBuilder {
         }
     }
 
-    fn record_conditions_operation(&mut self, logical_op: LogicalOp, span: Span) {
-        if let Some(mcdc_state) = self.mcdc_state.as_mut() {
-            mcdc_state.record_conditions(logical_op, span);
-        }
-    }
-
-    fn fetch_condition_info(
+    fn fetch_mcdc_condition_info(
         &mut self,
         tcx: TyCtxt<'_>,
         true_marker: BlockMarkerId,
@@ -121,14 +116,9 @@ impl BranchInfoBuilder {
                 _ => {
                     // Do not generate mcdc mappings and statements for decisions with too many conditions.
                     let rebase_idx = self.mcdc_branch_spans.len() - decision.conditions_num + 1;
-                    let to_normal_branches = self.mcdc_branch_spans.split_off(rebase_idx);
-                    self.branch_spans.extend(to_normal_branches.into_iter().map(
-                        |MCDCBranchSpan { span, true_marker, false_marker, .. }| BranchSpan {
-                            span,
-                            true_marker,
-                            false_marker,
-                        },
-                    ));
+                    for branch in &mut self.mcdc_branch_spans[rebase_idx..] {
+                        branch.condition_info = None;
+                    }
 
                     // ConditionInfo of this branch shall also be reset.
                     condition_info = None;
@@ -157,7 +147,7 @@ impl BranchInfoBuilder {
             branch_spans,
             mcdc_branch_spans,
             mcdc_decision_spans,
-            ..
+            mcdc_state: _,
         } = self;
 
         if num_block_markers == 0 {
@@ -355,27 +345,30 @@ impl Builder<'_, '_> {
         let true_marker = inject_branch_marker(then_block);
         let false_marker = inject_branch_marker(else_block);
 
-        if let Some(condition_info) =
-            branch_info.fetch_condition_info(self.tcx, true_marker, false_marker)
-        {
+        if branch_info.mcdc_state.is_some() {
+            let condition_info =
+                branch_info.fetch_mcdc_condition_info(self.tcx, true_marker, false_marker);
             branch_info.mcdc_branch_spans.push(MCDCBranchSpan {
                 span: source_info.span,
                 condition_info,
                 true_marker,
                 false_marker,
             });
-        } else {
-            branch_info.branch_spans.push(BranchSpan {
-                span: source_info.span,
-                true_marker,
-                false_marker,
-            });
+            return;
         }
+
+        branch_info.branch_spans.push(BranchSpan {
+            span: source_info.span,
+            true_marker,
+            false_marker,
+        });
     }
 
     pub(crate) fn visit_coverage_branch_operation(&mut self, logical_op: LogicalOp, span: Span) {
-        if let Some(branch_info) = self.coverage_branch_info.as_mut() {
-            branch_info.record_conditions_operation(logical_op, span);
+        if let Some(branch_info) = self.coverage_branch_info.as_mut()
+            && let Some(mcdc_state) = branch_info.mcdc_state.as_mut()
+        {
+            mcdc_state.record_conditions(logical_op, span);
         }
     }
 }

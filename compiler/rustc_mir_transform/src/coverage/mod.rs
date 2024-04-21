@@ -149,13 +149,21 @@ fn create_mappings<'tcx>(
                     true_term: term_for_bcb(true_bcb),
                     false_term: term_for_bcb(false_bcb),
                 },
-                BcbMappingKind::MCDCBranch { true_bcb, false_bcb, condition_info } => {
-                    MappingKind::MCDCBranch {
+                BcbMappingKind::MCDCBranch { true_bcb, false_bcb, condition_info: None } => {
+                    MappingKind::Branch {
                         true_term: term_for_bcb(true_bcb),
                         false_term: term_for_bcb(false_bcb),
-                        mcdc_params: condition_info,
                     }
                 }
+                BcbMappingKind::MCDCBranch {
+                    true_bcb,
+                    false_bcb,
+                    condition_info: Some(mcdc_params),
+                } => MappingKind::MCDCBranch {
+                    true_term: term_for_bcb(true_bcb),
+                    false_term: term_for_bcb(false_bcb),
+                    mcdc_params,
+                },
                 BcbMappingKind::MCDCDecision { bitmap_idx, conditions_num, .. } => {
                     MappingKind::MCDCDecision(DecisionInfo { bitmap_idx, conditions_num })
                 }
@@ -249,7 +257,7 @@ fn inject_mcdc_statements<'tcx>(
     for (true_bcb, false_bcb, condition_id) in
         coverage_spans.all_bcb_mappings().filter_map(|mapping| match mapping.kind {
             BcbMappingKind::MCDCBranch { true_bcb, false_bcb, condition_info } => {
-                Some((true_bcb, false_bcb, condition_info.condition_id))
+                Some((true_bcb, false_bcb, condition_info?.condition_id))
             }
             _ => None,
         })

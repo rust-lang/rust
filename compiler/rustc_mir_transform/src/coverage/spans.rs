@@ -21,7 +21,9 @@ pub(super) enum BcbMappingKind {
     MCDCBranch {
         true_bcb: BasicCoverageBlock,
         false_bcb: BasicCoverageBlock,
-        condition_info: ConditionInfo,
+        /// If `None`, this actually represents a normal branch mapping inserted
+        /// for code that was too complex for MC/DC.
+        condition_info: Option<ConditionInfo>,
     },
     /// Associates a mcdc decision with its join BCB.
     MCDCDecision { end_bcbs: BTreeSet<BasicCoverageBlock>, bitmap_idx: u32, conditions_num: u16 },
@@ -85,6 +87,12 @@ pub(super) fn generate_coverage_spans(
         }));
 
         mappings.extend(from_mir::extract_branch_mappings(
+            mir_body,
+            hir_info,
+            basic_coverage_blocks,
+        ));
+
+        mappings.extend(from_mir::extract_mcdc_mappings(
             mir_body,
             hir_info.body_span,
             basic_coverage_blocks,
