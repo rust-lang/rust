@@ -1,0 +1,93 @@
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "A"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "B"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "C"
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "D"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      RECORD_FIELD
+        NAME
+          IDENT "a"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "u32"
+      COMMA ","
+      WHITESPACE "\n    "
+      RECORD_FIELD
+        VISIBILITY
+          PUB_KW "pub"
+        WHITESPACE " "
+        NAME
+          IDENT "b"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "u32"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "E"
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+      TUPLE_FIELD
+        VISIBILITY
+          PUB_KW "pub"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "x"
+      COMMA ","
+      WHITESPACE " "
+      TUPLE_FIELD
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "y"
+      COMMA ","
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

@@ -1,0 +1,77 @@
+SOURCE_FILE
+  MODULE
+    MOD_KW "mod"
+    WHITESPACE " "
+    NAME
+      IDENT "c"
+    WHITESPACE " "
+    ITEM_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      FN
+        FN_KW "fn"
+        WHITESPACE " "
+        NAME
+          IDENT "foo"
+        PARAM_LIST
+          L_PAREN "("
+          R_PAREN ")"
+        WHITESPACE " "
+        BLOCK_EXPR
+          STMT_LIST
+            L_CURLY "{"
+            WHITESPACE "\n    "
+            R_CURLY "}"
+      WHITESPACE "\n    "
+      STRUCT
+        STRUCT_KW "struct"
+        WHITESPACE " "
+        NAME
+          IDENT "S"
+        WHITESPACE " "
+        RECORD_FIELD_LIST
+          L_CURLY "{"
+          R_CURLY "}"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  MODULE
+    MOD_KW "mod"
+    WHITESPACE " "
+    NAME
+      IDENT "d"
+    WHITESPACE " "
+    ITEM_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      ATTR
+        POUND "#"
+        BANG "!"
+        L_BRACK "["
+        META
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "attr"
+        R_BRACK "]"
+      WHITESPACE "\n    "
+      MODULE
+        MOD_KW "mod"
+        WHITESPACE " "
+        NAME
+          IDENT "e"
+        SEMICOLON ";"
+      WHITESPACE "\n    "
+      MODULE
+        MOD_KW "mod"
+        WHITESPACE " "
+        NAME
+          IDENT "f"
+        WHITESPACE " "
+        ITEM_LIST
+          L_CURLY "{"
+          WHITESPACE "\n    "
+          R_CURLY "}"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n"
