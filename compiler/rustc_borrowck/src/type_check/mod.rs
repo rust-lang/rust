@@ -1921,7 +1921,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             AggregateKind::Array(ty) => Ok(ty),
-            AggregateKind::Tuple => {
+            AggregateKind::Tuple | AggregateKind::RawPtr(..) => {
                 unreachable!("This should have been covered in check_rvalues");
             }
         }
@@ -2518,6 +2518,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 AggregateKind::Closure(_, _) => None,
                 AggregateKind::Coroutine(_, _) => None,
                 AggregateKind::CoroutineClosure(_, _) => None,
+                AggregateKind::RawPtr(_, _) => None,
             },
         }
     }
@@ -2537,6 +2538,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if *aggregate_kind == AggregateKind::Tuple {
             // tuple rvalue field type is always the type of the op. Nothing to check here.
             return;
+        }
+
+        if let AggregateKind::RawPtr(..) = aggregate_kind {
+            bug!("RawPtr should only be in runtime MIR");
         }
 
         for (i, operand) in operands.iter_enumerated() {
@@ -2757,7 +2762,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 ),
             ),
 
-            AggregateKind::Array(_) | AggregateKind::Tuple => {
+            AggregateKind::Array(_) | AggregateKind::Tuple | AggregateKind::RawPtr(..) => {
                 (CRATE_DEF_ID.to_def_id(), ty::InstantiatedPredicates::empty())
             }
         };
