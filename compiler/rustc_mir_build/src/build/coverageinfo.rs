@@ -2,7 +2,7 @@ use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageInfoHi, CoverageKind};
+use rustc_middle::mir::coverage::{BlockMarkerId, BranchArm, CoverageInfoHi, CoverageKind};
 use rustc_middle::mir::{self, BasicBlock, SourceInfo, UnOp};
 use rustc_middle::thir::{ExprId, ExprKind, Pat, Thir};
 use rustc_middle::ty::TyCtxt;
@@ -23,13 +23,14 @@ pub(crate) struct CoverageInfoBuilder {
 
     /// Present if branch coverage is enabled.
     branch_info: Option<BranchInfo>,
+
     /// Present if MC/DC coverage is enabled.
     mcdc_info: Option<MCDCInfoBuilder>,
 }
 
 #[derive(Default)]
 struct BranchInfo {
-    branch_spans: Vec<BranchSpan>,
+    branch_arm_lists: Vec<Vec<BranchArm>>,
 }
 
 #[derive(Clone, Copy)]
@@ -141,6 +142,9 @@ impl CoverageInfoBuilder {
         true_block: BasicBlock,
         false_block: BasicBlock,
     ) {
+        // Bail out if branch coverage is not enabled.
+        let Some(branch_info) = self.branch_info.as_mut() else { return };
+
         // Separate path for handling branches when MC/DC is enabled.
         if let Some(mcdc_info) = self.mcdc_info.as_mut() {
             let inject_block_marker =
@@ -152,28 +156,22 @@ impl CoverageInfoBuilder {
                 false_block,
                 inject_block_marker,
             );
-            return;
+        } else {
+            let true_marker = self.markers.inject_block_marker(cfg, source_info, true_block);
+            let false_marker = self.markers.inject_block_marker(cfg, source_info, false_block);
+
+            let arm = |marker| BranchArm {
+                span: source_info.span,
+                pre_guard_marker: marker,
+                arm_taken_marker: marker,
+            };
+            branch_info.branch_arm_lists.push(vec![arm(true_marker), arm(false_marker)]);
         }
-
-        // Bail out if branch coverage is not enabled.
-        let Some(branch_info) = self.branch_info.as_mut() else { return };
-
-        let true_marker = self.markers.inject_block_marker(cfg, source_info, true_block);
-        let false_marker = self.markers.inject_block_marker(cfg, source_info, false_block);
-
-        branch_info.branch_spans.push(BranchSpan {
-            span: source_info.span,
-            true_marker,
-            false_marker,
-        });
     }
 
     pub(crate) fn into_done(self) -> Box<CoverageInfoHi> {
         let Self { nots: _, markers: BlockMarkerGen { num_block_markers }, branch_info, mcdc_info } =
             self;
-
-        let branch_spans =
-            branch_info.map(|branch_info| branch_info.branch_spans).unwrap_or_default();
 
         let (mcdc_decision_spans, mcdc_branch_spans) =
             mcdc_info.map(MCDCInfoBuilder::into_done).unwrap_or_default();
@@ -182,7 +180,7 @@ impl CoverageInfoBuilder {
         // if there's nothing interesting in it.
         Box::new(CoverageInfoHi {
             num_block_markers,
-            branch_spans,
+            branch_arm_lists: branch_info.map(|i| i.branch_arm_lists).unwrap_or_default(),
             mcdc_branch_spans,
             mcdc_decision_spans,
         })
@@ -255,7 +253,7 @@ impl<'tcx> Builder<'_, 'tcx> {
     }
 
     /// If branch coverage is enabled, inject marker statements into `then_block`
-    /// and `else_block`, and record their IDs in the table of branch spans.
+    /// and `else_block`, and record their IDs in the branch table.
     pub(crate) fn visit_coverage_branch_condition(
         &mut self,
         mut expr_id: ExprId,

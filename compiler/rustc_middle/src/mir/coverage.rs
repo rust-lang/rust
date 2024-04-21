@@ -274,17 +274,21 @@ pub struct CoverageInfoHi {
     /// injected into the MIR body. This makes it possible to allocate per-ID
     /// data structures without having to scan the entire body first.
     pub num_block_markers: usize,
-    pub branch_spans: Vec<BranchSpan>,
+    pub branch_arm_lists: Vec<Vec<BranchArm>>,
     pub mcdc_branch_spans: Vec<MCDCBranchSpan>,
     pub mcdc_decision_spans: Vec<MCDCDecisionSpan>,
 }
 
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub struct BranchSpan {
+pub struct BranchArm {
     pub span: Span,
-    pub true_marker: BlockMarkerId,
-    pub false_marker: BlockMarkerId,
+    /// Marks the block that is jumped to after this arm's pattern matches,
+    /// but before its guard is checked.
+    pub pre_guard_marker: BlockMarkerId,
+    /// Marks the block that is jumped to after this arm's guard succeeds.
+    /// If this is equal to `pre_guard_marker`, the arm has no guard.
+    pub arm_taken_marker: BlockMarkerId,
 }
 
 #[derive(Copy, Clone, Debug)]

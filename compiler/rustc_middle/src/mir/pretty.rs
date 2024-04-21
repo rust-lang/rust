@@ -537,7 +537,7 @@ fn write_coverage_info_hi(
 ) -> io::Result<()> {
     let coverage::CoverageInfoHi {
         num_block_markers: _,
-        branch_spans,
+        branch_arm_lists,
         mcdc_branch_spans,
         mcdc_decision_spans,
     } = coverage_info_hi;
@@ -545,11 +545,12 @@ fn write_coverage_info_hi(
     // Only add an extra trailing newline if we printed at least one thing.
     let mut did_print = false;
 
-    for coverage::BranchSpan { span, true_marker, false_marker } in branch_spans {
-        writeln!(
-            w,
-            "{INDENT}coverage branch {{ true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
-        )?;
+    for arms in branch_arm_lists {
+        writeln!(w, "{INDENT}coverage branches {{")?;
+        for coverage::BranchArm { span, pre_guard_marker, arm_taken_marker } in arms {
+            writeln!(w, "{INDENT}{INDENT}{pre_guard_marker:?}, {arm_taken_marker:?} => {span:?}")?;
+        }
+        writeln!(w, "{INDENT}}}")?;
         did_print = true;
     }
 
@@ -1739,12 +1740,13 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
             }
         } else if let Some(prov) = alloc.provenance().get(i, &tcx) {
             // Memory with provenance must be defined
-            assert!(
-                alloc.init_mask().is_range_initialized(alloc_range(i, Size::from_bytes(1))).is_ok()
-            );
+            assert!(alloc
+                .init_mask()
+                .is_range_initialized(alloc_range(i, Size::from_bytes(1)))
+                .is_ok());
             ascii.push('━'); // HEAVY HORIZONTAL
-            // We have two characters to display this, which is obviously not enough.
-            // Format is similar to "oversized" above.
+                             // We have two characters to display this, which is obviously not enough.
+                             // Format is similar to "oversized" above.
             let j = i.bytes_usize();
             let c = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + 1)[0];
             write!(w, "╾{c:02x}{prov:#?} (1 ptr byte)╼")?;

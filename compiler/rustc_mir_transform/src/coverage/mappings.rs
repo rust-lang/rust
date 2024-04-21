@@ -4,7 +4,7 @@ use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::coverage::{
-    BlockMarkerId, BranchSpan, ConditionInfo, CoverageInfoHi, CoverageKind,
+    BlockMarkerId, ConditionInfo, CoverageInfoHi, CoverageKind,
 };
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_middle::ty::TyCtxt;
@@ -206,24 +206,39 @@ pub(super) fn extract_branch_arm_lists(
     let block_markers = resolve_block_markers(coverage_info_hi, mir_body);
 
     coverage_info_hi
-        .branch_spans
+        .branch_arm_lists
         .iter()
-        .filter_map(|&BranchSpan { span: raw_span, true_marker, false_marker }| {
-            // For now, ignore any branch span that was introduced by
-            // expansion. This makes things like assert macros less noisy.
-            if !raw_span.ctxt().outer_expn_data().is_root() {
+        .filter_map(|arms| {
+            let mut bcb_arms = Vec::with_capacity(arms.len());
+
+            // If any arm can't be resolved, return None to skip the entire list
+            // of arms that contains it.
+            for &mir::coverage::BranchArm { span: raw_span, pre_guard_marker, arm_taken_marker } in
+                arms
+            {
+                // For now, ignore any branch span that was introduced by
+                // expansion. This makes things like assert macros less noisy.
+                if !raw_span.ctxt().outer_expn_data().is_root() {
+                    return None;
+                }
+
+                let span = unexpand_into_body_span(raw_span, hir_info.body_span)?;
+
+                let pre_guard_bcb =
+                    basic_coverage_blocks.bcb_from_bb(block_markers[pre_guard_marker]?)?;
+                let arm_taken_bcb =
+                    basic_coverage_blocks.bcb_from_bb(block_markers[arm_taken_marker]?)?;
+
+                bcb_arms.push(BranchArm { span, pre_guard_bcb, arm_taken_bcb });
+            }
+            assert_eq!(arms.len(), bcb_arms.len());
+
+            if bcb_arms.len() < 2 {
+                debug_assert!(false, "MIR building shouldn't create branches with <2 arms");
                 return None;
             }
-            let span = unexpand_into_body_span(raw_span, hir_info.body_span)?;
 
-            let bcb_from_marker =
-                |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
-
-            let true_bcb = bcb_from_marker(true_marker)?;
-            let false_bcb = bcb_from_marker(false_marker)?;
-
-            let arm = |bcb| BranchArm { span, pre_guard_bcb: bcb, arm_taken_bcb: bcb };
-            Some(vec![arm(true_bcb), arm(false_bcb)])
+            Some(bcb_arms)
         })
         .collect::<Vec<_>>()
 }
