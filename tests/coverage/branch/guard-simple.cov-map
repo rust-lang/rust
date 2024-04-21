@@ -1,0 +1,24 @@
+Function name: guard_simple::never_taken
+Raw bytes (56): 0x[01, 01, 04, 01, 05, 11, 09, 0f, 0d, 05, 09, 08, 01, 08, 01, 02, 1e, 20, 05, 02, 02, 0e, 00, 1e, 05, 00, 22, 00, 24, 11, 01, 0e, 00, 1e, 20, 09, 06, 00, 0e, 00, 1e, 09, 00, 22, 00, 24, 0d, 01, 0e, 00, 10, 0b, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 4
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(4), rhs = Counter(2)
+- expression 2 operands: lhs = Expression(3, Add), rhs = Counter(3)
+- expression 3 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 8
+- Code(Counter(0)) at (prev + 8, 1) to (start + 2, 30)
+- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 2, 14) to (start + 0, 30)
+    true  = c1
+    false = (c0 - c1)
+- Code(Counter(1)) at (prev + 0, 34) to (start + 0, 36)
+- Code(Counter(4)) at (prev + 1, 14) to (start + 0, 30)
+- Branch { true: Counter(2), false: Expression(1, Sub) } at (prev + 0, 14) to (start + 0, 30)
+    true  = c2
+    false = (c4 - c2)
+- Code(Counter(2)) at (prev + 0, 34) to (start + 0, 36)
+- Code(Counter(3)) at (prev + 1, 14) to (start + 0, 16)
+- Code(Expression(2, Add)) at (prev + 2, 1) to (start + 0, 2)
+    = ((c1 + c2) + c3)
+

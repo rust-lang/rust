@@ -1,0 +1,28 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Zcoverage-options=branch
+   LL|       |//@ llvm-cov-flags: --show-branches=count
+   LL|       |
+   LL|       |use core::hint::black_box;
+   LL|       |
+   LL|      1|fn never_taken() {
+   LL|      1|    match black_box(false) {
+   LL|      1|        _ if black_box(false) => {}
+                                               ^0
+  ------------------
+  |  Branch (LL:14): [True: 0, False: 1]
+  ------------------
+   LL|      1|        _ if black_box(false) => {}
+                                               ^0
+  ------------------
+  |  Branch (LL:14): [True: 0, False: 1]
+  ------------------
+   LL|      1|        _ => {}
+   LL|       |    }
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    never_taken();
+   LL|       |}
+
