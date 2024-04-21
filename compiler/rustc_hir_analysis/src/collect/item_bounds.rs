@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
@@ -214,7 +214,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTyToOpaque<'tcx> {
         {
             self.tcx.type_of(projection_ty.def_id).instantiate(self.tcx, projection_ty.args)
         } else {
-            ty
+            ty.super_fold_with(self)
         }
     }
 }
