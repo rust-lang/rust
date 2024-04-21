@@ -1,3 +1,9 @@
+//! First time setup of a dev environment
+//!
+//! These are build-and-run steps for `./x.py setup`, which allows quickly setting up the directory
+//! for modifying, building, and running the compiler and library. The main convenience is to allow
+//! not having to painstakingly set every single option in config.toml.
+
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::t;
 use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
