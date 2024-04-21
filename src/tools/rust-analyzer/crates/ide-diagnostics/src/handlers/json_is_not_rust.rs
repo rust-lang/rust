@@ -7,7 +7,7 @@ use ide_db::{
     helpers::mod_path_to_ast,
     imports::insert_use::{insert_use, ImportScope},
     source_change::SourceChangeBuilder,
-    RootDatabase,
+    FxHashMap, RootDatabase,
 };
 use itertools::Itertools;
 use stdx::{format_to, never};
@@ -22,15 +22,22 @@ use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsConfig, Severity};
 #[derive(Default)]
 struct State {
     result: String,
-    struct_counts: usize,
     has_serialize: bool,
     has_deserialize: bool,
+    names: FxHashMap<String, usize>,
 }
 
 impl State {
-    fn generate_new_name(&mut self) -> ast::Name {
-        self.struct_counts += 1;
-        make::name(&format!("Struct{}", self.struct_counts))
+    fn generate_new_name(&mut self, name: &str) -> ast::Name {
+        let name = stdx::to_camel_case(name);
+        let count = if let Some(count) = self.names.get_mut(&name) {
+            *count += 1;
+            *count
+        } else {
+            self.names.insert(name.clone(), 1);
+            1
+        };
+        make::name(&format!("{}{}", name, count))
     }
 
     fn serde_derive(&self) -> String {
@@ -52,15 +59,21 @@ impl State {
         }
     }
 
-    fn build_struct(&mut self, value: &serde_json::Map<String, serde_json::Value>) -> ast::Type {
-        let name = self.generate_new_name();
+    fn build_struct(
+        &mut self,
+        name: &str,
+        value: &serde_json::Map<String, serde_json::Value>,
+    ) -> ast::Type {
+        let name = self.generate_new_name(name);
         let ty = make::ty(&name.to_string());
         let strukt = make::struct_(
             None,
             name,
             None,
             make::record_field_list(value.iter().sorted_unstable_by_key(|x| x.0).map(
-                |(name, value)| make::record_field(None, make::name(name), self.type_of(value)),
+                |(name, value)| {
+                    make::record_field(None, make::name(name), self.type_of(name, value))
+                },
             ))
             .into(),
         );
@@ -68,7 +81,7 @@ impl State {
         ty
     }
 
-    fn type_of(&mut self, value: &serde_json::Value) -> ast::Type {
+    fn type_of(&mut self, name: &str, value: &serde_json::Value) -> ast::Type {
         match value {
             serde_json::Value::Null => make::ty_unit(),
             serde_json::Value::Bool(_) => make::ty("bool"),
@@ -76,12 +89,12 @@ impl State {
             serde_json::Value::String(_) => make::ty("String"),
             serde_json::Value::Array(it) => {
                 let ty = match it.iter().next() {
-                    Some(x) => self.type_of(x),
+                    Some(x) => self.type_of(name, x),
                     None => make::ty_placeholder(),
                 };
                 make::ty(&format!("Vec<{ty}>"))
             }
-            serde_json::Value::Object(x) => self.build_struct(x),
+            serde_json::Value::Object(x) => self.build_struct(name, x),
         }
     }
 }
@@ -113,7 +126,7 @@ pub(crate) fn json_in_items(
                 let serialize_resolved = scope_resolve("::serde::Serialize");
                 state.has_deserialize = deserialize_resolved.is_some();
                 state.has_serialize = serialize_resolved.is_some();
-                state.build_struct(&it);
+                state.build_struct("Root", &it);
                 edit.insert(range.start(), state.result);
                 acc.push(
                     Diagnostic::new(
@@ -218,7 +231,7 @@ mod tests {
             }
 
             #[derive(Serialize)]
-            struct Struct1{ bar: f64, bay: i64, baz: (), r#box: bool, foo: String }
+            struct Root1{ bar: f64, bay: i64, baz: (), r#box: bool, foo: String }
 
             "#,
         );
@@ -237,9 +250,44 @@ mod tests {
             }
             "#,
             r#"
-            struct Struct3{  }
-            struct Struct2{ kind: String, value: Struct3 }
-            struct Struct1{ bar: Struct2, foo: String }
+            struct Value1{  }
+            struct Bar1{ kind: String, value: Value1 }
+            struct Root1{ bar: Bar1, foo: String }
+
+            "#,
+        );
+    }
+
+    #[test]
+    fn naming() {
+        check_fix(
+            r#"
+            {$0
+                "user": {
+                    "address": {
+                        "street": "Main St",
+                        "house": 3
+                    },
+                    "email": "example@example.com"
+                },
+                "another_user": {
+                    "user": {
+                        "address": {
+                            "street": "Main St",
+                            "house": 3
+                        },
+                        "email": "example@example.com"
+                    }
+                }
+            }
+            "#,
+            r#"
+            struct Address1{ house: i64, street: String }
+            struct User1{ address: Address1, email: String }
+            struct AnotherUser1{ user: User1 }
+            struct Address2{ house: i64, street: String }
+            struct User2{ address: Address2, email: String }
+            struct Root1{ another_user: AnotherUser1, user: User2 }
 
             "#,
         );
@@ -276,9 +324,9 @@ mod tests {
             use serde::Deserialize;
 
             #[derive(Serialize, Deserialize)]
-            struct Struct2{ x: i64, y: i64 }
+            struct OfObject1{ x: i64, y: i64 }
             #[derive(Serialize, Deserialize)]
-            struct Struct1{ empty: Vec<_>, nested: Vec<Vec<Vec<i64>>>, of_object: Vec<Struct2>, of_string: Vec<String> }
+            struct Root1{ empty: Vec<_>, nested: Vec<Vec<Vec<i64>>>, of_object: Vec<OfObject1>, of_string: Vec<String> }
 
             "#,
         );
