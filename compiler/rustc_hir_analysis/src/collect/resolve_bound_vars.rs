@@ -1168,9 +1168,16 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         && let hir::LifetimeName::Param(param_id) = lifetime_ref.res
                         && let Some(generics) =
                             self.tcx.hir().get_generics(self.tcx.local_parent(param_id))
-                        && let Some(param) = generics.params.iter().find(|p| p.def_id == param_id)
+                        && let Some((param, pred)) = generics
+                            .params
+                            .iter()
+                            .position(|param| param.def_id == param_id)
+                            .and_then(|idx| {
+                                Some((generics.params.get(idx)?, generics.predicates.get(idx)?))
+                            })
                         && param.is_elided_lifetime()
                         && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
+                        && is_gat(pred)
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait
                     {
                         let mut diag: rustc_errors::Diag<'_> = rustc_session::parse::feature_err(
@@ -2105,4 +2112,31 @@ pub fn deny_non_region_late_bound(
         first = false;
         *arg = ResolvedArg::Error(guar);
     }
+}
+
+fn is_gat(predicate: &hir::WherePredicate<'_>) -> bool {
+    let hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate { bounds, .. }) = predicate
+    else {
+        return false;
+    };
+    for bound in *bounds {
+        let hir::GenericBound::Trait(poly_trait_ref, _) = bound else {
+            continue;
+        };
+
+        for segment in poly_trait_ref.trait_ref.path.segments {
+            let Some(generic_args) = segment.args else {
+                continue;
+            };
+            if !generic_args.args.is_empty() {
+                continue;
+            }
+            for binding in generic_args.bindings {
+                if !binding.gen_args.args.is_empty() {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }

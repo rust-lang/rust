@@ -1,0 +1,43 @@
+error[E0597]: `n` does not live long enough
+  --> $DIR/impl-trait-lifetimes.rs:11:15
+   |
+LL |     fn fun(t: impl crate::Foo<&u32>, n: u32) {
+   |            - has type `t`            - binding `n` declared here
+LL |         t.foo(&n);
+   |         ------^^-
+   |         |     |
+   |         |     borrowed value does not live long enough
+   |         argument requires that `n` is borrowed for `'1`
+LL |
+LL |     }
+   |      - `n` dropped here while still borrowed
+
+error[E0597]: `n` does not live long enough
+  --> $DIR/impl-trait-lifetimes.rs:33:22
+   |
+LL |     fn fun(t: impl Iterator<Item = impl crate::Foo<&u32>>, n: u32) {
+   |                                                            - binding `n` declared here
+LL |         for elem in t {
+LL |             elem.foo(&n);
+   |                      ^^ borrowed value does not live long enough
+...
+LL |     }
+   |      - `n` dropped here while still borrowed
+
+error[E0597]: `n` does not live long enough
+  --> $DIR/impl-trait-lifetimes.rs:45:15
+   |
+LL |     fn fun(t: impl Placeholder<'_>, n: u32) {
+   |            - has type `t`           - binding `n` declared here
+LL |         t.foo(&n);
+   |         ------^^-
+   |         |     |
+   |         |     borrowed value does not live long enough
+   |         argument requires that `n` is borrowed for `'1`
+LL |
+LL |     }
+   |      - `n` dropped here while still borrowed
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.
