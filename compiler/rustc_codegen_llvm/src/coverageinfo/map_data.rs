@@ -66,7 +66,15 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
         // For each expression ID that is directly used by one or more mappings,
         // mark it as not-yet-seen. This indicates that we expect to see a
         // corresponding `ExpressionUsed` statement during MIR traversal.
-        for term in function_coverage_info.mappings.iter().flat_map(|m| m.kind.terms()) {
+        for term in function_coverage_info
+            .mappings
+            .iter()
+            // For many-armed branches, some branch mappings will have expressions
+            // that don't correspond to any node in the control-flow graph, so don't
+            // expect to see `ExpressionUsed` statements for them.
+            .filter(|m| !matches!(m.kind, MappingKind::Branch { .. }))
+            .flat_map(|m| m.kind.terms())
+        {
             if let CovTerm::Expression(id) = term {
                 expressions_seen.remove(id);
             }

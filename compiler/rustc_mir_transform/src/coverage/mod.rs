@@ -8,7 +8,7 @@ mod spans;
 mod tests;
 
 use rustc_middle::mir::coverage::{
-    CodeRegion, CoverageKind, DecisionInfo, FunctionCoverageInfo, Mapping, MappingKind,
+    CodeRegion, CoverageKind, DecisionInfo, FunctionCoverageInfo, Mapping, MappingKind, Op,
 };
 use rustc_middle::mir::{
     self, BasicBlock, BasicBlockData, SourceInfo, Statement, StatementKind, Terminator,
@@ -21,7 +21,7 @@ use rustc_span::{BytePos, Pos, RelativeBytePos, Span, Symbol};
 
 use crate::coverage::counters::{CounterIncrementSite, CoverageCounters};
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
-use crate::coverage::mappings::ExtractedMappings;
+use crate::coverage::mappings::{BranchArm, ExtractedMappings};
 use crate::MirPass;
 
 /// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
@@ -91,10 +91,10 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     }
 
     let bcb_has_counter_mappings = |bcb| bcbs_with_counter_mappings.contains(bcb);
-    let coverage_counters =
+    let mut coverage_counters =
         CoverageCounters::make_bcb_counters(&basic_coverage_blocks, bcb_has_counter_mappings);
 
-    let mappings = create_mappings(tcx, &hir_info, &extracted_mappings, &coverage_counters);
+    let mappings = create_mappings(tcx, &hir_info, &extracted_mappings, &mut coverage_counters);
     if mappings.is_empty() {
         // No spans could be converted into valid mappings, so skip this function.
         debug!("no spans could be converted into valid mappings; skipping");
@@ -136,7 +136,7 @@ fn create_mappings<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_info: &ExtractedHirInfo,
     extracted_mappings: &ExtractedMappings,
-    coverage_counters: &CoverageCounters,
+    coverage_counters: &mut CoverageCounters,
 ) -> Vec<Mapping> {
     let source_map = tcx.sess.source_map();
     let body_span = hir_info.body_span;
@@ -148,39 +148,71 @@ fn create_mappings<'tcx>(
         &source_file.name.for_scope(tcx.sess, RemapPathScopeComponents::MACRO).to_string_lossy(),
     );
 
-    let term_for_bcb = |bcb| {
-        coverage_counters
-            .bcb_counter(bcb)
-            .expect("all BCBs with spans were given counters")
-            .as_term()
-    };
     let region_for_span = |span: Span| make_code_region(source_map, file_name, span, body_span);
 
     // Fully destructure the mappings struct to make sure we don't miss any kinds.
     let ExtractedMappings {
         code_mappings,
-        branch_pairs,
+        branch_arm_lists,
         mcdc_bitmap_bytes: _,
         mcdc_branches,
         mcdc_decisions,
     } = extracted_mappings;
     let mut mappings = Vec::new();
 
+    // Process branch arms first, because they might need to mutate `coverage_counters`
+    // to create new expressions.
+    for arm_list in branch_arm_lists {
+        let mut arms_rev = arm_list.iter().rev();
+
+        let mut rest_counter = {
+            // The last arm's span is ignored, because its BCB is only used as the
+            // false branch of the second-last arm; it's not a branch of its own.
+            let Some(&BranchArm { span: _, pre_guard_bcb, arm_taken_bcb }) = arms_rev.next() else {
+                continue;
+            };
+            debug_assert_eq!(pre_guard_bcb, arm_taken_bcb, "last arm should not have a guard");
+            coverage_counters.bcb_counter(pre_guard_bcb).expect("all relevant BCBs have counters")
+        };
+
+        // All relevant BCBs should have counters, so we can `.unwrap()` them.
+        for &BranchArm { span, pre_guard_bcb, arm_taken_bcb } in arms_rev {
+            // Number of times the pattern matched.
+            let matched_counter = coverage_counters.bcb_counter(pre_guard_bcb).unwrap();
+            // Number of times the pattern matched and the guard succeeded.
+            let arm_taken_counter = coverage_counters.bcb_counter(arm_taken_bcb).unwrap();
+            // Total number of times execution logically reached this pattern.
+            let reached_counter =
+                coverage_counters.make_expression(rest_counter, Op::Add, arm_taken_counter);
+            // Number of times execution reached this pattern, but didn't match it.
+            let unmatched_counter =
+                coverage_counters.make_expression(reached_counter, Op::Subtract, matched_counter);
+
+            let kind = MappingKind::Branch {
+                true_term: matched_counter.as_term(),
+                false_term: unmatched_counter.as_term(),
+            };
+
+            if let Some(code_region) = region_for_span(span) {
+                mappings.push(Mapping { kind, code_region });
+            }
+
+            rest_counter = reached_counter;
+        }
+    }
+
+    let term_for_bcb = |bcb| {
+        coverage_counters
+            .bcb_counter(bcb)
+            .expect("all BCBs with spans were given counters")
+            .as_term()
+    };
+
     mappings.extend(code_mappings.iter().filter_map(
         // Ordinary code mappings are the simplest kind.
         |&mappings::CodeMapping { span, bcb }| {
             let code_region = region_for_span(span)?;
             let kind = MappingKind::Code(term_for_bcb(bcb));
-            Some(Mapping { kind, code_region })
-        },
-    ));
-
-    mappings.extend(branch_pairs.iter().filter_map(
-        |&mappings::BranchPair { span, true_bcb, false_bcb }| {
-            let true_term = term_for_bcb(true_bcb);
-            let false_term = term_for_bcb(false_bcb);
-            let kind = MappingKind::Branch { true_term, false_term };
-            let code_region = region_for_span(span)?;
             Some(Mapping { kind, code_region })
         },
     ));
