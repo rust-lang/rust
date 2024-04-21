@@ -31,8 +31,8 @@ impl<'a> W<'a> {
 
 // But also make sure that we error here...
 impl<'a> W<'a> {
-//~^ ERROR `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
     fn bad2() -> impl use<> Into<<Self as Tr>::Assoc> {}
+    //~^ ERROR `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
 }
 
 fn main() {}
