@@ -3199,7 +3199,8 @@ macro_rules! int_impl {
         /// that code in debug mode will trigger a panic on this case and
         /// optimized code will return
         #[doc = concat!("`", stringify!($SelfT), "::MIN`")]
-        /// without a panic.
+        /// without a panic. If you do not want this behavior consider
+        /// using [`unsigned_abs`](Self::unsigned_abs) instead.
         ///
         /// # Examples
         ///
