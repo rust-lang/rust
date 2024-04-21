@@ -10,7 +10,7 @@ use rustc_span::Symbol;
 use stable_mir::abi::Layout;
 use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
-use stable_mir::mir::{BinOp, Mutability, Place, ProjectionElem, Safety};
+use stable_mir::mir::{BinOp, Mutability, Place, ProjectionElem, Safety, UnOp};
 use stable_mir::ty::{
     Abi, AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const,
     DynKind, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
@@ -578,6 +578,18 @@ impl RustcInternal for BinOp {
             BinOp::Gt => rustc_middle::mir::BinOp::Gt,
             BinOp::Cmp => rustc_middle::mir::BinOp::Cmp,
             BinOp::Offset => rustc_middle::mir::BinOp::Offset,
+        }
+    }
+}
+
+impl RustcInternal for UnOp {
+    type T<'tcx> = rustc_middle::mir::UnOp;
+
+    fn internal<'tcx>(&self, _tables: &mut Tables<'_>, _tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
+        match self {
+            UnOp::Not => rustc_middle::mir::UnOp::Not,
+            UnOp::Neg => rustc_middle::mir::UnOp::Neg,
+            UnOp::PtrMetadata => rustc_middle::mir::UnOp::PtrMetadata,
         }
     }
 }

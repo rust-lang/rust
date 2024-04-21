@@ -1434,6 +1434,13 @@ pub enum UnOp {
     Not,
     /// The `-` operator for negation
     Neg,
+    /// Get the metadata `M` from a `*const/mut impl Pointee<Metadata = M>`.
+    ///
+    /// For example, this will give a `()` from `*const i32`, a `usize` from
+    /// `*mut [u8]`, or a pointer to a vtable from a `*const dyn Foo`.
+    ///
+    /// Allowed only in [`MirPhase::Runtime`]; earlier it's an intrinsic.
+    PtrMetadata,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]

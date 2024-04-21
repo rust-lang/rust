@@ -1579,8 +1579,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 let formatted_op = match op {
                     UnOp::Not => "!",
                     UnOp::Neg => "-",
+                    UnOp::PtrMetadata => "PtrMetadata",
                 };
                 let parenthesized = match ct.kind() {
+                    _ if op == UnOp::PtrMetadata => true,
                     ty::ConstKind::Expr(Expr::UnOp(c_op, ..)) => c_op != op,
                     ty::ConstKind::Expr(_) => true,
                     _ => false,

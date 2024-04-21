@@ -619,9 +619,10 @@ fn codegen_stmt<'tcx>(
                 Rvalue::UnaryOp(un_op, ref operand) => {
                     let operand = codegen_operand(fx, operand);
                     let layout = operand.layout();
-                    let val = operand.load_scalar(fx);
                     let res = match un_op {
-                        UnOp::Not => match layout.ty.kind() {
+                        UnOp::Not => {
+                            let val = operand.load_scalar(fx);
+                            match layout.ty.kind() {
                             ty::Bool => {
                                 let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
                                 CValue::by_val(res, layout)
@@ -630,11 +631,22 @@ fn codegen_stmt<'tcx>(
                                 CValue::by_val(fx.bcx.ins().bnot(val), layout)
                             }
                             _ => unreachable!("un op Not for {:?}", layout.ty),
-                        },
-                        UnOp::Neg => match layout.ty.kind() {
+                            }
+                        }
+                        UnOp::Neg => {
+                            let val = operand.load_scalar(fx);
+                            match layout.ty.kind() {
                             ty::Int(_) => CValue::by_val(fx.bcx.ins().ineg(val), layout),
                             ty::Float(_) => CValue::by_val(fx.bcx.ins().fneg(val), layout),
                             _ => unreachable!("un op Neg for {:?}", layout.ty),
+                            }
+                        }
+                        UnOp::PtrMetadata => match layout.abi {
+                            Abi::Scalar(_) => CValue::zst(dest_layout),
+                            Abi::ScalarPair(_, _) => {
+                                CValue::by_val(operand.load_scalar_pair(fx).1, dest_layout)
+                            }
+                            _ => bug!("Unexpected `PtrToMetadata` operand: {operand:?}"),
                         },
                     };
                     lval.write_cvalue(fx, res);

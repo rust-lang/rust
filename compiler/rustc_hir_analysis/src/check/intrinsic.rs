@@ -130,6 +130,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::is_val_statically_known
         | sym::ptr_mask
         | sym::aggregate_raw_ptr
+        | sym::ptr_metadata
         | sym::ub_checks
         | sym::fadd_algebraic
         | sym::fsub_algebraic
@@ -576,6 +577,7 @@ pub fn check_intrinsic_type(
             // This type check is not particularly useful, but the `where` bounds
             // on the definition in `core` do the heavy lifting for checking it.
             sym::aggregate_raw_ptr => (3, 1, vec![param(1), param(2)], param(0)),
+            sym::ptr_metadata => (2, 1, vec![Ty::new_imm_ptr(tcx, param(0))], param(1)),
 
             sym::ub_checks => (0, 1, Vec::new(), tcx.types.bool),
 
