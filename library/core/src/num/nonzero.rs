@@ -105,12 +105,11 @@ impl_zeroable_primitive!(
 /// For example, `Option<NonZero<u32>>` is the same size as `u32`:
 ///
 /// ```
-/// #![feature(generic_nonzero)]
-/// use core::mem::size_of;
+/// use core::{mem::size_of, num::NonZero};
 ///
-/// assert_eq!(size_of::<Option<core::num::NonZero<u32>>>(), size_of::<u32>());
+/// assert_eq!(size_of::<Option<NonZero<u32>>>(), size_of::<u32>());
 /// ```
-#[unstable(feature = "generic_nonzero", issue = "120257")]
+#[stable(feature = "generic_nonzero", since = "CURRENT_RUSTC_VERSION")]
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
 #[rustc_diagnostic_item = "NonZero"]
@@ -562,7 +561,8 @@ macro_rules! nonzero_integer {
             /// Basic usage:
             ///
             /// ```
-            /// #![feature(generic_nonzero, non_zero_count_ones)]
+            /// #![feature(non_zero_count_ones)]
+            ///
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
             /// # use std::num::*;
