@@ -37,3 +37,13 @@ fn check_expect() {
     #[expect(clippy::overly_complex_bool_expr)]
     let _ = a < b && a >= b;
 }
+
+#[allow(clippy::never_loop)]
+fn check_never_type() {
+    loop {
+        _ = (break) || true;
+    }
+    loop {
+        _ = (return) || true;
+    }
+}
