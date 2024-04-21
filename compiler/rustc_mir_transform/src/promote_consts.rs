@@ -464,7 +464,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::UnaryOp(op, operand) => {
                 match op {
                     // These operations can never fail.
-                    UnOp::Neg | UnOp::Not => {}
+                    UnOp::Neg | UnOp::Not | UnOp::PtrMetadata => {}
                 }
 
                 self.validate_operand(operand)?;
