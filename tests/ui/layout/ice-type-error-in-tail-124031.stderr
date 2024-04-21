@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `RefTarget`
+  --> $DIR/ice-type-error-in-tail-124031.rs:9:1
+   |
+LL |     type RefTarget;
+   |     -------------- `RefTarget` from trait
+...
+LL | impl Trait for () {}
+   | ^^^^^^^^^^^^^^^^^ missing `RefTarget` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.
