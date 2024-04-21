@@ -40,6 +40,9 @@ pub fn opts() -> TargetOptions {
         //
         // See https://github.com/rust-lang/rust/pull/47483 for some more details.
         "-lmsvcrt",
+        // Math functions missing in MSVCRT (they are present in UCRT) require
+        // this dependency cycle: `libmingwex.a` -> `libmsvcrt.a` -> `libmingwex.a`.
+        "-lmingwex",
         "-luser32",
         "-lkernel32",
     ];
