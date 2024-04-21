@@ -566,6 +566,13 @@ pub struct AmbiguityErrorDiag {
     pub b2_help_msgs: Vec<String>,
 }
 
+#[derive(Debug, Clone)]
+pub enum DeprecatedSinceKind {
+    InEffect,
+    InFuture,
+    InVersion(String),
+}
+
 // This could be a closure, but then implementing derive trait
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
@@ -589,8 +596,10 @@ pub enum BuiltinLintDiag {
     RedundantImport(Vec<(Span, bool)>, Ident),
     DeprecatedMacro {
         suggestion: Option<Symbol>,
-        span: Span,
-        message: String,
+        suggestion_span: Span,
+        note: Option<Symbol>,
+        path: String,
+        since_kind: DeprecatedSinceKind,
     },
     MissingAbi(Span, Abi),
     UnusedDocComment(Span),
