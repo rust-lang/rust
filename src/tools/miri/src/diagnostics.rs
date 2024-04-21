@@ -291,7 +291,7 @@ pub fn report_error<'tcx, 'mir>(
                     ValidationErrorKind::PointerAsInt { .. } | ValidationErrorKind::PartialPointer
                 ) =>
             {
-                ecx.handle_ice(); // print interpreter backtrace
+                ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
                 bug!(
                     "This validation error should be impossible in Miri: {}",
                     format_interp_error(ecx.tcx.dcx(), e)
@@ -308,7 +308,7 @@ pub fn report_error<'tcx, 'mir>(
                 InvalidProgramInfo::AlreadyReported(_) | InvalidProgramInfo::Layout(..),
             ) => "post-monomorphization error",
             _ => {
-                ecx.handle_ice(); // print interpreter backtrace
+                ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
                 bug!(
                     "This error should be impossible in Miri: {}",
                     format_interp_error(ecx.tcx.dcx(), e)
