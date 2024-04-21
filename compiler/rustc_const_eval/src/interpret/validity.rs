@@ -339,16 +339,22 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     ) -> InterpResult<'tcx> {
         let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
         match tail.kind() {
-            ty::Dynamic(_, _, ty::Dyn) => {
+            ty::Dynamic(data, _, ty::Dyn) => {
                 let vtable = meta.unwrap_meta().to_pointer(self.ecx)?;
                 // Make sure it is a genuine vtable pointer.
-                let (_ty, _trait) = try_validation!(
+                let (_dyn_ty, dyn_trait) = try_validation!(
                     self.ecx.get_ptr_vtable(vtable),
                     self.path,
                     Ub(DanglingIntPointer(..) | InvalidVTablePointer(..)) =>
                         InvalidVTablePtr { value: format!("{vtable}") }
                 );
-                // FIXME: check if the type/trait match what ty::Dynamic says?
+                // Make sure it is for the right trait.
+                if dyn_trait != data.principal() {
+                    throw_validation_failure!(
+                        self.path,
+                        InvalidMetaWrongTrait { expected_trait: data, vtable_trait: dyn_trait }
+                    );
+                }
             }
             ty::Slice(..) | ty::Str => {
                 let _len = meta.unwrap_meta().to_target_usize(self.ecx)?;
@@ -933,7 +939,16 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
             }
             _ => {
-                self.walk_value(op)?; // default handler
+                // default handler
+                try_validation!(
+                    self.walk_value(op),
+                    self.path,
+                    // It's not great to catch errors here, since we can't give a very good path,
+                    // but it's better than ICEing.
+                    Ub(InvalidVTableTrait { expected_trait, vtable_trait }) => {
+                        InvalidMetaWrongTrait { expected_trait, vtable_trait: *vtable_trait }
+                    },
+                );
             }
         }
 
