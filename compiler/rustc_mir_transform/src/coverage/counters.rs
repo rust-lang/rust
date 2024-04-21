@@ -36,6 +36,13 @@ impl Debug for BcbCounter {
 }
 
 #[derive(Debug)]
+struct BcbExpression {
+    lhs: BcbCounter,
+    op: Op,
+    rhs: BcbCounter,
+}
+
+#[derive(Debug)]
 pub(super) enum CounterIncrementSite {
     Node { bcb: BasicCoverageBlock },
     Edge { from_bcb: BasicCoverageBlock, to_bcb: BasicCoverageBlock },
@@ -58,7 +65,7 @@ pub(super) struct CoverageCounters {
     bcb_edge_counters: FxHashMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
     /// Table of expression data, associating each expression ID with its
     /// corresponding operator (+ or -) and its LHS/RHS operands.
-    expressions: IndexVec<ExpressionId, Expression>,
+    expressions: IndexVec<ExpressionId, BcbExpression>,
 }
 
 impl CoverageCounters {
@@ -90,8 +97,7 @@ impl CoverageCounters {
     }
 
     fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
-        let expression = Expression { lhs: lhs.as_term(), op, rhs: rhs.as_term() };
-        let id = self.expressions.push(expression);
+        let id = self.expressions.push(BcbExpression { lhs, op, rhs });
         BcbCounter::Expression { id }
     }
 
@@ -166,7 +172,21 @@ impl CoverageCounters {
     }
 
     pub(super) fn into_expressions(self) -> IndexVec<ExpressionId, Expression> {
-        self.expressions
+        let old_len = self.expressions.len();
+        let expressions = self
+            .expressions
+            .into_iter()
+            .map(|BcbExpression { lhs, op, rhs }| Expression {
+                lhs: lhs.as_term(),
+                op,
+                rhs: rhs.as_term(),
+            })
+            .collect::<IndexVec<ExpressionId, _>>();
+
+        // Expression IDs are indexes into this vector, so make sure we didn't
+        // accidentally invalidate them by changing its length.
+        assert_eq!(old_len, expressions.len());
+        expressions
     }
 }
 
