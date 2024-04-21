@@ -1,3 +1,7 @@
+//! Toolstate checks to keep tools building
+//!
+//! Reachable via `./x.py test` but mostly relevant for CI, since it isn't run locally by default.
+
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::utils::helpers::t;
 use serde_derive::{Deserialize, Serialize};
