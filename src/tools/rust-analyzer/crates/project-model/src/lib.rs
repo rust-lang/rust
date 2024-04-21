@@ -52,7 +52,7 @@ pub use crate::{
     manifest_path::ManifestPath,
     project_json::{ProjectJson, ProjectJsonData},
     sysroot::Sysroot,
-    workspace::{FileLoader, PackageRoot, ProjectWorkspace},
+    workspace::{FileLoader, PackageRoot, ProjectWorkspace, ProjectWorkspaceKind},
 };
 pub use cargo_metadata::Metadata;
 

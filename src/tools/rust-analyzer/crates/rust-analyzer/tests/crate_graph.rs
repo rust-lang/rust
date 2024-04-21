@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use project_model::{
-    CargoWorkspace, ManifestPath, Metadata, ProjectWorkspace, Sysroot, WorkspaceBuildScripts,
+    CargoWorkspace, ManifestPath, Metadata, ProjectWorkspace, ProjectWorkspaceKind, Sysroot,
+    WorkspaceBuildScripts,
 };
 use rust_analyzer::ws_to_crate_graph;
 use rustc_hash::FxHashMap;
@@ -13,16 +14,18 @@ fn load_cargo_with_fake_sysroot(file: &str) -> ProjectWorkspace {
     let manifest_path =
         ManifestPath::try_from(AbsPathBuf::try_from(meta.workspace_root.clone()).unwrap()).unwrap();
     let cargo_workspace = CargoWorkspace::new(meta, manifest_path);
-    ProjectWorkspace::Cargo {
-        cargo: cargo_workspace,
-        build_scripts: WorkspaceBuildScripts::default(),
+    ProjectWorkspace {
+        kind: ProjectWorkspaceKind::Cargo {
+            cargo: cargo_workspace,
+            build_scripts: WorkspaceBuildScripts::default(),
+            rustc: Err(None),
+            cargo_config_extra_env: Default::default(),
+        },
         sysroot: Ok(get_fake_sysroot()),
-        rustc: Err(None),
         rustc_cfg: Vec::new(),
         cfg_overrides: Default::default(),
         toolchain: None,
         target_layout: Err("target_data_layout not loaded".into()),
-        cargo_config_extra_env: Default::default(),
     }
 }
 

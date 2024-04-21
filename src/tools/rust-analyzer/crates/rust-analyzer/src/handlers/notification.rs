@@ -289,17 +289,19 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
 
             // Find all workspaces that have at least one target containing the saved file
             let workspace_ids = world.workspaces.iter().enumerate().filter_map(|(idx, ws)| {
-                let package = match ws {
-                    project_model::ProjectWorkspace::Cargo { cargo, .. } => {
-                        cargo.packages().find_map(|pkg| {
-                            let has_target_with_root = cargo[pkg]
-                                .targets
-                                .iter()
-                                .any(|&it| crate_root_paths.contains(&cargo[it].root.as_path()));
-                            has_target_with_root.then(|| cargo[pkg].name.clone())
-                        })
-                    }
-                    project_model::ProjectWorkspace::Json { project, .. } => {
+                let package = match &ws.kind {
+                    project_model::ProjectWorkspaceKind::Cargo { cargo, .. }
+                    | project_model::ProjectWorkspaceKind::DetachedFile {
+                        cargo_script: Some((cargo, _)),
+                        ..
+                    } => cargo.packages().find_map(|pkg| {
+                        let has_target_with_root = cargo[pkg]
+                            .targets
+                            .iter()
+                            .any(|&it| crate_root_paths.contains(&cargo[it].root.as_path()));
+                        has_target_with_root.then(|| cargo[pkg].name.clone())
+                    }),
+                    project_model::ProjectWorkspaceKind::Json(project) => {
                         if !project.crates().any(|(_, krate)| {
                             crate_root_paths.contains(&krate.root_module.as_path())
                         }) {
@@ -307,8 +309,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                         }
                         None
                     }
-                    // FIXME
-                    project_model::ProjectWorkspace::DetachedFile { .. } => return None,
+                    project_model::ProjectWorkspaceKind::DetachedFile { .. } => return None,
                 };
                 Some((idx, package))
             });

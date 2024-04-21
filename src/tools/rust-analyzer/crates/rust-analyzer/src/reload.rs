@@ -25,7 +25,7 @@ use ide_db::{
 use itertools::Itertools;
 use load_cargo::{load_proc_macro, ProjectFolders};
 use proc_macro_api::ProcMacroServer;
-use project_model::{ManifestPath, ProjectWorkspace, WorkspaceBuildScripts};
+use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
 use stdx::{format_to, thread::ThreadIntent};
 use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, ChangeKind};
@@ -151,9 +151,7 @@ impl GlobalState {
         }
 
         for ws in self.workspaces.iter() {
-            let (ProjectWorkspace::Cargo { sysroot, .. }
-            | ProjectWorkspace::Json { sysroot, .. }
-            | ProjectWorkspace::DetachedFile { sysroot, .. }) = ws;
+            let sysroot = ws.sysroot.as_ref();
             match sysroot {
                 Err(None) => (),
                 Err(Some(e)) => {
@@ -169,7 +167,7 @@ impl GlobalState {
                     }
                 }
             }
-            if let ProjectWorkspace::Cargo { rustc: Err(Some(e)), .. } = ws {
+            if let ProjectWorkspaceKind::Cargo { rustc: Err(Some(e)), .. } = &ws.kind {
                 status.health = lsp_ext::Health::Warning;
                 message.push_str(e);
                 message.push_str("\n\n");
@@ -501,20 +499,25 @@ impl GlobalState {
                     None => ws.find_sysroot_proc_macro_srv()?,
                 };
 
-                let env =
-                    match ws {
-                        ProjectWorkspace::Cargo { cargo_config_extra_env, sysroot, .. } => {
-                            cargo_config_extra_env
-                                .iter()
-                                .chain(self.config.extra_env())
-                                .map(|(a, b)| (a.clone(), b.clone()))
-                                .chain(sysroot.as_ref().map(|it| {
-                                    ("RUSTUP_TOOLCHAIN".to_owned(), it.root().to_string())
-                                }))
-                                .collect()
-                        }
-                        _ => Default::default(),
-                    };
+                let env = match &ws.kind {
+                    ProjectWorkspaceKind::Cargo { cargo_config_extra_env, .. }
+                    | ProjectWorkspaceKind::DetachedFile {
+                        cargo_script: Some(_),
+                        cargo_config_extra_env,
+                        ..
+                    } => cargo_config_extra_env
+                        .iter()
+                        .chain(self.config.extra_env())
+                        .map(|(a, b)| (a.clone(), b.clone()))
+                        .chain(
+                            ws.sysroot
+                                .as_ref()
+                                .map(|it| ("RUSTUP_TOOLCHAIN".to_owned(), it.root().to_string())),
+                        )
+                        .collect(),
+
+                    _ => Default::default(),
+                };
                 tracing::info!("Using proc-macro server at {path}");
 
                 ProcMacroServer::spawn(path.clone(), &env).map_err(|err| {
@@ -561,8 +564,8 @@ impl GlobalState {
         self.detached_files = self
             .workspaces
             .iter()
-            .filter_map(|ws| match ws {
-                ProjectWorkspace::DetachedFile { file, .. } => Some(file.clone()),
+            .filter_map(|ws| match &ws.kind {
+                ProjectWorkspaceKind::DetachedFile { file, .. } => Some(file.clone()),
                 _ => None,
             })
             .collect();
@@ -671,26 +674,29 @@ impl GlobalState {
                 self.workspaces
                     .iter()
                     .enumerate()
-                    .filter_map(|(id, w)| match w {
-                        ProjectWorkspace::Cargo { cargo, sysroot, .. } => Some((
+                    .filter_map(|(id, ws)| match &ws.kind {
+                        ProjectWorkspaceKind::Cargo { cargo, .. } => Some((
                             id,
                             cargo.workspace_root(),
-                            sysroot.as_ref().ok().map(|sysroot| sysroot.root().to_owned()),
+                            ws.sysroot.as_ref().ok().map(|sysroot| sysroot.root().to_owned()),
                         )),
-                        ProjectWorkspace::Json { project, sysroot, .. } => {
+                        ProjectWorkspaceKind::Json(project) => {
                             // Enable flychecks for json projects if a custom flycheck command was supplied
                             // in the workspace configuration.
                             match config {
                                 FlycheckConfig::CustomCommand { .. } => Some((
                                     id,
                                     project.path(),
-                                    sysroot.as_ref().ok().map(|sysroot| sysroot.root().to_owned()),
+                                    ws.sysroot
+                                        .as_ref()
+                                        .ok()
+                                        .map(|sysroot| sysroot.root().to_owned()),
                                 )),
                                 _ => None,
                             }
                         }
                         // FIXME
-                        ProjectWorkspace::DetachedFile { .. } => None,
+                        ProjectWorkspaceKind::DetachedFile { .. } => None,
                     })
                     .map(|(id, root, sysroot_root)| {
                         let sender = sender.clone();
@@ -729,9 +735,7 @@ pub fn ws_to_crate_graph(
         let (other, mut crate_proc_macros) = ws.to_crate_graph(&mut load, extra_env);
         let num_layouts = layouts.len();
         let num_toolchains = toolchains.len();
-        let (ProjectWorkspace::Cargo { toolchain, target_layout, .. }
-        | ProjectWorkspace::Json { toolchain, target_layout, .. }
-        | ProjectWorkspace::DetachedFile { toolchain, target_layout, .. }) = ws;
+        let ProjectWorkspace { toolchain, target_layout, .. } = ws;
 
         let mapping = crate_graph.extend(
             other,

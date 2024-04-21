@@ -38,6 +38,10 @@ impl ManifestPath {
     pub fn canonicalize(&self) -> ! {
         (**self).canonicalize()
     }
+
+    pub fn is_rust_manifest(&self) -> bool {
+        self.file.extension().map_or(false, |ext| ext == "rs")
+    }
 }
 
 impl fmt::Display for ManifestPath {

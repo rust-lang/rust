@@ -307,7 +307,7 @@ impl CargoWorkspace {
             );
         }
         // The manifest is a rust file, so this means its a script manifest
-        if cargo_toml.extension().is_some_and(|ext| ext == "rs") {
+        if cargo_toml.is_rust_manifest() {
             // Deliberately don't set up RUSTC_BOOTSTRAP or a nightly override here, the user should
             // opt into it themselves.
             other_options.push("-Zscript".to_owned());

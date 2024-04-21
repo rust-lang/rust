@@ -11,7 +11,8 @@ use itertools::Either;
 use profile::StopWatch;
 use project_model::target_data_layout::RustcDataLayoutConfig;
 use project_model::{
-    target_data_layout, CargoConfig, ManifestPath, ProjectWorkspace, RustLibSource, Sysroot,
+    target_data_layout, CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind,
+    RustLibSource, Sysroot,
 };
 
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -77,14 +78,17 @@ impl Tester {
             &cargo_config.extra_env,
         );
 
-        let workspace = ProjectWorkspace::DetachedFile {
-            file: ManifestPath::try_from(tmp_file).unwrap(),
+        let workspace = ProjectWorkspace {
+            kind: ProjectWorkspaceKind::DetachedFile {
+                file: ManifestPath::try_from(tmp_file).unwrap(),
+                cargo_script: None,
+                cargo_config_extra_env: Default::default(),
+            },
             sysroot,
             rustc_cfg: vec![],
             toolchain: None,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
             cfg_overrides: Default::default(),
-            cargo_script: None,
         };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
