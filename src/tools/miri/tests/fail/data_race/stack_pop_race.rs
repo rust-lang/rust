@@ -1,4 +1,7 @@
 //@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
+// Avoid accidental synchronization via address reuse inside `thread::spawn`.
+//@compile-flags: -Zmiri-address-reuse-cross-thread-rate=0
+
 use std::thread;
 
 #[derive(Copy, Clone)]

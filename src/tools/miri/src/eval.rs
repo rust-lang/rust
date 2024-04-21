@@ -150,6 +150,10 @@ pub struct MiriConfig {
     pub page_size: Option<u64>,
     /// Whether to collect a backtrace when each allocation is created, just in case it leaks.
     pub collect_leak_backtraces: bool,
+    /// Probability for address reuse.
+    pub address_reuse_rate: f64,
+    /// Probability for address reuse across threads.
+    pub address_reuse_cross_thread_rate: f64,
 }
 
 impl Default for MiriConfig {
@@ -186,6 +190,8 @@ impl Default for MiriConfig {
             num_cpus: 1,
             page_size: None,
             collect_leak_backtraces: true,
+            address_reuse_rate: 0.5,
+            address_reuse_cross_thread_rate: 0.1,
         }
     }
 }

@@ -34,9 +34,8 @@ fn main() {
     }
 
     unsafe {
-        let p1 = libc::malloc(20);
-
-        let p2 = libc::realloc(p1, 0);
+        // Realloc with size 0 is okay for the null pointer
+        let p2 = libc::realloc(ptr::null_mut(), 0);
         assert!(p2.is_null());
     }
 

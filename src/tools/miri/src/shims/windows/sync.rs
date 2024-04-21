@@ -170,7 +170,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             None
         } else {
             let duration = Duration::from_millis(timeout_ms.into());
-            Some(Time::Monotonic(this.machine.clock.now().checked_add(duration).unwrap()))
+            Some(CallbackTime::Monotonic(this.machine.clock.now().checked_add(duration).unwrap()))
         };
 
         // See the Linux futex implementation for why this fence exists.
@@ -183,7 +183,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         if futex_val == compare_val {
             // If the values are the same, we have to block.
-            this.block_thread(thread);
+            this.block_thread(thread, BlockReason::Futex { addr });
             this.futex_wait(addr, thread, u32::MAX);
 
             if let Some(timeout_time) = timeout_time {
@@ -202,7 +202,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
                     fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-                        this.unblock_thread(self.thread);
+                        this.unblock_thread(self.thread, BlockReason::Futex { addr: self.addr });
                         this.futex_remove_waiter(self.addr, self.thread);
                         let error_timeout = this.eval_windows("c", "ERROR_TIMEOUT");
                         this.set_last_error(error_timeout)?;
@@ -233,8 +233,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // See the Linux futex implementation for why this fence exists.
         this.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
-        if let Some(thread) = this.futex_wake(ptr.addr().bytes(), u32::MAX) {
-            this.unblock_thread(thread);
+        let addr = ptr.addr().bytes();
+        if let Some(thread) = this.futex_wake(addr, u32::MAX) {
+            this.unblock_thread(thread, BlockReason::Futex { addr });
             this.unregister_timeout_callback_if_exists(thread);
         }
 
@@ -248,8 +249,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // See the Linux futex implementation for why this fence exists.
         this.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
-        while let Some(thread) = this.futex_wake(ptr.addr().bytes(), u32::MAX) {
-            this.unblock_thread(thread);
+        let addr = ptr.addr().bytes();
+        while let Some(thread) = this.futex_wake(addr, u32::MAX) {
+            this.unblock_thread(thread, BlockReason::Futex { addr });
             this.unregister_timeout_callback_if_exists(thread);
         }
 
