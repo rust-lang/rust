@@ -21,9 +21,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   mingw-w64 \
   && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sL https://nodejs.org/dist/v16.9.0/node-v16.9.0-linux-x64.tar.xz | tar -xJ
-ENV PATH="/node-v16.9.0-linux-x64/bin:${PATH}"
 ENV RUST_CONFIGURE_ARGS="--set rust.validate-mir-opts=3"
+
+COPY scripts/nodejs.sh /scripts/
+RUN sh /scripts/nodejs.sh /node
+ENV PATH="/node/bin:${PATH}"
 
 # Install es-check
 # Pin its version to prevent unrelated CI failures due to future es-check versions.
