@@ -10,8 +10,8 @@ use serde::de::DeserializeOwned;
 use triomphe::Arc;
 
 use crate::{
-    CargoWorkspace, CfgOverrides, ManifestPath, ProjectJson, ProjectJsonData, ProjectWorkspace,
-    Sysroot, WorkspaceBuildScripts,
+    workspace::ProjectWorkspaceKind, CargoWorkspace, CfgOverrides, ManifestPath, ProjectJson,
+    ProjectJsonData, ProjectWorkspace, Sysroot, WorkspaceBuildScripts,
 };
 
 fn load_cargo(file: &str) -> (CrateGraph, ProcMacroPaths) {
@@ -26,16 +26,18 @@ fn load_cargo_with_overrides(
     let manifest_path =
         ManifestPath::try_from(AbsPathBuf::try_from(meta.workspace_root.clone()).unwrap()).unwrap();
     let cargo_workspace = CargoWorkspace::new(meta, manifest_path);
-    let project_workspace = ProjectWorkspace::Cargo {
-        cargo: cargo_workspace,
-        build_scripts: WorkspaceBuildScripts::default(),
-        sysroot: Err(None),
-        rustc: Err(None),
-        rustc_cfg: Vec::new(),
+    let project_workspace = ProjectWorkspace {
+        kind: ProjectWorkspaceKind::Cargo {
+            cargo: cargo_workspace,
+            build_scripts: WorkspaceBuildScripts::default(),
+            rustc: Err(None),
+            cargo_config_extra_env: Default::default(),
+        },
         cfg_overrides,
+        sysroot: Err(None),
+        rustc_cfg: Vec::new(),
         toolchain: None,
         target_layout: Err("target_data_layout not loaded".into()),
-        cargo_config_extra_env: Default::default(),
     };
     to_crate_graph(project_workspace)
 }
@@ -48,16 +50,18 @@ fn load_cargo_with_fake_sysroot(
     let manifest_path =
         ManifestPath::try_from(AbsPathBuf::try_from(meta.workspace_root.clone()).unwrap()).unwrap();
     let cargo_workspace = CargoWorkspace::new(meta, manifest_path);
-    let project_workspace = ProjectWorkspace::Cargo {
-        cargo: cargo_workspace,
-        build_scripts: WorkspaceBuildScripts::default(),
+    let project_workspace = ProjectWorkspace {
+        kind: ProjectWorkspaceKind::Cargo {
+            cargo: cargo_workspace,
+            build_scripts: WorkspaceBuildScripts::default(),
+            rustc: Err(None),
+            cargo_config_extra_env: Default::default(),
+        },
         sysroot: Ok(get_fake_sysroot()),
-        rustc: Err(None),
         rustc_cfg: Vec::new(),
         cfg_overrides: Default::default(),
         toolchain: None,
         target_layout: Err("target_data_layout not loaded".into()),
-        cargo_config_extra_env: Default::default(),
     };
     project_workspace.to_crate_graph(
         &mut {
@@ -74,8 +78,8 @@ fn load_rust_project(file: &str) -> (CrateGraph, ProcMacroPaths) {
     let data = get_test_json_file(file);
     let project = rooted_project_json(data);
     let sysroot = Ok(get_fake_sysroot());
-    let project_workspace = ProjectWorkspace::Json {
-        project,
+    let project_workspace = ProjectWorkspace {
+        kind: ProjectWorkspaceKind::Json(project),
         sysroot,
         rustc_cfg: Vec::new(),
         toolchain: None,
@@ -284,16 +288,18 @@ fn smoke_test_real_sysroot_cargo() {
     )
     .unwrap());
 
-    let project_workspace = ProjectWorkspace::Cargo {
-        cargo: cargo_workspace,
-        build_scripts: WorkspaceBuildScripts::default(),
+    let project_workspace = ProjectWorkspace {
+        kind: ProjectWorkspaceKind::Cargo {
+            cargo: cargo_workspace,
+            build_scripts: WorkspaceBuildScripts::default(),
+            rustc: Err(None),
+            cargo_config_extra_env: Default::default(),
+        },
         sysroot,
-        rustc: Err(None),
         rustc_cfg: Vec::new(),
         cfg_overrides: Default::default(),
         toolchain: None,
         target_layout: Err("target_data_layout not loaded".into()),
-        cargo_config_extra_env: Default::default(),
     };
     project_workspace.to_crate_graph(
         &mut {

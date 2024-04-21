@@ -27,7 +27,7 @@ use lsp_types::{
     SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use paths::Utf8PathBuf;
-use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
+use project_model::{ManifestPath, ProjectWorkspaceKind, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
@@ -99,10 +99,7 @@ pub(crate) fn handle_analyzer_status(
         format_to!(
             buf,
             "Workspace root folders: {:?}",
-            snap.workspaces
-                .iter()
-                .map(|ws| ws.workspace_definition_path())
-                .collect::<Vec<&AbsPath>>()
+            snap.workspaces.iter().map(|ws| ws.manifest_or_root()).collect::<Vec<&AbsPath>>()
         );
     }
     buf.push_str("\nAnalysis:\n");
@@ -228,7 +225,7 @@ pub(crate) fn handle_run_test(
     };
     let mut handles = vec![];
     for ws in &*state.workspaces {
-        if let ProjectWorkspace::Cargo { cargo, .. } = ws {
+        if let ProjectWorkspaceKind::Cargo { cargo, .. } = &ws.kind {
             let handle = flycheck::CargoTestHandle::new(
                 test_path,
                 state.config.cargo_test_options(),
@@ -769,8 +766,11 @@ pub(crate) fn handle_parent_module(
             let links: Vec<LocationLink> = snap
                 .workspaces
                 .iter()
-                .filter_map(|ws| match ws {
-                    ProjectWorkspace::Cargo { cargo, .. } => cargo.parent_manifests(&manifest_path),
+                .filter_map(|ws| match &ws.kind {
+                    ProjectWorkspaceKind::Cargo { cargo, .. }
+                    | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
+                        cargo.parent_manifests(&manifest_path)
+                    }
                     _ => None,
                 })
                 .flatten()
@@ -1758,13 +1758,13 @@ pub(crate) fn handle_open_docs(
     let _p = tracing::span!(tracing::Level::INFO, "handle_open_docs").entered();
     let position = from_proto::file_position(&snap, params)?;
 
-    let ws_and_sysroot = snap.workspaces.iter().find_map(|ws| match ws {
-        ProjectWorkspace::Cargo { cargo, sysroot, .. }
-        | ProjectWorkspace::DetachedFile { cargo_script: Some((cargo, _)), sysroot, .. } => {
-            Some((cargo, sysroot.as_ref().ok()))
+    let ws_and_sysroot = snap.workspaces.iter().find_map(|ws| match &ws.kind {
+        ProjectWorkspaceKind::Cargo { cargo, .. }
+        | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
+            Some((cargo, ws.sysroot.as_ref().ok()))
         }
-        ProjectWorkspace::Json { .. } => None,
-        ProjectWorkspace::DetachedFile { .. } => None,
+        ProjectWorkspaceKind::Json { .. } => None,
+        ProjectWorkspaceKind::DetachedFile { .. } => None,
     });
 
     let (cargo, sysroot) = match ws_and_sysroot {

@@ -19,7 +19,8 @@ use parking_lot::{
 };
 use proc_macro_api::ProcMacroServer;
 use project_model::{
-    CargoWorkspace, ManifestPath, ProjectWorkspace, Target, WorkspaceBuildScripts,
+    CargoWorkspace, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, Target,
+    WorkspaceBuildScripts,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use triomphe::Arc;
@@ -518,12 +519,13 @@ impl GlobalStateSnapshot {
         let file_id = self.analysis.crate_root(crate_id).ok()?;
         let path = self.vfs_read().file_path(file_id).clone();
         let path = path.as_path()?;
-        self.workspaces.iter().find_map(|ws| match ws {
-            ProjectWorkspace::Cargo { cargo, .. } => {
+        self.workspaces.iter().find_map(|ws| match &ws.kind {
+            ProjectWorkspaceKind::Cargo { cargo, .. }
+            | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
                 cargo.target_by_root(path).map(|it| (cargo, it))
             }
-            ProjectWorkspace::Json { .. } => None,
-            ProjectWorkspace::DetachedFile { .. } => None,
+            ProjectWorkspaceKind::Json { .. } => None,
+            ProjectWorkspaceKind::DetachedFile { .. } => None,
         })
     }
 

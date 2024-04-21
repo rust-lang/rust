@@ -125,8 +125,10 @@ impl FlycheckHandle {
         config: FlycheckConfig,
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
+        manifest_path: Option<AbsPathBuf>,
     ) -> FlycheckHandle {
-        let actor = FlycheckActor::new(id, sender, config, sysroot_root, workspace_root);
+        let actor =
+            FlycheckActor::new(id, sender, config, sysroot_root, workspace_root, manifest_path);
         let (sender, receiver) = unbounded::<StateChange>();
         let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
             .name("Flycheck".to_owned())
@@ -205,6 +207,7 @@ struct FlycheckActor {
     id: usize,
     sender: Box<dyn Fn(Message) + Send>,
     config: FlycheckConfig,
+    manifest_path: Option<AbsPathBuf>,
     /// Either the workspace root of the workspace we are flychecking,
     /// or the project root of the project.
     root: AbsPathBuf,
@@ -233,6 +236,7 @@ impl FlycheckActor {
         config: FlycheckConfig,
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
+        manifest_path: Option<AbsPathBuf>,
     ) -> FlycheckActor {
         tracing::info!(%id, ?workspace_root, "Spawning flycheck");
         FlycheckActor {
@@ -241,6 +245,7 @@ impl FlycheckActor {
             config,
             sysroot_root,
             root: workspace_root,
+            manifest_path,
             command_handle: None,
             command_receiver: None,
         }
@@ -388,8 +393,13 @@ impl FlycheckActor {
                     "--message-format=json"
                 });
 
-                cmd.arg("--manifest-path");
-                cmd.arg(self.root.join("Cargo.toml"));
+                if let Some(manifest_path) = &self.manifest_path {
+                    cmd.arg("--manifest-path");
+                    cmd.arg(manifest_path);
+                    if manifest_path.extension().map_or(false, |ext| ext == "rs") {
+                        cmd.arg("-Zscript");
+                    }
+                }
 
                 options.apply_on_command(&mut cmd);
                 (cmd, options.extra_args.clone())

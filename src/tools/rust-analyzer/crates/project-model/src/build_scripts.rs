@@ -116,7 +116,7 @@ impl WorkspaceBuildScripts {
                     }
                 }
 
-                if manifest_path.extension().map_or(false, |ext| ext == "rs") {
+                if manifest_path.is_rust_manifest() {
                     cmd.arg("-Zscript");
                 }
 
