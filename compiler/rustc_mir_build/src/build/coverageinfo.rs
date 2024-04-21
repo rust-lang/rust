@@ -7,13 +7,13 @@ use rustc_middle::mir::coverage::{
     BlockMarkerId, BranchSpan, ConditionId, ConditionInfo, CoverageKind, MCDCBranchSpan,
     MCDCDecisionSpan,
 };
-use rustc_middle::mir::{self, BasicBlock, UnOp};
+use rustc_middle::mir::{self, BasicBlock, SourceInfo, UnOp};
 use rustc_middle::thir::{ExprId, ExprKind, LogicalOp, Thir};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 
-use crate::build::Builder;
+use crate::build::{Builder, CFG};
 use crate::errors::MCDCExceedsConditionNumLimit;
 
 pub(crate) struct BranchInfoBuilder {
@@ -134,9 +134,39 @@ impl BranchInfoBuilder {
         condition_info
     }
 
+    fn add_two_way_branch<'tcx>(
+        &mut self,
+        cfg: &mut CFG<'tcx>,
+        source_info: SourceInfo,
+        true_block: BasicBlock,
+        false_block: BasicBlock,
+    ) {
+        let true_marker = self.inject_block_marker(cfg, source_info, true_block);
+        let false_marker = self.inject_block_marker(cfg, source_info, false_block);
+
+        self.branch_spans.push(BranchSpan { span: source_info.span, true_marker, false_marker });
+    }
+
     fn next_block_marker_id(&mut self) -> BlockMarkerId {
         let id = BlockMarkerId::from_usize(self.num_block_markers);
         self.num_block_markers += 1;
+        id
+    }
+
+    fn inject_block_marker(
+        &mut self,
+        cfg: &mut CFG<'_>,
+        source_info: SourceInfo,
+        block: BasicBlock,
+    ) -> BlockMarkerId {
+        let id = self.next_block_marker_id();
+
+        let marker_statement = mir::Statement {
+            source_info,
+            kind: mir::StatementKind::Coverage(CoverageKind::BlockMarker { id }),
+        };
+        cfg.push(block, marker_statement);
+
         id
     }
 
@@ -315,7 +345,7 @@ impl Builder<'_, '_> {
         mut else_block: BasicBlock,
     ) {
         // Bail out if branch coverage is not enabled for this function.
-        let Some(branch_info) = self.coverage_branch_info.as_ref() else { return };
+        let Some(branch_info) = self.coverage_branch_info.as_mut() else { return };
 
         // If this condition expression is nested within one or more `!` expressions,
         // replace it with the enclosing `!` collected by `visit_unary_not`.
@@ -325,27 +355,15 @@ impl Builder<'_, '_> {
                 std::mem::swap(&mut then_block, &mut else_block);
             }
         }
-        let source_info = self.source_info(self.thir[expr_id].span);
 
-        // Now that we have `source_info`, we can upgrade to a &mut reference.
-        let branch_info = self.coverage_branch_info.as_mut().expect("upgrading & to &mut");
+        let source_info = SourceInfo { span: self.thir[expr_id].span, scope: self.source_scope };
 
-        let mut inject_branch_marker = |block: BasicBlock| {
-            let id = branch_info.next_block_marker_id();
-
-            let marker_statement = mir::Statement {
-                source_info,
-                kind: mir::StatementKind::Coverage(CoverageKind::BlockMarker { id }),
-            };
-            self.cfg.push(block, marker_statement);
-
-            id
-        };
-
-        let true_marker = inject_branch_marker(then_block);
-        let false_marker = inject_branch_marker(else_block);
-
+        // Separate path for handling branches when MC/DC is enabled.
         if branch_info.mcdc_state.is_some() {
+            let mut inject_block_marker =
+                |block| branch_info.inject_block_marker(&mut self.cfg, source_info, block);
+            let true_marker = inject_block_marker(then_block);
+            let false_marker = inject_block_marker(else_block);
             let condition_info =
                 branch_info.fetch_mcdc_condition_info(self.tcx, true_marker, false_marker);
             branch_info.mcdc_branch_spans.push(MCDCBranchSpan {
@@ -357,11 +375,7 @@ impl Builder<'_, '_> {
             return;
         }
 
-        branch_info.branch_spans.push(BranchSpan {
-            span: source_info.span,
-            true_marker,
-            false_marker,
-        });
+        branch_info.add_two_way_branch(&mut self.cfg, source_info, then_block, else_block);
     }
 
     pub(crate) fn visit_coverage_branch_operation(&mut self, logical_op: LogicalOp, span: Span) {
