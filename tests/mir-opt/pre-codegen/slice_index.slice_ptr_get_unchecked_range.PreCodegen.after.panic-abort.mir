@@ -7,42 +7,25 @@ fn slice_ptr_get_unchecked_range(_1: *const [u32], _2: std::ops::Range<usize>) -
     let mut _3: usize;
     let mut _4: usize;
     scope 1 (inlined std::ptr::const_ptr::<impl *const [u32]>::get_unchecked::<std::ops::Range<usize>>) {
-        debug self => _1;
-        debug ((index: std::ops::Range<usize>).0: usize) => _3;
-        debug ((index: std::ops::Range<usize>).1: usize) => _4;
         scope 2 (inlined <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked) {
-            debug ((self: std::ops::Range<usize>).0: usize) => _3;
-            debug ((self: std::ops::Range<usize>).1: usize) => _4;
-            debug slice => _1;
             let _5: usize;
             let mut _6: *const u32;
             let mut _7: *const u32;
             scope 3 {
-                debug new_len => _5;
                 scope 6 (inlined std::ptr::const_ptr::<impl *const [u32]>::as_ptr) {
-                    debug self => _1;
                 }
                 scope 7 (inlined std::ptr::const_ptr::<impl *const u32>::add) {
-                    debug self => _6;
-                    debug count => _3;
                 }
                 scope 8 (inlined slice_from_raw_parts::<u32>) {
-                    debug data => _7;
-                    debug len => _5;
                     let mut _8: *const ();
                     scope 9 (inlined std::ptr::const_ptr::<impl *const u32>::cast::<()>) {
-                        debug self => _7;
                     }
                     scope 10 (inlined std::ptr::from_raw_parts::<[u32]>) {
-                        debug data_pointer => _8;
-                        debug metadata => _5;
                     }
                 }
             }
             scope 4 (inlined std::ptr::const_ptr::<impl *const [u32]>::len) {
-                debug self => _1;
                 scope 5 (inlined std::ptr::metadata::<[u32]>) {
-                    debug ptr => _1;
                 }
             }
         }
