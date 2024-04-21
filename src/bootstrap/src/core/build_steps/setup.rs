@@ -31,6 +31,8 @@ pub enum Profile {
     None,
 }
 
+static PROFILE_DIR: &str = "src/bootstrap/defaults";
+
 /// A list of historical hashes of `src/etc/rust_analyzer_settings.json`.
 /// New entries should be appended whenever this is updated so we can detect
 /// outdated vs. user-modified settings files.
@@ -47,7 +49,7 @@ static RUST_ANALYZER_SETTINGS: &str = include_str!("../../../../etc/rust_analyze
 
 impl Profile {
     fn include_path(&self, src_path: &Path) -> PathBuf {
-        PathBuf::from(format!("{}/src/bootstrap/defaults/config.{}.toml", src_path.display(), self))
+        PathBuf::from(format!("{}/{PROFILE_DIR}/config.{}.toml", src_path.display(), self))
     }
 
     pub fn all() -> impl Iterator<Item = Self> {
@@ -227,7 +229,7 @@ fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
 
     let latest_change_id = CONFIG_CHANGE_HISTORY.last().unwrap().change_id;
     let settings = format!(
-        "# Includes one of the default files in src/bootstrap/defaults\n\
+        "# Includes one of the default files in {PROFILE_DIR}\n\
     profile = \"{profile}\"\n\
     change-id = {latest_change_id}\n"
     );
