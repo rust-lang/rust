@@ -521,7 +521,7 @@ impl GlobalStateSnapshot {
         let path = path.as_path()?;
         self.workspaces.iter().find_map(|ws| match &ws.kind {
             ProjectWorkspaceKind::Cargo { cargo, .. }
-            | ProjectWorkspaceKind::DetachedFile { cargo_script: Some((cargo, _)), .. } => {
+            | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
                 cargo.target_by_root(path).map(|it| (cargo, it))
             }
             ProjectWorkspaceKind::Json { .. } => None,

@@ -502,7 +502,7 @@ impl GlobalState {
                 let env = match &ws.kind {
                     ProjectWorkspaceKind::Cargo { cargo_config_extra_env, .. }
                     | ProjectWorkspaceKind::DetachedFile {
-                        cargo_script: Some(_),
+                        cargo: Some(_),
                         cargo_config_extra_env,
                         ..
                     } => cargo_config_extra_env
@@ -669,36 +669,37 @@ impl GlobalState {
                 config,
                 None,
                 self.config.root_path().clone(),
+                None,
             )],
             flycheck::InvocationStrategy::PerWorkspace => {
                 self.workspaces
                     .iter()
                     .enumerate()
-                    .filter_map(|(id, ws)| match &ws.kind {
-                        ProjectWorkspaceKind::Cargo { cargo, .. } => Some((
+                    .filter_map(|(id, ws)| {
+                        Some((
                             id,
-                            cargo.workspace_root(),
+                            match &ws.kind {
+                                ProjectWorkspaceKind::Cargo { cargo, .. }
+                                | ProjectWorkspaceKind::DetachedFile {
+                                    cargo: Some((cargo, _)),
+                                    ..
+                                } => (cargo.workspace_root(), Some(cargo.manifest_path())),
+                                ProjectWorkspaceKind::Json(project) => {
+                                    // Enable flychecks for json projects if a custom flycheck command was supplied
+                                    // in the workspace configuration.
+                                    match config {
+                                        FlycheckConfig::CustomCommand { .. } => {
+                                            (project.path(), None)
+                                        }
+                                        _ => return None,
+                                    }
+                                }
+                                ProjectWorkspaceKind::DetachedFile { .. } => return None,
+                            },
                             ws.sysroot.as_ref().ok().map(|sysroot| sysroot.root().to_owned()),
-                        )),
-                        ProjectWorkspaceKind::Json(project) => {
-                            // Enable flychecks for json projects if a custom flycheck command was supplied
-                            // in the workspace configuration.
-                            match config {
-                                FlycheckConfig::CustomCommand { .. } => Some((
-                                    id,
-                                    project.path(),
-                                    ws.sysroot
-                                        .as_ref()
-                                        .ok()
-                                        .map(|sysroot| sysroot.root().to_owned()),
-                                )),
-                                _ => None,
-                            }
-                        }
-                        // FIXME
-                        ProjectWorkspaceKind::DetachedFile { .. } => None,
+                        ))
                     })
-                    .map(|(id, root, sysroot_root)| {
+                    .map(|(id, (root, manifest_path), sysroot_root)| {
                         let sender = sender.clone();
                         FlycheckHandle::spawn(
                             id,
@@ -706,6 +707,7 @@ impl GlobalState {
                             config.clone(),
                             sysroot_root,
                             root.to_path_buf(),
+                            manifest_path.map(|it| it.to_path_buf()),
                         )
                     })
                     .collect()

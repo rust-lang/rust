@@ -81,7 +81,7 @@ impl Tester {
         let workspace = ProjectWorkspace {
             kind: ProjectWorkspaceKind::DetachedFile {
                 file: ManifestPath::try_from(tmp_file).unwrap(),
-                cargo_script: None,
+                cargo: None,
                 cargo_config_extra_env: Default::default(),
             },
             sysroot,

@@ -292,7 +292,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 let package = match &ws.kind {
                     project_model::ProjectWorkspaceKind::Cargo { cargo, .. }
                     | project_model::ProjectWorkspaceKind::DetachedFile {
-                        cargo_script: Some((cargo, _)),
+                        cargo: Some((cargo, _)),
                         ..
                     } => cargo.packages().find_map(|pkg| {
                         let has_target_with_root = cargo[pkg]

@@ -91,7 +91,7 @@ pub enum ProjectWorkspaceKind {
         /// The file in question.
         file: ManifestPath,
         /// Is this file a cargo script file?
-        cargo_script: Option<(CargoWorkspace, WorkspaceBuildScripts)>,
+        cargo: Option<(CargoWorkspace, WorkspaceBuildScripts)>,
         /// Environment variables set in the `.cargo/config` file.
         cargo_config_extra_env: FxHashMap<String, String>,
     },
@@ -135,7 +135,11 @@ impl fmt::Debug for ProjectWorkspace {
                     .field("n_cfg_overrides", &cfg_overrides.len());
                 debug_struct.finish()
             }
-            ProjectWorkspaceKind::DetachedFile { file, cargo_script, cargo_config_extra_env } => f
+            ProjectWorkspaceKind::DetachedFile {
+                file,
+                cargo: cargo_script,
+                cargo_config_extra_env,
+            } => f
                 .debug_struct("DetachedFiles")
                 .field("file", &file)
                 .field("cargo_script", &cargo_script.is_some())
@@ -451,7 +455,7 @@ impl ProjectWorkspace {
         Ok(ProjectWorkspace {
             kind: ProjectWorkspaceKind::DetachedFile {
                 file: detached_file.to_owned(),
-                cargo_script,
+                cargo: cargo_script,
                 cargo_config_extra_env,
             },
             sysroot,
@@ -476,7 +480,7 @@ impl ProjectWorkspace {
         progress: &dyn Fn(String),
     ) -> anyhow::Result<WorkspaceBuildScripts> {
         match &self.kind {
-            ProjectWorkspaceKind::DetachedFile { cargo_script: Some((cargo, _)), .. }
+            ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. }
             | ProjectWorkspaceKind::Cargo { cargo, .. } => {
                 WorkspaceBuildScripts::run_for_workspace(
                     config,
@@ -489,7 +493,7 @@ impl ProjectWorkspace {
                     format!("Failed to run build scripts for {}", cargo.workspace_root())
                 })
             }
-            ProjectWorkspaceKind::DetachedFile { cargo_script: None, .. }
+            ProjectWorkspaceKind::DetachedFile { cargo: None, .. }
             | ProjectWorkspaceKind::Json { .. } => Ok(WorkspaceBuildScripts::default()),
         }
     }
@@ -540,9 +544,9 @@ impl ProjectWorkspace {
     pub fn set_build_scripts(&mut self, bs: WorkspaceBuildScripts) {
         match &mut self.kind {
             ProjectWorkspaceKind::Cargo { build_scripts, .. }
-            | ProjectWorkspaceKind::DetachedFile {
-                cargo_script: Some((_, build_scripts)), ..
-            } => *build_scripts = bs,
+            | ProjectWorkspaceKind::DetachedFile { cargo: Some((_, build_scripts)), .. } => {
+                *build_scripts = bs
+            }
             _ => assert_eq!(bs, WorkspaceBuildScripts::default()),
         }
     }
@@ -674,7 +678,7 @@ impl ProjectWorkspace {
                     }))
                     .collect()
             }
-            ProjectWorkspaceKind::DetachedFile { file, cargo_script, .. } => {
+            ProjectWorkspaceKind::DetachedFile { file, cargo: cargo_script, .. } => {
                 iter::once(PackageRoot {
                     is_local: true,
                     include: vec![file.as_ref().to_owned()],
@@ -736,7 +740,7 @@ impl ProjectWorkspace {
                 let sysroot_package_len = self.sysroot.as_ref().map_or(0, |it| it.num_packages());
                 cargo.packages().len() + sysroot_package_len + rustc_package_len
             }
-            ProjectWorkspaceKind::DetachedFile { cargo_script, .. } => {
+            ProjectWorkspaceKind::DetachedFile { cargo: cargo_script, .. } => {
                 let sysroot_package_len = self.sysroot.as_ref().map_or(0, |it| it.num_packages());
                 sysroot_package_len
                     + cargo_script.as_ref().map_or(1, |(cargo, _)| cargo.packages().len())
@@ -781,7 +785,7 @@ impl ProjectWorkspace {
                 ),
                 sysroot,
             ),
-            ProjectWorkspaceKind::DetachedFile { file, cargo_script, .. } => (
+            ProjectWorkspaceKind::DetachedFile { file, cargo: cargo_script, .. } => (
                 if let Some((cargo, build_scripts)) = cargo_script {
                     cargo_to_crate_graph(
                         &mut |path| load(path),
@@ -851,12 +855,12 @@ impl ProjectWorkspace {
             (
                 ProjectWorkspaceKind::DetachedFile {
                     file,
-                    cargo_script: Some((cargo_script, _)),
+                    cargo: Some((cargo_script, _)),
                     cargo_config_extra_env,
                 },
                 ProjectWorkspaceKind::DetachedFile {
                     file: o_file,
-                    cargo_script: Some((o_cargo_script, _)),
+                    cargo: Some((o_cargo_script, _)),
                     cargo_config_extra_env: o_cargo_config_extra_env,
                 },
             ) => {
