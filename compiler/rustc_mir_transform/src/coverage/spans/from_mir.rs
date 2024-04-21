@@ -13,7 +13,7 @@ use rustc_span::{ExpnKind, MacroKind, Span, Symbol};
 use crate::coverage::graph::{
     BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB,
 };
-use crate::coverage::spans::{BcbMapping, BcbMappingKind};
+use crate::coverage::spans::{BcbBranchPair, BcbMapping, BcbMappingKind};
 use crate::coverage::ExtractedHirInfo;
 
 /// Traverses the MIR body to produce an initial collection of coverage-relevant
@@ -388,16 +388,16 @@ fn resolve_block_markers(
 }
 
 // FIXME: There is currently a lot of redundancy between
-// `extract_branch_mappings` and `extract_mcdc_mappings`. This is needed so
+// `extract_branch_pairs` and `extract_mcdc_mappings`. This is needed so
 // that they can each be modified without interfering with the other, but in
 // the long term we should try to bring them together again when branch coverage
 // and MC/DC coverage support are more mature.
 
-pub(super) fn extract_branch_mappings(
+pub(super) fn extract_branch_pairs(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
-) -> Vec<BcbMapping> {
+) -> Vec<BcbBranchPair> {
     let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else { return vec![] };
 
     let block_markers = resolve_block_markers(branch_info, mir_body);
@@ -420,7 +420,7 @@ pub(super) fn extract_branch_mappings(
             let true_bcb = bcb_from_marker(true_marker)?;
             let false_bcb = bcb_from_marker(false_marker)?;
 
-            Some(BcbMapping { kind: BcbMappingKind::Branch { true_bcb, false_bcb }, span })
+            Some(BcbBranchPair { span, true_bcb, false_bcb })
         })
         .collect::<Vec<_>>()
 }
