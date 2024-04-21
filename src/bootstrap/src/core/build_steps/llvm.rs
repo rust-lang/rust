@@ -42,6 +42,20 @@ pub struct Meta {
     root: String,
 }
 
+pub enum LlvmBuildStatus {
+    AlreadyBuilt(LlvmResult),
+    ShouldBuild(Meta),
+}
+
+impl LlvmBuildStatus {
+    pub fn should_build(&self) -> bool {
+        match self {
+            LlvmBuildStatus::AlreadyBuilt(_) => false,
+            LlvmBuildStatus::ShouldBuild(_) => true,
+        }
+    }
+}
+
 // Linker flags to pass to LLVM's CMake invocation.
 #[derive(Debug, Clone, Default)]
 struct LdFlags {
@@ -72,10 +86,7 @@ impl LdFlags {
 ///
 /// This will return the llvm-config if it can get it (but it will not build it
 /// if not).
-pub fn prebuilt_llvm_config(
-    builder: &Builder<'_>,
-    target: TargetSelection,
-) -> Result<LlvmResult, Meta> {
+pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> LlvmBuildStatus {
     // If we have llvm submodule initialized already, sync it.
     builder.update_existing_submodule(&Path::new("src").join("llvm-project"));
 
@@ -93,7 +104,7 @@ pub fn prebuilt_llvm_config(
             llvm_cmake_dir.push("lib");
             llvm_cmake_dir.push("cmake");
             llvm_cmake_dir.push("llvm");
-            return Ok(LlvmResult { llvm_config, llvm_cmake_dir });
+            return LlvmBuildStatus::AlreadyBuilt(LlvmResult { llvm_config, llvm_cmake_dir });
         }
     }
 
@@ -131,10 +142,10 @@ pub fn prebuilt_llvm_config(
                 stamp.path.display()
             ));
         }
-        return Ok(res);
+        return LlvmBuildStatus::AlreadyBuilt(res);
     }
 
-    Err(Meta { stamp, res, out_dir, root: root.into() })
+    LlvmBuildStatus::ShouldBuild(Meta { stamp, res, out_dir, root: root.into() })
 }
 
 /// This retrieves the LLVM sha we *want* to use, according to git history.
@@ -282,8 +293,8 @@ impl Step for Llvm {
 
         // If LLVM has already been built or been downloaded through download-ci-llvm, we avoid building it again.
         let Meta { stamp, res, out_dir, root } = match prebuilt_llvm_config(builder, target) {
-            Ok(p) => return p,
-            Err(m) => m,
+            LlvmBuildStatus::AlreadyBuilt(p) => return p,
+            LlvmBuildStatus::ShouldBuild(m) => m,
         };
 
         if builder.llvm_link_shared() && target.is_windows() {

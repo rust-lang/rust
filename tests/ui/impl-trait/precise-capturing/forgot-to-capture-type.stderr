@@ -7,22 +7,23 @@ LL | #![feature(precise_capturing)]
    = note: see issue #123432 <https://github.com/rust-lang/rust/issues/123432> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: `impl Trait` must mention all type parameters in scope
-  --> $DIR/forgot-to-capture-type.rs:4:15
+error: `impl Trait` must mention all type parameters in scope in `use<...>`
+  --> $DIR/forgot-to-capture-type.rs:4:23
    |
 LL | fn type_param<T>() -> impl use<> Sized {}
-   |               ^       ---------------- type parameter is implicitly captured by this `impl Trait`
+   |               -       ^^^^^^^^^^^^^^^^
+   |               |
+   |               type parameter is implicitly captured by this `impl Trait`
    |
    = note: currently, all type parameters are required to be mentioned in the precise captures list
 
-error: `impl Trait` must mention all type parameters in scope
-  --> $DIR/forgot-to-capture-type.rs:7:1
+error: `impl Trait` must mention the `Self` type of the trait in `use<...>`
+  --> $DIR/forgot-to-capture-type.rs:8:17
    |
 LL | trait Foo {
-   | ^^^^^^^^^
-LL |
+   | --------- `Self` type parameter is implicitly captured by this `impl Trait`
 LL |     fn bar() -> impl use<> Sized;
-   |                 ---------------- type parameter is implicitly captured by this `impl Trait`
+   |                 ^^^^^^^^^^^^^^^^
    |
    = note: currently, all type parameters are required to be mentioned in the precise captures list
 
