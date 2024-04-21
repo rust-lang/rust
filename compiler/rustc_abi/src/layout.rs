@@ -2,6 +2,7 @@ use std::borrow::{Borrow, Cow};
 use std::cmp;
 use std::fmt::{self, Write};
 use std::iter;
+use std::num::NonZero;
 use std::ops::Bound;
 use std::ops::Deref;
 
@@ -10,8 +11,8 @@ use tracing::debug;
 
 use crate::{
     Abi, AbiAndPrefAlign, Align, FieldsShape, IndexSlice, IndexVec, Integer, LayoutS, Niche,
-    NonZeroUsize, Primitive, ReprOptions, Scalar, Size, StructKind, TagEncoding, TargetDataLayout,
-    Variants, WrappingRange,
+    Primitive, ReprOptions, Scalar, Size, StructKind, TagEncoding, TargetDataLayout, Variants,
+    WrappingRange,
 };
 
 // A variant is absent if it's uninhabited and only has ZST fields.
@@ -327,7 +328,7 @@ pub trait LayoutCalculator {
 
         Some(LayoutS {
             variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldsShape::Union(NonZeroUsize::new(only_variant.len())?),
+            fields: FieldsShape::Union(NonZero::new(only_variant.len())?),
             abi,
             largest_niche: None,
             align,
