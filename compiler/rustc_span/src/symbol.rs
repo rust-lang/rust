@@ -361,6 +361,7 @@ symbols! {
         adt_const_params,
         advanced_slice_patterns,
         adx_target_feature,
+        aggregate_raw_ptr,
         alias,
         align,
         align_offset,
