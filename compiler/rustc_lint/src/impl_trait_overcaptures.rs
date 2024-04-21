@@ -9,31 +9,89 @@ use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_session::lint::FutureIncompatibilityReason;
-use rustc_span::edition::Edition;
-use rustc_span::{BytePos, Span};
+use rustc_middle::{bug, span_bug};
+use rustc_session::{declare_lint, declare_lint_pass};
+use rustc_span::{sym, BytePos, Span};
 
 use crate::fluent_generated as fluent;
 use crate::{LateContext, LateLintPass};
 
-// TODO: feature gate these too
-
 declare_lint! {
-    /// UwU
+    /// The `impl_trait_overcaptures` lint warns against cases where lifetime
+    /// capture behavior will differ in edition 2024.
+    ///
+    /// In the 2024 edition, `impl Trait`s will capture all lifetimes in scope,
+    /// rather than just the lifetimes that are mentioned in the bounds of the type.
+    /// Often these sets are equal, but if not, it means that the `impl Trait` may
+    /// cause erroneous borrow-checker errors.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// # #![feature(precise_capturing)]
+    /// # #![allow(incomplete_features)]
+    /// # #![deny(impl_trait_overcaptures)]
+    /// # use std::fmt::Display;
+    /// let mut x = vec![];
+    /// x.push(1);
+    ///
+    /// fn test(x: &Vec<i32>) -> impl Display {
+    ///     x[0]
+    /// }
+    ///
+    /// let element = test(&x);
+    /// x.push(2);
+    /// println!("{element}");
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In edition < 2024, the returned `impl Display` doesn't capture the
+    /// lifetime from the `&Vec<i32>`, so the vector can be mutably borrowed
+    /// while the `impl Display` is live.
+    ///
+    /// To fix this, we can explicitly state that the `impl Display` doesn't
+    /// capture any lifetimes, using `impl use<> Display`.
     pub IMPL_TRAIT_OVERCAPTURES,
     Allow,
-    "will capture more lifetimes than possibly intended in edition 2024",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>",
-    };
+    "`impl Trait` will capture more lifetimes than possibly intended in edition 2024",
+    @feature_gate = sym::precise_capturing;
+    //@future_incompatible = FutureIncompatibleInfo {
+    //    reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
+    //    reference: "<FIXME>",
+    //};
 }
 
 declare_lint! {
-    /// UwU
+    /// The `impl_trait_redundant_captures` lint warns against cases where use of the
+    /// precise capturing `use<...>` syntax is not needed.
+    ///
+    /// In the 2024 edition, `impl Trait`s will capture all lifetimes in scope.
+    /// If precise-capturing `use<...>` syntax is used, and the set of parameters
+    /// that are captures are *equal* to the set of parameters in scope, then
+    /// the syntax is redundant, and can be removed.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// # #![feature(precise_capturing, lifetime_capture_rules_2024)]
+    /// # #![allow(incomplete_features)]
+    /// # #![deny(impl_trait_redundant_captures)]
+    /// fn test<'a>(x: &'a i32) -> impl use<'a> Sized { x }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// To fix this, remove the `use<'a>`, since the lifetime is already captured
+    /// since it is in scope.
     pub IMPL_TRAIT_REDUNDANT_CAPTURES,
     Warn,
-    "uwu 2"
+    "redundant precise-capturing `use<...>` syntax on an `impl Trait`",
+    @feature_gate = sym::precise_capturing;
 }
 
 declare_lint_pass!(
@@ -106,7 +164,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
         for arg in t.bound_vars() {
             let arg: ty::BoundVariableKind = arg;
             match arg {
-                ty::BoundVariableKind::Region(ty::BoundRegionKind::BrNamed(def_id, ..)) => {
+                ty::BoundVariableKind::Region(ty::BoundRegionKind::BrNamed(def_id, ..))
+                | ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, _)) => {
                     added.push(def_id);
                     let unique = self.in_scope_parameters.insert(def_id);
                     assert!(unique);
@@ -265,7 +324,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
                         }
                         _ => {
                             self.tcx.dcx().span_delayed_bug(
-                                self.tcx().hir().span(arg.hir_id()),
+                                self.tcx.hir().span(arg.hir_id()),
                                 "no valid for captured arg",
                             );
                         }
