@@ -229,12 +229,22 @@ Release steps:
      * publishes the VS Code extension to the marketplace
    * call the GitHub API for PR details
    * create a new changelog in `rust-analyzer.github.io`
-3. While the release is in progress, fill in the changelog
-4. Commit & push the changelog
+3. While the release is in progress, fill in the changelog.
+4. Commit & push the changelog.
 5. Run `cargo xtask publish-release-notes <CHANGELOG>` -- this will convert the changelog entry in AsciiDoc to Markdown and update the body of GitHub Releases entry.
-6. Tweet
-7. Inside `rust-analyzer`, run `cargo xtask promote` -- this will create a PR to rust-lang/rust updating rust-analyzer's subtree.
-   Self-approve the PR.
+6. Tweet.
+7. Make a new branch and run `cargo xtask rustc-pull`, open a PR, and merge it.
+   This will pull any changes from `rust-lang/rust` into `rust-analyzer`.
+8. Switch to `master`, pull, then run `cargo xtask rustc-push --rust-path ../rust-rust-analyzer --rust-fork matklad/rust`.
+   Replace `matklad/rust` with your own fork of `rust-lang/rust`.
+   You can use the token to authenticate when you get prompted for a password, since `josh` will push over HTTPS, not SSH.
+   This will push the `rust-analyzer` changes to your fork.
+   You can then open a PR against `rust-lang/rust`.
+
+Note: besides the `rust-rust-analyzer` clone, the Josh cache (stored under `~/.cache/rust-analyzer-josh`) will contain a bare clone of `rust-lang/rust`.
+This currently takes about 3.5 GB.
+
+This [HackMD](https://hackmd.io/7pOuxnkdQDaL1Y1FQr65xg) has details about how `josh` syncs work.
 
 If the GitHub Actions release fails because of a transient problem like a timeout, you can re-run the job from the Actions console.
 If it fails because of something that needs to be fixed, remove the release tag (if needed), fix the problem, then start over.
