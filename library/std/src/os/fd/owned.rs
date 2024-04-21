@@ -177,17 +177,9 @@ impl Drop for OwnedFd {
             // opened after we closed ours.
             #[cfg(not(target_os = "hermit"))]
             {
-                use crate::sys::os::errno;
-                // ideally this would use assert_unsafe_precondition!, but that's only in core
-                if cfg!(debug_assertions) {
-                    // close() can bubble up error codes from FUSE which can send semantically
-                    // inappropriate error codes including EBADF.
-                    // So we check file flags instead which live on the file descriptor and not the underlying file.
-                    // The downside is that it costs an extra syscall, so we only do it for debug.
-                    if libc::fcntl(self.fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
-                        rtabort!("IO Safety violation: owned file descriptor already closed");
-                    }
-                }
+                #[cfg(unix)]
+                crate::sys::fs::debug_assert_fd_is_open(self.fd);
+
                 let _ = libc::close(self.fd);
             }
             #[cfg(target_os = "hermit")]

@@ -868,28 +868,39 @@ impl Iterator for ReadDir {
     }
 }
 
+/// Aborts the process if a file desceriptor is not open, if debug asserts are enabled
+///
+/// Many IO syscalls can't be fully trusted about EBADF error codes because those
+/// might get bubbled up from a remote FUSE server rather than the file descriptor
+/// in the current process being invalid.
+///
+/// So we check file flags instead which live on the file descriptor and not the underlying file.
+/// The downside is that it costs an extra syscall, so we only do it for debug.
+#[inline]
+pub(crate) fn debug_assert_fd_is_open(fd: RawFd) {
+    use crate::sys::os::errno;
+
+    // this is similar to assert_unsafe_precondition!() but it doesn't require const
+    if core::ub_checks::check_library_ub() {
+        if unsafe { libc::fcntl(fd, libc::F_GETFD) } == -1 && errno() == libc::EBADF {
+            rtabort!("IO Safety violation: owned file descriptor already closed");
+        }
+    }
+}
+
 impl Drop for Dir {
     fn drop(&mut self) {
-        // ideally this would use assert_unsafe_precondition!, but that's only in core
-        #[cfg(all(
-            debug_assertions,
-            not(any(
-                target_os = "redox",
-                target_os = "nto",
-                target_os = "vita",
-                target_os = "hurd",
-            ))
-        ))]
+        // dirfd isn't supported everywhere
+        #[cfg(not(any(
+            miri,
+            target_os = "redox",
+            target_os = "nto",
+            target_os = "vita",
+            target_os = "hurd",
+        )))]
         {
-            use crate::sys::os::errno;
-            // close() can bubble up error codes from FUSE which can send semantically
-            // inappropriate error codes including EBADF.
-            // So we check file flags instead which live on the file descriptor and not the underlying file.
-            // The downside is that it costs an extra syscall, so we only do it for debug.
             let fd = unsafe { libc::dirfd(self.0) };
-            if unsafe { libc::fcntl(fd, libc::F_GETFD) } == -1 && errno() == libc::EBADF {
-                rtabort!("IO Safety violation: DIR*'s owned file descriptor already closed");
-            }
+            debug_assert_fd_is_open(fd);
         }
         let r = unsafe { libc::closedir(self.0) };
         assert!(
