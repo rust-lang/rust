@@ -66,7 +66,14 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
         // For each expression ID that is directly used by one or more mappings,
         // mark it as not-yet-seen. This indicates that we expect to see a
         // corresponding `ExpressionUsed` statement during MIR traversal.
-        for mapping in function_coverage_info.mappings.iter() {
+        for mapping in function_coverage_info
+            .mappings
+            .iter()
+            // For many-armed branches, some branch mappings will have expressions
+            // that don't correspond to any node in the control-flow graph, so don't
+            // expect to see `ExpressionUsed` statements for them.
+            .filter(|m| !matches!(m.kind, MappingKind::Branch { .. }))
+        {
             // Currently we only worry about ordinary code mappings.
             // For branch and MC/DC mappings, expressions might not correspond
             // to any particular point in the control-flow graph.
@@ -196,7 +203,11 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// Return the source hash, generated from the HIR node structure, and used to indicate whether
     /// or not the source code structure changed between different compilations.
     pub(crate) fn source_hash(&self) -> u64 {
-        if self.is_used { self.function_coverage_info.function_source_hash } else { 0 }
+        if self.is_used {
+            self.function_coverage_info.function_source_hash
+        } else {
+            0
+        }
     }
 
     /// Returns an iterator over all filenames used by this function's mappings.
@@ -240,7 +251,11 @@ impl<'tcx> FunctionCoverage<'tcx> {
     }
 
     fn counter_for_term(&self, term: CovTerm) -> Counter {
-        if self.is_zero_term(term) { Counter::ZERO } else { Counter::from_term(term) }
+        if self.is_zero_term(term) {
+            Counter::ZERO
+        } else {
+            Counter::from_term(term)
+        }
     }
 
     fn is_zero_term(&self, term: CovTerm) -> bool {

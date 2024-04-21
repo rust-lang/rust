@@ -122,7 +122,12 @@ impl CoverageCounters {
         self.set_bcb_edge_counter(from_bcb, to_bcb, counter)
     }
 
-    fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
+    pub(super) fn make_expression(
+        &mut self,
+        lhs: BcbCounter,
+        op: Op,
+        rhs: BcbCounter,
+    ) -> BcbCounter {
         let new_expr = BcbExpression { lhs, op, rhs };
         *self
             .expressions_memo
