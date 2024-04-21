@@ -59,6 +59,17 @@ pub enum AttributeType {
     CrateLevel,
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[allow(dead_code)]
+pub enum AttributeSafety {
+    /// Normal attribute that does not need `#[unsafe(...)]`
+    Normal,
+
+    /// Unsafe attribute that requires safety obligations
+    /// to be discharged
+    Unsafe,
+}
+
 #[derive(Clone, Copy)]
 pub enum AttributeGate {
     /// Is gated by a given feature gate, reason
@@ -177,6 +188,18 @@ macro_rules! ungated {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
             type_: $typ,
+            safety: AttributeSafety::Normal,
+            template: $tpl,
+            gate: Ungated,
+            duplicates: $duplicates,
+        }
+    };
+    (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr $(,)?) => {
+        BuiltinAttribute {
+            name: sym::$attr,
+            encode_cross_crate: $encode_cross_crate,
+            type_: $typ,
+            safety: AttributeSafety::Unsafe,
             template: $tpl,
             gate: Ungated,
             duplicates: $duplicates,
@@ -190,6 +213,7 @@ macro_rules! gated {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
             type_: $typ,
+            safety: AttributeSafety::Normal,
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated(Stability::Unstable, sym::$gate, $msg, cfg_fn!($gate)),
@@ -200,6 +224,29 @@ macro_rules! gated {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
             type_: $typ,
+            safety: AttributeSafety::Normal,
+            template: $tpl,
+            duplicates: $duplicates,
+            gate: Gated(Stability::Unstable, sym::$attr, $msg, cfg_fn!($attr)),
+        }
+    };
+    (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $gate:ident, $msg:expr $(,)?) => {
+        BuiltinAttribute {
+            name: sym::$attr,
+            encode_cross_crate: $encode_cross_crate,
+            type_: $typ,
+            safety: AttributeSafety::Unsafe,
+            template: $tpl,
+            duplicates: $duplicates,
+            gate: Gated(Stability::Unstable, sym::$gate, $msg, cfg_fn!($gate)),
+        }
+    };
+    (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $msg:expr $(,)?) => {
+        BuiltinAttribute {
+            name: sym::$attr,
+            encode_cross_crate: $encode_cross_crate,
+            type_: $typ,
+            safety: AttributeSafety::Unsafe,
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated(Stability::Unstable, sym::$attr, $msg, cfg_fn!($attr)),
@@ -228,6 +275,7 @@ macro_rules! rustc_attr {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
             type_: $typ,
+            safety: AttributeSafety::Normal,
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated(Stability::Unstable, sym::rustc_attrs, $msg, cfg_fn!(rustc_attrs)),
@@ -258,6 +306,7 @@ pub struct BuiltinAttribute {
     /// Otherwise, it can only be used in the local crate.
     pub encode_cross_crate: EncodeCrossCrate,
     pub type_: AttributeType,
+    pub safety: AttributeSafety,
     pub template: AttributeTemplate,
     pub duplicates: AttributeDuplicates,
     pub gate: AttributeGate,
@@ -375,9 +424,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(no_link, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(repr, Normal, template!(List: "C"), DuplicatesOk, EncodeCrossCrate::No),
-    ungated!(export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
-    ungated!(link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
-    ungated!(no_mangle, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
+    ungated!(unsafe export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
+    ungated!(unsafe link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
+    ungated!(unsafe no_mangle, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing, EncodeCrossCrate::No),
     ungated!(link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding, EncodeCrossCrate::Yes),
 
@@ -850,6 +899,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         // FIXME: This can be `true` once we always use `tcx.is_diagnostic_item`.
         encode_cross_crate: EncodeCrossCrate::Yes,
         type_: Normal,
+        safety: AttributeSafety::Normal,
         template: template!(NameValueStr: "name"),
         duplicates: ErrorFollowing,
         gate: Gated(

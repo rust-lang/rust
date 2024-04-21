@@ -1801,6 +1801,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let attr = attr::mk_attr_nested_word(
             &self.tcx.sess.psess.attr_id_generator,
             AttrStyle::Outer,
+            Unsafe::No,
             sym::allow,
             sym::unreachable_code,
             self.lower_span(span),

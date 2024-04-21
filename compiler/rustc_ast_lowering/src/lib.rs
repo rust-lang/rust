@@ -911,6 +911,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let kind = match attr.kind {
             AttrKind::Normal(ref normal) => AttrKind::Normal(P(NormalAttr {
                 item: AttrItem {
+                    unsafety: normal.item.unsafety,
                     path: normal.item.path.clone(),
                     args: self.lower_attr_args(&normal.item.args),
                     tokens: None,
