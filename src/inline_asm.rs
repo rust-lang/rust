@@ -2,6 +2,7 @@
 
 use std::fmt::Write;
 
+use cranelift_codegen::isa::CallConv;
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_span::sym;
 use rustc_target::asm::*;

@@ -2,6 +2,7 @@
 
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::immediates::Offset32;
+use cranelift_frontend::Variable;
 use rustc_middle::ty::FnSig;
 
 use crate::prelude::*;
