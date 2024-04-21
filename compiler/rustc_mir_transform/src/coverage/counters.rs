@@ -11,7 +11,7 @@ use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, TraverseCoverage
 
 /// The coverage counter or counter expression associated with a particular
 /// BCB node or BCB edge.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) enum BcbCounter {
     Counter { id: CounterId },
     Expression { id: ExpressionId },
@@ -35,7 +35,7 @@ impl Debug for BcbCounter {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct BcbExpression {
     lhs: BcbCounter,
     op: Op,
@@ -63,9 +63,13 @@ pub(super) struct CoverageCounters {
     /// We currently don't iterate over this map, but if we do in the future,
     /// switch it back to `FxIndexMap` to avoid query stability hazards.
     bcb_edge_counters: FxHashMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
+
     /// Table of expression data, associating each expression ID with its
     /// corresponding operator (+ or -) and its LHS/RHS operands.
     expressions: IndexVec<ExpressionId, BcbExpression>,
+    /// Remember expressions that have already been created (or simplified),
+    /// so that we don't create unnecessary duplicates.
+    expressions_memo: FxHashMap<BcbExpression, BcbCounter>,
 }
 
 impl CoverageCounters {
@@ -83,6 +87,7 @@ impl CoverageCounters {
             bcb_counters: IndexVec::from_elem_n(None, num_bcbs),
             bcb_edge_counters: FxHashMap::default(),
             expressions: IndexVec::new(),
+            expressions_memo: FxHashMap::default(),
         };
 
         MakeBcbCounters::new(&mut this, basic_coverage_blocks)
@@ -97,7 +102,20 @@ impl CoverageCounters {
     }
 
     fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
-        let id = self.expressions.push(BcbExpression { lhs, op, rhs });
+        let new_expr = BcbExpression { lhs, op, rhs };
+        *self
+            .expressions_memo
+            .entry(new_expr)
+            .or_insert_with(|| Self::make_expression_inner(&mut self.expressions, new_expr))
+    }
+
+    /// This is an associated function so that we can call it while borrowing
+    /// `&mut self.expressions_memo`.
+    fn make_expression_inner(
+        expressions: &mut IndexVec<ExpressionId, BcbExpression>,
+        new_expr: BcbExpression,
+    ) -> BcbCounter {
+        let id = expressions.push(new_expr);
         BcbCounter::Expression { id }
     }
 
