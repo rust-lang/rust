@@ -7864,8 +7864,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 6290..6498,
-                                focus_range: 6355..6361,
+                                full_range: 7791..7999,
+                                focus_range: 7856..7862,
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
@@ -7878,8 +7878,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 7128..7594,
-                                focus_range: 7172..7180,
+                                full_range: 8629..9095,
+                                focus_range: 8673..8681,
                                 name: "Iterator",
                                 kind: Trait,
                                 container_name: "iterator",

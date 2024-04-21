@@ -31,6 +31,7 @@ fn eval_main(db: &TestDB, file_id: FileId) -> Result<(String, String), MirEvalEr
             db.trait_environment(func_id.into()),
         )
         .map_err(|e| MirEvalError::MirLowerError(func_id, e))?;
+
     let (result, output) = interpret_mir(db, body, false, None);
     result?;
     Ok((output.stdout().into_owned(), output.stderr().into_owned()))
@@ -72,6 +73,13 @@ fn check_pass_and_stdio(ra_fixture: &str, expected_stdout: &str, expected_stderr
     }
 }
 
+fn check_panic(ra_fixture: &str, expected_panic: &str) {
+    let (db, file_ids) = TestDB::with_many_files(ra_fixture);
+    let file_id = *file_ids.last().unwrap();
+    let e = eval_main(&db, file_id).unwrap_err();
+    assert_eq!(e.is_panic().unwrap_or_else(|| panic!("unexpected error: {:?}", e)), expected_panic);
+}
+
 #[test]
 fn function_with_extern_c_abi() {
     check_pass(
@@ -84,6 +92,43 @@ fn main() {
     let x = foo(2, 3);
 }
         "#,
+    );
+}
+
+#[test]
+fn panic_fmt() {
+    // panic!
+    // -> panic_2021 (builtin macro redirection)
+    //   -> #[lang = "panic_fmt"] core::panicking::panic_fmt (hooked by CTFE for redirection)
+    //   -> core::panicking::const_panic_fmt
+    //     -> #[rustc_const_panic_str] core::panicking::panic_display (hooked by CTFE for builtin panic)
+    //       -> Err(ConstEvalError::Panic)
+    check_panic(
+        r#"
+//- minicore: fmt, panic
+fn main() {
+    panic!("hello, world!");
+}
+    "#,
+        "hello, world!",
+    );
+}
+
+#[test]
+fn panic_display() {
+    // panic!
+    // -> panic_2021 (builtin macro redirection)
+    //   -> #[rustc_const_panic_str] core::panicking::panic_display (hooked by CTFE for builtin panic)
+    //     -> Err(ConstEvalError::Panic)
+    check_panic(
+        r#"
+//- minicore: fmt, panic
+
+fn main() {
+    panic!("{}", "hello, world!");
+}
+    "#,
+        "hello, world!",
     );
 }
 

@@ -428,6 +428,17 @@ impl MirEvalError {
         }
         Ok(())
     }
+
+    pub fn is_panic(&self) -> Option<&str> {
+        let mut err = self;
+        while let MirEvalError::InFunction(e, _) = err {
+            err = e;
+        }
+        match err {
+            MirEvalError::Panic(msg) => Some(msg),
+            _ => None,
+        }
+    }
 }
 
 impl std::fmt::Debug for MirEvalError {
@@ -1138,7 +1149,7 @@ impl Evaluator<'_> {
                 let mut ty = self.operand_ty(lhs, locals)?;
                 while let TyKind::Ref(_, _, z) = ty.kind(Interner) {
                     ty = z.clone();
-                    let size = if ty.kind(Interner) == &TyKind::Str {
+                    let size = if ty.is_str() {
                         if *op != BinOp::Eq {
                             never!("Only eq is builtin for `str`");
                         }
