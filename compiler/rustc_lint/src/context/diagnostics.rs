@@ -2,7 +2,9 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
-use rustc_errors::{elided_lifetime_in_path_suggestion, pluralize, Diag, DiagMessage};
+use rustc_errors::{
+    elided_lifetime_in_path_suggestion, pluralize, Diag, DiagMessage, LintDiagnostic,
+};
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_middle::middle::stability;
 use rustc_session::lint::BuiltinLintDiag;
@@ -114,8 +116,21 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
                 );
             }
         }
-        BuiltinLintDiag::DeprecatedMacro { suggestion, span, .. } => {
-            stability::deprecation_suggestion(diag, "macro", suggestion, span)
+        BuiltinLintDiag::DeprecatedMacro {
+            suggestion,
+            suggestion_span,
+            note,
+            path,
+            since_kind,
+        } => {
+            let sub = suggestion.map(|suggestion| stability::DeprecationSuggestion {
+                span: suggestion_span,
+                kind: "macro".to_owned(),
+                suggestion,
+            });
+            let deprecated =
+                stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind };
+            deprecated.decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedDocComment(span) => {
             diag.span_label(span, "rustdoc does not generate documentation for macro invocations");
@@ -390,7 +405,9 @@ pub(super) fn builtin_message(diagnostic: &BuiltinLintDiag) -> DiagMessage {
         BuiltinLintDiag::RedundantImport(_, source) => {
             format!("the item `{source}` is imported redundantly").into()
         }
-        BuiltinLintDiag::DeprecatedMacro { message, .. } => message.clone().into(),
+        BuiltinLintDiag::DeprecatedMacro { since_kind, .. } => {
+            stability::Deprecated::msg_for_since_kind(since_kind)
+        }
         BuiltinLintDiag::MissingAbi(_, _) => crate::fluent_generated::lint_extern_without_abi,
         BuiltinLintDiag::UnusedDocComment(_) => "unused doc comment".into(),
         BuiltinLintDiag::UnusedBuiltinAttribute { attr_name, .. } => {
