@@ -1,0 +1,97 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          PATH_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "a"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          PATH_EXPR
+            PATH
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+              COLON2 "::"
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "b"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          PATH_EXPR
+            PATH
+              PATH_SEGMENT
+                COLON2 "::"
+                NAME_REF
+                  IDENT "a"
+                GENERIC_ARG_LIST
+                  COLON2 "::"
+                  L_ANGLE "<"
+                  TYPE_ARG
+                    PATH_TYPE
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "b"
+                  R_ANGLE ">"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "format"
+              BANG "!"
+              TOKEN_TREE
+                L_PAREN "("
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
