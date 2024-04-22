@@ -449,6 +449,7 @@ fn verify_all_signatures() {
                 // TODO: we still need to verify these intrinsics or find a
                 // reference for them, need to figure out where though!
                 if !rust.file.ends_with("dsp.rs\"")
+                    && !rust.file.ends_with("sat.rs\"")
                     && !rust.file.ends_with("simd32.rs\"")
                     && !rust.file.ends_with("v6.rs\"")
                     && !rust.file.ends_with("v7.rs\"")

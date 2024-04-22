@@ -11,8 +11,7 @@
 mod sat;
 
 #[cfg(any(target_feature = "v6", doc))]
-// Remove warning because this module is currently empty.
-#[allow(unused_imports)]
+#[unstable(feature = "stdarch_arm_sat", issue = "none")]
 pub use self::sat::*;
 
 // Supported arches: 5TE, 7E-M. See Section 10.1 of ACLE (e.g. QADD)
