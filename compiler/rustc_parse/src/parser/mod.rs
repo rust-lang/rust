@@ -407,6 +407,8 @@ pub(super) fn token_descr(token: &Token) -> String {
         (Some(TokenDescription::Keyword), _) => Some("keyword"),
         (Some(TokenDescription::ReservedKeyword), _) => Some("reserved keyword"),
         (Some(TokenDescription::DocComment), _) => Some("doc comment"),
+        (None, TokenKind::NtIdent(..)) => Some("identifier"),
+        (None, TokenKind::NtLifetime(..)) => Some("lifetime"),
         (None, TokenKind::Interpolated(node)) => Some(node.descr()),
         (None, _) => None,
     };
@@ -1633,5 +1635,9 @@ pub enum FlatToken {
 #[derive(Clone, Debug)]
 pub enum ParseNtResult {
     Tt(TokenTree),
+    Ident(Ident, IdentIsRaw),
+    Lifetime(Ident),
+
+    /// This case will eventually be removed, along with `Token::Interpolate`.
     Nt(Lrc<Nonterminal>),
 }

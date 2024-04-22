@@ -318,11 +318,20 @@ pub enum TokenKind {
     /// It's recommended to use `Token::(ident,uninterpolate,uninterpolated_span)` to
     /// treat regular and interpolated identifiers in the same way.
     Ident(Symbol, IdentIsRaw),
+    /// This identifier (and its span) is the identifier passed to the
+    /// declarative macro. The span in the surrounding `Token` is the span of
+    /// the `ident` metavariable in the macro's RHS.
+    NtIdent(Ident, IdentIsRaw),
+
     /// Lifetime identifier token.
     /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
     /// It's recommended to use `Token::(lifetime,uninterpolate,uninterpolated_span)` to
     /// treat regular and interpolated lifetime identifiers in the same way.
     Lifetime(Symbol),
+    /// This identifier (and its span) is the lifetime passed to the
+    /// declarative macro. The span in the surrounding `Token` is the span of
+    /// the `lifetime` metavariable in the macro's RHS.
+    NtLifetime(Ident),
 
     /// An embedded AST node, as produced by a macro. This only exists for
     /// historical reasons. We'd like to get rid of it, for multiple reasons.
@@ -444,8 +453,9 @@ impl Token {
     /// Note that keywords are also identifiers, so they should use this
     /// if they keep spans or perform edition checks.
     pub fn uninterpolated_span(&self) -> Span {
-        match &self.kind {
-            Interpolated(nt) => nt.use_span(),
+        match self.kind {
+            NtIdent(ident, _) | NtLifetime(ident) => ident.span,
+            Interpolated(ref nt) => nt.use_span(),
             _ => self.span,
         }
     }
@@ -463,7 +473,7 @@ impl Token {
             }
 
             OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
-            | Lifetime(..) | Interpolated(..) | Eof => false,
+            | NtIdent(..) | Lifetime(..) | NtLifetime(..) | Interpolated(..) | Eof => false,
         }
     }
 
@@ -613,14 +623,9 @@ impl Token {
     /// into the regular identifier or lifetime token it refers to,
     /// otherwise returns the original token.
     pub fn uninterpolate(&self) -> Cow<'_, Token> {
-        match &self.kind {
-            Interpolated(nt) => match &**nt {
-                NtIdent(ident, is_raw) => {
-                    Cow::Owned(Token::new(Ident(ident.name, *is_raw), ident.span))
-                }
-                NtLifetime(ident) => Cow::Owned(Token::new(Lifetime(ident.name), ident.span)),
-                _ => Cow::Borrowed(self),
-            },
+        match self.kind {
+            NtIdent(ident, is_raw) => Cow::Owned(Token::new(Ident(ident.name, is_raw), ident.span)),
+            NtLifetime(ident) => Cow::Owned(Token::new(Lifetime(ident.name), ident.span)),
             _ => Cow::Borrowed(self),
         }
     }
@@ -629,12 +634,9 @@ impl Token {
     #[inline]
     pub fn ident(&self) -> Option<(Ident, IdentIsRaw)> {
         // We avoid using `Token::uninterpolate` here because it's slow.
-        match &self.kind {
-            &Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
-            Interpolated(nt) => match &**nt {
-                NtIdent(ident, is_raw) => Some((*ident, *is_raw)),
-                _ => None,
-            },
+        match self.kind {
+            Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
+            NtIdent(ident, is_raw) => Some((ident, is_raw)),
             _ => None,
         }
     }
@@ -643,12 +645,9 @@ impl Token {
     #[inline]
     pub fn lifetime(&self) -> Option<Ident> {
         // We avoid using `Token::uninterpolate` here because it's slow.
-        match &self.kind {
-            &Lifetime(name) => Some(Ident::new(name, self.span)),
-            Interpolated(nt) => match &**nt {
-                NtLifetime(ident) => Some(*ident),
-                _ => None,
-            },
+        match self.kind {
+            Lifetime(name) => Some(Ident::new(name, self.span)),
+            NtLifetime(ident) => Some(ident),
             _ => None,
         }
     }
@@ -837,8 +836,10 @@ impl Token {
 
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
             | DotDotEq | Comma | Semi | PathSep | RArrow | LArrow | FatArrow | Pound | Dollar
-            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..)
-            | Lifetime(..) | Interpolated(..) | DocComment(..) | Eof => return None,
+            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..) | NtIdent(..)
+            | Lifetime(..) | NtLifetime(..) | Interpolated(..) | DocComment(..) | Eof => {
+                return None;
+            }
         };
 
         Some(Token::new(kind, self.span.to(joint.span)))
@@ -861,9 +862,6 @@ pub enum Nonterminal {
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
-    /// The span is for the identifier argument passed to the macro.
-    NtIdent(Ident, IdentIsRaw),
-    NtLifetime(Ident),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::AttrItem>),
@@ -958,7 +956,6 @@ impl Nonterminal {
             NtPat(pat) => pat.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
             NtTy(ty) => ty.span,
-            NtIdent(ident, _) | NtLifetime(ident) => ident.span,
             NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
             NtVis(vis) => vis.span,
@@ -974,8 +971,6 @@ impl Nonterminal {
             NtExpr(..) => "expression",
             NtLiteral(..) => "literal",
             NtTy(..) => "type",
-            NtIdent(..) => "identifier",
-            NtLifetime(..) => "lifetime",
             NtMeta(..) => "attribute",
             NtPath(..) => "path",
             NtVis(..) => "visibility",
@@ -984,18 +979,12 @@ impl Nonterminal {
 }
 
 impl PartialEq for Nonterminal {
-    fn eq(&self, rhs: &Self) -> bool {
-        match (self, rhs) {
-            (NtIdent(ident_lhs, is_raw_lhs), NtIdent(ident_rhs, is_raw_rhs)) => {
-                ident_lhs == ident_rhs && is_raw_lhs == is_raw_rhs
-            }
-            (NtLifetime(ident_lhs), NtLifetime(ident_rhs)) => ident_lhs == ident_rhs,
-            // FIXME: Assume that all "complex" nonterminal are not equal, we can't compare them
-            // correctly based on data from AST. This will prevent them from matching each other
-            // in macros. The comparison will become possible only when each nonterminal has an
-            // attached token stream from which it was parsed.
-            _ => false,
-        }
+    fn eq(&self, _rhs: &Self) -> bool {
+        // FIXME: Assume that all nonterminals are not equal, we can't compare them
+        // correctly based on data from AST. This will prevent them from matching each other
+        // in macros. The comparison will become possible only when each nonterminal has an
+        // attached token stream from which it was parsed.
+        false
     }
 }
 
@@ -1008,12 +997,10 @@ impl fmt::Debug for Nonterminal {
             NtPat(..) => f.pad("NtPat(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtTy(..) => f.pad("NtTy(..)"),
-            NtIdent(..) => f.pad("NtIdent(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
             NtVis(..) => f.pad("NtVis(..)"),
-            NtLifetime(..) => f.pad("NtLifetime(..)"),
         }
     }
 }

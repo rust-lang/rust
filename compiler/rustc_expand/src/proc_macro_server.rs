@@ -220,6 +220,12 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 Ident(sym, is_raw) => {
                     trees.push(TokenTree::Ident(Ident { sym, is_raw: is_raw.into(), span }))
                 }
+                NtIdent(ident, is_raw) => trees.push(TokenTree::Ident(Ident {
+                    sym: ident.name,
+                    is_raw: is_raw.into(),
+                    span: ident.span,
+                })),
+
                 Lifetime(name) => {
                     let ident = symbol::Ident::new(name, span).without_first_quote();
                     trees.extend([
@@ -227,6 +233,15 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                         TokenTree::Ident(Ident { sym: ident.name, is_raw: false, span }),
                     ]);
                 }
+                NtLifetime(ident) => {
+                    let stream = TokenStream::token_alone(token::Lifetime(ident.name), ident.span);
+                    trees.push(TokenTree::Group(Group {
+                        delimiter: pm::Delimiter::None,
+                        stream: Some(stream),
+                        span: DelimSpan::from_single(span),
+                    }))
+                }
+
                 Literal(token::Lit { kind, symbol, suffix }) => {
                     trees.push(TokenTree::Literal(self::Literal {
                         kind: FromInternal::from_internal(kind),
@@ -257,14 +272,6 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                         stream: Some(stream),
                         span: DelimSpan::from_single(span),
                     }));
-                }
-
-                Interpolated(ref nt) if let NtIdent(ident, is_raw) = &**nt => {
-                    trees.push(TokenTree::Ident(Ident {
-                        sym: ident.name,
-                        is_raw: matches!(is_raw, IdentIsRaw::Yes),
-                        span: ident.span,
-                    }))
                 }
 
                 Interpolated(nt) => {
