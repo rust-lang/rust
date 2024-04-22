@@ -162,8 +162,11 @@ pub fn query_cache_path(sess: &Session) -> PathBuf {
 fn lock_file_path(session_dir: &Path) -> PathBuf {
     let crate_dir = session_dir.parent().unwrap();
 
-    let directory_name = session_dir.file_name().unwrap().to_string_lossy();
-    assert_no_characters_lost(&directory_name);
+    let directory_name = session_dir
+        .file_name()
+        .unwrap()
+        .to_str()
+        .expect("malformed session dir name: contains non-Unicode characters");
 
     let dash_indices: Vec<_> = directory_name.match_indices('-').map(|(idx, _)| idx).collect();
     if dash_indices.len() != 3 {
@@ -329,8 +332,11 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
 
     debug!("finalize_session_directory() - session directory: {}", incr_comp_session_dir.display());
 
-    let old_sub_dir_name = incr_comp_session_dir.file_name().unwrap().to_string_lossy();
-    assert_no_characters_lost(&old_sub_dir_name);
+    let old_sub_dir_name = incr_comp_session_dir
+        .file_name()
+        .unwrap()
+        .to_str()
+        .expect("malformed session dir name: contains non-Unicode characters");
 
     // Keep the 's-{timestamp}-{random-number}' prefix, but replace the
     // '-working' part with the SVH of the crate
@@ -527,8 +533,10 @@ where
     for session_dir in iter {
         debug!("find_source_directory_in_iter - inspecting `{}`", session_dir.display());
 
-        let directory_name = session_dir.file_name().unwrap().to_string_lossy();
-        assert_no_characters_lost(&directory_name);
+        let Some(directory_name) = session_dir.file_name().unwrap().to_str() else {
+            debug!("find_source_directory_in_iter - ignoring");
+            continue;
+        };
 
         if source_directories_already_tried.contains(&session_dir)
             || !is_session_directory(&directory_name)
@@ -619,12 +627,6 @@ fn crate_path(sess: &Session) -> PathBuf {
     incr_dir.join(crate_name)
 }
 
-fn assert_no_characters_lost(s: &str) {
-    if s.contains('\u{FFFD}') {
-        bug!("Could not losslessly convert '{}'.", s)
-    }
-}
-
 fn is_old_enough_to_be_collected(timestamp: SystemTime) -> bool {
     timestamp < SystemTime::now() - Duration::from_secs(10)
 }
@@ -657,14 +659,14 @@ pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<
         };
 
         let entry_name = dir_entry.file_name();
-        let entry_name = entry_name.to_string_lossy();
+        let Some(entry_name) = entry_name.to_str() else {
+            continue;
+        };
 
         if is_session_directory_lock_file(&entry_name) {
-            assert_no_characters_lost(&entry_name);
-            lock_files.insert(entry_name.into_owned());
+            lock_files.insert(entry_name.to_string());
         } else if is_session_directory(&entry_name) {
-            assert_no_characters_lost(&entry_name);
-            session_directories.insert(entry_name.into_owned());
+            session_directories.insert(entry_name.to_string());
         } else {
             // This is something we don't know, leave it alone
         }
