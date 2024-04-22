@@ -89,28 +89,34 @@ pub trait TypeVisitor<I: Interner>: Sized {
     #[cfg(not(feature = "nightly"))]
     type Result: VisitorResult;
 
+    #[inline(always)]
     fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &I::Binder<T>) -> Self::Result {
         t.super_visit_with(self)
     }
 
+    #[inline(always)]
     fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
         t.super_visit_with(self)
     }
 
     // The default region visitor is a no-op because `Region` is non-recursive
     // and has no `super_visit_with` method to call.
+    #[inline(always)]
     fn visit_region(&mut self, _r: I::Region) -> Self::Result {
         Self::Result::output()
     }
 
+    #[inline(always)]
     fn visit_const(&mut self, c: I::Const) -> Self::Result {
         c.super_visit_with(self)
     }
 
+    #[inline(always)]
     fn visit_predicate(&mut self, p: I::Predicate) -> Self::Result {
         p.super_visit_with(self)
     }
 
+    #[inline(always)]
     fn visit_clauses(&mut self, p: I::Clauses) -> Self::Result {
         p.super_visit_with(self)
     }
