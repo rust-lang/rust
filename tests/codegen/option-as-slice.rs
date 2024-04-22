@@ -1,7 +1,6 @@
 //@ compile-flags: -O -Z randomize-layout=no
 //@ only-x86_64
 #![crate_type = "lib"]
-#![feature(generic_nonzero)]
 
 extern crate core;
 

@@ -1,6 +1,5 @@
 //@ compile-flags: -O -Zmerge-functions=disabled
 #![crate_type = "lib"]
-#![feature(generic_nonzero)]
 
 use std::num::NonZero;
 

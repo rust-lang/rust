@@ -237,7 +237,6 @@
 
 // lldb-command:v nz_usize
 // lldb-check:[...] 122 { __0 = { 0 = 122 } }
-#![feature(generic_nonzero)]
 
 use std::num::*;
 use std::sync::atomic::*;
