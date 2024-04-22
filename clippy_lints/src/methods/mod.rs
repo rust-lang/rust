@@ -1145,11 +1145,16 @@ declare_clippy_lint! {
     /// `str` as an argument, e.g., `_.split("x")`.
     ///
     /// ### Why is this bad?
-    /// Performing these methods using a `char` is faster than
-    /// using a `str`.
+    /// While this can make a perf difference on some systems,
+    /// benchmarks have proven inconclusive. But at least using a
+    /// char literal makes it clear that we are looking at a single
+    /// character.
     ///
     /// ### Known problems
-    /// Does not catch multi-byte unicode characters.
+    /// Does not catch multi-byte unicode characters. This is by
+    /// design, on many machines, splitting by a non-ascii char is
+    /// actually slower. Please do your own measurements instead of
+    /// relying solely on the results of this lint.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -1162,7 +1167,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub SINGLE_CHAR_PATTERN,
-    perf,
+    pedantic,
     "using a single-character str where a char could be used, e.g., `_.split(\"x\")`"
 }
 
