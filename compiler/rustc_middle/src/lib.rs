@@ -37,7 +37,7 @@
 #![feature(coroutines)]
 #![feature(generic_nonzero)]
 #![feature(if_let_guard)]
-#![feature(inline_const)]
+#![cfg_attr(bootstrap, feature(inline_const))]
 #![feature(iter_from_coroutine)]
 #![feature(negative_impls)]
 #![feature(never_type)]

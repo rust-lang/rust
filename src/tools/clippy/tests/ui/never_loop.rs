@@ -1,4 +1,4 @@
-#![feature(inline_const, try_blocks)]
+#![feature(try_blocks)]
 #![allow(
     clippy::eq_op,
     clippy::single_match,
