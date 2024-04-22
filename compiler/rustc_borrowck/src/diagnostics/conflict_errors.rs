@@ -1320,7 +1320,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .into_iter()
             .map(|err| match err.obligation.predicate.kind().skip_binder() {
                 PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
-                    match predicate.self_ty().kind() {
+                    match *predicate.self_ty().kind() {
                         ty::Param(param_ty) => Ok((
                             generics.type_param(param_ty, tcx),
                             predicate.trait_ref.print_only_trait_path().to_string(),
