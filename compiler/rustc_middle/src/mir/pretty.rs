@@ -491,7 +491,7 @@ fn write_coverage_branch_info(
         writeln!(
             w,
             "{INDENT}coverage mcdc branch {{ condition_id: {:?}, true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
-            condition_info.condition_id
+            condition_info.map(|info| info.condition_id)
         )?;
     }
 

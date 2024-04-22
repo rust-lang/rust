@@ -15,13 +15,17 @@ mod from_mir;
 pub(super) enum BcbMappingKind {
     /// Associates an ordinary executable code span with its corresponding BCB.
     Code(BasicCoverageBlock),
-    /// Associates a branch span with BCBs for its true and false arms.
-    Branch { true_bcb: BasicCoverageBlock, false_bcb: BasicCoverageBlock },
+
+    // Ordinary branch mappings are stored separately, so they don't have a
+    // variant in this enum.
+    //
     /// Associates a mcdc branch span with condition info besides fields for normal branch.
     MCDCBranch {
         true_bcb: BasicCoverageBlock,
         false_bcb: BasicCoverageBlock,
-        condition_info: ConditionInfo,
+        /// If `None`, this actually represents a normal branch mapping inserted
+        /// for code that was too complex for MC/DC.
+        condition_info: Option<ConditionInfo>,
     },
     /// Associates a mcdc decision with its join BCB.
     MCDCDecision { end_bcbs: BTreeSet<BasicCoverageBlock>, bitmap_idx: u32, conditions_num: u16 },
@@ -33,19 +37,26 @@ pub(super) struct BcbMapping {
     pub(super) span: Span,
 }
 
+/// This is separate from [`BcbMappingKind`] to help prepare for larger changes
+/// that will be needed for improved branch coverage in the future.
+/// (See <https://github.com/rust-lang/rust/pull/124217>.)
+#[derive(Debug)]
+pub(super) struct BcbBranchPair {
+    pub(super) span: Span,
+    pub(super) true_bcb: BasicCoverageBlock,
+    pub(super) false_bcb: BasicCoverageBlock,
+}
+
 pub(super) struct CoverageSpans {
     bcb_has_mappings: BitSet<BasicCoverageBlock>,
-    mappings: Vec<BcbMapping>,
+    pub(super) mappings: Vec<BcbMapping>,
+    pub(super) branch_pairs: Vec<BcbBranchPair>,
     test_vector_bitmap_bytes: u32,
 }
 
 impl CoverageSpans {
     pub(super) fn bcb_has_coverage_spans(&self, bcb: BasicCoverageBlock) -> bool {
         self.bcb_has_mappings.contains(bcb)
-    }
-
-    pub(super) fn all_bcb_mappings(&self) -> impl Iterator<Item = &BcbMapping> {
-        self.mappings.iter()
     }
 
     pub(super) fn test_vector_bitmap_bytes(&self) -> u32 {
@@ -63,6 +74,7 @@ pub(super) fn generate_coverage_spans(
     basic_coverage_blocks: &CoverageGraph,
 ) -> Option<CoverageSpans> {
     let mut mappings = vec![];
+    let mut branch_pairs = vec![];
 
     if hir_info.is_async_fn {
         // An async function desugars into a function that returns a future,
@@ -84,14 +96,20 @@ pub(super) fn generate_coverage_spans(
             BcbMapping { kind: BcbMappingKind::Code(bcb), span }
         }));
 
-        mappings.extend(from_mir::extract_branch_mappings(
+        branch_pairs.extend(from_mir::extract_branch_pairs(
+            mir_body,
+            hir_info,
+            basic_coverage_blocks,
+        ));
+
+        mappings.extend(from_mir::extract_mcdc_mappings(
             mir_body,
             hir_info.body_span,
             basic_coverage_blocks,
         ));
     }
 
-    if mappings.is_empty() {
+    if mappings.is_empty() && branch_pairs.is_empty() {
         return None;
     }
 
@@ -104,8 +122,7 @@ pub(super) fn generate_coverage_spans(
     for BcbMapping { kind, span: _ } in &mappings {
         match *kind {
             BcbMappingKind::Code(bcb) => insert(bcb),
-            BcbMappingKind::Branch { true_bcb, false_bcb }
-            | BcbMappingKind::MCDCBranch { true_bcb, false_bcb, .. } => {
+            BcbMappingKind::MCDCBranch { true_bcb, false_bcb, .. } => {
                 insert(true_bcb);
                 insert(false_bcb);
             }
@@ -118,8 +135,12 @@ pub(super) fn generate_coverage_spans(
             }
         }
     }
+    for &BcbBranchPair { true_bcb, false_bcb, .. } in &branch_pairs {
+        insert(true_bcb);
+        insert(false_bcb);
+    }
 
-    Some(CoverageSpans { bcb_has_mappings, mappings, test_vector_bitmap_bytes })
+    Some(CoverageSpans { bcb_has_mappings, mappings, branch_pairs, test_vector_bitmap_bytes })
 }
 
 #[derive(Debug)]
