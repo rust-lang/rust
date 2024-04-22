@@ -12,10 +12,15 @@ error[E0599]: no associated item named `MIN` found for type `i8` in the current 
 LL | impl <I8<{i8::MIN}> as Identity>::Identity {
    |               ^^^ associated item not found in `i8`
    |
+   = help: items from traits can only be used if the trait is in scope
 help: you are looking for the module in `std`, not the primitive type
    |
 LL | impl <I8<{std::i8::MIN}> as Identity>::Identity {
    |           +++++
+help: trait `Integer` which provides `MIN` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use std::primitive::Integer;
+   |
 
 error: aborting due to 2 previous errors
 
