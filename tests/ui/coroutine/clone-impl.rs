@@ -2,7 +2,7 @@
 // Verifies that non-static coroutines can be cloned/copied if all their upvars and locals held
 // across awaits can be cloned/copied.
 
-#![feature(coroutines, coroutine_clone)]
+#![feature(coroutines, coroutine_clone, stmt_expr_attributes)]
 
 struct NonClone;
 
@@ -12,13 +12,13 @@ fn main() {
     let clonable_1: Vec<u32> = Vec::new();
     let non_clonable: NonClone = NonClone;
 
-    let gen_copy_0 = move || {
+    let gen_copy_0 = #[coroutine] move || {
         yield;
         drop(copyable);
     };
     check_copy(&gen_copy_0);
     check_clone(&gen_copy_0);
-    let gen_copy_1 = move || {
+    let gen_copy_1 = #[coroutine] move || {
         /*
         let v = vec!['a'];
         let n = NonClone;
@@ -33,7 +33,7 @@ fn main() {
     };
     check_copy(&gen_copy_1);
     check_clone(&gen_copy_1);
-    let gen_clone_0 = move || {
+    let gen_clone_0 = #[coroutine] move || {
         let v = vec!['a'];
         yield;
         drop(v);
@@ -43,7 +43,7 @@ fn main() {
     //~^ ERROR the trait bound `Vec<u32>: Copy` is not satisfied
     //~| ERROR the trait bound `Vec<char>: Copy` is not satisfied
     check_clone(&gen_clone_0);
-    let gen_clone_1 = move || {
+    let gen_clone_1 = #[coroutine] move || {
         let v = vec!['a'];
         /*
         let n = NonClone;
@@ -59,7 +59,7 @@ fn main() {
     //~^ ERROR the trait bound `Vec<u32>: Copy` is not satisfied
     //~| ERROR the trait bound `Vec<char>: Copy` is not satisfied
     check_clone(&gen_clone_1);
-    let gen_non_clone = move || {
+    let gen_non_clone = #[coroutine] move || {
         yield;
         drop(non_clonable);
     };

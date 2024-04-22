@@ -1,11 +1,11 @@
 //@ build-pass
 
-#![feature(coroutines)]
-
+#![feature(coroutines, stmt_expr_attributes)]
 #![allow(unused_assignments, dead_code)]
 
 fn main() {
-    let _ = || {
+    let _ = #[coroutine]
+    || {
         let mut x = vec![22_usize];
         std::mem::drop(x);
         match y() {

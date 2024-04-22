@@ -7,6 +7,7 @@
 use std::ops::Coroutine;
 
 fn coroutine<const C: usize>(array: [u8; C]) -> impl Coroutine<Yield = (), Return = ()> {
+    #[coroutine]
     move |()| {
         yield ();
         let _ = array;

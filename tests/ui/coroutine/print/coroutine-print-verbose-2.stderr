@@ -1,7 +1,7 @@
 error: coroutine cannot be shared between threads safely
   --> $DIR/coroutine-print-verbose-2.rs:17:5
    |
-LL | /     assert_sync(|| {
+LL | /     assert_sync(#[coroutine] || {
 LL | |
 LL | |         let a = NotSync;
 LL | |         yield;
@@ -26,7 +26,7 @@ LL |     fn assert_sync<T: Sync>(_: T) {}
 error: coroutine cannot be sent between threads safely
   --> $DIR/coroutine-print-verbose-2.rs:24:5
    |
-LL | /     assert_send(|| {
+LL | /     assert_send(#[coroutine] || {
 LL | |
 LL | |         let a = NotSend;
 LL | |         yield;

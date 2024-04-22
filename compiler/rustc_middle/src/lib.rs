@@ -35,6 +35,7 @@
 #![feature(const_type_name)]
 #![feature(discriminant_kind)]
 #![feature(coroutines)]
+#![feature(stmt_expr_attributes)]
 #![feature(generic_nonzero)]
 #![feature(if_let_guard)]
 #![cfg_attr(bootstrap, feature(inline_const))]

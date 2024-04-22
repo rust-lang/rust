@@ -1,7 +1,7 @@
 //@ run-pass
 //@ needs-unwind
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 #![feature(if_let_guard)]
 
 #![allow(unused_assignments)]
@@ -176,7 +176,7 @@ fn vec_simple(a: &Allocator) {
 fn coroutine(a: &Allocator, run_count: usize) {
     assert!(run_count < 4);
 
-    let mut gen = || {
+    let mut gen = #[coroutine] || {
         (a.alloc(),
          yield a.alloc(),
          a.alloc(),

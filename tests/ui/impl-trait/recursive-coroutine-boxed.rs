@@ -10,7 +10,8 @@ fn foo() -> impl Coroutine<Yield = (), Return = ()> {
     // FIXME(-Znext-solver): this fails with a mismatched types as the
     // hidden type of the opaque ends up as {type error}. We should not
     // emit errors for such goals.
-    || { //[next]~ ERROR mismatched types
+
+    #[coroutine] || { //[next]~ ERROR mismatched types
         let mut gen = Box::pin(foo());
         //[next]~^ ERROR type annotations needed
         let mut r = gen.as_mut().resume(());

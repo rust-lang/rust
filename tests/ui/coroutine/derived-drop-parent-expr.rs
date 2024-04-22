@@ -1,7 +1,7 @@
 //@ build-pass
 
 //! Like drop-tracking-parent-expression, but also tests that this doesn't ICE when building MIR
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 
 fn assert_send<T: Send>(_thing: T) {}
 
@@ -9,8 +9,8 @@ fn assert_send<T: Send>(_thing: T) {}
 pub struct Client { pub nickname: String }
 
 fn main() {
-    let g = move || match drop(Client { ..Client::default() }) {
-        _status => yield,
-    };
+    let g = #[coroutine] move || match drop(Client { ..Client::default() }) {
+            _status => yield,
+        };
     assert_send(g);
 }

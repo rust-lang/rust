@@ -26,7 +26,7 @@
 // lldb-command:v b
 // lldbg-check:(issue_57822::main::{coroutine_env#3}) b =
 
-#![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait)]
+#![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait, stmt_expr_attributes)]
 #![omit_gdb_pretty_printer_section]
 
 use std::ops::Coroutine;
@@ -38,11 +38,13 @@ fn main() {
     let g = move || f();
 
     let mut y = 2;
-    let mut a = move || {
+    let mut a = #[coroutine]
+    move || {
         y += 1;
         yield;
     };
-    let mut b = move || {
+    let mut b = #[coroutine]
+    move || {
         Pin::new(&mut a).resume(());
         yield;
     };

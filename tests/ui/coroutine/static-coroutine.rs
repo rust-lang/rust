@@ -1,12 +1,13 @@
 //@ run-pass
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
-use std::pin::Pin;
 use std::ops::{Coroutine, CoroutineState};
+use std::pin::Pin;
 
 fn main() {
-    let mut coroutine = static || {
+    let mut coroutine = #[coroutine]
+    static || {
         let a = true;
         let b = &a;
         yield;
