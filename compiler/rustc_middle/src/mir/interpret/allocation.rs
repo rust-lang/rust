@@ -346,10 +346,10 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     }
 }
 
-impl<Bytes: AllocBytes> Allocation<CtfeProvenance, (), Bytes> {
+impl Allocation {
     /// Adjust allocation from the ones in `tcx` to a custom Machine instance
-    /// with a different `Provenance` and `Extra` type.
-    pub fn adjust_from_tcx<Prov: Provenance, Extra, Err>(
+    /// with a different `Provenance`, `Extra` and `Byte` type.
+    pub fn adjust_from_tcx<Prov: Provenance, Extra, Bytes: AllocBytes, Err>(
         self,
         cx: &impl HasDataLayout,
         extra: Extra,
@@ -371,7 +371,7 @@ impl<Bytes: AllocBytes> Allocation<CtfeProvenance, (), Bytes> {
         }
         // Create allocation.
         Ok(Allocation {
-            bytes,
+            bytes: AllocBytes::from_bytes(Cow::from(&*bytes), self.align),
             provenance: ProvenanceMap::from_presorted_ptrs(new_provenance),
             init_mask: self.init_mask,
             align: self.align,
