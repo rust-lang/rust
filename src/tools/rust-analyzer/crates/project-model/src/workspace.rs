@@ -15,6 +15,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use span::Edition;
 use toolchain::Tool;
+use tracing::instrument;
 use triomphe::Arc;
 
 use crate::{
@@ -885,6 +886,7 @@ impl ProjectWorkspace {
     }
 }
 
+#[instrument(skip_all)]
 fn project_json_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
     load: FileLoader<'_>,

@@ -12,6 +12,7 @@ use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
 use stdx::thread::ThreadIntent;
+use tracing::{span, Level};
 use vfs::FileId;
 
 use crate::{
@@ -229,8 +230,7 @@ impl GlobalState {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event", event = %event)
-            .entered();
+        let _p = tracing::span!(Level::INFO, "GlobalState::handle_event", event = %event).entered();
 
         let event_dbg_msg = format!("{event:?}");
         tracing::debug!(?loop_start, ?event, "handle_event");
@@ -669,9 +669,12 @@ impl GlobalState {
     }
 
     fn handle_vfs_msg(&mut self, message: vfs::loader::Message) {
+        let _p = tracing::span!(Level::INFO, "GlobalState::handle_vfs_msg").entered();
         let is_changed = matches!(message, vfs::loader::Message::Changed { .. });
         match message {
             vfs::loader::Message::Changed { files } | vfs::loader::Message::Loaded { files } => {
+                let _p = tracing::span!(Level::INFO, "GlobalState::handle_vfs_msg{changed/load}")
+                    .entered();
                 let vfs = &mut self.vfs.write().0;
                 for (path, contents) in files {
                     let path = VfsPath::from(path);
@@ -685,6 +688,8 @@ impl GlobalState {
                 }
             }
             vfs::loader::Message::Progress { n_total, n_done, dir, config_version } => {
+                let _p =
+                    tracing::span!(Level::INFO, "GlobalState::handle_vfs_mgs/progress").entered();
                 always!(config_version <= self.vfs_config_version);
 
                 let state = match n_done {
@@ -867,6 +872,8 @@ impl GlobalState {
 
     /// Registers and handles a request. This should only be called once per incoming request.
     fn on_new_request(&mut self, request_received: Instant, req: Request) {
+        let _p =
+            span!(Level::INFO, "GlobalState::on_new_request", req.method = ?req.method).entered();
         self.register_request(&req, request_received);
         self.on_request(req);
     }
@@ -980,6 +987,8 @@ impl GlobalState {
 
     /// Handles an incoming notification.
     fn on_notification(&mut self, not: Notification) -> anyhow::Result<()> {
+        let _p =
+            span!(Level::INFO, "GlobalState::on_notification", not.method = ?not.method).entered();
         use crate::handlers::notification as handlers;
         use lsp_types::notification as notifs;
 

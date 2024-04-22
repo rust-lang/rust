@@ -17,6 +17,7 @@ use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
+use tracing::{instrument, Level};
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
 
 pub struct LoadCargoConfig {
@@ -50,6 +51,7 @@ pub fn load_workspace_at(
     load_workspace(workspace, &cargo_config.extra_env, load_config)
 }
 
+#[instrument(skip_all)]
 pub fn load_workspace(
     ws: ProjectWorkspace,
     extra_env: &FxHashMap<String, String>,
@@ -350,6 +352,7 @@ fn load_crate_graph(
                 }
             }
             vfs::loader::Message::Loaded { files } | vfs::loader::Message::Changed { files } => {
+                let _p = tracing::span!(Level::INFO, "LoadCargo::load_file_contents").entered();
                 for (path, contents) in files {
                     vfs.set_file_contents(path.into(), contents);
                 }

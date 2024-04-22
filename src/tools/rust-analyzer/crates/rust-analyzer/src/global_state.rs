@@ -23,6 +23,7 @@ use project_model::{
     WorkspaceBuildScripts,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
+use tracing::{span, Level};
 use triomphe::Arc;
 use vfs::{AnchoredPathBuf, ChangedFile, Vfs};
 
@@ -252,8 +253,7 @@ impl GlobalState {
     }
 
     pub(crate) fn process_changes(&mut self) -> bool {
-        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::process_changes").entered();
-
+        let _p = span!(Level::INFO, "GlobalState::process_changes").entered();
         let mut file_changes = FxHashMap::<_, (bool, ChangedFile)>::default();
         let (change, modified_rust_files, workspace_structure_change) = {
             let mut change = ChangeWithProcMacros::new();
@@ -263,6 +263,8 @@ impl GlobalState {
                 return false;
             }
 
+            let _p =
+                span!(Level::INFO, "GlobalState::process_changes/gather_changed_files").entered();
             // downgrade to read lock to allow more readers while we are normalizing text
             let guard = RwLockWriteGuard::downgrade_to_upgradable(guard);
             let vfs: &Vfs = &guard.0;
@@ -301,6 +303,8 @@ impl GlobalState {
                 }
             }
 
+            let _p = span!(Level::INFO, "GlobalState::process_changes/calculate_changed_files")
+                .entered();
             let changed_files: Vec<_> = file_changes
                 .into_iter()
                 .filter(|(_, (just_created, change))| {
@@ -366,6 +370,7 @@ impl GlobalState {
             (change, modified_rust_files, workspace_structure_change)
         };
 
+        let _p = span!(Level::INFO, "GlobalState::process_changes/apply_change").entered();
         self.analysis_host.apply_change(change);
 
         {
@@ -379,6 +384,9 @@ impl GlobalState {
             // but something's going wrong with the source root business when we add a new local
             // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
             if let Some((path, force_crate_graph_reload)) = workspace_structure_change {
+                let _p = span!(Level::INFO, "GlobalState::process_changes/ws_structure_change")
+                    .entered();
+
                 self.fetch_workspaces_queue.request_op(
                     format!("workspace vfs file change: {path}"),
                     force_crate_graph_reload,
