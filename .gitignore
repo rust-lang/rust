@@ -52,6 +52,8 @@ build/
 /src/tools/x/target
 # Created by default with `src/ci/docker/run.sh`
 /obj/
+# Created by default by running the `opt-dist` tool locally
+/opt-artifacts/
 
 ## Temporary files
 *~
