@@ -825,7 +825,13 @@ fn codegen_stmt<'tcx>(
                     };
                     let data = codegen_operand(fx, data);
                     let meta = codegen_operand(fx, meta);
-                    let ptr_val = CValue::pointer_from_data_and_meta(fx, data, meta, layout);
+                    assert!(data.layout().ty.is_unsafe_ptr());
+                    assert!(layout.ty.is_unsafe_ptr());
+                    let ptr_val = if meta.layout().is_zst() {
+                        data.cast_pointer_to(layout)
+                    } else {
+                        CValue::by_val_pair(data.load_scalar(fx), meta.load_scalar(fx), layout)
+                    };
                     lval.write_cvalue(fx, ptr_val);
                 }
                 Rvalue::Aggregate(ref kind, ref operands) => {
