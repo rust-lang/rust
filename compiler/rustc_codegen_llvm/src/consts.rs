@@ -260,7 +260,8 @@ impl<'ll> CodegenCx<'ll, '_> {
 
     #[instrument(level = "debug", skip(self, llty))]
     pub(crate) fn get_static_inner(&self, def_id: DefId, llty: &'ll Type) -> &'ll Value {
-        if let Some(&g) = self.instances.borrow().get(&Instance::mono(self.tcx, def_id)) {
+        let instance = Instance::mono(self.tcx, def_id);
+        if let Some(&g) = self.instances.borrow().get(&instance) {
             trace!("used cached value");
             return g;
         }
@@ -273,7 +274,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                  statics defined in the same CGU, but did not for `{def_id:?}`"
         );
 
-        let sym = self.tcx.symbol_name(Instance::mono(self.tcx, def_id)).name;
+        let sym = self.tcx.symbol_name(instance).name;
         let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
 
         debug!(?sym, ?fn_attrs);
@@ -363,7 +364,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             }
         }
 
-        self.instances.borrow_mut().insert(Instance::mono(self.tcx, def_id), g);
+        self.instances.borrow_mut().insert(instance, g);
         g
     }
 
