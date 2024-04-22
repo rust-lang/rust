@@ -82,12 +82,6 @@ const_eval_double_storage_live =
 const_eval_dyn_call_not_a_method =
     `dyn` call trying to call something that is not a method
 
-const_eval_dyn_call_vtable_mismatch =
-    `dyn` call on a pointer whose vtable does not match its type
-
-const_eval_dyn_star_call_vtable_mismatch =
-    `dyn*` call on a pointer whose vtable does not match its type
-
 const_eval_error = {$error_kind ->
     [static] could not evaluate static initializer
     [const] evaluation of constant value failed
@@ -192,6 +186,8 @@ const_eval_invalid_uninit_bytes_unknown =
 const_eval_invalid_vtable_pointer =
     using {$pointer} as vtable pointer but it does not point to a vtable
 
+const_eval_invalid_vtable_trait =
+    using vtable for trait `{$vtable_trait}` but trait `{$expected_trait}` was expected
 
 const_eval_live_drop =
     destructor of `{$dropped_ty}` cannot be evaluated at compile-time
@@ -401,9 +397,6 @@ const_eval_unterminated_c_string =
 const_eval_unwind_past_top =
     unwinding past the topmost frame of the stack
 
-const_eval_upcast_mismatch =
-    upcast on a pointer whose vtable does not match its type
-
 ## The `front_matter`s here refer to either `const_eval_front_matter_invalid_value` or `const_eval_front_matter_invalid_value_with_path`.
 ## (We'd love to sort this differently to make that more clear but tidy won't let us...)
 const_eval_validation_box_to_static = {$front_matter}: encountered a box pointing to a static variable in a constant
@@ -450,6 +443,7 @@ const_eval_validation_invalid_fn_ptr = {$front_matter}: encountered {$value}, bu
 const_eval_validation_invalid_ref_meta = {$front_matter}: encountered invalid reference metadata: total size is bigger than largest supported object
 const_eval_validation_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
+const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wide pointer vtable: expected `{$ref_trait}`, but encountered `{$vtable_trait}`
 const_eval_validation_mutable_ref_to_immutable = {$front_matter}: encountered mutable reference or box pointing to read-only memory
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
 const_eval_validation_null_box = {$front_matter}: encountered a null box
