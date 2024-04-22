@@ -840,8 +840,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             | ty::Tuple(_)
             | ty::Error(_) => self_ty.async_destructor_ty(ecx.tcx(), goal.param_env),
 
-            // We do not call `Ty::discriminant_ty` on alias, param, or placeholder
-            // types, which return `<self_ty as DiscriminantKind>::Discriminant`
+            // We do not call `Ty::async_destructor_ty` on alias, param, or placeholder
+            // types, which return `<self_ty as AsyncDestruct>::AsyncDestructor`
             // (or ICE in the case of placeholders). Projecting a type to itself
             // is never really productive.
             ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
