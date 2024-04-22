@@ -855,7 +855,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 goal.predicate.self_ty()
             ),
 
-            _ => bug!(
+            ty::Pat(..) | ty::Dynamic(..) | ty::Coroutine(..) | ty::CoroutineWitness(..) => bug!(
                 "`consider_builtin_async_destruct_candidate` is not yet implemented for type: {self_ty:?}"
             ),
         };
