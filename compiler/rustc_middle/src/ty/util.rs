@@ -1328,7 +1328,7 @@ impl<'tcx> Ty<'tcx> {
             )
     }
 
-    /// Checks whether values of this type `T` implements the `AsyncDrop`
+    /// Checks whether values of this type `T` implements the `Drop`
     /// trait.
     pub fn has_surface_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         self.could_have_surface_drop() && tcx.has_surface_drop_raw(param_env.and(self))
