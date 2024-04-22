@@ -825,7 +825,7 @@ fn codegen_stmt<'tcx>(
                     };
                     let data = codegen_operand(fx, data);
                     let meta = codegen_operand(fx, meta);
-                    let ptr_val = CValue::pointer_from_data_and_meta(data, meta, layout);
+                    let ptr_val = CValue::pointer_from_data_and_meta(fx, data, meta, layout);
                     lval.write_cvalue(fx, ptr_val);
                 }
                 Rvalue::Aggregate(ref kind, ref operands) => {

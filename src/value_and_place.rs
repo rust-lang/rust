@@ -99,17 +99,18 @@ impl<'tcx> CValue<'tcx> {
     ///
     /// Panics if the `layout` is not a raw pointer.
     pub(crate) fn pointer_from_data_and_meta(
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
         data: CValue<'tcx>,
         meta: CValue<'tcx>,
         layout: TyAndLayout<'tcx>,
     ) -> CValue<'tcx> {
+        assert!(data.layout().ty.is_unsafe_ptr());
         assert!(layout.ty.is_unsafe_ptr());
-        let inner = match (data.0, meta.0) {
-            (CValueInner::ByVal(p), CValueInner::ByVal(m)) => CValueInner::ByValPair(p, m),
-            (p @ CValueInner::ByVal(_), CValueInner::ByRef(..)) if meta.1.is_zst() => p,
-            _ => bug!("RawPtr operands {data:?} {meta:?}"),
-        };
-        CValue(inner, layout)
+        if meta.layout().is_zst() {
+            data.cast_pointer_to(layout)
+        } else {
+            CValue::by_val_pair(data.load_scalar(fx), meta.load_scalar(fx), layout)
+        }
     }
 
     pub(crate) fn layout(&self) -> TyAndLayout<'tcx> {
