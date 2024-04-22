@@ -394,7 +394,7 @@ macro_rules! tool_check_step {
         impl Step for $name {
             type Output = ();
             const ONLY_HOSTS: bool = true;
-            // don't ever check out-of-tree tools by default, they'll fail when toolstate is broken
+            /// don't ever check out-of-tree tools by default, they'll fail when toolstate is broken
             const DEFAULT: bool = matches!($source_type, SourceType::InTree) $( && $default )?;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

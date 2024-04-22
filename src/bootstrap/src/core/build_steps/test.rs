@@ -1433,8 +1433,8 @@ host_test!(RustdocJson { path: "tests/rustdoc-json", mode: "rustdoc-json", suite
 
 host_test!(Pretty { path: "tests/pretty", mode: "pretty", suite: "pretty" });
 
-// Special-handling is needed for `run-make`, so don't use `default_test` for defining `RunMake`
-// tests.
+/// Special-handling is needed for `run-make`, so don't use `default_test` for defining `RunMake`
+/// tests.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct RunMake {
     pub compiler: Compiler,
@@ -1527,10 +1527,10 @@ impl Coverage {
 
 impl Step for Coverage {
     type Output = ();
-    // We rely on the individual CoverageMap/CoverageRun steps to run themselves.
+    /// We rely on the individual CoverageMap/CoverageRun steps to run themselves.
     const DEFAULT: bool = false;
-    // When manually invoked, try to run as much as possible.
-    // Compiletest will automatically skip the "coverage-run" tests if necessary.
+    /// When manually invoked, try to run as much as possible.
+    /// Compiletest will automatically skip the "coverage-run" tests if necessary.
     const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

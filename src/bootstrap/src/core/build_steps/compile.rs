@@ -835,13 +835,13 @@ impl Rustc {
 }
 
 impl Step for Rustc {
-    // We return the stage of the "actual" compiler (not the uplifted one).
-    //
-    // By "actual" we refer to the uplifting logic where we may not compile the requested stage;
-    // instead, we uplift it from the previous stages. Which can lead to bootstrap failures in
-    // specific situations where we request stage X from other steps. However we may end up
-    // uplifting it from stage Y, causing the other stage to fail when attempting to link with
-    // stage X which was never actually built.
+    /// We return the stage of the "actual" compiler (not the uplifted one).
+    ///
+    /// By "actual" we refer to the uplifting logic where we may not compile the requested stage;
+    /// instead, we uplift it from the previous stages. Which can lead to bootstrap failures in
+    /// specific situations where we request stage X from other steps. However we may end up
+    /// uplifting it from stage Y, causing the other stage to fail when attempting to link with
+    /// stage X which was never actually built.
     type Output = u32;
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = false;
@@ -1302,7 +1302,7 @@ fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
 impl Step for CodegenBackend {
     type Output = ();
     const ONLY_HOSTS: bool = true;
-    // Only the backends specified in the `codegen-backends` entry of `config.toml` are built.
+    /// Only the backends specified in the `codegen-backends` entry of `config.toml` are built.
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
