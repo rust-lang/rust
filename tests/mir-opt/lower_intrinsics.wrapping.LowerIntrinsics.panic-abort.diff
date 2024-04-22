@@ -56,7 +56,7 @@
           _10 = _1;
           StorageLive(_11);
           _11 = _2;
--         _9 = wrapping_mul::<i32>(move _10, move _11) -> [return: bb3, unwind unreachable];
+-         _9 = std::intrinsics::wrapping_mul::<i32>(move _10, move _11) -> [return: bb3, unwind unreachable];
 +         _9 = Mul(move _10, move _11);
 +         goto -> bb3;
       }

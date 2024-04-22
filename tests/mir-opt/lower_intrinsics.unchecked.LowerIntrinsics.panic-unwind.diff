@@ -67,7 +67,7 @@
           _5 = _1;
           StorageLive(_6);
           _6 = _2;
--         _4 = unchecked_add::<i32>(move _5, move _6) -> [return: bb1, unwind unreachable];
+-         _4 = std::intrinsics::unchecked_add::<i32>(move _5, move _6) -> [return: bb1, unwind unreachable];
 +         _4 = AddUnchecked(move _5, move _6);
 +         goto -> bb1;
       }
@@ -80,7 +80,7 @@
           _8 = _1;
           StorageLive(_9);
           _9 = _2;
--         _7 = unchecked_sub::<i32>(move _8, move _9) -> [return: bb2, unwind unreachable];
+-         _7 = std::intrinsics::unchecked_sub::<i32>(move _8, move _9) -> [return: bb2, unwind unreachable];
 +         _7 = SubUnchecked(move _8, move _9);
 +         goto -> bb2;
       }
@@ -93,7 +93,7 @@
           _11 = _1;
           StorageLive(_12);
           _12 = _2;
--         _10 = unchecked_mul::<i32>(move _11, move _12) -> [return: bb3, unwind unreachable];
+-         _10 = std::intrinsics::unchecked_mul::<i32>(move _11, move _12) -> [return: bb3, unwind unreachable];
 +         _10 = MulUnchecked(move _11, move _12);
 +         goto -> bb3;
       }
@@ -132,7 +132,7 @@
           _20 = _1;
           StorageLive(_21);
           _21 = _2;
--         _19 = unchecked_shl::<i32, i32>(move _20, move _21) -> [return: bb6, unwind unreachable];
+-         _19 = std::intrinsics::unchecked_shl::<i32, i32>(move _20, move _21) -> [return: bb6, unwind unreachable];
 +         _19 = ShlUnchecked(move _20, move _21);
 +         goto -> bb6;
       }
@@ -145,7 +145,7 @@
           _23 = _1;
           StorageLive(_24);
           _24 = _2;
--         _22 = unchecked_shr::<i32, i32>(move _23, move _24) -> [return: bb7, unwind unreachable];
+-         _22 = std::intrinsics::unchecked_shr::<i32, i32>(move _23, move _24) -> [return: bb7, unwind unreachable];
 +         _22 = ShrUnchecked(move _23, move _24);
 +         goto -> bb7;
       }
@@ -158,7 +158,7 @@
           _26 = _1;
           StorageLive(_27);
           _27 = _3;
--         _25 = unchecked_shl::<i32, u32>(move _26, move _27) -> [return: bb8, unwind unreachable];
+-         _25 = std::intrinsics::unchecked_shl::<i32, u32>(move _26, move _27) -> [return: bb8, unwind unreachable];
 +         _25 = ShlUnchecked(move _26, move _27);
 +         goto -> bb8;
       }
@@ -171,7 +171,7 @@
           _29 = _1;
           StorageLive(_30);
           _30 = _3;
--         _28 = unchecked_shr::<i32, u32>(move _29, move _30) -> [return: bb9, unwind unreachable];
+-         _28 = std::intrinsics::unchecked_shr::<i32, u32>(move _29, move _30) -> [return: bb9, unwind unreachable];
 +         _28 = ShrUnchecked(move _29, move _30);
 +         goto -> bb9;
       }
