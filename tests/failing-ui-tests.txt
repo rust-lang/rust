@@ -49,7 +49,6 @@ tests/ui/coroutine/panic-safe.rs
 tests/ui/issues/issue-14875.rs
 tests/ui/issues/issue-29948.rs
 tests/ui/panics/nested_panic_caught.rs
-tests/ui/const_prop/ice-issue-111353.rs
 tests/ui/process/println-with-broken-pipe.rs
 tests/ui/lto/thin-lto-inlines2.rs
 tests/ui/lto/weak-works.rs
@@ -60,7 +59,6 @@ tests/ui/lto/msvc-imp-present.rs
 tests/ui/lto/lto-thin-rustc-loads-linker-plugin.rs
 tests/ui/lto/all-crates.rs
 tests/ui/async-await/deep-futures-are-freeze.rs
-tests/ui/closures/capture-unsized-by-ref.rs
 tests/ui/coroutine/resume-after-return.rs
 tests/ui/simd/masked-load-store.rs
 tests/ui/simd/repr_packed.rs
