@@ -488,7 +488,7 @@ impl<'a> State<'a> {
                         self.space();
                     }
                     MatchKind::Postfix => {
-                        self.print_expr_as_cond(expr);
+                        self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX, fixup);
                         self.word_nbsp(".match");
                     }
                 }
