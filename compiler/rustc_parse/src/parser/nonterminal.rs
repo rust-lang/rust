@@ -1,7 +1,8 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Nonterminal, Nonterminal::*, NonterminalKind, Token};
+use rustc_ast::token::{self, Delimiter, Nonterminal::*, NonterminalKind, Token};
 use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
 
@@ -54,7 +55,7 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::Block => match &token.kind {
                 token::OpenDelim(Delimiter::Brace) => true,
-                token::Interpolated(nt) => match &nt.0 {
+                token::Interpolated(nt) => match &**nt {
                     NtBlock(_) | NtLifetime(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
                     NtItem(_) | NtPat(_) | NtTy(_) | NtIdent(..) | NtMeta(_) | NtPath(_)
                     | NtVis(_) => false,
@@ -63,7 +64,7 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::Path | NonterminalKind::Meta => match &token.kind {
                 token::PathSep | token::Ident(..) => true,
-                token::Interpolated(nt) => may_be_ident(&nt.0),
+                token::Interpolated(nt) => may_be_ident(nt),
                 _ => false,
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => match &token.kind {
@@ -81,13 +82,13 @@ impl<'a> Parser<'a> {
                 token::BinOp(token::Shl) => true,           // path (double UFCS)
                 // leading vert `|` or-pattern
                 token::BinOp(token::Or) => matches!(kind, NonterminalKind::PatWithOr),
-                token::Interpolated(nt) => may_be_ident(&nt.0),
+                token::Interpolated(nt) => may_be_ident(nt),
                 _ => false,
             },
             NonterminalKind::Lifetime => match &token.kind {
                 token::Lifetime(_) => true,
                 token::Interpolated(nt) => {
-                    matches!(&nt.0, NtLifetime(_))
+                    matches!(&**nt, NtLifetime(_))
                 }
                 _ => false,
             },
@@ -100,10 +101,7 @@ impl<'a> Parser<'a> {
     /// Parse a non-terminal (e.g. MBE `:pat` or `:ident`). Inlined because there is only one call
     /// site.
     #[inline]
-    pub fn parse_nonterminal(
-        &mut self,
-        kind: NonterminalKind,
-    ) -> PResult<'a, ParseNtResult<Nonterminal>> {
+    pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, ParseNtResult> {
         // A `macro_rules!` invocation may pass a captured item/expr to a proc-macro,
         // which requires having captured tokens available. Since we cannot determine
         // in advance whether or not a proc-macro will be (transitively) invoked,
@@ -196,7 +194,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        Ok(ParseNtResult::Nt(nt))
+        Ok(ParseNtResult::Nt(Lrc::new(nt)))
     }
 }
 

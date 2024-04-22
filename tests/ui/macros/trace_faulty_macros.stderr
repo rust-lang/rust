@@ -73,14 +73,10 @@ error: expected expression, found pattern `1 + 1`
   --> $DIR/trace_faulty_macros.rs:49:37
    |
 LL |     (let $p:pat = $e:expr) => {test!(($p,$e))};
-   |                   -------                -- this is interpreted as expression, but it is expected to be pattern
-   |                   |
-   |                   this macro fragment matcher is expression
+   |                                          -- this is interpreted as expression, but it is expected to be pattern
 ...
 LL |     (($p:pat, $e:pat)) => {let $p = $e;};
-   |               ------                ^^ expected expression
-   |               |
-   |               this macro fragment matcher is pattern
+   |                                     ^^ expected expression
 ...
 LL |     test!(let x = 1+1);
    |     ------------------

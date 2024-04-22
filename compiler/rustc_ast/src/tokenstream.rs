@@ -490,14 +490,14 @@ impl TokenStream {
 
     fn flatten_token(token: &Token, spacing: Spacing) -> TokenTree {
         match &token.kind {
-            token::Interpolated(nt) if let token::NtIdent(ident, is_raw) = nt.0 => {
-                TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span), spacing)
+            token::Interpolated(nt) if let token::NtIdent(ident, is_raw) = &**nt => {
+                TokenTree::Token(Token::new(token::Ident(ident.name, *is_raw), ident.span), spacing)
             }
             token::Interpolated(nt) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
                 DelimSpacing::new(Spacing::JointHidden, spacing),
                 Delimiter::Invisible,
-                TokenStream::from_nonterminal_ast(&nt.0).flattened(),
+                TokenStream::from_nonterminal_ast(&nt).flattened(),
             ),
             _ => TokenTree::Token(token.clone(), spacing),
         }

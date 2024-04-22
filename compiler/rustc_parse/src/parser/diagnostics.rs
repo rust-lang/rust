@@ -2372,9 +2372,9 @@ impl<'a> Parser<'a> {
         // in a subsequent macro invocation (#71039).
         let mut tok = self.token.clone();
         let mut labels = vec![];
-        while let TokenKind::Interpolated(node) = &tok.kind {
-            let tokens = node.0.tokens();
-            labels.push(node.clone());
+        while let TokenKind::Interpolated(nt) = &tok.kind {
+            let tokens = nt.tokens();
+            labels.push(nt.clone());
             if let Some(tokens) = tokens
                 && let tokens = tokens.to_attr_token_stream()
                 && let tokens = tokens.0.deref()
@@ -2387,27 +2387,20 @@ impl<'a> Parser<'a> {
         }
         let mut iter = labels.into_iter().peekable();
         let mut show_link = false;
-        while let Some(node) = iter.next() {
-            let descr = node.0.descr();
+        while let Some(nt) = iter.next() {
+            let descr = nt.descr();
             if let Some(next) = iter.peek() {
-                let next_descr = next.0.descr();
+                let next_descr = next.descr();
                 if next_descr != descr {
-                    err.span_label(next.1, format!("this macro fragment matcher is {next_descr}"));
-                    err.span_label(node.1, format!("this macro fragment matcher is {descr}"));
+                    err.span_label(next.use_span(), format!("this is expected to be {next_descr}"));
                     err.span_label(
-                        next.0.use_span(),
-                        format!("this is expected to be {next_descr}"),
-                    );
-                    err.span_label(
-                        node.0.use_span(),
+                        nt.use_span(),
                         format!(
                             "this is interpreted as {}, but it is expected to be {}",
                             next_descr, descr,
                         ),
                     );
                     show_link = true;
-                } else {
-                    err.span_label(node.1, "");
                 }
             }
         }

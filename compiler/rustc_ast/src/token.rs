@@ -111,7 +111,7 @@ impl Lit {
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
             Literal(token_lit) => Some(token_lit),
             Interpolated(ref nt)
-                if let NtExpr(expr) | NtLiteral(expr) = &nt.0
+                if let NtExpr(expr) | NtLiteral(expr) = &**nt
                     && let ast::ExprKind::Lit(token_lit) = expr.kind =>
             {
                 Some(token_lit)
@@ -333,7 +333,11 @@ pub enum TokenKind {
     /// - It prevents `Token` from implementing `Copy`.
     /// It adds complexity and likely slows things down. Please don't add new
     /// occurrences of this token kind!
-    Interpolated(Lrc<(Nonterminal, Span)>),
+    ///
+    /// The span in the surrounding `Token` is that of the metavariable in the
+    /// macro's RHS. The span within the Nonterminal is that of the fragment
+    /// passed to the macro at the call site.
+    Interpolated(Lrc<Nonterminal>),
 
     /// A doc comment token.
     /// `Symbol` is the doc comment's data excluding its "quotes" (`///`, `/**`, etc)
@@ -441,7 +445,7 @@ impl Token {
     /// if they keep spans or perform edition checks.
     pub fn uninterpolated_span(&self) -> Span {
         match &self.kind {
-            Interpolated(nt) => nt.0.use_span(),
+            Interpolated(nt) => nt.use_span(),
             _ => self.span,
         }
     }
@@ -486,7 +490,7 @@ impl Token {
             PathSep                            | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
-            Interpolated(ref nt) => matches!(&nt.0, NtLiteral(..) |
+            Interpolated(ref nt) => matches!(&**nt, NtLiteral(..) |
                 NtExpr(..)    |
                 NtBlock(..)   |
                 NtPath(..)),
@@ -510,7 +514,7 @@ impl Token {
             | DotDot | DotDotDot | DotDotEq      // ranges
             | Lt | BinOp(Shl)                    // associated path
             | PathSep                    => true, // global path
-            Interpolated(ref nt) => matches!(&nt.0, NtLiteral(..) |
+            Interpolated(ref nt) => matches!(&**nt, NtLiteral(..) |
                 NtPat(..)     |
                 NtBlock(..)   |
                 NtPath(..)),
@@ -533,7 +537,7 @@ impl Token {
             Lifetime(..)                | // lifetime bound in trait object
             Lt | BinOp(Shl)             | // associated path
             PathSep                      => true, // global path
-            Interpolated(ref nt) => matches!(&nt.0, NtTy(..) | NtPath(..)),
+            Interpolated(ref nt) => matches!(&**nt, NtTy(..) | NtPath(..)),
             // For anonymous structs or unions, which only appear in specific positions
             // (type of struct fields or union fields), we don't consider them as regular types
             _ => false,
@@ -544,7 +548,7 @@ impl Token {
     pub fn can_begin_const_arg(&self) -> bool {
         match self.kind {
             OpenDelim(Delimiter::Brace) => true,
-            Interpolated(ref nt) => matches!(&nt.0, NtExpr(..) | NtBlock(..) | NtLiteral(..)),
+            Interpolated(ref nt) => matches!(&**nt, NtExpr(..) | NtBlock(..) | NtLiteral(..)),
             _ => self.can_begin_literal_maybe_minus(),
         }
     }
@@ -589,7 +593,7 @@ impl Token {
         match self.uninterpolate().kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => true,
-            Interpolated(ref nt) => match &nt.0 {
+            Interpolated(ref nt) => match &**nt {
                 NtLiteral(_) => true,
                 NtExpr(e) => match &e.kind {
                     ast::ExprKind::Lit(_) => true,
@@ -610,7 +614,7 @@ impl Token {
     /// otherwise returns the original token.
     pub fn uninterpolate(&self) -> Cow<'_, Token> {
         match &self.kind {
-            Interpolated(nt) => match &nt.0 {
+            Interpolated(nt) => match &**nt {
                 NtIdent(ident, is_raw) => {
                     Cow::Owned(Token::new(Ident(ident.name, *is_raw), ident.span))
                 }
@@ -627,7 +631,7 @@ impl Token {
         // We avoid using `Token::uninterpolate` here because it's slow.
         match &self.kind {
             &Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
-            Interpolated(nt) => match &nt.0 {
+            Interpolated(nt) => match &**nt {
                 NtIdent(ident, is_raw) => Some((*ident, *is_raw)),
                 _ => None,
             },
@@ -641,7 +645,7 @@ impl Token {
         // We avoid using `Token::uninterpolate` here because it's slow.
         match &self.kind {
             &Lifetime(name) => Some(Ident::new(name, self.span)),
-            Interpolated(nt) => match &nt.0 {
+            Interpolated(nt) => match &**nt {
                 NtLifetime(ident) => Some(*ident),
                 _ => None,
             },
@@ -668,7 +672,7 @@ impl Token {
     /// Returns `true` if the token is an interpolated path.
     fn is_whole_path(&self) -> bool {
         if let Interpolated(nt) = &self.kind
-            && let NtPath(..) = &nt.0
+            && let NtPath(..) = &**nt
         {
             return true;
         }
@@ -681,7 +685,7 @@ impl Token {
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
         if let Interpolated(nt) = &self.kind
-            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = &nt.0
+            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = &**nt
         {
             return true;
         }
@@ -692,7 +696,7 @@ impl Token {
     /// Is the token an interpolated block (`$b:block`)?
     pub fn is_whole_block(&self) -> bool {
         if let Interpolated(nt) = &self.kind
-            && let NtBlock(..) = &nt.0
+            && let NtBlock(..) = &**nt
         {
             return true;
         }
@@ -857,6 +861,7 @@ pub enum Nonterminal {
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
+    /// The span is for the identifier argument passed to the macro.
     NtIdent(Ident, IdentIsRaw),
     NtLifetime(Ident),
     NtLiteral(P<ast::Expr>),
