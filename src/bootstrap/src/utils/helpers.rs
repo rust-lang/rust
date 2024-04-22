@@ -271,6 +271,15 @@ pub fn output(cmd: &mut Command) -> String {
     String::from_utf8(output.stdout).unwrap()
 }
 
+#[track_caller]
+pub fn try_output(cmd: &mut Command) -> String {
+    let output = match cmd.stderr(Stdio::inherit()).output() {
+        Ok(status) => status,
+        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),
+    };
+    String::from_utf8(output.stdout).unwrap()
+}
+
 /// Returns the last-modified time for `path`, or zero if it doesn't exist.
 pub fn mtime(path: &Path) -> SystemTime {
     fs::metadata(path).and_then(|f| f.modified()).unwrap_or(UNIX_EPOCH)

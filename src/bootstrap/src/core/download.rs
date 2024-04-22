@@ -6,13 +6,14 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::OnceLock,
+    time::SystemTime,
 };
 
 use build_helper::ci::CiEnv;
 use xz2::bufread::XzDecoder;
 
 use crate::core::config::RustfmtMetadata;
-use crate::utils::helpers::{check_run, exe, program_out_of_date};
+use crate::utils::helpers::{check_run, exe, program_out_of_date, try_output};
 use crate::{core::build_steps::llvm::detect_llvm_sha, utils::helpers::hex_encode};
 use crate::{t, Config};
 
@@ -194,7 +195,7 @@ impl Config {
         let _ = try_run(self, patchelf.arg(fname));
     }
 
-    fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
+    fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str, commit: &str) {
         self.verbose(|| println!("download {url}"));
         // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
         let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
@@ -203,7 +204,7 @@ impl Config {
         // protocols without worrying about merge conflicts if we change the HTTP implementation.
         match url.split_once("://").map(|(proto, _)| proto) {
             Some("http") | Some("https") => {
-                self.download_http_with_retries(&tempfile, url, help_on_error)
+                self.download_http_with_retries(&tempfile, url, help_on_error, commit)
             }
             Some(other) => panic!("unsupported protocol {other} in {url}"),
             None => panic!("no protocol in {url}"),
@@ -214,7 +215,13 @@ impl Config {
         );
     }
 
-    fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
+    fn download_http_with_retries(
+        &self,
+        tempfile: &Path,
+        url: &str,
+        help_on_error: &str,
+        commit: &str,
+    ) {
         println!("downloading {url}");
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
         let mut curl = Command::new("curl");
@@ -250,7 +257,7 @@ impl Config {
                             "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
                             url, tempfile.to_str().expect("invalid UTF-8 not supported with powershell downloads"),
                         ),
-                    ])).is_err() {
+                    ])).is_ok() {
                         return;
                     }
                     eprintln!("\nspurious failure, trying again");
@@ -258,8 +265,40 @@ impl Config {
             }
             if !help_on_error.is_empty() {
                 eprintln!("{help_on_error}");
+                Self::check_outdated(commit);
             }
             crate::exit!(1);
+        }
+    }
+
+    fn check_outdated(commit: &str) {
+        let build_date: String = try_output(
+            Command::new("git")
+                .arg("show")
+                .arg("-s")
+                .arg("--format=%ct") // Commit date in unix timestamp
+                .arg(commit),
+        );
+        match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+            Ok(n) => {
+                let replaced = build_date.trim();
+                let diff = n.as_secs() - replaced.parse::<u64>().unwrap();
+                if diff >= 165 * 24 * 60 * 60 {
+                    let build_date: String = try_output(
+                        Command::new("git")
+                            .arg("show")
+                            .arg("-s")
+                            .arg("--format=%cr") // Commit date in `x days ago` format
+                            .arg(commit),
+                    );
+                    eprintln!(
+                        "NOTE: tried to download builds for {} (from {}), CI builds are only retained for 168 days",
+                        commit, build_date
+                    );
+                    eprintln!("HELP: Consider updating your copy of the rust sources");
+                }
+            }
+            Err(_) => panic!("SystemTime before UNIX EPOCH!"),
         }
     }
 
@@ -495,7 +534,7 @@ impl Config {
         let extra_components = ["cargo"];
 
         let download_beta_component = |config: &Config, filename, prefix: &_, date: &_| {
-            config.download_component(DownloadSource::Dist, filename, prefix, date, "stage0")
+            config.download_component(DownloadSource::Dist, filename, prefix, date, "stage0");
         };
 
         self.download_toolchain(
@@ -573,7 +612,7 @@ impl Config {
         mode: DownloadSource,
         filename: String,
         prefix: &str,
-        key: &str,
+        commit: &str,
         destination: &str,
     ) {
         if self.dry_run() {
@@ -583,7 +622,7 @@ impl Config {
         let cache_dst =
             self.bootstrap_cache_path.as_ref().cloned().unwrap_or_else(|| self.out.join("cache"));
 
-        let cache_dir = cache_dst.join(key);
+        let cache_dir = cache_dst.join(commit);
         if !cache_dir.exists() {
             t!(fs::create_dir_all(&cache_dir));
         }
@@ -599,7 +638,7 @@ impl Config {
                 };
                 let url = format!(
                     "{}/{filename}",
-                    key.strip_suffix(&format!("-{}", self.llvm_assertions)).unwrap()
+                    commit.strip_suffix(&format!("-{}", self.llvm_assertions)).unwrap()
                 );
                 (dist_server, url, false)
             }
@@ -607,7 +646,7 @@ impl Config {
                 let dist_server = env::var("RUSTUP_DIST_SERVER")
                     .unwrap_or(self.stage0_metadata.config.dist_server.to_string());
                 // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0.json
-                (dist_server, format!("dist/{key}/{filename}"), true)
+                (dist_server, format!("dist/{commit}/{filename}"), true)
             }
         };
 
@@ -655,7 +694,7 @@ HELP: if trying to compile an old commit of rustc, disable `download-rustc` in c
 download-rustc = false
 ";
         }
-        self.download_file(&format!("{base_url}/{url}"), &tarball, help_on_error);
+        self.download_file(&format!("{base_url}/{url}"), &tarball, help_on_error, commit);
         if let Some(sha256) = checksum {
             if !self.verify(&tarball, sha256) {
                 panic!("failed to verify {}", tarball.display());
@@ -737,7 +776,12 @@ download-rustc = false
     [llvm]
     download-ci-llvm = false
     ";
-            self.download_file(&format!("{base}/{llvm_sha}/{filename}"), &tarball, help_on_error);
+            self.download_file(
+                &format!("{base}/{llvm_sha}/{filename}"),
+                &tarball,
+                help_on_error,
+                llvm_sha,
+            );
         }
         let llvm_root = self.ci_llvm_root();
         self.unpack(&tarball, &llvm_root, "rust-dev");
