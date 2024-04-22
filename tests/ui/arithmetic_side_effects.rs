@@ -521,4 +521,14 @@ pub fn issue_11393() {
     example_rem(x, maybe_zero);
 }
 
+pub fn issue_12318() {
+    use core::ops::{AddAssign, DivAssign, MulAssign, RemAssign, SubAssign};
+    let mut one: i32 = 1;
+    one.add_assign(1);
+    one.div_assign(1);
+    one.mul_assign(1);
+    one.rem_assign(1);
+    one.sub_assign(1);
+}
+
 fn main() {}
