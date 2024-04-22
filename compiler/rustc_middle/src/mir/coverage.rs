@@ -314,7 +314,9 @@ impl Default for ConditionInfo {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct MCDCBranchSpan {
     pub span: Span,
-    pub condition_info: ConditionInfo,
+    /// If `None`, this actually represents a normal branch span inserted for
+    /// code that was too complex for MC/DC.
+    pub condition_info: Option<ConditionInfo>,
     pub true_marker: BlockMarkerId,
     pub false_marker: BlockMarkerId,
 }
