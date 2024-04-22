@@ -234,6 +234,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let result = this.gettimeofday(tv, tz)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "localtime_r" => {
+                let [timep, result_op] = this.check_shim(abi, Abi::C {unwind: false}, link_name, args)?;
+                let result = this.localtime_r(timep, result_op)?;
+                this.write_pointer(result, dest)?;
+            }
             "clock_gettime" => {
                 let [clk_id, tp] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
