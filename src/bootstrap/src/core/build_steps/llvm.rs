@@ -56,14 +56,14 @@ impl LlvmBuildStatus {
     }
 }
 
-// Linker flags to pass to LLVM's CMake invocation.
+/// Linker flags to pass to LLVM's CMake invocation.
 #[derive(Debug, Clone, Default)]
 struct LdFlags {
-    // CMAKE_EXE_LINKER_FLAGS
+    /// CMAKE_EXE_LINKER_FLAGS
     exe: OsString,
-    // CMAKE_SHARED_LINKER_FLAGS
+    /// CMAKE_SHARED_LINKER_FLAGS
     shared: OsString,
-    // CMAKE_MODULE_LINKER_FLAGS
+    /// CMAKE_MODULE_LINKER_FLAGS
     module: OsString,
 }
 

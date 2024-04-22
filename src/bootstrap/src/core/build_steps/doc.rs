@@ -506,7 +506,7 @@ impl Step for SharedAssets {
         run.never()
     }
 
-    // Generate shared resources used by other pieces of documentation.
+    /// Generate shared resources used by other pieces of documentation.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let out = builder.doc_out(self.target);
 

@@ -2272,9 +2272,9 @@ impl Step for LlvmBitcodeLinker {
     }
 }
 
-// Tarball intended for internal consumption to ease rustc/std development.
-//
-// Should not be considered stable by end users.
+/// Tarball intended for internal consumption to ease rustc/std development.
+///
+/// Should not be considered stable by end users.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct RustDev {
     pub target: TargetSelection,
@@ -2356,9 +2356,9 @@ impl Step for RustDev {
     }
 }
 
-// Tarball intended for internal consumption to ease rustc/std development.
-//
-// Should not be considered stable by end users.
+/// Tarball intended for internal consumption to ease rustc/std development.
+///
+/// Should not be considered stable by end users.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Bootstrap {
     pub target: TargetSelection,
