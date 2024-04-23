@@ -535,7 +535,7 @@ pub fn check_intrinsic_type(
 
             sym::va_start | sym::va_end => match mk_va_list_ty(hir::Mutability::Mut) {
                 Some((va_list_ref_ty, _)) => (0, 0, vec![va_list_ref_ty], Ty::new_unit(tcx)),
-                None => bug!("`va_list` language item needed for C-variadic intrinsics"),
+                None => bug!("`va_list` lang item needed for C-variadic intrinsics"),
             },
 
             sym::va_copy => match mk_va_list_ty(hir::Mutability::Not) {
@@ -543,12 +543,12 @@ pub fn check_intrinsic_type(
                     let va_list_ptr_ty = Ty::new_mut_ptr(tcx, va_list_ty);
                     (0, 0, vec![va_list_ptr_ty, va_list_ref_ty], Ty::new_unit(tcx))
                 }
-                None => bug!("`va_list` language item needed for C-variadic intrinsics"),
+                None => bug!("`va_list` lang item needed for C-variadic intrinsics"),
             },
 
             sym::va_arg => match mk_va_list_ty(hir::Mutability::Mut) {
                 Some((va_list_ref_ty, _)) => (1, 0, vec![va_list_ref_ty], param(0)),
-                None => bug!("`va_list` language item needed for C-variadic intrinsics"),
+                None => bug!("`va_list` lang item needed for C-variadic intrinsics"),
             },
 
             sym::nontemporal_store => {

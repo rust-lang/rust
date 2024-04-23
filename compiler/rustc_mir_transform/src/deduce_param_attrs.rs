@@ -160,7 +160,7 @@ pub fn deduced_param_attrs<'tcx>(
         return &[];
     }
 
-    // If the Freeze language item isn't present, then don't bother.
+    // If the Freeze lang item isn't present, then don't bother.
     if tcx.lang_items().freeze_trait().is_none() {
         return &[];
     }

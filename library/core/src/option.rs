@@ -554,7 +554,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FusedIterator, TrustedLen};
-use crate::panicking::{panic, panic_str};
+use crate::panicking::{panic, panic_display};
 use crate::pin::Pin;
 use crate::{
     cmp, convert, hint, mem,
@@ -1991,7 +1991,7 @@ const fn unwrap_failed() -> ! {
 #[track_caller]
 #[rustc_const_unstable(feature = "const_option", issue = "67441")]
 const fn expect_failed(msg: &str) -> ! {
-    panic_str(msg)
+    panic_display(&msg)
 }
 
 /////////////////////////////////////////////////////////////////////////////
