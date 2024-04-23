@@ -979,6 +979,12 @@ impl<'a> Parser<'a> {
                 // we are using noexpect here because we don't expect a `.` directly after a `return`
                 // which could be suggested otherwise
                 self.eat_noexpect(&token::Dot)
+            } else if self.token.kind == TokenKind::RArrow && self.may_recover() {
+                // Recovery for `expr->suffix`.
+                self.bump();
+                let span = self.prev_token.span;
+                self.dcx().emit_err(errors::ExprRArrowCall { span });
+                true
             } else {
                 self.eat(&token::Dot)
             };
