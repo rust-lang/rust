@@ -94,9 +94,6 @@ jobs:
         env:
           EXTRA_VARIABLES: "${{ toJson(matrix.env) }}"
         if: success() && !env.SKIP_JOB
-      - name: decide whether to skip this job
-        run: src/ci/scripts/should-skip-this.sh
-        if: success() && !env.SKIP_JOB
       - name: ensure the channel matches the target branch
         run: src/ci/scripts/verify-channel.sh
         if: success() && !env.SKIP_JOB

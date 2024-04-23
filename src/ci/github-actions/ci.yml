@@ -163,10 +163,6 @@ x--expand-yaml-anchors--remove:
           EXTRA_VARIABLES: ${{ toJson(matrix.env) }}
         <<: *step
 
-      - name: decide whether to skip this job
-        run: src/ci/scripts/should-skip-this.sh
-        <<: *step
-
       - name: ensure the channel matches the target branch
         run: src/ci/scripts/verify-channel.sh
         <<: *step
