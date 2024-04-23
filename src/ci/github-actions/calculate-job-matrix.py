@@ -81,9 +81,9 @@ def calculate_jobs(job_type: JobType, job_data: Dict[str, Any]) -> List[Dict[str
     if job_type == JobType.PR:
         return add_base_env(name_jobs(job_data["pr"], "PR"), job_data["envs"]["pr"])
     elif job_type == JobType.Try:
-        return add_base_env(name_jobs(job_data["try"], "try"), job_data["envs"]["production"])
+        return add_base_env(name_jobs(job_data["try"], "try"), job_data["envs"]["try"])
     elif job_type == JobType.Auto:
-        return add_base_env(name_jobs(job_data["auto"], "auto"), job_data["envs"]["production"])
+        return add_base_env(name_jobs(job_data["auto"], "auto"), job_data["envs"]["auto"])
 
     return []
 
