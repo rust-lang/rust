@@ -564,7 +564,8 @@ used according to their aliasing restrictions.
 
 ## Bugs found by Miri
 
-Miri has already found a number of bugs in the Rust standard library and beyond, which we collect here.
+Miri has already found a number of bugs in the Rust standard library and beyond, some of which we collect here.
+If Miri helped you find a subtle UB bug in your code, we'd appreciate a PR adding it to the list!
 
 Definite bugs found:
 
@@ -599,6 +600,7 @@ Definite bugs found:
 * [Deallocating with the wrong layout in new specializations for in-place `Iterator::collect`](https://github.com/rust-lang/rust/pull/118460)
 * [Incorrect offset computation for highly-aligned types in `portable-atomic-util`](https://github.com/taiki-e/portable-atomic/pull/138)
 * [Occasional memory leak in `std::mpsc` channels](https://github.com/rust-lang/rust/issues/121582) (original code in [crossbeam](https://github.com/crossbeam-rs/crossbeam/pull/1084))
+* [Weak-memory-induced memory leak in Windows thread-local storage](https://github.com/rust-lang/rust/pull/124281)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
