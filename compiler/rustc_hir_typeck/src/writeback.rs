@@ -551,15 +551,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_coroutine_interior(&mut self) {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
-        self.tcx().with_stable_hashing_context(move |ref hcx| {
-            for (&expr_def_id, predicates) in
-                fcx_typeck_results.coroutine_interior_predicates.to_sorted(hcx, false).into_iter()
-            {
-                let predicates =
-                    self.resolve(predicates.clone(), &self.fcx.tcx.def_span(expr_def_id));
-                self.typeck_results.coroutine_interior_predicates.insert(expr_def_id, predicates);
-            }
-        })
+        for (predicate, cause) in &fcx_typeck_results.coroutine_stalled_predicates {
+            let (predicate, cause) = self.resolve((*predicate, cause.clone()), &cause.span);
+            self.typeck_results.coroutine_stalled_predicates.insert((predicate, cause));
+        }
     }
 
     #[instrument(skip(self), level = "debug")]
