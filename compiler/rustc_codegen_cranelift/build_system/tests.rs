@@ -290,7 +290,7 @@ pub(crate) fn run_tests(
         && !skip_tests.contains(&"testsuite.extended_sysroot");
 
     if run_base_sysroot || run_extended_sysroot {
-        let mut target_compiler = build_sysroot::build_sysroot(
+        let target_compiler = build_sysroot::build_sysroot(
             dirs,
             channel,
             sysroot_kind,
@@ -299,11 +299,8 @@ pub(crate) fn run_tests(
             rustup_toolchain_name,
             target_triple.clone(),
         );
-        // Rust's build system denies a couple of lints that trigger on several of the test
-        // projects. Changing the code to fix them is not worth it, so just silence all lints.
-        target_compiler.rustflags.push("--cap-lints=allow".to_owned());
 
-        let runner = TestRunner::new(
+        let mut runner = TestRunner::new(
             dirs.clone(),
             target_compiler,
             use_unstable_features,
@@ -319,6 +316,9 @@ pub(crate) fn run_tests(
         }
 
         if run_extended_sysroot {
+            // Rust's build system denies a couple of lints that trigger on several of the test
+            // projects. Changing the code to fix them is not worth it, so just silence all lints.
+            runner.target_compiler.rustflags.push("--cap-lints=allow".to_owned());
             runner.run_testsuite(EXTENDED_SYSROOT_SUITE);
         } else {
             eprintln!("[SKIP] extended_sysroot tests");
