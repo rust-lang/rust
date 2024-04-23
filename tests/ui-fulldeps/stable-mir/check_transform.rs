@@ -137,9 +137,9 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     write!(
         file,
         r#"
-        #![feature(panic_internals)]
+        fn panic_str(msg: &str) {{ panic!("{{}}", msg); }}
         pub fn dummy() {{
-            core::panicking::panic_str("oops");
+            panic_str("oops");
         }}
         "#
     )?;
