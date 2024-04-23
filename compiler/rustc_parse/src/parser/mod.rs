@@ -895,6 +895,7 @@ impl<'a> Parser<'a> {
                             }
 
                             // Attempt to keep parsing if it was an omitted separator.
+                            self.last_unexpected_token_span = None;
                             match f(self) {
                                 Ok(t) => {
                                     // Parsed successfully, therefore most probably the code only

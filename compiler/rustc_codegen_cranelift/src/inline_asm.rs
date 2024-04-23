@@ -2,6 +2,7 @@
 
 use std::fmt::Write;
 
+use cranelift_codegen::isa::CallConv;
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_span::sym;
 use rustc_target::asm::*;
@@ -785,9 +786,9 @@ fn call_inline_asm<'tcx>(
     for (offset, place) in outputs {
         let ty = if place.layout().ty.is_simd() {
             let (lane_count, lane_type) = place.layout().ty.simd_size_and_type(fx.tcx);
-            fx.clif_type(lane_type).unwrap().by(lane_count.try_into().unwrap()).unwrap()
+            asm_clif_type(fx, lane_type).unwrap().by(lane_count.try_into().unwrap()).unwrap()
         } else {
-            fx.clif_type(place.layout().ty).unwrap()
+            asm_clif_type(fx, place.layout().ty).unwrap()
         };
         let value = stack_slot.offset(fx, i32::try_from(offset.bytes()).unwrap().into()).load(
             fx,
@@ -795,5 +796,26 @@ fn call_inline_asm<'tcx>(
             MemFlags::trusted(),
         );
         place.write_cvalue(fx, CValue::by_val(value, place.layout()));
+    }
+}
+
+fn asm_clif_type<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> Option<types::Type> {
+    match ty.kind() {
+        // Adapted from https://github.com/rust-lang/rust/blob/f3c66088610c1b80110297c2d9a8b5f9265b013f/compiler/rustc_hir_analysis/src/check/intrinsicck.rs#L136-L151
+        ty::Adt(adt, args) if Some(adt.did()) == fx.tcx.lang_items().maybe_uninit() => {
+            let fields = &adt.non_enum_variant().fields;
+            let ty = fields[FieldIdx::from_u32(1)].ty(fx.tcx, args);
+            let ty::Adt(ty, args) = ty.kind() else {
+                unreachable!("expected first field of `MaybeUninit` to be an ADT")
+            };
+            assert!(
+                ty.is_manually_drop(),
+                "expected first field of `MaybeUninit` to be `ManuallyDrop`"
+            );
+            let fields = &ty.non_enum_variant().fields;
+            let ty = fields[FieldIdx::ZERO].ty(fx.tcx, args);
+            fx.clif_type(ty)
+        }
+        _ => fx.clif_type(ty),
     }
 }
