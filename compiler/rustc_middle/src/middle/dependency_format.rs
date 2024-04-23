@@ -4,6 +4,9 @@
 //! For all the gory details, see the provider of the `dependency_formats`
 //! query.
 
+// FIXME: move this file to rustc_metadata::dependency_format, but
+// this will introduce circular dependency between rustc_metadata and rustc_middle
+
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_session::config::CrateType;
 
