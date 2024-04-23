@@ -985,8 +985,6 @@ fn mask_load<'tcx>(
         let dest = this.project_index(&dest, i)?;
 
         if this.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
-            // Size * u64 is implemented as always checked
-            #[allow(clippy::arithmetic_side_effects)]
             let ptr = ptr.wrapping_offset(dest.layout.size * i, &this.tcx);
             // Unaligned copy, which is what we want.
             this.mem_copy(ptr, dest.ptr(), dest.layout.size, /*nonoverlapping*/ true)?;
@@ -1020,8 +1018,6 @@ fn mask_store<'tcx>(
         let value = this.project_index(&value, i)?;
 
         if this.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
-            // Size * u64 is implemented as always checked
-            #[allow(clippy::arithmetic_side_effects)]
             let ptr = ptr.wrapping_offset(value.layout.size * i, &this.tcx);
             // Unaligned copy, which is what we want.
             this.mem_copy(value.ptr(), ptr, value.layout.size, /*nonoverlapping*/ true)?;
