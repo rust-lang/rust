@@ -47,7 +47,7 @@ impl InnerReadDir {
 
 pub struct ReadDir {
     inner: Arc<InnerReadDir>,
-    pos: i64,
+    pos: usize,
 }
 
 impl ReadDir {
@@ -197,20 +197,20 @@ impl Iterator for ReadDir {
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         let mut counter: usize = 0;
-        let mut offset: i64 = 0;
+        let mut offset: usize = 0;
 
         // loop over all directory entries and search the entry for the current position
         loop {
             // leave function, if the loop reaches the of the buffer (with all entries)
-            if offset >= self.inner.dir.len().try_into().unwrap() {
+            if offset >= self.inner.dir.len() {
                 return None;
             }
 
             let dir = unsafe {
-                &*(self.inner.dir.as_ptr().offset(offset.try_into().unwrap()) as *const dirent64)
+                &*(self.inner.dir.as_ptr().add(offset) as *const dirent64)
             };
 
-            if counter == self.pos.try_into().unwrap() {
+            if counter == self.pos {
                 self.pos += 1;
 
                 // After dirent64, the file name is stored. d_reclen represents the length of the dirent64
@@ -218,17 +218,13 @@ impl Iterator for ReadDir {
                 // the size of dirent64. The file name is always a C string and terminated by `\0`.
                 // Consequently, we are able to ignore the last byte.
                 let name_bytes = unsafe {
-                    core::slice::from_raw_parts(
-                        &dir.d_name as *const _ as *const u8,
-                        dir.d_reclen as usize - core::mem::size_of::<dirent64>() - 1,
-                    )
-                    .to_vec()
+                    CStr::from_ptr(&dir.d_name as *const _ as *const i8).to_bytes()
                 };
                 let entry = DirEntry {
                     root: self.inner.root.clone(),
                     ino: dir.d_ino,
                     type_: dir.d_type as u32,
-                    name: OsString::from_vec(name_bytes),
+                    name: OsString::from_vec(name_bytes.to_vec()),
                 };
 
                 return Some(Ok(entry));
@@ -237,7 +233,7 @@ impl Iterator for ReadDir {
             counter += 1;
 
             // move to the next dirent64, which is directly stored after the previous one
-            offset = offset + dir.d_off;
+            offset = offset + usize::from(dir.d_reclen);
         }
     }
 }
