@@ -1208,7 +1208,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx.arena.alloc_from_iter(self.root.stability_implications.decode(self))
     }
 
-    /// Iterates over the language items in the given crate.
+    /// Iterates over the lang items in the given crate.
     fn get_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [(DefId, LangItem)] {
         tcx.arena.alloc_from_iter(
             self.root
