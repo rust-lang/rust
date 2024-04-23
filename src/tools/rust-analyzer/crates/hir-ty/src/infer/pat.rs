@@ -177,6 +177,7 @@ impl InferenceContext<'_> {
                                     self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                         field: inner.into(),
                                         private: true,
+                                        variant: def,
                                     });
                                 }
                                 let f = field_types[local_id].clone();
@@ -190,6 +191,7 @@ impl InferenceContext<'_> {
                                 self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                     field: inner.into(),
                                     private: false,
+                                    variant: def,
                                 });
                                 self.err_ty()
                             }

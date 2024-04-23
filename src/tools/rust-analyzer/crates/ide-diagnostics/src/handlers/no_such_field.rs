@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{db::ExpandDatabase, HasSource, HirDisplay, HirFileIdExt, Semantics};
+use hir::{db::ExpandDatabase, HasSource, HirDisplay, HirFileIdExt, Semantics, VariantId};
 use ide_db::{base_db::FileId, source_change::SourceChange, RootDatabase};
 use syntax::{
     ast::{self, edit::IndentLevel, make},
@@ -25,7 +25,10 @@ pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) 
     } else {
         Diagnostic::new_with_syntax_node_ptr(
             ctx,
-            DiagnosticCode::RustcHardError("E0559"),
+            match d.variant {
+                VariantId::EnumVariantId(_) => DiagnosticCode::RustcHardError("E0559"),
+                _ => DiagnosticCode::RustcHardError("E0560"),
+            },
             "no such field",
             node,
         )

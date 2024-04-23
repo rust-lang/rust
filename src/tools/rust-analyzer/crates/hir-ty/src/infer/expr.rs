@@ -563,6 +563,7 @@ impl InferenceContext<'_> {
                                                 InferenceDiagnostic::NoSuchField {
                                                     field: field.expr.into(),
                                                     private: true,
+                                                    variant: def,
                                                 },
                                             );
                                         }
@@ -572,6 +573,7 @@ impl InferenceContext<'_> {
                                         self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                             field: field.expr.into(),
                                             private: false,
+                                            variant: def,
                                         });
                                         None
                                     }
