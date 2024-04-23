@@ -2988,3 +2988,12 @@ pub(crate) struct AsyncImpl {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_expr_rarrow_call)]
+#[help]
+pub(crate) struct ExprRArrowCall {
+    #[primary_span]
+    #[suggestion(style = "short", applicability = "machine-applicable", code = ".")]
+    pub span: Span,
+}
