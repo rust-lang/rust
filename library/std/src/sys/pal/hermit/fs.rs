@@ -1,8 +1,8 @@
-use super::abi::{
+use super::fd::FileDesc;
+use super::hermit_abi::{
     self, dirent64, stat as stat_struct, DT_DIR, DT_LNK, DT_REG, DT_UNKNOWN, O_APPEND, O_CREAT,
     O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY, S_IFDIR, S_IFLNK, S_IFMT, S_IFREG,
 };
-use super::fd::FileDesc;
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
@@ -206,9 +206,7 @@ impl Iterator for ReadDir {
                 return None;
             }
 
-            let dir = unsafe {
-                &*(self.inner.dir.as_ptr().add(offset) as *const dirent64)
-            };
+            let dir = unsafe { &*(self.inner.dir.as_ptr().add(offset) as *const dirent64) };
 
             if counter == self.pos {
                 self.pos += 1;
@@ -217,9 +215,8 @@ impl Iterator for ReadDir {
                 // plus the length of the file name. Consequently, file name has a size of d_reclen minus
                 // the size of dirent64. The file name is always a C string and terminated by `\0`.
                 // Consequently, we are able to ignore the last byte.
-                let name_bytes = unsafe {
-                    CStr::from_ptr(&dir.d_name as *const _ as *const i8).to_bytes()
-                };
+                let name_bytes =
+                    unsafe { CStr::from_ptr(&dir.d_name as *const _ as *const i8).to_bytes() };
                 let entry = DirEntry {
                     root: self.inner.root.clone(),
                     ino: dir.d_ino,
@@ -361,7 +358,7 @@ impl File {
             mode = 0;
         }
 
-        let fd = unsafe { cvt(abi::open(path.as_ptr(), flags, mode))? };
+        let fd = unsafe { cvt(hermit_abi::open(path.as_ptr(), flags, mode))? };
         Ok(File(unsafe { FileDesc::from_raw_fd(fd as i32) }))
     }
 
@@ -442,7 +439,7 @@ impl DirBuilder {
 
     pub fn mkdir(&self, path: &Path) -> io::Result<()> {
         run_path_with_cstr(path, &|path| {
-            cvt(unsafe { abi::mkdir(path.as_ptr(), self.mode) }).map(|_| ())
+            cvt(unsafe { hermit_abi::mkdir(path.as_ptr(), self.mode) }).map(|_| ())
         })
     }
 
@@ -504,7 +501,8 @@ impl FromRawFd for File {
 }
 
 pub fn readdir(path: &Path) -> io::Result<ReadDir> {
-    let fd_raw = run_path_with_cstr(path, &|path| cvt(unsafe { abi::opendir(path.as_ptr()) }))?;
+    let fd_raw =
+        run_path_with_cstr(path, &|path| cvt(unsafe { hermit_abi::opendir(path.as_ptr()) }))?;
     let fd = unsafe { FileDesc::from_raw_fd(fd_raw as i32) };
     let root = path.to_path_buf();
 
@@ -515,8 +513,9 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
         // reserve memory to receive all directory entries
         vec.resize(sz, 0);
 
-        let readlen =
-            unsafe { abi::getdents64(fd.as_raw_fd(), vec.as_mut_ptr() as *mut dirent64, sz) };
+        let readlen = unsafe {
+            hermit_abi::getdents64(fd.as_raw_fd(), vec.as_mut_ptr() as *mut dirent64, sz)
+        };
         if readlen > 0 {
             // shrink down to the minimal size
             vec.resize(readlen.try_into().unwrap(), 0);
@@ -525,7 +524,7 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
 
         // if the buffer is too small, getdents64 returns EINVAL
         // otherwise, getdents64 returns an error number
-        if readlen != (-abi::errno::EINVAL).into() {
+        if readlen != (-hermit_abi::errno::EINVAL).into() {
             return Err(Error::from_raw_os_error(readlen.try_into().unwrap()));
         }
 
@@ -543,7 +542,7 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(path: &Path) -> io::Result<()> {
-    run_path_with_cstr(path, &|path| cvt(unsafe { abi::unlink(path.as_ptr()) }).map(|_| ()))
+    run_path_with_cstr(path, &|path| cvt(unsafe { hermit_abi::unlink(path.as_ptr()) }).map(|_| ()))
 }
 
 pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
@@ -555,7 +554,7 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
 }
 
 pub fn rmdir(path: &Path) -> io::Result<()> {
-    run_path_with_cstr(path, &|path| cvt(unsafe { abi::rmdir(path.as_ptr()) }).map(|_| ()))
+    run_path_with_cstr(path, &|path| cvt(unsafe { hermit_abi::rmdir(path.as_ptr()) }).map(|_| ()))
 }
 
 pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
@@ -577,7 +576,7 @@ pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
 pub fn stat(path: &Path) -> io::Result<FileAttr> {
     run_path_with_cstr(path, &|path| {
         let mut stat_val: stat_struct = unsafe { mem::zeroed() };
-        cvt(unsafe { abi::stat(path.as_ptr(), &mut stat_val) })?;
+        cvt(unsafe { hermit_abi::stat(path.as_ptr(), &mut stat_val) })?;
         Ok(FileAttr::from_stat(stat_val))
     })
 }
@@ -585,7 +584,7 @@ pub fn stat(path: &Path) -> io::Result<FileAttr> {
 pub fn lstat(path: &Path) -> io::Result<FileAttr> {
     run_path_with_cstr(path, &|path| {
         let mut stat_val: stat_struct = unsafe { mem::zeroed() };
-        cvt(unsafe { abi::lstat(path.as_ptr(), &mut stat_val) })?;
+        cvt(unsafe { hermit_abi::lstat(path.as_ptr(), &mut stat_val) })?;
         Ok(FileAttr::from_stat(stat_val))
     })
 }

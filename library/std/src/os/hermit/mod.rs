@@ -2,7 +2,7 @@
 
 #[allow(unused_extern_crates)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub extern crate hermit_abi as abi;
+pub extern crate hermit_abi;
 
 pub mod ffi;
 pub mod io;
