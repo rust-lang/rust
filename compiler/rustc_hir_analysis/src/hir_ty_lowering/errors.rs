@@ -17,6 +17,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
 use rustc_middle::query::Key;
+use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, suggest_constraining_type_param};
 use rustc_middle::ty::{AdtDef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{Binder, TraitRef};
@@ -1200,12 +1201,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 /// Emits an error regarding forbidden type binding associations
 pub fn prohibit_assoc_item_binding(
     tcx: TyCtxt<'_>,
-    span: Span,
-    segment: Option<(&hir::PathSegment<'_>, Span)>,
+    binding: &hir::TypeBinding<'_>,
+    segment: Option<(DefId, &hir::PathSegment<'_>, Span)>,
 ) -> ErrorGuaranteed {
-    tcx.dcx().emit_err(AssocTypeBindingNotAllowed {
-        span,
-        fn_trait_expansion: if let Some((segment, span)) = segment
+    let mut err = tcx.dcx().create_err(AssocTypeBindingNotAllowed {
+        span: binding.span,
+        fn_trait_expansion: if let Some((_, segment, span)) = segment
             && segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar
         {
             Some(ParenthesizedFnTraitExpansion {
@@ -1215,7 +1216,109 @@ pub fn prohibit_assoc_item_binding(
         } else {
             None
         },
-    })
+    });
+
+    // Emit a suggestion to turn the assoc item binding into a generic arg
+    // if the relevant item has a generic param whose name matches the binding name;
+    // otherwise suggest the removal of the binding.
+    if let Some((def_id, segment, _)) = segment
+        && segment.args().parenthesized == hir::GenericArgsParentheses::No
+        && let hir::TypeBindingKind::Equality { term } = binding.kind
+    {
+        // Suggests removal of the offending binding
+        let suggest_removal = |e: &mut Diag<'_>| {
+            let bindings = segment.args().bindings;
+            let args = segment.args().args;
+            let binding_span = binding.span;
+
+            // Compute the span to remove based on the position
+            // of the binding. We do that as follows:
+            //  1. Find the index of the binding in the list of bindings
+            //  2. Locate the spans preceding and following the binding.
+            //     If it's the first binding the preceding span would be
+            //     that of the last arg
+            //  3. Using this information work out whether the span
+            //     to remove will start from the end of the preceding span,
+            //     the start of the next span or will simply be the
+            //     span encomassing everything within the generics brackets
+
+            let Some(binding_index) = bindings.iter().position(|b| b.hir_id == binding.hir_id)
+            else {
+                bug!("a type binding exists but its HIR ID not found in generics");
+            };
+
+            let preceding_span = if binding_index > 0 {
+                Some(bindings[binding_index - 1].span)
+            } else {
+                args.last().map(|a| a.span())
+            };
+
+            let next_span = if binding_index < bindings.len() - 1 {
+                Some(bindings[binding_index + 1].span)
+            } else {
+                None
+            };
+
+            let removal_span = match (preceding_span, next_span) {
+                (Some(prec), _) => binding_span.with_lo(prec.hi()),
+                (None, Some(next)) => binding_span.with_hi(next.lo()),
+                (None, None) => {
+                    let Some(generics_span) = segment.args().span_ext() else {
+                        bug!("a type binding exists but generic span is empty");
+                    };
+
+                    generics_span
+                }
+            };
+
+            // Now emit the suggestion
+            if let Ok(suggestion) = tcx.sess.source_map().span_to_snippet(removal_span) {
+                e.span_suggestion_verbose(
+                    removal_span,
+                    "consider removing this type binding",
+                    suggestion,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        };
+
+        // Suggest replacing the associated item binding with a generic argument.
+        // i.e., replacing `<..., T = A, ...>` with `<..., A, ...>`.
+        let suggest_direct_use = |e: &mut Diag<'_>, sp: Span| {
+            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(sp) {
+                e.span_suggestion_verbose(
+                    binding.span,
+                    format!("to use `{snippet}` as a generic argument specify it directly"),
+                    snippet,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        };
+
+        // Check if the type has a generic param with the
+        // same name as the assoc type name in type binding
+        let generics = tcx.generics_of(def_id);
+        let matching_param =
+            generics.params.iter().find(|p| p.name.as_str() == binding.ident.as_str());
+
+        // Now emit the appropriate suggestion
+        if let Some(matching_param) = matching_param {
+            match (&matching_param.kind, term) {
+                (GenericParamDefKind::Type { .. }, hir::Term::Ty(ty)) => {
+                    suggest_direct_use(&mut err, ty.span);
+                }
+                (GenericParamDefKind::Const { .. }, hir::Term::Const(c)) => {
+                    let span = tcx.hir().span(c.hir_id);
+                    suggest_direct_use(&mut err, span);
+                }
+                _ => suggest_removal(&mut err),
+            }
+        } else {
+            suggest_removal(&mut err);
+        }
+    }
+
+    err.emit()
 }
 
 pub(crate) fn fn_trait_to_string(

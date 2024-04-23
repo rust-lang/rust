@@ -19,6 +19,11 @@ error[E0229]: associated type bindings are not allowed here
    |
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
    |                                              ^^^^^^^^^^^^^ associated type not allowed here
+   |
+help: consider removing this type binding
+   |
+LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
+   |                                             ~~~~~~~~~~~~~~~
 
 error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/issue-85347.rs:3:42
@@ -44,6 +49,10 @@ LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
    |                                              ^^^^^^^^^^^^^ associated type not allowed here
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider removing this type binding
+   |
+LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
+   |                                             ~~~~~~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 
