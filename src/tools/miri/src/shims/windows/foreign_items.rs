@@ -653,7 +653,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     OsStr::new(&formatted),
                     buffer,
                     size.into(),
-                    /*trunacte*/ false,
+                    /*truncate*/ false,
                 )?;
                 if !complete {
                     // The API docs don't say what happens when the buffer is not big enough...
