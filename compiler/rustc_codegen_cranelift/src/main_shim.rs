@@ -1,3 +1,4 @@
+use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use rustc_hir::LangItem;
 use rustc_middle::ty::AssocKind;
 use rustc_middle::ty::GenericArg;

@@ -4,7 +4,9 @@
 
 #[cfg(target_arch = "aarch64")]
 use std::arch::aarch64::*;
+#[cfg(target_arch = "aarch64")]
 use std::mem::transmute;
+#[cfg(target_arch = "aarch64")]
 use std::simd::*;
 
 #[cfg(target_arch = "aarch64")]

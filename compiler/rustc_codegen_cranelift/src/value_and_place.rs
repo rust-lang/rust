@@ -2,6 +2,7 @@
 
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::immediates::Offset32;
+use cranelift_frontend::Variable;
 use rustc_middle::ty::FnSig;
 
 use crate::prelude::*;
@@ -92,23 +93,6 @@ impl<'tcx> CValue<'tcx> {
         layout: TyAndLayout<'tcx>,
     ) -> CValue<'tcx> {
         CValue(CValueInner::ByValPair(value, extra), layout)
-    }
-
-    /// For `AggregateKind::RawPtr`, create a pointer from its parts.
-    ///
-    /// Panics if the `layout` is not a raw pointer.
-    pub(crate) fn pointer_from_data_and_meta(
-        data: CValue<'tcx>,
-        meta: CValue<'tcx>,
-        layout: TyAndLayout<'tcx>,
-    ) -> CValue<'tcx> {
-        assert!(layout.ty.is_unsafe_ptr());
-        let inner = match (data.0, meta.0) {
-            (CValueInner::ByVal(p), CValueInner::ByVal(m)) => CValueInner::ByValPair(p, m),
-            (p @ CValueInner::ByVal(_), CValueInner::ByRef(..)) if meta.1.is_zst() => p,
-            _ => bug!("RawPtr operands {data:?} {meta:?}"),
-        };
-        CValue(inner, layout)
     }
 
     pub(crate) fn layout(&self) -> TyAndLayout<'tcx> {
