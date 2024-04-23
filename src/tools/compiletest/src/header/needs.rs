@@ -261,6 +261,11 @@ fn find_dlltool(config: &Config) -> bool {
     let path = std::env::var_os("PATH").expect("missing PATH environment variable");
     let path = std::env::split_paths(&path).collect::<Vec<_>>();
 
+    // dlltool is used ony by GNU based `*-*-windows-gnu`
+    if !(config.matches_os("windows") && config.matches_env("gnu") && config.matches_abi("")) {
+        return false;
+    }
+
     // On Windows, dlltool.exe is used for all architectures.
     // For non-Windows, there are architecture specific dlltool binaries.
     let dlltool_found = if cfg!(windows) {
